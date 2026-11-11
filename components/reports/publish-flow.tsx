@@ -12,6 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { ConvexError } from "convex/values";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -47,7 +48,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -85,6 +87,11 @@ function placeOf(report: Report | null) {
 
 /** A handler for a change that was refused or never arrived: its reason in a toast. */
 const said = (otherwise: string) => (error: unknown) => void toast.error(getErrorMessage(error, otherwise));
+
+/** Why a promotion code or a payment was refused, as the server names it, so the page says it in its own language. */
+const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
+const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
+const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 
 function copy(text: string, copied: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(copied));
@@ -553,13 +560,15 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
   const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
-      <ol className="grid grid-cols-6 gap-1">
+      <ol className="grid grid-cols-6 gap-1 max-sm:flex max-sm:justify-between">
         {STEPS.map((s, i) => {
           const done = i < place || (i === place && place === 5);
           const current = i === place && place !== 5;
           const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
-          // The DOI, the PDF and the details, once done; the agreement is signed for good.
-          const clickable = canGoBack && done && i < 4 && i > 0;
+          // The PDF and the details once done, and the DOI until there is a PDF (it shows beside the trail after, and
+          // going back to it would ask for the PDF again); the agreement is signed for good. Back at the upload, the
+          // details already read are still a step away.
+          const clickable = canGoBack && i > 0 && i < 4 && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata);
           const body = (
             <>
               <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
@@ -568,7 +577,7 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
             </>
           );
           return (
-            <li key={s.id} className="min-w-0">
+            <li key={s.id} className={cn("min-w-0", current && "max-sm:flex-1")}>
               {clickable ? (
                 <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
@@ -630,8 +639,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
       <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
       </StepHead>
-      <div className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+      <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <label className="space-y-1.5">
@@ -740,7 +749,7 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
       </motion.p>
       <motion.div className="relative mt-7 w-full max-w-xl overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.06] px-5 py-6" {...rise(0.45)}>
         <p className="sr-only">{report.doi}</p>
-        <p aria-hidden className="flex flex-wrap justify-center font-mono text-xl font-semibold tracking-tight sm:text-[1.625rem]">
+        <p aria-hidden dir="ltr" className="flex flex-wrap justify-center font-mono text-xl font-semibold tracking-tight sm:text-[1.625rem]">
           {parts.map((part, group) => (
             <span key={group} className="whitespace-nowrap">
               {[...part].map((letter, i) => (
@@ -802,8 +811,11 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
 function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
-  /** A file's size, in megabytes or kilobytes as the reader's language writes them. */
-  const bytes = (n: number) => (n > 1_000_000 ? format.number(n / 1_000_000, { style: "unit", unit: "megabyte", minimumFractionDigits: 1, maximumFractionDigits: 1 }) : format.number(Math.round(n / 1000), { style: "unit", unit: "kilobyte" }));
+  /**
+   * A file's size, in megabytes or kilobytes as the reader's language writes them. Counted in 1,024s, as the limit
+   * (`MAX_PDF_MB`) is: a PDF just under it never reads as over it.
+   */
+  const bytes = (n: number) => (n > 1024 * 1024 ? format.number(n / 1024 / 1024, { style: "unit", unit: "megabyte", minimumFractionDigits: 1, maximumFractionDigits: 1 }) : format.number(Math.round(n / 1024), { style: "unit", unit: "kilobyte" }));
   const startUpload = useMutation(api.reports.flow.startUpload);
   const attachPdf = useMutation(api.reports.flow.attachPdf);
   const input = useRef<HTMLInputElement>(null);
@@ -925,6 +937,11 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
 export function CheckRow({ name, result, advice = true, overruled = false }: { name: string; result?: CheckResult; /** Whether to say what the author can do about a failed check: only where they still can. */ advice?: boolean; /** A reviewer approved the report over this check's answer. */ overruled?: boolean }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
+  /** What a check says, in the page's language when it's one of the fixed things a check says. */
+  const inWords = (words: string | undefined) => {
+    const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
+    return key ? t(`check.said.${key}`) : words;
+  };
   const format = useFormatter();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
   const asked = result?.confidence !== undefined && result.threshold !== undefined;
@@ -979,9 +996,9 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                   </span>
                 </div>
               ) : result.evidence ? null : (
-                <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail}</p>
+                <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{inWords(result.detail)}</p>
               )}
-              {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail}</p> : null}
+              {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{inWords(result.detail)}</p> : null}
               {result.evidence ? (
                 <a href={result.evidence.url} target="_blank" rel="noopener noreferrer" className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
                   <span className="shrink-0">{result.evidence.where ? t("check.foundIn", { where: result.evidence.where }) : t("check.foundAs")}</span>
@@ -989,7 +1006,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                   <ArrowUpRight className="size-3 shrink-0" />
                 </a>
               ) : null}
-              {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{result.reasoning}</p> : null}
+              {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{inWords(result.reasoning)}</p> : null}
               {!result.pass && result.fix && advice ? (
                 <p className="ms-8 mt-2 flex items-start gap-2 rounded-xl bg-inset px-3 py-2 text-xs/5">
                   <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" />
@@ -1034,13 +1051,16 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       try {
         await onActivate?.(pay, withCode, expect);
       } catch (error) {
-        said(t("activateFailed"))(error);
+        const reason = promoReason(error);
+        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
+        else if (refusalOf(error)?.reason === "noFreeLeft") toast.error(t("activation.noFreeLeft"));
+        else if (refusalOf(error)?.reason === "paused") toast.error(t("activation.paused"));
+        else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
+        else said(t("activateFailed"))(error);
       }
     });
-  /** Activate's words: the same whether it can be pressed yet or not, so the button keeps its width. */
-  const activateLabel = free || price === null || price <= credit ? t("activate") : t("activation.activateFor", { price: dollars(price - credit) });
-  /** Why Activate can't be pressed yet, for an admin. */
-  const waitingFor = pending ? t("activation.waitingBank") : !card ? t("activation.addCardFirst") : !free && price === null ? t("activation.notForSale") : null;
+  /** What Activate takes from the card, beside the word; null when it's free or credit covers it. */
+  const amount = free || price === null || price <= credit ? null : dollars(price - credit);
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
@@ -1077,6 +1097,12 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       </AutoHeight>
       {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
+      {terms?.refund && stage !== "live" ? (
+        <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <CreditCard className="size-4 shrink-0" />
+          {t(terms.refund.done ? "activation.refunded" : "activation.refunding", { amount: dollars(Math.round(terms.refund.amount * 100)) })}
+        </p>
+      ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
           // What to do about a failed check shows only while it can still be done. Once a reviewer has approved the
@@ -1088,7 +1114,31 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} credit={credit} price={price} pending={pending} onAddCard={onAddCard} /> : null}
+              {stage === "ready" && admin && terms ? (
+                // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
+                // while the bank confirms a charge, the bar offers that instead.
+                <PaymentLine
+                  organization={organization}
+                  free={terms.free.left}
+                  card={card}
+                  credit={credit}
+                  price={price}
+                  pending={pending}
+                  refused={terms.refused}
+                  onAddCard={onAddCard}
+                  action={
+                    terms.paused || (!free && price === null) ? (
+                      <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
+                        <span tabIndex={0}>
+                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                        </span>
+                      </TooltipHint>
+                    ) : (
+                      <ActivateButton label={t("activate")} amount={amount} busy={activating} disabled={false} onClick={free ? () => activateNow(false) : () => setPaying(true)} />
+                    )
+                  }
+                />
+              ) : null}
               <div className="flex flex-wrap justify-end gap-2">
                 {stage === "failed" ? (
                   <>
@@ -1107,7 +1157,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                 ) : (
                   <>
                     {onAnother ? (
-                      <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
+                      <Button variant={stage === "declined" ? "default" : stage === "ready" && admin ? "ghost" : "outline"} onClick={onAnother}>
                         <Plus /> {t("publishAnother")}
                       </Button>
                     ) : null}
@@ -1119,26 +1169,6 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                           </Button>
                         </span>
                       </TooltipHint>
-                    ) : stage === "ready" && waitingFor ? (
-                      <TooltipHint label={waitingFor}>
-                        <span tabIndex={0}>
-                          <Button className="relative" disabled>
-                            <Working busy={false}>
-                              <span className="flex items-center gap-2">
-                                <BadgeCheck /> {activateLabel}
-                              </span>
-                            </Working>
-                          </Button>
-                        </span>
-                      </TooltipHint>
-                    ) : stage === "ready" ? (
-                      <Button className="relative" disabled={activating} onClick={free ? () => activateNow(false) : () => setPaying(true)}>
-                        <Working busy={activating}>
-                          <span className="flex items-center gap-2">
-                            <BadgeCheck /> {activateLabel}
-                          </span>
-                        </Working>
-                      </Button>
                     ) : stage === "review" ? (
                       <TooltipHint label={t("needsApproval")}>
                         <span tabIndex={0}>
@@ -1199,6 +1229,29 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   );
 }
 
+/** Activate, in the payment bar: taller than the buttons around it, its badge in a ring, and what it takes from the card in a segment of its own. */
+function ActivateButton({ label, amount, busy, disabled, onClick }: { label: string; amount: string | null; busy: boolean; disabled: boolean; onClick: () => void }) {
+  return (
+    <Button size="lg" disabled={disabled || busy} onClick={onClick} className="relative h-11 shrink-0 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0">
+      <Working busy={busy}>
+        <span className="flex h-11 items-center">
+          <span className="flex items-center gap-2.5 ps-2 pe-4">
+            <span className="flex size-7 items-center justify-center rounded-full bg-white/25">
+              <BadgeCheck className="size-4" />
+            </span>
+            {label}
+          </span>
+          {amount === null ? null : (
+            <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">
+              <bdi>{amount}</bdi>
+            </span>
+          )}
+        </span>
+      </Working>
+    </Button>
+  );
+}
+
 /** Cents as US dollars in the reader's own format, without cents when there are none: $5, $2.50. */
 function useDollars() {
   const format = useFormatter();
@@ -1222,54 +1275,58 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
         setWrong(null);
         setTyped("");
       } catch (error) {
-        setWrong(getErrorMessage(error, t("failed")));
+        const reason = promoReason(error);
+        setWrong(reason ? t(reason, { code: typed.trim() }) : getErrorMessage(error, t("failed")));
       }
     });
   const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
   return (
-    <AutoHeight>
-      {applied ? (
-        <div className="flex items-center gap-2 text-sm">
-          <Tag className="size-4 text-muted-foreground" />
-          <span className="font-mono font-medium">{applied.code}</span>
-          <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
-          <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
-            <X />
-          </Button>
-        </div>
-      ) : open ? (
-        <form
-          className="space-y-1.5 p-px"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (typed.trim()) apply();
-          }}
-        >
-          <div className="flex gap-2">
-            <Input
-              autoFocus
-              value={typed}
-              maxLength={100}
-              onChange={(e) => {
-                setTyped(e.target.value);
-                setWrong(null);
-              }}
-              placeholder={t("label")}
-              aria-label={t("label")}
-              aria-invalid={!!wrong}
-              className="font-mono placeholder:font-sans"
-            />
-            <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
-              {t("apply")}
+    // Room around it for the buttons' focus rings, which its height animation would clip (WebKit has no clip margin).
+    <AutoHeight className="-mx-3 -my-1">
+      <div className="px-3 py-1">
+        {applied ? (
+          <div className="flex items-center gap-2 text-sm">
+            <Tag className="size-4 text-muted-foreground" />
+            <span className="font-mono font-medium">{applied.code}</span>
+            <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
+            <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
+              <X />
             </Button>
           </div>
-          {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
-        </form>
-      ) : (
-        <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
-          <Tag /> {t("add")}
-        </Button>
-      )}
+        ) : open ? (
+          <form
+            className="space-y-1.5 p-px"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (typed.trim()) apply();
+            }}
+          >
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                value={typed}
+                maxLength={100}
+                onChange={(e) => {
+                  setTyped(e.target.value);
+                  setWrong(null);
+                }}
+                placeholder={t("label")}
+                aria-label={t("label")}
+                aria-invalid={!!wrong}
+                className="font-mono placeholder:font-sans"
+              />
+              <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+                {t("apply")}
+              </Button>
+            </div>
+            {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
+          </form>
+        ) : (
+          <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
+            <Tag /> {t("add")}
+          </Button>
+        )}
+      </div>
     </AutoHeight>
   );
 }
@@ -1279,17 +1336,27 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
  * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
  * asked to confirm says so, with the way back to its page.
  */
-function PaymentLine({ organization, free, card, credit, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, action }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
   const costs = price === null ? null : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
+  // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
+  const saveCard = () =>
+    save(async () => {
+      try {
+        await onAddCard?.();
+      } catch (error) {
+        said(t("stripeFailed"))(error);
+      }
+    });
   return (
     <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
         <CreditCard className="size-4" />
       </span>
-      <div className="min-w-0 flex-1">
+      {/* On a phone the words keep a readable width and the buttons go under them. */}
+      <div className="min-w-0 flex-1 basis-48">
         {pending ? (
           <p className="text-sm font-medium">{t("bankAsked")}</p>
         ) : card ? (
@@ -1311,43 +1378,32 @@ function PaymentLine({ organization, free, card, credit, price, pending, onAddCa
         <p className="mt-0.5 text-xs text-muted-foreground">
           {pending
             ? t("goesLive")
-            : free > 0
-              ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
-              : !card
-                ? (costs ?? t("needed"))
-                : organization
-                  ? t("orgCard", { organization })
-                  : t("yourCard")}
+            : refused
+              ? t("refused")
+              : free > 0
+                ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
+                : !card
+                  ? (costs ?? t("needed"))
+                  : organization
+                    ? t("orgCard", { organization })
+                    : t("yourCard")}
         </p>
       </div>
       {pending?.url ? (
-        <Button variant="outline" asChild className="shrink-0">
+        <Button variant="outline" asChild className="ms-auto shrink-0">
           <a href={pending.url}>
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
       ) : pending ? null : card ? (
-        // The cards are the billing page's, where Stripe's own page changes them.
-        <Button variant="ghost" asChild className="shrink-0 text-muted-foreground">
-          <Link href="/settings/billing">
-            {t("change")} <ArrowUpRight />
-          </Link>
-        </Button>
+        <div className="ms-auto flex shrink-0 items-center gap-2">
+          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
+            <Working busy={saving}>{t("change")}</Working>
+          </Button>
+          {action}
+        </div>
       ) : onAddCard ? (
-        <Button
-          variant="outline"
-          className="relative shrink-0"
-          disabled={saving}
-          onClick={() =>
-            save(async () => {
-              try {
-                await onAddCard();
-              } catch (error) {
-                said(t("stripeFailed"))(error);
-              }
-            })
-          }
-        >
+        <Button variant="outline" className="relative ms-auto shrink-0" disabled={saving} onClick={saveCard}>
           <Working busy={saving}>
             <span className="flex items-center gap-2">
               <CreditCard /> {t("addButton")}
@@ -1522,7 +1578,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
       <motion.div className="rounded-2xl border border-border-subtle bg-inset/60 p-4" {...rise(0.7)}>
         <div className="flex min-w-0 items-center gap-3">
           <Hash className="size-4 shrink-0 text-primary" />
-          <a href={url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
+          <a href={url} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
             doi.org/{report.doi}
           </a>
           <TooltipHint label={t("copyDoi")}>
@@ -1687,7 +1743,7 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
       />
       <div className="min-w-0 flex-1 @3xl:mt-4">
         <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
-          <p className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
+          <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
         </TooltipHint>
         <p className="mt-0.5 text-xs text-muted-foreground">{basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">

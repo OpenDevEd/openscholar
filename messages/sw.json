@@ -315,7 +315,9 @@
     "southernDescription": "Kwa timu za Kusini, kwa miradi mahususi.",
     "southernFeature1": "Kila kitu katika Free",
     "southernFeature2": "Huongezwa kwenye akaunti yako baada ya kuwasiliana nasi",
-    "onRequest": "Kwa ombi"
+    "onRequest": "Kwa ombi",
+    "reportsPerDay": "{count, plural, one {Ripoti # mpya} other {Ripoti # mpya}} kwa siku katika Openscholar Reports",
+    "reportsNone": "Hakuna Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Vitambulisho vya {provider}",
@@ -6368,7 +6370,9 @@
         "reviewFlagged": "Ukaguzi uliiwekea alama ripoti hii, kwa hiyo inasubiri mkaguzi. {approving}",
         "reviewOn": "Ukaguzi wa binadamu umewashwa, kwa hiyo inasubiri mkaguzi. {approving}",
         "readyApproved": "Mkaguzi aliidhinisha ripoti hii. Inachapishwa mara tu mwandishi anapoiwasha.",
-        "readyPassed": "Ilipita kila ukaguzi. Inachapishwa mara tu mwandishi anapoiwasha."
+        "readyPassed": "Ilipita kila ukaguzi. Inachapishwa mara tu mwandishi anapoiwasha.",
+        "readyPassedOrg": "Ilipita kila ukaguzi. Inachapishwa mara tu msimamizi wa {organization} anapoiwasha.",
+        "readyApprovedOrg": "Mkaguzi aliidhinisha ripoti hii. Inachapishwa mara tu msimamizi wa {organization} anapoiwasha."
       },
       "authorAsked": "Mwandishi aliomba ukaguzi",
       "noComment": "Hakuna maoni",
@@ -6616,7 +6620,12 @@
         "unclear": "Haieleweki",
         "sure": "Uhakika wa {percent} kwamba inapita",
         "foundIn": "Imepatikana katika {where}:",
-        "foundAs": "Imepatikana kama"
+        "foundAs": "Imepatikana kama",
+        "said": {
+          "notPublished": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
+          "unfinished": "Ukaguzi huu haukuweza kukamilika.",
+          "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
+        }
       },
       "activateFailed": "Haikuweza kuwashwa",
       "running": "Inaendesha ukaguzi",
@@ -6695,9 +6704,6 @@
         "waitingAdminPassed": "Ripoti yako imepita ukaguzi wake. Msimamizi wa {organization} ndiye anayeiwasha.",
         "waitingAdminApproved": "Mkaguzi ameidhinisha ripoti yako. Msimamizi wa {organization} ndiye anayeiwasha.",
         "onlyAdmin": "Msimamizi pekee ndiye anayeweza kuiwasha",
-        "activateFor": "Washa kwa {price}",
-        "waitingBank": "Malipo yake yanasubiri benki yako",
-        "addCardFirst": "Ongeza njia ya kulipa kwanza",
         "notForSale": "Kuwasha hakuwezi kulipiwa kwa sasa",
         "payTitle": "Lipa {price} kuwasha {key}",
         "freeTitle": "Washa {key}",
@@ -6717,11 +6723,15 @@
           "apply": "Tumia",
           "remove": "Ondoa {code}",
           "off": "Punguzo la {percent}%",
-          "failed": "Msimbo huo haukuweza kukaguliwa. Jaribu tena."
+          "failed": "Msimbo huo haukuweza kukaguliwa. Jaribu tena.",
+          "unknownCode": "{code} si msimbo tunaoujua, au umeshatumika wote.",
+          "nothingOff": "{code} haipunguzi chochote kwenye uwashaji.",
+          "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu."
         },
         "card": {
           "bankAsked": "Benki yako imeomba kuthibitisha malipo",
           "goesLive": "Itaenda hewani mara malipo yakithibitishwa.",
+          "refused": "Benki yako haikuthibitisha malipo ya mwisho, kwa hivyo hakuna kilichotozwa.",
           "free": "Bure",
           "freeLeft": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo",
           "freeLeftNoCard": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo. Bado kadi iliyohifadhiwa inahitajika.",
@@ -6737,7 +6747,12 @@
           "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
           "credit": "Salio {amount}"
         },
-        "creditLine": "Salio la akaunti"
+        "creditLine": "Salio la akaunti",
+        "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
+        "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa.",
+        "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena.",
+        "noFreeLeft": "Hakuna uwashaji wa bure uliobaki leo. Iwashe tena ili uilipie.",
+        "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake."
       }
     },
     "meta": {
@@ -6862,5 +6877,30 @@
     "remove": "Ondoa iD",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "Tafuta kwenye ORCID"
+  },
+  "profileSetup": {
+    "title": "Weka wasifu wako",
+    "intro": "Unaweza kubadilisha haya baadaye katika Mipangilio.",
+    "institution": "Taasisi",
+    "orcid": "ORCID iD",
+    "emails": "Barua pepe kutoka Openscholar",
+    "skip": "Ruka kwa sasa",
+    "continue": "Endelea",
+    "saveFailed": "Wasifu wako haukuweza kuhifadhiwa.",
+    "changeFailed": "Haikuweza kuhifadhiwa.",
+    "emailKinds": {
+      "updates": {
+        "label": "Habari za bidhaa",
+        "hint": "Vipengele vipya na mabadiliko ya Openscholar"
+      },
+      "news": {
+        "label": "Habari na matukio",
+        "hint": "Semina za mtandaoni, habari za jumuiya na muhtasari wa utafiti"
+      },
+      "research": {
+        "label": "Utafiti na maoni",
+        "hint": "Mialiko ya kujaribu vipengele vipya na kutoa maoni yako"
+      }
+    }
   }
 }

@@ -62,6 +62,19 @@ describe("activating a report", () => {
     expect(await activations(world)).toEqual(charged);
   });
 
+  it("refuses before charging when the registrar its DOI was reserved with is switched off", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // Its DOI is Crossref's; an admin turns Crossref off and Zenodo on afterwards.
+    await world.t.run(async (ctx) => {
+      const settings = (await ctx.db.query("reportSettings").first())!;
+      await ctx.db.patch("reportSettings", settings._id, { publication: { ...settings.publication, crossref: { ...settings.publication.crossref, mode: "off" }, zenodo: { ...settings.publication.zenodo, mode: "sandbox" } } });
+    });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key, now: Date.now() })).toMatchObject({ paused: true });
+    await expect(activate(world, key)).rejects.toMatchObject(refused("FEATURE_DISABLED"));
+    expect(await activations(world)).toEqual([]);
+  });
+
   it("records a charge before it is made, and asking again carries on the same one with its own code", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
@@ -98,6 +111,48 @@ describe("activating a report", () => {
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice: "in_late", total: 5, currency: "usd" } } });
     expect(await row(world.t, key)).toMatchObject({ status: "declined" });
     expect(await activations(world)).toMatchObject([{ state: "unused", charge: { invoice: "in_late" } }]);
+  });
+
+  it("refunds a charge paid after its report moved on, the way it was paid, once, and tells whoever paid", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key });
+    await world.reviewer.mutation(api.reports.review.decide, { key, decision: "decline", seenPdfAt: (await row(world.t, key)).pdf!.at, note: "Not a report" });
+    // $5, of which the account's credit paid $3 and the card $2,.
+    const notes: Array<{ form: string; key: string | null }> = [];
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      if (url.includes("/credit_notes")) notes.push({ form: String(init?.body), key: new Headers(init?.headers).get("Idempotency-Key") });
+      return Response.json({ id: "x", status: "paid", total: 500, amount_paid: 200, starting_balance: -300, ending_balance: 0, currency: "usd", payments: { data: [] } });
+    });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice: "in_late", total: 5, currency: "usd" } } });
+    expect(await emailed(world, key)).toContain("author: Activation refunded");
+    // Asked again (a retry that crossed the first), nothing more goes back.
+    await world.t.action(internal.reports.activation.refund, { activationId, attempt: 0 });
+    vi.unstubAllGlobals();
+    expect(notes).toEqual([{ form: "invoice=in_late&amount=500&reason=order_change&refund_amount=200&credit_amount=300", key: `report-activation-refund-${activationId}` }]);
+    expect(await activations(world)).toMatchObject([{ state: "unused", refund: { card: 2, credit: 3 } }]);
+  });
+
+  it("keeps a charge whose payment the bank refused to confirm as refused, voiding its invoice, so Activate starts afresh", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: "in_3ds", url: "https://hooks.stripe.com/3d_secure_2/hosted" } });
+    const voided: string[] = [];
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") voided.push(url);
+      return Response.json({ id: "in_3ds", status: "open", total: 500, amount_paid: 0, payments: { data: [{ payment: { payment_intent: { id: "pi_1", status: "requires_payment_method" } } }] } });
+    });
+    await world.t.action(internal.reports.activation.watch, { activationId, attempt: 0 });
+    vi.unstubAllGlobals();
+    expect(voided).toEqual(["https://api.stripe.com/v1/invoices/in_3ds/void"]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key, now: Date.now() })).toMatchObject({ pending: null, refused: true });
+    // Activated again, it's a new charge, and the report no longer says the last one was refused.
+    await activate(world, key);
+    expect(await row(world.t, key)).toMatchObject({ status: "live" });
+    expect((await activations(world)).map((activation) => activation.state)).toEqual(["refused", "live"]);
   });
 });
 

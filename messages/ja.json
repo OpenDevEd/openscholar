@@ -315,7 +315,9 @@
     "southernDescription": "グローバルサウスのチームに、特定のプロジェクト向けに。",
     "southernFeature1": "Free のすべて",
     "southernFeature2": "お問い合わせ後にアカウントへ追加されます",
-    "onRequest": "リクエスト制"
+    "onRequest": "リクエスト制",
+    "reportsPerDay": "Openscholar Reports で1日 {count, number} 件の新規レポート",
+    "reportsNone": "Openscholar Reports なし"
   },
   "publicationSettings": {
     "credentials": "{provider} 認証情報",
@@ -6367,7 +6369,9 @@
         "reviewFlagged": "チェックがこのレポートにフラグを付けたため、審査者を待っています。{approving}",
         "reviewOn": "人による審査が有効なため、審査者を待っています。{approving}",
         "readyApproved": "審査者がこのレポートを承認しました。著者が有効化すると公開されます。",
-        "readyPassed": "すべてのチェックに合格しました。著者が有効化すると公開されます。"
+        "readyPassed": "すべてのチェックに合格しました。著者が有効化すると公開されます。",
+        "readyPassedOrg": "すべてのチェックに合格しました。{organization} の管理者が有効化すると公開されます。",
+        "readyApprovedOrg": "審査者がこのレポートを承認しました。{organization} の管理者が有効化すると公開されます。"
       },
       "authorAsked": "著者が審査を依頼しました",
       "noComment": "コメントなし",
@@ -6615,7 +6619,12 @@
         "unclear": "不明",
         "sure": "合格の確信度 {percent}",
         "foundIn": "{where}で見つかりました：",
-        "foundAs": "見つかった作品"
+        "foundAs": "見つかった作品",
+        "said": {
+          "notPublished": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "unfinished": "このチェックは完了できませんでした。",
+          "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
+        }
       },
       "activateFailed": "有効化できませんでした",
       "running": "チェックを実行中",
@@ -6694,9 +6703,6 @@
         "waitingAdminPassed": "レポートはチェックに合格しました。{organization}の管理者が有効化します。",
         "waitingAdminApproved": "レビュアーがレポートを承認しました。{organization}の管理者が有効化します。",
         "onlyAdmin": "有効化できるのは管理者だけです",
-        "activateFor": "{price}で有効化",
-        "waitingBank": "支払いは銀行の確認待ちです",
-        "addCardFirst": "先に支払い方法を追加してください",
         "notForSale": "現在、有効化の支払いはできません",
         "payTitle": "{price}を支払って{key}を有効化",
         "freeTitle": "{key}を有効化",
@@ -6716,11 +6722,15 @@
           "apply": "適用",
           "remove": "{code}を削除",
           "off": "{percent}%オフ",
-          "failed": "コードを確認できませんでした。もう一度お試しください。"
+          "failed": "コードを確認できませんでした。もう一度お試しください。",
+          "unknownCode": "{code} は有効なコードではないか、使用済みです。",
+          "nothingOff": "{code} では有効化の料金は割り引かれません。",
+          "codeTooLong": "このコードは長すぎます。"
         },
         "card": {
           "bankAsked": "銀行が支払いの確認を求めています",
           "goesLive": "支払いが確認されるとすぐに公開されます。",
+          "refused": "銀行が前回の支払いを確認しなかったため、請求は行われていません。",
           "free": "無料",
           "freeLeft": "本日の無料有効化は残り{count}回",
           "freeLeftNoCard": "本日の無料有効化は残り{count}回。保存済みのカードは引き続き必要です。",
@@ -6736,7 +6746,12 @@
           "stripeFailed": "Stripeのページを開けませんでした",
           "credit": "クレジット {amount}"
         },
-        "creditLine": "アカウントのクレジット"
+        "creditLine": "アカウントのクレジット",
+        "refunded": "有効化のために支払われた {amount} は返金されました。",
+        "refunding": "有効化のために支払われた {amount} を返金しています。",
+        "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。",
+        "noFreeLeft": "本日の無料有効化はもう残っていません。もう一度有効化すると有料で行えます。",
+        "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。"
       }
     },
     "meta": {
@@ -6861,5 +6876,30 @@
     "remove": "iD を削除",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "ORCID で探す"
+  },
+  "profileSetup": {
+    "title": "プロフィールを設定",
+    "intro": "あとで設定から変更できます。",
+    "institution": "所属機関",
+    "orcid": "ORCID iD",
+    "emails": "Openscholar からのメール",
+    "skip": "今はスキップ",
+    "continue": "続ける",
+    "saveFailed": "プロフィールを保存できませんでした。",
+    "changeFailed": "保存できませんでした。",
+    "emailKinds": {
+      "updates": {
+        "label": "製品のお知らせ",
+        "hint": "Openscholar の新機能と変更点"
+      },
+      "news": {
+        "label": "ニュースとイベント",
+        "hint": "ウェビナー、コミュニティのニュース、研究のハイライト"
+      },
+      "research": {
+        "label": "研究とフィードバック",
+        "hint": "新機能のお試しやご意見のお願い"
+      }
+    }
   }
 }

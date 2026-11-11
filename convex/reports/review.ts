@@ -229,7 +229,7 @@ export const decideChanges = mutation({
     if (decision === "approve") {
       const changed = await applyChanges(ctx, report, details, waiting);
       await record(ctx, report._id, reviewer._id, "approve-changes");
-      await notify(ctx, report._id, "changes-live", changed);
+      await notify(ctx, report._id, "changes-live", { edited: changed });
       return null;
     }
     const words = said(note);
@@ -271,7 +271,7 @@ export const editDetails = mutation({
       await touch(ctx, report, { title: kept.title.trim() });
     }
     await record(ctx, report._id, reviewer._id, "edit", changed.slice(0, REVIEW_TEXT_MAX));
-    await notify(ctx, report._id, "details-edited", changed.slice(0, REVIEW_TEXT_MAX));
+    await notify(ctx, report._id, "details-edited", { edited: changed.slice(0, REVIEW_TEXT_MAX) });
     return changed;
   },
 });
@@ -296,7 +296,7 @@ export const release = internalMutation({
       const changes = details.correction;
       // Changes a check failed wait on a person whatever the setting says.
       if (report.status !== "live" || !changes || changes.declined || changes.results.some((result) => !result.pass)) continue;
-      await notify(ctx, report._id, "changes-live", await applyChanges(ctx, report, details, changes));
+      await notify(ctx, report._id, "changes-live", { edited: await applyChanges(ctx, report, details, changes) });
     }
     if (!waiting.isDone) await ctx.scheduler.runAfter(0, internal.reports.review.release, { cursor: waiting.continueCursor });
     return null;

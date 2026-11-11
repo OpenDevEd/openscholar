@@ -50,6 +50,9 @@ function DialogOverlay({
   )
 }
 
+/** How soon after a dialog opens a click outside it is taken as the rest of the double click that opened it. */
+const DOUBLE_CLICK_MS = 500
+
 function DialogContent({
   className,
   children,
@@ -66,6 +69,14 @@ function DialogContent({
   const t = useTranslations("sharedControls");
   const closing = useClosing()
   const focus = useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus })
+  // When it opened: the second click of a double click on what opens it lands outside it a moment later, and
+  // mustn't close it again.
+  const openedAt = React.useRef(0)
+  // Stable, so it runs as the dialog opens and not again on each render.
+  const opened = React.useCallback((node: HTMLDivElement | null) => {
+    if (node) openedAt.current = performance.now()
+  }, [])
+  const outside = withToastsInside(onInteractOutside)
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={overlayClassName} />
@@ -76,7 +87,18 @@ function DialogContent({
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
           className
         )}
-        onInteractOutside={withToastsInside(onInteractOutside)}
+        ref={opened}
+        onInteractOutside={(event) => {
+          if (performance.now() - openedAt.current < DOUBLE_CLICK_MS) event.preventDefault()
+          else outside(event)
+        }}
+        // Anything done inside it means the double click is over: the next click outside closes it.
+        onPointerDownCapture={() => {
+          openedAt.current = 0
+        }}
+        onKeyDownCapture={() => {
+          openedAt.current = 0
+        }}
         {...props}
         {...focus}
       >

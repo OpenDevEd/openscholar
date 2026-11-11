@@ -315,7 +315,9 @@
     "southernDescription": "面向全球南方团队，用于特定项目。",
     "southernFeature1": "包含 Free 的全部内容",
     "southernFeature2": "联系我们后添加到你的账户",
-    "onRequest": "按需申请"
+    "onRequest": "按需申请",
+    "reportsPerDay": "每天可在 Openscholar Reports 新建 {count, number} 份报告",
+    "reportsNone": "不含 Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "{provider} 凭据",
@@ -6367,7 +6369,9 @@
         "reviewFlagged": "有一项检查标记了此报告，因此它在等待审核人。{approving}",
         "reviewOn": "人工审核已开启，因此它在等待审核人。{approving}",
         "readyApproved": "审核人已批准此报告。作者激活后即上线。",
-        "readyPassed": "所有检查均已通过。作者激活后即上线。"
+        "readyPassed": "所有检查均已通过。作者激活后即上线。",
+        "readyPassedOrg": "所有检查均已通过。{organization} 的管理员激活后即上线。",
+        "readyApprovedOrg": "审核人已批准此报告。{organization} 的管理员激活后即上线。"
       },
       "authorAsked": "作者请求了审核",
       "noComment": "无评论",
@@ -6615,7 +6619,12 @@
         "unclear": "不确定",
         "sure": "有 {percent} 把握通过",
         "foundIn": "在{where}中找到：",
-        "foundAs": "找到为"
+        "foundAs": "找到为",
+        "said": {
+          "notPublished": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
+          "unfinished": "此项检查未能完成。",
+          "bylineFound": "PDF 文本中逐字包含这一行。"
+        }
       },
       "activateFailed": "无法激活",
       "running": "正在运行检查",
@@ -6694,9 +6703,6 @@
         "waitingAdminPassed": "你的报告已通过检查。由 {organization} 的管理员激活。",
         "waitingAdminApproved": "审核员已批准你的报告。由 {organization} 的管理员激活。",
         "onlyAdmin": "只有管理员可以激活",
-        "activateFor": "以 {price} 激活",
-        "waitingBank": "付款正在等待你的银行",
-        "addCardFirst": "请先添加付款方式",
         "notForSale": "目前无法付费激活",
         "payTitle": "支付 {price} 激活 {key}",
         "freeTitle": "激活 {key}",
@@ -6716,11 +6722,15 @@
           "apply": "使用",
           "remove": "移除 {code}",
           "off": "减 {percent}%",
-          "failed": "无法验证该优惠码，请重试。"
+          "failed": "无法验证该优惠码，请重试。",
+          "unknownCode": "{code} 不是我们认识的代码，或已用完。",
+          "nothingOff": "{code} 不能减免激活费用。",
+          "codeTooLong": "这个代码太长，不可能是我们的代码。"
         },
         "card": {
           "bankAsked": "你的银行要求确认这笔付款",
           "goesLive": "付款确认后即会上线。",
+          "refused": "你的银行没有确认上一笔付款，因此没有扣款。",
           "free": "免费",
           "freeLeft": "今天还剩 {count} 次免费激活",
           "freeLeftNoCard": "今天还剩 {count} 次免费激活。仍需保存一张卡。",
@@ -6736,7 +6746,12 @@
           "stripeFailed": "无法打开 Stripe 页面",
           "credit": "余额 {amount}"
         },
-        "creditLine": "账户余额抵扣"
+        "creditLine": "账户余额抵扣",
+        "refunded": "为激活它支付的 {amount} 已退款。",
+        "refunding": "为激活它支付的 {amount} 正在退款。",
+        "declined": "你的卡被拒绝了，没有扣款。请更换卡片后重试。",
+        "noFreeLeft": "今天已没有免费激活次数。再次激活即可付费。",
+        "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。"
       }
     },
     "meta": {
@@ -6861,5 +6876,30 @@
     "remove": "移除 iD",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "在 ORCID 上查找"
+  },
+  "profileSetup": {
+    "title": "设置你的个人资料",
+    "intro": "你可以稍后在设置中修改。",
+    "institution": "机构",
+    "orcid": "ORCID iD",
+    "emails": "来自 Openscholar 的邮件",
+    "skip": "暂时跳过",
+    "continue": "继续",
+    "saveFailed": "无法保存你的个人资料。",
+    "changeFailed": "无法保存。",
+    "emailKinds": {
+      "updates": {
+        "label": "产品更新",
+        "hint": "Openscholar 的新功能和变化"
+      },
+      "news": {
+        "label": "新闻和活动",
+        "hint": "网络研讨会、社区新闻和研究亮点"
+      },
+      "research": {
+        "label": "研究和反馈",
+        "hint": "邀请你试用新功能并分享想法"
+      }
+    }
   }
 }

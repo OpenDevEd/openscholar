@@ -315,7 +315,9 @@
     "southernDescription": "Für Teams aus dem Globalen Süden, für bestimmte Projekte.",
     "southernFeature1": "Alles aus Free",
     "southernFeature2": "Wird Ihrem Konto hinzugefügt, nachdem Sie uns kontaktiert haben",
-    "onRequest": "Auf Anfrage"
+    "onRequest": "Auf Anfrage",
+    "reportsPerDay": "{count, plural, one {# neuer Bericht} other {# neue Berichte}} pro Tag in Openscholar Reports",
+    "reportsNone": "Keine Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "{provider}-Zugangsdaten",
@@ -6368,7 +6370,9 @@
         "reviewFlagged": "Eine Prüfung hat diesen Bericht markiert, daher wartet er auf eine Prüferin oder einen Prüfer. {approving}",
         "reviewOn": "Die menschliche Prüfung ist aktiv, daher wartet er auf eine Prüferin oder einen Prüfer. {approving}",
         "readyApproved": "Eine Prüferin oder ein Prüfer hat diesen Bericht genehmigt. Er geht online, sobald die Autorin oder der Autor ihn aktiviert.",
-        "readyPassed": "Alle Prüfungen bestanden. Er geht online, sobald die Autorin oder der Autor ihn aktiviert."
+        "readyPassed": "Alle Prüfungen bestanden. Er geht online, sobald die Autorin oder der Autor ihn aktiviert.",
+        "readyPassedOrg": "Alle Prüfungen bestanden. Er geht online, sobald eine Administratorin oder ein Administrator von {organization} ihn aktiviert.",
+        "readyApprovedOrg": "Eine Prüferin oder ein Prüfer hat diesen Bericht genehmigt. Er geht online, sobald eine Administratorin oder ein Administrator von {organization} ihn aktiviert."
       },
       "authorAsked": "Die Autorin oder der Autor hat eine Prüfung angefragt",
       "noComment": "Kein Kommentar",
@@ -6596,7 +6600,7 @@
       "tooBig": "Das PDF ist größer als {max} MB",
       "offline": "Das PDF konnte nicht hochgeladen werden. Prüfen Sie Ihre Verbindung und wählen Sie es dann erneut.",
       "uploadFailed": "Das PDF konnte nicht hochgeladen werden. Versuchen Sie es erneut.",
-      "uploadIntro": "Setze den folgenden Text wörtlich auf den Umschlag oder die Umschlaginnenseite, bevor du hochlädst. Unsere Prüfung sucht nach dieser Zeile.",
+      "uploadIntro": "Setzen Sie den folgenden Text wörtlich auf den Umschlag oder die Umschlaginnenseite, bevor Sie hochladen. Unsere Prüfung sucht nach dieser Zeile.",
       "copyByline": "Vermerk kopieren",
       "bylineCopied": "Vermerk kopiert",
       "uploading": "{name} wird hochgeladen",
@@ -6616,7 +6620,12 @@
         "unclear": "Unklar",
         "sure": "{percent} sicher, dass er besteht",
         "foundIn": "Gefunden in {where}:",
-        "foundAs": "Gefunden als"
+        "foundAs": "Gefunden als",
+        "said": {
+          "notPublished": "Nicht in OpenAlex, im Index von Openscholar oder in unseren Communities.",
+          "unfinished": "Diese Prüfung konnte nicht abgeschlossen werden.",
+          "bylineFound": "Der Text des PDFs enthält die Zeile wörtlich."
+        }
       },
       "activateFailed": "Er konnte nicht aktiviert werden",
       "running": "Prüfungen laufen",
@@ -6695,9 +6704,6 @@
         "waitingAdminPassed": "Ihr Bericht hat seine Prüfungen bestanden. Ein Admin von {organization} aktiviert ihn.",
         "waitingAdminApproved": "Eine Gutachterin oder ein Gutachter hat Ihren Bericht freigegeben. Ein Admin von {organization} aktiviert ihn.",
         "onlyAdmin": "Nur ein Admin kann ihn aktivieren",
-        "activateFor": "Für {price} aktivieren",
-        "waitingBank": "Die Zahlung wartet auf Ihre Bank",
-        "addCardFirst": "Fügen Sie zuerst eine Zahlungsmethode hinzu",
         "notForSale": "Die Aktivierung kann gerade nicht bezahlt werden",
         "payTitle": "{price} zahlen, um {key} zu aktivieren",
         "freeTitle": "{key} aktivieren",
@@ -6717,11 +6723,15 @@
           "apply": "Anwenden",
           "remove": "{code} entfernen",
           "off": "{percent} % Rabatt",
-          "failed": "Dieser Code konnte nicht geprüft werden. Versuchen Sie es noch einmal."
+          "failed": "Dieser Code konnte nicht geprüft werden. Versuchen Sie es noch einmal.",
+          "unknownCode": "{code} ist kein Code, den wir kennen, oder er ist aufgebraucht.",
+          "nothingOff": "{code} macht eine Aktivierung nicht günstiger.",
+          "codeTooLong": "Dieser Code ist zu lang, um einer von unseren zu sein."
         },
         "card": {
           "bankAsked": "Ihre Bank möchte die Zahlung bestätigen lassen",
           "goesLive": "Er geht live, sobald die Zahlung bestätigt ist.",
+          "refused": "Ihre Bank hat die letzte Zahlung nicht bestätigt, daher wurde nichts abgebucht.",
           "free": "Kostenlos",
           "freeLeft": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}",
           "freeLeftNoCard": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}. Eine gespeicherte Karte ist trotzdem nötig.",
@@ -6737,7 +6747,12 @@
           "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden",
           "credit": "{amount} Guthaben"
         },
-        "creditLine": "Guthaben des Kontos"
+        "creditLine": "Guthaben des Kontos",
+        "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
+        "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet.",
+        "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
+        "noFreeLeft": "Für heute ist keine kostenlose Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um dafür zu bezahlen.",
+        "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz."
       }
     },
     "meta": {
@@ -6862,5 +6877,30 @@
     "remove": "iD entfernen",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "Auf ORCID suchen"
+  },
+  "profileSetup": {
+    "title": "Richten Sie Ihr Profil ein",
+    "intro": "Sie können das später in den Einstellungen ändern.",
+    "institution": "Einrichtung",
+    "orcid": "ORCID iD",
+    "emails": "E-Mails von Openscholar",
+    "skip": "Vorerst überspringen",
+    "continue": "Weiter",
+    "saveFailed": "Ihr Profil konnte nicht gespeichert werden.",
+    "changeFailed": "Das konnte nicht gespeichert werden.",
+    "emailKinds": {
+      "updates": {
+        "label": "Produktneuheiten",
+        "hint": "Neue Funktionen und Änderungen an Openscholar"
+      },
+      "news": {
+        "label": "Neuigkeiten und Veranstaltungen",
+        "hint": "Webinare, Community-Neuigkeiten und Forschungshighlights"
+      },
+      "research": {
+        "label": "Forschung und Feedback",
+        "hint": "Einladungen, neue Funktionen auszuprobieren und Ihre Meinung zu sagen"
+      }
+    }
   }
 }

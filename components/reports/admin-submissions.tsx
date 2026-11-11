@@ -62,7 +62,8 @@ const CHANGES = { review: { tone: "running" }, failed: { tone: "danger" }, decli
 /** What a reviewer is asked before saying no, each with room for a note to the author. */
 const ASKS = ["decline", "withdraw", "decline-changes"] as const;
 /** The dialog's buttons, kept in view at its foot however long the report above them is. */
-const FOOT = "sticky -bottom-6 z-10 -mx-6 -mb-6 border-t border-border-subtle bg-background px-6 py-4";
+// Its buttons wrap when there are more than fit: a live report with changes waiting has four.
+const FOOT = "sticky -bottom-6 z-10 -mx-6 -mb-6 border-t border-border-subtle bg-background px-6 py-4 sm:flex-wrap";
 
 const DAY = { day: "numeric", month: "short" } as const;
 /** A decision's day and time: several are often made on a report in one day. */
@@ -326,9 +327,12 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
         ? t(s.reviewRequest ? "standing.failedAsked" : "standing.failed", { approving })
         : stage === "review"
           ? t(flagged ? "standing.reviewFlagged" : "standing.reviewOn", { approving })
-          : stage === "ready"
-            ? t(s.approved ? "standing.readyApproved" : "standing.readyPassed")
-            : "";
+          : stage === "ready" && s.workspace
+            ? // In an organisation it's one of its admins who activates it, not its author (#1261).
+              t(s.approved ? "standing.readyApprovedOrg" : "standing.readyPassedOrg", { organization: s.workspace })
+            : stage === "ready"
+              ? t(s.approved ? "standing.readyApproved" : "standing.readyPassed")
+              : "";
   // What the author wrote when asking for a person leads the dialog while it is what the reviewer decides on. Once
   // the report is decided it is part of what happened, and sits with the decisions.
   const deciding = stage === "failed" || stage === "review";

@@ -143,6 +143,8 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
         description: plan.description ?? (copy ? t(copy.description) : undefined),
         features: [
           ...creditsLine(plan),
+          // New Openscholar Reports a day, where the plan sets a number; none set means no daily limit to show.
+          ...(typeof plan.limits?.reports_per_day === "number" ? [plan.limits.reports_per_day > 0 ? t("reportsPerDay", { count: plan.limits.reports_per_day }) : t("reportsNone")] : []),
           ...plan.features.map(featureName),
           ...(plan.highlights ?? copy?.highlights.map((key) => t(key, { running: plan.limits?.concurrency ?? 0, request: plan.limits?.request_papers ?? 0 })) ?? []),
         ],

@@ -36,6 +36,13 @@ describe("the profile setup", () => {
     expect((await old.query(api.users.profileSetup.get, {}))?.profile.orcid).toBe("");
   });
 
+  it("keeps what one tab saved when another tab's setup, left open, is sent afterwards", async () => {
+    const { newcomer } = await world();
+    await newcomer.mutation(api.users.profileSetup.save, { ...answers, first: true });
+    await newcomer.mutation(api.users.profileSetup.save, { affiliations: [], orcid: "", emails: { updates: false, news: false, research: false }, first: true });
+    expect(await newcomer.query(api.users.profileSetup.get, {})).toEqual({ profile: answers, due: false });
+  });
+
   it("refuses an iD or a ROR ID that isn't one", async () => {
     const { newcomer } = await world();
     await expect(newcomer.mutation(api.users.profileSetup.save, { ...answers, orcid: "0000-0002-9050-4994" })).rejects.toThrow(/ORCID/);

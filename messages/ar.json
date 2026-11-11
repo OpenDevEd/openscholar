@@ -315,7 +315,9 @@
     "southernDescription": "لفرق الجنوب، لمشاريع محددة.",
     "southernFeature1": "كل ما في Free",
     "southernFeature2": "تضاف إلى حسابك بعد التواصل معنا",
-    "onRequest": "عند الطلب"
+    "onRequest": "عند الطلب",
+    "reportsPerDay": "{count, plural, one {تقرير جديد واحد} other {# تقارير جديدة}} يوميًا في Openscholar Reports",
+    "reportsNone": "بدون Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "بيانات اعتماد {provider}",
@@ -6368,7 +6370,9 @@
         "reviewFlagged": "أشار فحص إلى هذا التقرير، لذا ينتظر مراجعًا. {approving}",
         "reviewOn": "المراجعة البشرية مفعّلة، لذا ينتظر مراجعًا. {approving}",
         "readyApproved": "وافق مراجع على هذا التقرير. يُنشر بمجرد أن يفعّله المؤلف.",
-        "readyPassed": "اجتاز كل الفحوصات. يُنشر بمجرد أن يفعّله المؤلف."
+        "readyPassed": "اجتاز كل الفحوصات. يُنشر بمجرد أن يفعّله المؤلف.",
+        "readyPassedOrg": "اجتاز كل الفحوصات. يُنشر بمجرد أن يفعّله أحد مسؤولي {organization}.",
+        "readyApprovedOrg": "وافق مراجع على هذا التقرير. يُنشر بمجرد أن يفعّله أحد مسؤولي {organization}."
       },
       "authorAsked": "طلب المؤلف مراجعة",
       "noComment": "بلا تعليق",
@@ -6616,7 +6620,12 @@
         "unclear": "غير واضح",
         "sure": "متيقن بنسبة {percent} أنه ينجح",
         "foundIn": "وُجد في {where}:",
-        "foundAs": "وُجد بصيغة"
+        "foundAs": "وُجد بصيغة",
+        "said": {
+          "notPublished": "غير موجود في OpenAlex أو فهرس Openscholar أو مجتمعاتنا.",
+          "unfinished": "تعذّر إكمال هذا الفحص.",
+          "bylineFound": "يحتوي نص ملف PDF على السطر حرفيًا."
+        }
       },
       "activateFailed": "تعذّر تفعيله",
       "running": "تشغيل الفحوصات",
@@ -6695,9 +6704,6 @@
         "waitingAdminPassed": "اجتاز تقريرك فحوصه. يفعّله مشرف في {organization}.",
         "waitingAdminApproved": "وافق مراجع على تقريرك. يفعّله مشرف في {organization}.",
         "onlyAdmin": "لا يفعّله إلا مشرف",
-        "activateFor": "التفعيل مقابل {price}",
-        "waitingBank": "دفعته بانتظار مصرفك",
-        "addCardFirst": "أضف وسيلة دفع أولًا",
         "notForSale": "لا يمكن دفع ثمن التفعيل الآن",
         "payTitle": "ادفع {price} لتفعيل {key}",
         "freeTitle": "تفعيل {key}",
@@ -6717,11 +6723,15 @@
           "apply": "تطبيق",
           "remove": "إزالة {code}",
           "off": "خصم {percent}%",
-          "failed": "تعذّر التحقق من هذا الرمز. حاول مرة أخرى."
+          "failed": "تعذّر التحقق من هذا الرمز. حاول مرة أخرى.",
+          "unknownCode": "{code} ليس رمزًا نعرفه، أو انتهى استخدامه.",
+          "nothingOff": "{code} لا يخفض شيئًا من سعر التفعيل.",
+          "codeTooLong": "هذا الرمز أطول من أن يكون أحد رموزنا."
         },
         "card": {
           "bankAsked": "طلب مصرفك تأكيد الدفع",
           "goesLive": "يُنشر حالما يُؤكَّد الدفع.",
+          "refused": "لم يؤكد مصرفك الدفعة الأخيرة، لذا لم يُخصم أي مبلغ.",
           "free": "مجاني",
           "freeLeft": "{count, plural, zero {لم يبقَ تفعيل مجاني} one {بقي تفعيل مجاني واحد} two {بقي تفعيلان مجانيان} few {بقيت # تفعيلات مجانية} many {بقي # تفعيلًا مجانيًا} other {بقي # تفعيل مجاني}} اليوم",
           "freeLeftNoCard": "{count, plural, zero {لم يبقَ تفعيل مجاني} one {بقي تفعيل مجاني واحد} two {بقي تفعيلان مجانيان} few {بقيت # تفعيلات مجانية} many {بقي # تفعيلًا مجانيًا} other {بقي # تفعيل مجاني}} اليوم. ما زالت بطاقة محفوظة مطلوبة.",
@@ -6737,7 +6747,12 @@
           "stripeFailed": "تعذّر فتح صفحة Stripe",
           "credit": "رصيد {amount}"
         },
-        "creditLine": "رصيد الحساب"
+        "creditLine": "رصيد الحساب",
+        "refunded": "تم استرداد مبلغ {amount} المدفوع لتفعيله.",
+        "refunding": "يجري استرداد مبلغ {amount} المدفوع لتفعيله.",
+        "declined": "رُفضت بطاقتك ولم يُخصم أي مبلغ. غيّر البطاقة وحاول مرة أخرى.",
+        "noFreeLeft": "لم يتبقَّ تفعيل مجاني لهذا اليوم. فعّله مرة أخرى للدفع مقابله.",
+        "paused": "النشر متوقف مؤقتًا، لذا لا يمكن نشر أي شيء الآن. يحتفظ تقريرك بمكانه."
       }
     },
     "meta": {
@@ -6862,5 +6877,30 @@
     "remove": "إزالة المعرّف",
     "orcidLabel": "معرّف ORCID ‏{orcid}",
     "find": "البحث على ORCID"
+  },
+  "profileSetup": {
+    "title": "أعدّ ملفك الشخصي",
+    "intro": "يمكنك تغيير هذه لاحقًا من الإعدادات.",
+    "institution": "المؤسسة",
+    "orcid": "معرّف ORCID",
+    "emails": "رسائل البريد من Openscholar",
+    "skip": "التخطي الآن",
+    "continue": "متابعة",
+    "saveFailed": "تعذّر حفظ ملفك الشخصي.",
+    "changeFailed": "تعذّر الحفظ.",
+    "emailKinds": {
+      "updates": {
+        "label": "تحديثات المنتج",
+        "hint": "ميزات جديدة وتغييرات في Openscholar"
+      },
+      "news": {
+        "label": "الأخبار والفعاليات",
+        "hint": "ندوات عبر الإنترنت وأخبار المجتمع وأبرز الأبحاث"
+      },
+      "research": {
+        "label": "البحث والملاحظات",
+        "hint": "دعوات لتجربة ميزات جديدة ومشاركة رأيك"
+      }
+    }
   }
 }

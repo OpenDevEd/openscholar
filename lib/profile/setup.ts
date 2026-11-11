@@ -8,12 +8,8 @@ export const SETUP_HEADER = "x-profile-setup";
 /** Holds the account the proxy found done with the setup, so it asks Convex once per account and browser. */
 export const SETUP_DONE_COOKIE = "os-profile-setup-done";
 
-/** The emails a person can ask Openscholar for, each with what it brings. */
-export const EMAILS = [
-  { id: "updates", label: "Product updates", hint: "New features and changes to Openscholar" },
-  { id: "news", label: "News and events", hint: "Webinars, community news and research highlights" },
-  { id: "research", label: "Research and feedback", hint: "Invitations to try new features and share what you think" },
-] as const;
+/** The emails a person can ask Openscholar for; what each is called and brings is `profileSetup.emailKinds` in messages/. */
+export const EMAILS = [{ id: "updates" }, { id: "news" }, { id: "research" }] as const;
 export type EmailKind = (typeof EMAILS)[number]["id"];
 
 export const NO_EMAILS: Record<EmailKind, boolean> = { updates: false, news: false, research: false };

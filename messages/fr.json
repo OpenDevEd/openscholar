@@ -315,7 +315,9 @@
     "southernDescription": "Pour les équipes du Sud, pour des projets précis.",
     "southernFeature1": "Tout ce qui est inclus dans Free",
     "southernFeature2": "Ajouté à votre compte après nous avoir contactés",
-    "onRequest": "Sur demande"
+    "onRequest": "Sur demande",
+    "reportsPerDay": "{count, plural, one {# nouveau rapport} other {# nouveaux rapports}} par jour dans Openscholar Reports",
+    "reportsNone": "Pas d’Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Identifiants {provider}",
@@ -6367,7 +6369,9 @@
         "reviewFlagged": "Une vérification a signalé ce rapport, il attend donc un relecteur. {approving}",
         "reviewOn": "La relecture humaine est activée, il attend donc un relecteur. {approving}",
         "readyApproved": "Un relecteur a approuvé ce rapport. Il est mis en ligne quand son auteur l'active.",
-        "readyPassed": "Toutes les vérifications ont réussi. Il est mis en ligne quand son auteur l'active."
+        "readyPassed": "Toutes les vérifications ont réussi. Il est mis en ligne quand son auteur l'active.",
+        "readyPassedOrg": "Toutes les vérifications ont réussi. Il est mis en ligne quand un administrateur de {organization} l’active.",
+        "readyApprovedOrg": "Un relecteur a approuvé ce rapport. Il est mis en ligne quand un administrateur de {organization} l’active."
       },
       "authorAsked": "L'auteur a demandé une relecture",
       "noComment": "Aucun commentaire",
@@ -6615,7 +6619,12 @@
         "unclear": "Incertain",
         "sure": "{percent} de certitude que c'est réussi",
         "foundIn": "Trouvé dans {where} :",
-        "foundAs": "Trouvé sous"
+        "foundAs": "Trouvé sous",
+        "said": {
+          "notPublished": "Absent d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
+          "unfinished": "Cette vérification n’a pas pu aboutir.",
+          "bylineFound": "Le texte du PDF contient la ligne mot pour mot."
+        }
       },
       "activateFailed": "Il n'a pas pu être activé",
       "running": "Vérifications en cours",
@@ -6694,9 +6703,6 @@
         "waitingAdminPassed": "Votre rapport a réussi ses vérifications. Un administrateur de {organization} l'active.",
         "waitingAdminApproved": "Un relecteur a approuvé votre rapport. Un administrateur de {organization} l'active.",
         "onlyAdmin": "Seul un administrateur peut l'activer",
-        "activateFor": "Activer pour {price}",
-        "waitingBank": "Son paiement attend votre banque",
-        "addCardFirst": "Ajoutez d'abord un moyen de paiement",
         "notForSale": "L'activation ne peut pas être payée pour le moment",
         "payTitle": "Payer {price} pour activer {key}",
         "freeTitle": "Activer {key}",
@@ -6716,11 +6722,15 @@
           "apply": "Appliquer",
           "remove": "Retirer {code}",
           "off": "-{percent} %",
-          "failed": "Ce code n'a pas pu être vérifié. Réessayez."
+          "failed": "Ce code n'a pas pu être vérifié. Réessayez.",
+          "unknownCode": "{code} n’est pas un code que nous connaissons, ou il a déjà été utilisé.",
+          "nothingOff": "{code} ne réduit pas le prix d’une activation.",
+          "codeTooLong": "Ce code est trop long pour être l’un des nôtres."
         },
         "card": {
           "bankAsked": "Votre banque demande de confirmer le paiement",
           "goesLive": "Il sera en ligne dès que le paiement sera confirmé.",
+          "refused": "Votre banque n’a pas confirmé le dernier paiement : rien n’a été débité.",
           "free": "Gratuit",
           "freeLeft": "{count, plural, one {# activation gratuite restante} other {# activations gratuites restantes}} aujourd'hui",
           "freeLeftNoCard": "{count, plural, one {# activation gratuite restante} other {# activations gratuites restantes}} aujourd'hui. Une carte enregistrée reste nécessaire.",
@@ -6736,7 +6746,12 @@
           "stripeFailed": "La page de Stripe n'a pas pu s'ouvrir",
           "credit": "{amount} de crédit"
         },
-        "creditLine": "Crédit du compte"
+        "creditLine": "Crédit du compte",
+        "refunded": "Les {amount} payés pour l’activer ont été remboursés.",
+        "refunding": "Les {amount} payés pour l’activer sont en cours de remboursement.",
+        "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez.",
+        "noFreeLeft": "Il ne reste plus d’activation gratuite aujourd’hui. Activez-le à nouveau pour la payer.",
+        "paused": "La publication est en pause pour le moment : rien ne peut être mis en ligne. Votre rapport garde sa place."
       }
     },
     "meta": {
@@ -6861,5 +6876,30 @@
     "remove": "Retirer l'iD",
     "orcidLabel": "iD ORCID {orcid}",
     "find": "Trouver sur ORCID"
+  },
+  "profileSetup": {
+    "title": "Configurez votre profil",
+    "intro": "Vous pourrez les modifier plus tard dans les Paramètres.",
+    "institution": "Établissement",
+    "orcid": "Identifiant ORCID",
+    "emails": "E-mails d’Openscholar",
+    "skip": "Passer pour l’instant",
+    "continue": "Continuer",
+    "saveFailed": "Votre profil n’a pas pu être enregistré.",
+    "changeFailed": "Cela n’a pas pu être enregistré.",
+    "emailKinds": {
+      "updates": {
+        "label": "Nouveautés du produit",
+        "hint": "Nouvelles fonctionnalités et changements d’Openscholar"
+      },
+      "news": {
+        "label": "Actualités et événements",
+        "hint": "Webinaires, actualités de la communauté et faits marquants de la recherche"
+      },
+      "research": {
+        "label": "Recherche et retours",
+        "hint": "Invitations à essayer de nouvelles fonctionnalités et à donner votre avis"
+      }
+    }
   }
 }

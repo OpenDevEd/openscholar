@@ -553,6 +553,7 @@ export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
     signer: report.signedBy.name,
     onBehalfOfAll: report.signedBy.onBehalfOfAll,
     signedAt: report.signedAt,
+    byline: report.byline,
     doi: report.doi,
     ...(metadata?.title && { title: metadata.title }),
     authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),

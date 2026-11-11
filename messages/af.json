@@ -315,7 +315,9 @@
     "southernDescription": "Vir Suidelike spanne, vir spesifieke projekte.",
     "southernFeature1": "Alles in Free",
     "southernFeature2": "By jou rekening gevoeg nadat jy ons gekontak het",
-    "onRequest": "Op versoek"
+    "onRequest": "Op versoek",
+    "reportsPerDay": "{count, plural, one {# nuwe verslag} other {# nuwe verslae}} per dag in Openscholar Reports",
+    "reportsNone": "Geen Openscholar Reports nie"
   },
   "publicationSettings": {
     "credentials": "{provider}-geloofsbriewe",
@@ -6026,7 +6028,7 @@
     "inQueueShort": "In die ry",
     "added": "Bygevoeg",
     "publishOrReview": "Publiseer dit nou, of laat die span dit eers hersien.",
-    "reviewFirst": "Die gemeenskap se span hersien dit voordat dit lewendig gaan.",
+    "reviewFirst": "Die gemeenskap se span hersien dit voordat dit gepubliseer word.",
     "publishedTo": "Gepubliseer in {community}",
     "queuedTo": "Na {community} se hersieningsry gestuur",
     "alreadyIn": "{community} het reeds hierdie artikel",
@@ -6034,7 +6036,7 @@
     "askTitle": "Voeg {count, plural, one {# artikel} other {# artikels}} by 'n gemeenskap",
     "publishNow": "Publiseer nou",
     "reviewQueue": "Hersieningsry",
-    "askPublishHint": "{count, plural, one {Dit gaan} other {Hulle gaan}} op {community} lewendig sodra jy dit toelaat.",
+    "askPublishHint": "{count, plural, one {Dit gaan} other {Hulle gaan}} op {community} gepubliseer sodra jy dit toelaat.",
     "askQueueHint": "{count, plural, one {Dit wag} other {Hulle wag}} in {community} se hersieningsry totdat sy span {count, plural, one {dit} other {hulle}} goedkeur.",
     "askPublish": "Publiseer {count, plural, one {# artikel} other {# artikels}}",
     "askQueue": "Stuur {count, plural, one {# artikel} other {# artikels}} vir hersiening",
@@ -6368,7 +6370,9 @@
         "reviewFlagged": "'n Kontrole het hierdie verslag gemerk, so dit wag vir 'n hersiener. {approving}",
         "reviewOn": "Menslike hersiening is aan, so dit wag vir 'n hersiener. {approving}",
         "readyApproved": "'n Hersiener het hierdie verslag goedgekeur. Dit word gepubliseer sodra die skrywer dit aktiveer.",
-        "readyPassed": "Dit het elke kontrole geslaag. Dit word gepubliseer sodra die skrywer dit aktiveer."
+        "readyPassed": "Dit het elke kontrole geslaag. Dit word gepubliseer sodra die skrywer dit aktiveer.",
+        "readyPassedOrg": "Dit het elke kontrole geslaag. Dit word gepubliseer sodra ’n administrateur van {organization} dit aktiveer.",
+        "readyApprovedOrg": "’n Hersiener het hierdie verslag goedgekeur. Dit word gepubliseer sodra ’n administrateur van {organization} dit aktiveer."
       },
       "authorAsked": "Die skrywer het 'n hersiening gevra",
       "noComment": "Geen kommentaar nie",
@@ -6616,7 +6620,12 @@
         "unclear": "Onduidelik",
         "sure": "{percent} seker dit slaag",
         "foundIn": "Gevind in {where}:",
-        "foundAs": "Gevind as"
+        "foundAs": "Gevind as",
+        "said": {
+          "notPublished": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
+          "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
+        }
       },
       "activateFailed": "Dit kon nie geaktiveer word nie",
       "running": "Kontroles loop",
@@ -6695,9 +6704,6 @@
         "waitingAdminPassed": "Jou verslag het sy kontroles geslaag. 'n Admin van {organization} aktiveer dit.",
         "waitingAdminApproved": "'n Beoordelaar het jou verslag goedgekeur. 'n Admin van {organization} aktiveer dit.",
         "onlyAdmin": "Net 'n admin kan dit aktiveer",
-        "activateFor": "Aktiveer vir {price}",
-        "waitingBank": "Die betaling wag vir jou bank",
-        "addCardFirst": "Voeg eers 'n betaalmetode by",
         "notForSale": "Aktivering kan nie nou betaal word nie",
         "payTitle": "Betaal {price} om {key} te aktiveer",
         "freeTitle": "Aktiveer {key}",
@@ -6708,7 +6714,7 @@
         "doiNow": "Sy DOI nou",
         "after": "Daarna",
         "reserved": "Gereserveer",
-        "live": "Lewendig",
+        "live": "Gepubliseer",
         "activationLine": "Aktivering",
         "codeLine": "Kode {code}",
         "promo": {
@@ -6717,11 +6723,15 @@
           "apply": "Pas toe",
           "remove": "Verwyder {code}",
           "off": "{percent}% af",
-          "failed": "Daardie kode kon nie nagegaan word nie. Probeer weer."
+          "failed": "Daardie kode kon nie nagegaan word nie. Probeer weer.",
+          "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
+          "nothingOff": "{code} haal niks van ’n aktivering af nie.",
+          "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",
-          "goesLive": "Dit gaan lewendig sodra die betaling bevestig is.",
+          "goesLive": "Dit word gepubliseer sodra die betaling bevestig is.",
+          "refused": "Jou bank het nie die laaste betaling bevestig nie, so niks is gehef nie.",
           "free": "Gratis",
           "freeLeft": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag",
           "freeLeftNoCard": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag. 'n Gestoorde kaart is steeds nodig.",
@@ -6737,7 +6747,12 @@
           "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
           "credit": "{amount} krediet"
         },
-        "creditLine": "Rekeningkrediet"
+        "creditLine": "Rekeningkrediet",
+        "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
+        "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal.",
+        "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
+        "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal.",
+        "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek."
       }
     },
     "meta": {
@@ -6862,5 +6877,30 @@
     "remove": "Verwyder die iD",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "Soek op ORCID"
+  },
+  "profileSetup": {
+    "title": "Stel jou profiel op",
+    "intro": "Jy kan dit later in Instellings verander.",
+    "institution": "Instelling",
+    "orcid": "ORCID iD",
+    "emails": "E-posse van Openscholar",
+    "skip": "Slaan nou oor",
+    "continue": "Gaan voort",
+    "saveFailed": "Jou profiel kon nie gestoor word nie.",
+    "changeFailed": "Dit kon nie gestoor word nie.",
+    "emailKinds": {
+      "updates": {
+        "label": "Produknuus",
+        "hint": "Nuwe funksies en veranderinge aan Openscholar"
+      },
+      "news": {
+        "label": "Nuus en geleenthede",
+        "hint": "Webinare, gemeenskapsnuus en navorsingshoogtepunte"
+      },
+      "research": {
+        "label": "Navorsing en terugvoer",
+        "hint": "Uitnodigings om nuwe funksies te probeer en jou mening te deel"
+      }
+    }
   }
 }

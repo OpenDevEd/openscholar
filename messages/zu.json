@@ -315,7 +315,9 @@
     "southernDescription": "Kumaqembu aseNingizimu, kumaphrojekthi athile.",
     "southernFeature1": "Konke okukuFree",
     "southernFeature2": "Kwengezwa ku-akhawunti yakho ngemva kokuxhumana nathi",
-    "onRequest": "Ngesicelo"
+    "onRequest": "Ngesicelo",
+    "reportsPerDay": "{count, plural, one {Umbiko omusha #} other {Imibiko emisha #}} ngosuku ku-Openscholar Reports",
+    "reportsNone": "Ayikho i-Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Izimvume ze-{provider}",
@@ -6367,7 +6369,9 @@
         "reviewFlagged": "Ukuhlolwa kuphawule lo mbiko, ngakho ulinde umbuyekezi. {approving}",
         "reviewOn": "Ukubuyekezwa ngumuntu kuvuliwe, ngakho ulinde umbuyekezi. {approving}",
         "readyApproved": "Umbuyekezi uvume lo mbiko. Ushicilelwa lapho umbhali ewenza usebenze.",
-        "readyPassed": "Uphumelele kukho konke ukuhlolwa. Ushicilelwa lapho umbhali ewenza usebenze."
+        "readyPassed": "Uphumelele kukho konke ukuhlolwa. Ushicilelwa lapho umbhali ewenza usebenze.",
+        "readyPassedOrg": "Uphumelele kukho konke ukuhlolwa. Ushicilelwa lapho umphathi we-{organization} ewenza usebenze.",
+        "readyApprovedOrg": "Umbuyekezi uvume lo mbiko. Ushicilelwa lapho umphathi we-{organization} ewenza usebenze."
       },
       "authorAsked": "Umbhali ucele ukubuyekezwa",
       "noComment": "Akukho ukuphawula",
@@ -6615,7 +6619,12 @@
         "unclear": "Akucacile",
         "sure": "Kuqinisekwe ngo-{percent} ukuthi kuyaphumelela",
         "foundIn": "Kutholwe ku-{where}:",
-        "foundAs": "Kutholwe njenge-"
+        "foundAs": "Kutholwe njenge-",
+        "said": {
+          "notPublished": "Akukho ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
+          "unfinished": "Lokhu kuhlola akukwazanga ukuqedwa.",
+          "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama."
+        }
       },
       "activateFailed": "Akukwazanga ukwenziwa kusebenze",
       "running": "Kwenziwa ukuhlolwa",
@@ -6694,9 +6703,6 @@
         "waitingAdminPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Umphathi we-{organization} uyawuvula.",
         "waitingAdminApproved": "Umbuyekezi uwamukele umbiko wakho. Umphathi we-{organization} uyawuvula.",
         "onlyAdmin": "Umphathi kuphela ongawuvula",
-        "activateFor": "Vula nge-{price}",
-        "waitingBank": "Inkokhelo yawo ilinde ibhange lakho",
-        "addCardFirst": "Engeza indlela yokukhokha kuqala",
         "notForSale": "Ukuvula akukwazi ukukhokhelwa njengamanje",
         "payTitle": "Khokha {price} ukuze uvule u-{key}",
         "freeTitle": "Vula u-{key}",
@@ -6716,11 +6722,15 @@
           "apply": "Sebenzisa",
           "remove": "Susa u-{code}",
           "off": "{percent}% isaphulelo",
-          "failed": "Leyo khodi ayikwazanga ukuhlolwa. Zama futhi."
+          "failed": "Leyo khodi ayikwazanga ukuhlolwa. Zama futhi.",
+          "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
+          "nothingOff": "{code} ayehlisi lutho entengweni yokwenza isebenze.",
+          "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",
           "goesLive": "Uzosebenza ngokushesha uma inkokhelo isiqinisekisiwe.",
+          "refused": "Ibhange lakho alizange liqinisekise inkokhelo yokugcina, ngakho akukho okukhokhisiwe.",
           "free": "Mahhala",
           "freeLeft": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla",
           "freeLeftNoCard": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla. Isadingeka ikhadi eligciniwe.",
@@ -6736,7 +6746,12 @@
           "stripeFailed": "Ikhasi le-Stripe alikwazanga ukuvuleka",
           "credit": "Isikweletu esingu-{amount}"
         },
-        "creditLine": "Isikweletu se-akhawunti"
+        "creditLine": "Isikweletu se-akhawunti",
+        "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
+        "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa.",
+        "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
+        "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele.",
+        "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo."
       }
     },
     "meta": {
@@ -6861,5 +6876,30 @@
     "remove": "Susa i-iD",
     "orcidLabel": "I-ORCID iD {orcid}",
     "find": "Thola ku-ORCID"
+  },
+  "profileSetup": {
+    "title": "Setha iphrofayela yakho",
+    "intro": "Ungakushintsha lokhu kamuva kokuthi Izilungiselelo.",
+    "institution": "Isikhungo",
+    "orcid": "I-ORCID iD",
+    "emails": "Ama-imeyili avela ku-Openscholar",
+    "skip": "Yeqa okwamanje",
+    "continue": "Qhubeka",
+    "saveFailed": "Iphrofayela yakho ayikwazanga ukulondolozwa.",
+    "changeFailed": "Akukwazanga ukulondolozwa.",
+    "emailKinds": {
+      "updates": {
+        "label": "Izibuyekezo zomkhiqizo",
+        "hint": "Izici ezintsha nezinguquko ku-Openscholar"
+      },
+      "news": {
+        "label": "Izindaba nemicimbi",
+        "hint": "Ama-webinar, izindaba zomphakathi nezigqamiso zocwaningo"
+      },
+      "research": {
+        "label": "Ucwaningo nemibono",
+        "hint": "Izimemo zokuzama izici ezintsha nokwabelana ngombono wakho"
+      }
+    }
   }
 }

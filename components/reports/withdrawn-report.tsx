@@ -52,7 +52,7 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
               </p>
               <div className="mt-2 flex min-w-0 items-center gap-2 text-sm">
                 <Hash aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 truncate font-mono">{report.doi}</span>
+                <span dir="ltr" className="min-w-0 truncate font-mono">{report.doi}</span>
                 <TooltipHint label={t("copyDoi")}>
                   <Button variant="ghost" size="icon-xs" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void navigator.clipboard.writeText(url).then(() => toast.success(t("doiCopied")))}>
                     <Copy />
