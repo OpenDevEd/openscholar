@@ -28,7 +28,7 @@ import { invitationsAction as organizationInvitationsAction, membersAction as or
 import { heldAction as moveHeldAction, moveAction, refusalsAction as moveRefusalsAction } from "../workspaces/move";
 import { addAction as guestAddAction, candidatesAction as guestCandidatesAction, invitedAction as guestInvitedAction, leaveAction as guestLeaveAction, listAction as guestListAction, removeAction as guestRemoveAction, roomAction as guestRoomAction, setRoleAction as guestRoleAction } from "../sharing/guests";
 import { getAction as guestInvitationAction, inviteAction as guestInviteAction, respondAction as guestRespondAction } from "../sharing/invitations";
-import { countsAction as reportCountsAction, getAction as reportAction, pageAction as reportsPageAction, startsAction as reportStartsAction } from "../reports/flow";
+import { countsAction as reportCountsAction, getAction as reportAction, pageAction as reportsPageAction, startsAction as reportStartsAction, waitingElsewhereAction as reportsWaitingElsewhereAction } from "../reports/flow";
 import { countsAction as sharedCountsAction, editableCollectionsAction as sharedEditableCollectionsAction, listAction as sharedListAction } from "../sharing/shared";
 import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, ratersAction as collectionRatersAction, removeFromCollectionAction, renameCollectionAction, setCollectionRatingAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
@@ -267,6 +267,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   reportsPageAction,
   reportAction,
   reportCountsAction,
+  reportsWaitingElsewhereAction,
   reportStartsAction,
   sharedCountsAction,
   sharedEditableCollectionsAction,
