@@ -1,14 +1,32 @@
 import { paperPageId } from "@/lib/papers/page-address";
 import { readReport } from "@/lib/reports/paper-data";
 
+/** What the file's own address answers that a reader's browser needs passed on: the PDF, and the part of it asked for. */
+const PASSED = ["content-type", "content-length", "content-range", "accept-ranges", "etag", "last-modified"];
+
 /**
  * A live report's PDF, at an address that stays the same: saved papers, citations and communities keep this one. It
- * leads to the file only while the report is live, asked every time, so a withdrawn report's PDF is gone from here at
- * once (and the file's own address stops working with it: convex/reports/files.ts).
+ * answers with the file only while the report is live, asked every time, so a withdrawn report's PDF is gone from here
+ * at once (and the file's own address stops working with it: convex/reports/files.ts).
+ *
+ * The file is passed through, not redirected to: its own address names it by an identifier, which is what a download
+ * was called. Here it carries the report's key as its name. A request for part of it (a PDF viewer reading
+ * a long report page by page) is asked of the file the same way.
  */
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const report = await readReport(paperPageId((await params).id) ?? "");
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const key = paperPageId((await params).id) ?? "";
+  const report = await readReport(key);
   // Not kept either: Cloudflare caches a 404 on a .pdf address, which would outlast a reinstatement by minutes.
   if (report?.state !== "live" || !report.pdfUrl) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
-  return new Response(null, { status: 302, headers: { Location: report.pdfUrl, "Cache-Control": "no-store" } });
+  const range = request.headers.get("range");
+  const file = await fetch(report.pdfUrl, { headers: range ? { Range: range } : {}, cache: "no-store" });
+  if (!file.ok || !file.body) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  for (const name of PASSED) {
+    const value = file.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  // Shown in the browser as before; saved, it is named by the report's key.
+  headers.set("Content-Disposition", `inline; filename="${key}.pdf"`);
+  return new Response(file.body, { status: file.status, headers });
 }
