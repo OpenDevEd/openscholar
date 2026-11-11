@@ -16,10 +16,12 @@ export function useVocabulary() {
   const sdg = (idOrUrl: string, fallback = idOrUrl) => named("sdg", idOrUrl.split("/").at(-1)!, fallback);
   const workType = (id: string) => named("workType", id, id.replace(/-/g, " "));
   const studyDesign = (id: string, fallback = id) => named("studyDesign", id, fallback);
+  const institutionType = (id: string) => named("institutionType", id, id);
   return {
     sdg,
     workType,
     studyDesign,
+    institutionType,
     sdgs: SDGS.map((goal) => ({ ...goal, name: `${goal.id}. ${sdg(goal.id, goal.name)}` })),
     workTypes: WORK_TYPES.map((type) => ({ ...type, name: workType(type.id) })),
     studyDesigns: STUDY_DESIGNS.map((design) => ({ ...design, name: studyDesign(design.id, design.name) })),

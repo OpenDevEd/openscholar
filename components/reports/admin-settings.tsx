@@ -39,7 +39,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit, isIssn } from "@/lib/reports/settings";
-import { useFailed } from "@/components/reports/words";
+import { useCheckWords, useFailed } from "@/components/reports/words";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
@@ -469,12 +469,14 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckRow; onEdit:
   const Brand = getModelIcon(check.modelId);
   const t = useTranslations("publishReports.settings");
   const pct = usePct();
+  // In the admin's language while it is a check as Openscholar ships it; the form still edits the stored words.
+  const name = useCheckWords().name(check.name);
   return (
     <li className={cn("flex items-center gap-3 px-4 py-3", !check.enabled && "opacity-60")}>
       <Tile icon={Brand} tint={tintOf(check.modelId)} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{check.name}</span>
+          <span className="truncate text-sm font-medium">{name}</span>
           {check.builtIn ? <Tag>{t("builtIn")}</Tag> : null}
         </span>
         <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
@@ -483,10 +485,10 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckRow; onEdit:
           <Tag>{t(check.blocking ? "blocks" : "flags")}</Tag>
         </span>
       </span>
-      <Button variant="ghost" size="sm" aria-label={t("editCheck", { name: check.name })} className="text-muted-foreground" onClick={onEdit}>
+      <Button variant="ghost" size="sm" aria-label={t("editCheck", { name })} className="text-muted-foreground" onClick={onEdit}>
         <Pencil /> {t("edit")}
       </Button>
-      <Switch checked={check.enabled} onCheckedChange={onToggle} aria-label={t("checkOn", { name: check.name })} />
+      <Switch checked={check.enabled} onCheckedChange={onToggle} aria-label={t("checkOn", { name })} />
     </li>
   );
 }

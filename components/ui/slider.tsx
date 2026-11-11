@@ -34,6 +34,8 @@ function Slider({
       value={value}
       min={min}
       max={max}
+      aria-label={_values.length === 1 ? undefined : label}
+      aria-labelledby={_values.length === 1 ? undefined : labelledBy}
       className={cn(
         "relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
         className
@@ -57,9 +59,9 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={id}
-          // The thumb is the slider a screen reader reaches (role=slider), so the name goes on it, not on the track.
-          aria-label={label}
-          aria-labelledby={labelledBy}
+          // The thumb is the slider a screen reader reaches (role=slider), so a single thumb takes the name. Two
+          // thumbs keep Radix's own "Minimum" and "Maximum" apart, under the name the root carries.
+          {...(_values.length === 1 && { "aria-label": label, "aria-labelledby": labelledBy })}
           className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
