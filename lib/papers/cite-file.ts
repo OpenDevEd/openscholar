@@ -16,7 +16,8 @@ export async function citeFileResponse(params: Promise<{ id: string }>, kind: Ci
   if (detail.journal) data["container-title"] = detail.journal.name;
   if (detail.ids.issn) data.ISSN = detail.ids.issn;
   if (detail.language) data.language = detail.language;
-  if (detail.publisher) data.publisher = detail.publisher;
+  // A report's publisher is set already: Openscholar, or the university a thesis was awarded by.
+  if (detail.publisher) data.publisher ??= detail.publisher;
   const file = citationFile(data, kind);
   return new Response(file.text, {
     headers: {
