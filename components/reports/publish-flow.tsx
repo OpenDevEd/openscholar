@@ -1022,6 +1022,12 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           <CircleX className="mt-0.5 size-4 shrink-0" />
           {t("unopenedPdf", { name: report.pdf.name })}
         </p>
+      ) : report.pdf?.lacksByline && !busy ? (
+        // Said here, where the PDF is replaced, not after the checks: the line is shown above, with its copy button.
+        <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
+          <CircleX className="mt-0.5 size-4 shrink-0" />
+          {t("lacksByline", { name: report.pdf.name })}
+        </p>
       ) : stuck ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-muted-foreground">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
@@ -1148,8 +1154,8 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
-  // Only the workspace's admins activate (#1261). A free activation and a paid one both need a saved card; a paid one
-  // is confirmed in a dialog first, where a promotion code can lower it.
+  // Only the workspace's admins activate (#1261). A code goes in the payment bar, before anything is asked for: one
+  // that covers the whole price activates with no card. A charge to the saved card is confirmed in a dialog first.
   const organization = terms?.organization ?? null;
   const admin = terms?.admin ?? true;
   const free = (terms?.free.left ?? 0) > 0;
@@ -1200,8 +1206,9 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         else said(t("activateFailed"))(error);
       }
     });
-  /** What Activate takes from the card, beside the word; null when it's free or credit covers it. */
-  const amount = free || price === null || price <= credit ? null : dollars(price - credit);
+  /** What Activate takes from the card, beside the word; null when it's free, or a code or credit covers it. */
+  const amount = free || price === null || due === 0 ? null : dollars(due);
+
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
@@ -1267,6 +1274,8 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   pending={pending}
                   refused={terms.refused !== null}
                   onAddCard={onAddCard}
+                  quoted={code && { code: code.code, total: subtotal }}
+                  voucher={!free && price !== null && !pending && onQuote ? <PromoCode applied={code} onApply={setCode} onQuote={onQuote} /> : null}
                   action={
                     terms.paused || (!free && price === null) ? (
                       <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
@@ -1275,7 +1284,9 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                         </span>
                       </TooltipHint>
                     ) : (
-                      <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} onClick={free ? () => activateNow(false) : openPay} />
+                      <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} // A code that takes the whole price off charges nothing: no card, and no dialog to confirm a charge.
+                        onClick={free ? () => activateNow(false) : code && subtotal === 0 ? () => activateNow(true, code.code, 0) : openPay}
+                      />
                     )
                   }
                 />
@@ -1331,10 +1342,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
         <UpgradeConfirmationDialog
           open={paying}
-          onOpenChange={(open) => {
-            setPaying(open);
-            if (!open) setCode(null);
-          }}
+          onOpenChange={setPaying}
           title={due === 0 ? t("activation.freeTitle", { key: report.key }) : t("activation.payTitle", { price: dollars(due), key: report.key })}
           description={organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : undefined}
           confirmLabel={due === 0 ? t("activate") : t("activation.payConfirm")}
@@ -1343,7 +1351,6 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
           isConfirming={false}
           onConfirm={() => {
             setPaying(false);
-            setCode(null);
             activateNow(true, code?.code, due / 100);
           }}
           cardBrand={card?.brand}
@@ -1363,7 +1370,6 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   ]
                 : [],
           }}
-          extra={onQuote ? <PromoCode applied={code} onApply={setCode} onQuote={onQuote} /> : null}
         />
       ) : null}
     </div>
@@ -1400,7 +1406,7 @@ function useDollars() {
 }
 
 /**
- * A promotion code for an activation that's paid for, in the charge's dialog: a link until it's wanted, then a field.
+ * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
 function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
@@ -1492,11 +1498,13 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, action }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, quoted, voucher, action }: { /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
-  const costs = price === null ? null : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
+  const costs = price === null ? null : quoted ? t("costsWith", { price: dollars(quoted.total), code: quoted.code }) : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
+  /** The code takes the whole price off: nothing to pay, so no card is asked for. */
+  const covered = quoted?.total === 0;
   // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
   const saveCard = () =>
     save(async () => {
@@ -1536,7 +1544,7 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             ) : null}
           </p>
         ) : (
-          <p className="text-sm font-medium">{t("add")}</p>
+          <p className="text-sm font-medium">{t(covered ? "covered" : "add")}</p>
         )}
         <p className="mt-0.5 text-xs text-muted-foreground">
           {pending
@@ -1546,18 +1554,15 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
               : free > 0
                 ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
                 : !card
-                  ? (costs ?? t("needed"))
+                  ? covered
+                    ? t("coveredHint")
+                    : (costs ?? t("needed"))
                   : organization
                     ? t("orgCard", { organization })
                     : t("yourCard")}
         </p>
-        {/* Where a code goes, said before Activate: the dialog Activate opens takes it, before anything is charged. */}
-        {!pending && !refused && free === 0 && price !== null ? (
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Tag className="size-3.5 shrink-0" />
-            {t("voucher")}
-          </p>
-        ) : null}
+        {/* A code goes in here, before a card or a charge is asked for: one that covers the price needs neither. */}
+        {voucher ? <div className="mt-1.5">{voucher}</div> : null}
       </div>
       {pending?.url ? (
         <Button variant="outline" asChild className="ms-auto shrink-0">
@@ -1565,8 +1570,8 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
-      ) : pending ? null : card || free > 0 ? (
-        // A free activation needs no card: Activate is there either way.
+      ) : pending ? null : card || free > 0 || covered ? (
+        // A free activation, or one a code covers, needs no card: Activate is there either way.
         <div className="ms-auto flex shrink-0 items-center gap-2">
           {card ? (
             <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>

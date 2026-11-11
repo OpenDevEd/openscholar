@@ -338,9 +338,11 @@ export const activate = action({
       await ctx.runMutation(internal.reports.activation.goLiveFree, { actor, key });
       return { live: true };
     }
-    // The card is read from Autumn, not the cached account: it may have been removed since.
+    // The card is read from Autumn, not the cached account: it may have been removed since. With none, only a code
+    // that takes the whole price off activates.
     const customer = await autumn.customer(first.customerId, { card: true });
-    if (!customer.payment_method?.card) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
+    const cardless = !customer.payment_method?.card;
+    if (cardless && !code && !first.charging) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
     if (!pay) throw createError("CONFLICT", NO_FREE_LEFT, { reason: "noFreeLeft" });
     // Its open invoice would hold this charge back anyway (`unlessPaymentOpen`); this says which report to go to.
     if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
@@ -358,7 +360,12 @@ export const activate = action({
       const asked = started.code;
       let charged: AutumnCharge;
       try {
-        charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code: asked, idempotencyKey: `report-activation-${started.activationId}`, successUrl: backTo(first.prefix, key, started.activationId) }).catch(refusedCode<AutumnCharge>(asked));
+        // No card: the code has to take the whole price off, before any credit. Then nothing is charged, and Autumn is
+        // told so, or it would send a card-less customer to Stripe's page for $0.
+        if (cardless && linesOf(await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, asked).catch(refusedCode<AutumnPreview>(asked))) > 0.005) {
+          throw createError("BILLING_CARD_REQUIRED", asked ? `${asked} doesn't cover the whole price. Add a payment method to pay the rest.` : "Add a payment method to activate.", { reason: "cardForRest" });
+        }
+        charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code: asked, idempotencyKey: `report-activation-${started.activationId}`, successUrl: backTo(first.prefix, key, started.activationId), ...(cardless && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(asked));
         // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code, isn't
         // held up by a $5 invoice left open.
         if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);

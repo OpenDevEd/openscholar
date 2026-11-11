@@ -6611,6 +6611,7 @@
       "drop": "Suelta el PDF aquí o elígelo",
       "dropHint": "Un PDF, de hasta {max} MB",
       "unopenedPdf": "No se pudo abrir {name} como PDF. Si tiene contraseña, quítasela; después guárdalo de nuevo como PDF y súbelo.",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "La lectura de {name} está tardando más de lo normal. Súbelo de nuevo.",
       "replaces": "Una nueva subida sustituye a {name}",
       "check": {
@@ -6766,8 +6767,10 @@
           "addButton": "Añadir método de pago",
           "stripeFailed": "No se pudo abrir la página de Stripe",
           "credit": "{amount} a favor",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "Saldo a favor de la cuenta",
         "refunded": "Se reembolsaron los {amount} pagados para activarlo.",

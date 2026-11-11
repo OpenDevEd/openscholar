@@ -14,7 +14,7 @@ import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
-import { CHECK_SAID, doiIn, linkHref } from "../../lib/reports/report";
+import { CHECK_SAID, carries, doiIn, linkHref } from "../../lib/reports/report";
 import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
@@ -33,15 +33,6 @@ const COMMUNITIES_SEARCHED = 20;
 
 /** The byline check's own question, which the shortcut stands in for: one an admin has reworded goes to its model. */
 const BYLINE_QUESTION = DEFAULT_CHECKS.find((check) => check.id === "byline")?.question;
-
-/**
- * Whether `text` carries `line` whole, however the PDF wrapped it (spaces and line breaks anywhere in it, any case),
- * and not run on into more letters or digits, as a DOI one digit longer would.
- */
-export const carries = (text: string, line: string) => {
-  const chars = [...line.replace(/\s+/g, "")].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return chars.length > 0 && new RegExp(`${chars.join("\\s*")}(?![\\p{L}\\p{N}])`, "iu").test(text);
-};
 
 /** How sure the model is of yes: its confidence in yes, or the other side of its confidence in no; unclear is neither. */
 const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? confidence : answer === "no" ? 1 - confidence : 0.5);

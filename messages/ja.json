@@ -6610,6 +6610,7 @@
       "drop": "ここに PDF をドロップするか、選んでください",
       "dropHint": "PDF 1 つ、{max} MB まで",
       "unopenedPdf": "{name} を PDF として開けませんでした。パスワードがかかっている場合は外してから、PDF として保存し直してアップロードしてください。",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "{name} の読み取りに時間がかかりすぎています。アップロードし直してください。",
       "replaces": "再アップロードすると {name} が置き換わります",
       "check": {
@@ -6765,8 +6766,10 @@
           "addButton": "支払い方法を追加",
           "stripeFailed": "Stripeのページを開けませんでした",
           "credit": "クレジット {amount}",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "アカウントのクレジット",
         "refunded": "有効化のために支払われた {amount} は返金されました。",

@@ -98,6 +98,20 @@ describe("a report's PDF", () => {
     expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
   });
 
+  it("stays at the upload, saying so, when its PDF's text doesn't carry the byline, with the way on to its details", async () => {
+    const world = await setup();
+    // A first PDF, read, then replaced by one without the line: the reading is what finds it missing.
+    const { key, reportId } = await atDetails(world);
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line"])));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "no-line.pdf" });
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 4, lacksByline: true });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "upload", pdf: { pages: 4, lacksByline: true }, metadata: { title: "Shade trees and maize yields" } });
+    // Its details are read all the same, so its author can go on to them.
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
+    expect((await read(world.author, world.own, key)).step).toBe("details");
+  });
+
   it("keeps the details it has when its PDF is replaced, and a save typed over the PDF before it changes nothing", async () => {
     const world = await setup();
     const first = await atDetails(world);

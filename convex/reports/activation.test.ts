@@ -116,6 +116,36 @@ describe("activating a report", () => {
     expect(await activations(world)).toMatchObject([{ state: "unused", charge: { invoice: "in_late" } }]);
   });
 
+  it("activates with no card when a code takes the whole price off, and asks for a card when it leaves some to pay", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    vi.stubEnv("AUTUMN_URL", "https://autumn.test");
+    vi.stubEnv("AUTUMN_SECRET_KEY", "am_sk_test_fake");
+    const attached: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; discounts?: Array<{ promotion_code: string }> };
+      const due = body.discounts?.[0]?.promotion_code === "FREEDOI" ? 0 : 5;
+      if (url.endsWith("/billing.preview_attach")) return Response.json({ total: due, line_items: [{ total: due }] });
+      if (url.endsWith("/billing.attach")) {
+        attached.push(body);
+        return Response.json({ payment_url: null });
+      }
+      // The customer has no card saved.
+      return Response.json({ id: body.customer_id, subscriptions: [], purchases: [], invoices: [], balances: {}, payment_method: null });
+    });
+    const activateWith = (code: string) => world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, pay: true, code });
+    // Half off leaves $5 to pay, which takes a card: nothing is asked of Autumn's billing, and no charge is left behind.
+    await expect(activateWith("HALFOFF")).rejects.toMatchObject(refused("BILLING_CARD_REQUIRED"));
+    expect(attached).toEqual([]);
+    expect(await row(world.t, key)).toMatchObject({ status: "passed" });
+    // The whole price off: live with no card, billed by invoice so Autumn sends nobody to Stripe's page for $0.
+    expect(await activateWith("FREEDOI")).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(attached).toMatchObject([{ invoice_mode: { enabled: true }, discounts: [{ promotion_code: "FREEDOI" }] }]);
+    expect(await row(world.t, key)).toMatchObject({ status: "live" });
+    expect((await activations(world)).at(-1)).toMatchObject({ state: "live", free: false, code: "FREEDOI", charge: { total: 0 } });
+  });
+
   it("refunds a charge paid after its report moved on, the way it was paid, once, and tells whoever paid", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

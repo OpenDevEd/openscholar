@@ -6610,6 +6610,7 @@
       "drop": "将 PDF 拖到这里，或选择文件",
       "dropHint": "一个 PDF，最大 {max} MB",
       "unopenedPdf": "无法将 {name} 作为 PDF 打开。如果它设有密码，请先移除密码，再重新另存为 PDF 后上传。",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "读取 {name} 用时过长。请重新上传。",
       "replaces": "重新上传将替换 {name}",
       "check": {
@@ -6765,8 +6766,10 @@
           "addButton": "添加付款方式",
           "stripeFailed": "无法打开 Stripe 页面",
           "credit": "余额 {amount}",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "账户余额抵扣",
         "refunded": "为激活它支付的 {amount} 已退款。",

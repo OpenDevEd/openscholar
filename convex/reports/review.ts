@@ -130,7 +130,7 @@ export const get = query({
       agreementVersion: report.agreementVersion,
       ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
       ...(report.run && { run: { at: report.run.at, changes: report.run.changes === true } }),
-      ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+      ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
       ...(details.metadata && { metadata: details.metadata }),
       ...(details.results && { results: details.results }),
       ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

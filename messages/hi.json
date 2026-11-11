@@ -6610,6 +6610,7 @@
       "drop": "PDF यहाँ छोड़ें, या चुनें",
       "dropHint": "एक PDF, {max} MB तक",
       "unopenedPdf": "{name} को PDF के रूप में खोला नहीं जा सका। अगर इस पर पासवर्ड है तो उसे हटाएँ, फिर इसे दोबारा PDF के रूप में सहेजें और अपलोड करें।",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "{name} पढ़ने में ज़रूरत से ज़्यादा समय लग रहा है। इसे फिर से अपलोड करें।",
       "replaces": "फिर से अपलोड करने पर {name} बदल जाता है",
       "check": {
@@ -6765,8 +6766,10 @@
           "addButton": "भुगतान का तरीका जोड़ें",
           "stripeFailed": "Stripe का पेज नहीं खुल सका",
           "credit": "{amount} क्रेडिट",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "खाते का क्रेडिट",
         "refunded": "इसे सक्रिय करने के लिए चुकाए गए {amount} वापस कर दिए गए।",

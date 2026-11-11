@@ -265,6 +265,12 @@ export const autumn = {
     seats?: SeatQuantity;
     /** A promotion code of an Autumn reward, taken off the charge. */
     code?: string;
+    /**
+     * Billed by invoice and given at once, for a purchase quoted at nothing to a customer with no card: Autumn sends a
+     * card-less customer to Stripe's page otherwise, even for $0. Only ever with a quote of nothing: anything owed
+     * would be given unpaid.
+     */
+    unbilled?: boolean;
   }) {
     return call<AutumnCharge>(
       "billing.attach",
@@ -278,6 +284,7 @@ export const autumn = {
           : {}),
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
+        ...(args.unbilled ? { invoice_mode: { enabled: true, enable_plan_immediately: true, finalize: true } } : {}),
         ...promotion(args.code),
       },
       args.idempotencyKey,
@@ -291,7 +298,9 @@ export const autumn = {
 
   /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
   setupPayment(customerId: string, successUrl: string) {
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl });
+    // Cards only (Apple Pay and Google Pay are cards too): what Stripe's page would also offer, Link and Amazon Pay,
+    // saves a method that isn't a card, which nothing here charges or shows.
+    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { payment_method_types: ["card"] } });
   },
 
   /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carries } from "./checks";
+import { carries } from "../../lib/reports/report";
 
 // The byline check passes without a model only when the PDF's text carries the line whole (#1261).
 describe("finding the byline in a PDF's text", () => {

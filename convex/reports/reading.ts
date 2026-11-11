@@ -8,7 +8,7 @@ import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
-import { blankDetails, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
+import { blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
 /** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them,
@@ -56,9 +56,12 @@ export const read = internalAction({
     // Built from its pieces as the extraction does, so a line break in the PDF is a break, not two words run together.
     const text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
     const textFile = await ctx.storage.store(new Blob([text], { type: "text/plain" }));
+    // The byline is text the PDF has or hasn't, so its author hears now, at the upload, not after the checks. A scan
+    // has no text to look in, and says that instead.
+    const lacksByline = job.byline !== null && text.trim() !== "" && !carries(text, job.byline);
     if (job.kept) {
       // The report keeps the details it has: this PDF gives the checks its text and its pages.
-      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, ...(!text.trim() && { trouble: "textless" as const }) });
+      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, ...(!text.trim() && { trouble: "textless" as const }), ...(lacksByline && { lacksByline }) });
       return null;
     }
     let metadata: Metadata | null = null;
@@ -79,7 +82,7 @@ export const read = internalAction({
     if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     // A scan holds no text for the checks to read, which matters more to its author than a reading that fell short.
     const trouble = !text.trim() ? ("textless" as const) : metadata ? undefined : ("unread" as const);
-    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(!metadata && { unread: true }) });
+    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(lacksByline && { lacksByline }), ...(!metadata && { unread: true }) });
     return null;
   },
 });
