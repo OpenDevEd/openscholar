@@ -6582,7 +6582,7 @@
       "unreadPdf": "O Openscholar não conseguiu ler os dados deste PDF. Preencha-os à mão.",
       "uploadAnother": "Carregar outro PDF",
       "uploadLost": "O carregamento não chegou. Tente de novo.",
-      "choosePdf": "Escolha um PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Esse ficheiro está vazio. Escolha o PDF de novo.",
       "tooBig": "O PDF tem mais de {max} MB",
       "offline": "Não foi possível carregar o PDF. Verifique a ligação e escolha-o de novo.",

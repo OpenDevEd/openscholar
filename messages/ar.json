@@ -6582,7 +6582,7 @@
       "unreadPdf": "تعذّر على Openscholar قراءة التفاصيل من ملف PDF هذا. املأها يدويًا.",
       "uploadAnother": "رفع ملف PDF آخر",
       "uploadLost": "لم يصل الرفع. حاول مرة أخرى.",
-      "choosePdf": "اختيار ملف PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "هذا الملف فارغ. اختر ملف PDF مرة أخرى.",
       "tooBig": "ملف PDF أكبر من {max} ميغابايت",
       "offline": "تعذّر رفع ملف PDF. تحقق من اتصالك، ثم اختره مرة أخرى.",

@@ -6582,7 +6582,7 @@
       "unreadPdf": "Openscholar kon nie die besonderhede uit hierdie PDF lees nie. Vul hulle met die hand in.",
       "uploadAnother": "Laai 'n ander PDF op",
       "uploadLost": "Die oplaai het nie aangekom nie. Probeer weer.",
-      "choosePdf": "Kies 'n PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Daardie lêer is leeg. Kies die PDF weer.",
       "tooBig": "Die PDF is groter as {max} MB",
       "offline": "Die PDF kon nie opgelaai word nie. Kontroleer jou verbinding en kies dit dan weer.",

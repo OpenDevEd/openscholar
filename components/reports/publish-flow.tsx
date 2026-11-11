@@ -29,6 +29,7 @@ import { PaperCover } from "@/components/papers/paper-cover";
 import { DetailsStep } from "@/components/reports/details-step";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
+import { Problem, useProblem } from "@/components/reports/problem";
 import { useChangeLabel, useCheckWords } from "@/components/reports/words";
 import { Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -204,7 +205,12 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
-  const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
+  // What went wrong with something done on this page, said on the screen it was done on, until the page moves on.
+  const trouble = useProblem();
+  const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => {
+    trouble.say(null);
+    void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
+  };
   // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
   // Back afterwards never reopens it; what a link or a reload opened closes in place.
   const up = (...closed: Array<keyof typeof PLACE>) => {
@@ -249,7 +255,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     }
   });
   const saved = found && "report" in found ? found.report : null;
-  const send = (step: BackStep) => void (saved && workspaceId && goTo({ workspaceId, key: saved.key, step }).catch(said(t("stepFailed"))));
+  const send = (step: BackStep) => void (saved && workspaceId && goTo({ workspaceId, key: saved.key, step }).catch(trouble.failed(t("stepFailed"))));
   useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
@@ -353,6 +359,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
+          <Problem className="pb-4">{trouble.problem}</Problem>
           <YourReports
             list={(list ?? lastList)!}
             humanReview={basics.humanReview}
@@ -363,7 +370,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onOpen={(key) => go({ view: null, report: key, correct: null })}
             // Changes already waiting open where they stand; otherwise the details open to be corrected.
             onCorrect={(key) => go({ view: null, report: key, correct: (list ?? lastList)?.rows.find((row) => row.key === key)?.changes ? null : true })}
-            onDiscard={(key) => discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), said(t("discardFailed")))}
+            onDiscard={(key) => (trouble.say(null), discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), trouble.failed(t("discardFailed"))))}
             onNew={basics?.open ? another : undefined}
           />
         </div>
@@ -445,6 +452,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             correcting={correct}
             onStep={toStep}
             onMoved={stepOn}
+            trouble={trouble}
             onCorrect={() => {
               setFresh(null);
               go({ correct: true });
@@ -459,7 +467,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected }: { /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
@@ -527,6 +535,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
+          <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
             <Overview series={basics.series.name} reviewed={basics.humanReview} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
@@ -563,12 +572,14 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                 initial={report.metadata}
                 onRun={async (metadata: Metadata) => {
                   toTop();
+                  trouble.say(null);
                   setStarting(true);
                   try {
                     await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
                     onMoved("checks");
                   } catch (error) {
-                    said(t("checksFailed"))(error);
+                    // The form comes back at its top, which is where this is said.
+                    trouble.failed(t("checksFailed"))(error);
                   } finally {
                     setStarting(false);
                   }
@@ -595,6 +606,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                 toTop();
                 setAttempt({ metadata, since: since! });
                 setTyping(false);
+                trouble.say(null);
                 setStarting(true);
                 try {
                   const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
@@ -604,7 +616,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                   if (stands === "live") toast.success(t("changesLive"));
                   else if (stands === "review") toast.success(t("changesWithReviewer"));
                 } catch (error) {
-                  said(t("checksFailed"))(error);
+                  trouble.failed(t("checksFailed"))(error);
                 } finally {
                   setStarting(false);
                 }
@@ -757,6 +769,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
+  const { problem, say, failed } = useProblem();
   const sign = useMutation(api.reports.flow.sign);
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
   const [today] = useState(() => new Date());
@@ -817,6 +830,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           {t("agreementChanged")}
         </p>
       ) : null}
+      <Problem className="pt-4">{problem}</Problem>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {onBack ? (
           <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
@@ -839,10 +853,11 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
             disabled={!agreed || !name.trim() || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
+                say(null);
                 try {
                   onSigned(await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version }));
                 } catch (error) {
-                  said(t("signFailed"))(error);
+                  failed(t("signFailed"))(error);
                 }
               })
             }
@@ -1059,8 +1074,10 @@ function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
   const [reading, read] = useTransition();
   // Asked first: the details shown go, with whatever was typed into them.
   const [asking, setAsking] = useState(false);
+  const { problem, say, failed } = useProblem();
   return (
-    <div role="status" className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
+    <div className="mb-5">
+    <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
       <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
         <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0">{t("keptDetails")}</span>
@@ -1080,10 +1097,12 @@ function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("readAgainKeep")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => read(() => onReadAgain().then(() => {}, said(t("readAgainFailed"))))}>{t("readAgain")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => (say(null), read(() => onReadAgain().then(() => {}, failed(t("readAgainFailed")))))}>{t("readAgain")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+    <Problem className="ps-1 pt-2">{problem}</Problem>
     </div>
   );
 }
@@ -1129,9 +1148,12 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   const by = chosen ?? report.pdf?.bylineBy ?? null;
   const here = { workspaceId, key: report.key };
   // A PDF already here without the line gets its page as soon as its author asks for it, by the choice or the notice.
+  // What went wrong with the last file or choice, said under the drop area until the next one.
+  const { problem, say, failed } = useProblem();
   const pick = (picked: BylineBy) => {
+    say(null);
     void setBy(picked);
-    if (picked === "added" && report.pdf?.lacksByline && report.pdf.bylineBy !== "added") void addByline(here).catch(said(t("bylineBy.addFailed")));
+    if (picked === "added" && report.pdf?.lacksByline && report.pdf.bylineBy !== "added") void addByline(here).catch(failed(t("bylineBy.addFailed")));
   };
   const put = async (file: Blob, type: string) => {
     const response = await fetch(await startUpload(here), { method: "POST", headers: { "Content-Type": type }, body: file });
@@ -1147,9 +1169,10 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   const busy = !!sending || reading;
   const send = async (picked: File | undefined) => {
     if (!picked || busy || !by) return;
-    if (!/\.pdf$/i.test(picked.name)) return void toast.error(t("choosePdf"));
-    if (picked.size === 0) return void toast.error(t("emptyFile"));
-    if (picked.size > MAX_PDF_BYTES) return void toast.error(t("tooBig", { max: MAX_PDF_MB }));
+    say(null);
+    if (!/\.pdf$/i.test(picked.name)) return say(t("notPdf", { name: picked.name }));
+    if (picked.size === 0) return say(t("emptyFile"));
+    if (picked.size > MAX_PDF_BYTES) return say(t("tooBig", { max: MAX_PDF_MB }));
     setSending(picked);
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
@@ -1158,13 +1181,13 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
       ]);
       const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
-      if (refused) return void toast.error(refused);
+      if (refused) return say(refused);
       onAttached();
     } catch (error) {
       // A browser's own words for a request that never left ("Load failed") tell an author nothing: the file wasn't
       // kept, and the connection is what to look at.
-      if (error instanceof TypeError) toast.error(t("offline"));
-      else said(t("uploadFailed"))(error);
+      if (error instanceof TypeError) say(t("offline"));
+      else failed(t("uploadFailed"))(error);
     } finally {
       setSending(null);
       if (input.current) input.current.value = "";
@@ -1211,6 +1234,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         )}
       </button>
       <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => void send(e.target.files?.[0])} />
+      <Problem className="ps-1 pt-3">{problem}</Problem>
       {report.pdf?.trouble === "unopened" && !busy ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
           <CircleX className="mt-0.5 size-4 shrink-0" />
@@ -1403,6 +1427,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
     setTyped(value);
   };
   const [quoting, setQuoting] = useState(false);
+  // What went wrong with activating or paying, said above the payment bar.
+  const { problem, say, failed } = useProblem();
   // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
   // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
   // quote that couldn't be had leaves it closed, so a code still good is never dropped from the charge.
@@ -1420,7 +1446,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
         },
         (error: unknown) => {
           if (chosen.current) return;
-          if (!promoReason(error)) return said(t("activateFailed"))(error);
+          if (!promoReason(error)) return failed(t("activateFailed"))(error);
           setCode(null);
           setPaying(true);
         },
@@ -1432,15 +1458,16 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   const due = subtotal - fromCredit;
   const activateNow = (pay: boolean, withCode?: string, expect?: number) =>
     start(async () => {
+      say(null);
       try {
         await onActivate?.(pay, withCode, expect);
       } catch (error) {
         const reason = promoReason(error);
-        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
-        else if (refusalOf(error)?.reason === "noFreeLeft") toast.error(t("activation.noFreeLeft"));
-        else if (refusalOf(error)?.reason === "paused") toast.error(t("activation.paused"));
-        else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
-        else said(t("activateFailed"))(error);
+        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
+        else if (refusalOf(error)?.reason === "noFreeLeft") say(t("activation.noFreeLeft"));
+        else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
+        else if (reason) say(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
+        else failed(t("activateFailed"))(error);
       }
     });
   // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
@@ -1501,10 +1528,12 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
+              <Problem className="pb-3 ps-1">{problem}</Problem>
               {stage === "ready" && admin && terms ? (
                 // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
                 // while the bank confirms a charge, the bar offers that instead.
                 <PaymentLine
+                  onFailed={(error) => failed(t("activation.card.stripeFailed"))(error)}
                   organization={organization}
                   free={terms.free.left}
                   card={card}
@@ -1769,7 +1798,7 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, quoted, voucher, action }: { /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1783,7 +1812,7 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
         // The code applied goes with it, so the way back from Stripe opens the field with it typed in.
         await onAddCard?.(quoted?.code);
       } catch (error) {
-        said(t("stripeFailed"))(error);
+        onFailed(error);
       }
     });
   return (
@@ -1932,14 +1961,16 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
   const [comment, setComment] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
   const [sending, start] = useTransition();
+  const { problem, say, failed } = useProblem();
   const send = () =>
     start(async () => {
+      say(null);
       try {
         await onSend(comment);
         toast.success(t("sentToReviewer"));
         onClose();
       } catch (error) {
-        said(t("requestFailed"))(error);
+        failed(t("requestFailed"))(error);
       }
     });
   return (
@@ -1962,6 +1993,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         <Field label={t("reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea ref={box} id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} />}
         </Field>
+        <Problem>{problem}</Problem>
         <DialogFooter>
           <Button variant="outline" disabled={sending} onClick={onClose}>
             {t("cancel")}
@@ -2099,6 +2131,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
  */
 function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview }: { report: Report; correction: NonNullable<Report["correction"]>; onEdit: () => void; onDiscard: () => Promise<void>; onRequestReview: (comment: string) => Promise<void> }) {
   const t = useTranslations("publishReports.flow");
+  const { problem, say, failed } = useProblem();
   const changeLabel = useChangeLabel();
   const stage = report.changes ?? "review";
   const [asking, setAsking] = useAsking();
@@ -2160,6 +2193,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           <PenLine /> {t("editChanges")}
         </Button>
       </div>
+      <Problem className="pt-3">{problem}</Problem>
       {/* Only where a review can be asked for: an address that still names the dialog opens nothing anywhere else. */}
       <ReviewRequestDialog open={asking && stage === "failed"} onClose={() => setAsking(false)} onSend={onRequestReview} />
       <AlertDialog open={discarding} onOpenChange={setDiscarding}>
@@ -2170,7 +2204,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("keepThem")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void onDiscard().then(() => toast.success(t("changesDiscarded")), said(t("changesDiscardFailed")))}>{t("discard")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => (say(null), void onDiscard().then(() => toast.success(t("changesDiscarded")), failed(t("changesDiscardFailed"))))}>{t("discard")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

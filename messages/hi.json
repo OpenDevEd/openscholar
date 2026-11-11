@@ -6581,7 +6581,7 @@
       "unreadPdf": "Openscholar इस PDF से विवरण नहीं पढ़ सका। इन्हें हाथ से भरें।",
       "uploadAnother": "दूसरा PDF अपलोड करें",
       "uploadLost": "अपलोड नहीं पहुँचा। फिर से कोशिश करें।",
-      "choosePdf": "PDF चुनें",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "वह फ़ाइल खाली है। PDF फिर से चुनें।",
       "tooBig": "PDF {max} MB से बड़ा है",
       "offline": "PDF अपलोड नहीं हो सका। अपना कनेक्शन जाँचें, फिर इसे फिर से चुनें।",

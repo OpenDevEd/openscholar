@@ -6582,7 +6582,7 @@
       "unreadPdf": "Openscholar haikuweza kusoma maelezo kutoka PDF hii. Yajaze kwa mkono.",
       "uploadAnother": "Pakia PDF nyingine",
       "uploadLost": "Upakiaji haukufika. Jaribu tena.",
-      "choosePdf": "Chagua PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Faili hiyo ni tupu. Chagua PDF tena.",
       "tooBig": "PDF ni kubwa kuliko MB {max}",
       "offline": "PDF haikuweza kupakiwa. Angalia muunganisho wako, kisha uichague tena.",

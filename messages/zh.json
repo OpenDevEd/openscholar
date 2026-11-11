@@ -6581,7 +6581,7 @@
       "unreadPdf": "Openscholar 无法从此 PDF 读取信息。请手动填写。",
       "uploadAnother": "上传另一个 PDF",
       "uploadLost": "上传未送达。请重试。",
-      "choosePdf": "请选择 PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "该文件为空。请重新选择 PDF。",
       "tooBig": "PDF 超过 {max} MB",
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
