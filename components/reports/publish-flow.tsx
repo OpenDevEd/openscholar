@@ -1377,6 +1377,21 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
  * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
  * asked to confirm says so, with the way back to its page.
  */
+/** The return from Stripe's pages already brought into view: a page opens at its top, and on a phone the bar is below it. */
+let returnedTo: string | null = null;
+/**
+ * Back from Stripe's page for a card, or the bank's, the bar the person left from is brought into view, once per return:
+ * the page opens at its top, which on a phone leaves Activate out of sight.
+ */
+function inViewOnReturn(node: HTMLDivElement | null) {
+  if (!node) return;
+  const params = new URLSearchParams(window.location.search);
+  const mark = params.get("session") ?? params.get("back");
+  if (!mark || mark === returnedTo) return;
+  returnedTo = mark;
+  node.scrollIntoView({ block: "center" });
+}
+
 function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, action }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
@@ -1392,7 +1407,7 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
       }
     });
   return (
-    <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
+    <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
         <CreditCard className="size-4" />
       </span>

@@ -6607,7 +6607,7 @@
       "readingHint": "Takriban nusu dakika. Unaweza kuondoka kwenye ukurasa huu: inaendelea.",
       "drop": "Dondosha PDF hapa, au uichague",
       "dropHint": "PDF moja, hadi MB {max}",
-      "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ihifadhi kama PDF tena na uipakie.",
+      "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
       "stuck": "Kusoma {name} kunachukua muda mrefu kuliko inavyopaswa. Ipakie tena.",
       "replaces": "Kupakia tena kunabadilisha {name}",
       "check": {

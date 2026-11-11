@@ -10,11 +10,14 @@ import type { PDFPageProxy } from "pdfjs-dist";
 import { buildPageTextFromItems } from "@/lib/extraction/pdfjs-text";
 import { findIntersectingItems } from "@/lib/extraction/pdf-highlight";
 import { PdfToolbar } from "@/components/extraction/pdf-toolbar";
+import { pdfAssets } from "@/lib/pdf-assets";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url,
 ).toString();
+/** One object for every document: react-pdf reloads the PDF when its options change. */
+const PDF_OPTIONS = pdfAssets(pdfjs.version);
 
 type ScaleMode = "fit-page" | "fit-width" | "custom";
 
@@ -400,6 +403,7 @@ export function PdfViewer({
           >
             <Document
               file={pdfUrl}
+              options={PDF_OPTIONS}
               loading={<div className="flex min-h-40 items-center justify-center"><Spinner aria-label={t("pdfViewer.loadingPdf")} className="size-6 text-primary" /></div>}
               onLoadSuccess={({ numPages: totalPages }) => {
                 const safePages = Math.max(1, totalPages);
