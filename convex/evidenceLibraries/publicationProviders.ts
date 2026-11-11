@@ -17,7 +17,7 @@ import {
   EMPTY_PUBLICATION_SETTINGS,
   PUBLICATION_CREDENTIAL_KEY,
 } from "../../lib/evidence-libraries/configuration/publication-settings";
-import { publicationSettingsValidator } from "./publicationValidators";
+import { keptCustomOf, keptCustomValidator, publicationSettingsValidator } from "./publicationValidators";
 import {
   evidenceLibraryCredentialFields,
   type LibraryCredentialSource,
@@ -98,15 +98,18 @@ export const get = query({
     settings: publicationSettingsValidator,
     updatedAt: v.union(v.number(), v.null()),
     verifiedAt: v.union(v.number(), v.null()),
+    custom: keptCustomValidator,
   }),
   handler: async (ctx, { libraryId }) => {
     await refuseApps(ctx);
     await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
     const record = await readPublicationProviderRecord(ctx, libraryId);
+    const settings = record?.publicationSettings ?? EMPTY_PUBLICATION_SETTINGS;
     return {
-      settings: record?.publicationSettings ?? EMPTY_PUBLICATION_SETTINGS,
+      settings,
       updatedAt: record?.updatedAt ?? null,
       verifiedAt: record?.lastValidatedAt ?? null,
+      custom: keptCustomOf(settings, record?.customAccounts),
     };
   },
 });
@@ -147,6 +150,8 @@ export const saveVerified = internalMutation({
     libraryId: v.id("evidenceLibraries"),
     settings: publicationSettingsValidator,
     encryptedCredentials: v.string(),
+    customAccounts: keptCustomValidator,
+    encryptedCustomCredentials: v.string(),
     expectedUpdatedAt: v.union(v.null(), v.number()),
     verifiedAt: v.number(),
     credentialDigest: v.string(),
@@ -174,6 +179,8 @@ export const saveVerified = internalMutation({
       credentialKey: PUBLICATION_CREDENTIAL_KEY,
       publicationSettings: args.settings,
       encryptedValue: args.encryptedCredentials,
+      customAccounts: args.customAccounts,
+      encryptedCustomValue: args.encryptedCustomCredentials,
       credentialDigest: args.credentialDigest,
       validationState: "valid" as const,
       lastValidatedAt: args.verifiedAt,

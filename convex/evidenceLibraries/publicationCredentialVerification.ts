@@ -1,7 +1,7 @@
 "use node";
 
 import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
-import type { PublicationSecrets, PublicationSettings } from "./publicationValidators";
+import type { CustomCrossref, PublicationSecrets, PublicationSettings } from "./publicationValidators";
 
 const timeout = () => AbortSignal.timeout(15_000);
 // zenodo.org answers 403 with an HTML page to Node fetch's default `node` User-Agent; its sandbox does not.
@@ -144,11 +144,15 @@ function sandboxValue(name: string) {
  * (../reports/publicationActions.ts). A sandbox account is the platform's. A custom one keeps the secret it had
  * when none is typed. Throws, saving nothing, when a provider refuses.
  */
+/** The own accounts kept so far: as stored, or, from before they were kept apart, the ones in use if they were custom. */
+export type KeptCustom = { crossref?: CustomCrossref; credentials: PublicationSecrets };
+const CUSTOM_CROSSREF = ["prefix", "depositorName", "email", "registrant"] as const;
+
 export async function verifiedPublication(
   asked: { settings: PublicationSettings; credentials: PublicationSecrets },
-  kept: { settings?: PublicationSettings | null; credentials: PublicationSecrets },
+  kept: { settings?: PublicationSettings | null; credentials: PublicationSecrets; custom?: KeptCustom },
   { namespace, crossrefAlone = false }: { /** The DOI namespace when none is typed. */ namespace: string; crossrefAlone?: boolean },
-): Promise<{ settings: PublicationSettings; credentials: PublicationSecrets }> {
+): Promise<{ settings: PublicationSettings; credentials: PublicationSecrets; custom: KeptCustom }> {
   const settings = structuredClone(asked.settings);
   for (const key of [
     "prefix",
@@ -160,15 +164,22 @@ export async function verifiedPublication(
     settings.crossref[key] = settings.crossref[key].trim();
   settings.zenodo.license = settings.zenodo.license.trim().toLowerCase();
   settings.crossref.suffixNamespace ||= namespace;
+  // The own accounts stay kept through a spell on the sandbox: switching back takes them up again, and anything typed
+  // replaces them.
+  const before: KeptCustom = kept.custom ?? {
+    ...(kept.settings?.crossref.mode === "custom" && { crossref: Object.fromEntries(CUSTOM_CROSSREF.map((key) => [key, kept.settings!.crossref[key]])) as CustomCrossref }),
+    credentials: {
+      ...(kept.settings?.zenodo.mode === "custom" && { zenodoToken: kept.credentials.zenodoToken }),
+      ...(kept.settings?.crossref.mode === "custom" && { crossrefLoginId: kept.credentials.crossrefLoginId, crossrefPassword: kept.credentials.crossrefPassword }),
+    },
+  };
+  const custom: KeptCustom = { ...(before.crossref && { crossref: before.crossref }), credentials: { ...before.credentials } };
   const credentials: PublicationSecrets = {};
   if (settings.zenodo.mode === "sandbox")
     credentials.zenodoToken = sandboxValue("ZENODO_SANDBOX_TOKEN");
   if (settings.zenodo.mode === "custom")
-    credentials.zenodoToken =
-      asked.credentials.zenodoToken?.trim() ||
-      (kept.settings?.zenodo.mode === "custom"
-        ? kept.credentials.zenodoToken
-        : undefined);
+    custom.credentials.zenodoToken = credentials.zenodoToken =
+      asked.credentials.zenodoToken?.trim() || before.credentials.zenodoToken;
   if (settings.crossref.mode === "sandbox") {
     credentials.crossrefLoginId = sandboxValue("CROSSREF_SANDBOX_LOGIN_ID");
     credentials.crossrefPassword = sandboxValue("CROSSREF_SANDBOX_PASSWORD");
@@ -180,13 +191,19 @@ export async function verifiedPublication(
     settings.crossref.registrant = sandboxValue("CROSSREF_SANDBOX_REGISTRANT");
   }
   if (settings.crossref.mode === "custom") {
-    const sameMode = kept.settings?.crossref.mode === "custom";
-    credentials.crossrefLoginId =
-      asked.credentials.crossrefLoginId?.trim() ||
-      (sameMode ? kept.credentials.crossrefLoginId : undefined);
-    credentials.crossrefPassword =
-      asked.credentials.crossrefPassword ||
-      (sameMode ? kept.credentials.crossrefPassword : undefined);
+    for (const key of CUSTOM_CROSSREF) settings.crossref[key] ||= before.crossref?.[key] ?? "";
+    custom.crossref = Object.fromEntries(CUSTOM_CROSSREF.map((key) => [key, settings.crossref[key]])) as CustomCrossref;
+    custom.credentials.crossrefLoginId = credentials.crossrefLoginId =
+      asked.credentials.crossrefLoginId?.trim() || before.credentials.crossrefLoginId;
+    custom.credentials.crossrefPassword = credentials.crossrefPassword =
+      asked.credentials.crossrefPassword || before.credentials.crossrefPassword;
+  }
+  // Switching a registrar off forgets its own account too: off is how an admin removes stored credentials.
+  if (settings.zenodo.mode === "off") delete custom.credentials.zenodoToken;
+  if (settings.crossref.mode === "off") {
+    delete custom.credentials.crossrefLoginId;
+    delete custom.credentials.crossrefPassword;
+    delete custom.crossref;
   }
   buildPublicationConfiguration(settings, credentials, { crossrefAlone });
   if (settings.zenodo.mode !== "off")
@@ -200,7 +217,7 @@ export async function verifiedPublication(
       credentials.crossrefPassword!,
       settings.crossref.mode === "sandbox",
     );
-  return { settings, credentials };
+  return { settings, credentials, custom };
 }
 
 /** What a refused save tells the form: the provider's own words, or that it took too long. */

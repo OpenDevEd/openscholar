@@ -219,3 +219,55 @@ test("uses platform sandbox accounts and rejects a failed Crossref check after c
     await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId)),
   ).toBeNull();
 });
+
+test("keeps the own accounts through a spell on the sandbox, so switching back needs nothing typed again", async () => {
+  for (const [name, value] of Object.entries({
+    ZENODO_SANDBOX_TOKEN: "platform-zenodo",
+    CROSSREF_SANDBOX_LOGIN_ID: "sandbox@example.org/depositor",
+    CROSSREF_SANDBOX_PASSWORD: "platform-password",
+    CROSSREF_SANDBOX_PREFIX: "10.5555",
+    CROSSREF_SANDBOX_DEPOSITOR_NAME: "OpenScholar",
+    CROSSREF_SANDBOX_EMAIL: "test@example.org",
+    CROSSREF_SANDBOX_REGISTRANT: "OpenScholar",
+  }))
+    vi.stubEnv(`EL_${name}`, value);
+  vi.stubGlobal("fetch", providerResponses());
+  const fixture = await createDraftSetupFixture("kept_accounts");
+  const libraryId = fixture.created.libraryId;
+  const save = async (mode: "sandbox" | "custom" | "off", crossref: Partial<typeof EMPTY_PUBLICATION_SETTINGS.crossref>, credentials: Record<string, string>) => {
+    const { updatedAt } = await fixture.admin.query(api.evidenceLibraries.publicationProviders.get, { libraryId });
+    const settings = structuredClone(EMPTY_PUBLICATION_SETTINGS);
+    settings.zenodo.mode = mode;
+    settings.crossref = { ...settings.crossref, mode, ...crossref };
+    await fixture.admin.action(api.evidenceLibraries.publicationProviderActions.verifyAndSave, { libraryId, settings, credentials, expectedUpdatedAt: updatedAt });
+  };
+  const own = { prefix: "10.12345", registrant: "OpenDevEd", depositorName: "OpenDevEd Ltd", email: "doi@opendeved.net" };
+  const active = async () => {
+    const stored = await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId));
+    return { settings: stored!.publicationSettings!, credentials: JSON.parse(decrypt(stored!.encryptedValue, key)) };
+  };
+
+  await save("custom", own, { zenodoToken: "own-token", crossrefLoginId: "own@example.org/role", crossrefPassword: "own-password" });
+  await save("sandbox", {}, {});
+  // On the sandbox, only the sandbox's accounts are in use: the runtime never carries the own ones.
+  const sandbox = await active();
+  expect(sandbox.credentials).toEqual({ zenodoToken: "platform-zenodo", crossrefLoginId: "sandbox@example.org/depositor", crossrefPassword: "platform-password" });
+  expect(sandbox.settings.crossref.prefix).toBe("10.5555");
+  // The form is told what is kept, never the secrets themselves.
+  const shown = await fixture.admin.query(api.evidenceLibraries.publicationProviders.get, { libraryId });
+  expect(shown.custom).toEqual({ crossref: own, zenodoToken: true, crossrefLogin: true });
+  expect(JSON.stringify(shown)).not.toContain("own-password");
+
+  // Back to the own accounts with nothing typed: they are taken up again.
+  await save("custom", { prefix: "", registrant: "", depositorName: "", email: "" }, {});
+  const back = await active();
+  expect(back.credentials).toEqual({ zenodoToken: "own-token", crossrefLoginId: "own@example.org/role", crossrefPassword: "own-password" });
+  expect(back.settings.crossref).toMatchObject(own);
+
+  // Off forgets them: it is how an admin removes stored credentials.
+  await save("off", {}, {});
+  const off = await fixture.admin.query(api.evidenceLibraries.publicationProviders.get, { libraryId });
+  expect(off.custom).toEqual({ crossref: null, zenodoToken: false, crossrefLogin: false });
+  const stored = await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId));
+  expect(JSON.parse(decrypt(stored!.encryptedCustomValue!, key))).toEqual({});
+});
