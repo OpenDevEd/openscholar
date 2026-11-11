@@ -6812,7 +6812,7 @@
         "activate": {
           "title": "Activate",
           "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       }
     },
