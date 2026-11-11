@@ -9,7 +9,6 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { capped } from "../lib/listCaps";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
@@ -522,12 +521,13 @@ export const waitingElsewhereAction = defineUserQuery({
   path: "reports/flow:waitingElsewhere",
   description:
     "The person's other workspaces that hold reports ready for them to activate on Openscholar Reports: their own workspace and each organization they are an admin of, " +
-    "leaving out the workspace asked from. Each with its name, its address (`slug`, none for their own) and how many are ready. Empty when nothing waits.",
+    "leaving out the workspace asked from. It says how many are ready in all (`ready`) and names the first workspace that holds some (`first`): its name, " +
+    "its address (`slug`, none for their own) and how many are ready there. `first` is null when nothing waits.",
   args: {},
-  returns: capped(v.array(v.object({ name: v.string(), slug: v.union(v.string(), v.null()), ready: v.number() })), ELSEWHERE_WORKSPACES + 1),
+  returns: v.object({ ready: v.number(), first: v.union(v.null(), v.object({ name: v.string(), slug: v.union(v.string(), v.null()), ready: v.number() })) }),
   run: async (ctx, { userId, workspaceId }) => {
     const user = await ctx.db.get("users", userId);
-    if (!user) return [];
+    if (!user) return { ready: 0, first: null };
     const { humanReview } = await reportSettings(ctx);
     // Only reports that never went live can be ready, and a workspace holds few of those.
     const readyIn = async (id: Id<"workspaces">) =>
@@ -543,10 +543,11 @@ export const waitingElsewhereAction = defineUserQuery({
       }),
     );
     const mine = own && own._id !== workspaceId ? [{ name: "", slug: null, ready: await readyIn(own._id) }] : [];
-    return [...mine, ...organizations.flat()].filter((workspace) => workspace.ready > 0);
+    const waiting = [...mine, ...organizations.flat()].filter((workspace) => workspace.ready > 0);
+    return { ready: waiting.reduce((sum, workspace) => sum + workspace.ready, 0), first: waiting[0] ?? null };
   },
 });
-export const waitingElsewhere = userQuery(waitingElsewhereAction, { signedOut: [] });
+export const waitingElsewhere = userQuery(waitingElsewhereAction, { signedOut: { ready: 0, first: null } });
 export const waitingElsewhereForAssistant = assistantQuery(waitingElsewhereAction);
 
 const reportValidator = v.object({
