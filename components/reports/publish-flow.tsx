@@ -5,7 +5,7 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -123,6 +123,32 @@ type HistoryEntry = { index: number; key: string; url: string | null };
 type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[] };
 /** The browser's history, where it can be asked what its entries are (the Navigation API). */
 const historyOf = () => (window as { navigation?: Navigation }).navigation;
+
+let heard: boolean | undefined;
+/**
+ * Whether the browser says when its history moves, and where from (the Navigation API's `currententrychange`). One
+ * engine has the API's object and never fires the event, so it is asked once, with a change of entry that changes
+ * nothing. Never asked while drawing.
+ */
+function hearsHistory() {
+  if (heard !== undefined) return heard;
+  const navigation = historyOf();
+  heard = false;
+  if (!navigation) return false;
+  const hear = () => void (heard = true);
+  navigation.addEventListener("currententrychange", hear);
+  window.history.replaceState(window.history.state, "");
+  navigation.removeEventListener("currententrychange", hear);
+  return heard;
+}
+
+/** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
+const watchEntry = (wake: () => void) => {
+  const navigation = historyOf();
+  navigation?.addEventListener("currententrychange", wake);
+  return () => navigation?.removeEventListener("currententrychange", wake);
+};
+const entryKey = () => historyOf()?.currentEntry?.key ?? "";
 type EntryChange = Event & { navigationType: string | null; from: HistoryEntry };
 
 /**
@@ -135,7 +161,7 @@ function useStepHistory(report: Report | null, humanReview: boolean, send: (step
   // The browser's history is the outside system: it says where a step came from only through the Navigation API.
   useEffect(() => {
     const navigation = historyOf();
-    if (!report || !navigation) return;
+    if (!report || !navigation || !hearsHistory()) return;
     const onChange = (event: Event) => {
       const { navigationType, from } = event as EntryChange;
       if (navigationType !== "traverse" || !from.url || !navigation.currentEntry) return;
@@ -203,7 +229,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // the entry behind it. Back from its DOI lands there, on a report already started: that entry shows the list
   // from then on, never a second new report nobody asked for. Entries are told apart by the browser's own key.
   const [used, setUsed] = useState<string[]>([]);
-  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (used.length > 0 && used.includes(historyOf()?.currentEntry?.key ?? ""));
+  const entry = useSyncExternalStore(watchEntry, entryKey, () => "");
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || used.includes(entry);
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
@@ -274,7 +301,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     // The upload is the address's alone. The steps after it are the report's, and Back between them needs the
     // browser to say where a step came from: without that the upload's step is taken back as the report moves on,
     // so Back never lands on a step that shows the same screen again.
-    if (step === "upload" || "navigation" in window) go({ step });
+    if (step === "upload" || hearsHistory()) go({ step });
     else if (from !== "doi") up("step");
   };
   // To a step the trail or a screen's own button names. Back is the browser's own step back when the entry behind
@@ -286,7 +313,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
       send(step);
       return stepOn(step as "upload" | "details");
     }
-    if (stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
+    // A step back the address alone makes, or one the history then sends the report to (useStepHistory).
+    if ((saved.step === step || hearsHistory()) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
     if (saved.step !== step) send(step);
     void setPlace({ step: step === "doi" ? null : step });
   };
@@ -410,7 +438,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             setFresh={setFresh}
             carried={carried}
             onSigned={(key) => {
-              const navigation = historyOf();
+              const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
               if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) setUsed((keys) => [...keys, behind.key]);
               void setPlace({ report: key, step: null });
