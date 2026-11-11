@@ -130,7 +130,14 @@ const historyOf = () => (window as { navigation?: Navigation }).navigation;
  * own first step, or the app's own upkeep of the entry it is on, is enough.
  */
 let heard = false;
-if (typeof window !== "undefined") historyOf()?.addEventListener("currententrychange", () => void (heard = true));
+// Only a step the page itself took or the person's own Back counts: one engine fires the event for other changes of
+// entry and stays silent for these, and the steps would then be pushed with nothing to hear Back.
+if (typeof window !== "undefined") {
+  historyOf()?.addEventListener("currententrychange", (event) => {
+    const type = (event as EntryChange).navigationType;
+    if (type === "push" || type === "traverse") heard = true;
+  });
+}
 const hearsHistory = () => heard;
 
 /** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
@@ -140,6 +147,25 @@ const watchEntry = (wake: () => void) => {
   return () => navigation?.removeEventListener("currententrychange", wake);
 };
 const entryKey = () => historyOf()?.currentEntry?.key ?? "";
+
+/** The history entries a signed report was started from, by the browser's key, kept with the tab: a reload doesn't forget them. */
+const STARTED_FROM = "publish:started-from";
+const startedFrom = () => {
+  try {
+    return window.sessionStorage.getItem(STARTED_FROM) ?? "";
+  } catch {
+    return "";
+  }
+};
+const keepStartedFrom = (key: string) => {
+  try {
+    window.sessionStorage.setItem(STARTED_FROM, `${startedFrom()} ${key}`.trim());
+  } catch {
+    // Without the tab's storage the entry is forgotten on a reload, and shows Prepare again.
+  }
+};
+/** Read as the page is drawn, and written only by a signing, which draws it again. */
+const unwatched = () => () => undefined;
 type EntryChange = Event & { navigationType: string | null; from: HistoryEntry };
 
 /**
@@ -247,9 +273,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // A report signed here took its agreement's place in the history, and the Prepare it was started from is still
   // the entry behind it. Back from its DOI lands there, on a report already started: that entry shows the list
   // from then on, never a second new report nobody asked for. Entries are told apart by the browser's own key.
-  const [used, setUsed] = useState<string[]>([]);
+  const used = useSyncExternalStore(unwatched, startedFrom, () => "");
   const entry = useSyncExternalStore(watchEntry, entryKey, () => "");
-  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || used.includes(entry);
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (entry !== "" && used.split(" ").includes(entry));
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
@@ -304,10 +330,10 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   }
 
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
-  // address's: opening the upload is a step forward, and Back from it returns to the DOI. An address further on
-  // is one the report is on its way to (useStepHistory), and the upload stays up meanwhile.
+  // address's: opening the upload is a step forward, and Back from it returns to the DOI. Any other step an
+  // address names is only a name: the report shows where it stands.
   // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
-  const report = saved?.step === "doi" && at && at !== "agreement" ? { ...saved, step: "upload" as const } : saved;
+  const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
   // Every new report starts on Prepare, what publishing asks for, then the agreement: a step forward in the
   // browser's history, so Back from the agreement is Prepare. A signing on its way stays on the agreement.
   const preparing = !report && at !== "agreement" && !arriving;
@@ -461,7 +487,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onSigned={(key) => {
               const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
-              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) setUsed((keys) => [...keys, behind.key]);
+              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) keepStartedFrom(behind.key);
               void setPlace({ report: key, step: null });
             }}
             onAnother={another}
