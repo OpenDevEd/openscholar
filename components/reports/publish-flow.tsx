@@ -1181,7 +1181,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const [code, setCode] = useState<Quote | null>(null);
   // The person applied or removed a code here: from then on the code is theirs, not the last payment's.
   const [chose, setChose] = useState(false);
+  // The same, for a requote that answers after the choice: it reads this when it lands, not what it was asked with.
+  const chosen = useRef(false);
   const choose = (quote: Quote | null) => {
+    chosen.current = true;
     setChose(true);
     setCode(quote);
   };
@@ -1196,10 +1199,13 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
     onQuote(again)
       .then(
         (quote) => {
+          // A code applied or removed while this was asked is the person's: the old one's answer changes nothing.
+          if (chosen.current) return;
           setCode(quote);
           setPaying(true);
         },
         (error: unknown) => {
+          if (chosen.current) return;
           if (!promoReason(error)) return said(t("activateFailed"))(error);
           setCode(null);
           setPaying(true);
