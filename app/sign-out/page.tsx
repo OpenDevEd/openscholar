@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/convex/_generated/api";
@@ -9,23 +11,32 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("signOut"), robots: { index: false } };
 }
 
-/**
- * Where signing out goes afterwards: the page that asked (`redirect_url`), only when a community answers at its
- * address. A community sends its reader here when they sign out there, so they are signed out of both. Any other
- * address, or one that can't be checked, gets the home page: this page never sends someone wherever a link says.
- */
-async function returnAddress(asked: string | string[] | undefined) {
-  if (typeof asked !== "string" || !URL.canParse(asked)) return "/";
-  const address = new URL(asked);
-  if (address.protocol !== "https:") return "/";
+/** An address's origin when a community answers there; null for any other address, or one that can't be checked. */
+async function communityOrigin(address: string | string[] | null | undefined) {
+  if (typeof address !== "string" || !URL.canParse(address)) return null;
+  const { protocol, origin } = new URL(address);
+  if (protocol !== "https:") return null;
   try {
-    return (await fetchQuery(api.evidenceLibraries.sources.isCommunity, { origin: address.origin })) ? address.toString() : "/";
+    return (await fetchQuery(api.evidenceLibraries.sources.isCommunity, { origin })) ? origin : null;
   } catch (error) {
-    console.error(JSON.stringify({ event: "sign-out-return-check-failed", origin: address.origin, error: String(error).slice(0, 300) }));
-    return "/";
+    console.error(JSON.stringify({ event: "sign-out-return-check-failed", origin, error: String(error).slice(0, 300) }));
+    return null;
   }
 }
 
+/**
+ * Where a community sends its reader when they sign out there, so they are signed out of Openscholar too, and come
+ * straight back to the page they were on (`redirect_url`).
+ *
+ * It signs out only when the browser says the request came from that same community (its Referer, which a page
+ * elsewhere can't set): a link on another site can't sign anyone out. And it goes back only to an address a community
+ * answers at, never wherever a link says. Anything else gets the home page, signed in as before.
+ */
 export default async function SignOutPage({ searchParams }: { searchParams: Promise<{ redirect_url?: string | string[] }> }) {
-  return <SignOut to={await returnAddress((await searchParams).redirect_url)} />;
+  const [{ redirect_url: asked }, requestHeaders] = await Promise.all([searchParams, headers()]);
+  const [back, from] = await Promise.all([communityOrigin(asked), communityOrigin(requestHeaders.get("referer"))]);
+  if (!back) redirect("/");
+  // A browser that sends no Referer still gets back to its community, signed out there only, as before this page existed.
+  if (from !== back) redirect(asked as string);
+  return <SignOut to={asked as string} />;
 }
