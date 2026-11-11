@@ -43,6 +43,20 @@ export const get = query({
 });
 
 /**
+ * The key of the report a DOI names, for a link that knows a paper only by its DOI (app/papers/doi): a live report, or
+ * one withdrawn after going live, which still has its page. Null for any other DOI.
+ */
+export const keyByDoi = query({
+  args: { doi: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { doi }) => {
+    // A DOI is stored as it was reserved, in lower case.
+    const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+    return report && (report.status === "live" || report.withdrawnAt !== undefined) ? report.key : null;
+  },
+});
+
+/**
  * Whether the person reading a live report's page may correct it (its owner, and its workspace's admins), and whether
  * changes of theirs are already waiting. Null for anyone else, signed out included.
  */
