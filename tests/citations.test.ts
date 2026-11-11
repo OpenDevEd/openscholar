@@ -36,6 +36,12 @@ describe("paper citations", () => {
     const result = await loadPaperCitations(["paper-citations", data, "en-GB"]);
     expect(result.citations.apa.text).toContain("Schools in Kenya.");
   });
+  it("keeps an Openscholar Report's series through the metadata the Cite menu downloads from", async () => {
+    const report = { ...paper, id: "https://openscholar.ai/papers/R100018", type: "report", doi: "10.53832/openscholar-reports.r100018", primary_location: { source: { id: "", display_name: "Openscholar Reports", type: "repository" } } };
+    const data = await getPaperCitationMetadata(paperToCitationData(report)!);
+    expect(data["collection-title"]).toBe("Openscholar Reports");
+  });
+
   it("does not fabricate missing names or display a citation action without a title", () => {
     expect(paperToCitationData({ ...paper, title: undefined })).toBeNull();
     expect(paperToCitationData(paper)?.author).toEqual([{ literal: "Jane Smith" }]);
