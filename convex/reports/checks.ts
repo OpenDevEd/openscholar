@@ -15,7 +15,7 @@ import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
 import { CHECK_SAID, doiIn, linkHref } from "../../lib/reports/report";
-import type { Check } from "../../lib/reports/settings";
+import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
 
@@ -30,6 +30,9 @@ const LLM_TEXT = 80_000;
 /** The public communities the Already published check searches: the ones with the most records. ponytail: each is
  * one request, so a ceiling; a search across every community's records in one place lifts it. */
 const COMMUNITIES_SEARCHED = 20;
+
+/** The byline check's own question, which the shortcut stands in for: one an admin has reworded goes to its model. */
+const BYLINE_QUESTION = DEFAULT_CHECKS.find((check) => check.id === "byline")?.question;
 
 /**
  * Whether `text` carries `line` whole, however the PDF wrapped it (spaces and line breaks anywhere in it, any case),
@@ -62,7 +65,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   }
   // The byline is text the PDF has or hasn't: found word for word (line breaks and spacing aside), it passes without a
   // model, whose confidence in a line that's plainly there can sit either side of the threshold.
-  if (check.id === "byline" && carries(text, report.byline)) {
+  if (check.id === "byline" && check.question === BYLINE_QUESTION && carries(text, report.byline)) {
     return { ...base, answer: "yes", confidence: 1, threshold: check.threshold, reasoning: CHECK_SAID.bylineFound, pass: true };
   }
   const question = fill(check.question);
