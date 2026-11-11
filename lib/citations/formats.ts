@@ -40,6 +40,7 @@ export type CitationFile = keyof typeof CITATION_FILES;
  * `number`, so it goes in as that too. Copied BibTeX and both files go through here.
  */
 export function forFiles(data: CitationData): CitationData {
-	const number = data["collection-number"];
+	// Only an Openscholar Report (R…): another paper's series number is not its BibTeX number.
+	const number = /^R\d+$/.test(data.id) ? data["collection-number"] : undefined;
 	return number && !data.number ? { ...data, number } : data;
 }
