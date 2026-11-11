@@ -423,7 +423,7 @@ function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, t
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -868,8 +868,9 @@ function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, onStart }: { series: string; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, price, onStart }: { series: string; /** What activating costs, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
+  const dollars = useDollars();
   const items = [
     { id: "agreement", icon: PenLine },
     { id: "doi", icon: Hash },
@@ -891,7 +892,7 @@ function Overview({ series, reviewed, onStart }: { series: string; /** A reviewe
             </span>
             <span className="min-w-0 pt-1">
               <span className="block text-sm font-medium">{t(`${id}.title`)}</span>
-              <span className="block text-sm text-muted-foreground">{t(`${id}.body`)}</span>
+              <span className="block text-sm text-muted-foreground">{id === "activate" && price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t(`${id}.body`)}</span>
             </span>
           </li>
         ))}
