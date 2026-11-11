@@ -266,3 +266,19 @@ it("tells everyone who sent a paper when the community removes it, past the firs
   expect(statuses).toHaveLength(130);
   expect(new Set(statuses)).toEqual(new Set(["removed"]));
 });
+
+it("finds a paper with no OpenAlex work, such as an Openscholar Report, by the DOI it was sent with", async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId, userId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "sender", email: "sender@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId, userId };
+  });
+  const doi = "10.53832/openscholar-reports.r100010";
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r1", papers: [{ itemKey: "REPORT01", title: "Rainwater harvesting", authors: "Samira Testauthor", year: 2026, openalexId: null, doi, status: "queued" }] });
+  const sender = t.withIdentity({ subject: "sender" });
+  // Add to community shows it waiting there, so its button is orange.
+  expect(await sender.query(api.evidenceLibraries.submissions.sentTo, { doi })).toEqual([{ libraryId, status: "queued" }]);
+  expect(await sender.query(api.evidenceLibraries.submissions.sentTo, { doi: "10.1000/other" })).toEqual([]);
+});

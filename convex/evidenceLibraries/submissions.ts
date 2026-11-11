@@ -366,14 +366,22 @@ export const recentCommunities = query({
   },
 });
 
-/** Where one paper stands in each community the signed-in person sent it to, by its OpenAlex work. */
+/**
+ * Where one paper stands in each community the signed-in person sent it to, found the way it was sent: by its OpenAlex
+ * work, or by its DOI (lower case, without its address) when it has none, such as an Openscholar Report.
+ */
 export const sentTo = query({
-  args: { openalexId: v.string() },
+  args: { openalexId: v.optional(v.string()), doi: v.optional(v.string()) },
   returns: sentToValidator,
-  handler: async (ctx, { openalexId }) => {
+  handler: async (ctx, { openalexId, doi }) => {
     const person = await senderOf(ctx);
     if (!person) return [];
-    const rows = await ctx.db.query("paperSubmissions").withIndex("by_user_and_openalexId", (q) => q.eq("userId", person._id).eq("openalexId", openalexId)).take(PAPER_SENT_TO);
+    const submissions = ctx.db.query("paperSubmissions");
+    const rows = openalexId
+      ? await submissions.withIndex("by_user_and_openalexId", (q) => q.eq("userId", person._id).eq("openalexId", openalexId)).take(PAPER_SENT_TO)
+      : doi
+        ? await submissions.withIndex("by_user_and_doi", (q) => q.eq("userId", person._id).eq("doi", doi)).take(PAPER_SENT_TO)
+        : [];
     return rows.map((row) => ({ libraryId: row.libraryId, status: row.status }));
   },
 });

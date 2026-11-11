@@ -137,7 +137,7 @@ export function CommunityControl({
   const yours = useHeld(useProtectedPaginatedQuery(api.evidenceLibraries.queries.listLibraries, reads ? (search ? { search } : {}) : "skip", { initialNumItems: STEP }));
   const listed = useHeld(useProtectedPaginatedQuery(api.evidenceLibraries.directory.directory, reads ? { sort: "name", ...(search ? { search } : {}) } : "skip", { initialNumItems: STEP }));
   const recentRead = useProtectedQuery(api.evidenceLibraries.submissions.recentCommunities, reads ? {} : "skip").data;
-  const sent = useProtectedQuery(api.evidenceLibraries.submissions.sentTo, reads && openalexId ? { openalexId } : "skip").data;
+  const sent = useProtectedQuery(api.evidenceLibraries.submissions.sentTo, reads && (openalexId || doi) ? (openalexId ? { openalexId } : { doi: doi! }) : "skip").data;
   const statusIn = new Map((sent ?? []).map((row) => [row.libraryId as string, row.status]));
   // Orange while the paper is in a community, waiting for review or published, as the list's rows count it; not once declined, withdrawn or removed.
   const inCommunity = [...statusIn.values()].some((status) => status === "queued" || status === "published");
