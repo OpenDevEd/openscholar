@@ -560,7 +560,7 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
   const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
-      <ol className="grid grid-cols-6 gap-1">
+      <ol className="grid grid-cols-6 gap-1 max-sm:flex max-sm:justify-between">
         {STEPS.map((s, i) => {
           const done = i < place || (i === place && place === 5);
           const current = i === place && place !== 5;
@@ -577,7 +577,7 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
             </>
           );
           return (
-            <li key={s.id} className="min-w-0">
+            <li key={s.id} className={cn("min-w-0", current && "max-sm:flex-1")}>
               {clickable ? (
                 <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
@@ -1243,7 +1243,11 @@ function ActivateButton({ label, amount, busy, disabled, onClick }: { label: str
             </span>
             {label}
           </span>
-          {amount === null ? null : <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">{amount}</span>}
+          {amount === null ? null : (
+            <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">
+              <bdi>{amount}</bdi>
+            </span>
+          )}
         </span>
       </Working>
     </Button>
