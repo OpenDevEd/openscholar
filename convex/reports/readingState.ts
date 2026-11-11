@@ -7,6 +7,8 @@ import { detailsOf, keptDetails, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
 import { metadataValidator } from "./validators";
+import type { Doc } from "../_generated/dataModel";
+import type { Metadata } from "../../lib/reports/report";
 
 /** The PDF to read and the model that reads it; null when a newer PDF replaced it or the report is past its details. */
 export const begin = internalQuery({
@@ -26,6 +28,22 @@ export const begin = internalQuery({
  * opened stays at the upload step with its trouble said; one with no text in it, or whose details couldn't be read,
  * opens them to be filled in and says so. A reading of a PDF replaced meanwhile saves nothing, and its text is given up.
  */
+const sameName = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * The signer's own author row, matched by the name they signed with, takes the ORCID iD and institutions their profile
+ * holds where the PDF gave none. Nothing the PDF gave is changed, nor anyone else's row, and the author can still edit both.
+ */
+function signerFilledIn(metadata: Metadata, signer: string, profile: Doc<"users">["profile"]): Metadata {
+  if (!profile) return metadata;
+  const at = metadata.authors.findIndex((author) => sameName(author.name) === sameName(signer));
+  if (at < 0) return metadata;
+  const authors = metadata.authors.map((author, index) =>
+    index !== at ? author : { ...author, ...(!author.orcid && profile.orcid && { orcid: profile.orcid }), ...(!author.affiliations.length && profile.affiliations.length && { affiliations: profile.affiliations }) },
+  );
+  return { ...metadata, authors };
+}
+
 export const finish = internalMutation({
   args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))), /** The details couldn't be read from it, whatever else is wrong with it. */ unread: v.optional(v.boolean()) },
   returns: v.null(),
@@ -41,7 +59,8 @@ export const finish = internalMutation({
       return null;
     }
     if (text) await ctx.db.insert("reportFiles", { file: text, reportId });
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(metadata) });
+    const profile = (await ctx.db.get("users", report.ownerId))?.profile;
+    await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(signerFilledIn(metadata, report.signedBy.name, profile)) });
     await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: metadata.title.trim() || undefined });
     // The team hears of a reading that failed, of a scan's too: what its author is told first is that it has no text.
     if (unread) await notify(ctx, reportId, "pdf-unread");

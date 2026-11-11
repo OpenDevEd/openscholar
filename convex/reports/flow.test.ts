@@ -112,6 +112,22 @@ describe("a report's PDF", () => {
     expect((await read(world.author, world.own, first.key)).metadata?.title).toBe("The second PDF's title");
   });
 
+  it("fills the signer's own author row from their profile where the PDF gave no iD or institution", async () => {
+    const world = await setup();
+    const key = await sign(world.author, world.own);
+    const { _id: reportId, ownerId } = await row(world.t, key);
+    const lab = { id: "I1", name: "University of Ghana", country: "GH" };
+    await world.t.run((ctx) => ctx.db.patch("users", ownerId, { profile: { affiliations: [lab], orcid: "0000-0002-1825-0097", emails: { updates: false, news: false, research: false } } }));
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a report"], { type: "application/pdf" })));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "report.pdf" });
+    const author = (name: string, orcid = "") => ({ name, orcid, openalexId: null, affiliations: [], corresponding: false, roles: [] });
+    const readFromPdf = { ...details(), authors: [author("Kofi Mensah", "0000-0001-5109-3700"), author("ada  AUTHOR"), author("Ama Owusu")] };
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 12, metadata: readFromPdf });
+    const { metadata } = await read(world.author, world.own, key);
+    // The signer, matched by the name signed with however it is spaced or cased; the others keep what the PDF gave.
+    expect(metadata?.authors).toMatchObject([{ orcid: "0000-0001-5109-3700", affiliations: [] }, { orcid: "0000-0002-1825-0097", affiliations: [lab] }, { orcid: "", affiliations: [] }]);
+  });
+
   it("opens its details once read, and ignores the reading of a PDF since replaced", async () => {
     const world = await setup();
     const first = await atDetails(world);
