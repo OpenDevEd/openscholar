@@ -110,7 +110,7 @@ describe("public route auth matrix", () => {
     const routes = appRoutes();
     const files = [...routes.filter(({ kind, path }) => kind === "route" && !path.startsWith("/api/")).map(({ path }) => path), "/robots.txt", "/sitemap.xml", "/papers/sitemap/0.xml"];
     expect(files.filter((path) => !isPublicFile(path))).toEqual([]);
-    const pages = [...routes.filter(({ kind }) => kind === "page").map(({ path }) => path), "/papers/sitemap.xml", "/papers/W1/a-title", "/wp-login.php", "/papers/doi"];
+    const pages = [...routes.filter(({ kind }) => kind === "page").map(({ path }) => path), "/papers/sitemap.xml", "/papers/W1/a-title", "/wp-login.php", "/papers/doi", "/question-stage/missing.php"];
     expect(pages.filter(isPublicFile)).toEqual([]);
   });
 });
