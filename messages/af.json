@@ -6538,6 +6538,7 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "Ooreenkoms",
         "doi": "DOI",
         "upload": "PDF",

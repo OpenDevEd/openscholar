@@ -69,7 +69,8 @@ type Quote = { code: string; price: number; discount: number; total: number };
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
 const STUCK_MS = RUN_STUCK_MS;
 
-const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" | "live"; icon: typeof PenLine }> = [
+const STEPS: Array<{ id: "prepare" | "agreement" | "doi" | "upload" | "details" | "checks" | "live"; icon: typeof PenLine }> = [
+  { id: "prepare", icon: ListChecks },
   { id: "agreement", icon: PenLine },
   { id: "doi", icon: Hash },
   { id: "upload", icon: FileUp },
@@ -79,10 +80,14 @@ const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" |
 ];
 type BackStep = "doi" | "upload" | "details";
 
-/** Where the trail stands: the step being done, or past the checks, the outcome. */
-function placeOf(report: Report | null) {
-  if (!report) return 0;
-  if (report.step === "done") return report.status === "live" ? 5 : 4;
+/** The trail's last step, Live, and the one before it, the checks. */
+const LIVE_AT = STEPS.length - 1;
+const CHECKS_AT = STEPS.length - 2;
+
+/** Where the trail stands: the step being done, or past the checks, the outcome. Before a report, preparing or the agreement. */
+function placeOf(report: Report | null, preparing: boolean) {
+  if (!report) return preparing ? 0 : 1;
+  if (report.step === "done") return report.status === "live" ? LIVE_AT : CHECKS_AT;
   return STEPS.findIndex((s) => s.id === report.step);
 }
 
@@ -174,6 +179,8 @@ export function PublishFlow() {
   const listing = listed || opening;
 
   const signedOut = isLoaded && !isSignedIn;
+  // Prepare, the page before the agreement, has been read and left for the agreement.
+  const [prepared, setPrepared] = useState(false);
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
   const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
@@ -193,6 +200,9 @@ export function PublishFlow() {
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
   // address's: opening the upload is a step forward, and Back from it returns to the DOI.
   const report = saved?.step === "doi" && (at === "upload" || saved.pdf) ? { ...saved, step: "upload" as const } : saved;
+  // A new report starts on Prepare, what publishing asks for, then the agreement. A DOI reserved and left, or a
+  // signing on its way, goes straight to the agreement.
+  const preparing = !report && !prepared && !arriving && !starts?.untouched;
   // A step the report is sent to is its own from then on, whatever the address said before.
   const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
@@ -228,7 +238,7 @@ export function PublishFlow() {
           </Button>
         ) : undefined
       }
-      intro={!listing && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
+      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => setPrepared(false)} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
@@ -301,6 +311,9 @@ export function PublishFlow() {
           {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
           <Screens
+            preparing={preparing}
+            onPrepared={() => setPrepared(true)}
+            onUnprepare={() => setPrepared(false)}
             signed={arriving ? fresh.key : null}
             basics={basics}
             report={report}
@@ -342,7 +355,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
@@ -371,8 +384,6 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
   const [typing, setTyping] = useState(false);
   // The checks were asked for here and the report hasn't said so yet: the page shows them running at once.
   const [starting, setStarting] = useState(false);
-  // The overview of what publishing takes comes before the agreement, until the author starts.
-  const [started, setStarted] = useState(false);
   // Another report is another form: what was typed, sent or started for one is never the next one's.
   const [of, setOf] = useState(report?.key);
   if (of !== report?.key) {
@@ -411,16 +422,17 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
   }, []);
-  const screen = !report ? (!started && !signed && !starts?.untouched ? "overview" : "agreement") : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
+  const screen = !report ? (preparing ? "prepare" : "agreement") : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
-          {!report && !started && !signed && !starts?.untouched ? (
-            <Overview series={basics.series.name} onStart={() => setStarted(true)} />
+          {!report && preparing ? (
+            <Overview series={basics.series.name} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
+              onBack={onUnprepare}
               basics={basics}
               shared={shared}
               starts={starts}
@@ -570,27 +582,29 @@ function usePassed(at: number | undefined) {
 }
 
 /** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
+function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; /** The page before the agreement is open. */ preparing: boolean; /** Back to it from the agreement. */ onPrepare: () => void; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
-  const place = running ? 4 : placeOf(report);
+  const place = running ? CHECKS_AT : placeOf(report, preparing);
   const stage = report?.step === "done" ? stageOf(report, humanReview) : null;
   const failed = stage === "failed" || stage === "declined";
   const waiting = stage === "review";
   const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
-      <ol className="grid grid-cols-6 gap-1 max-sm:flex max-sm:justify-between">
+      <ol className="grid grid-cols-7 gap-1 max-sm:flex max-sm:justify-between">
         {STEPS.map((s, i) => {
-          const done = i < place || (i === place && place === 5);
-          const current = i === place && place !== 5;
+          const done = i < place || (i === place && place === LIVE_AT);
+          const current = i === place && place !== LIVE_AT;
           const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
           // The PDF and the details once done, and the DOI until there is a PDF (it shows beside the trail after, and
           // going back to it would ask for the PDF again); the agreement is signed for good. Back at the upload, the
           // details already read are still a step away.
-          const clickable = canGoBack && i > 0 && i < 4 && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata);
+          // Before a report, Prepare is a step back from the agreement.
+          const back = !report && s.id === "prepare" && !preparing;
+          const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata));
           const body = (
             <>
               <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
@@ -601,7 +615,7 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
           return (
             <li key={s.id} className={cn("min-w-0", current && "max-sm:flex-1")}>
               {clickable ? (
-                <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                <button type="button" onClick={() => (back ? onPrepare() : s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
               ) : (
@@ -614,7 +628,7 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
         })}
       </ol>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-inset">
-        <motion.div className={cn("h-full rounded-full", failed ? "bg-destructive" : "bg-primary")} initial={false} animate={{ width: `${((place + (place === 5 ? 1 : 0.5)) / STEPS.length) * 100}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
+        <motion.div className={cn("h-full rounded-full", failed ? "bg-destructive" : "bg-primary")} initial={false} animate={{ width: `${((place + (place === LIVE_AT ? 1 : 0.5)) / STEPS.length) * 100}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
       </div>
     </div>
   );
@@ -632,7 +646,7 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }: { basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
+function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack }: { /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
@@ -696,6 +710,11 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
         ) : null}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        {onBack ? (
+          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
+            <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -751,6 +770,8 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
   const LETTERS_AT = 0.55;
   const LETTER = 0.03;
   return (
+    <div>
+    {/* The DOI itself, centred and held to a readable width; what to do with it runs the page's full width below. */}
     <div className="flex flex-col items-center pb-2 pt-3 text-center">
       <div className="relative size-20">
         {play ? <motion.span aria-hidden className="absolute inset-0 rounded-[1.75rem] border-2 border-primary" initial={{ opacity: 0.6, scale: 1 }} animate={{ opacity: 0, scale: 1.6 }} transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }} /> : null}
@@ -797,16 +818,19 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           </StatusChip>
         </div>
       </motion.div>
-      {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. */}
-      <motion.div className="mt-7 w-full max-w-xl text-start" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
-        <p className="text-sm font-medium">{t("bylineFirst")}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">{t("bylineFirstBody")}</p>
-        <BylineBox byline={report.byline} className="mt-3" />
-        <div className="mt-6 flex justify-end">
-          <Button onClick={onNext}>
-            {t("nextUpload")} <ArrowRight />
-          </Button>
-        </div>
+    </div>
+      {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
+          out as the upload's page is, which comes next. */}
+      <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
+        <StepHead title={t("bylineFirst")}>{t("bylineFirstBody")}</StepHead>
+        <BylineBox byline={report.byline} />
+        <StepNav
+          next={
+            <Button onClick={onNext}>
+              {t("nextUpload")} <ArrowRight />
+            </Button>
+          }
+        />
       </motion.div>
     </div>
   );

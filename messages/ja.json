@@ -6537,6 +6537,7 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "契約",
         "doi": "DOI",
         "upload": "PDF",

@@ -6537,6 +6537,7 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "Accord",
         "doi": "DOI",
         "upload": "PDF",
