@@ -259,7 +259,10 @@ export function DetailsStep({
   /** The details couldn't be read from the PDF, so the form starts nearly empty and says so instead of "Filled in". */
   unread?: boolean;
 }) {
-  const [m, setM] = useState(initial);
+  // Only the fields changed in this form are its own; the rest follow the report as it is now. Another tab's newer
+  // title is then shown here, and sent back unchanged with this form's next save instead of being written over.
+  const [own, setOwn] = useState<Partial<Metadata>>({});
+  const m: Metadata = { ...initial, ...own };
   const t = useTranslations("publishReports.details");
   const format = useFormatter();
   const locale = useLocale();
@@ -271,22 +274,24 @@ export function DetailsStep({
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
-  const held = useRef({ m: initial, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined });
+  const held = useRef({ own: {} as Partial<Metadata>, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined });
   const sendNow = () => {
     clearTimeout(held.current.timer);
     held.current.send?.();
     held.current.send = undefined;
   };
   const change = (update: (was: Metadata) => Metadata) => {
-    const next = update(held.current.m);
+    const was: Metadata = { ...initial, ...held.current.own };
+    const next = update(was);
+    const own = { ...held.current.own, ...Object.fromEntries(Object.entries(next).filter(([field, value]) => value !== was[field as keyof Metadata])) };
     // Told once, at the first change: the report's own details can arrive anew at any time, so what the form was
     // opened with is no way to tell an untouched form from a changed one.
     if (!touched) {
       setTouched(true);
       onTouched?.();
     }
-    held.current.m = next;
-    setM(next);
+    held.current.own = own;
+    setOwn(own);
     clearTimeout(held.current.timer);
     held.current.send = onSave ? () => onSave(next, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
