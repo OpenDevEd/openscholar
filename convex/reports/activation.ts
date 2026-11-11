@@ -420,14 +420,15 @@ export const quote = action({
 
 /** Stripe's page for saving a card on the workspace's billing account, which comes back to the report. Its admins only. */
 export const addCard = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string() },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), /** The code applied in the payment bar, which the way back carries so it needn't be typed again. */ code: v.optional(v.string()) },
   returns: v.string(),
-  handler: async (ctx, { workspaceId, key }): Promise<string> => {
+  handler: async (ctx, { workspaceId, key, code: typed }): Promise<string> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
     // Stripe writes the session's id into the way back, which names the card saved in it.
-    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}`)).url;
+    const code = codeOf(typed);
+    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${code ? `&code=${encodeURIComponent(code)}` : ""}`)).url;
   },
 });
 

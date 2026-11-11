@@ -546,7 +546,7 @@ function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, t
                   },
                 );
               }}
-              onAddCard={() => addCard({ ...here, key: report.key }).then((url) => window.location.assign(url))}
+              onAddCard={(code) => addCard({ ...here, key: report.key, ...(code && { code }) }).then((url) => window.location.assign(url))}
               onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
               onFix={() => back("upload")}
               onDetails={() => back("details")}
@@ -1147,7 +1147,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: () => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1416,8 +1416,10 @@ function useDollars() {
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
 function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
-  const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState("");
+  // Back from saving a card on Stripe's page, the code applied before leaving is in the address: the field opens with it.
+  const [carried] = useQueryState("code", parseAsString);
+  const [open, setOpen] = useState(!!carried);
+  const [typed, setTyped] = useState(carried ?? "");
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
   const t = useTranslations("publishReports.flow.activation.promo");
@@ -1504,7 +1506,7 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, quoted, voucher, action }: { /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, quoted, voucher, action }: { /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1515,7 +1517,8 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
   const saveCard = () =>
     save(async () => {
       try {
-        await onAddCard?.();
+        // The code applied goes with it, so the way back from Stripe opens the field with it typed in.
+        await onAddCard?.(quoted?.code);
       } catch (error) {
         said(t("stripeFailed"))(error);
       }
