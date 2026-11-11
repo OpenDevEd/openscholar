@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { slugPick } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
-import { detailsOf, keptDetails, touch } from "./flow";
+import { detailsOf, forget, keptDetails, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
 import { metadataValidator } from "./validators";
@@ -13,14 +13,14 @@ import type { Metadata } from "../../lib/reports/report";
 /** The PDF to read and the model that reads it; null when a newer PDF replaced it or the report is past its details. */
 export const begin = internalQuery({
   args: { reportId: v.id("reports"), at: v.number() },
-  returns: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), doi: v.string(), signer: v.string(), /** The line the byline check looks for in the PDF; null while that check is switched off. */ byline: v.union(v.string(), v.null()), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator), /** The report has details already, from the PDF this one replaces: they are kept, and this one's aren't read. */ kept: v.boolean() })),
+  returns: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), doi: v.string(), signer: v.string(), /** The report's byline, and whether its author has Openscholar add it to the PDF on a last page. */ line: v.string(), added: v.boolean(), /** The line the byline check looks for in the PDF; null while that check is switched off. */ byline: v.union(v.string(), v.null()), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator), /** The report has details already, from the PDF this one replaces: they are kept, and this one's aren't read. */ kept: v.boolean() })),
   handler: async (ctx, { reportId, at }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") return null;
     const settings = await reportSettings(ctx);
     const pick = await slugPick(ctx, settings.metadataModelId, settings.metadataEffort, "extraction");
     const kept = (await detailsOf(ctx, reportId)).metadata !== undefined;
-    return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, byline: settings.checks.some((check) => check.id === "byline" && check.enabled) ? report.byline : null, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }), kept };
+    return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, line: report.byline, added: report.pdf.bylineBy === "added", byline: settings.checks.some((check) => check.id === "byline" && check.enabled) ? report.byline : null, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }), kept };
   },
 });
 
@@ -53,20 +53,27 @@ function signerFilledIn(metadata: Metadata, signer: string, profile: Doc<"users"
 }
 
 export const finish = internalMutation({
-  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))), /** Its text doesn't carry the byline: the report stays at the upload, which says so, with the way on to its details. */ lacksByline: v.optional(v.boolean()), /** The details couldn't be read from it, whatever else is wrong with it. */ unread: v.optional(v.boolean()) },
+  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))), /** Its text doesn't carry the byline: the report stays at the upload, which says so, with the way on to its details. */ lacksByline: v.optional(v.boolean()), /** The details couldn't be read from it, whatever else is wrong with it. */ unread: v.optional(v.boolean()), /** The PDF with the byline's page added, which replaces the one uploaded. */ withByline: v.optional(v.object({ file: v.id("_storage"), bytes: v.number() })) },
   returns: v.null(),
-  handler: async (ctx, { reportId, at, pages, text, metadata, trouble, lacksByline, unread }) => {
+  handler: async (ctx, { reportId, at, pages, text, metadata, trouble, lacksByline, unread, withByline }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") {
       if (text) await ctx.storage.delete(text);
+      if (withByline) await ctx.storage.delete(withByline.file);
       return null;
+    }
+    // The PDF with the byline's page added takes the place of the one uploaded.
+    const pdf = withByline ? { ...report.pdf, ...withByline } : report.pdf;
+    if (withByline) {
+      await forget(ctx, report.pdf.file);
+      await ctx.db.insert("reportFiles", { file: withByline.file, reportId });
     }
     const details = await detailsOf(ctx, reportId);
     // Details the report already has, from the PDF this one replaces, stay as their author left them.
     const held = details.metadata;
     // A PDF that couldn't be opened has no pages.
     if (pages === undefined || (!metadata && !held)) {
-      await touch(ctx, report, { pdf: { ...report.pdf, trouble: "unopened" } });
+      await touch(ctx, report, { pdf: { ...pdf, trouble: "unopened" } });
       await notify(ctx, reportId, "pdf-unopened");
       return null;
     }
@@ -74,7 +81,7 @@ export const finish = internalMutation({
     const profile = (await ctx.db.get("users", report.ownerId))?.profile;
     const kept = held ?? keptDetails(signerFilledIn(metadata!, report.signedBy.name, profile));
     if (!held) await ctx.db.patch("reportDetails", details._id, { metadata: kept });
-    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble, ...(lacksByline && { lacksByline }), ...(held && { kept: true }) }, step: lacksByline ? "upload" : "details", title: kept.title.trim() || undefined });
+    await touch(ctx, report, { pdf: { ...pdf, pages, text, trouble, ...(lacksByline && { lacksByline }), ...(held && { kept: true }) }, step: lacksByline ? "upload" : "details", title: kept.title.trim() || undefined });
     // The team hears of a reading that failed, of a scan's too: what its author is told first is that it has no text.
     if (unread) await notify(ctx, reportId, "pdf-unread");
     return null;

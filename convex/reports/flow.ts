@@ -20,7 +20,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
+import { authorRowValidator, bylineByValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -300,6 +300,26 @@ export const readAgain = workspaceMutation({
   },
 });
 
+/**
+ * The author has Openscholar add the byline to the PDF already uploaded, which lacks it: the PDF is read again, and
+ * that reading adds the page (./reading.ts). The report's details stay as they are.
+ */
+export const addByline = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (report.step !== "upload" || !report.pdf?.lacksByline) throw createError("CONFLICT", MOVED_ON);
+    await forget(ctx, report.pdf.text);
+    const { file, name, bytes } = report.pdf;
+    const at = Math.max(Date.now(), report.pdf.at + 1);
+    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" } });
+    await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
+    return null;
+  },
+});
+
 /** Where the browser sends a report's PDF, and the picture of its first page, before attaching them. */
 export const startUpload = workspaceMutation({
   args: { key: v.string() },
@@ -319,9 +339,9 @@ export const startUpload = workspaceMutation({
  * anew, for the checks. A file that can't be this report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")) },
+  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")), /** Who adds the byline, as the author chose at the upload. A page still open from before the choice sends none. */ bylineBy: v.optional(bylineByValidator) },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, actor, { key, file, name, cover }) => {
+  handler: async (ctx, actor, { key, file, name, cover, bylineBy }) => {
     await refuseApps(ctx);
     const stored = await uploaded(ctx, file);
     const picture = cover ? await uploaded(ctx, cover) : null;
@@ -349,7 +369,7 @@ export const attachPdf = workspaceMutation({
     await ctx.db.insert("reportFiles", { file, reportId: report._id });
     if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -519,7 +539,7 @@ const reportValidator = v.object({
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), bylineBy: v.optional(bylineByValidator), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: optionalPlainResults,
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
@@ -567,7 +587,7 @@ export const getAction = defineUserQuery({
         agreementVersion: report.agreementVersion,
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

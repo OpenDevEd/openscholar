@@ -4,10 +4,12 @@
 // its details, which the model set on the admin page reads for the author to correct.
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
+import { withBylinePage } from "../../lib/reports/byline-page";
 import { blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
@@ -54,14 +56,29 @@ export const read = internalAction({
       return null;
     }
     // Built from its pieces as the extraction does, so a line break in the PDF is a break, not two words run together.
-    const text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
+    let text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
+    let pages = opened.totalPages;
+    // An author who has Openscholar add the byline gets it on a last page, unless the PDF carries it already. A page
+    // that can't be added leaves the PDF as it was, without the line, which the upload then says.
+    let withByline: { file: Id<"_storage">; bytes: number } | undefined;
+    if (job.added && text.trim() !== "" && !carries(text, job.line)) {
+      try {
+        const added = await withBylinePage(new Uint8Array(bytes), job.line);
+        withByline = { file: await ctx.storage.store(new Blob([added as Uint8Array<ArrayBuffer>], { type: "application/pdf" })), bytes: added.byteLength };
+        text = `${text}\n${job.line}`;
+        pages += 1;
+      } catch (error) {
+        console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, name: job.name, bytes: bytes.byteLength, error: String(error).slice(0, 300) }));
+      }
+    }
     const textFile = await ctx.storage.store(new Blob([text], { type: "text/plain" }));
     // The byline is text the PDF has or hasn't, so its author hears now, at the upload, not after the checks. A scan
     // has no text to look in, and says that instead.
-    const lacksByline = job.byline !== null && text.trim() !== "" && !carries(text, job.byline);
+    // An author who asked for the page and didn't get it is told so whether or not the byline check is on.
+    const lacksByline = text.trim() !== "" && ((job.byline !== null && !carries(text, job.byline)) || (job.added && !carries(text, job.line)));
     if (job.kept) {
       // The report keeps the details it has: this PDF gives the checks its text and its pages.
-      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, ...(!text.trim() && { trouble: "textless" as const }), ...(lacksByline && { lacksByline }) });
+      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, ...(!text.trim() && { trouble: "textless" as const }), ...(lacksByline && { lacksByline }), ...(withByline && { withByline }) });
       return null;
     }
     let metadata: Metadata | null = null;
@@ -82,7 +99,7 @@ export const read = internalAction({
     if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     // A scan holds no text for the checks to read, which matters more to its author than a reading that fell short.
     const trouble = !text.trim() ? ("textless" as const) : metadata ? undefined : ("unread" as const);
-    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(lacksByline && { lacksByline }), ...(!metadata && { unread: true }) });
+    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(lacksByline && { lacksByline }), ...(!metadata && { unread: true }), ...(withByline && { withByline }) });
     return null;
   },
 });

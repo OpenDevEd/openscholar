@@ -123,6 +123,27 @@ describe("a report's PDF", () => {
     expect(again.pdf?.kept).toBeUndefined();
   });
 
+  it("has the byline's page added to a PDF that lacks the line, when its author asks, and moves on with the new file", async () => {
+    const world = await setup();
+    const { key, reportId } = await atDetails(world);
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line"])));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "no-line.pdf", bylineBy: "self" });
+    // Nothing to add while the PDF hasn't been found lacking.
+    await expect(world.author.mutation(api.reports.flow.addByline, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 4, lacksByline: true });
+    await world.author.mutation(api.reports.flow.addByline, { workspaceId: world.own, key });
+    const asked = (await row(world.t, key)).pdf!;
+    expect(asked).toMatchObject({ file, bylineBy: "added" });
+    expect((await world.t.query(internal.reports.readingState.begin, { reportId, at: asked.at }))?.added).toBe(true);
+    // The reading adds the page: the file with it replaces the upload, which is deleted.
+    const added = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and a page with it"])));
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: asked.at, pages: 5, withByline: { file: added, bytes: 36 } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", pdf: { pages: 5, bytes: 36, bylineBy: "added" }, metadata: { title: "Shade trees and maize yields" } });
+    expect((await row(world.t, key)).pdf!.file).toBe(added);
+    expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
+  });
+
   it("stays at the upload, saying so, when its PDF's text doesn't carry the byline, with the way on to its details", async () => {
     const world = await setup();
     // A first PDF, read, then replaced by one without the line: the reading is what finds it missing.

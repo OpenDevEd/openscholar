@@ -6583,7 +6583,7 @@
         "workspaceClosed": "This workspace's plan doesn't include publishing. Move to a plan that does."
       },
       "signFailed": "The agreement couldn't be signed",
-      "sign": "Sign and reserve a DOI",
+      "sign": "Next: sign and reserve a DOI",
       "signIn": "Sign in to publish",
       "doiReserved": "Your DOI is reserved",
       "doiReservedBody": "It stays with your report, and goes live when the report does.",
@@ -6601,7 +6601,7 @@
       "tooBig": "The PDF is over {max} MB",
       "offline": "The PDF couldn't be uploaded. Check your connection, then choose it again.",
       "uploadFailed": "The PDF couldn't be uploaded. Try again.",
-      "uploadIntro": "Put the following text, verbatim, on the cover or the inside cover before you upload. Our check looks for this line.",
+      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
       "copyByline": "Copy byline",
       "bylineCopied": "Byline copied",
       "uploading": "Uploading {name}",
@@ -6610,7 +6610,7 @@
       "drop": "Drop the PDF here, or choose it",
       "dropHint": "One PDF, up to {max} MB",
       "unopenedPdf": "{name} couldn't be opened as a PDF. If it has a password, remove it, then save it again as a PDF and upload that.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "These are the details you had before you replaced the PDF.",
       "readAgain": "Read them from this PDF instead",
       "readAgainTitle": "Read the details from this PDF?",
@@ -6786,15 +6786,30 @@
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place."
       },
       "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
       "nextUpload": "Next: upload the PDF",
       "nextDetails": "Next: check the details",
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page to the PDF you upload, carrying this line. Nothing else in your PDF changes."
+        }
+      },
       "overview": {
         "title": "Publishing a report with {series}",
         "intro": "About ten minutes from start to finish. This is what each step asks of you.",
         "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "start": "Next: sign the agreement",
         "agreement": {
           "title": "Sign the publishing agreement",
           "body": "You keep the copyright and publish under CC BY 4.0."
@@ -6917,7 +6932,7 @@
       "cancel": "Cancel",
       "sendForReview": "Check the changes and send them for review",
       "checkAndPublish": "Check and publish the changes",
-      "runChecks": "Run the checks",
+      "runChecks": "Next: run the checks",
       "tooEarly": "A report can't be dated before 1400.",
       "back": "Back"
     }

@@ -6611,7 +6611,7 @@
       "drop": "Los die PDF hier, of kies dit",
       "dropHint": "Een PDF, tot {max} MB",
       "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. As dit 'n wagwoord het, verwyder dit; stoor dit dan weer as PDF en laai dit op.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "These are the details you had before you replaced the PDF.",
       "readAgain": "Read them from this PDF instead",
       "readAgainTitle": "Read the details from this PDF?",
@@ -6787,10 +6787,25 @@
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek."
       },
       "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
       "nextUpload": "Next: upload the PDF",
       "nextDetails": "Next: check the details",
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page to the PDF you upload, carrying this line. Nothing else in your PDF changes."
+        }
+      },
       "overview": {
         "title": "Publishing a report with {series}",
         "intro": "About ten minutes from start to finish. This is what each step asks of you.",

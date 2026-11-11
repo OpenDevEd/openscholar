@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowDown, ArrowLeft, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
 import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
@@ -655,7 +655,16 @@ export function DetailsStep({
           held.current.send = undefined;
           void onRun(m, opened);
         }}>
-          <ShieldCheck /> {words ? words.action : t(onCancel ? (waits ? "sendForReview" : "checkAndPublish") : "runChecks")}
+          {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
+          {words || onCancel ? (
+            <>
+              <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
+            </>
+          ) : (
+            <>
+              {t("runChecks")} <ArrowRight />
+            </>
+          )}
         </Button>
       </div>
     </div>

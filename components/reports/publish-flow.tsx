@@ -5,7 +5,7 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -37,13 +37,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { EASE } from "@/components/ui/opening";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
@@ -746,7 +747,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           >
             <Working busy={busy || !!signed}>
               <span className="flex items-center gap-2">
-                <PenLine /> {t("sign")}
+                {t("sign")} <ArrowRight />
               </span>
             </Working>
           </Button>
@@ -765,6 +766,9 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
  * light across it. Plays only right after signing; opened any other way it is already settled.
  */
 function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; onNext: () => void }) {
+  // The choice made here, or the one a PDF already attached was uploaded with.
+  const [chosen, setBy] = useBylineBy();
+  const by = chosen ?? report.pdf?.bylineBy ?? null;
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const play = fresh && !reduce;
@@ -828,10 +832,11 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           out as the upload's page is, which comes next. */}
       <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
         <StepHead title={t("bylineFirst")}>{t("bylineFirstBody")}</StepHead>
-        <BylineBox byline={report.byline} />
+        <BylineChoice byline={report.byline} by={by} onPick={(picked) => void setBy(picked)} />
         <StepNav
+          hint={by ? undefined : t("bylineBy.choose")}
           next={
-            <Button onClick={onNext}>
+            <Button disabled={!by} onClick={onNext}>
               {t("nextUpload")} <ArrowRight />
             </Button>
           }
@@ -857,16 +862,51 @@ function BylineBox({ byline, className }: { byline: string; className?: string }
 }
 
 /** Back and on, at the foot of a step: back to the step before, and on to the next one where it is open. */
-function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
+/** Who puts the line on the PDF: its author, on the cover, or Openscholar, on a last page it adds. */
+const BYLINE_BY = ["self", "added"] as const;
+type BylineBy = (typeof BYLINE_BY)[number];
+// Held in the page's address from the DOI's page to the upload, where it is saved with the PDF.
+const useBylineBy = () => useQueryState("byline", parseAsStringLiteral(BYLINE_BY));
+
+/**
+ * The line, and the choice of who adds it. Neither is chosen for the author: the DOI's page and the upload's both
+ * wait for one, so nobody uploads a PDF before knowing the line has to be in it.
+ */
+function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string; by: BylineBy | null; onPick: (by: BylineBy) => void; disabled?: boolean }) {
+  const t = useTranslations("publishReports.flow.bylineBy");
+  const id = useId();
+  return (
+    <div className="mb-5">
+      <BylineBox byline={byline} />
+      <RadioGroup aria-label={t("label")} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
+        {([["self", PenLine], ["added", FileCheck2]] as const).map(([value, Icon]) => (
+          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-primary/60 hover:bg-muted/50"))}>
+            <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                {t(`${value}.title`)}
+                <Icon className="ms-auto size-4 shrink-0 text-muted-foreground" />
+              </span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">{t(`${value}.body`)}</span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+    </div>
+  );
+}
+
+function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode; /** Why the way on is shut, said beside it. */ hint?: string }) {
   const t = useTranslations("publishReports.flow");
   return (
-    <div className="mt-6 flex items-center gap-2">
+    <div className="mt-6 flex items-center gap-3">
       {onBack ? (
         <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
           <ArrowLeft /> {t("back")}
         </Button>
       ) : null}
-      <div className="ms-auto">{next}</div>
+      {hint ? <p className="ms-auto text-sm text-muted-foreground">{hint}</p> : null}
+      <div className={hint ? undefined : "ms-auto"}>{next}</div>
     </div>
   );
 }
@@ -983,7 +1023,16 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   const [over, setOver] = useState(false);
   // The file on its way up. Once it's the report's, the report itself says it is being read.
   const [sending, setSending] = useState<File | null>(null);
+  const addByline = useMutation(api.reports.flow.addByline);
+  // The choice made on the way here, or the one the PDF already attached was uploaded with.
+  const [chosen, setBy] = useBylineBy();
+  const by = chosen ?? report.pdf?.bylineBy ?? null;
   const here = { workspaceId, key: report.key };
+  // A PDF already here without the line gets its page as soon as its author asks for it, by the choice or the notice.
+  const pick = (picked: BylineBy) => {
+    void setBy(picked);
+    if (picked === "added" && report.pdf?.lacksByline && report.pdf.bylineBy !== "added") void addByline(here).catch(said(t("bylineBy.addFailed")));
+  };
   const put = async (file: Blob, type: string) => {
     const response = await fetch(await startUpload(here), { method: "POST", headers: { "Content-Type": type }, body: file });
     if (!response.ok) throw new Error(t("uploadLost"));
@@ -997,7 +1046,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   const reading = unread && !stuck;
   const busy = !!sending || reading;
   const send = async (picked: File | undefined) => {
-    if (!picked || busy) return;
+    if (!picked || busy || !by) return;
     if (!/\.pdf$/i.test(picked.name)) return void toast.error(t("choosePdf"));
     if (picked.size === 0) return void toast.error(t("emptyFile"));
     if (picked.size > MAX_PDF_BYTES) return void toast.error(t("tooBig", { max: MAX_PDF_MB }));
@@ -1008,7 +1057,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         put(picked, "application/pdf"),
         drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
       ]);
-      const refused = await attachPdf({ ...here, file, name: picked.name, ...(cover && { cover }) });
+      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
       if (refused) return void toast.error(refused);
       onAttached();
     } catch (error) {
@@ -1024,7 +1073,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      <BylineBox byline={report.byline} className="mb-5" />
+      <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -1038,8 +1087,8 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           setOver(false);
           void send(e.dataTransfer.files[0]);
         }}
-        disabled={busy}
-        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
+        disabled={busy || !by}
+        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", !by ? "border-border opacity-60" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
       >
         {sending ? (
           <>
@@ -1056,7 +1105,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         ) : (
           <>
             <FileUp className="size-6 text-primary" />
-            <span className="text-sm font-medium">{t("drop")}</span>
+            <span className="text-sm font-medium">{t(by ? "drop" : "bylineBy.chooseFirst")}</span>
             <span className="text-xs text-muted-foreground">{t("dropHint", { max: MAX_PDF_MB })}</span>
           </>
         )}
@@ -1068,11 +1117,24 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           {t("unopenedPdf", { name: report.pdf.name })}
         </p>
       ) : report.pdf?.lacksByline && !busy ? (
-        // Said here, where the PDF is replaced, not after the checks: the line is shown above, with its copy button.
-        <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
-          <CircleX className="mt-0.5 size-4 shrink-0" />
-          {t("lacksByline", { name: report.pdf.name })}
-        </p>
+        // Said here, where the PDF is replaced, not after the checks: the line is shown above, with its copy button,
+        // and so is the way out for an author who can't edit their PDF.
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 ps-1 text-sm text-destructive">
+          <p className="flex min-w-0 flex-1 basis-72 items-start gap-2">
+            <CircleX className="mt-0.5 size-4 shrink-0" />
+            {t(report.pdf.bylineBy === "added" ? "bylineBy.failed" : "lacksByline", { name: report.pdf.name })}
+          </p>
+          {report.pdf.bylineBy === "added" ? null : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ms-auto text-foreground"
+              onClick={() => pick("added")}
+            >
+              <FileCheck2 /> {t("bylineBy.added.title")}
+            </Button>
+          )}
+        </div>
       ) : stuck ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-muted-foreground">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
