@@ -6167,7 +6167,7 @@
     },
     "admin": {
       "backToReport": "レポートに戻る",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "編集中に著者が {key} を変更のために取り戻したため、入力した内容は保存されませんでした。チェックが終わってからもう一度開いてください。",
       "editTitle": "詳細を編集",
       "editIntroLive": "{key} は公開中です。保存すると、チェックを経ずに編集内容がすぐに公開され、レポートが再登録されます。",
       "editIntroNotLive": "{key} はまだ公開されていません。保存すると、チェックを経ずに編集内容がすぐに反映されます。",
@@ -6463,7 +6463,7 @@
       "limits": "無料の有効化",
       "limitsPager": "無料の有効化",
       "personal": "個人のワークスペース",
-      "personalHint": "1日あたりの無料の有効化回数。保存済みのカードは引き続き必要です。",
+      "personalHint": "1日あたりの無料の有効化回数。カードは不要です。",
       "personalLabel": "個人のワークスペースでの1日あたりの無料の有効化回数",
       "limitSaved": "無料の有効化を保存しました",
       "organization": "組織のワークスペース",
@@ -6538,14 +6538,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "準備",
         "agreement": "契約",
         "doi": "DOI",
         "upload": "PDF",
         "details": "詳細",
         "checks": "チェック",
         "live": "公開",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "契約に署名するとロックされます。"
       },
       "publish": "公開",
       "newReport": "新しいレポート",
@@ -6601,7 +6601,7 @@
       "tooBig": "PDF が {max} MB を超えています",
       "offline": "PDF をアップロードできませんでした。接続を確認して、もう一度選んでください。",
       "uploadFailed": "PDF をアップロードできませんでした。もう一度お試しください。",
-      "uploadIntro": "アップロードする前に、次のテキストをそのまま表紙または表紙の裏に入れてください。チェックはこの行を探します。",
+      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
       "copyByline": "表記をコピー",
       "bylineCopied": "表記をコピーしました",
       "uploading": "{name} をアップロード中",
@@ -6611,12 +6611,12 @@
       "dropHint": "PDF 1 つ、{max} MB まで",
       "unopenedPdf": "{name} を PDF として開けませんでした。パスワードがかかっている場合は外してから、PDF として保存し直してアップロードしてください。",
       "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "keptDetails": "これは PDF を差し替える前の詳細です。",
+      "readAgain": "この PDF から読み込む",
+      "readAgainTitle": "この PDF から詳細を読み込みますか？",
+      "readAgainBody": "いま表示されている詳細は、入力した内容も含めて、この PDF の詳細に置き換わります。",
+      "readAgainKeep": "この詳細を残す",
+      "readAgainFailed": "詳細を読み込み直せませんでした",
       "stuck": "{name} の読み取りに時間がかかりすぎています。アップロードし直してください。",
       "replaces": "再アップロードすると {name} が置き換わります",
       "check": {
@@ -6664,8 +6664,9 @@
       "readyPassed": "あなたのレポートはチェックに合格しました。有効化すると DOI が公開され、ページが開きます。",
       "waiting": "審査待ち",
       "inReview": "審査中",
-      "waitingFlagged": "チェックがあなたのレポートにフラグを付けたため、審査者が確認します。承認されたら有効化でき、メールでお知らせします。",
-      "waitingPassed": "あなたのレポートはチェックに合格しました。審査者が承認したら有効化でき、メールでお知らせします。",
+      "waitingFlagged": "チェックでレポートに指摘があったため、公開前に審査者が確認します。メールでお知らせします。レポートは「公開」でお待ちしています。",
+      "reviewTakes": "審査には最大 3 営業日かかります。",
+      "waitingPassed": "あなたのレポートはチェックに合格しました。公開前に審査者が承認します。メールでお知らせします。レポートは「公開」でお待ちしています。",
       "withdrawn": "撤回済み",
       "notPublished": "未公開",
       "declined": "却下",
@@ -6753,7 +6754,7 @@
           "unknownCode": "{code} は有効なコードではないか、使用済みです。",
           "nothingOff": "{code} では有効化の料金は割り引かれません。",
           "codeTooLong": "このコードは長すぎます。",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "有効化するには、コードを適用するか消去してください。"
         },
         "card": {
           "bankAsked": "銀行が支払いの確認を求めています",
@@ -6761,8 +6762,8 @@
           "refused": "銀行が前回の支払いを確認しなかったため、請求は行われていません。",
           "free": "無料",
           "freeLeft": "本日の無料有効化は残り{count}回",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "有効化するには支払い方法を追加してください",
+          "freeLeftNoCard": "本日の無料の有効化は残り {count, plural, other {# 回}}です。カードは不要です。",
+          "add": "カードまたはプロモコードで有効化",
           "costs": "有効化は1回{price}です。",
           "costsOrg": "有効化は1回{price}で、{organization}に請求されます。",
           "needed": "有効化には保存済みのカードが必要です。",
@@ -6773,10 +6774,10 @@
           "addButton": "支払い方法を追加",
           "stripeFailed": "Stripeのページを開けませんでした",
           "credit": "クレジット {amount}",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "無料の有効化",
+          "covered": "コードでこの有効化をまかなえます",
+          "coveredHint": "支払いはないため、カードは不要です。",
+          "costsWith": "{code} を使うと、この有効化は {price} です。"
         },
         "creditLine": "アカウントのクレジット",
         "refunded": "有効化のために支払われた {amount} は返金されました。",
@@ -6785,11 +6786,11 @@
         "noFreeLeft": "本日の無料有効化はもう残っていません。もう一度有効化すると有料で行えます。",
         "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。"
       },
-      "back": "Back",
+      "back": "戻る",
       "bylineFirst": "Your PDF carries this line",
       "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "nextUpload": "次へ：PDF をアップロード",
+      "nextDetails": "次へ：詳細を確認",
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",
@@ -6806,34 +6807,34 @@
         }
       },
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "{series} でレポートを公開する",
+        "intro": "最初から最後まで約 10 分です。各ステップで必要なことは次のとおりです。",
+        "introReviewed": "あなたの作業は約 10 分です。その後、公開前に審査者がレポートを承認し、メールでお知らせします。",
+        "start": "開始",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "公開契約に署名する",
+          "body": "著作権はあなたに残り、CC BY 4.0 で公開します。"
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "DOI を取得する",
+          "body": "署名した時点で予約されます。レポートと同時に有効になります。"
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "PDF をアップロードする",
+          "body": "表紙に、シリーズ名と DOI を示す表記を 1 行入れます。表記は署名後に受け取れます。"
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "詳細を確認する",
+          "body": "PDF から読み取ります：タイトル、著者、ORCID iD、所属機関、助成機関。"
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "自動チェック",
+          "body": "約 1 分です。表紙の表記と、過去に公開されたものがないかを確認します。"
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "有効化",
+          "body": "カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。",
+          "bodyPriced": "レポート 1 件につき {price}、カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。"
         }
       }
     },
@@ -6934,7 +6935,7 @@
       "checkAndPublish": "変更をチェックして公開",
       "runChecks": "チェックを実行",
       "tooEarly": "レポートの日付を1400年より前にすることはできません。",
-      "back": "Back"
+      "back": "戻る"
     }
   },
   "people": {

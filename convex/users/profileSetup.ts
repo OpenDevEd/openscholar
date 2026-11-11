@@ -8,6 +8,7 @@ import { getCurrentUser, getIdentity, refuseApps, requireAuth } from "../lib/aut
 import { createError } from "../lib/errors";
 import { PROFILE_AFFILIATIONS_MAX, profileValidator } from "../lib/validators";
 import { isOrcid } from "../../lib/reports/report";
+import { locales } from "../../i18n/config";
 import type { Doc } from "../_generated/dataModel";
 
 /** Accounts made from this moment are asked on their first visit; older ones find the same answers in Settings. */
@@ -19,13 +20,31 @@ const answersOf = (user: Doc<"users">) => user.profile ?? { affiliations: [], or
 /** A new account that hasn't finished or skipped the setup. */
 const dueFor = (user: Doc<"users">) => !user.onboarding && user.createdAt >= SETUP_RELEASED_AT;
 
-/** The person's answers, and whether the setup still stands in front of every page. Null signed out. */
+/** A language the site is written in, or none given. */
+function languageOf(locale: string | undefined) {
+  if (locale !== undefined && !(locales as readonly string[]).includes(locale)) throw createError("VALIDATION_ERROR", "Openscholar isn't written in that language.");
+  return locale;
+}
+
+/** The person's answers, the language they chose, and whether the setup still stands in front of every page. Null signed out. */
 export const get = query({
   args: {},
-  returns: v.union(v.null(), v.object({ profile: profileValidator, due: v.boolean() })),
+  returns: v.union(v.null(), v.object({ profile: profileValidator, due: v.boolean(), locale: v.union(v.null(), v.string()) })),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    return user ? { profile: answersOf(user), due: dueFor(user) } : null;
+    return user ? { profile: answersOf(user), due: dueFor(user), locale: user.locale ?? null } : null;
+  },
+});
+
+/** The language the person chose, kept on their account: every browser they are signed in on follows it. */
+export const setLocale = mutation({
+  args: { locale: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { locale }) => {
+    await refuseApps(ctx);
+    const user = await requireAuth(ctx);
+    await ctx.db.patch("users", user._id, { locale: languageOf(locale), updatedAt: Date.now() });
+    return null;
   },
 });
 
@@ -46,12 +65,13 @@ export const due = query({
 
 /**
  * Saves the answers, from the setup or from Settings; the setup is then done. From the setup (`first`), only while it
- * is still due: a second tab's setup, left open while the first finished it, never overwrites what was saved.
+ * is still due: a second tab's setup, left open while the first finished it, never overwrites what was saved. The
+ * setup also names the language it was read in (`locale`), which is the account's unless one was chosen already.
  */
 export const save = mutation({
-  args: { ...profileValidator.fields, first: v.optional(v.boolean()) },
+  args: { ...profileValidator.fields, first: v.optional(v.boolean()), locale: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { affiliations, orcid, emails, first }) => {
+  handler: async (ctx, { affiliations, orcid, emails, first, locale }) => {
     await refuseApps(ctx);
     const user = await requireAuth(ctx);
     if (first && !dueFor(user)) return null;
@@ -64,20 +84,21 @@ export const save = mutation({
     await ctx.db.patch("users", user._id, {
       profile: { affiliations: affiliations.map((a) => ({ ...a, name: a.name.trim() })), orcid, emails },
       onboarding: { ...user.onboarding, finishedAt: user.onboarding?.finishedAt ?? Date.now() },
+      locale: user.locale ?? languageOf(locale),
       updatedAt: Date.now(),
     });
     return null;
   },
 });
 
-/** The person skipped the setup: it stands in front of pages no more. Answers saved before stay. */
+/** The person skipped the setup: it stands in front of pages no more. Answers saved before stay, and the language it was read in is the account's unless one was chosen already. */
 export const skip = mutation({
-  args: {},
+  args: { locale: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, { locale }) => {
     await refuseApps(ctx);
     const user = await requireAuth(ctx);
-    await ctx.db.patch("users", user._id, { onboarding: { ...user.onboarding, skippedAt: Date.now() }, updatedAt: Date.now() });
+    await ctx.db.patch("users", user._id, { onboarding: { ...user.onboarding, skippedAt: Date.now() }, locale: user.locale ?? languageOf(locale), updatedAt: Date.now() });
     return null;
   },
 });

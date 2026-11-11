@@ -6665,6 +6665,7 @@
       "waiting": "Waiting for review",
       "inReview": "In review",
       "waitingFlagged": "A check flagged your report, so a reviewer looks at it before it can go live. You'll hear by email, and it waits for you under Publish.",
+      "reviewTakes": "A review takes up to three working days.",
       "waitingPassed": "Your report passed its checks. A reviewer now approves it before it can go live. You'll hear by email, and it waits for you under Publish.",
       "withdrawn": "Withdrawn",
       "notPublished": "Not published",

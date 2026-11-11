@@ -6168,7 +6168,7 @@
     },
     "admin": {
       "backToReport": "Voltar ao relatório",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "O autor retomou {key} para o alterar enquanto o editava, por isso o que escreveu não foi guardado. Abra-o de novo quando as verificações terminarem.",
       "editTitle": "Editar os dados",
       "editIntroLive": "{key} está publicado. Ao guardar, a sua edição fica publicada de imediato, sem as verificações, e o relatório é registado de novo.",
       "editIntroNotLive": "{key} ainda não está publicado. Ao guardar, a sua edição é aplicada de imediato, sem as verificações.",
@@ -6464,7 +6464,7 @@
       "limits": "Ativações gratuitas",
       "limitsPager": "ativações gratuitas",
       "personal": "O espaço de trabalho próprio de uma pessoa",
-      "personalHint": "Ativações por dia que não custam nada. Mesmo assim, é preciso um cartão guardado.",
+      "personalHint": "Ativações por dia que não custam nada. Não é preciso cartão.",
       "personalLabel": "Ativações gratuitas por dia no espaço próprio de uma pessoa",
       "limitSaved": "Ativações gratuitas guardadas",
       "organization": "O espaço de trabalho de uma organização",
@@ -6539,14 +6539,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "Preparar",
         "agreement": "Acordo",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Dados",
         "checks": "Verificações",
         "live": "Publicado",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "Bloqueado depois de o acordo ser assinado."
       },
       "publish": "Publicar",
       "newReport": "Novo relatório",
@@ -6602,7 +6602,7 @@
       "tooBig": "O PDF tem mais de {max} MB",
       "offline": "Não foi possível carregar o PDF. Verifique a ligação e escolha-o de novo.",
       "uploadFailed": "Não foi possível carregar o PDF. Tente de novo.",
-      "uploadIntro": "Coloque o texto a seguir, exatamente assim, na capa ou na segunda capa antes de enviar. Nossa verificação procura esta linha.",
+      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
       "copyByline": "Copiar a menção",
       "bylineCopied": "Menção copiada",
       "uploading": "A carregar {name}",
@@ -6612,12 +6612,12 @@
       "dropHint": "Um PDF, até {max} MB",
       "unopenedPdf": "Não foi possível abrir {name} como PDF. Se tiver senha, remova-a; depois guarde-o de novo como PDF e carregue-o.",
       "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "keptDetails": "Estes são os dados que tinha antes de substituir o PDF.",
+      "readAgain": "Lê-los antes deste PDF",
+      "readAgainTitle": "Ler os dados deste PDF?",
+      "readAgainBody": "Os dados agora apresentados são substituídos pelos deste PDF, com tudo o que tiver escrito neles.",
+      "readAgainKeep": "Manter estes dados",
+      "readAgainFailed": "Não foi possível ler os dados de novo",
       "stuck": "A leitura de {name} está a demorar mais do que devia. Carregue-o de novo.",
       "replaces": "Carregar de novo substitui {name}",
       "check": {
@@ -6665,8 +6665,9 @@
       "readyPassed": "O seu relatório passou nas verificações. Ative-o para publicar o DOI e abrir a página.",
       "waiting": "À espera de revisão",
       "inReview": "Em revisão",
-      "waitingFlagged": "Uma verificação assinalou o seu relatório, por isso um revisor vai analisá-lo. Pode ativá-lo quando ele o aprovar, e será avisado por e-mail.",
-      "waitingPassed": "O seu relatório passou nas verificações. Pode ativá-lo quando um revisor o aprovar, e será avisado por e-mail.",
+      "waitingFlagged": "Uma verificação assinalou o seu relatório, por isso um revisor analisa-o antes de poder ficar publicado. Será avisado por e-mail, e ele espera por si em Publicar.",
+      "reviewTakes": "Uma revisão demora até três dias úteis.",
+      "waitingPassed": "O seu relatório passou nas verificações. Agora um revisor aprova-o antes de poder ficar publicado. Será avisado por e-mail, e ele espera por si em Publicar.",
       "withdrawn": "Retirado",
       "notPublished": "Não publicado",
       "declined": "Recusado",
@@ -6754,7 +6755,7 @@
           "unknownCode": "{code} não é um código que conheçamos, ou já foi esgotado.",
           "nothingOff": "{code} não desconta nada numa ativação.",
           "codeTooLong": "Esse código é demasiado longo para ser um dos nossos.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Aplique o código, ou apague-o, para ativar."
         },
         "card": {
           "bankAsked": "O seu banco pediu para confirmar o pagamento",
@@ -6762,8 +6763,8 @@
           "refused": "O seu banco não confirmou o último pagamento, por isso nada foi cobrado.",
           "free": "Grátis",
           "freeLeft": "{count, plural, one {Resta # ativação gratuita} other {Restam # ativações gratuitas}} hoje",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "Adicione um método de pagamento para ativar",
+          "freeLeftNoCard": "{count, plural, one {Resta # ativação gratuita} other {Restam # ativações gratuitas}} hoje. Não é preciso cartão.",
+          "add": "Ative com um cartão ou um código promocional",
           "costs": "Cada ativação custa {price}.",
           "costsOrg": "Cada ativação custa {price}, cobrados a {organization}.",
           "needed": "É preciso um cartão guardado para ativar.",
@@ -6774,10 +6775,10 @@
           "addButton": "Adicionar método de pagamento",
           "stripeFailed": "Não foi possível abrir a página do Stripe",
           "credit": "{amount} de crédito",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "Ativação gratuita",
+          "covered": "O seu código cobre esta ativação",
+          "coveredHint": "Nada a pagar, por isso não é preciso cartão.",
+          "costsWith": "Com {code}, esta ativação custa {price}."
         },
         "creditLine": "Crédito da conta",
         "refunded": "Os {amount} pagos para o ativar foram reembolsados.",
@@ -6786,11 +6787,11 @@
         "noFreeLeft": "Já não resta nenhuma ativação gratuita hoje. Ative-o novamente para a pagar.",
         "paused": "A publicação está em pausa por agora, por isso nada pode ser publicado. O seu relatório mantém o seu lugar."
       },
-      "back": "Back",
+      "back": "Voltar",
       "bylineFirst": "Your PDF carries this line",
       "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "nextUpload": "Seguinte: carregar o PDF",
+      "nextDetails": "Seguinte: verificar os dados",
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",
@@ -6807,34 +6808,34 @@
         }
       },
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "Publicar um relatório com {series}",
+        "intro": "Cerca de dez minutos do início ao fim. Isto é o que cada passo lhe pede.",
+        "introReviewed": "Cerca de dez minutos do seu tempo. Depois, um revisor aprova o relatório antes de ele poder ficar publicado, e é avisado por e-mail.",
+        "start": "Começar",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "Assinar o acordo de publicação",
+          "body": "Mantém os direitos de autor e publica sob CC BY 4.0."
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "Obter o seu DOI",
+          "body": "Reservado no momento em que assina. Fica ativo com o relatório."
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "Carregar o seu PDF",
+          "body": "Com uma menção na capa que nomeia a série e o DOI. Recebe a menção depois de assinar."
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "Verificar os dados",
+          "body": "Lidos do PDF por si: título, autores, identificadores ORCID, instituições e financiadores."
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "Verificações automáticas",
+          "body": "Cerca de um minuto. Procuram a menção na capa e qualquer publicação anterior."
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "Ativar",
+          "body": "Pago com cartão. Um código promocional pode baixar o preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
+          "bodyPriced": "{price} por relatório, pagos com cartão. Um código promocional pode baixar esse preço ou cobri-lo. O DOI é registado e o relatório fica publicado."
         }
       }
     },
@@ -6935,7 +6936,7 @@
       "checkAndPublish": "Verificar e publicar as alterações",
       "runChecks": "Executar as verificações",
       "tooEarly": "Um relatório não pode ter data anterior a 1400.",
-      "back": "Back"
+      "back": "Voltar"
     }
   },
   "people": {

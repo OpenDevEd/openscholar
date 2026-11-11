@@ -6167,7 +6167,7 @@
     },
     "admin": {
       "backToReport": "返回报告",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "在您编辑期间，作者已收回 {key} 进行修改，因此您输入的内容未保留。待其检查完成后请重新打开。",
       "editTitle": "编辑信息",
       "editIntroLive": "{key} 已上线。保存后，您的修改会立即上线，不经检查，报告会重新注册。",
       "editIntroNotLive": "{key} 尚未上线。保存后，您的修改会立即生效，不经检查。",
@@ -6463,7 +6463,7 @@
       "limits": "免费激活",
       "limitsPager": "免费激活",
       "personal": "个人自己的工作区",
-      "personalHint": "每天不收费的激活次数。仍需保存一张卡。",
+      "personalHint": "每天不收费的激活次数。无需银行卡。",
       "personalLabel": "个人工作区每天的免费激活次数",
       "limitSaved": "免费激活已保存",
       "organization": "机构的工作区",
@@ -6538,14 +6538,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "准备",
         "agreement": "协议",
         "doi": "DOI",
         "upload": "PDF",
         "details": "信息",
         "checks": "检查",
         "live": "上线",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "协议签署后即锁定。"
       },
       "publish": "发布",
       "newReport": "新报告",
@@ -6601,7 +6601,7 @@
       "tooBig": "PDF 超过 {max} MB",
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
       "uploadFailed": "无法上传 PDF。请重试。",
-      "uploadIntro": "上传前，请将以下文字原样放在封面或封二上。我们的检查会查找这一行。",
+      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
       "uploading": "正在上传 {name}",
@@ -6611,12 +6611,12 @@
       "dropHint": "一个 PDF，最大 {max} MB",
       "unopenedPdf": "无法将 {name} 作为 PDF 打开。如果它设有密码，请先移除密码，再重新另存为 PDF 后上传。",
       "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "keptDetails": "这些是您替换 PDF 之前的信息。",
+      "readAgain": "改为从此 PDF 读取",
+      "readAgainTitle": "从此 PDF 读取信息？",
+      "readAgainBody": "当前显示的信息将被此 PDF 的信息替换，您在其中输入的内容也会一并替换。",
+      "readAgainKeep": "保留这些信息",
+      "readAgainFailed": "无法重新读取信息",
       "stuck": "读取 {name} 用时过长。请重新上传。",
       "replaces": "重新上传将替换 {name}",
       "check": {
@@ -6664,8 +6664,9 @@
       "readyPassed": "您的报告已通过检查。激活它即可让 DOI 上线并打开其页面。",
       "waiting": "等待审核",
       "inReview": "审核中",
-      "waitingFlagged": "有一项检查标记了您的报告，因此会由审核人查看。批准后您即可激活，我们会通过邮件通知您。",
-      "waitingPassed": "您的报告已通过检查。审核人批准后您即可激活，我们会通过邮件通知您。",
+      "waitingFlagged": "有一项检查标记了您的报告，因此审核人会先查看，之后才能上线。我们会通过邮件通知您，报告在“发布”中等您。",
+      "reviewTakes": "审核最多需要三个工作日。",
+      "waitingPassed": "您的报告已通过检查。现在由审核人批准后才能上线。我们会通过邮件通知您，报告在“发布”中等您。",
       "withdrawn": "已撤回",
       "notPublished": "未发布",
       "declined": "已拒绝",
@@ -6753,7 +6754,7 @@
           "unknownCode": "{code} 不是我们认识的代码，或已用完。",
           "nothingOff": "{code} 不能减免激活费用。",
           "codeTooLong": "这个代码太长，不可能是我们的代码。",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "请使用该优惠码或将其清除，然后再激活。"
         },
         "card": {
           "bankAsked": "你的银行要求确认这笔付款",
@@ -6761,8 +6762,8 @@
           "refused": "你的银行没有确认上一笔付款，因此没有扣款。",
           "free": "免费",
           "freeLeft": "今天还剩 {count} 次免费激活",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "添加付款方式后即可激活",
+          "freeLeftNoCard": "今天还剩 {count, plural, other {# 次免费激活}}。无需银行卡。",
+          "add": "使用银行卡或优惠码激活",
           "costs": "每次激活收费 {price}。",
           "costsOrg": "每次激活收费 {price}，由 {organization} 支付。",
           "needed": "需要保存一张卡才能激活。",
@@ -6773,10 +6774,10 @@
           "addButton": "添加付款方式",
           "stripeFailed": "无法打开 Stripe 页面",
           "credit": "余额 {amount}",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "免费激活",
+          "covered": "您的优惠码可抵扣本次激活",
+          "coveredHint": "无需付款，因此不需要银行卡。",
+          "costsWith": "使用 {code} 后，本次激活费用为 {price}。"
         },
         "creditLine": "账户余额抵扣",
         "refunded": "为激活它支付的 {amount} 已退款。",
@@ -6785,11 +6786,11 @@
         "noFreeLeft": "今天已没有免费激活次数。再次激活即可付费。",
         "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。"
       },
-      "back": "Back",
+      "back": "返回",
       "bylineFirst": "Your PDF carries this line",
       "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "nextUpload": "下一步：上传 PDF",
+      "nextDetails": "下一步：核对信息",
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",
@@ -6806,34 +6807,34 @@
         }
       },
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "通过 {series} 发布报告",
+        "intro": "从开始到结束大约十分钟。以下是每一步需要您做的事。",
+        "introReviewed": "大约占用您十分钟。之后由审核人批准，报告才能上线，我们会通过邮件通知您。",
+        "start": "开始",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "签署发布协议",
+          "body": "您保留版权，并以 CC BY 4.0 发布。"
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "获取您的 DOI",
+          "body": "签署时即预留，随报告一同生效。"
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "上传您的 PDF",
+          "body": "封面上须有一行署名，写明系列名称和 DOI。签署后您会得到这行署名。"
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "核对信息",
+          "body": "为您从 PDF 中读取：标题、作者、ORCID iD、机构和资助方。"
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "自动检查",
+          "body": "大约一分钟。检查封面上的署名以及是否曾经发布过。"
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "激活",
+          "body": "用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
+          "bodyPriced": "每份报告 {price}，用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。"
         }
       }
     },
@@ -6934,7 +6935,7 @@
       "checkAndPublish": "检查并发布修改",
       "runChecks": "运行检查",
       "tooEarly": "报告日期不能早于 1400 年。",
-      "back": "Back"
+      "back": "返回"
     }
   },
   "people": {

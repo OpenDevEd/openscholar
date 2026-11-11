@@ -6167,7 +6167,7 @@
     },
     "admin": {
       "backToReport": "Buyela embikweni",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "Umbhali uthathe futhi u-{key} ukuze awushintshe ngesikhathi uwuhlela, ngakho okubhalile akugcinwanga. Wuvule futhi uma ukuhlolwa kwawo sekuphelile.",
       "editTitle": "Hlela imininingwane",
       "editIntroLive": "I-{key} ishicilelwe. Uma ulondoloza, ushintsho lwakho lushicilelwa ngokushesha ngaphandle kokuhlolwa, futhi umbiko ubhaliswa kabusha.",
       "editIntroNotLive": "I-{key} ayikashicilelwa. Uma ulondoloza, ushintsho lwakho lusebenza ngokushesha ngaphandle kokuhlolwa.",
@@ -6463,7 +6463,7 @@
       "limits": "Ukuvula kwamahhala",
       "limitsPager": "ukuvula kwamahhala",
       "personal": "Indawo yokusebenza yomuntu siqu",
-      "personalHint": "Ukuvula ngosuku okungabizi lutho. Isadingeka ikhadi eligciniwe.",
+      "personalHint": "Ukuvula ngosuku okungabizi lutho. Alikho ikhadi elidingekayo.",
       "personalLabel": "Ukuvula kwamahhala ngosuku endaweni yokusebenza yomuntu",
       "limitSaved": "Ukuvula kwamahhala kugciniwe",
       "organization": "Indawo yokusebenza yenhlangano",
@@ -6538,14 +6538,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "Lungiselela",
         "agreement": "Isivumelwano",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
         "live": "Kushicilelwe",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",
@@ -6601,7 +6601,7 @@
       "tooBig": "I-PDF inkulu kuno-{max} MB",
       "offline": "I-PDF ayikwazanga ukulayishwa. Hlola ukuxhumana kwakho, bese uyikhetha futhi.",
       "uploadFailed": "I-PDF ayikwazanga ukulayishwa. Zama futhi.",
-      "uploadIntro": "Beka lo mbhalo olandelayo, njengoba unjalo, esembozweni noma esembozweni sangaphakathi ngaphambi kokulayisha. Ukuhlolwa kwethu kufuna lo mugqa.",
+      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
       "copyByline": "Kopisha umugqa womnikazi",
       "bylineCopied": "Umugqa womnikazi ukopishiwe",
       "uploading": "Kulayishwa i-{name}",
@@ -6611,12 +6611,12 @@
       "dropHint": "I-PDF eyodwa, kuze kufike ku-{max} MB",
       "unopenedPdf": "I-{name} ayikwazanga ukuvulwa njenge-PDF. Uma inephasiwedi, yisuse, bese uyilondoloza futhi njenge-PDF bese uyilayisha.",
       "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "keptDetails": "Lena imininingwane obunayo ngaphambi kokuthi ushintshe i-PDF.",
+      "readAgain": "Kunalokho yifunde kule PDF",
+      "readAgainTitle": "Funda imininingwane kule PDF?",
+      "readAgainBody": "Imininingwane ebonakala manje izothathelwa indawo yile PDF, kanye nakho konke okubhalile kuyo.",
+      "readAgainKeep": "Gcina le mininingwane",
+      "readAgainFailed": "Imininingwane ayikwazanga ukufundwa futhi",
       "stuck": "Ukufunda i-{name} kuthatha isikhathi eside kunokufanele. Yilayishe futhi.",
       "replaces": "Ukulayisha futhi kuthatha isikhundla se-{name}",
       "check": {
@@ -6664,8 +6664,9 @@
       "readyPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Wenze usebenze ukuze ushicilele i-DOI yawo futhi uvule ikhasi lawo.",
       "waiting": "Kulindwe ukubuyekezwa",
       "inReview": "Kuyabuyekezwa",
-      "waitingFlagged": "Ukuhlolwa kuphawule umbiko wakho, ngakho umbuyekezi uzowubheka. Ungawenza usebenze uma usuvunyiwe, futhi uzothola i-imeyili.",
-      "waitingPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Ungawenza usebenze uma umbuyekezi esewuvumile, futhi uzothola i-imeyili.",
+      "waitingFlagged": "Ukuhlolwa okukodwa kuphawule umbiko wakho, ngakho umbuyekezi uyawubheka ngaphambi kokuthi ushicilelwe. Uzothola i-imeyili, futhi ukulindile ngaphansi kokuthi Shicilela.",
+      "reviewTakes": "Ukubuyekezwa kuthatha kuze kufike ezinsukwini ezintathu zokusebenza.",
+      "waitingPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Manje umbuyekezi uyawuvuma ngaphambi kokuthi ushicilelwe. Uzothola i-imeyili, futhi ukulindile ngaphansi kokuthi Shicilela.",
       "withdrawn": "Kuhoxisiwe",
       "notPublished": "Akushicilelwanga",
       "declined": "Kwenqatshiwe",
@@ -6753,7 +6754,7 @@
           "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
           "nothingOff": "{code} ayehlisi lutho entengweni yokwenza isebenze.",
           "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",
@@ -6761,8 +6762,8 @@
           "refused": "Ibhange lakho alizange liqinisekise inkokhelo yokugcina, ngakho akukho okukhokhisiwe.",
           "free": "Mahhala",
           "freeLeft": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "Engeza indlela yokukhokha ukuze uvule",
+          "freeLeftNoCard": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla. Alikho ikhadi elidingekayo.",
+          "add": "Yenza kusebenze ngekhadi noma ngekhodi yesaphulelo",
           "costs": "Ukuvula ngakunye kubiza u-{price}.",
           "costsOrg": "Ukuvula ngakunye kubiza u-{price}, okukhokhiswa i-{organization}.",
           "needed": "Kudingeka ikhadi eligciniwe ukuze uvule.",
@@ -6773,10 +6774,10 @@
           "addButton": "Engeza indlela yokukhokha",
           "stripeFailed": "Ikhasi le-Stripe alikwazanga ukuvuleka",
           "credit": "Isikweletu esingu-{amount}",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "Ukuvula kwamahhala",
+          "covered": "Ikhodi yakho ikhokhela lokhu kuvula",
+          "coveredHint": "Akukho okukhokhwayo, ngakho alikho ikhadi elidingekayo.",
+          "costsWith": "Nge-{code}, lokhu kuvula kubiza u-{price}."
         },
         "creditLine": "Isikweletu se-akhawunti",
         "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
@@ -6785,11 +6786,11 @@
         "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele.",
         "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo."
       },
-      "back": "Back",
+      "back": "Emuva",
       "bylineFirst": "Your PDF carries this line",
       "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "nextUpload": "Okulandelayo: layisha i-PDF",
+      "nextDetails": "Okulandelayo: hlola imininingwane",
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",
@@ -6806,34 +6807,34 @@
         }
       },
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "Ukushicilela umbiko nge-{series}",
+        "intro": "Cishe imizuzu eyishumi kusukela ekuqaleni kuya ekugcineni. Yilokhu okucelwa yisinyathelo ngasinye kuwe.",
+        "introReviewed": "Cishe imizuzu eyishumi yesikhathi sakho. Bese umbuyekezi evuma umbiko ngaphambi kokuthi ushicilelwe, futhi uzothola i-imeyili.",
+        "start": "Qala",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "Sayina isivumelwano sokushicilela",
+          "body": "Ugcina ilungelo lobunikazi futhi ushicilela ngaphansi kwe-CC BY 4.0."
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "Thola i-DOI yakho",
+          "body": "Igcinelwa wena ngesikhathi usayina. Iqala ukusebenza kanye nombiko."
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "Layisha i-PDF yakho",
+          "body": "Inomugqa owodwa ekhasini layo langaphandle osho uchungechunge ne-DOI. Uthola umugqa ngemva kokusayina."
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "Hlola imininingwane",
+          "body": "Ifundwa ku-PDF egameni lakho: isihloko, ababhali, ama-ORCID iD, izikhungo nabaxhasi."
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "Ukuhlolwa okuzenzakalelayo",
+          "body": "Cishe umzuzu. Kufuna umugqa ekhasini langaphandle nanoma yini eshicilelwe ngaphambilini."
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "Yenza kusebenze",
+          "body": "Kukhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa intengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
+          "bodyPriced": "U-{price} ngombiko ngamunye, okhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa leyo ntengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa."
         }
       }
     },
@@ -6934,7 +6935,7 @@
       "checkAndPublish": "Hlola izinguquko bese ushicilela",
       "runChecks": "Yenza ukuhlolwa",
       "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400.",
-      "back": "Back"
+      "back": "Emuva"
     }
   },
   "people": {
