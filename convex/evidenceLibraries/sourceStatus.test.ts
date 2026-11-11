@@ -210,3 +210,9 @@ it("drops a request an hour old for a source the library no longer reports", asy
   expect(await t.run((ctx) => ctx.db.get("evidenceLibraryScreeningRequests", requestId))).toBeNull();
 });
 
+it("keeps a report from a community with Added papers, whose source a missing provider refused with every other", async () => {
+  const { post, saved } = await setup();
+  const added = { ...upToDate, key: "added-papers", provider: "added" };
+  expect((await post("2026-11-11T01:50:00.000Z", [upToDate, added])).status).toBe(200);
+  expect((await saved())[0]?.sources.map((source) => source.key)).toEqual(["zotero-42", "added-papers"]);
+});
