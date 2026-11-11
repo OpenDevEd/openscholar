@@ -152,7 +152,9 @@ export function PublishFlow() {
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
   const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
-  const { data: list } = useProtectedQuery(api.reports.flow.page, listed ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
+  // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
+  // round trip later.
+  const { data: list } = useProtectedQuery(api.reports.flow.page, listed || bare ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
   // A list page keeps showing while the next one is read, so paging never empties the card.
   const [lastList, setLastList] = useState(list);
   if (list && list !== lastList) setLastList(list);
