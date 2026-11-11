@@ -6168,7 +6168,7 @@
     },
     "admin": {
       "backToReport": "Terug na die verslag",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "Die outeur het {key} teruggeneem om dit te verander terwyl jy dit geredigeer het, dus is wat jy getik het nie bewaar nie. Maak dit weer oop sodra sy kontroles klaar is.",
       "editTitle": "Wysig besonderhede",
       "editIntroLive": "{key} is gepubliseer. As jy stoor, word jou wysiging dadelik sonder kontroles gepubliseer, en die verslag word weer geregistreer.",
       "editIntroNotLive": "{key} is nog nie gepubliseer nie. As jy stoor, geld jou wysiging dadelik sonder kontroles.",
@@ -6464,7 +6464,7 @@
       "limits": "Gratis aktiverings",
       "limitsPager": "gratis aktiverings",
       "personal": "Iemand se eie werkruimte",
-      "personalHint": "Aktiverings per dag wat niks kos nie. 'n Gestoorde kaart is steeds nodig.",
+      "personalHint": "Aktiverings per dag wat niks kos nie. Geen kaart nodig nie.",
       "personalLabel": "Gratis aktiverings per dag in 'n persoon se eie werkruimte",
       "limitSaved": "Gratis aktiverings gestoor",
       "organization": "'n Organisasie se werkruimte",
@@ -6539,14 +6539,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "Berei voor",
         "agreement": "Ooreenkoms",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Besonderhede",
         "checks": "Kontroles",
         "live": "Gepubliseer",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "Gesluit sodra die ooreenkoms onderteken is."
       },
       "publish": "Publiseer",
       "newReport": "Nuwe verslag",
@@ -6611,13 +6611,13 @@
       "drop": "Los die PDF hier, of kies dit",
       "dropHint": "Een PDF, tot {max} MB",
       "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. As dit 'n wagwoord het, verwyder dit; stoor dit dan weer as PDF en laai dit op.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "lacksByline": "{name} dra nie die reël hierbo op sy voorblad nie. Voeg die reël by en laai die PDF weer op, anders sal die kontrole van die eienaarsreël misluk.",
+      "keptDetails": "Dit is die besonderhede wat jy gehad het voordat jy die PDF vervang het.",
+      "readAgain": "Lees dit eerder uit hierdie PDF",
+      "readAgainTitle": "Lees die besonderhede uit hierdie PDF?",
+      "readAgainBody": "Die besonderhede wat nou wys, word deur hierdie PDF s'n vervang, saam met alles wat jy daarin getik het.",
+      "readAgainKeep": "Hou hierdie besonderhede",
+      "readAgainFailed": "Die besonderhede kon nie weer gelees word nie",
       "stuck": "Om {name} te lees neem langer as wat dit behoort. Laai dit weer op.",
       "replaces": "Weer oplaai vervang {name}",
       "check": {
@@ -6665,8 +6665,9 @@
       "readyPassed": "Jou verslag het sy kontroles geslaag. Aktiveer dit om sy DOI te publiseer en sy bladsy oop te maak.",
       "waiting": "Wag vir hersiening",
       "inReview": "In hersiening",
-      "waitingFlagged": "'n Kontrole het jou verslag gemerk, so 'n hersiener sal daarna kyk. Jy kan dit aktiveer sodra dit goedgekeur is, en jy kry 'n e-pos.",
-      "waitingPassed": "Jou verslag het sy kontroles geslaag. Jy kan dit aktiveer sodra 'n hersiener dit goedkeur, en jy kry 'n e-pos.",
+      "waitingFlagged": "'n Kontrole het jou verslag gemerk, dus kyk 'n hersiener daarna voordat dit kan verskyn. Jy kry 'n e-pos, en dit wag vir jou onder Publiseer.",
+      "reviewTakes": "'n Hersiening neem tot drie werksdae.",
+      "waitingPassed": "Jou verslag het sy kontroles geslaag. 'n Hersiener keur dit nou goed voordat dit kan verskyn. Jy kry 'n e-pos, en dit wag vir jou onder Publiseer.",
       "withdrawn": "Teruggetrek",
       "notPublished": "Nie gepubliseer nie",
       "declined": "Afgekeur",
@@ -6755,7 +6756,7 @@
           "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
           "nothingOff": "{code} haal niks van ’n aktivering af nie.",
           "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",
@@ -6763,8 +6764,8 @@
           "refused": "Jou bank het nie die laaste betaling bevestig nie, so niks is gehef nie.",
           "free": "Gratis",
           "freeLeft": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "Voeg 'n betaalmetode by om te aktiveer",
+          "freeLeftNoCard": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag. Geen kaart nodig nie.",
+          "add": "Aktiveer met 'n kaart of 'n promosiekode",
           "costs": "Elke aktivering kos {price}.",
           "costsOrg": "Elke aktivering kos {price}, gedebiteer aan {organization}.",
           "needed": "'n Gestoorde kaart is nodig om te aktiveer.",
@@ -6775,10 +6776,10 @@
           "addButton": "Voeg betaalmetode by",
           "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
           "credit": "{amount} krediet",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "Gratis aktivering",
+          "covered": "Jou kode dek hierdie aktivering",
+          "coveredHint": "Niks om te betaal nie, dus is geen kaart nodig nie.",
+          "costsWith": "Met {code} kos hierdie aktivering {price}."
         },
         "creditLine": "Rekeningkrediet",
         "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
@@ -6787,40 +6788,40 @@
         "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal.",
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek."
       },
-      "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "back": "Terug",
+      "bylineFirst": "Sit hierdie reël op jou PDF se voorblad",
+      "bylineFirstBody": "Openscholar publiseer jou verslag saam met jou, dus dra sy voorblad of binneblad hierdie reël as teks. Ons kontroles soek daarna sodra jy oplaai.",
+      "nextUpload": "Volgende: laai die PDF op",
+      "nextDetails": "Volgende: gaan die besonderhede na",
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "Publiseer 'n verslag by {series}",
+        "intro": "Omtrent tien minute van begin tot einde. Dit is wat elke stap van jou vra.",
+        "introReviewed": "Omtrent tien minute van jou tyd. Daarna keur 'n hersiener die verslag goed voordat dit kan verskyn, en jy kry 'n e-pos.",
+        "start": "Begin",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "Onderteken die publikasie-ooreenkoms",
+          "body": "Jy behou die kopiereg en publiseer onder CC BY 4.0."
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "Kry jou DOI",
+          "body": "Gereserveer die oomblik wat jy teken. Dit word saam met die verslag aktief."
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "Laai jou PDF op",
+          "body": "Met een reël op sy voorblad wat die reeks en die DOI noem. Jy kry die reël nadat jy geteken het."
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "Gaan die besonderhede na",
+          "body": "Vir jou uit die PDF gelees: titel, outeurs, ORCID iD's, instellings en befondsers."
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "Outomatiese kontroles",
+          "body": "Omtrent 'n minuut. Hulle soek die reël op die voorblad en enigiets wat reeds gepubliseer is."
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "Aktiveer",
+          "body": "Betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
+          "bodyPriced": "{price} vir elke verslag, betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn."
         }
       }
     },
@@ -6921,7 +6922,7 @@
       "checkAndPublish": "Kontroleer wysigings en publiseer",
       "runChecks": "Laat kontroles loop",
       "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
-      "back": "Back"
+      "back": "Terug"
     }
   },
   "people": {

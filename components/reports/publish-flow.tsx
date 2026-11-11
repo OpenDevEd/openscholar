@@ -875,6 +875,7 @@ function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
 function Overview({ series, reviewed, price, onStart }: { series: string; /** What activating costs, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
+  const flow = useTranslations("publishReports.flow");
   const dollars = useDollars();
   const items = [
     { id: "agreement", icon: PenLine },
@@ -886,7 +887,7 @@ function Overview({ series, reviewed, price, onStart }: { series: string; /** Wh
   ] as const;
   return (
     <div>
-      <StepHead title={t("title", { series })}>{t(reviewed ? "introReviewed" : "intro")}</StepHead>
+      <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
       <ol className="relative space-y-1">
         {/* One line through the icons: the steps as one road. */}
         <span aria-hidden className="absolute inset-y-5 start-[1.1875rem] w-px bg-border" />
@@ -1301,7 +1302,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
     </StepHead>
   ) : stage === "review" ? (
     <StepHead key="review" title={t("waiting")} aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
-      {t(rows.some((r) => r.result && !r.result.pass) ? "waitingFlagged" : "waitingPassed")}
+      {t(rows.some((r) => r.result && !r.result.pass) ? "waitingFlagged" : "waitingPassed")} {t("reviewTakes")}
     </StepHead>
   ) : stage === "declined" ? (
     <StepHead key="declined" title={t(report.withdrawn ? "withdrawn" : "notPublished")} aside={<StatusChip tone="danger" icon={CircleX}>{t(report.withdrawn ? "withdrawn" : "declined")}</StatusChip>}>

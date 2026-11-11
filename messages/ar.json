@@ -6168,7 +6168,7 @@
     },
     "admin": {
       "backToReport": "العودة إلى التقرير",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "استعاد المؤلف {key} لتعديله أثناء تحريرك له، فلم يُحفظ ما كتبته. افتحه مجددًا بعد انتهاء فحوصاته.",
       "editTitle": "تعديل التفاصيل",
       "editIntroLive": "{key} منشور. عند الحفظ يُنشر تعديلك فورًا دون فحوصات، ويُعاد تسجيل التقرير.",
       "editIntroNotLive": "{key} غير منشور بعد. عند الحفظ يُطبَّق تعديلك فورًا دون فحوصات.",
@@ -6464,7 +6464,7 @@
       "limits": "التفعيلات المجانية",
       "limitsPager": "التفعيلات المجانية",
       "personal": "مساحة العمل الخاصة بشخص",
-      "personalHint": "تفعيلات يومية بلا تكلفة. ما زالت بطاقة محفوظة مطلوبة.",
+      "personalHint": "تفعيلات يومية بلا تكلفة. لا حاجة إلى بطاقة.",
       "personalLabel": "التفعيلات المجانية اليومية في مساحة العمل الخاصة بشخص",
       "limitSaved": "حُفظت التفعيلات المجانية",
       "organization": "مساحة عمل مؤسسة",
@@ -6539,14 +6539,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "التحضير",
         "agreement": "الاتفاقية",
         "doi": "DOI",
         "upload": "PDF",
         "details": "التفاصيل",
         "checks": "الفحوصات",
         "live": "منشور",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "يُقفل بعد توقيع الاتفاقية."
       },
       "publish": "نشر",
       "newReport": "تقرير جديد",
@@ -6611,13 +6611,13 @@
       "drop": "أفلت ملف PDF هنا، أو اختره",
       "dropHint": "ملف PDF واحد، حتى {max} ميغابايت",
       "unopenedPdf": "تعذّر فتح {name} كملف PDF. إن كان محميًا بكلمة مرور فأزلها، ثم احفظه بصيغة PDF مرة أخرى وارفعه.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "lacksByline": "{name} لا يحمل السطر أعلاه على غلافه. أضف السطر وارفع ملف PDF مجددًا، وإلا سيفشل فحص سطر الإسناد.",
+      "keptDetails": "هذه هي التفاصيل التي كانت لديك قبل أن تستبدل ملف PDF.",
+      "readAgain": "اقرأها من هذا الملف بدلًا من ذلك",
+      "readAgainTitle": "قراءة التفاصيل من هذا الملف؟",
+      "readAgainBody": "تُستبدل التفاصيل المعروضة الآن بتفاصيل هذا الملف، مع كل ما كتبته فيها.",
+      "readAgainKeep": "الإبقاء على هذه التفاصيل",
+      "readAgainFailed": "تعذّرت قراءة التفاصيل مجددًا",
       "stuck": "تستغرق قراءة {name} وقتًا أطول من اللازم. ارفعه مرة أخرى.",
       "replaces": "الرفع مرة أخرى يستبدل {name}",
       "check": {
@@ -6665,8 +6665,9 @@
       "readyPassed": "اجتاز تقريرك فحوصاته. فعّله لنشر معرّف DOI الخاص به وفتح صفحته.",
       "waiting": "بانتظار المراجعة",
       "inReview": "قيد المراجعة",
-      "waitingFlagged": "أشار فحص إلى تقريرك، لذا سيطّلع عليه مراجع. يمكنك تفعيله بعد الموافقة عليه، وستصلك رسالة بريد إلكتروني.",
-      "waitingPassed": "اجتاز تقريرك فحوصاته. يمكنك تفعيله بعد أن يوافق عليه مراجع، وستصلك رسالة بريد إلكتروني.",
+      "waitingFlagged": "أشار أحد الفحوصات إلى تقريرك، لذا ينظر فيه مراجع قبل أن يُنشر. ستصلك رسالة بريد إلكتروني، وهو بانتظارك في النشر.",
+      "reviewTakes": "تستغرق المراجعة حتى ثلاثة أيام عمل.",
+      "waitingPassed": "اجتاز تقريرك فحوصاته. يوافق عليه مراجع الآن قبل أن يُنشر. ستصلك رسالة بريد إلكتروني، وهو بانتظارك في النشر.",
       "withdrawn": "مسحوب",
       "notPublished": "غير منشور",
       "declined": "مرفوض",
@@ -6755,7 +6756,7 @@
           "unknownCode": "{code} ليس رمزًا نعرفه، أو انتهى استخدامه.",
           "nothingOff": "{code} لا يخفض شيئًا من سعر التفعيل.",
           "codeTooLong": "هذا الرمز أطول من أن يكون أحد رموزنا.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "طبّق الرمز أو امسحه للتفعيل."
         },
         "card": {
           "bankAsked": "طلب مصرفك تأكيد الدفع",
@@ -6763,8 +6764,8 @@
           "refused": "لم يؤكد مصرفك الدفعة الأخيرة، لذا لم يُخصم أي مبلغ.",
           "free": "مجاني",
           "freeLeft": "{count, plural, zero {لم يبقَ تفعيل مجاني} one {بقي تفعيل مجاني واحد} two {بقي تفعيلان مجانيان} few {بقيت # تفعيلات مجانية} many {بقي # تفعيلًا مجانيًا} other {بقي # تفعيل مجاني}} اليوم",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "أضف وسيلة دفع لتفعيله",
+          "freeLeftNoCard": "{count, plural, one {بقي تفعيل مجاني واحد} two {بقي تفعيلان مجانيان} few {بقيت # تفعيلات مجانية} many {بقي # تفعيلًا مجانيًا} other {بقي # تفعيل مجاني}} اليوم. لا حاجة إلى بطاقة.",
+          "add": "فعّل ببطاقة أو برمز ترويجي",
           "costs": "يكلف كل تفعيل {price}.",
           "costsOrg": "يكلف كل تفعيل {price}، تُخصم من {organization}.",
           "needed": "يلزم وجود بطاقة محفوظة للتفعيل.",
@@ -6775,10 +6776,10 @@
           "addButton": "إضافة وسيلة دفع",
           "stripeFailed": "تعذّر فتح صفحة Stripe",
           "credit": "رصيد {amount}",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "تفعيل مجاني",
+          "covered": "رمزك يغطي هذا التفعيل",
+          "coveredHint": "لا شيء يُدفع، فلا حاجة إلى بطاقة.",
+          "costsWith": "مع {code}، يكلّف هذا التفعيل {price}."
         },
         "creditLine": "رصيد الحساب",
         "refunded": "تم استرداد مبلغ {amount} المدفوع لتفعيله.",
@@ -6787,40 +6788,40 @@
         "noFreeLeft": "لم يتبقَّ تفعيل مجاني لهذا اليوم. فعّله مرة أخرى للدفع مقابله.",
         "paused": "النشر متوقف مؤقتًا، لذا لا يمكن نشر أي شيء الآن. يحتفظ تقريرك بمكانه."
       },
-      "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "back": "رجوع",
+      "bylineFirst": "ضع هذا السطر على غلاف ملف PDF",
+      "bylineFirstBody": "تشارك Openscholar في نشر تقريرك، لذا يحمل غلافه أو غلافه الداخلي هذا السطر نصًّا. تبحث فحوصاتنا عنه بعد الرفع.",
+      "nextUpload": "التالي: رفع ملف PDF",
+      "nextDetails": "التالي: مراجعة التفاصيل",
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "نشر تقرير في {series}",
+        "intro": "نحو عشر دقائق من البداية إلى النهاية. هذا ما تطلبه منك كل خطوة.",
+        "introReviewed": "نحو عشر دقائق من وقتك. ثم يوافق مراجع على التقرير قبل أن يُنشر، وتصلك رسالة بريد إلكتروني.",
+        "start": "ابدأ",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "وقّع اتفاقية النشر",
+          "body": "تحتفظ بحقوق المؤلف وتنشر بموجب CC BY 4.0."
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "احصل على معرّف DOI",
+          "body": "يُحجز لحظة توقيعك. ويُفعَّل مع التقرير."
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "ارفع ملف PDF",
+          "body": "مع سطر على غلافه يذكر السلسلة ومعرّف DOI. تحصل على السطر بعد التوقيع."
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "راجع التفاصيل",
+          "body": "تُقرأ لك من الملف: العنوان والمؤلفون ومعرّفات ORCID والمؤسسات والجهات المموِّلة."
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "فحوصات تلقائية",
+          "body": "نحو دقيقة. تبحث عن السطر على الغلاف وعن أي نشر سابق."
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "تفعيل",
+          "body": "يُدفع ببطاقة. يمكن لرمز ترويجي أن يخفّض السعر أو يغطيه. يُسجَّل معرّف DOI ويُنشر التقرير.",
+          "bodyPriced": "{price} لكل تقرير، تُدفع ببطاقة. يمكن لرمز ترويجي أن يخفّض السعر أو يغطيه. يُسجَّل معرّف DOI ويُنشر التقرير."
         }
       }
     },
@@ -6921,7 +6922,7 @@
       "checkAndPublish": "فحص التعديلات ونشرها",
       "runChecks": "تشغيل الفحوصات",
       "tooEarly": "لا يمكن أن يكون تاريخ التقرير قبل عام 1400.",
-      "back": "Back"
+      "back": "رجوع"
     }
   },
   "people": {
