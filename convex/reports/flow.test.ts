@@ -137,6 +137,9 @@ describe("a report's PDF", () => {
     expect(await read(world.author, world.own, first.key)).toMatchObject({ step: "details", metadata: { title: "Shade trees and maize yields" }, pdf: { pages: 12 } });
     // A second PDF keeps the details, and its own step waits until it is read.
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key: first.key, step: "upload" });
+    // A change typed just before stepping back arrives after it, and is kept.
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: { keywords: ["agroforestry"] }, pdfAt: first.pdfAt });
+    expect((await read(world.author, world.own, first.key)).metadata?.keywords).toEqual(["agroforestry"]);
     const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a second report"])));
     await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key: first.key, file, name: "second.pdf" });
     const replaced = await read(world.author, world.own, first.key);
@@ -184,7 +187,7 @@ describe("a report's checks", () => {
     expect(stageOf(report, true)).toBe("review");
     // Nothing about review is kept on the report: switched off, the same report is ready.
     expect(stageOf(report, false)).toBe("ready");
-    expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.own })).toMatchObject({ review: 1, ready: 0, underWay: 1, only: key });
+    expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.own })).toMatchObject({ review: 1, ready: 0 });
   });
 
   it("go live when its author activates it, and only once no review is owed", async () => {
@@ -336,12 +339,12 @@ describe("a workspace's list of reports", () => {
     expect(all.rows.map((r) => r.key)).toEqual([draft, failed.key, ready.key]);
     // A page past the last answers the last, and says which it is.
     expect(await world.author.query(api.reports.flow.page, { workspaceId: world.lab, page: 999, show: "failed" })).toMatchObject({ rows: [{ key: failed.key }], page: 1, pages: 1, total: 1 });
-    expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.lab })).toMatchObject({ all: 3, draft: 1, failed: 1, ready: 1, underWay: 3, only: null });
+    expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.lab })).toMatchObject({ all: 3, draft: 1, failed: 1, ready: 1 });
     // The assistant reads the same, as the person who asked: which reports the workspace has, and where one stands.
     const asked = { userId: world.authorId, workspaceId: world.lab };
     expect((await world.t.query(internal.reports.flow.pageForAssistant, { ...asked, page: 1 })).rows.map((r) => r.key)).toEqual([draft, failed.key, ready.key]);
     expect(await world.t.query(internal.reports.flow.getForAssistant, { ...asked, key: failed.key })).toMatchObject({ report: { key: failed.key, status: "failed" } });
-    expect(await world.t.query(internal.reports.flow.countsForAssistant, asked)).toMatchObject({ all: 3, underWay: 3 });
+    expect(await world.t.query(internal.reports.flow.countsForAssistant, asked)).toMatchObject({ all: 3 });
     // Someone outside the organisation is told nothing of its reports through it.
     await expect(world.t.query(internal.reports.flow.pageForAssistant, { userId: world.strangerId, workspaceId: world.lab, page: 1 })).rejects.toThrow();
   });

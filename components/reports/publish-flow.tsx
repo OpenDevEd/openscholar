@@ -141,18 +141,14 @@ export function PublishFlow() {
   const basics = useQuery(api.reports.settings.forAuthors, {});
   const { data: counts } = useProtectedQuery(api.reports.flow.counts, inWorkspace(workspaceId, {}));
   const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
-  // The report shown is the one the address names; with none named, the only one under way.
-  const listed = view === "reports" || (asked === null && (counts?.underWay ?? 0) > 1);
-  // Opened with no report named, the page stays on the one it opened: when that one stops being under way (activated
-  // here, or declined by a reviewer meanwhile) it shows where it stands now and never gives way to a new report's
-  // agreement, and a report started in another tab doesn't take its place. A report that is gone lets go of it.
-  const only = counts?.only ?? null;
-  const [held, setHeld] = useState<string | null>(null);
-  // The list, and an address that names a report, are the person's own move on: the next time the page names none, it
-  // opens the one under way then.
-  const movedOn = listed || asked !== null;
-  if (movedOn ? held !== null : held === null && only !== null) setHeld(movedOn ? null : only);
-  const shownKey = listed ? null : (asked ?? held ?? only ?? "new");
+  // With no report named the page opens the workspace's reports, and a new report only when it has none. Opened on
+  // that new report, it stays on it while it is signed: its own first report must not turn the page into the list
+  // before the address names it.
+  const bare = asked === null && view !== "reports";
+  const [began, setBegan] = useState<typeof workspaceId>(undefined);
+  if (bare ? began !== workspaceId && counts?.all === 0 : began !== undefined) setBegan(bare ? workspaceId : undefined);
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0);
+  const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
   const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
@@ -169,7 +165,6 @@ export function PublishFlow() {
   // Just signed, its report is still on its way: the agreement stays up until it is here, and the page never falls
   // back to its loading frame in between (that would start the screens anew, and the DOI's moment with them).
   const arriving = !listed && found === undefined && fresh?.step === "doi" && fresh.key === shownKey;
-  if (held !== null && shownKey === held && found !== undefined && !(found && "report" in found)) setHeld(null);
   // A report opened from the list: the list stays up, dimmed and inert, until the report is here. The loading frame
   // in between was a blank flash.
   const [fromList, setFromList] = useState(false);

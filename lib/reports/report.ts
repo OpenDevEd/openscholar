@@ -154,8 +154,6 @@ export function changeStageOf(results: CheckResult[] | undefined, changes: { res
 
 /** A report its author may give up: one never checked, or one its checks failed that no reviewer approved. Its DOI was never live. */
 export const canDiscard = (report: Pick<Standing, "status" | "approved">) => report.status === "draft" || (report.status === "failed" && !report.approved);
-/** The reports a workspace is in the middle of: neither live nor declined. */
-export const underWay = (report: Pick<Standing, "status">) => report.status !== "live" && report.status !== "declined";
 /** Whether a report wants a reviewer now: waiting for review, failed with its author asking, or live with changes waiting. */
 export const wantsReviewer = (report: Standing & { asked?: boolean; changes?: ChangeStage }, humanReview: boolean) => {
   const stage = stageOf(report, humanReview);
