@@ -6167,6 +6167,7 @@
     },
     "admin": {
       "backToReport": "返回报告",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "编辑信息",
       "editIntroLive": "{key} 已上线。保存后，您的修改会立即上线，不经检查，报告会重新注册。",
       "editIntroNotLive": "{key} 尚未上线。保存后，您的修改会立即生效，不经检查。",

@@ -6168,6 +6168,7 @@
     },
     "admin": {
       "backToReport": "Volver al informe",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Editar los datos",
       "editIntroLive": "{key} está publicado. Al guardar, tu edición se publica al instante, sin las comprobaciones, y el informe se registra de nuevo.",
       "editIntroNotLive": "{key} aún no está publicado. Al guardar, tu edición se aplica al instante, sin las comprobaciones.",

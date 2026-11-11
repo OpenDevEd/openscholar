@@ -6167,6 +6167,7 @@
     },
     "admin": {
       "backToReport": "रिपोर्ट पर वापस जाएँ",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "विवरण संपादित करें",
       "editIntroLive": "{key} प्रकाशित है। सहेजने पर आपका बदलाव बिना जाँच के तुरंत प्रकाशित होगा, और रिपोर्ट फिर से पंजीकृत होगी।",
       "editIntroNotLive": "{key} अभी प्रकाशित नहीं है। सहेजने पर आपका बदलाव बिना जाँच के तुरंत लागू होगा।",

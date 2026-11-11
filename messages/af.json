@@ -6168,6 +6168,7 @@
     },
     "admin": {
       "backToReport": "Terug na die verslag",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Wysig besonderhede",
       "editIntroLive": "{key} is gepubliseer. As jy stoor, word jou wysiging dadelik sonder kontroles gepubliseer, en die verslag word weer geregistreer.",
       "editIntroNotLive": "{key} is nog nie gepubliseer nie. As jy stoor, geld jou wysiging dadelik sonder kontroles.",

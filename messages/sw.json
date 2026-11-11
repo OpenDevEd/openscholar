@@ -6168,6 +6168,7 @@
     },
     "admin": {
       "backToReport": "Rudi kwenye ripoti",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Hariri maelezo",
       "editIntroLive": "{key} imechapishwa. Ukihifadhi, mabadiliko yako yanachapishwa mara moja bila ukaguzi, na ripoti inasajiliwa upya.",
       "editIntroNotLive": "{key} bado haijachapishwa. Ukihifadhi, mabadiliko yako yanatumika mara moja bila ukaguzi.",
