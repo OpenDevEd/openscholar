@@ -14,6 +14,17 @@ import { WorkspacePicker } from "@/components/workspaces/workspace-picker";
 
 type ConnectState = "consent" | "creating" | "show_key" | "done" | "error";
 
+/**
+ * Closes the window an app opened for signing in; a tab the person opened themselves can't be closed by the page, so
+ * it goes home instead of doing nothing.
+ */
+function closeOrLeave() {
+  window.close();
+  setTimeout(() => {
+    if (!window.closed) window.location.assign("/");
+  }, 150);
+}
+
 export default function ConnectPage() {
   const tLabels = useTranslations("connectApp");
   const t = useTranslations("connectApp");
@@ -93,7 +104,7 @@ export default function ConnectPage() {
 
   const handleReject = useCallback(() => {
     if (isManualMode || isOriginAllowed !== true) {
-      window.close();
+      closeOrLeave();
       return;
     }
     const url = new URL(redirectUri!);
@@ -173,7 +184,7 @@ export default function ConnectPage() {
           </div>
 
           <button
-            onClick={() => window.close()}
+            onClick={closeOrLeave}
             className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
             {t("closeThisWindow")}
@@ -204,7 +215,7 @@ export default function ConnectPage() {
             </p>
           </div>
           <button
-            onClick={() => window.close()}
+            onClick={closeOrLeave}
             className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
             {t("closeThisWindow")}
