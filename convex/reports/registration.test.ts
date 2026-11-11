@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mapCrossrefRecord } from "@opendeved/doi-sync-core";
+import { buildZenodoRecordPayload, mapCrossrefRecord } from "@opendeved/doi-sync-core";
 import { api, internal } from "../_generated/api";
-import { registrationRecord } from "../../lib/reports/registration-record";
+import { registrationRecord, zenodoRecord } from "../../lib/reports/registration-record";
 import { REGISTRATION_TRIES } from "./registration";
 import { details, live, refused, row, setup, type World } from "./reports.test-support";
 
@@ -75,6 +75,29 @@ describe("a report's record for its registrars", () => {
       fullTextUrl: "https://openscholar.ai/papers/R100001/report.pdf",
     });
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { series: { title: "Openscholar Reports", issns: ["2049-3630"] }, freeToRead: true } });
+  });
+
+  it("goes to Zenodo as the kind of work its author chose, while Crossref still takes it as a report in the series", () => {
+    const zenodoType = (type: string) => {
+      const record = registrationRecord(report, { ...m, type }, series, "https://openscholar.ai");
+      const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, type });
+      expect(mapCrossrefRecord(record, doi).ok).toBe(true);
+      return buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.resource_type;
+    };
+    expect(zenodoType("article")).toEqual({ id: "publication-article" });
+    expect(zenodoType("dataset")).toEqual({ id: "dataset" });
+    expect(zenodoType("report")).toEqual({ id: "publication-report" });
+    expect(zenodoType("paratext")).toEqual({ id: "publication-other" });
+    // A dissertation is awarded by its author's university, never by Openscholar, the publisher.
+    const thesis = (authors: typeof m.authors) => {
+      const record = registrationRecord(report, { ...m, authors, type: "dissertation" }, series, "https://openscholar.ai");
+      const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, authors, type: "dissertation" });
+      const payload = buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl });
+      return { type: payload.metadata.resource_type, thesis: payload.custom_fields["thesis:thesis"] };
+    };
+    expect(thesis(m.authors)).toMatchObject({ type: { id: "publication-dissertation" }, thesis: { university: "LUANAR" } });
+    // Its first author has no institution: no university to name, so it stays a report.
+    expect(thesis([m.authors[1]!, m.authors[0]!])).toEqual({ type: { id: "publication-report" }, thesis: undefined });
   });
 
   it("says so in its title once the report is withdrawn, with the day, and no longer points at its file", () => {
