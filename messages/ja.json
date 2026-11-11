@@ -335,6 +335,7 @@
     "password": "Crossref パスワード",
     "prefix": "DOI プレフィックス",
     "registrant": "登録機関",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "登録者名",
     "email": "登録者のメールアドレス",
     "namespace": "DOI 名前空間",

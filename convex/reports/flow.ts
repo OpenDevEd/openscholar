@@ -12,6 +12,8 @@ import { createError } from "../lib/errors";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
+import { getCountryCodesForRegions } from "../../lib/constants";
+import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
@@ -53,11 +55,31 @@ const RECENT = 20;
 const untouchedOf = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
   (await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(RECENT)).find((report) => report.ownerId === userId && report.step === "doi" && !report.pdf && report.status === "draft");
 
+const listed = (list: ReadonlyArray<{ id: string }>) => (id: string) => list.some((entry) => entry.id === id);
+
 /**
- * A report's details as they may be checked and published: kept, with every link a web address or a DOI. A link
- * still being typed is saved as it is; one that leads nowhere holds the checks, and one left empty is dropped.
+ * The details whose values come from a list, with what each list holds. The form offers only these, and the
+ * registrars and our index take nothing else, so a value from any other caller is refused before the checks.
+ */
+const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[], known: (value: string) => boolean]> = [
+  ["a type of work", (metadata) => [metadata.type], listed(WORK_TYPES)],
+  // A report may leave its language out.
+  ["a language", (metadata) => (metadata.language ? [metadata.language] : []), (code) => WORK_LANGUAGES.includes(code)],
+  ["a goal", (metadata) => metadata.sdgs, listed(SDGS)],
+  ["a study design", (metadata) => metadata.studyDesigns, listed(STUDY_DESIGNS)],
+  ["a place", (metadata) => metadata.countries, (place) => getCountryCodesForRegions([place], true).countries.length > 0],
+];
+
+/**
+ * A report's details as they may be checked and published: kept, with every link a web address or a DOI and every
+ * value that has a list taken from it. A link still being typed is saved as it is; one that leads nowhere holds the
+ * checks, and one left empty is dropped.
  */
 export function checkedDetails(metadata: Metadata) {
+  for (const [what, values, known] of FROM_A_LIST) {
+    const stray = values(metadata).find((value) => !known(value));
+    if (stray !== undefined) throw createError("VALIDATION_ERROR", `"${stray.slice(0, 80)}" isn't ${what} a report can have. Choose one from the list.`);
+  }
   // One of each: the same link given twice is the same link, as a DOI and as its doi.org address too.
   const address = (target: string) => doiIn(target) ?? target.trim();
   const relations = metadata.relations.filter((relation, i, all) => relation.target.trim() !== "" && all.findIndex((other) => other.kind === relation.kind && address(other.target) === address(relation.target)) === i);

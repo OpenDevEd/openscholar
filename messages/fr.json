@@ -335,6 +335,7 @@
     "password": "Mot de passe Crossref",
     "prefix": "Préfixe DOI",
     "registrant": "Organisme déposant",
+    "registrantHint": "Crossref le renseigne à partir du préfixe lors de l’enregistrement.",
     "depositorName": "Nom du déposant",
     "email": "E-mail du déposant",
     "namespace": "Espace de noms DOI",

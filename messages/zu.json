@@ -335,6 +335,7 @@
     "password": "Iphasiwedi ye-Crossref",
     "prefix": "Isiqalo se-DOI",
     "registrant": "Umbhalisi",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Igama lomfaki",
     "email": "Imeyili yomfaki",
     "namespace": "Isikhala segama le-DOI",

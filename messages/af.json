@@ -335,6 +335,7 @@
     "password": "Crossref-wagwoord",
     "prefix": "DOI-voorvoegsel",
     "registrant": "Registreerder",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Naam van deponeerder",
     "email": "E-pos van deponeerder",
     "namespace": "DOI-naamruimte",

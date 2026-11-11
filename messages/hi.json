@@ -335,6 +335,7 @@
     "password": "Crossref पासवर्ड",
     "prefix": "DOI उपसर्ग",
     "registrant": "पंजीयक",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "जमाकर्ता का नाम",
     "email": "जमाकर्ता का ईमेल",
     "namespace": "DOI नेमस्पेस",
