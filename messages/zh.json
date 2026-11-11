@@ -6849,7 +6849,8 @@
       "cancel": "取消",
       "sendForReview": "检查修改并提交审核",
       "checkAndPublish": "检查并发布修改",
-      "runChecks": "运行检查"
+      "runChecks": "运行检查",
+      "tooEarly": "报告日期不能早于 1400 年。"
     }
   },
   "people": {

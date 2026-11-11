@@ -24,7 +24,7 @@ import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useRelationName, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, LICENCE_URL, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, LICENCE_URL, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 const REFS_PER_PAGE = 5;
@@ -331,6 +331,7 @@ export function DetailsStep({
     setDoi("");
   };
   const future = m.date > localToday();
+  const early = !!m.date && m.date < EARLIEST_DATE;
   // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
   const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
 
@@ -390,8 +391,8 @@ export function DetailsStep({
             </Field>
             <Field label={t("date")}>
               {/* A report is published by today, as the author's own calendar has it. A date typed past it says so here, before the checks are asked for. */}
-              <Input type="date" value={m.date} max={localToday()} aria-invalid={future || undefined} onChange={(e) => set("date", e.target.value)} />
-              {future ? <span className="block ps-1 text-xs text-destructive">{t("future")}</span> : null}
+              <Input type="date" value={m.date} min={EARLIEST_DATE} max={localToday()} aria-invalid={future || early || undefined} onChange={(e) => set("date", e.target.value)} />
+              {future || early ? <span className="block ps-1 text-xs text-destructive">{t(future ? "future" : "tooEarly")}</span> : null}
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">{t("licence")}</span>
@@ -628,7 +629,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || future || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || future || early || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;

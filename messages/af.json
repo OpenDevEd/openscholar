@@ -6850,7 +6850,8 @@
       "cancel": "Kanselleer",
       "sendForReview": "Kontroleer wysigings en stuur vir hersiening",
       "checkAndPublish": "Kontroleer wysigings en publiseer",
-      "runChecks": "Laat kontroles loop"
+      "runChecks": "Laat kontroles loop",
+      "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie."
     }
   },
   "people": {

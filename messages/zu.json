@@ -6849,7 +6849,8 @@
       "cancel": "Khansela",
       "sendForReview": "Hlola izinguquko bese uthumela ukuze kubuyekezwe",
       "checkAndPublish": "Hlola izinguquko bese ushicilela",
-      "runChecks": "Yenza ukuhlolwa"
+      "runChecks": "Yenza ukuhlolwa",
+      "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400."
     }
   },
   "people": {

@@ -8,6 +8,7 @@ import { readReport } from "@/lib/reports/paper-data";
  */
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const report = await readReport(paperPageId((await params).id) ?? "");
-  if (report?.state !== "live" || !report.pdfUrl) return new Response("Not found", { status: 404 });
+  // Not kept either: Cloudflare caches a 404 on a .pdf address, which would outlast a reinstatement by minutes.
+  if (report?.state !== "live" || !report.pdfUrl) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   return new Response(null, { status: 302, headers: { Location: report.pdfUrl, "Cache-Control": "no-store" } });
 }

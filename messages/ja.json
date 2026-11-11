@@ -6849,7 +6849,8 @@
       "cancel": "キャンセル",
       "sendForReview": "変更をチェックして審査に送る",
       "checkAndPublish": "変更をチェックして公開",
-      "runChecks": "チェックを実行"
+      "runChecks": "チェックを実行",
+      "tooEarly": "レポートの日付を1400年より前にすることはできません。"
     }
   },
   "people": {

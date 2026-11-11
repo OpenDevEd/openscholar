@@ -6850,7 +6850,8 @@
       "cancel": "Cancelar",
       "sendForReview": "Verificar as alterações e enviá-las para revisão",
       "checkAndPublish": "Verificar e publicar as alterações",
-      "runChecks": "Executar as verificações"
+      "runChecks": "Executar as verificações",
+      "tooEarly": "Um relatório não pode ter data anterior a 1400."
     }
   },
   "people": {
