@@ -167,7 +167,11 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const publishes = livePublishes ?? cached.look?.publish === true;
   // Reports ready to go live, which only the workspace's admins activate: the count sits on Publish, so an admin
   // whose member has got one ready hears of it here and not only by email.
-  const toActivate = useProtectedQuery(api.reports.flow.counts, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.toActivate;
+  // Reports that wait on the person to activate: this workspace's, and those in their other workspaces, which the
+  // Publish page then names (each workspace's Publish lists only its own).
+  const waitingHere = useProtectedQuery(api.reports.flow.counts, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.toActivate;
+  const waitingElsewhere = useProtectedQuery(api.reports.flow.waitingElsewhere, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.ready;
+  const toActivate = (waitingHere ?? 0) + (waitingElsewhere ?? 0);
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
