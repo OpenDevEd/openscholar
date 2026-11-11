@@ -1,6 +1,8 @@
 // A picture of a report's first page, drawn by the browser that uploads its PDF and kept beside it. A community
 // draws its covers the same way on its server (new-el's src/lib/admin/pdf-read.mjs): pdf.js renders page 1 on a canvas.
 
+import { pdfAssets } from "@/lib/pdf-assets";
+
 /** Wide enough for the cover at twice its largest size on a page (200 px). */
 const COVER_WIDTH = 800;
 
@@ -9,7 +11,7 @@ export async function drawCover(file: File): Promise<Blob | null> {
   try {
     const { pdfjs } = await import("react-pdf");
     pdfjs.GlobalWorkerOptions.workerSrc ||= new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
-    const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+    const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), ...pdfAssets(pdfjs.version) });
     try {
       const page = await (await task.promise).getPage(1);
       const natural = page.getViewport({ scale: 1 });

@@ -6606,7 +6606,7 @@
       "readingHint": "Environ une demi-minute. Vous pouvez quitter cette page : la lecture continue.",
       "drop": "Déposez le PDF ici, ou choisissez-le",
       "dropHint": "Un PDF, jusqu'à {max} Mo",
-      "unopenedPdf": "{name} n'a pas pu être ouvert comme PDF. Enregistrez-le de nouveau en PDF et téléversez-le.",
+      "unopenedPdf": "{name} n'a pas pu être ouvert comme PDF. S'il est protégé par un mot de passe, retirez-le, puis enregistrez-le de nouveau en PDF et téléversez-le.",
       "stuck": "La lecture de {name} prend plus de temps que prévu. Téléversez-le de nouveau.",
       "replaces": "Un nouveau téléversement remplace {name}",
       "check": {

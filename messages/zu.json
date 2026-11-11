@@ -6606,7 +6606,7 @@
       "readingHint": "Cishe isigamu somzuzu. Ungashiya leli khasi: kuyaqhubeka.",
       "drop": "Faka i-PDF lapha, noma uyikhethe",
       "dropHint": "I-PDF eyodwa, kuze kufike ku-{max} MB",
-      "unopenedPdf": "I-{name} ayikwazanga ukuvulwa njenge-PDF. Yilondoloze njenge-PDF futhi bese uyilayisha.",
+      "unopenedPdf": "I-{name} ayikwazanga ukuvulwa njenge-PDF. Uma inephasiwedi, yisuse, bese uyilondoloza futhi njenge-PDF bese uyilayisha.",
       "stuck": "Ukufunda i-{name} kuthatha isikhathi eside kunokufanele. Yilayishe futhi.",
       "replaces": "Ukulayisha futhi kuthatha isikhundla se-{name}",
       "check": {

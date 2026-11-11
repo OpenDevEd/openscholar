@@ -10,7 +10,7 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { becameReady, notify } from "./mail";
@@ -76,7 +76,8 @@ export const page = query({
     const named = q && isReportKey(q.trim().toUpperCase()) ? await byKey(ctx, q.trim().toUpperCase()) : null;
     const reports = named && named.step === "done" && !read.some((report) => report._id === named._id) ? [...read, named] : read;
     const shows = (report: Doc<"reports">, kept: Show) => kept === "all" || (kept === "review" ? wantsReviewer(report, humanReview) : stageOf(report, humanReview) === (kept as Stage));
-    const words = (q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+    // A DOI pasted as its address (https://doi.org/…) is looked for as the DOI it is.
+    const words = (doiIn(q ?? "") ?? q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
     const text = (report: Doc<"reports">) => `${report.title ?? ""} ${report.key} ${report.doi} ${report.signedBy.name}`.toLowerCase();
     // What the search keeps, which each filter then counts: the numbers on the filters are of what is searched for.
     const found = reports.filter((report) => words.every((word) => text(report).includes(word)));
