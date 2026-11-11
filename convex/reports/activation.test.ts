@@ -73,6 +73,8 @@ describe("activating a report", () => {
     expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key, now: Date.now() })).toMatchObject({ paused: true });
     await expect(activate(world, key)).rejects.toMatchObject(refused("FEATURE_DISABLED"));
     expect(await activations(world)).toEqual([]);
+    // Zenodo alone gives no report a DOI, so publishing is off for new reports too: no Publish to start one from.
+    expect(await world.author.query(api.reports.settings.open, {})).toBe(false);
   });
 
   it("records a charge before it is made, and asking again carries on the same one with its own code", async () => {

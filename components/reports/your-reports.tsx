@@ -71,7 +71,7 @@ export function StatusFilter({ counts, show, onShow }: { counts: Counts; show: S
   );
 }
 
-export function YourReports({ list, humanReview, series, shared, show, onPage, onOpen, onNew, onDiscard, onCorrect }: { list: Listed; humanReview: boolean; /** The series' name, which a report without a cover wears on its title page. */ series: string; /** An organisation's list: each row says who signed. */ shared: boolean; show: Show; onPage: (page: number) => void; onOpen: (key: string) => void; onNew: () => void; onDiscard: (key: string) => Promise<void>; onCorrect: (key: string) => void }) {
+export function YourReports({ list, humanReview, series, shared, show, onPage, onOpen, onNew, onDiscard, onCorrect }: { list: Listed; humanReview: boolean; /** The series' name, which a report without a cover wears on its title page. */ series: string; /** An organisation's list: each row says who signed. */ shared: boolean; show: Show; onPage: (page: number) => void; onOpen: (key: string) => void; /** None while publishing is off: nothing offers to start a report. */ onNew?: () => void; onDiscard: (key: string) => Promise<void>; onCorrect: (key: string) => void }) {
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<ReportRow | null>(null);
   // The button that asked, so the keyboard is back on it when the question closes: the dialog has no trigger of its own.
@@ -103,7 +103,7 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
           icon={FileText}
           description={show === "all" ? t("emptyHint") : undefined}
           action={
-            show === "all" ? (
+            show === "all" && onNew ? (
               <Button size="sm" onClick={onNew}>
                 <Plus /> {t("publishReport")}
               </Button>

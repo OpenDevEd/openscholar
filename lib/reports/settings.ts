@@ -126,14 +126,15 @@ export const startWords = (perDay: number, kind: WorkspaceKind) => {
   return perDay === 0 ? `${plan} doesn't include publishing. Move to a plan that does.` : `${plan} starts ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow, or move to a plan with more.`;
 };
 
-/** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
-export const canRegister = (publication: PublicationSettings) => publication.zenodo.mode !== "off" || publication.crossref.mode !== "off";
+/** A report needs a DOI, so publishing needs Crossref connected: Zenodo alone can't give a report its DOI yet, since
+ * the DOI it reserves comes from a draft deposit that signing doesn't make. Zenodo on or off, it archives. */
+export const canRegister = (publication: PublicationSettings) => publication.crossref.mode !== "off";
 /**
  * The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. Until the series has an ISSN the
  * byline says so in braces, "{pending}", as it is printed.
  */
 export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name);
-/** The DOI a report gets under the Crossref prefix and namespace. With Crossref off its DOI is the one Zenodo reserves, which only Zenodo knows. */
+/** The DOI a report gets under the Crossref prefix and namespace; with Crossref off, none (canRegister). */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
 
 /** Whether text is an ISSN: eight digits as 1234-5678, the last of them the check digit (X for ten), as ISO 3297 has it. */
