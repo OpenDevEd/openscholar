@@ -140,8 +140,18 @@ describe("a report's PDF", () => {
     const added = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and a page with it"])));
     await world.t.mutation(internal.reports.readingState.finish, { reportId, at: asked.at, pages: 5, withByline: { file: added, bytes: 36 } });
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", pdf: { pages: 5, bytes: 36, bylineBy: "added" }, metadata: { title: "Shade trees and maize yields" } });
-    expect((await row(world.t, key)).pdf!.file).toBe(added);
+    expect((await row(world.t, key)).pdf!).toMatchObject({ file: added, stamped: true });
     expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
+    // The checks write the page again with the details they read: that file takes the last one's place.
+    const again = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and the page again"])));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, at: asked.at, file: again, bytes: 37 });
+    expect((await row(world.t, key)).pdf!).toMatchObject({ file: again, bytes: 37, stamped: true });
+    expect(await world.t.run((ctx) => ctx.db.system.get(added))).toBeNull();
+    // One written for a PDF since replaced is given up.
+    const late = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 late"])));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, at: asked.at - 1, file: late, bytes: 13 });
+    expect((await row(world.t, key)).pdf!.file).toBe(again);
+    expect(await world.t.run((ctx) => ctx.db.system.get(late))).toBeNull();
   });
 
   it("stays at the upload, saying so, when its PDF's text doesn't carry the byline, with the way on to its details", async () => {

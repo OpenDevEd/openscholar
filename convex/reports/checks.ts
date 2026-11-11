@@ -7,7 +7,8 @@ import { generateText, Output } from "ai";
 import { v } from "convex/values";
 import { z } from "zod";
 import { api, internal } from "../_generated/api";
-import { action } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import { action, type ActionCtx } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -15,6 +16,7 @@ import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
 import { CHECK_SAID, carries, doiIn, linkHref } from "../../lib/reports/report";
+import { withBylinePage } from "../../lib/reports/byline-page";
 import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
@@ -85,6 +87,23 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
  * Runs the checks on a report waiting at its details, with the details as its author last corrected them; or, from
  * `changesSince`, on changes to a live report, which stays live as it is while they are read.
  */
+/**
+ * The page Openscholar added to the PDF says the report's details, which were only read from the PDF when it was
+ * added: it is written again with the ones its author is sending to the checks. A page that can't be written again
+ * stays as it was, with its byline.
+ */
+async function restamp(ctx: ActionCtx, reportId: Id<"reports">, page: { file: Id<"_storage">; at: number; line: string; series: string }, details: Metadata) {
+  try {
+    const blob = await ctx.storage.get(page.file);
+    if (!blob) return;
+    const next = await withBylinePage(new Uint8Array(await blob.arrayBuffer()), { line: page.line, series: page.series, details }, { replaceLast: true });
+    const file = await ctx.storage.store(new Blob([next as Uint8Array<ArrayBuffer>], { type: "application/pdf" }));
+    await ctx.runMutation(internal.reports.readingState.restamped, { reportId, at: page.at, file, bytes: next.byteLength });
+  } catch (error) {
+    console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, error: String(error).slice(0, 300) }));
+  }
+}
+
 export const run = action({
   args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, from: runFromValidator },
   // Where changes to a live report stand after the run; null for a report's first checks.
@@ -97,6 +116,8 @@ export const run = action({
     if ("unchanged" in started) throw createError("VALIDATION_ERROR", `These are the details your report already has, so there is nothing to change.${started.waiting ? " To give up the changes that are waiting, discard them." : ""}`);
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";
+    // Beside the checks, and done before the report can be ready: what goes live is the PDF with these details on it.
+    const stamping = started.page ? restamp(ctx, reportId, started.page, metadata) : undefined;
     const communities: Community[] = started.checks.some((check) => check.builtIn)
       ? (await ctx.runQuery(api.evidenceLibraries.directory.directory, { paginationOpts: { cursor: null, numItems: COMMUNITIES_SEARCHED }, sort: "records" })).page.map((card) => ({ name: card.name, address: card.address }))
       : [];
@@ -116,6 +137,7 @@ export const run = action({
         return result;
       }),
     );
+    await stamping;
     return await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version, ...(started.changes && { metadata }) });
   },
 });

@@ -127,6 +127,8 @@ export const pdfValidator = v.object({
   lacksByline: v.optional(v.boolean()),
   /** Who its author said adds the byline, chosen at the upload. "added" with `lacksByline` is a page that couldn't be added. A PDF from before the choice has none. */
   bylineBy: v.optional(bylineByValidator),
+  /** Its last page is the one Openscholar added, which says the report's details: written again when the checks read them. */
+  stamped: v.optional(v.boolean()),
   /** Its details are the ones the report had before this PDF replaced another: the author may have them read from this one instead. */
   kept: v.optional(v.boolean()),
 });

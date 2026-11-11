@@ -56,16 +56,41 @@ export const read = internalAction({
       return null;
     }
     // Built from its pieces as the extraction does, so a line break in the PDF is a break, not two words run together.
-    let text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
-    let pages = opened.totalPages;
+    // A page Openscholar added before is its own text, not the report's: the reader and the checks are given the rest.
+    const read = (job.stamped ? opened.pages.slice(0, -1) : opened.pages).map((page) => buildPageTextFromItems(page.items).text).join("\n");
     // A scan holds no text: said to its author as that, whatever is added to the PDF below.
-    const scanned = !text.trim();
-    // An author who has Openscholar add the byline gets it on a last page, unless the PDF carries it already. A page
-    // that can't be added leaves the PDF as it was, without the line, which the upload then says.
+    const scanned = !read.trim();
+    let metadata: Metadata | null = null;
+    let details: Metadata | undefined;
+    // A report that keeps the details it has is read only for its text and its pages.
+    if (!job.kept) {
+      try {
+        if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");
+        const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
+        const found = capped(await readDetails({ pdf: new Uint8Array(bytes), text: read, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
+        // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
+        if (!found.title.trim() && !found.abstract.trim()) throw new Error("The reading found no title and no abstract.");
+        // Each list within its cap can still add up to more than a report holds: such a reading is filled in by hand too.
+        if (JSON.stringify(found).length > DETAILS_MAX_BYTES) throw new Error("The reading is longer than a report holds.");
+        metadata = found;
+      } catch (error) {
+        console.error(JSON.stringify({ event: "report-details-unread", reportId, error: String(error).slice(0, 600) }));
+      }
+      details = metadata ?? blankDetails(job.name, new Date().toISOString().slice(0, 10));
+      // A PDF that names no author is its signer's until they say otherwise.
+      if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
+    }
+    // An author who has Openscholar add the byline gets it on a last page, with the report's details as they stand,
+    // unless the PDF carries the line already. A page that can't be added leaves the PDF as it was, without the line,
+    // which the upload then says.
+    let text = job.stamped ? `${read}\n${job.line}` : read;
+    let pages = opened.totalPages;
     let withByline: { file: Id<"_storage">; bytes: number } | undefined;
     if (job.added && !carries(text, job.line)) {
       try {
-        const added = await withBylinePage(new Uint8Array(bytes), job.line);
+        // Details a reading couldn't find are a file name and today's date: the page waits for the author's own.
+        const known = job.held ?? metadata ?? undefined;
+        const added = await withBylinePage(new Uint8Array(bytes), { line: job.line, series: job.series, ...(known && { details: known }) });
         withByline = { file: await ctx.storage.store(new Blob([added as Uint8Array<ArrayBuffer>], { type: "application/pdf" })), bytes: added.byteLength };
         text = `${text}\n${job.line}`;
         pages += 1;
@@ -78,30 +103,9 @@ export const read = internalAction({
     // has no text to look in, and says that instead.
     // An author who asked for the page and didn't get it is told so whether or not the byline check is on.
     const lacksByline = (job.byline !== null && !scanned && !carries(text, job.byline)) || (job.added && !carries(text, job.line));
-    if (job.kept) {
-      // The report keeps the details it has: this PDF gives the checks its text and its pages.
-      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, ...(scanned && { trouble: "textless" as const }), ...(lacksByline && { lacksByline }), ...(withByline && { withByline }) });
-      return null;
-    }
-    let metadata: Metadata | null = null;
-    try {
-      if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");
-      const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
-      const read = capped(await readDetails({ pdf: new Uint8Array(bytes), text, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
-      // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
-      if (!read.title.trim() && !read.abstract.trim()) throw new Error("The reading found no title and no abstract.");
-      // Each list within its cap can still add up to more than a report holds: such a reading is filled in by hand too.
-      if (JSON.stringify(read).length > DETAILS_MAX_BYTES) throw new Error("The reading is longer than a report holds.");
-      metadata = read;
-    } catch (error) {
-      console.error(JSON.stringify({ event: "report-details-unread", reportId, error: String(error).slice(0, 600) }));
-    }
-    const details = metadata ?? blankDetails(job.name, new Date().toISOString().slice(0, 10));
-    // A PDF that names no author is its signer's until they say otherwise.
-    if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     // A scan holds no text for the checks to read, which matters more to its author than a reading that fell short.
-    const trouble = scanned ? ("textless" as const) : metadata ? undefined : ("unread" as const);
-    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(lacksByline && { lacksByline }), ...(!metadata && { unread: true }), ...(withByline && { withByline }) });
+    const trouble = scanned ? ("textless" as const) : details && !metadata ? ("unread" as const) : undefined;
+    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, ...(details && { metadata: details }), ...(trouble && { trouble }), ...(lacksByline && { lacksByline }), ...(details && !metadata && { unread: true }), ...(withByline && { withByline }) });
     return null;
   },
 });
