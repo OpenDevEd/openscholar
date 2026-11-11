@@ -31,6 +31,7 @@ import { useChangeLabel } from "@/components/reports/words";
 import { Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
+import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1500,6 +1501,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
+  const tAdded = useTranslations("addedPapers");
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
@@ -1542,13 +1544,23 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
           ) : null}
         </div>
       </motion.div>
-      <motion.div className="mt-6 flex flex-wrap justify-end gap-2" {...rise(0.8)}>
+      {/* On a phone the four are two even rows, in place of a ragged wrap. */}
+      <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full" {...rise(0.8)}>
         <Button variant="outline" onClick={onAnother}>
           <Plus /> {t("publishAnother")}
         </Button>
         <Button variant="outline" onClick={onCorrect}>
           <PenLine /> {t("correct")}
         </Button>
+        {/* The app's own Add to community list, opened from a named button: a community takes the report by its DOI. */}
+        <CommunityControl
+          paper={{ id: report.key, title: report.metadata?.title ?? "", doi: report.doi }}
+          trigger={(icon) => (
+            <Button variant="outline">
+              {icon} {tAdded("addToCommunity")}
+            </Button>
+          )}
+        />
         <Button asChild>
           <Link href={`/papers/${report.key}`}>
             {t("openPage")} <ArrowUpRight />
