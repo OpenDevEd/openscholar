@@ -61,9 +61,12 @@ describe("a report's page", () => {
     const seenAt = (await row(world.t, key)).updatedAt;
     const page = await world.t.query(api.reports.paper.get, { key });
     if (page?.state !== "live") throw new Error("The report isn't live");
-    await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt, metadata: { ...page.metadata, title: "Shade trees, corrected" } });
+    // Its funding and its authors' affiliations reach the community with the rest, so a corrected funder does too.
+    const funding = [{ funder: { id: "https://ror.org/021nxhr62", name: "National Science Foundation" }, awards: ["QA-WAVE9-CORRECTED"] }];
+    const author = { name: "Chikondi Banda", orcid: "0000-0002-1825-0097", openalexId: null, affiliations: [{ id: "I4210087849", name: "University of Rwanda", country: "RW", ror: "https://ror.org/00286hs46" }], corresponding: true, roles: [] };
+    await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt, metadata: { ...page.metadata, title: "Shade trees, corrected", funding, authors: [author], sdgs: ["2"] } });
     const [corrected] = await ask(doi);
-    expect(corrected).toMatchObject({ state: "live", title: "Shade trees, corrected" });
+    expect(corrected).toMatchObject({ state: "live", title: "Shade trees, corrected", funding, sdgs: ["2"], authors: [{ name: author.name, orcid: author.orcid, affiliations: author.affiliations }] });
     expect(corrected!.version).not.toBe(first!.version);
     await decide(world, key, "withdraw");
     const [withdrawn] = await ask(doi);
