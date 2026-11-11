@@ -154,6 +154,11 @@ workflow.
   skill says how). On the user's machine a stop hook keeps the session open
   until it passes, or until `npm run verify -- skip "<reason>"` records why it
   can't.
+- A new or changed flow a person walks through is done when the first two
+  passes of the `first-use-qa` skill are complete: a state table for each
+  changed screen, then a first-use walk on a new account and on an account with
+  history. Scripted QA waves follow those passes. A tester who is told the
+  steps can't show whether a new person gets through them.
 - Documentation-only work needs link checks and `git diff --check`, not the
   application test suite.
 
