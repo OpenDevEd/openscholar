@@ -6543,7 +6543,8 @@
         "upload": "PDF",
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
-        "live": "Kushicilelwe"
+        "live": "Kushicilelwe",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",

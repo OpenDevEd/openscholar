@@ -6544,7 +6544,8 @@
         "upload": "PDF",
         "details": "التفاصيل",
         "checks": "الفحوصات",
-        "live": "منشور"
+        "live": "منشور",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "نشر",
       "newReport": "تقرير جديد",

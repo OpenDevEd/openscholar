@@ -43,7 +43,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, ListChecks, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
@@ -599,7 +599,9 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
         {STEPS.map((s, i) => {
           const done = i < place || (i === place && place === LIVE_AT);
           const current = i === place && place !== LIVE_AT;
-          const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
+          // A signed agreement is done for good: a lock, not a tick, says it can't be opened again.
+          const sealed = done && s.id === "agreement" && !!report;
+          const Icon = sealed ? Lock : done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
           // Every step done before the checks can be gone back to, as each step's Back button goes: the DOI, the PDF and
           // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
           // Before a report, Prepare is a step back from the agreement.
@@ -607,7 +609,7 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
           const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata)));
           const body = (
             <>
-              <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
+              <Icon className={cn("size-4 shrink-0", sealed ? "text-muted-foreground" : done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
               {/* On a phone only the current step keeps its name; the others are their icons. */}
               <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{t(`steps.${s.id}`)}</span>
             </>
@@ -618,6 +620,12 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
                 <button type="button" onClick={() => (back ? onPrepare() : s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
+              ) : sealed ? (
+                <TooltipHint label={t("steps.sealed")}>
+                  <div tabIndex={0} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1">
+                    {body}
+                  </div>
+                </TooltipHint>
               ) : (
                 <div aria-current={current ? "step" : undefined} className="flex min-w-0 items-center gap-1.5 py-1">
                   {body}

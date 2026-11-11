@@ -6543,7 +6543,8 @@
         "upload": "PDF",
         "details": "信息",
         "checks": "检查",
-        "live": "上线"
+        "live": "上线",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "发布",
       "newReport": "新报告",

@@ -6544,7 +6544,8 @@
         "upload": "PDF",
         "details": "Dados",
         "checks": "Verificações",
-        "live": "Publicado"
+        "live": "Publicado",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "Publicar",
       "newReport": "Novo relatório",

@@ -6543,7 +6543,8 @@
         "upload": "PDF",
         "details": "詳細",
         "checks": "チェック",
-        "live": "公開"
+        "live": "公開",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "公開",
       "newReport": "新しいレポート",

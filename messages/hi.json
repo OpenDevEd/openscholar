@@ -6543,7 +6543,8 @@
         "upload": "PDF",
         "details": "विवरण",
         "checks": "जाँचें",
-        "live": "प्रकाशित"
+        "live": "प्रकाशित",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "प्रकाशित करें",
       "newReport": "नई रिपोर्ट",

@@ -6543,7 +6543,8 @@
         "upload": "PDF",
         "details": "Informations",
         "checks": "Vérifications",
-        "live": "En ligne"
+        "live": "En ligne",
+        "sealed": "Signed. A signed agreement can't be opened again."
       },
       "publish": "Publier",
       "newReport": "Nouveau rapport",
