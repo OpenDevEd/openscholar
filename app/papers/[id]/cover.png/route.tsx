@@ -10,7 +10,8 @@ const SIZES = { "16x9": [1200, 675], "4x3": [1200, 900], "1x1": [1200, 1200], sh
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const read = await readPaperPage((await params).id);
-  if (!read) return new Response("Not found", { status: 404 });
+  // Not kept: a withdrawn report's cover comes back when it's reinstated, and Cloudflare caches a 404 on a .png address.
+  if (!read) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   const ratio = new URL(request.url).searchParams.get("ratio") as keyof typeof SIZES | null;
   const [width, height] = SIZES[ratio && Object.hasOwn(SIZES, ratio) ? ratio : "share"];
   const { paper, detail } = read;
