@@ -242,7 +242,7 @@ export function PublishFlow() {
             // Changes already waiting open where they stand; otherwise the details open to be corrected.
             onCorrect={(key) => go({ view: null, report: key, correct: (list ?? lastList)?.rows.find((row) => row.key === key)?.changes ? null : true })}
             onDiscard={(key) => discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), said(t("discardFailed")))}
-            onNew={another}
+            onNew={basics?.open ? another : undefined}
           />
         </div>
       ) : closed ? (
@@ -496,7 +496,7 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={onAnother} onCorrect={onCorrect} />
+            <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
           ) : (
             <Checks
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
@@ -1554,7 +1554,7 @@ function Seal({ play }: { play: boolean }) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; fresh: boolean; onAnother: () => void; onCorrect: () => void }) {
+function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; fresh: boolean; /** None while publishing is off. */ onAnother?: () => void; onCorrect: () => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
@@ -1603,9 +1603,11 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
       </motion.div>
       {/* On a phone the four are two even rows, in place of a ragged wrap. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full" {...rise(0.8)}>
-        <Button variant="outline" onClick={onAnother}>
-          <Plus /> {t("publishAnother")}
-        </Button>
+        {onAnother ? (
+          <Button variant="outline" onClick={onAnother}>
+            <Plus /> {t("publishAnother")}
+          </Button>
+        ) : null}
         <Button variant="outline" onClick={onCorrect}>
           <PenLine /> {t("correct")}
         </Button>
