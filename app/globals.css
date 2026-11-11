@@ -788,3 +788,11 @@ html[data-question-stage] body {
 html[data-question-stage] body > * {
   visibility: hidden;
 }
+
+/* On a touch screen the keyboard takes half the screen, and the assistant's button, pinned to the corner above it,
+   sat over the button beside the field being typed in (Apply, Send). It steps out while a field has the focus. */
+@media (pointer: coarse) {
+  body:has(input:focus, textarea:focus) [data-assistant-launcher] {
+    visibility: hidden;
+  }
+}

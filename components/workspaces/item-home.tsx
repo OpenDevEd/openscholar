@@ -4,7 +4,7 @@ import { redirect, usePathname, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useWorkspaceSlug, workspaceHref } from "@/lib/workspaces/href";
-import { bareWorkspacePath, pageItem, switchTarget } from "@/lib/workspaces/paths";
+import { bareWorkspacePath, outsiderTarget, pageItem } from "@/lib/workspaces/paths";
 import { useWorkspace } from "@/lib/workspaces/url";
 
 type Item = NonNullable<ReturnType<typeof pageItem>>;
@@ -38,8 +38,9 @@ export function ItemHome() {
 
 /**
  * Leaves an organization's page once the person can't act in it any more: they were removed,
- * they left in another tab, or it was deleted. They go to their own workspace as a switch to it
- * would take them, in place of a page that waits for data it won't be given.
+ * they left in another tab, or it was deleted. They go to the same page in their own workspace, item and all,
+ * as the organization's layout sends someone who was never its member (app/o/[slug]/layout.tsx): the page there
+ * says the item isn't theirs, where the section's start would say nothing of what happened to it.
  */
 export function WorkspaceGone() {
   const slug = useWorkspaceSlug();
@@ -47,6 +48,6 @@ export function WorkspaceGone() {
   const params = useSearchParams();
   // False once the server says they aren't in it; undefined while it's still being read. One being deleted is still theirs: the deletion may fail.
   const member = useProtectedQuery(api.workspaces.queries.memberAt, slug ? { slug } : "skip").data;
-  if (slug && member === false) redirect(switchTarget(undefined, pathname, params.toString()));
+  if (slug && member === false) redirect(outsiderTarget(pathname, params.size ? `?${params.toString()}` : ""));
   return null;
 }
