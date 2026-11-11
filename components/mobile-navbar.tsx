@@ -1,17 +1,16 @@
 "use client";
 
 import { MobileSidebarTrigger } from "./app-sidebar";
-import { useIsMobile } from "@/lib/hooks";
 import { usePathname } from "next/navigation";
 import { Logo } from "./logo";
 
 const CHROMELESS_ROUTES = ["/connect", "/sign-in", "/sign-up"];
 
 export function MobileNavbar() {
-  const isMobile = useIsMobile();
   const pathname = usePathname();
 
-  if (!isMobile) return null;
+  // Shown by the stylesheet alone (`md:hidden`), so it is in the page's first frame on a phone: waiting for the
+  // script to measure the screen put it in late, and pushed the page down by its height.
   if (CHROMELESS_ROUTES.some((r) => pathname?.startsWith(r))) return null;
 
   return (

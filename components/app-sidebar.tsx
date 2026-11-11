@@ -68,13 +68,11 @@ export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace 
 }
 
 export function MobileSidebarTrigger() {
-  const isMobile = useIsMobile();
   const t = useTranslations("accessibility");
   const isOpen = useSidebarStore((s) => s.isOpen);
   const setOpen = useSidebarStore((s) => s.setOpen);
 
-  if (!isMobile) return null;
-
+  // Its only place is the phone's bar, which the stylesheet shows and hides: it is there from the bar's first frame.
   return (
     <motion.div
       tabIndex={-1}
