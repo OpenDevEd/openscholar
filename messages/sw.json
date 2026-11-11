@@ -6680,6 +6680,7 @@
       "waitingOwn": "{count, plural, one {Ripoti # katika nafasi yako binafsi iko tayari uiwashe.} other {Ripoti # katika nafasi yako binafsi ziko tayari uziwashe.}}",
       "waitingOpen": "{count, plural, one {Ifungue} other {Zifungue}}",
       "savingNote": "Kadi yako inahifadhiwa ili kuwasha ripoti kwenye Openscholar. Hakuna kinachotozwa sasa.",
+      "registering": "Ukurasa uko wazi sasa na unaweza kushirikiwa. DOI huanza kufanya kazi ikishasajiliwa, kwa kawaida ndani ya dakika chache.",
       "sentToReviewer": "Imetumwa kwa mkaguzi",
       "requestFailed": "Ombi halikuweza kutumwa",
       "reviewIntro": "Mkaguzi anasoma ripoti yako na matokeo ya ukaguzi. Omba ikiwa unaamini ukaguzi ulikosea.",
