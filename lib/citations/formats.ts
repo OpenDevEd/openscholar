@@ -33,3 +33,13 @@ export const CITATION_FILES = {
 } as const;
 
 export type CitationFile = keyof typeof CITATION_FILES;
+
+/**
+ * A record as BibTeX and RIS are written from it. A report's number in its series is CSL's `collection-number`, which the
+ * formatted styles print after the series ("Openscholar Reports R100022"); BibTeX's `number` comes only from CSL's
+ * `number`, so it goes in as that too. Copied BibTeX and both files go through here.
+ */
+export function forFiles(data: CitationData): CitationData {
+	const number = data["collection-number"];
+	return number && !data.number ? { ...data, number } : data;
+}

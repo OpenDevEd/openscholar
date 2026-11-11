@@ -3,7 +3,7 @@ import { CSL } from "citeproc-ts";
 import { withoutCitationNumbers } from "./citation-numbering";
 import { Cite } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
-import { CITATION_FORMATS, type CitationData, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
+import { CITATION_FORMATS, forFiles, type CitationData, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
 
 import { loadCitationStyleAssets } from "./styles";
 
@@ -18,7 +18,7 @@ export async function formatCitations(data: CitationData, language: string): Pro
 /** One of the main formats, such as APA. */
 export function formatCitation(data: CitationData, language: string, id: CitationFormat): FormattedCitation {
 	const format = CITATION_FORMATS.find((each) => each.id === id)!;
-	if (format.style === null) return { text: new Cite([data]).format("bibtex", { format: "text" }).trim(), html: null };
+	if (format.style === null) return { text: new Cite([forFiles(data)]).format("bibtex", { format: "text" }).trim(), html: null };
 	return renderCitation(data, locales[language] ?? language, assets.styles[format.style], localeAssets);
 }
 

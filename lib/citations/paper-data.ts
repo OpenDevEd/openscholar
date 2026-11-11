@@ -33,8 +33,13 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   // An Openscholar Report is numbered in a series Openscholar publishes, and is cited as such: "Title (Openscholar
   // Reports R100022). Openscholar." BibTeX and RIS carry the series as `series` and T2. A container title as well
   // printed the series twice ("In Openscholar Reports (Openscholar Reports)").
-  if (source?.display_name && id.startsWith("R")) Object.assign(data, { "collection-title": source.display_name, "collection-number": id, publisher: "Openscholar" });
-  else if (source?.display_name) data["container-title"] = source.display_name;
+  if (source?.display_name && id.startsWith("R")) {
+    Object.assign(data, { "collection-title": source.display_name, "collection-number": id, publisher: "Openscholar" });
+    // A thesis is cited with the university that awarded it, its first author's first institution, as Zenodo files it
+    // (lib/reports/registration-record.ts). Without one, a dissertation is cited as a report.
+    const university = paper.authorships?.[0]?.institutions?.[0]?.display_name;
+    if (data.type === "thesis") Object.assign(data, university ? { publisher: university } : { type: "report" });
+  } else if (source?.display_name) data["container-title"] = source.display_name;
   if (source?.issn_l) data.ISSN = source.issn_l;
   if (paper.language) data.language = paper.language;
   if (paper.biblio?.volume) data.volume = paper.biblio.volume;
