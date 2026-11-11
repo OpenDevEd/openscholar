@@ -6609,7 +6609,7 @@
       "readingHint": "Cerca de meio minuto. Pode sair desta página: continua a decorrer.",
       "drop": "Largue o PDF aqui, ou escolha-o",
       "dropHint": "Um PDF, até {max} MB",
-      "unopenedPdf": "Não foi possível abrir {name} como PDF. Guarde-o de novo como PDF e carregue-o.",
+      "unopenedPdf": "Não foi possível abrir {name} como PDF. Se tiver senha, remova-a; depois guarde-o de novo como PDF e carregue-o.",
       "stuck": "A leitura de {name} está a demorar mais do que devia. Carregue-o de novo.",
       "replaces": "Carregar de novo substitui {name}",
       "check": {

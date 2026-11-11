@@ -6609,7 +6609,7 @@
       "readingHint": "Etwa eine halbe Minute. Sie können diese Seite verlassen: Es läuft weiter.",
       "drop": "PDF hier ablegen oder auswählen",
       "dropHint": "Ein PDF, bis zu {max} MB",
-      "unopenedPdf": "{name} konnte nicht als PDF geöffnet werden. Speichern Sie es erneut als PDF und laden Sie dieses hoch.",
+      "unopenedPdf": "{name} konnte nicht als PDF geöffnet werden. Hat es ein Passwort, entfernen Sie es; speichern Sie es dann erneut als PDF und laden Sie dieses hoch.",
       "stuck": "Das Lesen von {name} dauert länger als erwartet. Laden Sie es erneut hoch.",
       "replaces": "Ein erneuter Upload ersetzt {name}",
       "check": {

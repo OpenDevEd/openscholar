@@ -6609,7 +6609,7 @@
       "readingHint": "Alrededor de medio minuto. Puedes salir de esta página: sigue en marcha.",
       "drop": "Suelta el PDF aquí o elígelo",
       "dropHint": "Un PDF, de hasta {max} MB",
-      "unopenedPdf": "No se pudo abrir {name} como PDF. Guárdalo de nuevo como PDF y súbelo.",
+      "unopenedPdf": "No se pudo abrir {name} como PDF. Si tiene contraseña, quítasela; después guárdalo de nuevo como PDF y súbelo.",
       "stuck": "La lectura de {name} está tardando más de lo normal. Súbelo de nuevo.",
       "replaces": "Una nueva subida sustituye a {name}",
       "check": {

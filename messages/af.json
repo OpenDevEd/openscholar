@@ -6609,7 +6609,7 @@
       "readingHint": "Omtrent 'n halwe minuut. Jy kan hierdie bladsy verlaat: dit gaan voort.",
       "drop": "Los die PDF hier, of kies dit",
       "dropHint": "Een PDF, tot {max} MB",
-      "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. Stoor dit weer as PDF en laai dit op.",
+      "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. As dit 'n wagwoord het, verwyder dit; stoor dit dan weer as PDF en laai dit op.",
       "stuck": "Om {name} te lees neem langer as wat dit behoort. Laai dit weer op.",
       "replaces": "Weer oplaai vervang {name}",
       "check": {

@@ -6608,7 +6608,7 @@
       "readingHint": "大约半分钟。您可以离开此页面，读取会继续进行。",
       "drop": "将 PDF 拖到这里，或选择文件",
       "dropHint": "一个 PDF，最大 {max} MB",
-      "unopenedPdf": "无法将 {name} 作为 PDF 打开。请重新另存为 PDF 后上传。",
+      "unopenedPdf": "无法将 {name} 作为 PDF 打开。如果它设有密码，请先移除密码，再重新另存为 PDF 后上传。",
       "stuck": "读取 {name} 用时过长。请重新上传。",
       "replaces": "重新上传将替换 {name}",
       "check": {
