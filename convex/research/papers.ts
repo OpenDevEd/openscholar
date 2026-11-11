@@ -142,7 +142,8 @@ export const getAction = defineUserAction({
     const report = reportKey(id) ?? (link?.kind === "report" ? link.key : null);
     if (report) {
       const found: Infer<typeof paperRecordValidator> | null = await ctx.runQuery(internal.reports.paper.record, { key: report });
-      if (!found) throw createError("NOT_FOUND", "Openscholar Reports has no live report by that key.");
+      // One still on its way has no public page yet: its workspace reads where it stands.
+      if (!found) throw createError("NOT_FOUND", "Openscholar Reports has no live report by that key. A report not live yet (a draft, at its checks, waiting for review or ready to activate) is read with reports/flow:get in the workspace it belongs to.");
       return found;
     }
     const path = workPath(id);

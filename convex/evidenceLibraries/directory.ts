@@ -47,18 +47,19 @@ const cardValidator = v.object({
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined);
 
-/** What a community's card shows, from a version of its settings: its name, tagline, description, accent colour and favicon. */
+/** What a community's card shows, from a version of its settings: its name, tagline, description, accent colour and favicon, and the short name its site's header shows, which people call it by and search it by. */
 async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisions">) {
   const sections = new Map((await loadRevisionConfigurationSnapshot(ctx, revisionId, { requireComplete: false })).migration.snapshot.sections.map((section) => [section.sectionKey, section.payload]));
-  const identity = sections.get("identity") as { name?: unknown; tagline?: unknown; description?: unknown; assets?: { favicon?: unknown } } | undefined;
+  const identity = sections.get("identity") as { name?: unknown; shortName?: unknown; tagline?: unknown; description?: unknown; assets?: { favicon?: unknown } } | undefined;
   const theme = sections.get("theme") as { colors?: { accent?: unknown } } | undefined;
   const name = text(identity?.name);
+  const shortName = text(identity?.shortName);
   const tagline = text(identity?.tagline);
   const description = text(identity?.description);
   const accentColor = text(theme?.colors?.accent);
   const faviconUrl = text(identity?.assets?.favicon);
   // The name the directory sorts by: in lower case, so "new lib" comes before "OpenDevEd".
-  return { ...(name ? { name, nameKey: name.toLowerCase() } : {}), ...(tagline ? { tagline } : {}), ...(description ? { description } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
+  return { ...(name ? { name, nameKey: name.toLowerCase() } : {}), ...(shortName ? { shortName } : {}), ...(tagline ? { tagline } : {}), ...(description ? { description } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
 }
 
 /**
@@ -208,8 +209,11 @@ async function readDirectory(ctx: QueryCtx, { paginationOpts, sort, search }: In
     .query("evidenceLibraries")
     .withIndex(index, (q) => q.eq("state", "active").eq("unlisted", undefined))
     .order(sort === "name" ? "asc" : "desc")
-    .map(async (library) => await cardRow(ctx, library))
-    .filterWith(async (card) => card !== null && (!needle || `${card.name} ${card.tagline ?? ""} ${card.owner.name ?? ""}`.toLowerCase().includes(needle)))
+    .map(async (library) => {
+      const card = await cardRow(ctx, library);
+      return card && (!needle || `${card.name} ${library.card?.shortName ?? ""} ${card.tagline ?? ""} ${card.owner.name ?? ""}`.toLowerCase().includes(needle)) ? card : null;
+    })
+    .filterWith(async (card) => card !== null)
     .map(async (card) => card!)
     .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumRowsRead: ROWS_READ });
 }
@@ -218,7 +222,7 @@ export const listPublicAction = defineUserQuery({
   path: "evidenceLibraries/directory:listPublic",
   description:
     "Lists the public Evidence Communities, a page at a time: every live community its owners haven't unlisted, the person's own included, with its tagline, address, owner and how many records it holds. " +
-    "`sort` is newest (when it went live), name, or records (most first); given `search`, those whose name, tagline or owner contains it.",
+    "`sort` is newest (when it went live), name, or records (most first); given `search`, those whose name, short name (the one its site's header shows), tagline or owner contains it.",
   args: directoryArgs,
   returns: paginationResultValidator(cardValidator),
   run: async (ctx, _actor, args) => await readDirectory(ctx, args),
@@ -268,4 +272,10 @@ export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibra
   await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt: library.liveAt ?? first?.createdAt ?? publishedAt, publishedAt });
   if (library.records === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   if (library.people === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
+}
+
+/** A live community's card again from the settings its site runs, for cards kept before they held its short name (../migrations/communityDirectory.ts). */
+export async function refreshCard(ctx: MutationCtx, library: Doc<"evidenceLibraries">) {
+  if (library.state !== "active" || !library.activeRevisionId) return;
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId) });
 }
