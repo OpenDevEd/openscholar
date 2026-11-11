@@ -92,14 +92,15 @@ export const finish = internalMutation({
 
 /**
  * The page Openscholar added to a report's PDF, written again with the details its checks read: the new file takes
- * the place of the one before. One made for a PDF replaced meanwhile is given up.
+ * the place of the one before. One made for a PDF replaced meanwhile, or by a run that is no longer the report's, is
+ * given up.
  */
 export const restamped = internalMutation({
-  args: { reportId: v.id("reports"), at: v.number(), file: v.id("_storage"), bytes: v.number() },
+  args: { reportId: v.id("reports"), /** The run of checks whose details the page says: an older run's page never replaces a newer one's. */ runId: v.string(), at: v.number(), file: v.id("_storage"), bytes: v.number() },
   returns: v.null(),
-  handler: async (ctx, { reportId, at, file, bytes }) => {
+  handler: async (ctx, { reportId, runId, at, file, bytes }) => {
     const report = await ctx.db.get("reports", reportId);
-    if (!report?.pdf?.stamped || report.pdf.at !== at) {
+    if (!report?.pdf?.stamped || report.pdf.at !== at || report.run?.id !== runId) {
       await ctx.storage.delete(file);
       return null;
     }

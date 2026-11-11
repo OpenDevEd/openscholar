@@ -52,3 +52,12 @@ test("a title in a script the page can't write is left out, and the byline is st
   const added = await read(await withBylinePage(await doc.save(), { line: LINE, series: "Openscholar Reports", details: details("遮荫树与玉米产量") }));
   expect(carries(added.text, LINE)).toBe(true);
 });
+
+test("a name too long for one line is broken across lines and kept whole", async () => {
+  const doc = await PDFDocument.create();
+  doc.addPage([420, 300]);
+  const series = "Openscholar".repeat(12);
+  const added = await read(await withBylinePage(await doc.save(), { line: LINE, series }));
+  expect(carries(added.text, series)).toBe(true);
+  expect(carries(added.text, LINE)).toBe(true);
+});

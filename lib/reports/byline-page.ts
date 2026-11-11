@@ -14,15 +14,32 @@ const PUBLISHER = "Openscholar";
 const INK = rgb(0.1, 0.1, 0.1);
 const MUTED = rgb(0.4, 0.4, 0.4);
 
-/** `text` in lines no wider than `width`. A word wider than that, as a DOI's address on a narrow page, keeps its own line. */
+/** `text` in lines no wider than `width`. A word wider than that, as a long name with no spaces, is broken where it runs out of room. */
 function wrap(text: string, font: PDFFont, size: number, width: number) {
+  const fits = (words: string) => font.widthOfTextAtSize(words, size) <= width;
   const lines: string[] = [];
-  for (const word of text.split(/\s+/).filter(Boolean)) {
+  for (let word of text.split(/\s+/).filter(Boolean)) {
+    let broken = false;
+    while (word.length > 1 && !fits(word)) {
+      let cut = word.length - 1;
+      while (cut > 1 && !fits(word.slice(0, cut))) cut -= 1;
+      lines.push(word.slice(0, cut));
+      word = word.slice(cut);
+      broken = true;
+    }
     const tried = lines.length ? `${lines[lines.length - 1]} ${word}` : word;
-    if (lines.length && font.widthOfTextAtSize(tried, size) <= width) lines[lines.length - 1] = tried;
+    // The rest of a broken word starts its own line: a space set into it would read as two words.
+    if (lines.length && !broken && fits(tried)) lines[lines.length - 1] = tried;
     else lines.push(word);
   }
   return lines;
+}
+
+/** The PDF without its last page: a report's own pages, when the last is the one Openscholar added. */
+export async function withoutLastPage(pdf: Uint8Array): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(pdf, { updateMetadata: false });
+  if (doc.getPageCount() > 1) doc.removePage(doc.getPageCount() - 1);
+  return await doc.save();
 }
 
 /**

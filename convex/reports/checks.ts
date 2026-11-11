@@ -89,19 +89,15 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
  */
 /**
  * The page Openscholar added to the PDF says the report's details, which were only read from the PDF when it was
- * added: it is written again with the ones its author is sending to the checks. A page that can't be written again
- * stays as it was, with its byline.
+ * added: it is written again with the ones its author is sending to the checks. Throws when it can't be, so a report
+ * never goes on to be published with a page that says other details than its own.
  */
-async function restamp(ctx: ActionCtx, reportId: Id<"reports">, page: { file: Id<"_storage">; at: number; line: string; series: string }, details: Metadata) {
-  try {
-    const blob = await ctx.storage.get(page.file);
-    if (!blob) return;
-    const next = await withBylinePage(new Uint8Array(await blob.arrayBuffer()), { line: page.line, series: page.series, details }, { replaceLast: true });
-    const file = await ctx.storage.store(new Blob([next as Uint8Array<ArrayBuffer>], { type: "application/pdf" }));
-    await ctx.runMutation(internal.reports.readingState.restamped, { reportId, at: page.at, file, bytes: next.byteLength });
-  } catch (error) {
-    console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, error: String(error).slice(0, 300) }));
-  }
+async function restamp(ctx: ActionCtx, reportId: Id<"reports">, runId: string, page: { file: Id<"_storage">; at: number; line: string; series: string }, details: Metadata) {
+  const blob = await ctx.storage.get(page.file);
+  if (!blob) throw new Error("The report's PDF is gone.");
+  const next = await withBylinePage(new Uint8Array(await blob.arrayBuffer()), { line: page.line, series: page.series, details }, { replaceLast: true });
+  const file = await ctx.storage.store(new Blob([next as Uint8Array<ArrayBuffer>], { type: "application/pdf" }));
+  await ctx.runMutation(internal.reports.readingState.restamped, { reportId, runId, at: page.at, file, bytes: next.byteLength });
 }
 
 export const run = action({
@@ -116,8 +112,17 @@ export const run = action({
     if ("unchanged" in started) throw createError("VALIDATION_ERROR", `These are the details your report already has, so there is nothing to change.${started.waiting ? " To give up the changes that are waiting, discard them." : ""}`);
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";
-    // Beside the checks, and done before the report can be ready: what goes live is the PDF with these details on it.
-    const stamping = started.page ? restamp(ctx, reportId, started.page, metadata) : undefined;
+    // Before the checks, so a report is never ready with a page that says other details: what goes live is the PDF
+    // with these on it. A page that can't be written ends the run here, and its author is told what to do.
+    if (started.page) {
+      try {
+        await restamp(ctx, reportId, runId, started.page, metadata);
+      } catch (error) {
+        console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, error: String(error).slice(0, 300) }));
+        await ctx.runMutation(internal.reports.checkRuns.abandon, { reportId, runId });
+        throw createError("EXTERNAL_SERVICE_ERROR", "The page we added to your PDF couldn't be updated with these details. Run the checks again. If it keeps failing, upload the PDF with the line on it yourself.");
+      }
+    }
     const communities: Community[] = started.checks.some((check) => check.builtIn)
       ? (await ctx.runQuery(api.evidenceLibraries.directory.directory, { paginationOpts: { cursor: null, numItems: COMMUNITIES_SEARCHED }, sort: "records" })).page.map((card) => ({ name: card.name, address: card.address }))
       : [];
@@ -137,7 +142,6 @@ export const run = action({
         return result;
       }),
     );
-    await stamping;
     return await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version, ...(started.changes && { metadata }) });
   },
 });

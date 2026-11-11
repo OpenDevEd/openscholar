@@ -206,7 +206,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
   // What went wrong with something done on this page, said on the screen it was done on, until the page moves on.
-  const trouble = useProblem();
+  const trouble = useProblem(`${view}:${asked ?? ""}`);
   const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => {
     trouble.say(null);
     void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
@@ -1533,7 +1533,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                 // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
                 // while the bank confirms a charge, the bar offers that instead.
                 <PaymentLine
-                  onFailed={(error) => failed(t("activation.card.stripeFailed"))(error)}
+                  onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
                   free={terms.free.left}
                   card={card}
@@ -1798,7 +1798,7 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1808,6 +1808,7 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
   // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
   const saveCard = () =>
     save(async () => {
+      onFailed(null);
       try {
         // The code applied goes with it, so the way back from Stripe opens the field with it typed in.
         await onAddCard?.(quoted?.code);
@@ -1962,6 +1963,11 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
   const box = useRef<HTMLTextAreaElement>(null);
   const [sending, start] = useTransition();
   const { problem, say, failed } = useProblem();
+  // Closed, it forgets what went wrong: opened again, it starts clean.
+  const close = () => {
+    say(null);
+    onClose();
+  };
   const send = () =>
     start(async () => {
       say(null);
@@ -1974,7 +1980,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
       }
     });
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !sending && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && !sending && close()}>
       <DialogContent
         className="sm:max-w-lg"
         // Typing starts in the box. The dialog puts the focus there itself, so closing it gives the focus back to the
@@ -1995,7 +2001,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         </Field>
         <Problem>{problem}</Problem>
         <DialogFooter>
-          <Button variant="outline" disabled={sending} onClick={onClose}>
+          <Button variant="outline" disabled={sending} onClick={close}>
             {t("cancel")}
           </Button>
           <Button className="relative" disabled={sending} onClick={send}>

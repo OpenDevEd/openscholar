@@ -144,12 +144,13 @@ describe("a report's PDF", () => {
     expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
     // The checks write the page again with the details they read: that file takes the last one's place.
     const again = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and the page again"])));
-    await world.t.mutation(internal.reports.readingState.restamped, { reportId, at: asked.at, file: again, bytes: 37 });
+    await world.t.run((ctx) => ctx.db.patch("reports", reportId, { run: { id: "run-1", at: Date.now() } }));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, runId: "run-1", at: asked.at, file: again, bytes: 37 });
     expect((await row(world.t, key)).pdf!).toMatchObject({ file: again, bytes: 37, stamped: true });
     expect(await world.t.run((ctx) => ctx.db.system.get(added))).toBeNull();
-    // One written for a PDF since replaced is given up.
+    // One written by a run that is no longer the report's is given up.
     const late = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 late"])));
-    await world.t.mutation(internal.reports.readingState.restamped, { reportId, at: asked.at - 1, file: late, bytes: 13 });
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, runId: "run-0", at: asked.at, file: late, bytes: 13 });
     expect((await row(world.t, key)).pdf!.file).toBe(again);
     expect(await world.t.run((ctx) => ctx.db.system.get(late))).toBeNull();
   });

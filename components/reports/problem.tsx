@@ -25,10 +25,12 @@ export function Problem({ children, className }: { children: ReactNode; /** Its 
 
 /**
  * One place's trouble: what it is, a way to say or clear it, and a handler for a failed request that keeps the
- * server's own words, or `otherwise` when it gave none.
+ * server's own words, or `otherwise` when it gave none. Given a `scope`, trouble belongs to the scope it was said
+ * in: an answer that comes back after the page has moved to another report is never shown on that one.
  */
-export function useProblem() {
-  const [problem, say] = useState<string | null>(null);
+export function useProblem(scope = "") {
+  const [said, set] = useState<{ words: string; scope: string } | null>(null);
+  const say = (words: string | null) => set(words === null ? null : { words, scope });
   const failed = (otherwise: string) => (error: unknown) => say(getErrorMessage(error, otherwise));
-  return { problem, say, failed };
+  return { problem: said?.scope === scope ? said.words : null, say, failed };
 }

@@ -9,7 +9,7 @@ import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
-import { withBylinePage } from "../../lib/reports/byline-page";
+import { withBylinePage, withoutLastPage } from "../../lib/reports/byline-page";
 import { blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
@@ -67,7 +67,9 @@ export const read = internalAction({
       try {
         if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");
         const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
-        const found = capped(await readDetails({ pdf: new Uint8Array(bytes), text: read, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
+        // The page Openscholar added says details read before: the reader is given the report's own pages.
+        const own = job.stamped ? await withoutLastPage(new Uint8Array(bytes)) : new Uint8Array(bytes);
+        const found = capped(await readDetails({ pdf: own, text: read, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
         // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
         if (!found.title.trim() && !found.abstract.trim()) throw new Error("The reading found no title and no abstract.");
         // Each list within its cap can still add up to more than a report holds: such a reading is filled in by hand too.

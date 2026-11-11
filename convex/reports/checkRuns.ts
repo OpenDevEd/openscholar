@@ -92,6 +92,17 @@ export const start = internalMutation({
   },
 });
 
+/** A run that couldn't go on is given up at once, so its author can run the checks again without waiting for it to be taken for stuck. */
+export const abandon = internalMutation({
+  args: { reportId: v.id("reports"), runId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { reportId, runId }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (report?.run?.id === runId) await ctx.db.patch("reports", reportId, { run: undefined });
+    return null;
+  },
+});
+
 /** One check's answer, shown to the author as it arrives. */
 export const answer = internalMutation({
   args: { reportId: v.id("reports"), runId: v.string(), result: checkResultValidator },
