@@ -6619,7 +6619,12 @@
         "unclear": "不明",
         "sure": "合格の確信度 {percent}",
         "foundIn": "{where}で見つかりました：",
-        "foundAs": "見つかった作品"
+        "foundAs": "見つかった作品",
+        "said": {
+          "notPublished": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "unfinished": "このチェックは完了できませんでした。",
+          "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
+        }
       },
       "activateFailed": "有効化できませんでした",
       "running": "チェックを実行中",

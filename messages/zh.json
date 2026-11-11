@@ -6619,7 +6619,12 @@
         "unclear": "不确定",
         "sure": "有 {percent} 把握通过",
         "foundIn": "在{where}中找到：",
-        "foundAs": "找到为"
+        "foundAs": "找到为",
+        "said": {
+          "notPublished": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
+          "unfinished": "此项检查未能完成。",
+          "bylineFound": "PDF 文本中逐字包含这一行。"
+        }
       },
       "activateFailed": "无法激活",
       "running": "正在运行检查",

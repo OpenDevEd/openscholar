@@ -6620,7 +6620,12 @@
         "unclear": "Onduidelik",
         "sure": "{percent} seker dit slaag",
         "foundIn": "Gevind in {where}:",
-        "foundAs": "Gevind as"
+        "foundAs": "Gevind as",
+        "said": {
+          "notPublished": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
+          "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
+        }
       },
       "activateFailed": "Dit kon nie geaktiveer word nie",
       "running": "Kontroles loop",

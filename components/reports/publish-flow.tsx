@@ -47,7 +47,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -936,6 +936,11 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
 export function CheckRow({ name, result, advice = true, overruled = false }: { name: string; result?: CheckResult; /** Whether to say what the author can do about a failed check: only where they still can. */ advice?: boolean; /** A reviewer approved the report over this check's answer. */ overruled?: boolean }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
+  /** What a check says, in the page's language when it's one of the fixed things a check says. */
+  const inWords = (words: string | undefined) => {
+    const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
+    return key ? t(`check.said.${key}`) : words;
+  };
   const format = useFormatter();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
   const asked = result?.confidence !== undefined && result.threshold !== undefined;
@@ -990,9 +995,9 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                   </span>
                 </div>
               ) : result.evidence ? null : (
-                <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail}</p>
+                <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{inWords(result.detail)}</p>
               )}
-              {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail}</p> : null}
+              {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{inWords(result.detail)}</p> : null}
               {result.evidence ? (
                 <a href={result.evidence.url} target="_blank" rel="noopener noreferrer" className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
                   <span className="shrink-0">{result.evidence.where ? t("check.foundIn", { where: result.evidence.where }) : t("check.foundAs")}</span>
@@ -1000,7 +1005,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                   <ArrowUpRight className="size-3 shrink-0" />
                 </a>
               ) : null}
-              {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{result.reasoning}</p> : null}
+              {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{inWords(result.reasoning)}</p> : null}
               {!result.pass && result.fix && advice ? (
                 <p className="ms-8 mt-2 flex items-start gap-2 rounded-xl bg-inset px-3 py-2 text-xs/5">
                   <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" />

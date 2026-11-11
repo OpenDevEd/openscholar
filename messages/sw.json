@@ -6620,7 +6620,12 @@
         "unclear": "Haieleweki",
         "sure": "Uhakika wa {percent} kwamba inapita",
         "foundIn": "Imepatikana katika {where}:",
-        "foundAs": "Imepatikana kama"
+        "foundAs": "Imepatikana kama",
+        "said": {
+          "notPublished": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
+          "unfinished": "Ukaguzi huu haukuweza kukamilika.",
+          "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
+        }
       },
       "activateFailed": "Haikuweza kuwashwa",
       "running": "Inaendesha ukaguzi",

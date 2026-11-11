@@ -14,7 +14,7 @@ import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
-import { doiIn, linkHref } from "../../lib/reports/report";
+import { CHECK_SAID, doiIn, linkHref } from "../../lib/reports/report";
 import type { Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
@@ -58,12 +58,12 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
     const found = await alreadyPublished(metadata, report.doi, on, communities);
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
-      : { ...base, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
+      : { ...base, pass: true, detail: CHECK_SAID.notPublished };
   }
   // The byline is text the PDF has or hasn't: found word for word (line breaks and spacing aside), it passes without a
   // model, whose confidence in a line that's plainly there can sit either side of the threshold.
   if (check.id === "byline" && carries(text, report.byline)) {
-    return { ...base, answer: "yes", confidence: 1, threshold: check.threshold, reasoning: "The PDF's text has the line word for word.", pass: true };
+    return { ...base, answer: "yes", confidence: 1, threshold: check.threshold, reasoning: CHECK_SAID.bylineFound, pass: true };
   }
   const question = fill(check.question);
   if (isDecisionModel(on.slug)) {
@@ -116,7 +116,7 @@ export const run = action({
           console.error(JSON.stringify({ event: "report-check-failed", reportId, check: check.id, error: String(error).slice(0, 500) }));
           // A check that can't answer holds the report for a person rather than pass it. Why it couldn't is the
           // log's to keep: an author is told only that it didn't finish.
-          return { checkId: check.id, name: check.name, model: check.modelId, pass: false, blocking: false, errored: true, detail: "This check couldn't finish." };
+          return { checkId: check.id, name: check.name, model: check.modelId, pass: false, blocking: false, errored: true, detail: CHECK_SAID.unfinished };
         });
         await ctx.runMutation(internal.reports.checkRuns.answer, { reportId, runId, result });
         return result;

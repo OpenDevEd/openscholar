@@ -27,6 +27,13 @@ export type CheckResult = {
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country, and its ROR ID (https://ror.org/…) where OpenAlex or ROR know it. */
 export type Affiliation = { id: string | null; name: string; country: string; ror?: string };
 /** CRediT's 14 contributor roles (credit.niso.org). */
+/** The fixed things a check says (`detail`, `reasoning`), which a page shows in its own language (`publishReports.flow.check.said`). */
+export const CHECK_SAID = {
+  notPublished: "Not in OpenAlex, Openscholar's index or our communities.",
+  unfinished: "This check couldn't finish.",
+  bylineFound: "The PDF's text has the line word for word.",
+} as const;
+
 export const CREDIT_ROLES = [
   "Conceptualization", "Data curation", "Formal analysis", "Funding acquisition", "Investigation", "Methodology", "Project administration",
   "Resources", "Software", "Supervision", "Validation", "Visualization", "Writing, original draft", "Writing, review and editing",

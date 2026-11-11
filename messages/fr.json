@@ -6619,7 +6619,12 @@
         "unclear": "Incertain",
         "sure": "{percent} de certitude que c'est réussi",
         "foundIn": "Trouvé dans {where} :",
-        "foundAs": "Trouvé sous"
+        "foundAs": "Trouvé sous",
+        "said": {
+          "notPublished": "Absent d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
+          "unfinished": "Cette vérification n’a pas pu aboutir.",
+          "bylineFound": "Le texte du PDF contient la ligne mot pour mot."
+        }
       },
       "activateFailed": "Il n'a pas pu être activé",
       "running": "Vérifications en cours",

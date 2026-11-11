@@ -6619,7 +6619,12 @@
         "unclear": "अस्पष्ट",
         "sure": "{percent} निश्चित कि यह सफल है",
         "foundIn": "{where} में मिला:",
-        "foundAs": "इस रूप में मिला"
+        "foundAs": "इस रूप में मिला",
+        "said": {
+          "notPublished": "OpenAlex, Openscholar के इंडेक्स या हमारे समुदायों में नहीं है।",
+          "unfinished": "यह जाँच पूरी नहीं हो सकी।",
+          "bylineFound": "PDF के टेक्स्ट में यह पंक्ति शब्दशः है।"
+        }
       },
       "activateFailed": "इसे सक्रिय नहीं किया जा सका",
       "running": "जाँचें चल रही हैं",

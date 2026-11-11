@@ -6619,7 +6619,12 @@
         "unclear": "Unclear",
         "sure": "{percent} sure it passes",
         "foundIn": "Found in {where}:",
-        "foundAs": "Found as"
+        "foundAs": "Found as",
+        "said": {
+          "notPublished": "Not in OpenAlex, Openscholar's index or our communities.",
+          "unfinished": "This check couldn't finish.",
+          "bylineFound": "The PDF's text has the line word for word."
+        }
       },
       "activateFailed": "It couldn't be activated",
       "running": "Running the checks",

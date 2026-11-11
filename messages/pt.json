@@ -6620,7 +6620,12 @@
         "unclear": "Incerto",
         "sure": "{percent} de certeza de que passa",
         "foundIn": "Encontrado em {where}:",
-        "foundAs": "Encontrado como"
+        "foundAs": "Encontrado como",
+        "said": {
+          "notPublished": "Não está no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
+          "unfinished": "Esta verificação não conseguiu terminar.",
+          "bylineFound": "O texto do PDF tem a linha palavra por palavra."
+        }
       },
       "activateFailed": "Não foi possível ativá-lo",
       "running": "A executar as verificações",

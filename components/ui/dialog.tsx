@@ -92,6 +92,13 @@ function DialogContent({
           if (performance.now() - openedAt.current < DOUBLE_CLICK_MS) event.preventDefault()
           else outside(event)
         }}
+        // Anything done inside it means the double click is over: the next click outside closes it.
+        onPointerDownCapture={() => {
+          openedAt.current = 0
+        }}
+        onKeyDownCapture={() => {
+          openedAt.current = 0
+        }}
         {...props}
         {...focus}
       >
