@@ -88,8 +88,16 @@ describe("a report's record for its registrars", () => {
     expect(zenodoType("dataset")).toEqual({ id: "dataset" });
     expect(zenodoType("report")).toEqual({ id: "publication-report" });
     expect(zenodoType("paratext")).toEqual({ id: "publication-other" });
-    // A dissertation is awarded by its author's university, not by Openscholar.
-    expect(zenodoRecord(registrationRecord(report, { ...m, type: "dissertation" }, series, "https://openscholar.ai"), { ...m, type: "dissertation" }).institution).toBe("LUANAR");
+    // A dissertation is awarded by its author's university, never by Openscholar, the publisher.
+    const thesis = (authors: typeof m.authors) => {
+      const record = registrationRecord(report, { ...m, authors, type: "dissertation" }, series, "https://openscholar.ai");
+      const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, authors, type: "dissertation" });
+      const payload = buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl });
+      return { type: payload.metadata.resource_type, thesis: payload.custom_fields["thesis:thesis"] };
+    };
+    expect(thesis(m.authors)).toMatchObject({ type: { id: "publication-dissertation" }, thesis: { university: "LUANAR" } });
+    // Its first author has no institution: no university to name, so it stays a report.
+    expect(thesis([m.authors[1]!, m.authors[0]!])).toEqual({ type: { id: "publication-report" }, thesis: undefined });
   });
 
   it("says so in its title once the report is withdrawn, with the day, and no longer points at its file", () => {

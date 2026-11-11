@@ -153,8 +153,9 @@ const ZENODO_ITEM_TYPE: Record<string, string> = {
 
 /** A report's registration record as Zenodo is sent it: of the kind its author chose (ZENODO_ITEM_TYPE). */
 export function zenodoRecord<R extends ReturnType<typeof registrationRecord>>(record: R, m: Metadata): R {
-  const itemType = ZENODO_ITEM_TYPE[m.type] ?? "Report";
-  // A thesis names the university that awarded it, which isn't Openscholar: its first author's first institution.
-  const university = m.authors.find((author) => author.affiliations.length)?.affiliations[0]?.name;
+  // A thesis names the university that awarded it: its first author's first institution, never Openscholar (the
+  // publisher, which doi-sync-core falls back to). Without one, a dissertation stays a report.
+  const university = m.authors[0]?.affiliations[0]?.name;
+  const itemType = ZENODO_ITEM_TYPE[m.type] === "Thesis" && !university ? "Report" : (ZENODO_ITEM_TYPE[m.type] ?? "Report");
   return { ...record, itemType, ...(itemType === "Thesis" && { institution: university }) };
 }
