@@ -1064,17 +1064,25 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const [code, setCode] = useState<Quote | null>(null);
   const [quoting, setQuoting] = useState(false);
   // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
-  // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price.
+  // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
+  // quote that couldn't be had leaves it closed, so a code still good is never dropped from the charge.
   const openPay = () => {
     const again = terms?.refused?.code;
     if (!again || !onQuote) return setPaying(true);
     setQuoting(true);
     onQuote(again)
-      .then(setCode, () => setCode(null))
-      .finally(() => {
-        setQuoting(false);
-        setPaying(true);
-      });
+      .then(
+        (quote) => {
+          setCode(quote);
+          setPaying(true);
+        },
+        (error: unknown) => {
+          if (!promoReason(error)) return said(t("activateFailed"))(error);
+          setCode(null);
+          setPaying(true);
+        },
+      )
+      .finally(() => setQuoting(false));
   };
   const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
   const fromCredit = Math.min(credit, subtotal);
