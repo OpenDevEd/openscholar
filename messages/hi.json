@@ -6887,6 +6887,7 @@
     "orcidDown": "अभी ORCID खोजा नहीं जा सकता",
     "searching": "ORCID खोजा जा रहा है",
     "nobody": "ORCID पर इस नाम का कोई नहीं",
+    "notOrcid": "इस iD में एक अंक गलत है। इसे orcid.org पर जाँचें।",
     "noName": "कोई नाम नहीं दिया गया",
     "noInstitution": "ORCID पर कोई संस्थान नहीं",
     "placesMore": "{places}, और {more} अन्य",

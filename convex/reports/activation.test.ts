@@ -136,10 +136,10 @@ describe("activating a report", () => {
     expect(await activations(world)).toMatchObject([{ state: "unused", refund: { card: 2, credit: 3 } }]);
   });
 
-  it("keeps a charge whose payment the bank refused to confirm as refused, voiding its invoice, so Activate starts afresh", async () => {
+  it("keeps a charge whose payment the bank refused to confirm as refused, voiding its invoice, so Activate starts afresh with the code it was asked with", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
-    const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key });
+    const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key, code: "HALFOFF" });
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: "in_3ds", url: "https://hooks.stripe.com/3d_secure_2/hosted" } });
     const voided: string[] = [];
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
@@ -150,7 +150,7 @@ describe("activating a report", () => {
     await world.t.action(internal.reports.activation.watch, { activationId, attempt: 0 });
     vi.unstubAllGlobals();
     expect(voided).toEqual(["https://api.stripe.com/v1/invoices/in_3ds/void"]);
-    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key, now: Date.now() })).toMatchObject({ pending: null, refused: true });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key, now: Date.now() })).toMatchObject({ pending: null, refused: { code: "HALFOFF" } });
     // Activated again, it's a new charge, and the report no longer says the last one was refused.
     await activate(world, key);
     expect(await row(world.t, key)).toMatchObject({ status: "live" });

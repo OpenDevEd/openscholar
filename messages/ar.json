@@ -6888,6 +6888,7 @@
     "orcidDown": "لا يمكن البحث في ORCID الآن",
     "searching": "جارٍ البحث في ORCID",
     "nobody": "لا أحد على ORCID بهذا الاسم",
+    "notOrcid": "في هذا المعرّف رقم خاطئ. تحقّق منه على orcid.org.",
     "noName": "لا يوجد اسم",
     "noInstitution": "لا توجد مؤسسة على ORCID",
     "placesMore": "{places}، و{more} أخرى",

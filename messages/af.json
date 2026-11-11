@@ -6888,6 +6888,7 @@
     "orcidDown": "ORCID kan nou nie deursoek word nie",
     "searching": "Soek op ORCID",
     "nobody": "Niemand op ORCID met daardie naam nie",
+    "notOrcid": "Daardie iD het 'n verkeerde syfer. Kyk dit na op orcid.org.",
     "noName": "Geen naam gegee nie",
     "noInstitution": "Geen instelling op ORCID nie",
     "placesMore": "{places}, en {more} meer",

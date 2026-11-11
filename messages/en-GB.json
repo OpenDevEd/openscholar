@@ -6887,6 +6887,7 @@
     "orcidDown": "ORCID can't be searched now",
     "searching": "Searching ORCID",
     "nobody": "Nobody on ORCID by that name",
+    "notOrcid": "That iD has a digit wrong. Check it on orcid.org.",
     "noName": "No name given",
     "noInstitution": "No institution on ORCID",
     "placesMore": "{places}, and {more} more",

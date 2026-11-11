@@ -1,7 +1,7 @@
 import { Cite } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
 import "@citation-js/plugin-ris";
-import { CITATION_FILES, type CitationData, type CitationFile } from "./formats";
+import { CITATION_FILES, forFiles, type CitationData, type CitationFile } from "./formats";
 
 /**
  * A paper as the file a reference manager imports, named as people name the paper: first author and year, such as
@@ -9,11 +9,7 @@ import { CITATION_FILES, type CitationData, type CitationFile } from "./formats"
  */
 export function citationFile(data: CitationData, kind: CitationFile) {
 	const file = CITATION_FILES[kind];
-	// A report's number in its series is CSL's `collection-number`, which the formatted styles print after the series
-	// ("Openscholar Reports R100022"). BibTeX's `number` comes only from CSL's `number`, so the file carries it as that.
-	const number = data["collection-number"];
-	const exported = number && !data.number ? { ...data, number } : data;
-	const made = new Cite([exported]).format(file.format, { format: "text" }).trim();
+	const made = new Cite([forFiles(data)]).format(file.format, { format: "text" }).trim();
 	// Citation.js breaks an RIS value every 70 characters, mid-word: reference managers join the pieces with a space
 	// ("accep tance"). RIS takes a value of any length on one line, so each piece goes back on its tag's line.
 	const text = kind === "ris" ? made.replace(/\r?\n(?![A-Z][A-Z0-9] {2}-(?: |$))/g, "") : made;

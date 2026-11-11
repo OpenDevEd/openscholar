@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { citationFile } from "./files";
+import { formatCitation } from "./formatter";
 import { paperToCitationData } from "./paper-data";
 import type { PaperResult } from "@/lib/types/search.types";
 
@@ -27,6 +28,16 @@ describe("a citation file", () => {
     expect(citationFile(data, "bibtex").text).toMatch(/series = \{Openscholar \{?Reports\}?\}/);
     // Its number in the series, which BibTeX reads only from its own field.
     expect(citationFile(data, "bibtex").text).toContain("number = {R100018}");
+  });
+
+  it("cites a dissertation with its first author's university, or as a report without one, as Zenodo files it", () => {
+    const paper = (institutions: { display_name: string }[]) => ({ id: "R100108", title: "Soil", type: "dissertation", authorships: [{ author: { display_name: "A B" }, institutions }], primary_location: { source: { display_name: "Openscholar Reports", type: "repository" } } }) as unknown as PaperResult;
+    expect(citationFile(paperToCitationData(paper([{ display_name: "University of Oxford" }]))!, "bibtex").text).toContain("school = {University of Oxford}");
+    expect(paperToCitationData(paper([]))).toMatchObject({ type: "report", publisher: "Openscholar" });
+  });
+
+  it("copies BibTeX with a report's number, as its file has it", () => {
+    expect(formatCitation({ ...report, "collection-number": "R100018" }, "en", "bibtex").text).toContain("number = {R100018}");
   });
 
   it("names a report's series in both formats", () => {

@@ -6887,6 +6887,7 @@
     "orcidDown": "I-ORCID ayikwazi ukuseshwa manje",
     "searching": "Kusesha ku-ORCID",
     "nobody": "Akekho ku-ORCID onaleli gama",
+    "notOrcid": "Le iD inedijithi engalungile. Yihlole ku-orcid.org.",
     "noName": "Alikho igama elinikeziwe",
     "noInstitution": "Asikho isikhungo ku-ORCID",
     "placesMore": "{places}, nezinye ezingu-{more}",

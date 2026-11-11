@@ -6888,6 +6888,7 @@
     "orcidDown": "ORCID haiwezi kutafutwa kwa sasa",
     "searching": "Inatafuta ORCID",
     "nobody": "Hakuna mtu kwenye ORCID mwenye jina hilo",
+    "notOrcid": "iD hiyo ina tarakimu isiyo sahihi. Iangalie kwenye orcid.org.",
     "noName": "Hakuna jina",
     "noInstitution": "Hakuna taasisi kwenye ORCID",
     "placesMore": "{places}, na {more} zaidi",
