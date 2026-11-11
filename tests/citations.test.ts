@@ -40,6 +40,10 @@ describe("paper citations", () => {
     const report = { ...paper, id: "https://openscholar.ai/papers/R100018", type: "report", doi: "10.53832/openscholar-reports.r100018", primary_location: { source: { id: "", display_name: "Openscholar Reports", type: "repository" } } } as unknown as Parameters<typeof paperToCitationData>[0];
     const data = await getPaperCitationMetadata(paperToCitationData(report)!);
     expect(data["collection-title"]).toBe("Openscholar Reports");
+    // Cited as a numbered report in its series, which names the series once.
+    const apa = (await loadPaperCitations(["paper-citations", data, "en-GB"])).citations.apa.text;
+    expect(apa.split("Openscholar Reports")).toHaveLength(2);
+    expect(apa).toContain("R100018");
   });
 
   it("does not fabricate missing names or display a citation action without a title", () => {
