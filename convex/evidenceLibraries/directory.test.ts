@@ -84,6 +84,7 @@ describe("the public directory", () => {
     expect(await names("name", "sanitation")).toEqual(["Water Evidence"]);
     // By the short name its site's header shows, which people call it by.
     expect(await names("name", "wash qa")).toEqual(["Water Evidence"]);
+    expect((await list(fixture, "name", "wash qa"))[0]).toMatchObject({ shortName: "WASH QA" });
     // One with no tagline shows its description, and is found by it.
     expect((await list(fixture, "name", "smallholder"))[0]).toMatchObject({ name: "Agriculture Evidence", tagline: "Crop yields in smallholder farms" });
     expect(await names("name", "team directory_list")).toHaveLength(3);

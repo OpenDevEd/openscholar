@@ -259,6 +259,8 @@ export const countriesValidator = capped(v.array(v.string()), COUNTRIES_KEPT);
 
 /** What a community's card shows from its own row (./access.ts cardFacts): what its published settings say about it, and its counts. */
 export const cardFactsValidator = v.object({
+  /** The short name its site's header shows, which people call it by; null when its settings have none. */
+  shortName: v.union(v.string(), v.null()),
   /** Its tagline, or its description when it has none; null when it has neither. */
   tagline: v.union(v.string(), v.null()),
   accentColor: v.union(v.string(), v.null()),
@@ -1316,7 +1318,7 @@ export const libraryOverviewStatusValidator = v.union(
 export const LIBRARIES_LISTED = 25;
 /** A page of the person's communities, as the assistant reads it (./assistant.ts). */
 export const assistantLibrariesValidator = v.object({
-  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), shortName: v.union(v.string(), v.null()), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),
   cursor: v.optional(v.string()),
 });
 /** What the configuration page flags on a draft's cards, by card and the page's name for each problem: a few to a card at most. */
