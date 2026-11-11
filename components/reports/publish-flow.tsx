@@ -348,7 +348,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
-          <WaitingElsewhere waiting={waiting ?? []} className="px-4 pt-4 sm:px-6" />
+          <WaitingElsewhere waiting={waiting?.first ?? null} className="px-4 pt-4 sm:px-6" />
           <YourReports
             list={(list ?? lastList)!}
             humanReview={basics.humanReview}
@@ -408,7 +408,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
         </ListEmpty>
       ) : (
         <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_13rem] @3xl:gap-10">
-          {preparing ? <WaitingElsewhere waiting={waiting ?? []} className="col-span-full" /> : null}
+          {preparing ? <WaitingElsewhere waiting={waiting?.first ?? null} className="col-span-full" /> : null}
           {/* Switched off, publishing takes no new report. One already started says why its sidebar item is gone. */}
           {report?.mine && !basics.open && report.status !== "live" ? (
             <p role="status" className="col-span-full flex items-start gap-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
@@ -455,27 +455,29 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   );
 }
 
-/** Reports ready in the person's other workspaces, said where they are looking: each workspace's Publish lists only its own. */
-function WaitingElsewhere({ waiting, className }: { waiting: Array<{ name: string; slug: string | null; ready: number }>; className?: string }) {
+/**
+ * Reports ready in another of the person's workspaces, said where they are looking: each workspace's Publish lists
+ * only its own. One workspace at a time, the first that holds some; the next shows once these are activated.
+ */
+function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slug: string | null; ready: number } | null; className?: string }) {
   const t = useTranslations("publishReports.flow");
-  if (!waiting.length) return null;
+  if (!waiting) return null;
+  const { name, slug, ready } = waiting;
   return (
-    <ul className={cn("space-y-2", className)}>
-      {waiting.map(({ name, slug, ready }) => (
-        <li key={slug ?? ""} role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
-          <span className="flex min-w-0 items-start gap-2.5">
-            <PublishIcon className="mt-0.5 size-4 shrink-0 text-primary" />
-            {slug ? t("waitingIn", { count: ready, name }) : t("waitingOwn", { count: ready })}
-          </span>
-          <Button size="sm" variant="outline" asChild>
-            {/* A plain address: the other workspace's own reports, the ready ones. */}
-            <a href={`${slug ? `/o/${slug}` : ""}/publish?view=reports&show=ready`}>
-              {t("waitingOpen", { count: ready })} <ArrowUpRight />
-            </a>
-          </Button>
-        </li>
-      ))}
-    </ul>
+    <div className={className}>
+      <p role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+        <span className="flex min-w-0 items-start gap-2.5">
+          <PublishIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+          {slug ? t("waitingIn", { count: ready, name }) : t("waitingOwn", { count: ready })}
+        </span>
+        <Button size="sm" variant="outline" asChild>
+          {/* A plain address: the other workspace's own reports, the ready ones. */}
+          <a href={`${slug ? `/o/${slug}` : ""}/publish?view=reports&show=ready`}>
+            {t("waitingOpen", { count: ready })} <ArrowUpRight />
+          </a>
+        </Button>
+      </p>
+    </div>
   );
 }
 
