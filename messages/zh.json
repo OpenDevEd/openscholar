@@ -6611,6 +6611,9 @@
       "dropHint": "一个 PDF，最大 {max} MB",
       "unopenedPdf": "无法将 {name} 作为 PDF 打开。如果它设有密码，请先移除密码，再重新另存为 PDF 后上传。",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "读取 {name} 用时过长。请重新上传。",
       "replaces": "重新上传将替换 {name}",
       "check": {

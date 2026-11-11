@@ -6612,6 +6612,9 @@
       "dropHint": "ملف PDF واحد، حتى {max} ميغابايت",
       "unopenedPdf": "تعذّر فتح {name} كملف PDF. إن كان محميًا بكلمة مرور فأزلها، ثم احفظه بصيغة PDF مرة أخرى وارفعه.",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "تستغرق قراءة {name} وقتًا أطول من اللازم. ارفعه مرة أخرى.",
       "replaces": "الرفع مرة أخرى يستبدل {name}",
       "check": {

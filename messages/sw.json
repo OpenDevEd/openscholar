@@ -6612,6 +6612,9 @@
       "dropHint": "PDF moja, hadi MB {max}",
       "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "Kusoma {name} kunachukua muda mrefu kuliko inavyopaswa. Ipakie tena.",
       "replaces": "Kupakia tena kunabadilisha {name}",
       "check": {

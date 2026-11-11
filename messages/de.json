@@ -6612,6 +6612,9 @@
       "dropHint": "Ein PDF, bis zu {max} MB",
       "unopenedPdf": "{name} konnte nicht als PDF geöffnet werden. Hat es ein Passwort, entfernen Sie es; speichern Sie es dann erneut als PDF und laden Sie dieses hoch.",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "Das Lesen von {name} dauert länger als erwartet. Laden Sie es erneut hoch.",
       "replaces": "Ein erneuter Upload ersetzt {name}",
       "check": {

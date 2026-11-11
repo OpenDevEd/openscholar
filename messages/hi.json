@@ -6611,6 +6611,9 @@
       "dropHint": "एक PDF, {max} MB तक",
       "unopenedPdf": "{name} को PDF के रूप में खोला नहीं जा सका। अगर इस पर पासवर्ड है तो उसे हटाएँ, फिर इसे दोबारा PDF के रूप में सहेजें और अपलोड करें।",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "{name} पढ़ने में ज़रूरत से ज़्यादा समय लग रहा है। इसे फिर से अपलोड करें।",
       "replaces": "फिर से अपलोड करने पर {name} बदल जाता है",
       "check": {

@@ -99,6 +99,27 @@ describe("a report's PDF", () => {
     expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
   });
 
+  it("reads its details again from the PDF that replaced another, when its author asks, and only then", async () => {
+    const world = await setup();
+    const first = await atDetails(world);
+    // Read from its first PDF, the details aren't kept from anything: there is nothing to read again.
+    await expect(world.author.mutation(api.reports.flow.readAgain, { workspaceId: world.own, key: first.key })).rejects.toMatchObject(refused("CONFLICT"));
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key: first.key, step: "upload" });
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 the right file"])));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key: first.key, file, name: "right.pdf" });
+    const at = (await row(world.t, first.key)).pdf!.at;
+    await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at, pages: 3 });
+    expect(await read(world.author, world.own, first.key)).toMatchObject({ step: "details", pdf: { kept: true }, metadata: { title: "Shade trees and maize yields" } });
+    // Asked for, the kept details go and the PDF is read as a first one is.
+    await world.author.mutation(api.reports.flow.readAgain, { workspaceId: world.own, key: first.key });
+    expect(await read(world.author, world.own, first.key)).toMatchObject({ step: "upload" });
+    expect((await read(world.author, world.own, first.key)).metadata).toBeUndefined();
+    await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at, pages: 3, metadata: details("The right file's title") });
+    const again = await read(world.author, world.own, first.key);
+    expect(again).toMatchObject({ step: "details", metadata: { title: "The right file's title" } });
+    expect(again.pdf?.kept).toBeUndefined();
+  });
+
   it("stays at the upload, saying so, when its PDF's text doesn't carry the byline, with the way on to its details", async () => {
     const world = await setup();
     // A first PDF, read, then replaced by one without the line: the reading is what finds it missing.

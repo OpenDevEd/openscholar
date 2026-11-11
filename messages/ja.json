@@ -6611,6 +6611,9 @@
       "dropHint": "PDF 1 つ、{max} MB まで",
       "unopenedPdf": "{name} を PDF として開けませんでした。パスワードがかかっている場合は外してから、PDF として保存し直してアップロードしてください。",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "{name} の読み取りに時間がかかりすぎています。アップロードし直してください。",
       "replaces": "再アップロードすると {name} が置き換わります",
       "check": {

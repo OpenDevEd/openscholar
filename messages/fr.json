@@ -6611,6 +6611,9 @@
       "dropHint": "Un PDF, jusqu'à {max} Mo",
       "unopenedPdf": "{name} n'a pas pu être ouvert comme PDF. S'il est protégé par un mot de passe, retirez-le, puis enregistrez-le de nouveau en PDF et téléversez-le.",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "La lecture de {name} prend plus de temps que prévu. Téléversez-le de nouveau.",
       "replaces": "Un nouveau téléversement remplace {name}",
       "check": {
