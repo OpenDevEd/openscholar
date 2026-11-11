@@ -6537,12 +6537,14 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "Isivumelwano",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
-        "live": "Kushicilelwe"
+        "live": "Kushicilelwe",
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",
@@ -6616,7 +6618,7 @@
         "failed": "Kuhlulekile",
         "flagged": "Kuphawuliwe",
         "unclear": "Akucacile",
-        "sure": "Kuqinisekwe ngo-{percent} ukuthi kuyaphumelela",
+        "sure": "{percent}",
         "foundIn": "Kutholwe ku-{where}:",
         "foundAs": "Kutholwe njenge-",
         "said": {
@@ -6750,7 +6752,7 @@
           "refused": "Ibhange lakho alizange liqinisekise inkokhelo yokugcina, ngakho akukho okukhokhisiwe.",
           "free": "Mahhala",
           "freeLeft": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla",
-          "freeLeftNoCard": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla. Isadingeka ikhadi eligciniwe.",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "Engeza indlela yokukhokha ukuze uvule",
           "costs": "Ukuvula ngakunye kubiza u-{price}.",
           "costsOrg": "Ukuvula ngakunye kubiza u-{price}, okukhokhiswa i-{organization}.",
@@ -6761,7 +6763,9 @@
           "change": "Shintsha",
           "addButton": "Engeza indlela yokukhokha",
           "stripeFailed": "Ikhasi le-Stripe alikwazanga ukuvuleka",
-          "credit": "Isikweletu esingu-{amount}"
+          "credit": "Isikweletu esingu-{amount}",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "Isikweletu se-akhawunti",
         "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
@@ -6769,6 +6773,40 @@
         "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
         "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele.",
         "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo."
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6867,7 +6905,8 @@
       "sendForReview": "Hlola izinguquko bese uthumela ukuze kubuyekezwe",
       "checkAndPublish": "Hlola izinguquko bese ushicilela",
       "runChecks": "Yenza ukuhlolwa",
-      "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400."
+      "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400.",
+      "back": "Back"
     }
   },
   "people": {

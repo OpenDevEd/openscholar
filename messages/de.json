@@ -6538,12 +6538,14 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "Vereinbarung",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Angaben",
         "checks": "Prüfungen",
-        "live": "Online"
+        "live": "Online",
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Veröffentlichen",
       "newReport": "Neuer Bericht",
@@ -6617,7 +6619,7 @@
         "failed": "Nicht bestanden",
         "flagged": "Markiert",
         "unclear": "Unklar",
-        "sure": "{percent} sicher, dass er besteht",
+        "sure": "{percent}",
         "foundIn": "Gefunden in {where}:",
         "foundAs": "Gefunden als",
         "said": {
@@ -6751,7 +6753,7 @@
           "refused": "Ihre Bank hat die letzte Zahlung nicht bestätigt, daher wurde nichts abgebucht.",
           "free": "Kostenlos",
           "freeLeft": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}",
-          "freeLeftNoCard": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}. Eine gespeicherte Karte ist trotzdem nötig.",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "Fügen Sie eine Zahlungsmethode hinzu, um zu aktivieren",
           "costs": "Jede Aktivierung kostet {price}.",
           "costsOrg": "Jede Aktivierung kostet {price} und wird {organization} berechnet.",
@@ -6762,7 +6764,9 @@
           "change": "Ändern",
           "addButton": "Zahlungsmethode hinzufügen",
           "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden",
-          "credit": "{amount} Guthaben"
+          "credit": "{amount} Guthaben",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "Guthaben des Kontos",
         "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
@@ -6770,6 +6774,40 @@
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
         "noFreeLeft": "Für heute ist keine kostenlose Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um dafür zu bezahlen.",
         "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz."
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6868,7 +6906,8 @@
       "sendForReview": "Änderungen prüfen und zur Prüfung senden",
       "checkAndPublish": "Änderungen prüfen und veröffentlichen",
       "runChecks": "Prüfungen ausführen",
-      "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein."
+      "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein.",
+      "back": "Back"
     }
   },
   "people": {

@@ -43,7 +43,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
@@ -69,7 +69,8 @@ type Quote = { code: string; price: number; discount: number; total: number };
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
 const STUCK_MS = RUN_STUCK_MS;
 
-const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" | "live"; icon: typeof PenLine }> = [
+const STEPS: Array<{ id: "prepare" | "agreement" | "doi" | "upload" | "details" | "checks" | "live"; icon: typeof PenLine }> = [
+  { id: "prepare", icon: ListChecks },
   { id: "agreement", icon: PenLine },
   { id: "doi", icon: Hash },
   { id: "upload", icon: FileUp },
@@ -79,10 +80,14 @@ const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" |
 ];
 type BackStep = "doi" | "upload" | "details";
 
-/** Where the trail stands: the step being done, or past the checks, the outcome. */
-function placeOf(report: Report | null) {
-  if (!report) return 0;
-  if (report.step === "done") return report.status === "live" ? 5 : 4;
+/** The trail's last step, Live, and the one before it, the checks. */
+const LIVE_AT = STEPS.length - 1;
+const CHECKS_AT = STEPS.length - 2;
+
+/** Where the trail stands: the step being done, or past the checks, the outcome. Before a report, preparing or the agreement. */
+function placeOf(report: Report | null, preparing: boolean) {
+  if (!report) return preparing ? 0 : 1;
+  if (report.step === "done") return report.status === "live" ? LIVE_AT : CHECKS_AT;
   return STEPS.findIndex((s) => s.id === report.step);
 }
 
@@ -174,6 +179,8 @@ export function PublishFlow() {
   const listing = listed || opening;
 
   const signedOut = isLoaded && !isSignedIn;
+  // Prepare, the page before the agreement, has been read and left for the agreement.
+  const [prepared, setPrepared] = useState(false);
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
   const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
@@ -192,7 +199,12 @@ export function PublishFlow() {
   const saved = found && "report" in found ? found.report : null;
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
   // address's: opening the upload is a step forward, and Back from it returns to the DOI.
-  const report = saved?.step === "doi" && (at === "upload" || saved.pdf) ? { ...saved, step: "upload" as const } : saved;
+  // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
+  const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
+  // Every new report starts on Prepare, what publishing asks for, then the agreement. Only a signing on its way skips it.
+  const preparing = !report && !prepared && !arriving;
+  // Prepare was read for one report: the next new report starts on it again.
+  if (prepared && (report || listing)) setPrepared(false);
   // A step the report is sent to is its own from then on, whatever the address said before.
   const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
@@ -228,7 +240,7 @@ export function PublishFlow() {
           </Button>
         ) : undefined
       }
-      intro={!listing && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
+      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => setPrepared(false)} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
@@ -301,6 +313,9 @@ export function PublishFlow() {
           {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
           <Screens
+            preparing={preparing}
+            onPrepared={() => setPrepared(true)}
+            onUnprepare={() => setPrepared(false)}
             signed={arriving ? fresh.key : null}
             basics={basics}
             report={report}
@@ -342,7 +357,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
@@ -409,14 +424,17 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
   }, []);
-  const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
+  const screen = !report ? (preparing ? "prepare" : "agreement") : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
-          {!report ? (
+          {!report && preparing ? (
+            <Overview series={basics.series.name} onStart={onPrepared} />
+          ) : !report ? (
             <AgreementStep
+              onBack={onUnprepare}
               basics={basics}
               shared={shared}
               starts={starts}
@@ -435,11 +453,12 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
           ) : report.step === "doi" ? (
             <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
           ) : report.step === "upload" ? (
-            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} />
+            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} onBack={() => back("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => back("details") : undefined} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
               <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
               <DetailsStep
+                onBack={() => back("upload")}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -565,30 +584,33 @@ function usePassed(at: number | undefined) {
 }
 
 /** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
+function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; /** The page before the agreement is open. */ preparing: boolean; /** Back to it from the agreement. */ onPrepare: () => void; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
-  const place = running ? 4 : placeOf(report);
+  const place = running ? CHECKS_AT : placeOf(report, preparing);
   const stage = report?.step === "done" ? stageOf(report, humanReview) : null;
   const failed = stage === "failed" || stage === "declined";
   const waiting = stage === "review";
   const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
-      <ol className="grid grid-cols-6 gap-1 max-sm:flex max-sm:justify-between">
+      <ol className="grid grid-cols-7 gap-1 max-sm:flex max-sm:justify-between">
         {STEPS.map((s, i) => {
-          const done = i < place || (i === place && place === 5);
-          const current = i === place && place !== 5;
-          const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
-          // The PDF and the details once done, and the DOI until there is a PDF (it shows beside the trail after, and
-          // going back to it would ask for the PDF again); the agreement is signed for good. Back at the upload, the
-          // details already read are still a step away.
-          const clickable = canGoBack && i > 0 && i < 4 && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata);
+          const done = i < place || (i === place && place === LIVE_AT);
+          const current = i === place && place !== LIVE_AT;
+          // Once signed, Prepare and the agreement are done for good: locked and faded, they can't be opened again.
+          const sealed = done && (s.id === "agreement" || s.id === "prepare") && !!report;
+          const Icon = sealed ? Lock : done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
+          // Every step done before the checks can be gone back to, as each step's Back button goes: the DOI, the PDF and
+          // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
+          // Before a report, Prepare is a step back from the agreement.
+          const back = !report && s.id === "prepare" && !preparing;
+          const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata)));
           const body = (
             <>
-              <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
+              <Icon className={cn("size-4 shrink-0", sealed ? "text-muted-foreground" : done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
               {/* On a phone only the current step keeps its name; the others are their icons. */}
               <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{t(`steps.${s.id}`)}</span>
             </>
@@ -596,9 +618,15 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
           return (
             <li key={s.id} className={cn("min-w-0", current && "max-sm:flex-1")}>
               {clickable ? (
-                <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                <button type="button" onClick={() => (back ? onPrepare() : s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
+              ) : sealed ? (
+                <TooltipHint label={t("steps.sealed")}>
+                  <div tabIndex={0} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1 opacity-50">
+                    {body}
+                  </div>
+                </TooltipHint>
               ) : (
                 <div aria-current={current ? "step" : undefined} className="flex min-w-0 items-center gap-1.5 py-1">
                   {body}
@@ -609,7 +637,7 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
         })}
       </ol>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-inset">
-        <motion.div className={cn("h-full rounded-full", failed ? "bg-destructive" : "bg-primary")} initial={false} animate={{ width: `${((place + (place === 5 ? 1 : 0.5)) / STEPS.length) * 100}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
+        <motion.div className={cn("h-full rounded-full", failed ? "bg-destructive" : "bg-primary")} initial={false} animate={{ width: `${((place + (place === LIVE_AT ? 1 : 0.5)) / STEPS.length) * 100}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
       </div>
     </div>
   );
@@ -627,7 +655,7 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }: { basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
+function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack }: { /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
@@ -672,25 +700,31 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
           <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
           <span>{t("agree")}</span>
         </label>
-        {starts?.untouched && starts.untouched !== signed ? (
-          // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
-          <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
-            <span className="min-w-0 flex-1 basis-56">
-              {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
-            </span>
-            <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
-              {t("continueWith")} <ArrowUpRight />
-            </Button>
-          </p>
-        ) : null}
-        {changed ? (
-          <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
-            {t("agreementChanged")}
-          </p>
-        ) : null}
       </div>
+      {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
+      {starts?.untouched && starts.untouched !== signed ? (
+        // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
+        <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+          <span className="min-w-0 flex-1 basis-56">
+            {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
+            {t("continueWith")} <ArrowUpRight />
+          </Button>
+        </p>
+      ) : null}
+      {changed ? (
+        <p role="status" className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+          {t("agreementChanged")}
+        </p>
+      ) : null}
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        {onBack ? (
+          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
+            <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -746,6 +780,8 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
   const LETTERS_AT = 0.55;
   const LETTER = 0.03;
   return (
+    <div>
+    {/* The DOI itself, centred and held to a readable width; what to do with it runs the page's full width below. */}
     <div className="flex flex-col items-center pb-2 pt-3 text-center">
       <div className="relative size-20">
         {play ? <motion.span aria-hidden className="absolute inset-0 rounded-[1.75rem] border-2 border-primary" initial={{ opacity: 0.6, scale: 1 }} animate={{ opacity: 0, scale: 1.6 }} transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }} /> : null}
@@ -792,14 +828,88 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           </StatusChip>
         </div>
       </motion.div>
-      <motion.div className="mt-6 flex flex-wrap justify-center gap-2" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
-        <Button variant="outline" onClick={() => copy(`https://doi.org/${report.doi}`, t("doiCopied"))}>
-          <Copy /> {t("copyDoi")}
-        </Button>
-        <Button onClick={onNext}>
-          <FileUp /> {t("uploadPdf")}
-        </Button>
+    </div>
+      {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
+          out as the upload's page is, which comes next. */}
+      <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
+        <StepHead title={t("bylineFirst")}>{t("bylineFirstBody")}</StepHead>
+        <BylineBox byline={report.byline} />
+        <StepNav
+          next={
+            <Button onClick={onNext}>
+              {t("nextUpload")} <ArrowRight />
+            </Button>
+          }
+        />
       </motion.div>
+    </div>
+  );
+}
+
+/** The line a report's PDF carries on its cover, to copy. Its DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach. */
+function BylineBox({ byline, className }: { byline: string; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    <div className={cn("flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3", className)}>
+      <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{byline}</span>
+      <TooltipHint label={t("copyByline")}>
+        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(byline, t("bylineCopied"))}>
+          <Copy />
+        </Button>
+      </TooltipHint>
+    </div>
+  );
+}
+
+/** Back and on, at the foot of a step: back to the step before, and on to the next one where it is open. */
+function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    <div className="mt-6 flex items-center gap-2">
+      {onBack ? (
+        <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
+          <ArrowLeft /> {t("back")}
+        </Button>
+      ) : null}
+      <div className="ms-auto">{next}</div>
+    </div>
+  );
+}
+
+/** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
+function Overview({ series, onStart }: { series: string; onStart: () => void }) {
+  const t = useTranslations("publishReports.flow.overview");
+  const items = [
+    { id: "agreement", icon: PenLine },
+    { id: "doi", icon: Hash },
+    { id: "pdf", icon: FileText },
+    { id: "details", icon: ListChecks },
+    { id: "checks", icon: ShieldCheck },
+    { id: "activate", icon: CreditCard },
+  ] as const;
+  return (
+    <div>
+      <StepHead title={t("title", { series })}>{t("intro")}</StepHead>
+      <ol className="relative space-y-1">
+        {/* One line through the icons: the steps as one road. */}
+        <span aria-hidden className="absolute inset-y-5 start-[1.1875rem] w-px bg-border" />
+        {items.map(({ id, icon: Icon }) => (
+          <li key={id} className="relative flex items-start gap-4 py-2">
+            <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-background text-primary">
+              <Icon className="size-4" />
+            </span>
+            <span className="min-w-0 pt-1">
+              <span className="block text-sm font-medium">{t(`${id}.title`)}</span>
+              <span className="block text-sm text-muted-foreground">{t(`${id}.body`)}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 flex justify-end">
+        <Button onClick={onStart}>
+          {t("start")} <ArrowRight />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -825,7 +935,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
   );
 }
 
-function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
+function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void; /** Back to the DOI. */ onBack: () => void; /** On to the details already read from this PDF, when there are some. */ onNext?: () => void }) {
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
   /**
@@ -880,16 +990,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      {/* The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
-          button stays in reach. */}
-      <div className="mb-5 flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{report.byline}</span>
-        <TooltipHint label={t("copyByline")}>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(report.byline, t("bylineCopied"))}>
-            <Copy />
-          </Button>
-        </TooltipHint>
-      </div>
+      <BylineBox byline={report.byline} className="mb-5" />
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -943,6 +1044,16 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
           {t("replaces", { name: report.pdf.name })}
         </p>
       ) : null}
+      <StepNav
+        onBack={busy ? undefined : onBack}
+        next={
+          onNext && !busy ? (
+            <Button onClick={onNext}>
+              {t("nextDetails")} <ArrowRight />
+            </Button>
+          ) : null
+        }
+      />
     </div>
   );
 }
@@ -1010,7 +1121,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                     <motion.div className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")} initial={{ width: "0%" }} animate={{ width: `${Math.max(sure, 2)}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
                     <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
                   </div>
-                  <span className="w-40 shrink-0 text-end text-xs tabular-nums">
+                  <span className="min-w-12 shrink-0 text-end text-xs tabular-nums">
                     <span className="font-medium text-foreground/80">{result.answer === "unclear" ? t("check.unclear") : t("check.sure", { percent: format.number(sure / 100, { style: "percent" }) })}</span>
                   </span>
                 </div>
@@ -1415,6 +1526,13 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
       <div className="min-w-0 flex-1 basis-48">
         {pending ? (
           <p className="text-sm font-medium">{t("bankAsked")}</p>
+        ) : !card && free > 0 ? (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            {t("freeTitle")}
+            <StatusChip tone="success" icon={CircleCheck}>
+              {t("free")}
+            </StatusChip>
+          </p>
         ) : card ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
             <span className="capitalize">{card.brand}</span>
@@ -1444,6 +1562,13 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
                     ? t("orgCard", { organization })
                     : t("yourCard")}
         </p>
+        {/* Where a code goes, said before Activate: the dialog Activate opens takes it, before anything is charged. */}
+        {!pending && !refused && free === 0 && price !== null ? (
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Tag className="size-3.5 shrink-0" />
+            {t("voucher")}
+          </p>
+        ) : null}
       </div>
       {pending?.url ? (
         <Button variant="outline" asChild className="ms-auto shrink-0">
@@ -1451,11 +1576,14 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
-      ) : pending ? null : card ? (
+      ) : pending ? null : card || free > 0 ? (
+        // A free activation needs no card: Activate is there either way.
         <div className="ms-auto flex shrink-0 items-center gap-2">
-          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
-            <Working busy={saving}>{t("change")}</Working>
-          </Button>
+          {card ? (
+            <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
+              <Working busy={saving}>{t("change")}</Working>
+            </Button>
+          ) : null}
           {action}
         </div>
       ) : onAddCard ? (

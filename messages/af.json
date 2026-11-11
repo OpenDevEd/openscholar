@@ -6538,12 +6538,14 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "Ooreenkoms",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Besonderhede",
         "checks": "Kontroles",
-        "live": "Gepubliseer"
+        "live": "Gepubliseer",
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Publiseer",
       "newReport": "Nuwe verslag",
@@ -6617,7 +6619,7 @@
         "failed": "Gefaal",
         "flagged": "Gemerk",
         "unclear": "Onduidelik",
-        "sure": "{percent} seker dit slaag",
+        "sure": "{percent}",
         "foundIn": "Gevind in {where}:",
         "foundAs": "Gevind as",
         "said": {
@@ -6751,7 +6753,7 @@
           "refused": "Jou bank het nie die laaste betaling bevestig nie, so niks is gehef nie.",
           "free": "Gratis",
           "freeLeft": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag",
-          "freeLeftNoCard": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag. 'n Gestoorde kaart is steeds nodig.",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "Voeg 'n betaalmetode by om te aktiveer",
           "costs": "Elke aktivering kos {price}.",
           "costsOrg": "Elke aktivering kos {price}, gedebiteer aan {organization}.",
@@ -6762,7 +6764,9 @@
           "change": "Verander",
           "addButton": "Voeg betaalmetode by",
           "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
-          "credit": "{amount} krediet"
+          "credit": "{amount} krediet",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "Rekeningkrediet",
         "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
@@ -6770,6 +6774,40 @@
         "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
         "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal.",
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek."
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6868,7 +6906,8 @@
       "sendForReview": "Kontroleer wysigings en stuur vir hersiening",
       "checkAndPublish": "Kontroleer wysigings en publiseer",
       "runChecks": "Laat kontroles loop",
-      "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie."
+      "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
+      "back": "Back"
     }
   },
   "people": {

@@ -6537,12 +6537,14 @@
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "协议",
         "doi": "DOI",
         "upload": "PDF",
         "details": "信息",
         "checks": "检查",
-        "live": "上线"
+        "live": "上线",
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "发布",
       "newReport": "新报告",
@@ -6616,7 +6618,7 @@
         "failed": "未通过",
         "flagged": "已标记",
         "unclear": "不确定",
-        "sure": "有 {percent} 把握通过",
+        "sure": "{percent}",
         "foundIn": "在{where}中找到：",
         "foundAs": "找到为",
         "said": {
@@ -6750,7 +6752,7 @@
           "refused": "你的银行没有确认上一笔付款，因此没有扣款。",
           "free": "免费",
           "freeLeft": "今天还剩 {count} 次免费激活",
-          "freeLeftNoCard": "今天还剩 {count} 次免费激活。仍需保存一张卡。",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "添加付款方式后即可激活",
           "costs": "每次激活收费 {price}。",
           "costsOrg": "每次激活收费 {price}，由 {organization} 支付。",
@@ -6761,7 +6763,9 @@
           "change": "更换",
           "addButton": "添加付款方式",
           "stripeFailed": "无法打开 Stripe 页面",
-          "credit": "余额 {amount}"
+          "credit": "余额 {amount}",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "账户余额抵扣",
         "refunded": "为激活它支付的 {amount} 已退款。",
@@ -6769,6 +6773,40 @@
         "declined": "你的卡被拒绝了，没有扣款。请更换卡片后重试。",
         "noFreeLeft": "今天已没有免费激活次数。再次激活即可付费。",
         "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。"
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6867,7 +6905,8 @@
       "sendForReview": "检查修改并提交审核",
       "checkAndPublish": "检查并发布修改",
       "runChecks": "运行检查",
-      "tooEarly": "报告日期不能早于 1400 年。"
+      "tooEarly": "报告日期不能早于 1400 年。",
+      "back": "Back"
     }
   },
   "people": {
