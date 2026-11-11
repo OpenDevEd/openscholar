@@ -18,7 +18,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
+import { authorRowValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -416,13 +416,13 @@ export const discardChanges = workspaceMutation({
   },
 });
 
-const stageValidator = v.union(...STAGES.map((stage) => v.literal(stage)));
-const rowValidator = reportRowValidator;
+const rowValidator = authorRowValidator;
 
-async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise<Infer<typeof rowValidator>> {
+async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanReview: boolean): Promise<Infer<typeof rowValidator>> {
   const { key, step, status, approved, flagged, changes, note, registration, deposit, archive, updatedAt } = report;
   return {
     key, step, status, registration, deposit, archive, updatedAt,
+    stage: stageOf(report, humanReview),
     ...(approved && { approved }),
     ...(flagged && { flagged }),
     ...(changes && { changes }),
@@ -454,7 +454,7 @@ export const pageAction = defineUserQuery({
     const listed = show ? reports.filter((report) => stageOf(report, humanReview) === show) : reports;
     const pages = Math.max(1, Math.ceil(listed.length / REPORTS_PER_PAGE));
     const at = Math.min(Math.max(1, Math.floor(page) || 1), pages);
-    return { rows: await Promise.all(listed.slice((at - 1) * REPORTS_PER_PAGE, at * REPORTS_PER_PAGE).map((report) => row(ctx, actor, report))), page: at, pages, total: listed.length };
+    return { rows: await Promise.all(listed.slice((at - 1) * REPORTS_PER_PAGE, at * REPORTS_PER_PAGE).map((report) => row(ctx, actor, report, humanReview))), page: at, pages, total: listed.length };
   },
 });
 export const page = userQuery(pageAction);
@@ -515,7 +515,7 @@ const plain = (results: Doc<"reportDetails">["results"]) => results?.map(({ mode
 export const getAction = defineUserQuery({
   path: "reports/flow:get",
   description:
-    "One of the workspace's reports on Openscholar Reports, by its key (R…): where it stands (its step and status, whether a reviewer approved it, whether changes to a live report are waiting), its DOI, its details as they are now, " +
+    "One of the workspace's reports on Openscholar Reports, by its key (R…): where it stands (its stage as the Publish page shows it, one of draft, failed, review, ready, live or declined, where a report that passed its checks but was flagged is at review; whether a reviewer approved it; whether changes to a live report are waiting), its DOI, its details as they are now, " +
     "what each check said, and a reviewer's note. A report of another workspace the person is in answers `elsewhere` with that workspace's name; anything else is null. Its page, once live, is /papers/<key>.",
   args: { key: v.string() },
   returns: v.union(v.object({ report: reportValidator }), v.object({ elsewhere: v.object({ name: v.string(), slug: v.union(v.string(), v.null()) }) }), v.null()),
@@ -531,9 +531,10 @@ export const getAction = defineUserQuery({
     }
     const details = await detailsOf(ctx, report._id);
     const { correction } = details;
+    const { humanReview } = await reportSettings(ctx);
     return {
       report: {
-        ...(await row(ctx, actor, report)),
+        ...(await row(ctx, actor, report, humanReview)),
         doi: report.doi,
         byline: report.byline,
         asked: report.asked === true,

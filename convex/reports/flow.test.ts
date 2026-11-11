@@ -187,6 +187,10 @@ describe("a report's checks", () => {
     const report = await read(world.author, world.lab, flagged.key);
     expect(report).toMatchObject({ status: "passed", flagged: true });
     expect(stageOf(report, false)).toBe("review");
+    // The assistant is told where it stands as the Publish page shows it, waiting for review, not just that it passed.
+    const asked = { userId: world.authorId, workspaceId: world.lab };
+    expect(await world.t.query(internal.reports.flow.getForAssistant, { ...asked, key: flagged.key })).toMatchObject({ report: { stage: "review" } });
+    expect((await world.t.query(internal.reports.flow.pageForAssistant, { ...asked, page: 1 })).rows).toMatchObject([{ key: flagged.key, stage: "review" }]);
   });
 
   it("save nothing from a run that a newer run or a new PDF replaced", async () => {

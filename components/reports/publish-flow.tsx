@@ -1603,8 +1603,8 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
           ) : null}
         </div>
       </motion.div>
-      {/* On a phone the four are two even rows, in place of a ragged wrap. */}
-      <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full" {...rise(0.8)}>
+      {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
+      <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
         {onAnother ? (
           <Button variant="outline" onClick={onAnother}>
             <Plus /> {t("publishAnother")}
