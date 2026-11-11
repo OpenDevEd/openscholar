@@ -6545,7 +6545,7 @@
         "details": "التفاصيل",
         "checks": "الفحوصات",
         "live": "منشور",
-        "sealed": "Signed. A signed agreement can't be opened again."
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "نشر",
       "newReport": "تقرير جديد",

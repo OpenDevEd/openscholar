@@ -6544,7 +6544,7 @@
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
         "live": "Kushicilelwe",
-        "sealed": "Signed. A signed agreement can't be opened again."
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",

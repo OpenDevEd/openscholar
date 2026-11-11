@@ -6544,7 +6544,7 @@
         "details": "詳細",
         "checks": "チェック",
         "live": "公開",
-        "sealed": "Signed. A signed agreement can't be opened again."
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "公開",
       "newReport": "新しいレポート",

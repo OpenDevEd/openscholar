@@ -6544,7 +6544,7 @@
         "details": "Details",
         "checks": "Checks",
         "live": "Live",
-        "sealed": "Signed. A signed agreement can't be opened again."
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Publish",
       "newReport": "New report",

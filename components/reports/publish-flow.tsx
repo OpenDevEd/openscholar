@@ -599,8 +599,8 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
         {STEPS.map((s, i) => {
           const done = i < place || (i === place && place === LIVE_AT);
           const current = i === place && place !== LIVE_AT;
-          // A signed agreement is done for good: a lock, not a tick, says it can't be opened again.
-          const sealed = done && s.id === "agreement" && !!report;
+          // Once signed, Prepare and the agreement are done for good: locked and faded, they can't be opened again.
+          const sealed = done && (s.id === "agreement" || s.id === "prepare") && !!report;
           const Icon = sealed ? Lock : done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
           // Every step done before the checks can be gone back to, as each step's Back button goes: the DOI, the PDF and
           // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
@@ -622,7 +622,7 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
                 </button>
               ) : sealed ? (
                 <TooltipHint label={t("steps.sealed")}>
-                  <div tabIndex={0} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1">
+                  <div tabIndex={0} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1 opacity-50">
                     {body}
                   </div>
                 </TooltipHint>

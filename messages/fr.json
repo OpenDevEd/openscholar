@@ -6544,7 +6544,7 @@
         "details": "Informations",
         "checks": "Vérifications",
         "live": "En ligne",
-        "sealed": "Signed. A signed agreement can't be opened again."
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Publier",
       "newReport": "Nouveau rapport",

@@ -6545,7 +6545,7 @@
         "details": "Maelezo",
         "checks": "Ukaguzi",
         "live": "Imechapishwa",
-        "sealed": "Signed. A signed agreement can't be opened again."
+        "sealed": "Locked once the agreement is signed."
       },
       "publish": "Chapisha",
       "newReport": "Ripoti mpya",
