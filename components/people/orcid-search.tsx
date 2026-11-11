@@ -51,14 +51,16 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   // An iD with a digit wrong is no one's name: it isn't searched for, and the list says so.
   const mistyped = !!shaped && !typed;
   const at = institutions;
-  const people = useSWR(query && !shaped ? ["orcid", query, ...at] : null, () => findOrcid(query, at), { keepPreviousData: true, revalidateOnFocus: false });
+  // Words to look people up by: never an iD, typed now or still in the debounced words.
+  const lookup = query && !shaped && !orcidShaped(query) ? query : "";
+  const people = useSWR(lookup ? ["orcid", lookup, ...at] : null, () => findOrcid(lookup, at), { keepPreviousData: true, revalidateOnFocus: false });
   // The results on screen are for other words, or are being asked again: they wait for the answer to what's typed.
   const searching = !shaped && !!search.trim() && (search.trim() !== query || people.isValidating);
   // A failed search keeps the last one's people on screen, which are for other words too.
   const stale = searching || (!typed && !!people.error);
   // Someone at one of the person's institutions shows that institution first.
   const theirs = new Set(at.map((name) => name.toLowerCase()));
-  const shown = (query && !shaped ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
+  const shown = (lookup ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
   const groups = [
     { heading: at.length === 1 ? t("atOne", { institution: at[0] }) : t("atTheirs"), people: shown.filter((person) => person.near) },
     { heading: shown.some((person) => person.near) ? t("elsewhere") : t("onOrcid"), people: shown.filter((person) => !person.near) },
@@ -67,7 +69,14 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
     <Command shouldFilter={false}>
       <CommandInput value={search} onValueChange={setSearch} placeholder={t("searchPlaceholder")} busy={searching} />
       <CommandList grows>
-        <CommandEmpty>{!search.trim() ? t("typeName") : mistyped ? t("notOrcid") : people.error ? t("orcidDown") : people.isLoading ? t("searching") : t("nobody")}</CommandEmpty>
+        {mistyped ? (
+          // Said whatever else the list holds: Open and Remove stay for an iD already chosen, so this can't be its empty state.
+          <div role="option" aria-disabled="true" aria-selected="false" className="py-6 text-center text-sm">
+            {t("notOrcid")}
+          </div>
+        ) : (
+          <CommandEmpty>{!search.trim() ? t("typeName") : people.error ? t("orcidDown") : searching || people.isLoading ? t("searching") : t("nobody")}</CommandEmpty>
+        )}
         {typed ? (
           <CommandGroup>
             <CommandItem value={`typed ${typed}`} onSelect={() => onPick(typed, "")}>
