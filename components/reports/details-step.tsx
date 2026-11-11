@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowDown, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowLeft, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
 import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
@@ -232,6 +232,7 @@ export function DetailsStep({
   onSave,
   onTouched,
   onCancel,
+  onBack,
   resend = false,
   waits = false,
   words,
@@ -252,6 +253,8 @@ export function DetailsStep({
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing
    * anything. Given the `version` the form opened on. */
   onCancel?: (version: number | undefined) => void;
+  /** Back to the PDF, while the report is still being made. */
+  onBack?: () => void;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
@@ -626,6 +629,11 @@ export function DetailsStep({
         </Section>
       </div>
       <div className="mt-8 flex flex-wrap justify-end gap-2">
+        {onBack ? (
+          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
+            <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
         {onCancel ? (
           <Button variant="outline" onClick={() => {
             // What was typed is given up, so a save still waiting must never arrive after it.

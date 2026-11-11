@@ -43,7 +43,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, ListChecks, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
@@ -371,6 +371,8 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
   const [typing, setTyping] = useState(false);
   // The checks were asked for here and the report hasn't said so yet: the page shows them running at once.
   const [starting, setStarting] = useState(false);
+  // The overview of what publishing takes comes before the agreement, until the author starts.
+  const [started, setStarted] = useState(false);
   // Another report is another form: what was typed, sent or started for one is never the next one's.
   const [of, setOf] = useState(report?.key);
   if (of !== report?.key) {
@@ -409,13 +411,15 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
   }, []);
-  const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
+  const screen = !report ? (!started && !signed && !starts?.untouched ? "overview" : "agreement") : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
-          {!report ? (
+          {!report && !started && !signed && !starts?.untouched ? (
+            <Overview series={basics.series.name} onStart={() => setStarted(true)} />
+          ) : !report ? (
             <AgreementStep
               basics={basics}
               shared={shared}
@@ -435,11 +439,12 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
           ) : report.step === "doi" ? (
             <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
           ) : report.step === "upload" ? (
-            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} />
+            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} onBack={() => back("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => back("details") : undefined} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
               <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
               <DetailsStep
+                onBack={() => back("upload")}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -792,14 +797,85 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           </StatusChip>
         </div>
       </motion.div>
-      <motion.div className="mt-6 flex flex-wrap justify-center gap-2" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
-        <Button variant="outline" onClick={() => copy(`https://doi.org/${report.doi}`, t("doiCopied"))}>
-          <Copy /> {t("copyDoi")}
-        </Button>
-        <Button onClick={onNext}>
-          <FileUp /> {t("uploadPdf")}
-        </Button>
+      {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. */}
+      <motion.div className="mt-7 w-full max-w-xl text-start" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
+        <p className="text-sm font-medium">{t("bylineFirst")}</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t("bylineFirstBody")}</p>
+        <BylineBox byline={report.byline} className="mt-3" />
+        <div className="mt-6 flex justify-end">
+          <Button onClick={onNext}>
+            {t("nextUpload")} <ArrowRight />
+          </Button>
+        </div>
       </motion.div>
+    </div>
+  );
+}
+
+/** The line a report's PDF carries on its cover, to copy. Its DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach. */
+function BylineBox({ byline, className }: { byline: string; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    <div className={cn("flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3", className)}>
+      <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{byline}</span>
+      <TooltipHint label={t("copyByline")}>
+        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(byline, t("bylineCopied"))}>
+          <Copy />
+        </Button>
+      </TooltipHint>
+    </div>
+  );
+}
+
+/** Back and on, at the foot of a step: back to the step before, and on to the next one where it is open. */
+function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    <div className="mt-6 flex items-center gap-2">
+      {onBack ? (
+        <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
+          <ArrowLeft /> {t("back")}
+        </Button>
+      ) : null}
+      <div className="ms-auto">{next}</div>
+    </div>
+  );
+}
+
+/** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
+function Overview({ series, onStart }: { series: string; onStart: () => void }) {
+  const t = useTranslations("publishReports.flow.overview");
+  const items = [
+    { id: "agreement", icon: PenLine },
+    { id: "doi", icon: Hash },
+    { id: "pdf", icon: FileText },
+    { id: "details", icon: ListChecks },
+    { id: "checks", icon: ShieldCheck },
+    { id: "activate", icon: CreditCard },
+  ] as const;
+  return (
+    <div>
+      <StepHead title={t("title", { series })}>{t("intro")}</StepHead>
+      <ol className="relative space-y-1">
+        {/* One line through the icons: the steps as one road. */}
+        <span aria-hidden className="absolute inset-y-5 start-[1.1875rem] w-px bg-border" />
+        {items.map(({ id, icon: Icon }) => (
+          <li key={id} className="relative flex items-start gap-4 py-2">
+            <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-background text-primary">
+              <Icon className="size-4" />
+            </span>
+            <span className="min-w-0 pt-1">
+              <span className="block text-sm font-medium">{t(`${id}.title`)}</span>
+              <span className="block text-sm text-muted-foreground">{t(`${id}.body`)}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 flex justify-end">
+        <Button onClick={onStart}>
+          {t("start")} <ArrowRight />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -825,7 +901,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
   );
 }
 
-function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
+function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void; /** Back to the DOI. */ onBack: () => void; /** On to the details already read from this PDF, when there are some. */ onNext?: () => void }) {
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
   /**
@@ -880,16 +956,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      {/* The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
-          button stays in reach. */}
-      <div className="mb-5 flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{report.byline}</span>
-        <TooltipHint label={t("copyByline")}>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(report.byline, t("bylineCopied"))}>
-            <Copy />
-          </Button>
-        </TooltipHint>
-      </div>
+      <BylineBox byline={report.byline} className="mb-5" />
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -943,6 +1010,16 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
           {t("replaces", { name: report.pdf.name })}
         </p>
       ) : null}
+      <StepNav
+        onBack={busy ? undefined : onBack}
+        next={
+          onNext && !busy ? (
+            <Button onClick={onNext}>
+              {t("nextDetails")} <ArrowRight />
+            </Button>
+          ) : null
+        }
+      />
     </div>
   );
 }
@@ -1010,7 +1087,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                     <motion.div className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")} initial={{ width: "0%" }} animate={{ width: `${Math.max(sure, 2)}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
                     <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
                   </div>
-                  <span className="w-40 shrink-0 text-end text-xs tabular-nums">
+                  <span className="min-w-12 shrink-0 text-end text-xs tabular-nums">
                     <span className="font-medium text-foreground/80">{result.answer === "unclear" ? t("check.unclear") : t("check.sure", { percent: format.number(sure / 100, { style: "percent" }) })}</span>
                   </span>
                 </div>
@@ -1400,6 +1477,13 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
       <div className="min-w-0 flex-1 basis-48">
         {pending ? (
           <p className="text-sm font-medium">{t("bankAsked")}</p>
+        ) : !card && free > 0 ? (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            {t("freeTitle")}
+            <StatusChip tone="success" icon={CircleCheck}>
+              {t("free")}
+            </StatusChip>
+          </p>
         ) : card ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
             <span className="capitalize">{card.brand}</span>
@@ -1429,6 +1513,13 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
                     ? t("orgCard", { organization })
                     : t("yourCard")}
         </p>
+        {/* Where a code goes, said before Activate: the dialog Activate opens takes it, before anything is charged. */}
+        {!pending && !refused && free === 0 && price !== null ? (
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Tag className="size-3.5 shrink-0" />
+            {t("voucher")}
+          </p>
+        ) : null}
       </div>
       {pending?.url ? (
         <Button variant="outline" asChild className="ms-auto shrink-0">
@@ -1436,11 +1527,14 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
-      ) : pending ? null : card ? (
+      ) : pending ? null : card || free > 0 ? (
+        // A free activation needs no card: Activate is there either way.
         <div className="ms-auto flex shrink-0 items-center gap-2">
-          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
-            <Working busy={saving}>{t("change")}</Working>
-          </Button>
+          {card ? (
+            <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
+              <Working busy={saving}>{t("change")}</Working>
+            </Button>
+          ) : null}
           {action}
         </div>
       ) : onAddCard ? (

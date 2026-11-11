@@ -6616,7 +6616,7 @@
         "failed": "विफल",
         "flagged": "चिह्नित",
         "unclear": "अस्पष्ट",
-        "sure": "{percent} निश्चित कि यह सफल है",
+        "sure": "{percent}",
         "foundIn": "{where} में मिला:",
         "foundAs": "इस रूप में मिला",
         "said": {
@@ -6750,7 +6750,7 @@
           "refused": "आपके बैंक ने पिछले भुगतान की पुष्टि नहीं की, इसलिए कोई राशि नहीं काटी गई।",
           "free": "मुफ़्त",
           "freeLeft": "आज {count, plural, one {# मुफ़्त सक्रियण} other {# मुफ़्त सक्रियण}} बाकी",
-          "freeLeftNoCard": "आज {count, plural, one {# मुफ़्त सक्रियण} other {# मुफ़्त सक्रियण}} बाकी। फिर भी सहेजा गया कार्ड चाहिए।",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "सक्रिय करने के लिए भुगतान का तरीका जोड़ें",
           "costs": "हर सक्रियण की कीमत {price} है।",
           "costsOrg": "हर सक्रियण की कीमत {price} है, जो {organization} से ली जाती है।",
@@ -6761,7 +6761,9 @@
           "change": "बदलें",
           "addButton": "भुगतान का तरीका जोड़ें",
           "stripeFailed": "Stripe का पेज नहीं खुल सका",
-          "credit": "{amount} क्रेडिट"
+          "credit": "{amount} क्रेडिट",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "खाते का क्रेडिट",
         "refunded": "इसे सक्रिय करने के लिए चुकाए गए {amount} वापस कर दिए गए।",
@@ -6769,6 +6771,40 @@
         "declined": "आपका कार्ड अस्वीकार हो गया। कोई राशि नहीं काटी गई। कार्ड बदलें और फिर से कोशिश करें।",
         "noFreeLeft": "आज के लिए कोई मुफ़्त सक्रियण नहीं बचा। भुगतान करने के लिए इसे फिर से सक्रिय करें।",
         "paused": "प्रकाशन अभी रुका हुआ है, इसलिए कुछ भी प्रकाशित नहीं हो सकता। आपकी रिपोर्ट अपनी जगह बनाए रखती है।"
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6867,7 +6903,8 @@
       "sendForReview": "बदलाव जाँचें और समीक्षा के लिए भेजें",
       "checkAndPublish": "बदलाव जाँचें और प्रकाशित करें",
       "runChecks": "जाँचें चलाएँ",
-      "tooEarly": "रिपोर्ट की तारीख 1400 से पहले की नहीं हो सकती।"
+      "tooEarly": "रिपोर्ट की तारीख 1400 से पहले की नहीं हो सकती।",
+      "back": "Back"
     }
   },
   "people": {

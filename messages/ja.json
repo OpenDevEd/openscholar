@@ -6616,7 +6616,7 @@
         "failed": "不合格",
         "flagged": "フラグあり",
         "unclear": "不明",
-        "sure": "合格の確信度 {percent}",
+        "sure": "{percent}",
         "foundIn": "{where}で見つかりました：",
         "foundAs": "見つかった作品",
         "said": {
@@ -6750,7 +6750,7 @@
           "refused": "銀行が前回の支払いを確認しなかったため、請求は行われていません。",
           "free": "無料",
           "freeLeft": "本日の無料有効化は残り{count}回",
-          "freeLeftNoCard": "本日の無料有効化は残り{count}回。保存済みのカードは引き続き必要です。",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "有効化するには支払い方法を追加してください",
           "costs": "有効化は1回{price}です。",
           "costsOrg": "有効化は1回{price}で、{organization}に請求されます。",
@@ -6761,7 +6761,9 @@
           "change": "変更",
           "addButton": "支払い方法を追加",
           "stripeFailed": "Stripeのページを開けませんでした",
-          "credit": "クレジット {amount}"
+          "credit": "クレジット {amount}",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "アカウントのクレジット",
         "refunded": "有効化のために支払われた {amount} は返金されました。",
@@ -6769,6 +6771,40 @@
         "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。",
         "noFreeLeft": "本日の無料有効化はもう残っていません。もう一度有効化すると有料で行えます。",
         "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。"
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6867,7 +6903,8 @@
       "sendForReview": "変更をチェックして審査に送る",
       "checkAndPublish": "変更をチェックして公開",
       "runChecks": "チェックを実行",
-      "tooEarly": "レポートの日付を1400年より前にすることはできません。"
+      "tooEarly": "レポートの日付を1400年より前にすることはできません。",
+      "back": "Back"
     }
   },
   "people": {

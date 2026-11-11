@@ -6616,7 +6616,7 @@
         "failed": "Échouée",
         "flagged": "Signalée",
         "unclear": "Incertain",
-        "sure": "{percent} de certitude que c'est réussi",
+        "sure": "{percent}",
         "foundIn": "Trouvé dans {where} :",
         "foundAs": "Trouvé sous",
         "said": {
@@ -6750,7 +6750,7 @@
           "refused": "Votre banque n’a pas confirmé le dernier paiement : rien n’a été débité.",
           "free": "Gratuit",
           "freeLeft": "{count, plural, one {# activation gratuite restante} other {# activations gratuites restantes}} aujourd'hui",
-          "freeLeftNoCard": "{count, plural, one {# activation gratuite restante} other {# activations gratuites restantes}} aujourd'hui. Une carte enregistrée reste nécessaire.",
+          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
           "add": "Ajoutez un moyen de paiement pour activer",
           "costs": "Chaque activation coûte {price}.",
           "costsOrg": "Chaque activation coûte {price}, débités à {organization}.",
@@ -6761,7 +6761,9 @@
           "change": "Changer",
           "addButton": "Ajouter un moyen de paiement",
           "stripeFailed": "La page de Stripe n'a pas pu s'ouvrir",
-          "credit": "{amount} de crédit"
+          "credit": "{amount} de crédit",
+          "voucher": "Have a voucher code? It goes in after you press Activate.",
+          "freeTitle": "Free activation"
         },
         "creditLine": "Crédit du compte",
         "refunded": "Les {amount} payés pour l’activer ont été remboursés.",
@@ -6769,6 +6771,40 @@
         "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez.",
         "noFreeLeft": "Il ne reste plus d’activation gratuite aujourd’hui. Activez-le à nouveau pour la payer.",
         "paused": "La publication est en pause pour le moment : rien ne peut être mis en ligne. Votre rapport garde sa place."
+      },
+      "back": "Back",
+      "bylineFirst": "Put this line on your PDF's cover",
+      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "nextUpload": "Next: upload the PDF",
+      "nextDetails": "Next: check the details",
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "start": "Start",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and publish under CC BY 4.0."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for the line on the cover and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+        }
       }
     },
     "meta": {
@@ -6867,7 +6903,8 @@
       "sendForReview": "Vérifier les modifications et les envoyer en relecture",
       "checkAndPublish": "Vérifier et publier les modifications",
       "runChecks": "Lancer les vérifications",
-      "tooEarly": "Un rapport ne peut pas être daté d’avant 1400."
+      "tooEarly": "Un rapport ne peut pas être daté d’avant 1400.",
+      "back": "Back"
     }
   },
   "people": {
