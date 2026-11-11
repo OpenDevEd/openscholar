@@ -5,6 +5,7 @@
 
 import { useState, useTransition, type ComponentProps } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs";
 import type { FunctionReturnType } from "convex/server";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
@@ -39,6 +40,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit, isIssn } from "@/lib/reports/settings";
+import { fillAgreement } from "@/lib/reports/agreement";
 import { useCheckWords, useFailed } from "@/components/reports/words";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -278,7 +280,7 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
       </Zone>
 
       <CheckDialog check={editing} onClose={() => up("check")} />
-      <AgreementDialog open={nav.agreement} agreement={settings.agreement} onClose={() => up("agreement")} />
+      <AgreementDialog open={nav.agreement} agreement={settings.agreement} series={settings.series} onClose={() => up("agreement")} />
     </div>
   );
 }
@@ -602,8 +604,10 @@ function CheckDialog({ check, onClose }: { check: CheckRow | "new" | null; onClo
   );
 }
 
-function AgreementDialog({ open, agreement, onClose }: { open: boolean; agreement: Settings["agreement"]; onClose: () => void }) {
+function AgreementDialog({ open, agreement, series, onClose }: { open: boolean; agreement: Settings["agreement"]; series: Settings["series"]; onClose: () => void }) {
   const setAgreement = useMutation(api.reports.settings.setAgreement);
+  const { user } = useUser();
+  const [today] = useState(() => new Date());
   const [text, setText] = useState(agreement.text);
   const [preview, setPreview] = useState(false);
   const [busy, start] = useTransition();
@@ -640,7 +644,8 @@ function AgreementDialog({ open, agreement, onClose }: { open: boolean; agreemen
         <div className="h-[55vh]">
           {preview ? (
             <div className="h-full overflow-y-auto rounded-xl border border-border-subtle px-5 py-4">
-              <MarkdownContent content={text} />
+              {/* Filled the way the sign step fills it, with the admin as the signer. */}
+              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "…") })} />
             </div>
           ) : (
             <Textarea value={text} maxLength={AGREEMENT_MAX} aria-label={t("agreementLabel")} onChange={(e) => setText(e.target.value)} className="h-full resize-none font-mono text-xs/5" />
