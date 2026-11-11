@@ -180,7 +180,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi) });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi), seriesName: settings.series.name });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -202,6 +202,7 @@ export const sign = workspaceMutation({
       // the report registers is fixed with it, and so is the line its PDF carries.
       doi,
       byline: bylineOf(settings.series, doi),
+      seriesName: settings.series.name,
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
       status: "draft",

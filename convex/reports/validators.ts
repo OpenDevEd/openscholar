@@ -131,6 +131,9 @@ export const reportFields = {
    * a later ISSN or a new wording never fails a report published before it.
    */
   byline: v.string(),
+  /** The series' name its byline prints, kept from the same moment: its page, citations and registrations keep it,
+   * so renaming the series names only reports signed after. A report signed before this was kept has none (seriesOf). */
+  seriesName: v.optional(v.string()),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */

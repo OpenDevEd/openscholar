@@ -24,6 +24,14 @@ describe("a report's page", () => {
     expect(await world.t.query(api.reports.paper.keyByDoi, { doi: "10.53832/OPENSCHOLAR-R.R100002" })).toBe(key);
   });
 
+  it("keeps the series name it was signed under when the series is renamed, as its registrations do", async () => {
+    const world = await setup();
+    const { key } = await live(world);
+    await world.reviewer.mutation(api.reports.settings.update, { series: { name: "Working Reports" } });
+    expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ series: { name: "Openscholar Reports" } });
+    expect(await world.t.query(internal.reports.paper.forCommunity, { dois: [(await row(world.t, key)).doi] })).toMatchObject([{ series: "Openscholar Reports" }]);
+  });
+
   it("says a withdrawn report was withdrawn, without its details or its files, until it is reinstated", async () => {
     const world = await setup();
     const { key } = await live(world);
