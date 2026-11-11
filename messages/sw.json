@@ -6168,7 +6168,7 @@
     },
     "admin": {
       "backToReport": "Rudi kwenye ripoti",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "Mwandishi alichukua tena {key} ili kuibadilisha ulipokuwa ukiihariri, kwa hiyo ulichoandika hakikuhifadhiwa. Ifungue tena ukaguzi wake ukimalizika.",
       "editTitle": "Hariri maelezo",
       "editIntroLive": "{key} imechapishwa. Ukihifadhi, mabadiliko yako yanachapishwa mara moja bila ukaguzi, na ripoti inasajiliwa upya.",
       "editIntroNotLive": "{key} bado haijachapishwa. Ukihifadhi, mabadiliko yako yanatumika mara moja bila ukaguzi.",
@@ -6464,7 +6464,7 @@
       "limits": "Miwasho ya bure",
       "limitsPager": "miwasho ya bure",
       "personal": "Eneo la kazi la mtu binafsi",
-      "personalHint": "Miwasho kwa siku isiyogharimu chochote. Bado kadi iliyohifadhiwa inahitajika.",
+      "personalHint": "Miwasho kwa siku isiyogharimu chochote. Hakuna kadi inayohitajika.",
       "personalLabel": "Miwasho ya bure kwa siku katika eneo la kazi la mtu mwenyewe",
       "limitSaved": "Miwasho ya bure imehifadhiwa",
       "organization": "Eneo la kazi la shirika",
@@ -6539,14 +6539,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "Andaa",
         "agreement": "Makubaliano",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Maelezo",
         "checks": "Ukaguzi",
         "live": "Imechapishwa",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "Imefungwa baada ya makubaliano kutiwa saini."
       },
       "publish": "Chapisha",
       "newReport": "Ripoti mpya",
@@ -6611,13 +6611,13 @@
       "drop": "Dondosha PDF hapa, au uichague",
       "dropHint": "PDF moja, hadi MB {max}",
       "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "lacksByline": "{name} haina mstari ulio hapo juu kwenye jalada lake. Ongeza mstari huo na upakie PDF tena, la sivyo ukaguzi wa mstari wa utambulisho utashindwa.",
+      "keptDetails": "Haya ni maelezo uliyokuwa nayo kabla ya kubadilisha PDF.",
+      "readAgain": "Yasome kutoka PDF hii badala yake",
+      "readAgainTitle": "Soma maelezo kutoka PDF hii?",
+      "readAgainBody": "Maelezo yanayoonekana sasa yatabadilishwa na ya PDF hii, pamoja na chochote ulichoandika ndani yake.",
+      "readAgainKeep": "Baki na maelezo haya",
+      "readAgainFailed": "Maelezo hayakuweza kusomwa tena",
       "stuck": "Kusoma {name} kunachukua muda mrefu kuliko inavyopaswa. Ipakie tena.",
       "replaces": "Kupakia tena kunabadilisha {name}",
       "check": {
@@ -6665,8 +6665,9 @@
       "readyPassed": "Ripoti yako ilipita ukaguzi wake. Iwashe ili kuchapisha DOI yake na kufungua ukurasa wake.",
       "waiting": "Inasubiri ukaguzi",
       "inReview": "Inakaguliwa",
-      "waitingFlagged": "Ukaguzi uliiwekea alama ripoti yako, kwa hiyo mkaguzi ataiangalia. Unaweza kuiwasha baada ya kuidhinishwa, na utapokea barua pepe.",
-      "waitingPassed": "Ripoti yako ilipita ukaguzi wake. Unaweza kuiwasha baada ya mkaguzi kuiidhinisha, na utapokea barua pepe.",
+      "waitingFlagged": "Ukaguzi mmoja uliiwekea alama ripoti yako, kwa hiyo mkaguzi huiangalia kabla haijachapishwa. Utapokea barua pepe, na inakusubiri chini ya Chapisha.",
+      "reviewTakes": "Ukaguzi huchukua hadi siku tatu za kazi.",
+      "waitingPassed": "Ripoti yako ilipita ukaguzi wake. Sasa mkaguzi huiidhinisha kabla haijachapishwa. Utapokea barua pepe, na inakusubiri chini ya Chapisha.",
       "withdrawn": "Imeondolewa",
       "notPublished": "Haijachapishwa",
       "declined": "Imekataliwa",
@@ -6754,7 +6755,7 @@
           "unknownCode": "{code} si msimbo tunaoujua, au umeshatumika wote.",
           "nothingOff": "{code} haipunguzi chochote kwenye uwashaji.",
           "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Tumia msimbo, au uufute, ili kuwasha."
         },
         "card": {
           "bankAsked": "Benki yako imeomba kuthibitisha malipo",
@@ -6762,8 +6763,8 @@
           "refused": "Benki yako haikuthibitisha malipo ya mwisho, kwa hivyo hakuna kilichotozwa.",
           "free": "Bure",
           "freeLeft": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "Ongeza njia ya kulipa ili kuwasha",
+          "freeLeftNoCard": "{count, plural, one {Umebaki mwasho # wa bure} other {Imebaki miwasho # ya bure}} leo. Hakuna kadi inayohitajika.",
+          "add": "Washa kwa kadi au msimbo wa punguzo",
           "costs": "Kila uwashaji unagharimu {price}.",
           "costsOrg": "Kila uwashaji unagharimu {price}, unaotozwa {organization}.",
           "needed": "Kadi iliyohifadhiwa inahitajika ili kuwasha.",
@@ -6774,10 +6775,10 @@
           "addButton": "Ongeza njia ya kulipa",
           "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
           "credit": "Salio {amount}",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "Mwasho wa bure",
+          "covered": "Msimbo wako unagharamia mwasho huu",
+          "coveredHint": "Hakuna cha kulipa, kwa hiyo kadi haihitajiki.",
+          "costsWith": "Kwa {code}, mwasho huu unagharimu {price}."
         },
         "creditLine": "Salio la akaunti",
         "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
@@ -6786,40 +6787,40 @@
         "noFreeLeft": "Hakuna uwashaji wa bure uliobaki leo. Iwashe tena ili uilipie.",
         "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake."
       },
-      "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "back": "Rudi",
+      "bylineFirst": "Weka mstari huu kwenye jalada la PDF yako",
+      "bylineFirstBody": "Openscholar inachapisha ripoti yako pamoja nawe, kwa hiyo jalada lake au jalada la ndani lina mstari huu kama maandishi. Ukaguzi wetu huutafuta baada ya kupakia.",
+      "nextUpload": "Ifuatayo: pakia PDF",
+      "nextDetails": "Ifuatayo: kagua maelezo",
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "Kuchapisha ripoti kwa {series}",
+        "intro": "Takriban dakika kumi mwanzo hadi mwisho. Hiki ndicho kila hatua inakuomba.",
+        "introReviewed": "Takriban dakika kumi za muda wako. Kisha mkaguzi huidhinisha ripoti kabla haijachapishwa, na utapokea barua pepe.",
+        "start": "Anza",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "Tia saini makubaliano ya uchapishaji",
+          "body": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0."
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "Pata DOI yako",
+          "body": "Huhifadhiwa mara tu unapotia saini. Huanza kutumika pamoja na ripoti."
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "Pakia PDF yako",
+          "body": "Ikiwa na mstari mmoja kwenye jalada lake unaotaja mfululizo na DOI. Unapata mstari huo baada ya kutia saini."
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "Kagua maelezo",
+          "body": "Yanasomwa kwa ajili yako kutoka PDF: kichwa, waandishi, ORCID iD, taasisi na wafadhili."
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "Ukaguzi wa kiotomatiki",
+          "body": "Takriban dakika moja. Hutafuta mstari kwenye jalada na chochote kilichochapishwa awali."
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "Washa",
+          "body": "Hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
+          "bodyPriced": "{price} kwa kila ripoti, hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei hiyo au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa."
         }
       }
     },
@@ -6920,7 +6921,7 @@
       "checkAndPublish": "Kagua mabadiliko na uchapishe",
       "runChecks": "Endesha ukaguzi",
       "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400.",
-      "back": "Back"
+      "back": "Rudi"
     }
   },
   "people": {

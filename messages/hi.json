@@ -6167,7 +6167,7 @@
     },
     "admin": {
       "backToReport": "रिपोर्ट पर वापस जाएँ",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "जब आप इसे संपादित कर रहे थे, लेखक ने {key} को बदलने के लिए वापस ले लिया, इसलिए आपका लिखा सहेजा नहीं गया। इसकी जाँचें पूरी होने पर इसे फिर खोलें।",
       "editTitle": "विवरण संपादित करें",
       "editIntroLive": "{key} प्रकाशित है। सहेजने पर आपका बदलाव बिना जाँच के तुरंत प्रकाशित होगा, और रिपोर्ट फिर से पंजीकृत होगी।",
       "editIntroNotLive": "{key} अभी प्रकाशित नहीं है। सहेजने पर आपका बदलाव बिना जाँच के तुरंत लागू होगा।",
@@ -6463,7 +6463,7 @@
       "limits": "मुफ़्त सक्रियण",
       "limitsPager": "मुफ़्त सक्रियण",
       "personal": "किसी व्यक्ति का अपना कार्यक्षेत्र",
-      "personalHint": "हर दिन के वे सक्रियण जिनका कोई शुल्क नहीं। फिर भी सहेजा गया कार्ड चाहिए।",
+      "personalHint": "हर दिन के वे सक्रियण जिनका कोई शुल्क नहीं। कार्ड की ज़रूरत नहीं।",
       "personalLabel": "किसी व्यक्ति के अपने वर्कस्पेस में हर दिन के मुफ़्त सक्रियण",
       "limitSaved": "मुफ़्त सक्रियण सहेजे गए",
       "organization": "किसी संगठन का कार्यक्षेत्र",
@@ -6538,14 +6538,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "तैयारी",
         "agreement": "समझौता",
         "doi": "DOI",
         "upload": "PDF",
         "details": "विवरण",
         "checks": "जाँचें",
         "live": "प्रकाशित",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "समझौते पर हस्ताक्षर के बाद लॉक।"
       },
       "publish": "प्रकाशित करें",
       "newReport": "नई रिपोर्ट",
@@ -6610,13 +6610,13 @@
       "drop": "PDF यहाँ छोड़ें, या चुनें",
       "dropHint": "एक PDF, {max} MB तक",
       "unopenedPdf": "{name} को PDF के रूप में खोला नहीं जा सका। अगर इस पर पासवर्ड है तो उसे हटाएँ, फिर इसे दोबारा PDF के रूप में सहेजें और अपलोड करें।",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "lacksByline": "{name} के कवर पर ऊपर दी गई पंक्ति नहीं है। पंक्ति जोड़ें और PDF फिर अपलोड करें, नहीं तो उल्लेख की जाँच विफल होगी।",
+      "keptDetails": "ये वे विवरण हैं जो PDF बदलने से पहले आपके पास थे।",
+      "readAgain": "इन्हें इस PDF से पढ़ें",
+      "readAgainTitle": "विवरण इस PDF से पढ़ें?",
+      "readAgainBody": "अभी दिख रहे विवरण इस PDF के विवरणों से बदल जाएँगे, उनमें आपका लिखा सब कुछ भी।",
+      "readAgainKeep": "ये विवरण रखें",
+      "readAgainFailed": "विवरण दोबारा नहीं पढ़े जा सके",
       "stuck": "{name} पढ़ने में ज़रूरत से ज़्यादा समय लग रहा है। इसे फिर से अपलोड करें।",
       "replaces": "फिर से अपलोड करने पर {name} बदल जाता है",
       "check": {
@@ -6664,8 +6664,9 @@
       "readyPassed": "आपकी रिपोर्ट अपनी जाँचों में सफल रही। इसका DOI प्रकाशित करने और इसका पेज खोलने के लिए इसे सक्रिय करें।",
       "waiting": "समीक्षा की प्रतीक्षा",
       "inReview": "समीक्षा में",
-      "waitingFlagged": "एक जाँच ने आपकी रिपोर्ट को चिह्नित किया, इसलिए एक समीक्षक इसे देखेंगे। स्वीकार होने पर आप इसे सक्रिय कर सकते हैं, और आपको ईमेल से सूचना मिलेगी।",
-      "waitingPassed": "आपकी रिपोर्ट अपनी जाँचों में सफल रही। समीक्षक के स्वीकार करने पर आप इसे सक्रिय कर सकते हैं, और आपको ईमेल से सूचना मिलेगी।",
+      "waitingFlagged": "एक जाँच ने आपकी रिपोर्ट को चिह्नित किया, इसलिए प्रकाशित होने से पहले एक समीक्षक इसे देखता है। आपको ईमेल से सूचना मिलेगी, और यह प्रकाशित करें में आपकी प्रतीक्षा करती है।",
+      "reviewTakes": "समीक्षा में तीन कार्यदिवस तक लगते हैं।",
+      "waitingPassed": "आपकी रिपोर्ट अपनी जाँचों में सफल रही। अब प्रकाशित होने से पहले एक समीक्षक इसे स्वीकार करता है। आपको ईमेल से सूचना मिलेगी, और यह प्रकाशित करें में आपकी प्रतीक्षा करती है।",
       "withdrawn": "वापस लिया गया",
       "notPublished": "प्रकाशित नहीं",
       "declined": "अस्वीकृत",
@@ -6753,7 +6754,7 @@
           "unknownCode": "{code} ऐसा कोड नहीं है जिसे हम जानते हों, या यह इस्तेमाल हो चुका है।",
           "nothingOff": "{code} से सक्रियण की कीमत कम नहीं होती।",
           "codeTooLong": "यह कोड हमारे कोड होने के लिए बहुत लंबा है।",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "सक्रिय करने के लिए कोड लागू करें या उसे हटाएँ।"
         },
         "card": {
           "bankAsked": "आपके बैंक ने भुगतान की पुष्टि माँगी है",
@@ -6761,8 +6762,8 @@
           "refused": "आपके बैंक ने पिछले भुगतान की पुष्टि नहीं की, इसलिए कोई राशि नहीं काटी गई।",
           "free": "मुफ़्त",
           "freeLeft": "आज {count, plural, one {# मुफ़्त सक्रियण} other {# मुफ़्त सक्रियण}} बाकी",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "सक्रिय करने के लिए भुगतान का तरीका जोड़ें",
+          "freeLeftNoCard": "आज {count, plural, one {# निःशुल्क सक्रियण} other {# निःशुल्क सक्रियण}} बचे हैं। कार्ड की ज़रूरत नहीं।",
+          "add": "कार्ड या प्रोमो कोड से सक्रिय करें",
           "costs": "हर सक्रियण की कीमत {price} है।",
           "costsOrg": "हर सक्रियण की कीमत {price} है, जो {organization} से ली जाती है।",
           "needed": "सक्रिय करने के लिए सहेजा गया कार्ड चाहिए।",
@@ -6773,10 +6774,10 @@
           "addButton": "भुगतान का तरीका जोड़ें",
           "stripeFailed": "Stripe का पेज नहीं खुल सका",
           "credit": "{amount} क्रेडिट",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "निःशुल्क सक्रियण",
+          "covered": "आपका कोड इस सक्रियण को कवर करता है",
+          "coveredHint": "कुछ चुकाना नहीं है, इसलिए कार्ड की ज़रूरत नहीं।",
+          "costsWith": "{code} के साथ इस सक्रियण का शुल्क {price} है।"
         },
         "creditLine": "खाते का क्रेडिट",
         "refunded": "इसे सक्रिय करने के लिए चुकाए गए {amount} वापस कर दिए गए।",
@@ -6785,40 +6786,40 @@
         "noFreeLeft": "आज के लिए कोई मुफ़्त सक्रियण नहीं बचा। भुगतान करने के लिए इसे फिर से सक्रिय करें।",
         "paused": "प्रकाशन अभी रुका हुआ है, इसलिए कुछ भी प्रकाशित नहीं हो सकता। आपकी रिपोर्ट अपनी जगह बनाए रखती है।"
       },
-      "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "back": "वापस",
+      "bylineFirst": "यह पंक्ति अपने PDF के कवर पर रखें",
+      "bylineFirstBody": "Openscholar आपकी रिपोर्ट का सह-प्रकाशक है, इसलिए इसके कवर या भीतरी कवर पर यह पंक्ति पाठ के रूप में होती है। अपलोड के बाद हमारी जाँचें इसे खोजती हैं।",
+      "nextUpload": "आगे: PDF अपलोड करें",
+      "nextDetails": "आगे: विवरण जाँचें",
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "{series} के साथ रिपोर्ट प्रकाशित करना",
+        "intro": "शुरू से अंत तक लगभग दस मिनट। हर चरण आपसे यह माँगता है।",
+        "introReviewed": "आपके लगभग दस मिनट। फिर रिपोर्ट के प्रकाशित होने से पहले एक समीक्षक उसे स्वीकार करता है, और आपको ईमेल से सूचना मिलती है।",
+        "start": "शुरू करें",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "प्रकाशन समझौते पर हस्ताक्षर करें",
+          "body": "कॉपीराइट आपके पास रहता है और आप CC BY 4.0 के तहत प्रकाशित करते हैं।"
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "अपना DOI पाएँ",
+          "body": "हस्ताक्षर करते ही आरक्षित। रिपोर्ट के साथ सक्रिय होता है।"
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "अपना PDF अपलोड करें",
+          "body": "इसके कवर पर एक पंक्ति के साथ, जो शृंखला और DOI का नाम देती है। पंक्ति आपको हस्ताक्षर के बाद मिलती है।"
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "विवरण जाँचें",
+          "body": "आपके लिए PDF से पढ़े गए: शीर्षक, लेखक, ORCID iD, संस्थान और वित्तपोषक।"
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "स्वचालित जाँचें",
+          "body": "लगभग एक मिनट। ये कवर पर पंक्ति और पहले के किसी प्रकाशन को खोजती हैं।"
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "सक्रिय करें",
+          "body": "कार्ड से भुगतान। प्रोमो कोड कीमत को घटा या पूरा कवर कर सकता है। DOI पंजीकृत होता है और रिपोर्ट प्रकाशित हो जाती है।",
+          "bodyPriced": "हर रिपोर्ट के लिए {price}, कार्ड से भुगतान। प्रोमो कोड इस कीमत को घटा या पूरा कवर कर सकता है। DOI पंजीकृत होता है और रिपोर्ट प्रकाशित हो जाती है।"
         }
       }
     },
@@ -6919,7 +6920,7 @@
       "checkAndPublish": "बदलाव जाँचें और प्रकाशित करें",
       "runChecks": "जाँचें चलाएँ",
       "tooEarly": "रिपोर्ट की तारीख 1400 से पहले की नहीं हो सकती।",
-      "back": "Back"
+      "back": "वापस"
     }
   },
   "people": {
