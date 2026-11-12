@@ -80,6 +80,8 @@ export type Author = {
   affiliations: Affiliation[];
   corresponding: boolean;
   roles: string[];
+  /** mock: what the person is to the report (Crossref's roles: author, editor, translator). Held by the details form only; never saved or sent. */
+  kind?: string;
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
@@ -93,6 +95,9 @@ export const RELATION_KINDS = [
 ] as const;
 export type RelationKind = (typeof RELATION_KINDS)[number]["id"];
 export type Relation = { kind: RelationKind; target: string };
+
+/** mock: a work a report cites, as its reference list writes it, with its DOI when it has one. A DOI alone has no words. */
+export type Reference = { text: string; doi?: string };
 
 export type Metadata = {
   title: string;
@@ -115,6 +120,8 @@ export type Metadata = {
   funding: Funding[];
   /** DOIs the work cites. */
   references: string[];
+  /** mock: the works cited as their list writes them. Held by the details form only; never saved or sent. */
+  cited?: Reference[];
   relations: Relation[];
 };
 
