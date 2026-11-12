@@ -15,6 +15,10 @@ export type AutumnBalance = {
     id: string;
     plan_id: string | null;
     remaining: number;
+    /** What the grant gives, which a refill restores. */
+    included_grant?: number;
+    /** What was bought of it, beside what it gives. */
+    prepaid_grant?: number;
     reset?: { interval: string; resets_at: number | null } | null;
   }>;
 };

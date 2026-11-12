@@ -15,6 +15,7 @@ import {
   CreditCard,
   FileSearch,
   KeyRound,
+  Layers,
   ListFilter,
   Loader2,
   MessageSquare,
@@ -35,7 +36,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap } from "@/lib/billing/catalog";
-import { DAYS_TO_PAY, type RefillInterval } from "@/lib/billing/plans";
+import { DAYS_TO_PAY } from "@/lib/billing/plans";
+import type { ActivationGrant } from "@/convex/billing/validators";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -192,7 +194,7 @@ export default function BillingPage() {
                   </div>
                 </div>
               ) : null}
-              {publishing ? <Activations left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
+              {publishing ? <Activations left={account.activations === undefined ? 0 : account.activations} grants={account.activationGrants ?? []} /> : null}
             </div>
             {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>
@@ -412,31 +414,65 @@ export default function BillingPage() {
 }
 
 /**
- * The workspace's activations for Openscholar Reports, beside its credits: how many are left and what they refill by.
- * Each makes a report live with nothing to pay; past them, activating one buys it.
+ * The workspace's activations for Openscholar Reports, beside its credits and laid out as they are: how many are left,
+ * then each kind. Those that refill show how far they are used and when they come back; those granted once or bought
+ * stay until used. Each makes a report live with nothing to pay; past them, activating one buys it.
  */
-function Activations({ left, refill }: { /** Null for no limit. */ left: number | null; refill: RefillInterval | null }) {
+function Activations({ left, grants }: { /** Null for no limit. */ left: number | null; grants: ActivationGrant[] }) {
   const t = useTranslations("billingPage.activations");
+  const format = useFormatter();
+  const kept = grants.find((grant) => grant.interval === "once");
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle pt-4">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset text-muted-foreground">
-        <BadgeCheck className="size-4" />
-      </span>
-      <div className="min-w-0 flex-1 basis-48">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-          {t("title")}
-          <StatusChip tone={left === 0 ? "neutral" : "success"}>
-            {/* A balance that refills says so even when it's empty: more are on the way. */}
-            {left === null ? t("unlimited") : refill ? t("leftRefills", { count: left, interval: refill }) : left === 0 ? t("none") : t("left", { count: left })}
-          </StatusChip>
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t("hint")}</p>
+    <div className="space-y-3 border-t border-border-subtle pt-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset text-muted-foreground">
+          <BadgeCheck className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1 basis-48">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            {t("title")}
+            <StatusChip tone={left === 0 ? "neutral" : "success"}>{left === null ? t("unlimited") : left === 0 ? t("none") : t("left", { count: left })}</StatusChip>
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("hint")}</p>
+        </div>
+        <Button asChild variant="ghost" size="sm" className="h-7">
+          <Link href="/publish">
+            {t("publish")} <ArrowRight />
+          </Link>
+        </Button>
       </div>
-      <Button asChild variant="ghost" size="sm" className="h-7">
-        <Link href="/publish">
-          {t("publish")} <ArrowRight />
-        </Link>
-      </Button>
+      {grants.length > 0 ? (
+        // Under the title, as the plan's credits sit under the balance: each refilling kind as a meter, then what stays.
+        <div className="space-y-3 ps-11">
+          {grants
+            .filter((grant) => grant.interval !== "once")
+            .map((grant) => (
+              <div key={grant.interval} className="space-y-2">
+                <div className="flex items-baseline justify-between text-xs">
+                  <span className="font-medium">{t("every", { interval: grant.interval })}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {format.number(grant.left)} / {format.number(grant.size)}
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${grant.size > 0 ? Math.min(100, (grant.left / grant.size) * 100) : 0}%` }} />
+                </div>
+                {grant.resetsAt !== undefined ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Repeat className="size-3.5" />
+                    {t("backTo", { size: grant.size, date: format.dateTime(grant.resetsAt, { day: "numeric", month: "short" }) })}
+                  </span>
+                ) : null}
+              </div>
+            ))}
+          {kept ? (
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Layers className="size-3.5" />
+              {t("kept", { count: kept.left })}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

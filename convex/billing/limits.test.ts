@@ -64,13 +64,18 @@ describe("plan limits", () => {
 });
 
 describe("a workspace's activations", () => {
-  const grant = (interval: string, remaining: number) => ({ id: interval, plan_id: null, remaining, reset: { interval, resets_at: interval === "one_off" ? null : 1 } });
-  it("say how many are left and the shortest interval any of them refills by, one-off grants aside", () => {
-    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 5, breakdown: [grant("one_off", 2), grant("month", 2), grant("day", 1)] } }))).toMatchObject({ activations: 5, activationsRefill: "day" });
-    const once = snapshotFromCustomer(customer({ report_activations: { remaining: 2, breakdown: [grant("one_off", 2)] } }));
-    expect(once.activations).toBe(2);
-    expect(once.activationsRefill).toBeUndefined();
-    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, unlimited: true } })).activations).toBeNull();
+  const grant = (interval: string, remaining: number, included: number, resets: number | null = null) => ({ id: `${interval}${remaining}`, plan_id: null, remaining, included_grant: included, reset: { interval, resets_at: resets } });
+  it("are told apart by kind: each that refills, shortest first, with its size and next refill, then what stays until used", () => {
+    const snapshot = snapshotFromCustomer(customer({ report_activations: { remaining: 108, breakdown: [grant("one_off", 100, 100), grant("month", 3, 5, 2000), grant("day", 1, 1, 1000), grant("month", 2, 2, 1500), grant("one_off", 0, 1)] } }));
+    expect(snapshot.activations).toBe(108);
+    expect(snapshot.activationGrants).toEqual([
+      { interval: "day", left: 1, size: 1, resetsAt: 1000 },
+      { interval: "month", left: 5, size: 7, resetsAt: 1500 },
+      { interval: "once", left: 100, size: 101 },
+    ]);
+    // One-off grants all spent say nothing; no limit has no kinds to tell apart.
+    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, breakdown: [grant("one_off", 0, 1)] } })).activationGrants).toBeUndefined();
+    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, unlimited: true } }))).toMatchObject({ activations: null });
     expect(snapshotFromCustomer(customer({})).activations).toBe(0);
   });
 });

@@ -425,7 +425,6 @@
     "activations": {
       "title": "Aktivierungen für Berichte",
       "left": "{count, number} übrig",
-      "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt",
       "unlimited": "Ohne Limit",
       "none": "Keine übrig",
       "hint": "Jede bringt einen Bericht auf Openscholar Reports online, ohne dass etwas zu zahlen ist.",
@@ -6757,8 +6756,7 @@
           "left": "{count, number} übrig",
           "unlimited": "Ohne Limit",
           "uses": "Das Aktivieren verbraucht eine aus Ihrem Guthaben. Es wird nichts abgebucht.",
-          "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht.",
-          "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt"
+          "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht."
         },
         "creditLine": "Guthaben des Kontos",
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
@@ -6825,8 +6823,7 @@
           "body": "Bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
-          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
-          "bodyBalanceRefills": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind und das {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt wird. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
+          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
         }
       }
     },

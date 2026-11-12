@@ -425,7 +425,6 @@
     "activations": {
       "title": "Miwasho ya ripoti",
       "left": "{count, plural, one {Umebaki #} other {Imebaki #}}",
-      "leftRefills": "{count, plural, one {Umebaki #} other {Imebaki #}}, hujazwa upya {interval, select, hour {kila saa} day {kila siku} week {kila wiki} month {kila mwezi} quarter {kila miezi mitatu} semi_annual {kila miezi sita} other {kila mwaka}}",
       "unlimited": "Bila kikomo",
       "none": "Hakuna iliyobaki",
       "hint": "Kila mmoja huweka ripoti hewani kwenye Openscholar Reports bila kulipa chochote.",
@@ -6757,8 +6756,7 @@
           "left": "{count, plural, one {Umebaki #} other {Imebaki #}}",
           "unlimited": "Bila kikomo",
           "uses": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio lako. Hakuna kinachotozwa.",
-          "usesOrg": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio la {organization}. Hakuna kinachotozwa.",
-          "leftRefills": "{count, plural, one {Umebaki #} other {Imebaki #}}, hujazwa upya {interval, select, hour {kila saa} day {kila siku} week {kila wiki} month {kila mwezi} quarter {kila miezi mitatu} semi_annual {kila miezi sita} other {kila mwaka}}"
+          "usesOrg": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio la {organization}. Hakuna kinachotozwa."
         },
         "creditLine": "Salio la akaunti",
         "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena.",
@@ -6825,8 +6823,7 @@
           "body": "Hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
           "bodyPriced": "{price} kwa kila ripoti, hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei hiyo au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
           "bodyBalance": "Hutumia mwasho mmoja kutoka kwenye salio, lenye {count, number} iliyobaki. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani.",
-          "bodyUnlimited": "Hutumia mwasho mmoja kutoka kwenye salio, lisilo na kikomo. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani.",
-          "bodyBalanceRefills": "Hutumia mwasho mmoja kutoka kwenye salio, lenye {count, number} iliyobaki na linalojazwa upya {interval, select, hour {kila saa} day {kila siku} week {kila wiki} month {kila mwezi} quarter {kila miezi mitatu} semi_annual {kila miezi sita} other {kila mwaka}}. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani."
+          "bodyUnlimited": "Hutumia mwasho mmoja kutoka kwenye salio, lisilo na kikomo. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani."
         }
       }
     },

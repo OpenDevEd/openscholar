@@ -9,6 +9,15 @@ export const planLimitsValidator = v.object({ collections: limitValue, concurren
 /** How often a balance refills (lib/billing/plans.ts REFILL_INTERVALS). */
 export const refillValidator = v.union(...REFILL_INTERVALS.map((interval) => v.literal(interval)));
 
+/**
+ * One kind of a workspace's activations: those that refill by `interval`, back to `size` on `resetsAt`, or with
+ * `once` those that stay until used (granted once, or bought). `left` is what remains of them now.
+ */
+export const activationGrantValidator = v.object({ interval: v.union(refillValidator, v.literal("once")), left: v.number(), size: v.number(), resetsAt: v.optional(v.number()) });
+export type ActivationGrant = Infer<typeof activationGrantValidator>;
+/** At most one of each kind: every interval, and `once`. */
+export const activationGrantsValidator = capped(v.array(activationGrantValidator), REFILL_INTERVALS.length + 1);
+
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
   plan: v.optional(v.string()),
@@ -34,8 +43,8 @@ export const billingAccountSnapshotValidator = v.object({
   purchased: v.number(),
   /** Report activations left in the customer's balance (#1261); null for unlimited. Absent on a snapshot cached before the balance existed. */
   activations: v.optional(v.union(v.number(), v.null())),
-  /** The shortest interval any of those activations refill by; absent when none refills. */
-  activationsRefill: v.optional(refillValidator),
+  /** Those activations by kind, refilling ones first, shortest interval first; absent with no limit or none at all. */
+  activationGrants: v.optional(activationGrantsValidator),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
   credit: v.optional(v.number()),

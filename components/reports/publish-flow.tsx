@@ -642,7 +642,7 @@ function Screens({ carried, onApplied, preparing, onPrepared, onUnprepare, basic
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} refill={starts?.refill ?? null} price={starts?.price ?? null} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -1164,7 +1164,7 @@ function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, activations, refill, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What they refill by; null when none refills. */ refill: Terms["refill"]; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, activations, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const flow = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1178,7 +1178,7 @@ function Overview({ series, reviewed, activations, refill, price, onStart }: { s
     { id: "checks", icon: ShieldCheck },
     { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
-  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? (refill ? t("activate.bodyBalanceRefills", { count: activations, interval: refill }) : t("activate.bodyBalance", { count: activations })) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
+  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? t("activate.bodyBalance", { count: activations }) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1694,7 +1694,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                   onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
                   activations={terms.activations}
-                  refill={terms.refill}
+                  grants={terms.grants}
                   card={card}
                   credit={credit}
                   price={price}
@@ -1973,9 +1973,19 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, activations, refill, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; /** What they refill by; null when none refills. */ refill: Terms["refill"]; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, activations, grants, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; /** Those activations by kind. */ grants: Terms["grants"]; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
+  const format = useFormatter();
+  /** A balance's kinds as sentences: each that refills, how much of it is left and when it comes back, then what stays until used. */
+  const grantWords = (kinds: Terms["grants"]) =>
+    kinds
+      .map((grant) =>
+        grant.interval === "once"
+          ? t("grantKept", { count: grant.left, more: kinds.length > 1 ? "yes" : "no" })
+          : t("grantRefills", { left: grant.left, size: grant.size, interval: grant.interval, date: grant.resetsAt === undefined ? "" : format.dateTime(grant.resetsAt, { day: "numeric", month: "short" }) }),
+      )
+      .join(" ");
   const dollars = useDollars();
   const costs = price === null ? null : quoted ? t("costsWith", { price: dollars(quoted.total), code: quoted.code }) : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
   /** The code takes the whole price off: nothing to pay, so no card is asked for. */
@@ -2008,7 +2018,7 @@ function PaymentLine({ organization, activations, refill, card, credit, price, p
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
             {t("balance")}
             <StatusChip tone="success" icon={CircleCheck}>
-              {activations === null ? t("unlimited") : refill ? t("leftRefills", { count: activations, interval: refill }) : t("left", { count: activations })}
+              {activations === null ? t("unlimited") : t("left", { count: activations })}
             </StatusChip>
           </p>
         ) : card ? (
@@ -2027,9 +2037,8 @@ function PaymentLine({ organization, activations, refill, card, credit, price, p
             : refused
               ? t("refused")
               : spendable
-                ? organization
-                  ? t("usesOrg", { organization })
-                  : t("uses")
+                ? // What refills and when, then what stays: the chip's count alone doesn't say.
+                  [grantWords(grants), organization ? t("usesOrg", { organization }) : t("uses")].filter(Boolean).join(" ")
                 : !card
                   ? covered
                     ? t("coveredHint")

@@ -424,11 +424,13 @@
     "activations": {
       "title": "Report activations",
       "left": "{count, number} left",
-      "leftRefills": "{count, number} left, refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}",
       "unlimited": "No limit",
       "none": "None left",
       "hint": "Each one makes a report live on Openscholar Reports with nothing to pay.",
-      "publish": "Publish"
+      "publish": "Publish",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {size, number} on {date}",
+      "kept": "{count, number} kept until used"
     }
   },
   "errors": {
@@ -6757,7 +6759,8 @@
           "unlimited": "No limit",
           "uses": "Activating uses one from your balance. Nothing is charged.",
           "usesOrg": "Activating uses one from {organization}'s balance. Nothing is charged.",
-          "leftRefills": "{count, number} left, refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}"
+          "grantRefills": "{left, number} of {size, number} {interval, select, hour {this hour} day {today} week {this week} month {this month} quarter {these three months} semi_annual {these six months} other {this year}}, back to {size, number} on {date}.",
+          "grantKept": "{more, select, yes {{count, number} more} other {{count, number}}} kept until used."
         },
         "creditLine": "Account credit",
         "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
@@ -6824,8 +6827,7 @@
           "body": "Paid with a card. A voucher code can lower the price or cover it. The DOI is registered and the report goes live.",
           "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
           "bodyBalance": "Uses one activation from the balance, which has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyUnlimited": "Uses one activation from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyBalanceRefills": "Uses one activation from the balance, which has {count, number} left and refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}. Nothing to pay. The DOI is registered and the report goes live."
+          "bodyUnlimited": "Uses one activation from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live."
         }
       }
     },

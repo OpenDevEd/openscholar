@@ -424,7 +424,6 @@
     "activations": {
       "title": "Ukuvula imibiko",
       "left": "Kusele okungu-{count, number}",
-      "leftRefills": "Kusele okungu-{count, number}, kugcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}",
       "unlimited": "Akukho mkhawulo",
       "none": "Akukho okusele",
       "hint": "Ngakunye kwenza umbiko uphile ku-Openscholar Reports ngaphandle kokukhokha lutho.",
@@ -6756,8 +6755,7 @@
           "left": "Kusele okungu-{count, number}",
           "unlimited": "Akukho mkhawulo",
           "uses": "Ukuvula kusebenzisa okukodwa ebhalansini lakho. Akukho okukhokhiswayo.",
-          "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo.",
-          "leftRefills": "Kusele okungu-{count, number}, kugcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}"
+          "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo."
         },
         "creditLine": "Isikweletu se-akhawunti",
         "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
@@ -6824,8 +6822,7 @@
           "body": "Kukhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa intengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyPriced": "U-{price} ngombiko ngamunye, okhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa leyo ntengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyBalance": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
-          "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
-          "bodyBalanceRefills": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number} futhi eligcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
+          "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
         }
       }
     },
