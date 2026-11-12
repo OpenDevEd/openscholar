@@ -61,6 +61,8 @@ export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidato
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
+  // From before activations were told apart by kind: every refresh replaces the row without it. Dropped once none has it.
+  activationsRefill: v.optional(refillValidator),
   /** The workspace whose Autumn customer it caches (#650). */
   workspaceId: v.id("workspaces"),
   /** When it was first seen paying, so a return after cancelling isn't a first payment again. */
