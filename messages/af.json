@@ -676,6 +676,7 @@
     "uploadFailed": "Oplaai het misluk",
     "uploadFailedDescription": "Kon nie {format} oplaai nie. Probeer weer.",
     "accountChanged": "Jou rekening het verander. Probeer weer.",
+    "couldntCopy": "Kon dit nie kopieer nie",
     "copyFailedDescription": "Jou blaaier het ons nie toegelaat om dit te kopieer nie. Kies die teks en kopieer dit self.",
     "validationFailed": "Validering het misluk",
     "entityCreated": "{entity} geskep",

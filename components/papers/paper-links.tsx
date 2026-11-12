@@ -2,7 +2,7 @@
 
 import type { KeyboardEvent, MouseEvent, ReactElement } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { copyText } from "@/components/copy-text";
 import Link from "@/components/workspace-link";
 import { ArrowUpRight, Share2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -67,21 +67,7 @@ export function usePaperShare(paper: Paper | undefined, href?: string): (() => P
         if ((error as DOMException).name === "AbortError") return;
       }
     }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success(t("linkCopied"));
-    } catch {
-      // It says to select the link and copy it: the link is here to select, and stays long enough to.
-      toast.error(tTopics("copyFailed"), {
-        description: (
-          <>
-            {tToast("copyFailedDescription")}
-            <span className="mt-1 block select-all break-all font-mono text-xs">{url}</span>
-          </>
-        ),
-        duration: 20_000,
-      });
-    }
+    copyText(url, { copied: t("linkCopied"), failed: tTopics("copyFailed"), select: tToast("copyFailedDescription") });
   };
 }
 

@@ -3,8 +3,8 @@
 // What a withdrawn report's address shows (plans/publish-reports). A registered DOI can't be removed, so the DOI
 // keeps leading here, to a page that says the report was withdrawn and how it was cited.
 
+import { copyText } from "@/components/copy-text";
 import { useFormatter, useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { IntroGlow } from "@/components/entity-cards";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -18,6 +18,7 @@ export type Withdrawn = { key: string; doi: string; title: string; authors: stri
 
 export function WithdrawnReport({ report }: { report: Withdrawn }) {
   const t = useTranslations("publishReports.withdrawn");
+  const tToast = useTranslations("toast");
   const format = useFormatter();
   const url = `https://doi.org/${report.doi}`;
   return (
@@ -54,7 +55,7 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
                 <Hash aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                 <span dir="ltr" className="min-w-0 truncate font-mono">{report.doi}</span>
                 <TooltipHint label={t("copyDoi")}>
-                  <Button variant="ghost" size="icon-xs" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void navigator.clipboard.writeText(url).then(() => toast.success(t("doiCopied")))}>
+                  <Button variant="ghost" size="icon-xs" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
                     <Copy />
                   </Button>
                 </TooltipHint>

@@ -676,6 +676,7 @@
     "uploadFailed": "O carregamento falhou",
     "uploadFailedDescription": "Não foi possível carregar {format}. Tente novamente.",
     "accountChanged": "A sua conta foi alterada. Tente novamente.",
+    "couldntCopy": "Não foi possível copiar",
     "copyFailedDescription": "O seu navegador não nos deixou copiar. Selecione o texto e copie-o você mesmo.",
     "validationFailed": "A validação falhou",
     "entityCreated": "Criação concluída: {entity}",

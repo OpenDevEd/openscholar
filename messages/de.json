@@ -676,6 +676,7 @@
     "uploadFailed": "Hochladen fehlgeschlagen",
     "uploadFailedDescription": "{format} konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.",
     "accountChanged": "Ihr Konto hat sich geändert. Versuchen Sie es erneut.",
+    "couldntCopy": "Kopieren nicht möglich",
     "copyFailedDescription": "Dein Browser hat das Kopieren nicht erlaubt. Markiere den Text und kopiere ihn selbst.",
     "validationFailed": "Prüfung fehlgeschlagen",
     "entityCreated": "{entity} erstellt",

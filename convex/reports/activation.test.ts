@@ -176,6 +176,18 @@ describe("activating a report", () => {
     expect(await activations(world)).toMatchObject([{ state: "live", code: "HALFOFF", charge: { invoice: "in_3ds", total: 2.5 } }]);
   });
 
+  it("keeps a payment the bank refused as refused when a second look finds its invoice voided", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const activationId = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: "in_fail", url: "https://bank.example/confirm" } });
+    // The page and the watcher both look: the first voids the refused payment, the second finds the invoice void.
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "refused" } });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "none" } });
+    expect(await activations(world)).toMatchObject([{ state: "refused" }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ refused: { code: null } });
+  });
+
   it("takes one activation when a paid charge is settled twice, with more in the balance", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

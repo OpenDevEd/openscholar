@@ -12,6 +12,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
 import { useFormatter, useTranslations, useLocale } from "next-intl";
+import { copyText } from "@/components/copy-text";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
@@ -104,9 +105,6 @@ const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.dat
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 
-function copy(text: string, copied: string) {
-  void navigator.clipboard.writeText(text).then(() => toast.success(copied));
-}
 
 /** Who puts the line on the PDF: its author, on the cover, or Openscholar, on a last page it adds. */
 const BYLINE_BY = ["self", "added"] as const;
@@ -1163,11 +1161,12 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
 /** The line a report's PDF carries on its cover, to copy. Its DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach. */
 function BylineBox({ byline, className }: { byline: string; className?: string }) {
   const t = useTranslations("publishReports.flow");
+  const tToast = useTranslations("toast");
   return (
     <div className={cn("flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3", className)}>
       <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{byline}</span>
       <TooltipHint label={t("copyByline")}>
-        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(byline, t("bylineCopied"))}>
+        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copyText(byline, { copied: t("bylineCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
           <Copy />
         </Button>
       </TooltipHint>
@@ -2322,6 +2321,7 @@ function Seal({ play }: { play: boolean }) {
 function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; fresh: boolean; /** None while publishing is off. */ onAnother?: () => void; onCorrect: () => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
+  const tToast = useTranslations("toast");
   const format = useFormatter();
   const tAdded = useTranslations("addedPapers");
   const play = fresh && !reduce;
@@ -2348,7 +2348,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
             doi.org/{report.doi}
           </a>
           <TooltipHint label={t("copyDoi")}>
-            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => copy(url, t("doiCopied"))}>
+            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
               <Copy />
             </Button>
           </TooltipHint>
