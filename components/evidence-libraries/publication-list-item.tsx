@@ -35,7 +35,7 @@ const covered = (p: Pick<AuthorPublication, "cover" | "pdf">) => !!p.cover || !!
 
 /**
  * A publication's cover in a list, as wide as its place. The picture of its PDF's first page when a community made one,
- * at the picture's own shape. A title page when it has a PDF and no picture of it. Without a PDF, a quiet tile that says
+ * at the picture's own shape, anchored to its place's top and start. A title page when it has a PDF and no picture of it. Without a PDF, a quiet tile that says
  * so; one whose community hasn't said either way claims nothing.
  */
 export function PublicationCover({ publication: p, className }: { publication: Pick<AuthorPublication, "id" | "title" | "type" | "year" | "authors" | "cover" | "pdf" | "library">; className?: string }) {
@@ -55,7 +55,6 @@ export function PublicationCover({ publication: p, className }: { publication: P
         href={null}
         pdf={false}
         mark={false}
-        center
         sizes="80px"
       />
     );
@@ -89,14 +88,14 @@ export function PublicationListItem({ publication: p, locations }: {
       {/* The cover opens the record, as its title does. Without a PDF there is no cover to open: the title is the way in. */}
       {covered(p) ? (
         <button
-          className="block w-full rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+          className="block w-full self-start rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           aria-label={t("previewCover", { title: p.title })}
           onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
         >
           <PublicationCover publication={p} />
         </button>
       ) : (
-        <PublicationCover publication={p} />
+        <PublicationCover publication={p} className="self-start" />
       )}
       <div className="min-w-0">
         <PublicationMetadata year={p.year} type={p.type} className="mb-2 flex items-center gap-2 text-xs text-muted-foreground" />

@@ -103,15 +103,13 @@ const useTakenOver = () => useSyncExternalStore(never, () => true, () => false);
  *
  * The cover keeps a frame 3 wide by 4 tall wherever it is shown, so nothing around it moves as a picture loads. A picture
  * shaped like a page fills the frame. One of another shape, such as a slide, is shown whole at its own shape inside it
- * (`coverFit`): at the frame's top and start, or in its middle where a list asks (`center`).
+ * (`coverFit`), anchored to the frame's top and start, wherever the cover is shown.
  */
-export function PaperCover({ href, pdf, image, className, ink, center = false, mark = true, sizes = "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px", ...page }: CoverProps & {
+export function PaperCover({ href, pdf, image, className, ink, mark = true, sizes = "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px", ...page }: CoverProps & {
   href: string | null;
   pdf: boolean;
   image: string | null;
   className?: string;
-  /** A picture that isn't shaped like a page sits in the middle of the frame, as a row of a list wants it. */
-  center?: boolean;
   /** The PDF chip or the open-elsewhere mark on the cover; a cover too small to carry one leaves it off. */
   mark?: boolean;
   /** How wide the cover is shown, for a community's full-size picture to be resized to. */
@@ -127,7 +125,7 @@ export function PaperCover({ href, pdf, image, className, ink, center = false, m
   const known = picture && shaped?.image === picture ? shaped : null;
   const fit = coverFit(known?.shape ?? null);
   const sheet = (
-    <span className={cn("relative flex aspect-[3/4]", center ? "items-center justify-center" : "items-start justify-start")}>
+    <span className="relative flex aspect-[3/4] items-start justify-start">
       {picture && !known ? (
         // Loaded out of sight first, to learn its shape: the sheet is then made at that shape and never changes it.
         // One the browser already had is shown at once; one waited for fades in, as does one the server's page waited on.
