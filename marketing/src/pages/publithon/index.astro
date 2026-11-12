@@ -84,7 +84,7 @@ const faq = [
         <ul class="gains" data-in>{gains.map(([k, t, d], i) => <li style={`--i:${i}`}>
           <p class="g-txt"><b>{t}</b><span>{d}</span></p>
           {k === "cite" && <div class="g-vis v-cite">
-            <p class="ref" aria-hidden="true">Benali, R. (2026). <i>Household rainwater storage in Morocco: a descriptive field study</i>. Openscholar Reports. <span>https://doi.org/10.53832/openscholar-reports.r100230</span></p>
+            <p class="ref" aria-hidden="true">Benali, R. (2026). <i>Household rainwater storage in Morocco: a descriptive field study</i>. Openscholar Reports. <span>doi.org/10.53832/…r100230</span></p>
             <p class="lgs">{["zotero", "mendeley"].map((id, n) => <span class="lg" style={`--n:${n}`}><svg viewBox={LOGOS[id].box} fill="currentColor" aria-hidden="true" set:html={LOGOS[id].body} />{LOGOS[id].name}</span>)}</p>
           </div>}
           {k === "move" && <div class="g-vis v-move" aria-hidden="true"><span class="g-doi">doi.org/10.53832/…r100230</span><span class="track"><i class="ln"></i><span class="run"><i class="pg"></i></span></span></div>}
@@ -198,7 +198,7 @@ const faq = [
   .lgs { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 0; } .lg { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; color: rgb(255 255 255 / .92); white-space: nowrap; }
   .lg svg, .mk { flex: none; height: 20px; width: auto; } .lg svg { aspect-ratio: 1; } .lg svg[viewBox="0 0 46.6 67.9"] { aspect-ratio: 46.6 / 67.9; height: 23px; } .mk { background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
   /* The citation a reference manager makes of the report shown beside it. */
-  .v-cite { display: grid; gap: 10px; } .ref { margin: 0; padding-left: 12px; border-left: 2px solid #fbbf24; font-size: 14px; line-height: 1.5; color: rgb(255 255 255 / .86); text-wrap: pretty; } .ref i { font-style: italic; } .ref span { font-family: var(--mono); font-size: 12.5px; color: #ffd68c; overflow-wrap: anywhere; }
+  .v-cite { display: grid; gap: 8px; } .ref { margin: 0; padding-left: 10px; border-left: 2px solid #fbbf24; font-size: 13px; line-height: 1.45; color: rgb(255 255 255 / .86); } .ref i { font-style: italic; } .ref span { font-family: var(--mono); font-size: 12px; color: #ffd68c; white-space: nowrap; }
   .g-doi { flex: none; font: 400 13.5px/1 var(--mono); color: #cfe0fb; white-space: nowrap; }
   /* The page moves; the line from the DOI stretches to stay on it. */
   .v-move { display: flex; align-items: center; gap: 10px; } .track { position: relative; flex: 1; min-width: 60px; height: 34px; }
