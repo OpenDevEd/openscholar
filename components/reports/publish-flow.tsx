@@ -834,6 +834,26 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
+/** The agreement's two confirmations as last ticked in this tab, for the agreement as it then read. */
+const TICKS = "publish:agreement-ticks";
+type Ticks = { version: number; all: boolean; agreed: boolean };
+function keptTicks(version: number): Ticks | null {
+  try {
+    const kept = JSON.parse(window.sessionStorage.getItem(TICKS) ?? "null") as Ticks | null;
+    return kept && kept.version === version && typeof kept.all === "boolean" && typeof kept.agreed === "boolean" ? { version, all: kept.all, agreed: kept.agreed } : null;
+  } catch {
+    return null;
+  }
+}
+function keepTicks(ticks: Ticks | null) {
+  try {
+    if (ticks) window.sessionStorage.setItem(TICKS, JSON.stringify(ticks));
+    else window.sessionStorage.removeItem(TICKS);
+  } catch {
+    // Without the tab's storage the ticks are made again after signing in.
+  }
+}
+
 function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack }: { /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
@@ -848,10 +868,16 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const { agreement } = basics;
   // Each tick is for the agreement as it read when it was made. One changed since, while the page was open, is
   // read and ticked again before it can be signed.
-  const [ticks, setTicks] = useState({ version: agreement.version, all: false, agreed: false });
+  // Kept with the tab until the report is signed: someone who ticks them signed out, then signs up, finds them as
+  // they left them and not cleared without a word. The step is drawn only in the browser, once the page has its data.
+  const [ticks, setTicks] = useState(() => keptTicks(agreement.version) ?? { version: agreement.version, all: false, agreed: false });
   const changed = ticks.version !== agreement.version && (ticks.all || ticks.agreed);
   const { all, agreed } = ticks.version === agreement.version ? ticks : { all: false, agreed: false };
-  const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
+  const tick = (next: { all?: boolean; agreed?: boolean }) => {
+    const now = { version: agreement.version, all, agreed, ...next };
+    setTicks(now);
+    keepTicks(now);
+  };
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
   // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
@@ -921,7 +947,10 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
             onClick={() =>
               start(async () => {
                 try {
-                  onSigned(await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version }));
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version });
+                  // Signed, the ticks have done their work: the next report's agreement starts unticked.
+                  keepTicks(null);
+                  onSigned(key);
                 } catch (error) {
                   said(t("signFailed"))(error);
                 }
