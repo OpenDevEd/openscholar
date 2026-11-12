@@ -1,0 +1,53 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Feature from "../../components/Feature.astro";
+import Device from "../../components/Device.astro";
+import Art from "../../components/Art.astro";
+import Arrow from "../../components/Arrow.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+import { APP } from "../../data/site.mjs";
+// What a publithon is and how to take part, for anyone invited to one. No event of its own: dates, topic and sponsor
+// come later, when an event needs them. Sponsors write to us through the contact form's sponsor topic.
+const faq = [
+  ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
+  ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against published work, and a match goes to a reviewer before anything goes live."],
+  ["What does AI do here?", "It reads the title, authors, institutions and funders from your PDF, so you don't type them in. You check them and change anything before the report goes live."],
+  ["Who reviews my report?", "Automatic checks look for the series line with your DOI and for anything published before. A reviewer then approves the report before it can go live, and you hear by email."],
+  ["Can I run a publithon for my field?", "Yes. Tell us the topic and who you'd invite, and we'll plan it with you."],
+];
+---
+<Base og="/og.jpg" top="#03140d" title="Publithon: Openscholar" description="Publish your research at a publithon: bring a finished report or paper, and it goes live with its own DOI, under your name and open for anyone to read and cite.">
+  <IntentHero
+    title="Publish your research at a publithon"
+    lead="At a publithon, researchers publish their own work together, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name, open for anyone to read and cite."
+    bg="#03140d" art="review-card" screen="r-page" theme="light" alt="A published report with its DOI, authors and topics">
+    <a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a>
+  </IntentHero>
+  <Feature id="publish" field="emerald" title="Sign, upload, check, go live" text="Sign the publishing agreement and your DOI is reserved. Upload the PDF, check the details read from it, and the checks run before it goes live. You keep the copyright and publish under CC BY 4.0.">
+    <div class="f-shot"><Device kind="laptop" name="r-prepare" theme="light" alt="Every step of publishing a report, from the agreement to going live" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Feature id="recommend" field="rose" flip title="Already published? Suggest it instead" text="A publithon on a topic gathers the work that's already out there too. Search the topic's community, and if a paper it should hold is missing, suggest it. Its editors decide.">
+    <a slot="extra" class="btn ghost" href={`${APP}/communities`}>Find a community</a>
+    <div class="f-shot"><Device kind="laptop" name="c-search" theme="light" alt="A community's search, with filters and PDF covers" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <section class="panel spons" id="sponsor" aria-labelledby="spons-h">
+    <Art name="pavilion" pos="100% 60%" class="s-art" />
+    <div class="s-copy"><h2 id="spons-h">Sponsor a publithon</h2><p class="lead">Back a publithon on a topic or a region you care about. We plan it with you, and you see every report it brings in.</p></div>
+    <a class="btn" href="/contact/?topic=sponsor">Talk to us about sponsoring<Arrow /></a>
+  </section>
+  <Faq items={faq} title="Questions about publithons" />
+  <Related />
+  <Close title="Give your work a DOI" art="dark-ribbon"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
+</Base>
+<style>
+  /* Sponsoring: the lit pavilion on its own dark crimson, the case and one way in. */
+  .spons { display: grid; align-content: center; justify-items: start; gap: 28px; min-height: clamp(380px, 34vw, 480px); padding: clamp(32px, 4.4vw, 64px) var(--pad); --bg: #1e030c; }
+  .spons > :global(.s-art) { left: 30%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%); }
+  /* The way into the communities keeps its own width under the copy. */
+  :global(#recommend .copy > .btn) { justify-self: start; }
+  .s-copy { display: grid; gap: 12px; max-width: 560px; } .s-copy .lead { color: rgb(255 255 255 / .82); }
+  @media (max-width: 900px) { .spons > :global(.s-art) { left: 0; opacity: .4; } }
+</style>
