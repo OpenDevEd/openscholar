@@ -213,6 +213,9 @@ describe("owner configuration migrations", () => {
     expect(migrate({ fundingPartners: [{ id: "a", name: "FCDO" }] }).footer).toEqual({ funders: [{ id: "a", name: "FCDO" }] });
     expect(migrate({ fundingPartners: [] }, { funders })).toEqual({ identity: IDENTITY, footer: { funders } });
     expect(migrate({}, { funders }).footer).toEqual({ funders });
+    // The most a community could save of each: every one is kept, and the snapshot still passes its check.
+    const twenty = (kind: string) => Array.from({ length: 20 }, (_, n) => ({ id: `${kind}-${n}`, name: `${kind} ${n}` }));
+    expect((migrate({ fundingPartners: twenty("partner") }, { funders: twenty("funder") }).footer?.funders as unknown[]).length).toBe(40);
     // Partners that can't be read are never dropped: the snapshot is refused with them still in it.
     for (const unreadable of [["FCDO"], { id: "a", name: "FCDO" }, [{ id: "a" }]]) expect(() => migrate({ fundingPartners: unreadable })).toThrow(OwnerConfigurationMigrationError);
   });
