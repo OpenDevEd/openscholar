@@ -429,7 +429,6 @@ export const activate = action({
     }
     // What that payment buys lands in the same balance: nothing else is spent from it until that report has its own.
     if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
-    const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
     // The workspace's activations one at a time, from the balance as from a purchase: Autumn allowed two holds at once on
     // a balance of one. One pressed meanwhile, in another tab or on another report, waits for this one, then finds the
     // report live or the balance as this one left it.
@@ -437,9 +436,11 @@ export const activate = action({
       ctx,
       workspaceId,
       async (): Promise<{ live: true } | { url: string }> => {
+        // Recorded only once the lock is held, so an activation that never got it leaves nothing behind. Refused when
+        // another tab made the report live, or its payment waits on the bank, while this one waited.
+        const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
         try {
-          // Another tab may have made it live, or another report spent the balance, while this one waited.
-          await ctx.runQuery(internal.reports.activation.prepare, { actor, key });
+          // Another report may have spent the balance while this one waited.
           if (await spend(ctx, first.customerId, activationId)) return { live: true };
           if (!pay) {
             // The page offered one from a balance read before it was spent or reset: it reads the balance again, and
