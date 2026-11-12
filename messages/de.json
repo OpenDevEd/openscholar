@@ -6785,14 +6785,13 @@
         "chooseFirst": "Wählen Sie zuerst, wer den Vermerk hinzufügt",
         "failed": "Wir konnten die Seite nicht zu {name} hinzufügen. Fügen Sie den Vermerk selbst hinzu und laden Sie das PDF erneut hoch.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} ist größer als {max} MB und damit zu groß, als dass wir eine Seite hinzufügen könnten. Setzen Sie den Vermerk selbst ein oder laden Sie ein kleineres PDF hoch.",
         "self": {
           "title": "Ich füge ihn selbst hinzu",
           "body": "Setzen Sie den Vermerk wortwörtlich auf das Deckblatt oder die Innenseite des Deckblatts Ihres PDFs, bevor Sie es hochladen."
         },
         "added": {
           "title": "Für mich hinzufügen",
-          "body": "Wir fügen eine letzte Seite mit diesem Vermerk und den Angaben Ihres Berichts hinzu. Für PDFs bis {max} MB."
+          "body": "Wir fügen eine letzte Seite mit diesem Vermerk und den Angaben Ihres Berichts hinzu."
         }
       },
       "overview": {

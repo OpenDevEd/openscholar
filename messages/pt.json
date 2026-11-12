@@ -6785,14 +6785,13 @@
         "chooseFirst": "Escolha primeiro quem acrescenta a menção",
         "failed": "Não conseguimos acrescentar a página a {name}. Acrescente a menção e carregue o PDF de novo.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} tem mais de {max} MB, o que é demasiado para lhe acrescentarmos uma página. Ponha a menção no ficheiro, ou carregue um PDF mais pequeno.",
         "self": {
           "title": "Acrescento eu",
           "body": "Ponha a menção, palavra por palavra, na capa ou no verso da capa do seu PDF antes de o carregar."
         },
         "added": {
           "title": "Acrescentem por mim",
-          "body": "Acrescentamos uma última página com esta menção e os dados do seu relatório. Para PDF até {max} MB."
+          "body": "Acrescentamos uma última página com esta menção e os dados do seu relatório."
         }
       },
       "overview": {

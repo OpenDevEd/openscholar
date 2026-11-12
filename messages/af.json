@@ -6785,14 +6785,13 @@
         "chooseFirst": "Kies eers wie die reël byvoeg",
         "failed": "Ons kon nie die bladsy by {name} voeg nie. Voeg self die reël by en laai die PDF weer op.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is groter as {max} MB, wat te groot is vir ons om ’n bladsy by te voeg. Sit self die reël daarop, of laai ’n kleiner PDF op.",
         "self": {
           "title": "Ek voeg dit self by",
           "body": "Sit die reël, woord vir woord, op die voorblad of binneblad van jou PDF voordat jy dit oplaai."
         },
         "added": {
           "title": "Voeg dit vir my by",
-          "body": "Ons voeg ’n laaste bladsy by met hierdie reël en jou verslag se besonderhede. Vir PDF’s tot {max} MB."
+          "body": "Ons voeg ’n laaste bladsy by met hierdie reël en jou verslag se besonderhede."
         }
       },
       "overview": {
