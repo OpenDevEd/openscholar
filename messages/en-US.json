@@ -6844,7 +6844,7 @@
         "payWith": "Pay with",
         "balance": "Publication balance",
         "card": "Card",
-        "byCard": "Paid by card",
+        "byCard": "Payment by card",
         "due": "Due at activation",
         "later": "Nothing is charged until the report is activated, and how you pay can still change.",
         "code": "Code {code}",

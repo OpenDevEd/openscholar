@@ -6845,7 +6845,7 @@
         "payWith": "Pagar con",
         "balance": "Saldo de publicación",
         "card": "Tarjeta",
-        "byCard": "Pagado con tarjeta",
+        "byCard": "Pago con tarjeta",
         "due": "A pagar al activar",
         "later": "No se cobra nada hasta que se active el informe, y aún puedes cambiar cómo pagas.",
         "code": "Código {code}",

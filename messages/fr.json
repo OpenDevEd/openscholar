@@ -6844,7 +6844,7 @@
         "payWith": "Payer avec",
         "balance": "Solde de publication",
         "card": "Carte",
-        "byCard": "Payé par carte",
+        "byCard": "Paiement par carte",
         "due": "Dû à l’activation",
         "later": "Rien n’est débité avant l’activation du rapport, et vous pouvez encore changer de mode de paiement.",
         "code": "Code {code}",

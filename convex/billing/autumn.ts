@@ -146,6 +146,20 @@ function config() {
   return { url, secretKey };
 }
 
+/** The languages Stripe's checkout comes in, by the site's locale; another gets Stripe's own guess from the browser. */
+const STRIPE_LOCALES: Record<string, string> = { "en-US": "en", "en-GB": "en-GB", zh: "zh", fr: "fr", ja: "ja", pt: "pt", es: "es", de: "de" };
+
+/**
+ * What Stripe's checkout page takes a payment with, in the person's language. A typed card only, no Apple Pay, Google
+ * Pay, Link or Amazon Pay (the user's choice, 2026-11-12): the Stripe account's card-only payment method configuration
+ * (STRIPE_CARD_ONLY_CONFIG, one per Stripe account), or without it cards with Link hidden.
+ */
+function checkoutParams(locale: string | undefined) {
+  const only = process.env.STRIPE_CARD_ONLY_CONFIG;
+  const methods = only ? { payment_method_configuration: only } : { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } };
+  return { ...methods, locale: STRIPE_LOCALES[locale ?? ""] ?? "auto" };
+}
+
 async function call<T>(
   path: string,
   body: Record<string, unknown>,
@@ -324,6 +338,11 @@ export const autumn = {
      * would be given unpaid.
      */
     unbilled?: boolean;
+    /**
+     * A report's payment made on Stripe's checkout (a customer with no card on file): a typed card only, in the
+     * person's language. Plans keep Stripe's default page.
+     */
+    checkout?: { locale?: string };
   }) {
     return call<AutumnCharge>(
       "billing.attach",
@@ -339,6 +358,8 @@ export const autumn = {
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
         ...(args.unbilled ? { invoice_mode: { enabled: true, enable_plan_immediately: true, finalize: true } } : {}),
+        // Used only when Autumn sends the person to Stripe's checkout: a customer with no card on file.
+        ...(args.checkout ? { checkout_session_params: checkoutParams(args.checkout.locale) } : {}),
         ...promotion(args.code),
       },
       args.idempotencyKey,

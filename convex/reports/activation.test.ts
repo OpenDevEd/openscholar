@@ -231,6 +231,18 @@ describe("activating a report", () => {
     expect(await activations(world)).toEqual([]);
   });
 
+  it("refuses to charge a card the page didn't show, buying nothing", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // The page read no card and said Stripe's page would open; a card was saved elsewhere since.
+    const autumn = autumnStub({ card: true });
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 10, card: null })).rejects.toMatchObject({ data: expect.objectContaining({ code: "CONFLICT", reason: "changed" }) });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    expect(await row(world.t, key)).toMatchObject({ status: "passed" });
+    await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+  });
+
   it("with no saved card, pays on Stripe's page with its code, and goes live on what was bought once that is paid", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

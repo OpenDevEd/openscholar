@@ -51,16 +51,16 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
         disabled={disabled}
         // "Another licence" opens on the first of them, which the list beneath it changes.
         onValueChange={(picked) => onChange(picked === "other" ? OTHERS[0]! : (picked as LicenceName))}
-        className="gap-3 sm:grid-cols-3"
+        className="grid-cols-1 gap-3 sm:grid-cols-3"
       >
         {cards.map((card) => {
           const on = card.id === "other" ? other : value === card.id;
           return (
-            <label key={card.id} htmlFor={`${id}-${card.id}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-primary/60 hover:bg-muted/50"))}>
+            <label key={card.id} htmlFor={`${id}-${card.id}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
               <RadioGroupItem id={`${id}-${card.id}`} value={card.id} className="mt-0.5" />
               <span className="min-w-0 flex-1">
-                <span className="flex items-baseline gap-2 text-sm font-medium">
-                  <span className="min-w-0">{card.title}</span>
+                <span className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
+                  <span className="min-w-0 break-words">{card.title}</span>
                   <span className="ms-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">{dollars(card.price)}</span>
                 </span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">{card.body}</span>
