@@ -130,15 +130,16 @@ const historyOf = () => (window as { navigation?: Navigation }).navigation;
  * own first step, or the app's own upkeep of the entry it is on, is enough.
  */
 let heard = false;
-// Only a step the page itself took or the person's own Back counts: one engine fires the event for other changes of
-// entry and stays silent for these, and the steps would then be pushed with nothing to hear Back.
+// What counts is hearing an entry the page itself made or replaced (the app does so soon after every load). One
+// engine reports the person's Back and Forward but never those, so its list of entries is wrong and a step pushed
+// there would have nothing to tell Back where it came from.
 if (typeof window !== "undefined") {
   historyOf()?.addEventListener("currententrychange", (event) => {
     const type = (event as EntryChange).navigationType;
-    if (type === "push" || type === "traverse") heard = true;
+    if (type === "push" || type === "replace") heard = true;
   });
 }
-const hearsHistory = () => heard;
+const hearsHistory = () => heard && historyOf()?.currentEntry?.url === window.location.href;
 
 /** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
 const watchEntry = (wake: () => void) => {
