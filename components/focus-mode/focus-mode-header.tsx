@@ -227,7 +227,7 @@ export function FocusModeHeader({
           {saveable ? (
             <div className="flex items-center gap-1 lg:hidden">
               <RatingSelector paper={currentPaper} variant="compact" />
-              <SaveControl paper={currentPaper} compact />
+              <SaveControl paper={currentPaper} />
             </div>
           ) : null}
 
