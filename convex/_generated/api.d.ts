@@ -346,6 +346,7 @@ import type * as migrations_clearModelWebSearchPrice from "../migrations/clearMo
 import type * as migrations_communityDirectory from "../migrations/communityDirectory.js";
 import type * as migrations_communityMoveCounts from "../migrations/communityMoveCounts.js";
 import type * as migrations_copyCollection from "../migrations/copyCollection.js";
+import type * as migrations_coverShapes from "../migrations/coverShapes.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
@@ -399,6 +400,7 @@ import type * as reports_flow from "../reports/flow.js";
 import type * as reports_limits from "../reports/limits.js";
 import type * as reports_mail from "../reports/mail.js";
 import type * as reports_mailer from "../reports/mailer.js";
+import type * as reports_ownReports from "../reports/ownReports.js";
 import type * as reports_paper from "../reports/paper.js";
 import type * as reports_pdfBytes from "../reports/pdfBytes.js";
 import type * as reports_publication from "../reports/publication.js";
@@ -861,6 +863,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/communityDirectory": typeof migrations_communityDirectory;
   "migrations/communityMoveCounts": typeof migrations_communityMoveCounts;
   "migrations/copyCollection": typeof migrations_copyCollection;
+  "migrations/coverShapes": typeof migrations_coverShapes;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
   "migrations/extractionFacets": typeof migrations_extractionFacets;
@@ -914,6 +917,7 @@ declare const fullApi: ApiFromModules<{
   "reports/limits": typeof reports_limits;
   "reports/mail": typeof reports_mail;
   "reports/mailer": typeof reports_mailer;
+  "reports/ownReports": typeof reports_ownReports;
   "reports/paper": typeof reports_paper;
   "reports/pdfBytes": typeof reports_pdfBytes;
   "reports/publication": typeof reports_publication;

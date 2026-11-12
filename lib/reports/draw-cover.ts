@@ -6,8 +6,8 @@ import { pdfAssets } from "@/lib/pdf-assets";
 /** Wide enough for the cover at twice its largest size on a page (200 px). */
 const COVER_WIDTH = 800;
 
-/** The PDF's first page as a JPEG, or null when it can't be drawn: the report then keeps its title page. */
-export async function drawCover(file: File): Promise<Blob | null> {
+/** The PDF's first page as a JPEG with its shape (width over height), or null when it can't be drawn: the report then keeps its title page. */
+export async function drawCover(file: File): Promise<{ picture: Blob; shape: number } | null> {
   try {
     const { pdfjs } = await import("react-pdf");
     pdfjs.GlobalWorkerOptions.workerSrc ||= new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
@@ -20,7 +20,8 @@ export async function drawCover(file: File): Promise<Blob | null> {
       canvas.width = COVER_WIDTH;
       canvas.height = Math.max(1, Math.round(viewport.height));
       await page.render({ canvas, canvasContext: canvas.getContext("2d")!, viewport }).promise;
-      return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      const picture = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+      return picture ? { picture, shape: canvas.width / canvas.height } : null;
     } finally {
       await task.destroy();
     }

@@ -6605,7 +6605,8 @@
         "foundIn": "Encontrado em {where}:",
         "foundAs": "Encontrado como",
         "said": {
-          "notPublished": "Não está no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
+          "notPublished": "Não está no Openscholar Reports, no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
+          "notPublishedElsewhere": "Não está no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
           "unfinished": "Esta verificação não conseguiu terminar.",
           "bylineFound": "O texto do PDF tem a linha palavra por palavra."
         },

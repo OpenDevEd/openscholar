@@ -37,7 +37,7 @@ export const get = query({
       metadata,
       series: seriesOf(report, series),
       pdfUrl: report.pdf ? await ctx.storage.getUrl(report.pdf.file) : null,
-      coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
+      coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
       updatedAt: report.updatedAt,
     };
   },

@@ -7,7 +7,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn, finePointer } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
-import { withOverlaysInside } from "@/components/ui/sonner"
+import { withOverlaysInside, withSignInAbove } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
 
 function Dialog({
@@ -61,6 +61,7 @@ function DialogContent({
   onInteractOutside,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -107,6 +108,7 @@ function DialogContent({
         onKeyDownCapture={() => {
           openedAt.current = 0
         }}
+        onEscapeKeyDown={withSignInAbove(onEscapeKeyDown)}
         {...props}
         {...focus}
       >

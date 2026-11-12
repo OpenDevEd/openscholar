@@ -33,6 +33,9 @@ export const COMMUNITY_FILE_PATTERNS = COMMUNITY_FILES.map((files) => new URL(`$
 /** Whether a cover is one Openscholar's server resizes: next.config.ts allows these addresses with no query. */
 export const resizable = (src: string) => !src.includes("?") && COMMUNITY_FILES.some((files) => src.startsWith(files));
 
+/** A width over height a cover can have: a page or slide, not a sliver either way. */
+export const isCoverShape = (shape: number) => Number.isFinite(shape) && shape >= 0.2 && shape <= 5;
+
 /** The shapes a page comes in, as its width over its height: A4 is 0.71 and US Letter 0.77. */
 const PAGE_SHAPES = { narrowest: 0.66, widest: 0.8 } as const;
 

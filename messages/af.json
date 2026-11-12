@@ -6605,7 +6605,8 @@
         "foundIn": "Gevind in {where}:",
         "foundAs": "Gevind as",
         "said": {
-          "notPublished": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "notPublished": "Nie in Openscholar Reports, OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "notPublishedElsewhere": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
           "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
         },

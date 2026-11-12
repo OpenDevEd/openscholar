@@ -175,7 +175,7 @@ export const reportFields = {
   run: v.optional(v.object({ id: v.string(), at: v.number(), /** It reads changes to a live report, which stays as it is meanwhile. */ changes: v.optional(v.boolean()) })),
   pdf: v.optional(pdfValidator),
   /** A picture of the PDF's first page, and when it was made. */
-  cover: v.optional(v.object({ file: v.id("_storage"), at: v.number() })),
+  cover: v.optional(v.object({ file: v.id("_storage"), at: v.number(), /** Its width over its height, which its frame takes before it loads. A cover from before this has none (migrations/coverShapes). */ shape: v.optional(v.number()) })),
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
@@ -248,6 +248,8 @@ export const reportRowValidator = v.object({
   /** Who signed it. */
   signer: v.string(),
   coverUrl: v.union(v.string(), v.null()),
+  /** The cover's width over its height, when known. */
+  coverShape: v.optional(v.number()),
   /** Whether the person may change it, or only see it. */
   mine: v.boolean(),
 });
@@ -301,7 +303,7 @@ export const adminReportValidator = v.object({
 export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
-export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), updatedAt: v.number() });
+export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), coverShape: v.optional(v.number()), updatedAt: v.number() });
 export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
 
 /** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */

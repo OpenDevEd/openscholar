@@ -1370,10 +1370,10 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
       const [file, cover] = await Promise.all([
         put(picked, "application/pdf"),
-        drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
+        drawCover(picked).then(async (drawn) => (drawn ? { id: await put(drawn.picture, "image/jpeg"), shape: drawn.shape } : undefined)).catch(() => undefined),
       ]);
       arrived = true;
-      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
+      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover: cover.id, coverShape: cover.shape }) });
       if (refused) return say(refused);
       onAttached();
     } catch (error) {
@@ -1479,11 +1479,16 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
+/** What Already published said when it found nothing, before it searched Openscholar Reports too: said as it was. */
+const BEFORE_OWN_REPORTS = "Not in OpenAlex, Openscholar's index or our communities.";
+
 export function CheckRow({ name, result, advice = true, overruled = false }: { name: string; result?: CheckResult; /** Whether to say what the author can do about a failed check: only where they still can. */ advice?: boolean; /** A reviewer approved the report over this check's answer. */ overruled?: boolean }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   /** What a check says, in the page's language when it's one of the fixed things a check says. */
   const inWords = (words: string | undefined) => {
+    // A result saved before Openscholar Reports itself was searched (2026-11-12) says what was searched then.
+    if (words === BEFORE_OWN_REPORTS) return t("check.said.notPublishedElsewhere");
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };
@@ -2244,7 +2249,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
           <Button variant="outline" disabled={sending} onClick={close}>
             {t("cancel")}
           </Button>
-          <Button className="relative" disabled={sending} onClick={send}>
+          <Button className="relative max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal" disabled={sending} onClick={send}>
             <Working busy={sending}>
               <span className="flex items-center gap-2">
                 <ReviewQueueIcon /> {t("sendForReview")}
@@ -2478,6 +2483,7 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
         type="report"
         // The picture of the PDF's first page takes the title page's place once it's made.
         image={report?.coverUrl ?? null}
+        shape={report?.coverShape ?? null}
         href={report?.pdf?.url ?? null}
         pdf={!!report?.pdf?.url}
       />
