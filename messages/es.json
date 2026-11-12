@@ -6661,6 +6661,8 @@
       "declined": "Rechazado",
       "withdrawnBody": "Un revisor retiró este informe. Su página ahora lo indica.",
       "declinedBody": "Un revisor rechazó este informe.",
+      "declinedFix": "Puede cambiar los datos o subir un nuevo PDF y volver a ejecutar las comprobaciones.",
+      "activatingNow": "Activando su informe. Tarda unos segundos.",
       "notYet": "Aún no publicado",
       "aCheckFailed": "Una comprobación falló",
       "failedAsked": "Pediste una revisión humana. También puedes cambiar los datos o subir un PDF nuevo y volver a ejecutar las comprobaciones.",

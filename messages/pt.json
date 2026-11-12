@@ -6661,6 +6661,8 @@
       "declined": "Recusado",
       "withdrawnBody": "Um revisor retirou este relatório. A página indica-o agora.",
       "declinedBody": "Um revisor recusou este relatório.",
+      "declinedFix": "Você pode alterar os dados ou enviar um novo PDF e executar as verificações novamente.",
+      "activatingNow": "Ativando o seu relatório. Leva alguns segundos.",
       "notYet": "Ainda não publicado",
       "aCheckFailed": "Uma verificação falhou",
       "failedAsked": "Pediu uma revisão humana. Também pode alterar os dados ou carregar um novo PDF e executar as verificações de novo.",

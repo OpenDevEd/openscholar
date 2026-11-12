@@ -6660,6 +6660,8 @@
       "declined": "Refusé",
       "withdrawnBody": "Un relecteur a retiré ce rapport. Sa page l'indique désormais.",
       "declinedBody": "Un relecteur a refusé ce rapport.",
+      "declinedFix": "Vous pouvez modifier les informations ou téléverser un nouveau PDF, puis relancer les vérifications.",
+      "activatingNow": "Activation de votre rapport en cours. Cela prend quelques secondes.",
       "notYet": "Pas encore publié",
       "aCheckFailed": "Une vérification a échoué",
       "failedAsked": "Vous avez demandé une relecture humaine. Vous pouvez aussi modifier les informations ou téléverser un nouveau PDF, et relancer les vérifications.",

@@ -6661,6 +6661,8 @@
       "declined": "Imekataliwa",
       "withdrawnBody": "Mkaguzi aliiondoa ripoti hii. Ukurasa wake sasa unasema hivyo.",
       "declinedBody": "Mkaguzi aliikataa ripoti hii.",
+      "declinedFix": "Unaweza kubadilisha maelezo au kupakia PDF mpya, kisha kuendesha ukaguzi tena.",
+      "activatingNow": "Ripoti yako inawashwa. Hii huchukua sekunde chache.",
       "notYet": "Bado haijachapishwa",
       "aCheckFailed": "Ukaguzi ulishindwa",
       "failedAsked": "Uliomba ukaguzi wa binadamu. Unaweza kubadilisha maelezo au kupakia PDF mpya ili kuendesha ukaguzi tena.",

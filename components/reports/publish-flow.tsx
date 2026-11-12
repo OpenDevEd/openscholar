@@ -1424,6 +1424,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   const dollars = useDollars();
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
+  /** A report a reviewer declined before it ever went live: its author changes it and runs the checks again. */
+  const reopens = stage === "declined" && !!report && !report.withdrawn && report.activatedAt === undefined;
   const [activating, start] = useTransition();
   // Only the workspace's admins activate (#1261). A code goes in the payment bar, before anything is asked for: one
   // that covers the whole price activates with no card. A charge to the saved card is confirmed in a dialog first.
@@ -1531,6 +1533,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   ) : stage === "declined" ? (
     <StepHead key="declined" title={t(report.withdrawn ? "withdrawn" : "notPublished")} aside={<StatusChip tone="danger" icon={CircleX}>{t(report.withdrawn ? "withdrawn" : "declined")}</StatusChip>}>
       {t(report.withdrawn ? "withdrawnBody" : "declinedBody")}
+      {reopens ? ` ${t("declinedFix")}` : null}
     </StepHead>
   ) : (
     // Asked of a reviewer, it reads as waiting on them, with how long that takes: "A check failed" alone left people
@@ -1608,6 +1611,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                   }
                 />
               ) : null}
+              {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again. */}
+              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t("activatingNow")}</p> : null}</AutoHeight>
               <div className="flex flex-wrap justify-end gap-2">
                 {stage === "failed" ? (
                   <>
@@ -1625,8 +1630,19 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                   </>
                 ) : (
                   <>
+                    {/* Declined before it ever went live, it can be changed and sent round again: the reviewer's note is a reason to, not the end of it. */}
+                    {reopens ? (
+                      <>
+                        <Button variant="outline" onClick={onFix}>
+                          <RotateCcw /> {t("uploadNew")}
+                        </Button>
+                        <Button onClick={onDetails}>
+                          <PenLine /> {t("changeDetails")}
+                        </Button>
+                      </>
+                    ) : null}
                     {onAnother ? (
-                      <Button variant={stage === "declined" ? "default" : stage === "ready" && admin ? "ghost" : "outline"} onClick={onAnother}>
+                      <Button variant={stage === "declined" && !reopens ? "default" : stage === "ready" && admin ? "ghost" : "outline"} onClick={onAnother}>
                         <Plus /> {t("publishAnother")}
                       </Button>
                     ) : null}

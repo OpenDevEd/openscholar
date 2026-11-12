@@ -6661,6 +6661,8 @@
       "declined": "Afgekeur",
       "withdrawnBody": "'n Hersiener het hierdie verslag teruggetrek. Sy bladsy sê dit nou.",
       "declinedBody": "'n Hersiener het hierdie verslag afgekeur.",
+      "declinedFix": "Jy kan die besonderhede verander of ’n nuwe PDF oplaai, en die kontroles weer laat loop.",
+      "activatingNow": "Jou verslag word geaktiveer. Dit neem ’n paar sekondes.",
       "notYet": "Nog nie gepubliseer nie",
       "aCheckFailed": "'n Kontrole het gefaal",
       "failedAsked": "Jy het 'n menslike hersiening gevra. Jy kan die besonderhede verander of 'n nuwe PDF oplaai om die kontroles weer te laat loop.",

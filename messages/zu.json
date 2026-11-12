@@ -6660,6 +6660,8 @@
       "declined": "Kwenqatshiwe",
       "withdrawnBody": "Umbuyekezi uhoxise lo mbiko. Ikhasi lawo manje lisho lokho.",
       "declinedBody": "Umbuyekezi wenqabe lo mbiko.",
+      "declinedFix": "Ungashintsha imininingwane noma ulayishe i-PDF entsha, bese uqhuba ukuhlola futhi.",
+      "activatingNow": "Umbiko wakho uyenziwa usebenze. Kuthatha imizuzwana embalwa.",
       "notYet": "Akukashicilelwa",
       "aCheckFailed": "Ukuhlolwa kuhlulekile",
       "failedAsked": "Ucele ukubuyekezwa ngumuntu. Ungashintsha imininingwane noma ulayishe i-PDF entsha ukuze uphinde wenze ukuhlolwa.",

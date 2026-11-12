@@ -87,6 +87,23 @@ describe("reviewing", () => {
     await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
   });
 
+  it("leaves a declined report its author's to change and send round again, and a withdrawn one down", async () => {
+    const world = await setup({ humanReview: true });
+    const { key, reportId, pdfAt } = await checked(world, [passed("byline"), passed("harm")]);
+    await decide(world, key, "decline", "A more specific title, please");
+    expect(stageOf(await row(world.t, key), true)).toBe("declined");
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Shade trees and maize yields in Kakamega"), runId: "run-2", from: { pdfAt } });
+    await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-2", results: [passed("byline"), passed("harm")], version: 1 });
+    // Round again: it waits for a reviewer, with the new title.
+    expect(stageOf(await row(world.t, key), true)).toBe("review");
+    // One that went live and was taken down is not its author's to reopen.
+    await setReview(world, false);
+    const published = await live(world, world.member, world.lab);
+    await decide(world, published.key, "withdraw", "Taken down");
+    await expect(world.member.mutation(api.reports.flow.goTo, { workspaceId: world.lab, key: published.key, step: "details" })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+
   it("never takes a late decline for a withdrawal: withdrawing a live report is its own word", async () => {
     const world = await setup();
     const { key } = await live(world);

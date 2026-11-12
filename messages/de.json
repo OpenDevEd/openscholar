@@ -6661,6 +6661,8 @@
       "declined": "Abgelehnt",
       "withdrawnBody": "Eine Prüferin oder ein Prüfer hat diesen Bericht zurückgezogen. Seine Seite gibt das nun an.",
       "declinedBody": "Eine Prüferin oder ein Prüfer hat diesen Bericht abgelehnt.",
+      "declinedFix": "Sie können die Angaben ändern oder ein neues PDF hochladen und die Prüfungen erneut ausführen.",
+      "activatingNow": "Ihr Bericht wird aktiviert. Das dauert einige Sekunden.",
       "notYet": "Noch nicht veröffentlicht",
       "aCheckFailed": "Eine Prüfung ist fehlgeschlagen",
       "failedAsked": "Sie haben eine menschliche Prüfung angefragt. Sie können auch die Angaben ändern oder ein neues PDF hochladen und die Prüfungen erneut laufen lassen.",

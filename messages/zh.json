@@ -6660,6 +6660,8 @@
       "declined": "已拒绝",
       "withdrawnBody": "审核人撤回了此报告。它的页面现在已注明。",
       "declinedBody": "审核人拒绝了此报告。",
+      "declinedFix": "您可以修改详情或上传新的 PDF，然后重新运行检查。",
+      "activatingNow": "正在激活您的报告，需要几秒钟。",
       "notYet": "尚未发布",
       "aCheckFailed": "有一项检查未通过",
       "failedAsked": "您已请求人工审核。您也可以修改信息或上传新的 PDF，然后重新运行检查。",
