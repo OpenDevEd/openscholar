@@ -1,7 +1,7 @@
 "use client";
 
 // A report's details as the model read them from its PDF, for the author to correct (plans/publish-reports).
-// Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
+// Openscholar keeps all of it and shows it on the report's page; each part's "?" says which registrars are sent it.
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -42,18 +42,13 @@ const ROWS_PER_PAGE = 5;
 const ROW = 53;
 const BLANK_AUTHOR: Author = { name: "", orcid: "", openalexId: null, affiliations: [], corresponding: false, roles: [] };
 
-/** A part of the details, and where it goes: Crossref as well as Openscholar, or Openscholar alone. */
-function Section({ title, crossref, aside, help, children }: { title: string; crossref: boolean; aside?: ReactNode; /** mock: the "?" beside the title, for a part that is one box. */ help?: HelpKey; children: ReactNode }) {
-  const t = useTranslations("publishReports.details");
+function Section({ title, aside, help, children }: { title: string; aside?: ReactNode; /** mock: the "?" beside the title, for a part that is one box. */ help?: HelpKey; children: ReactNode }) {
   return (
     <section className="space-y-3">
       <div className="flex min-h-7 flex-wrap items-center gap-2 border-b border-border-subtle pb-2">
         <h3 className="text-sm font-semibold">{title}</h3>
         {help ? <FieldHelp field={help} className="-ms-1" /> : null}
         {aside}
-        <span className={cn("ms-auto rounded-full px-2 py-0.5 text-2xs font-medium", crossref ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-          {t(crossref ? "crossrefAndOpenscholar" : "openscholar")}
-        </span>
       </div>
       {children}
     </section>
@@ -397,16 +392,14 @@ export function DetailsStep({
   const links = usePage(m.relations, ROWS_PER_PAGE);
   // Why the DOI typed wasn't added, said under its box until it is typed again.
   const [doiTrouble, setDoiTrouble] = useState<string | null>(null);
-  // mock: an abstract being written from the PDF, and whether the one in the box is a draft its author hasn't changed yet.
+  // mock: an abstract being written from the PDF.
   const [writing, setWriting] = useState(false);
-  const [drafted, setDrafted] = useState(false);
   const writeAbstract = async () => {
     setWriting(true);
     try {
       const answer = await writeAbstractMock(reportKey!, new Intl.DisplayNames(["en"], { type: "language" }).of(m.language) ?? "English");
       if ("trouble" in answer) return void toast.error(answer.trouble);
       set("abstract", answer.abstract);
-      setDrafted(true);
     } catch {
       toast.error("The abstract couldn't be written. Try again.");
     } finally {
@@ -444,7 +437,7 @@ export function DetailsStep({
         )}
       </div>
       <div className="space-y-8">
-        <Section title={t("work")} crossref>
+        <Section title={t("work")}>
           <Field label={t("title")} help="title" id={`${id}-title`} counter={used(m.title, DETAIL_TEXT.title)}>
             <Textarea id={`${id}-title`} value={m.title} maxLength={DETAIL_TEXT.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" />
           </Field>
@@ -497,7 +490,7 @@ export function DetailsStep({
           </div>
         </Section>
 
-        <Section title={t("authors")} help="authors" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
+        <Section title={t("authors")} help="authors" aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
           <Paged pager={authors.pager} rowHeight={AUTHOR_ROW} label={t("authorsPager")}>
           <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
             {authors.shown.map((a, at) => {
@@ -533,17 +526,11 @@ export function DetailsStep({
         <Section
           title={t("abstract")}
           help="abstract"
-          crossref
           aside={
             <>
               <span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>
               {/* mock: an abstract written from the PDF when its author asks, since the reading copies only one the PDF prints. */}
               {reportKey ? <WriteAbstract filled={!!m.abstract.trim()} writing={writing} onWrite={() => void writeAbstract()} /> : null}
-              {drafted ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary animate-in fade-in duration-300">
-                  <AiIcon className="size-3" /> AI draft
-                </span>
-              ) : null}
             </>
           }
         >
@@ -555,17 +542,14 @@ export function DetailsStep({
               maxLength={DETAIL_TEXT.abstract}
               disabled={writing}
               placeholder={reportKey ? "Your PDF prints no abstract. Type one, or have one written from the PDF." : undefined}
-              onChange={(e) => {
-                set("abstract", e.target.value);
-                setDrafted(false);
-              }}
+              onChange={(e) => set("abstract", e.target.value)}
               rows={7}
               className="text-sm/6"
             />
           </AutoHeight>
         </Section>
 
-        <Section title={t("subjects")} crossref={false}>
+        <Section title={t("subjects")}>
           <div className="grid gap-4 @3xl:grid-cols-2">
             <div className="min-w-0 space-y-1.5">
               <FieldLabel label={t("topics")} help="topics" />
@@ -622,11 +606,11 @@ export function DetailsStep({
           </div>
         </Section>
 
-        <Section title={t("places")} help="places" crossref={false}>
+        <Section title={t("places")} help="places">
           <CountrySelector label={t("places")} placeholder={t("addPlace")} selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
         </Section>
 
-        <Section title={t("funding")} help="funding" crossref>
+        <Section title={t("funding")} help="funding">
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(f.funder.id ?? typedId(f.funder.name))))}
@@ -657,7 +641,7 @@ export function DetailsStep({
           ) : null}
         </Section>
 
-        <Section title={t("references")} help="references" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
+        <Section title={t("references")} help="references" aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
           {m.references.length ? (
             <Paged pager={refs} rowHeight={REF_ROW} label={t("referencesPager")}>
               <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
@@ -685,7 +669,7 @@ export function DetailsStep({
           {doiTrouble ? <p role="alert" className="ps-1 text-xs text-destructive">{doiTrouble}</p> : null}
         </Section>
 
-        <Section title={t("links")} help="links" crossref>
+        <Section title={t("links")} help="links">
           {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">{t("wrongLink")}</p> : null}
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label={t("linksPager")}>

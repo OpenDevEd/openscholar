@@ -332,14 +332,31 @@ function Fact({ icon: Icon, text }: { icon: AppIcon; text: string }) {
   );
 }
 
-/** A registrar that takes this part, or doesn't. */
-function Taker({ takes, name, children }: { takes: boolean; /** Said for a logo, which has no words of its own. */ name?: string; children: ReactNode }) {
+/** Who is sent this part or isn't, with what they do with a report in a few words: few authors know Crossref or Zenodo by name. */
+function Taker({ takes, name, does, href, children }: { takes: boolean; name: string; does: string; href?: string; children: ReactNode }) {
   const Sign = takes ? CircleCheck : Minus;
-  return (
-    <span role={name ? "img" : undefined} aria-label={name ? `${name}: ${takes ? "sent" : "not sent"}` : undefined} className={cn("inline-flex min-w-0 items-center gap-1.5", !takes && "opacity-40 grayscale")}>
+  const row = (
+    <>
       <Sign className={cn("size-4 shrink-0", takes ? "text-primary" : "text-muted-foreground")} />
-      {children}
-    </span>
+      <span className="flex w-24 shrink-0 items-center gap-1.5">{children}</span>
+      <span className="min-w-0 flex-1 font-normal text-muted-foreground">{does}</span>
+    </>
+  );
+  const label = `${name}, ${takes ? "sent this" : "not sent this"}: ${does}`;
+  const className = cn("flex h-7 items-center gap-2 rounded-md px-2.5", !takes && "opacity-45 grayscale");
+  return (
+    <li>
+      {href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className={cn(className, "group hover:bg-accent")}>
+          {row}
+          <ExternalLink className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+        </a>
+      ) : (
+        <span role="img" aria-label={label} className={className}>
+          {row}
+        </span>
+      )}
+    </li>
   );
 }
 
@@ -386,20 +403,20 @@ export function FieldHelp({ field, className }: { field: HelpKey; className?: st
             ))}
           </ul>
         ) : null}
-        <div className="space-y-1.5 rounded-b-[inherit] border-t border-border-subtle bg-inset/60 px-4 py-3 text-xs font-medium">
-          <p className="text-muted-foreground">Sent to</p>
-          <div className="flex items-center justify-between gap-3">
-          <Taker takes={help.crossref} name="Crossref">
-            <FadeImage src="/brands/crossref.svg" className="h-4 w-[47px]" />
-          </Taker>
-          <Taker takes={help.zenodo} name="Zenodo">
-            <FadeImage src="/brands/zenodo.svg" className="h-4 w-11" />
-          </Taker>
-          <Taker takes>
-            <LogoMark className="size-4" />
-            Openscholar
-          </Taker>
-          </div>
+        <div className="rounded-b-[inherit] border-t border-border-subtle bg-inset/60 p-1.5 text-xs font-medium">
+          <p className="px-2.5 pt-1.5 pb-1 text-muted-foreground">Sent to</p>
+          <ul>
+            <Taker takes={help.crossref} name="Crossref" does="Registers the DOI" href="https://www.crossref.org/">
+              <FadeImage src="/brands/crossref.svg" className="h-4 w-[47px]" />
+            </Taker>
+            <Taker takes={help.zenodo} name="Zenodo" does="Archives a copy" href="https://zenodo.org/">
+              <FadeImage src="/brands/zenodo.svg" className="h-4 w-11" />
+            </Taker>
+            <Taker takes name="Openscholar" does="Shows the report">
+              <LogoMark className="size-4" />
+              Openscholar
+            </Taker>
+          </ul>
         </div>
       </PopoverContent>
     </Popover>
