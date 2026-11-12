@@ -6,7 +6,6 @@
 import type { FunctionReturnType } from "convex/server";
 import { createContext, use, type ReactElement, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Home } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
@@ -75,19 +74,9 @@ export function workspaceTint(workspace: WorkspaceLook) {
 const TILE_BOX = { xxs: "size-4", xs: "size-5", sm: "size-6", md: "size-8", row: "size-9", lg: "size-10", xl: "size-24" } as const;
 const TILE_CORNER = { xxs: "rounded-[0.3rem]", xs: "rounded-md", sm: "rounded-md", md: "rounded-lg", row: "rounded-lg", lg: "rounded-xl", xl: "rounded-3xl" } as const;
 
-/**
- * A workspace's picture: your photo for your own, an organization's logo for one. `home` is the
- * switcher's mark for your own, where your account's photo sits just below it.
- */
-export function WorkspaceTile({ workspace, size = "md", home = false }: { workspace: WorkspaceLook; size?: keyof typeof TILE_BOX; home?: boolean }) {
+/** A workspace's picture: your photo for your own, an organization's logo for one. */
+export function WorkspaceTile({ workspace, size = "md" }: { workspace: WorkspaceLook; size?: keyof typeof TILE_BOX }) {
   const tint = workspaceTint(workspace);
-  if (workspace.kind === "personal" && home) {
-    return (
-      <span aria-hidden className={cn("flex shrink-0 items-center justify-center", TILE_BOX[size], TILE_CORNER[size])} style={{ backgroundColor: `color-mix(in oklab, ${tint} 22%, var(--background))`, color: tint }}>
-        <Home className="size-[55%]" />
-      </span>
-    );
-  }
   if (workspace.kind === "personal") return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} className={TILE_BOX[size]} />;
   if (workspace.imageUrl) return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} kind="organization" className={cn(TILE_BOX[size], TILE_CORNER[size])} />;
   // One whose admins uploaded no logo has one made for it, in its colour.
@@ -153,9 +142,9 @@ export function MemberFaces({ workspaceId, label, ring = "ring-card", count }: {
 /** The members MemberFaces shows: a page can read them before it shows them, to have them in place. */
 export const useMemberFaces = (workspaceId: Id<"workspaces"> | undefined) => useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: FACES } }));
 
-/** A workspace's tile with the hairline the switcher gives it. */
-export function Framed({ children }: { children: React.ReactNode }) {
-  return <span className="flex shrink-0 rounded-lg shadow-[0_1px_2px_rgb(0_0_0/0.08),inset_0_0_0_1px_rgb(0_0_0/0.06)]">{children}</span>;
+/** An organization's tile with the hairline the switcher gives it; `className` rounds it as a larger tile is. */
+export function Framed({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <span className={cn("flex shrink-0 rounded-lg shadow-[0_1px_2px_rgb(0_0_0/0.08),inset_0_0_0_1px_rgb(0_0_0/0.06)]", className)}>{children}</span>;
 }
 
 /** A workspace's plan: its name, and whether it's one that's paid for. Empty while the catalog loads. */
