@@ -8,6 +8,7 @@ export const CONTACT_TOPICS = {
   community: "Start an Evidence Community",
   southern: "Southern plan",
   partner: "Research and partnerships",
+  sponsor: "Sponsor a publithon",
   account: "Help with your account",
   bug: "Report a problem",
   other: "Something else",
@@ -15,7 +16,7 @@ export const CONTACT_TOPICS = {
 export type ContactTopic = keyof typeof CONTACT_TOPICS;
 
 /** The topics that ask about a project, which they need at least this much of; the rest need a message instead. */
-const PROJECT_TOPICS = new Set<ContactTopic>(["community", "southern", "partner"]);
+const PROJECT_TOPICS = new Set<ContactTopic>(["community", "southern", "partner", "sponsor"]);
 const PROJECT_MIN = 20;
 
 const text = (max: number) => z.string().trim().max(max);
