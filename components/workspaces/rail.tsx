@@ -667,6 +667,8 @@ function AccountCard({
   const credits = account?.balance;
   const share = monthly && credits !== undefined ? Math.min(1, credits / monthly) : null;
   const hasCredits = !!workspace && credits !== undefined;
+  /** What the workspace's publication balance holds, in US dollars: null for no limit, 0 for none. */
+  const publication = account?.publicationUnlimited ? null : (account?.publication ?? []).reduce((sum, part) => sum + part.left, 0);
   // What is in the card as it opens is simply there; what is read after opens its place.
   const [creditsFromStart] = useState(hasCredits);
   const [upgradeFromStart] = useState(hasCredits && canUpgrade);
@@ -719,6 +721,16 @@ function AccountCard({
               {share !== null ? (
                 <span className="mt-2 block h-1 overflow-hidden rounded-full bg-foreground/[0.08] rtl:-scale-x-100">
                   <motion.span className="block h-full rounded-full bg-primary" style={{ width: `${share * 100}%` }} initial={{ x: "-100%" }} animate={{ x: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+                </span>
+              ) : null}
+              {/* What pays for reports, under the credits and in smaller print, while it holds anything: with nothing
+                  in it, it would say only that. */}
+              {publication !== 0 ? (
+                <span className="mt-2 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate">{tb("publication.title")}</span>
+                  <bdi dir="ltr" className="shrink-0 font-medium tabular-nums text-foreground">
+                    {publication === null ? tb("publication.noLimit") : format.number(publication, { style: "currency", currency: "USD", minimumFractionDigits: publication % 1 ? 2 : 0 })}
+                  </bdi>
                 </span>
               ) : null}
             </Link>
