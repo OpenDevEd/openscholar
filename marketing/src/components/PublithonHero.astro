@@ -17,7 +17,7 @@ const HEAD = ["Publish", "together"];
     <canvas class="ph-air"></canvas>
   </div>
   <div class="inner ph-copy">
-    <h1 aria-label="Publish together">{HEAD.map((word, w) => <><span class="wd" aria-hidden="true">{[...word].map((l, i) => <span style={`--i:${w * 7 + i}`}>{l}</span>)}</span>{" "}</>)}</h1>
+    <h1>{HEAD.map((word, i) => <><span class="wd" style={`--i:${i}`}>{word}</span>{" "}</>)}</h1>
     <p class="lead">At a publithon, researchers publish their own work at the same time, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name for anyone to read and cite.</p>
     <div class="acts"><a class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a><a class="btn ghost" href="#sponsor">Sponsor a publithon</a></div>
   </div>
@@ -235,7 +235,6 @@ void main(){
 </script>
 
 <style>
-  @keyframes ph-up { from { opacity: 0; transform: translateY(20px); } }
   /* Fixed heights that step down with the width, never scaled with the window. */
   .phero { background: var(--night); min-height: 800px; padding-block: 176px 200px; display: grid; align-content: start; }
   .ph-view { position: absolute; inset: 0; z-index: -2; overflow: clip; }
@@ -247,10 +246,19 @@ void main(){
   .ph-copy { position: relative; display: grid; gap: 22px; justify-items: start; }
   .ph-copy h1 { font-size: 128px; line-height: .94; letter-spacing: -.045em; max-width: 7em; text-shadow: 0 2px 40px rgb(7 11 26 / .6); }
   .ph-copy .lead { max-width: 29em; color: rgb(255 255 255 / .88); text-shadow: 0 1px 18px rgb(7 11 26 / .9); }
-  /* The headline's letters rise one after another out of a blur; the words under it follow. */
-  .wd { display: inline-block; white-space: nowrap; } .wd > span { display: inline-block; animation: ph-letter .9s cubic-bezier(.2, .9, .3, 1) calc(.1s + var(--i) * .034s) both; }
-  @keyframes ph-letter { from { opacity: 0; transform: translateY(.45em) rotate(8deg); filter: blur(10px); } }
-  .ph-copy > :not(h1) { animation: ph-up .9s var(--ease) both; } .ph-copy > :nth-child(2) { animation-delay: .5s; } .ph-copy > :nth-child(3) { animation-delay: .62s; }
+  /* All the hero's text arrives one way: each block rises out of a blur, the headline's two lines first, then the
+     paragraph, then the buttons. */
+  .wd { display: inline-block; white-space: nowrap; }
+  .wd, .ph-copy > :not(h1) { animation: ph-rise .9s cubic-bezier(.2, .9, .3, 1) calc(.1s + var(--i, 0) * .12s) both; } .ph-copy > .lead { --i: 2.2; } .ph-copy > .acts { --i: 3.2; }
+  @keyframes ph-rise { from { opacity: 0; transform: translateY(24px); filter: blur(10px); } }
+  /* The headline takes the scene's light, as the planet does: a cool white while it is in the planet's shade, and once
+     the sun is coming up its warm light crosses the words from the right, the side the sun is on. Both lines share one
+     gradient, measured in the headline's own em from its left edge. */
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    /* A shadow would be drawn over the fill and grey it, so the words carry none. */
+    .wd { padding: .1em .06em .2em; margin: -.1em -.06em -.2em; color: transparent; text-shadow: none; background: linear-gradient(90deg, #e6ecfb 0 4em, #fffaf3 5.7em, #ffe2c2 8em) 0 0 / 9em 100% no-repeat; -webkit-background-clip: text; background-clip: text; transition: background-position 3.2s cubic-bezier(.3, .1, .3, 1) .9s; }
+    .phero.live .wd, .phero.resting .wd, :global(html:not(.has-js)) .wd { background-position: -3.7em 0; }
+  }
   .acts { display: flex; flex-wrap: wrap; gap: 10px; }
   @media (max-width: 1399px) { .ph-copy h1 { font-size: 108px; } .phero { min-height: 760px; padding-block: 164px 200px; } }
   @media (max-width: 1199px) { .ph-copy h1 { font-size: 88px; } .phero { min-height: 720px; padding-block: 150px 210px; } }
