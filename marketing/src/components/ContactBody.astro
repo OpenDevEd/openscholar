@@ -15,6 +15,7 @@ const topics = [
   { id: "community", icon: "layers", color: "#fb7185", title: "Start an Evidence Community", text: "A public home for your field's evidence", project: ["Your community", "What will it cover, who will read it, and where does its evidence come from today?"], message: ["Anything else", "Optional"] },
   { id: "southern", icon: "globe", color: "#34d399", title: "Southern plan", text: "For Southern teams, for specific projects", project: ["Your research", "What are you researching, and what do you want to use Openscholar for?"], country: true, org: "Institution", message: ["Anything else", "Optional"] },
   { id: "partner", icon: "buildings", color: "#fbbf24", title: "Research and partnerships", text: "Evidence work for your sector or programme", project: ["Your project", "What would you like to find out, and who is it for?"], message: ["Anything else", "Optional"] },
+  { id: "sponsor", icon: "flag", color: "#84cc16", title: "Sponsor a publithon", text: "Back an event on a topic or region", project: ["Your publithon", "Which topic or region would you back, and who should take part?"], message: ["Anything else", "Optional"] },
   { id: "account", icon: "key", color: "#7da7e6", title: "Help with your account", text: "Signing in, workspaces and access", message: ["What happened", "Tell us what you were trying to do and what happened instead.", true] },
   { id: "bug", icon: "flagq", color: "#2dd4bf", title: "Report a problem", text: "Something broken or not working as it should", message: ["What went wrong", "What you were doing, what you expected, and what happened instead. A link to the page helps.", true] },
   { id: "other", icon: "mail", color: "#ff9d36", title: "Something else", text: "Feedback, press or anything we missed", message: ["Message", "What's on your mind?", true] },
@@ -325,7 +326,7 @@ const faq = [
   .form { position: relative; display: grid; gap: clamp(24px, 3vw, 36px); padding: clamp(20px, 3vw, 40px); border-radius: var(--r); background: #fff; box-shadow: 0 0 0 1px var(--line), 0 40px 80px -40px rgb(7 11 26 / .55); }
   .topics { display: grid; gap: 18px; min-width: 0; } .topics h2 { font-size: clamp(26px, 2.6vw, 34px); }
   /* Each topic is a tile with its own glass emblem. The chosen one fills with its colour and its emblem lifts and turns; the rest wait, a little quieter. */
-  .tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
   .tile { position: relative; isolation: isolate; display: grid; grid-template-rows: auto auto 1fr; justify-items: center; align-content: start; gap: 4px; padding: 10px 12px 16px; border-radius: 20px; text-align: center; cursor: pointer; background: var(--soft); box-shadow: inset 0 0 0 1px transparent; transition: background-color .3s var(--ease), box-shadow .3s var(--ease); }
   .tile input { position: absolute; opacity: 0; pointer-events: none; }
   .tile:has(:focus-visible) { outline: 3px solid var(--brand-ink); outline-offset: 2px; }
@@ -393,7 +394,7 @@ const faq = [
   .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
 
   @media (max-width: 1100px) { .tile em { display: none; } }
-  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .em { aspect-ratio: 1.9; } .em img { width: 80px; } }
+  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } .em { aspect-ratio: 1.9; } .em img { width: 80px; } }
   /* Phones: a compact list, one topic a row, its emblem small beside its name. */
   @media (max-width: 700px) { .tiles { grid-template-columns: minmax(0, 1fr); gap: 6px; } .tile { grid-template-columns: 56px minmax(0, 1fr); grid-template-rows: auto; align-items: center; justify-items: start; column-gap: 12px; padding: 8px 12px 8px 8px; text-align: left; } .em { width: 56px; aspect-ratio: 1; grid-row: span 2; margin: 0; } .em img { width: 48px; } .tile:has(:checked) .em img { transform: translateY(-2px) rotate(-8deg) scale(1.08); } .tile em { display: block; } .tile b { align-self: end; } .tile em { align-self: start; text-wrap: pretty; } }
   @media (max-width: 900px) { .fields { grid-template-columns: minmax(0, 1fr); } .mail :global(.m-art) { left: 0; opacity: .35; } }
