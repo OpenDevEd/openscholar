@@ -9,16 +9,17 @@ import { APP } from "../../data/site.mjs";
 // What a publithon is and how to take part, for anyone invited to one. No event of its own: dates, topic and sponsor
 // come later, when an event needs them. Sponsors write to us through the contact form's sponsor topic.
 // The steps are /publish's own (publishReports.flow.overview), in the order the app takes them. Each has a glass
-// emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck)
-// and the real screen of that step, captured on dev from one report taken through the flow.
+// emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck).
 const steps = [
-  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0.", "The publishing agreement, with the author's name ready to sign"],
-  ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report.", "The DOI reserved for the report"],
-  ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you.", "The upload step, with the line each PDF carries and who adds it"],
-  ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF.", "The report's details read from the PDF: its title, type, language, date and author"],
-  ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before.", "Four automatic checks, each passed"],
-  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page.", "The report live, with its DOI registered"],
+  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
+  ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report."],
+  ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
+  ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
+  ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before."],
+  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
 ];
+// Where the title, the author and the date sit on the report's first page (public/img/pub-cover.avif), for the Page version.
+const reads = [["9%", "13.5%", "74%", "8.6%"], ["9%", "29%", "19%", "4.8%"], ["9%", "78%", "16%", "3.6%"]];
 // A real DOI taken apart into the three parts people need: where it points from, whose it is, and which work.
 // The prefix is shared dev's sandbox one (10.53832); production's goes here at launch. Positions are in the mono
 // font's characters (Ubuntu Mono is half an em wide), so each label sits exactly at its part.
@@ -61,21 +62,46 @@ const faq = [
     </div>
   </section>
 
-  {/* The steps, right under the hero and on the same night sky: one screen that plays itself. Each step takes its
-      turn, opening with its emblem while its real screen takes the window, and the thread creeps on to the next.
-      Laid out after Midday's list beside a product screen and Giga's lit progress line (Mobbin). */}
-  <section class="bleed how" id="publish" aria-labelledby="how-h" data-how data-at="0">
-    <div class="stage">
-      <div class="inner how-in">
-        <div class="how-head"><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About ten minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
+  {/* The steps, right under the hero and on the same night sky, one full screen.
+      UNDER REVIEW: three versions behind the switch at the foot of the window (?steps=line, page or type). Once one
+      is picked, the other two, the switch and their part of the script go.
+      Line: the icons are the picture, on one lit line that ends on the DOI (after Giga's progress line, Mobbin).
+      Page: the report is the picture. One page changes as each step lands on it.
+      Type: the words are the picture. Six lines of large type light in turn. */}
+  <section class="bleed how" id="publish" aria-labelledby="how-h" data-how data-show="line">
+    <div class="inner how-in">
+      <div class="how-head"><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About ten minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
+
+      <div class="v v-line">
         <ol class="road">
-          <i class="thread" aria-hidden="true"><i></i></i>
-          {steps.map(([id, c, t, d], i) => <li class:list={{ on: i === 0 }} style={`--c:${c}`} data-step={i}><button type="button" aria-current={i === 0 ? "step" : "false"}><img src={`/img/step-${id}.avif`} width="264" height="264" decoding="async" alt="" /><span class="txt"><b>{t}</b><span>{d}</span></span></button></li>)}
+          <i class="thread" aria-hidden="true"><i></i><b></b></i>
+          {steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><span class="em"><img src={`/img/step-${id}.avif`} width="400" height="400" loading="lazy" decoding="async" alt="" /></span><b>{t}</b><span class="d">{d}</span></li>)}
         </ol>
-        <div class="shots">{steps.map(([id, , , , alt], i) => <img class:list={["shot", { on: i === 0 }]} data-shot={i} src={`/img/screens/pub-${id}-laptop-light.avif`} srcset={`/img/screens/pub-${id}-laptop-light-1000.avif 1000w, /img/screens/pub-${id}-laptop-light.avif 2000w`} sizes="(max-width: 1000px) 94vw, 700px" width="2000" height="1250" loading={i === 0 ? "eager" : "lazy"} decoding="async" alt={alt} />)}</div>
+        <p class="arrive"><span class="a-doi">https://doi.org/10.53832/openscholar-reports.r100230</span></p>
       </div>
+
+      <div class="v v-page">
+        <div class="caps">{steps.map(([, c, t, d], i) => <p class="cap" data-cap={i} style={`--c:${c}`}><b>{t}</b><span>{d}</span></p>)}</div>
+        <div class="pic">
+          <div class="sheet">
+            <div class="ph" aria-hidden="true"><b>Your title</b><i></i><i></i><small>Openscholar Reports</small><svg class="sig" viewBox="0 0 220 64" fill="none"><path pathLength="1" d="M6 44c14-22 26-34 32-30 7 5-12 36-6 38 7 2 20-30 28-28 6 2-6 24 0 26 5 1 12-18 20-18 6 0-2 16 4 17 8 1 14-22 26-24 8-1 0 22 8 23 10 1 22-14 36-16 12-2 28 4 60 0" /></svg></div>
+            <img class="cover" src="/img/pub-cover.avif" width="720" height="1018" loading="lazy" decoding="async" alt="The first page of a report: its title, its author and its date" />
+            {reads.map(([x, y, w, h], i) => <i class="hl" style={`--x:${x};--y:${y};--w:${w};--h:${h};--n:${i}`} aria-hidden="true"></i>)}
+            <i class="wash" aria-hidden="true"></i>
+            <span class="stamp" aria-hidden="true">{steps.map(([id], i) => <img data-stamp={i} src={`/img/step-${id}.avif`} width="400" height="400" loading="lazy" decoding="async" alt="" />)}</span>
+          </div>
+          <p class="p-doi">doi.org/10.53832/openscholar-reports.r100269</p>
+        </div>
+      </div>
+
+      <ol class="v v-type">
+        {steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><img src={`/img/step-${id}.avif`} width="400" height="400" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></li>)}
+      </ol>
     </div>
   </section>
+  {/* The address can choose the version, set before the section first paints. */}
+  <script is:inline set:html={`(()=>{const v=new URLSearchParams(location.search).get("steps");if(["line","page","type"].includes(v))document.querySelector("[data-how]").dataset.show=v})()`} />
+  <div class="vswitch" role="group" aria-label="Versions of the steps section, for review"><span>Steps section</span>{[["line", "Line"], ["page", "Page"], ["type", "Type"]].map(([k, n]) => <button type="button" data-pickv={k} aria-pressed={k === "line" ? "true" : "false"}>{n}</button>)}</div>
 
   {/* What a DOI is: a real one labelled part by part, and the page its link opens, with what the DOI does beside it. */}
   <section class="doi" id="doi" aria-labelledby="doi-h">
@@ -133,31 +159,36 @@ const faq = [
   <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
 </Base>
 <script>
-  // The steps play by themselves while their section is on screen: each takes its turn, the thread creeping on toward
-  // the next, and the run rests on the last. Choosing a step shows it and ends the run.
+  // UNDER REVIEW: three versions of the steps behind a switch. The one shown plays once when the section comes on
+  // screen, and again when it is switched to.
   const how = document.querySelector<HTMLElement>("[data-how]");
   if (how) {
-    const rows = [...how.querySelectorAll<HTMLElement>("[data-step]")], shots = [...how.querySelectorAll<HTMLElement>("[data-shot]")], n = rows.length;
-    // A turn is the time the rows take to open and shut; a step holds the screen for DWELL in all.
-    const TURN = 600, DWELL = 2600;
-    let at = 0, playing = false, chosen = false, fillT = 0, nextT = 0;
-    how.style.setProperty("--pub-dwell", `${DWELL - TURN}ms`);
-    const show = (i: number) => {
-      at = i; how.dataset.at = String(i); how.style.setProperty("--pub-step", String(i)); how.style.setProperty("--pub-tint", rows[i].style.getPropertyValue("--c"));
-      rows.forEach((r, j) => { r.classList.toggle("on", j === i); r.classList.toggle("done", j < i); r.querySelector("button")!.setAttribute("aria-current", j === i ? "step" : "false"); });
-      shots.forEach((s, j) => { s.classList.toggle("on", j === i); s.classList.toggle("done", j < i); });
+    const moves = document.documentElement.classList.contains("js");
+    const picks = [...document.querySelectorAll<HTMLButtonElement>("[data-pickv]")];
+    const page = how.querySelector<HTMLElement>(".v-page")!, caps = [...page.querySelectorAll<HTMLElement>("[data-cap]")], stamps = [...page.querySelectorAll<HTMLElement>("[data-stamp]")];
+    let seen = false, timers: number[] = [];
+    // The Page version's place in its run: -1 before anything has happened, then the step that has just landed.
+    const pageAt = (i: number) => {
+      page.dataset.at = String(i); how.style.setProperty("--pub-tint", caps[Math.max(i, 0)].style.getPropertyValue("--c"));
+      caps.forEach((c, j) => c.classList.toggle("on", j === Math.max(i, 0))); stamps.forEach((s, j) => s.classList.toggle("on", j === i));
     };
-    // The thread's reach past the step in hand: none, or on its way to the next at a steady pace.
-    const fill = (on: boolean) => { how.classList.toggle("run", on); how.style.setProperty("--pub-frac", on ? "1" : "0"); };
-    const rest = () => { clearTimeout(fillT); clearTimeout(nextT); };
-    const turn = (i: number) => {
-      rest(); show(i); fill(false);
-      if (!playing || i === n - 1) return;
-      fillT = window.setTimeout(() => fill(true), TURN); nextT = window.setTimeout(() => turn(i + 1), DWELL);
+    const play = () => {
+      timers.forEach(clearTimeout); timers = [];
+      const v = how.querySelector<HTMLElement>(`.v-${how.dataset.show}`)!;
+      how.querySelectorAll(".v").forEach((x) => x.classList.remove("play"));
+      if (!moves) return;
+      if (v === page) { pageAt(-1); for (let i = 0; i < caps.length; i++) timers.push(window.setTimeout(() => pageAt(i), 450 + i * 1500)); }
+      void how.offsetWidth; v.classList.add("play");
     };
-    rows.forEach((r, j) => r.querySelector("button")!.addEventListener("click", () => { chosen = true; playing = false; turn(j); }));
-    // It plays only while most of it is on screen, and picks up at the step it left.
-    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) new IntersectionObserver(([e]) => { if (chosen) return; playing = e.isIntersecting; if (playing) turn(at); else { rest(); fill(false); } }, { threshold: .6 }).observe(how.querySelector(".stage")!);
+    const mark = () => picks.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.pickv === how.dataset.show)));
+    picks.forEach((b) => b.addEventListener("click", () => {
+      how.dataset.show = b.dataset.pickv!; mark();
+      const url = new URL(location.href); url.searchParams.set("steps", b.dataset.pickv!); history.replaceState(history.state, "", url);
+      scrollTo({ top: how.getBoundingClientRect().top + scrollY, behavior: moves ? "smooth" : "auto" });
+      if (seen) play();
+    }));
+    mark(); if (moves) pageAt(-1);
+    new IntersectionObserver(([e], io) => { if (!e.isIntersecting) return; seen = true; io.disconnect(); play(); }, { threshold: .35 }).observe(how);
   }
 </script>
 <style>
@@ -229,52 +260,85 @@ const faq = [
   :global(.js) .ch-table:not(.in) .was b { background-size: 0 1.5px; } :global(.js) .ch-table.in .was b { transition: background-size .5s cubic-bezier(.65, 0, .35, 1) calc(.3s + var(--i) * .3s); }
   :global(.js) .ch-table:not(.in) .now { opacity: 0; translate: -10px 0; } :global(.js) .ch-table.in .now { transition: opacity .5s var(--ease) calc(.5s + var(--i) * .3s), translate .6s var(--ease) calc(.5s + var(--i) * .3s); }
 
-  /* The steps: one screen that plays itself. Without script, or in a window too short for it, they are a plain list
-     beside the last screen. The thread's numbers are registered, so they move with the rows they follow. */
+  /* The steps: one full screen under the hero, flush with it so the two are one sky. Three versions share its heading. */
   @property --pub-tint { syntax: "<color>"; inherits: true; initial-value: #3b82f6; }
-  @property --pub-step { syntax: "<number>"; inherits: true; initial-value: 0; }
-  @property --pub-frac { syntax: "<number>"; inherits: true; initial-value: 0; }
-  @property --pub-top { syntax: "<length>"; inherits: true; initial-value: 26px; }
-  /* Flush under the hero: the strip's gap between sections would show as a white line across the sky. */
-  .how { --h0: 52px; --h1: 132px; --em0: 40px; --em1: 96px; --pub-top: calc(var(--h0) / 2); background: var(--night); margin-top: calc(var(--gap) * -1); transition: --pub-tint .8s var(--ease), --pub-step .55s var(--ease), --pub-top .55s var(--ease), --pub-frac .55s var(--ease); }
-  /* While a step holds the screen, the thread creeps on toward the next one at a steady pace. */
-  .how.run { transition: --pub-tint .8s var(--ease), --pub-step .55s var(--ease), --pub-top .55s var(--ease), --pub-frac var(--pub-dwell, 2s) linear; }
-  /* The contents sit in the middle of the stage, and start at its top when they are taller than it. */
-  .stage { position: relative; isolation: isolate; display: grid; align-items: start; padding-block: clamp(64px, 7vw, 104px); }
-  .stage::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(44% 56% at 72% 58%, color-mix(in srgb, var(--pub-tint) 22%, transparent), transparent 72%); }
-  .how-in { margin-block: auto; display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: clamp(32px, 4vw, 64px); row-gap: 28px; align-items: center; }
-  .how-head { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .how-head h2 { font-size: 44px; line-height: 1.05; letter-spacing: -.03em; } .how-head .lead { color: rgb(255 255 255 / .78); }
-  .road { position: relative; isolation: isolate; display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
-  .road button { display: grid; grid-template-columns: var(--em1) minmax(0, 1fr); column-gap: 20px; align-items: center; width: 100%; height: 100%; padding: 0; text-align: left; color: #fff; cursor: default; }
-  .road img { justify-self: center; width: 64px; height: 64px; object-fit: contain; }
-  .txt { display: grid; gap: 4px; min-width: 0; } .txt b { font-weight: 500; font-size: 20px; line-height: 1.1; letter-spacing: -.01em; } .txt > span { color: rgb(255 255 255 / .7); font-size: 16px; line-height: 1.45; }
-  .thread { display: none; }
-  .shots { position: relative; justify-self: end; width: min(100%, calc((100vh - 300px) * 1.6)); aspect-ratio: 1120 / 700; overflow: clip; border-radius: 16px; background: #0d1326; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 50px 120px -40px #000, 0 0 140px -30px color-mix(in srgb, var(--pub-tint) 65%, transparent); }
-  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; } .shot:last-child { opacity: 1; }
+  .how { background: var(--night); margin-top: calc(var(--gap) * -1); min-height: 100vh; min-height: 100svh; display: grid; align-items: center; padding-block: 112px 96px; transition: --pub-tint .8s var(--ease); }
+  .how-in { display: grid; gap: clamp(36px, 4.4vw, 64px); }
+  .how-head { display: grid; justify-items: center; gap: 14px; text-align: center; } .how-head h2 { font-size: clamp(32px, 3.6vw, 52px); line-height: 1.05; letter-spacing: -.03em; } .how-head .lead { max-width: 34em; color: rgb(255 255 255 / .76); }
+  .v { display: none; } .how[data-show="line"] .v-line, .how[data-show="type"] .v-type { display: grid; } .how[data-show="page"] .v-page { display: contents; }
 
-  @media (min-height: 561px) {
-    :global(.has-js) .stage { min-height: 100vh; min-height: 100svh; padding-block: 104px 36px; }
-    :global(.has-js) .road { gap: 0; }
-    /* Each step is a row: shut it is its emblem and its name; in hand it opens, its emblem grows and its line shows. */
-    :global(.has-js) .road li { height: var(--h0); transition: height .55s var(--ease); } :global(.has-js) .road li.on { height: var(--h1); }
-    :global(.has-js) .road button { cursor: pointer; }
-    :global(.has-js) .road img { width: var(--em0); height: var(--em0); filter: grayscale(1) opacity(.42); transition: width .6s cubic-bezier(.34, 1.4, .64, 1), height .6s cubic-bezier(.34, 1.4, .64, 1), filter .5s var(--ease); }
-    :global(.has-js) .road .done img { filter: none; } :global(.has-js) .road .on img { width: var(--em1); height: var(--em1); filter: drop-shadow(0 0 26px color-mix(in srgb, var(--c) 50%, transparent)); }
-    :global(.has-js) .txt b { font-size: 18px; color: rgb(255 255 255 / .46); transition: font-size .5s var(--ease), color .4s var(--ease); } :global(.has-js) .done .txt b { color: rgb(255 255 255 / .78); } :global(.has-js) .on .txt b { font-size: 28px; letter-spacing: -.02em; color: #fff; }
-    :global(.has-js) .road button:hover .txt b { color: #fff; }
-    :global(.has-js) .txt > span { max-height: 0; overflow: hidden; opacity: 0; transition: max-height .5s var(--ease), opacity .25s var(--ease); } :global(.has-js) .on .txt > span { max-height: 4.4em; opacity: 1; transition: max-height .5s var(--ease), opacity .45s var(--ease) .15s; }
-    /* The thread runs through the emblems' middles and is lit as far as the step in hand, then on toward the next
-       while that step holds the screen. Its ends sit on the first and last emblems as their rows open and shut. */
-    :global(.has-js) .how[data-at="0"] { --pub-top: calc(var(--h1) / 2); }
-    :global(.has-js) .thread { display: block; position: absolute; z-index: -1; left: calc(var(--em1) / 2 - 1px); width: 2px; top: var(--pub-top); bottom: calc(var(--h0) / 2); border-radius: 2px; background: rgb(255 255 255 / .1); transition: bottom .55s var(--ease); }
-    :global(.has-js) .how[data-at="5"] .thread { bottom: calc(var(--h1) / 2); }
-    :global(.has-js) .thread i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .5); clip-path: inset(0 0 calc(100% - (var(--pub-step) * var(--h0) + var(--h1) / 2 - var(--pub-top) + var(--pub-frac) * (var(--h1) / 2 + var(--h0) / 2))) 0); }
-    /* The window stays; each step's screen comes up into it as the last one leaves through the top. */
-    :global(.has-js) .shot, :global(.has-js) .shot:last-child { opacity: 0; transform: translateY(36px) scale(.985); transition: opacity .45s var(--ease), transform .7s var(--ease); }
-    :global(.has-js) .shot.done { transform: translateY(-28px) scale(.985); } :global(.has-js) .shot.on { opacity: 1; transform: none; }
-  }
-  /* A short window keeps the stage with everything a size down. */
-  @media (min-height: 561px) and (max-height: 720px) and (min-width: 1001px) { .how { --h0: 44px; --h1: 116px; --em0: 34px; --em1: 80px; } .how-in { row-gap: 18px; } .how-head h2 { font-size: 34px; } :global(.has-js) .on .txt b { font-size: 24px; } :global(.has-js) .stage { padding-block: 92px 24px; } }
+  /* Line: six emblems on one thread. A light runs along it once; each emblem lights as it passes, and the run ends on the DOI. */
+  .v-line { --t0: .3s; --dt: .6s; gap: clamp(40px, 4.6vw, 64px); }
+  .road { --em: clamp(104px, 10.4vw, 150px); position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 clamp(8px, 1.2vw, 16px); margin: 0; padding: 0; list-style: none; }
+  .thread { position: absolute; z-index: -1; top: calc(var(--em) / 2 - 1px); left: calc(100% / 12); right: calc(100% / 12); height: 2px; border-radius: 2px; background: rgb(255 255 255 / .1); }
+  .thread > i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .45); transform-origin: left; }
+  .thread > b { position: absolute; top: 50%; left: 100%; width: 140px; height: 8px; translate: -100% -50%; border-radius: 8px; background: linear-gradient(90deg, transparent, #fff); filter: blur(2px); opacity: 0; }
+  .road li { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; }
+  .em { position: relative; display: grid; place-items: center; width: var(--em); height: var(--em); margin-bottom: 14px; }
+  .em::before { content: ""; position: absolute; inset: -20%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 40%, transparent), transparent); }
+  .em img { width: 100%; height: 100%; object-fit: contain; }
+  .road li > b { font-weight: 500; font-size: clamp(16px, 1.3vw, 18px); letter-spacing: -.01em; white-space: nowrap; } .road .d { color: rgb(255 255 255 / .66); font-size: 15px; line-height: 1.4; max-width: 15em; }
+  .arrive { margin: 0; text-align: center; } .a-doi { position: relative; display: inline-block; padding-bottom: 12px; font: 400 clamp(17px, 2.5vw, 34px)/1.2 var(--mono); color: #fff; overflow-wrap: anywhere; }
+  .a-doi::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 16px rgb(255 214 140 / .5); }
+  :global(.js) .v-line:not(.play) .thread > i { transform: scaleX(0); }
+  :global(.js) .v-line:not(.play) .em img { opacity: .3; filter: grayscale(1); transform: scale(.8); } :global(.js) .v-line:not(.play) .em::before { opacity: 0; transform: scale(.4); }
+  :global(.js) .v-line:not(.play) .road li > b, :global(.js) .v-line:not(.play) .road .d { opacity: 0; translate: 0 10px; }
+  :global(.js) .v-line:not(.play) .a-doi { clip-path: inset(0 100% 0 0); }
+  .v-line.play .thread > i { transition: transform calc(var(--dt) * 5) linear var(--t0); }
+  .v-line.play .thread > b { animation: pub-head calc(var(--dt) * 5) linear var(--t0) both; } @keyframes pub-head { 0% { left: 0; opacity: 0; } 4% { opacity: 1; } 94% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+  .v-line.play .em img { transition: opacity .4s var(--ease) calc(var(--t0) + var(--i) * var(--dt)), filter .6s var(--ease) calc(var(--t0) + var(--i) * var(--dt)), transform .9s cubic-bezier(.34, 1.56, .64, 1) calc(var(--t0) + var(--i) * var(--dt)); }
+  .v-line.play .em::before { transition: opacity .6s var(--ease) calc(var(--t0) + var(--i) * var(--dt)), transform .9s var(--ease) calc(var(--t0) + var(--i) * var(--dt)); }
+  .v-line.play .road li > b, .v-line.play .road .d { transition: opacity .5s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .12s), translate .6s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .12s); }
+  /* The DOI is typed out, a character at a time, once the light has reached the last emblem. */
+  .v-line.play .a-doi { clip-path: inset(0 0 0 0); transition: clip-path 1.1s steps(52, end) calc(var(--t0) + var(--dt) * 5 + .35s); }
+
+  /* Page: the report's page on the right changes as each step lands on it, the step's emblem on its corner; on the
+     left the step in hand's words. */
+  .how[data-show="page"] .how-in { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-areas: "head pic" "caps pic"; grid-template-rows: 1fr 1fr; column-gap: clamp(32px, 5vw, 80px); row-gap: 40px; }
+  .how[data-show="page"] .how-head { grid-area: head; align-self: end; justify-items: start; text-align: left; }
+  .how[data-show="page"]::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(40% 56% at 72% 52%, color-mix(in srgb, var(--pub-tint) 24%, transparent), transparent 72%); }
+  .caps { grid-area: caps; align-self: start; display: grid; } .cap { grid-area: 1 / 1; display: grid; align-content: start; gap: 10px; margin: 0; opacity: 0; }
+  .cap b { font-weight: 500; font-size: clamp(26px, 2.8vw, 38px); line-height: 1.08; letter-spacing: -.025em; color: var(--c); } .cap span { color: rgb(255 255 255 / .76); font-size: 18px; line-height: 1.45; max-width: 24em; }
+  .cap:last-child { opacity: 1; } .v-page[data-at] .cap { opacity: 0; translate: 0 10px; transition: opacity .25s var(--ease), translate .4s var(--ease); } .v-page[data-at] .cap.on { opacity: 1; translate: 0; transition: opacity .45s var(--ease) .12s, translate .5s var(--ease) .12s; }
+  .pic { grid-area: pic; justify-self: center; display: grid; justify-items: center; gap: 20px; }
+  .sheet { position: relative; width: clamp(220px, calc((100svh - 330px) * .707), 380px); aspect-ratio: 794 / 1123; border-radius: 6px; background: #fff; box-shadow: 0 40px 90px -30px #000, 0 0 0 1px rgb(255 255 255 / .1); transition: box-shadow .9s var(--ease), transform .9s var(--ease); }
+  /* Before the PDF arrives the page is the app's own placeholder cover. */
+  .ph { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; background: #faf6ee; container-type: inline-size; color: #1f2937; }
+  .ph::before { content: ""; position: absolute; inset: 0 0 44%; background: #e8781e; }
+  .ph b { position: absolute; left: 8%; bottom: 48%; color: #fff; font-weight: 700; font-size: 7.4cqw; letter-spacing: -.01em; }
+  .ph i { position: absolute; left: 8%; right: 30%; top: 65%; height: 1.1%; border-radius: 9px; background: #e3ded3; } .ph i + i { top: 69.5%; right: 44%; } .ph small { position: absolute; left: 8%; top: 76%; color: #8a8478; font-size: 3.6cqw; }
+  .sig { position: absolute; left: 36%; bottom: 5%; width: 58%; height: auto; } .sig path { stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1.1s cubic-bezier(.45, 0, .2, 1); }
+  .cover { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; clip-path: inset(0); transition: clip-path .9s cubic-bezier(.65, 0, .35, 1); }
+  .hl { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); border-radius: 4px; background: rgb(250 204 21 / .3); box-shadow: 0 0 0 1.5px rgb(250 204 21 / .85); opacity: 0; transition: opacity .35s var(--ease); }
+  .wash { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; } .wash::before { content: ""; position: absolute; inset: -40% 0 auto; height: 40%; background: linear-gradient(transparent, rgb(132 204 22 / .15) 40%, rgb(132 204 22 / .55)); }
+  .stamp { position: absolute; right: -58px; top: -54px; width: 132px; height: 132px; display: grid; place-items: center; }
+  .stamp::before { content: ""; position: absolute; inset: -30%; border-radius: 50%; background: repeating-conic-gradient(rgb(251 191 36 / .8) 0 3deg, transparent 3deg 15deg); -webkit-mask-image: radial-gradient(closest-side, transparent 46%, #000 52%, transparent 100%); mask-image: radial-gradient(closest-side, transparent 46%, #000 52%, transparent 100%); opacity: 0; }
+  .stamp img { grid-area: 1 / 1; position: relative; width: 100%; height: 100%; object-fit: contain; opacity: 0; filter: drop-shadow(0 12px 26px rgb(0 0 0 / .5)); } .stamp img:last-child { opacity: 1; }
+  .v-page[data-at] .stamp img { opacity: 0; transform: scale(.4) rotate(-24deg); transition: opacity .2s var(--ease), transform .3s var(--ease); } .v-page[data-at] .stamp img.on { opacity: 1; transform: none; transition: opacity .25s var(--ease), transform .7s cubic-bezier(.34, 1.56, .64, 1); }
+  .p-doi { margin: 0; font: 400 clamp(14px, 1.3vw, 17px)/1.2 var(--mono); color: #ffd68c; clip-path: inset(0); transition: clip-path .9s steps(43, end), color .6s var(--ease); }
+  /* The run: signed, the DOI typed under the page, the PDF washing in, its details picked out, the checks sweeping it, live. */
+  .v-page[data-at="-1"] .sig path { stroke-dashoffset: 1; transition: none; }
+  .v-page:is([data-at="-1"], [data-at="0"]) .p-doi { clip-path: inset(0 100% 0 0); transition: none; } .v-page[data-at]:not([data-at="5"]) .p-doi { color: rgb(255 255 255 / .82); }
+  .v-page:is([data-at="-1"], [data-at="0"], [data-at="1"]) .cover { clip-path: inset(0 0 100% 0); transition: none; }
+  .v-page[data-at="3"] .hl { opacity: 1; transition-delay: calc(.15s + var(--n) * .3s); }
+  .v-page[data-at="4"] .wash::before { animation: pub-wash 1.15s cubic-bezier(.45, 0, .2, 1) both; } @keyframes pub-wash { to { transform: translateY(460%); } }
+  .v-page:not([data-at]) .sheet, .v-page[data-at="5"] .sheet { box-shadow: 0 40px 90px -30px #000, 0 0 0 1px rgb(255 214 140 / .55), 0 0 120px -10px rgb(251 191 36 / .6); transform: translateY(-6px); }
+  .v-page[data-at="5"] .stamp::before { animation: pub-rays 1.3s var(--ease) both; } @keyframes pub-rays { from { opacity: .9; transform: scale(.5) rotate(-20deg); } to { opacity: 0; transform: scale(1.5) rotate(10deg); } }
+
+  /* Type: six lines of large type, each filling with light from its emblem's side as its turn comes. */
+  .v-type { --t0: .2s; --dt: .42s; justify-content: center; grid-template-columns: clamp(52px, 5vw, 70px) max-content minmax(0, 320px); column-gap: clamp(16px, 2vw, 28px); row-gap: clamp(4px, .7vw, 10px); margin: 0; padding: 0; list-style: none; }
+  .v-type li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; }
+  .v-type img { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+  .v-type b { font-weight: 500; font-size: clamp(34px, 4.4vw, 62px); line-height: 1.12; letter-spacing: -.035em; white-space: nowrap; color: transparent; background: linear-gradient(90deg, #fff 50%, rgb(255 255 255 / .16) 50%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; }
+  .v-type span { color: rgb(255 255 255 / .7); font-size: 16px; line-height: 1.45; }
+  :global(.js) .v-type:not(.play) b { background-position: 100% 0; } :global(.js) .v-type:not(.play) img { opacity: .3; filter: grayscale(1); transform: scale(.8); } :global(.js) .v-type:not(.play) span { opacity: 0; translate: -10px 0; }
+  .v-type.play b { transition: background-position .7s cubic-bezier(.65, 0, .35, 1) calc(var(--t0) + var(--i) * var(--dt)); }
+  .v-type.play img { transition: opacity .4s var(--ease) calc(var(--t0) + var(--i) * var(--dt)), filter .6s var(--ease) calc(var(--t0) + var(--i) * var(--dt)), transform .8s cubic-bezier(.34, 1.56, .64, 1) calc(var(--t0) + var(--i) * var(--dt)); }
+  .v-type.play span { transition: opacity .5s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .35s), translate .6s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .35s); }
+
+  /* Review only: the switch between the three versions. It goes when one is picked. */
+  .vswitch { position: fixed; z-index: 60; left: 50%; bottom: 18px; translate: -50% 0; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 14px; background: rgb(12 16 28 / .88); color: #fff; font-size: 14px; white-space: nowrap; box-shadow: 0 0 0 1px rgb(255 255 255 / .18), 0 18px 40px -12px rgb(0 0 0 / .6); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .vswitch span { padding-inline: 10px 6px; color: rgb(255 255 255 / .62); } .vswitch button { height: 34px; padding-inline: 14px; border-radius: 10px; color: rgb(255 255 255 / .82); font-weight: 500; transition: background-color .2s var(--ease), color .2s var(--ease); } .vswitch button:hover { color: #fff; } .vswitch [aria-pressed="true"], .vswitch [aria-pressed="true"]:hover { background: #fff; color: var(--ink); }
 
   /* Sponsors: the world lights up where the work comes from, and every thread leads to one medallion. */
   .sponsor { background: var(--night); min-height: clamp(560px, 50vw, 720px); padding-block: clamp(72px, 8vw, 120px); margin-top: 16px; display: grid; align-items: start; }
@@ -300,22 +364,19 @@ const faq = [
     .dia > figcaption:nth-of-type(1) { grid-row: 2; } .dia > figcaption:nth-of-type(2) { grid-row: 4; } .dia > figcaption:nth-of-type(3) { grid-row: 6; }
   }
   @media (prefers-reduced-motion: reduce) { :global(.js) .ch-table:not(.in) .now, :global(.js) .dia:not(.in) .tag { opacity: 1; translate: none; } :global(.js) .ch-table:not(.in) .was b { background-size: 100% 1.5px; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
-  /* Narrow screens: the screen on top, the six emblems in a row on the thread under it, and the step in hand's words below. */
-  @media (max-width: 1000px) {
-    .how { --em0: 34px; --em1: 52px; }
-    .how-in { grid-template-columns: minmax(0, 1fr); row-gap: 16px; } .how-head { grid-template-columns: minmax(0, 1fr); gap: 8px; } .how-head h2 { font-size: 28px; } .how-head .lead { font-size: 15px; line-height: 1.45; }
-    .shots { order: 2; justify-self: center; width: min(100%, calc((100vh - 420px) * 1.6)); border-radius: 12px; } .road { order: 3; }
-    .road button { grid-template-columns: 64px minmax(0, 1fr); column-gap: 14px; }
+  /* Narrow screens. Line: the thread runs down the left through the emblems. Page: the page over its words. Type: smaller lines. */
+  @media (max-width: 900px) {
+    .how { padding-block: 96px 88px; } .how-head { justify-items: start; text-align: left; }
+    .road { --em: 64px; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(92px, auto); }
+    .road li > b { white-space: normal; }
+    .road li { grid-template-columns: var(--em) minmax(0, 1fr); column-gap: 16px; justify-items: start; align-content: center; text-align: left; } .em { grid-row: span 2; margin: 0; align-self: center; } .road li > b { align-self: end; } .road .d { align-self: start; max-width: none; }
+    .thread { top: 46px; bottom: 46px; left: calc(var(--em) / 2 - 1px); right: auto; width: 2px; height: auto; } .thread > i { background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); transform-origin: top; }
+    :global(.js) .v-line:not(.play) .thread > i { transform: scaleY(0); }
+    .thread > b { left: 50%; top: 100%; width: 8px; height: 110px; translate: -50% -100%; background: linear-gradient(transparent, #fff); } .v-line.play .thread > b { animation-name: pub-head-v; } @keyframes pub-head-v { 0% { top: 0; opacity: 0; } 4% { opacity: 1; } 94% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+    .arrive { text-align: left; } :global(.js) .v-line:not(.play) .a-doi { clip-path: none; opacity: 0; translate: 0 10px; } .v-line.play .a-doi { clip-path: none; transition: opacity .6s var(--ease) calc(var(--t0) + var(--dt) * 5 + .3s), translate .7s var(--ease) calc(var(--t0) + var(--dt) * 5 + .3s); }
+    .how[data-show="page"] .how-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "pic" "caps"; grid-template-rows: auto; row-gap: 28px; } .caps { min-height: 124px; } .cap span { font-size: 16px; }
+    .sheet { width: clamp(170px, calc((100svh - 500px) * .707), 250px); } .stamp { right: -38px; top: -36px; width: 88px; height: 88px; }
+    .v-type { justify-content: stretch; grid-template-columns: 44px minmax(0, 1fr); column-gap: 14px; row-gap: 14px; } .v-type img { grid-row: span 2; align-self: center; } .v-type b { font-size: 26px; white-space: normal; letter-spacing: -.025em; } .v-type span { grid-column: 2; font-size: 15px; }
+    .vswitch span { display: none; }
   }
-  @media (max-width: 1000px) and (min-height: 561px) {
-    :global(.has-js) .stage { padding-block: 88px 16px; }
-    :global(.has-js) .road { grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: 112px; }
-    :global(.has-js) .road li, :global(.has-js) .road li.on { height: 56px; }
-    :global(.has-js) .road button { display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; }
-    :global(.has-js) .txt { position: absolute; left: 0; right: 0; top: 68px; pointer-events: none; opacity: 0; translate: 0 8px; transition: opacity .25s var(--ease), translate .4s var(--ease); } :global(.has-js) .on .txt { opacity: 1; translate: 0; transition: opacity .45s var(--ease) .12s, translate .5s var(--ease) .12s; }
-    :global(.has-js) .txt b, :global(.has-js) .on .txt b, :global(.has-js) .done .txt b { font-size: 22px; color: #fff; } :global(.has-js) .txt > span, :global(.has-js) .on .txt > span { max-height: none; opacity: 1; font-size: 15px; }
-    :global(.has-js) .thread, :global(.has-js) .how[data-at="5"] .thread { top: 27px; bottom: auto; left: calc(100% / 12); right: calc(100% / 12); width: auto; height: 2px; }
-    :global(.has-js) .thread i { background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); clip-path: inset(0 calc(100% - (var(--pub-step) + var(--pub-frac)) / 5 * 100%) 0 0); }
-  }
-  @media (prefers-reduced-motion: reduce) { .how, .how * { transition: none !important; } }
 </style>
