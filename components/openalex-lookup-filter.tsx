@@ -64,11 +64,18 @@ export function OpenAlexLookupFilter({
   // The typed option follows the keys, not the debounce, so Enter picks what the box says.
   const text = search.trim();
   const typed = text ? lookup.typed?.(text) : null;
-  const found = query ? (results.data ?? []) : [];
-  const known = new Set(found.flatMap((option) => [nameKey(option.name), ...(option.ror ? [option.ror] : [])]));
-  const more = query && also ? (elsewhere.data ?? []).filter((option) => ![option.name, ...(option.aliases ?? [])].some((name) => known.has(nameKey(name))) && !(option.ror && known.has(option.ror))) : [];
+  const found: Option[] = query ? (results.data ?? []) : [];
+  // A record the other register lists too is shown once, as this register's, carrying the other's names: typed by
+  // its acronym, it is still found.
+  const fromElsewhere = query && also ? (elsewhere.data ?? []) : [];
+  const same = (one: Option, other: Option) => (!!one.ror && one.ror === other.ror) || [other.name, ...(other.aliases ?? [])].some((name) => nameKey(name) === nameKey(one.name));
+  const merged: Option[] = found.map((option) => {
+    const twin = fromElsewhere.find((other) => same(option, other));
+    return twin ? { ...option, ror: option.ror ?? twin.ror, aliases: [...(option.aliases ?? []), twin.name, ...(twin.aliases ?? [])] } : option;
+  });
+  const more = fromElsewhere.filter((other) => !found.some((option) => same(option, other)));
   // A record named exactly as typed takes the typed row's place at the top: the words typed are then no record of their own.
-  const listed: Option[] = [...found, ...more];
+  const listed: Option[] = [...merged, ...more];
   const exact = typed && listed.find((option) => [option.name, ...(option.aliases ?? [])].some((name) => nameKey(name) === nameKey(typed.name)));
   const first = exact || typed;
   // Each record with a ROR ID says so in its row, as its chip does once picked, whichever register found it. A search

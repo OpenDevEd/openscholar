@@ -203,6 +203,8 @@ function Sureness({ score }: { score: number }) {
 
 const typedId = (name: string) => `typed:${name}`;
 
+/** A ROR ID as one key, however it was written (`https://ror.org/037wke960` or `037wke960`). */
+const rorOf = (ror: string | undefined) => ror?.replace(/^https?:\/\/ror\.org\//i, "").toLowerCase();
 /** A funder's chip: OpenAlex's by its ID, one only ROR knows by its ROR ID, or the name as typed. */
 const funderChip = (funder: Metadata["funding"][number]["funder"]) => funder.id ?? (funder.ror ? `ror:${funder.ror}` : typedId(funder.name));
 /** The funder a picked option is: OpenAlex's with the ROR ID it has, one found on ROR by its ROR ID, or the name as typed. */
@@ -621,7 +623,12 @@ export function DetailsStep({
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(funderChip(f.funder))))}
-            onPicked={(option) => set("funding", [...m.funding, { funder: funderOf(option), awards: [] }])}
+            onPicked={(option) => {
+              // A funder already listed under its ROR ID is the same funder found again: it gains the record and keeps its grants.
+              const funder = funderOf(option);
+              const at = funder.ror ? m.funding.findIndex((f) => rorOf(f.funder.ror) === rorOf(funder.ror)) : -1;
+              set("funding", at < 0 ? [...m.funding, { funder, awards: [] }] : m.funding.map((f, n) => (n === at ? { ...f, funder: f.funder.id ? f.funder : funder } : f)));
+            }}
             lookup={{ entity: "funders", useNames: () => funderNames, remember: rememberFunderNames, typed: (query) => ({ id: typedId(query), name: query, detail: t("asTyped") }) }}
             // Governments and foundations that fund work are often on ROR and not among OpenAlex's funders.
             also={{ key: "ror", search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror, aliases: o.aliases })) }}

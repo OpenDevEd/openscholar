@@ -160,15 +160,17 @@ const institution = async (name: string): Promise<Affiliation> => {
  * null. A name with describing words around it finds nothing in either.
  */
 const funder = async (name: string): Promise<Funding["funder"] | null> => {
-  try {
-    const best = await bestMatch("funders", name);
-    if (best) return { id: best.id, name: best.name, ...(best.ror && { ror: best.ror }) };
-    const onRor = await matchRor(name);
-    if (onRor) return { id: null, name: onRor.name, ror: onRor.ror };
-  } catch (error) {
-    console.error(JSON.stringify({ event: "report-funder-lookup-failed", name, error: String(error).slice(0, 300) }));
-  }
-  return null;
+  // Each register asked on its own: OpenAlex busy or down still leaves ROR to find the funder.
+  const best = await bestMatch("funders", name).catch((error: unknown) => {
+    console.error(JSON.stringify({ event: "report-funder-lookup-failed", source: "openalex", name, error: String(error).slice(0, 300) }));
+    return undefined;
+  });
+  if (best) return { id: best.id, name: best.name, ...(best.ror && { ror: best.ror }) };
+  const onRor = await matchRor(name).catch((error: unknown) => {
+    console.error(JSON.stringify({ event: "report-funder-lookup-failed", source: "ror", name, error: String(error).slice(0, 300) }));
+    return null;
+  });
+  return onRor ? { id: null, name: onRor.name, ror: onRor.ror } : null;
 };
 
 const DOI = /10\.\d{4,9}\/\S+/;
