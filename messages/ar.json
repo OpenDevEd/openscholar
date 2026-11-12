@@ -5629,6 +5629,7 @@
     "keepInvitation": "الإبقاء على الدعوة",
     "declineInvitation2": "رفض الدعوة",
     "previewCover": "معاينة غلاف {title}",
+    "noPdf": "لا يوجد PDF",
     "preview": "معاينة {title}",
     "declineBody": "لن تحصل على الوصول إلى {name}. ولا تتأثر مجتمعاتك الأخرى.",
     "owner": "المالك",

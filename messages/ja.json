@@ -5628,6 +5628,7 @@
     "keepInvitation": "招待を残す",
     "declineInvitation2": "招待を辞退",
     "previewCover": "{title} の表紙をプレビュー",
+    "noPdf": "PDFなし",
     "preview": "{title} をプレビュー",
     "declineBody": "{name} へのアクセス権は得られません。ほかのコミュニティには影響しません。",
     "owner": "所有者",

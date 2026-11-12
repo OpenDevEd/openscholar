@@ -5628,6 +5628,7 @@
     "keepInvitation": "保留邀请",
     "declineInvitation2": "拒绝邀请",
     "previewCover": "预览 {title} 的封面",
+    "noPdf": "无 PDF",
     "preview": "预览 {title}",
     "declineBody": "您将无法访问 {name}。您的其他文献社区不受影响。",
     "owner": "所有者",

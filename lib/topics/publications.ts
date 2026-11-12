@@ -16,6 +16,14 @@ export type TopicPublicationReads = {
   card: (libraryId: string, itemKey: string, baseUrl: string) => Promise<PublicationCard | null>;
 };
 
+/**
+ * A publication's PDF as the communities holding its copies last said: the first copy's that has one, null when every
+ * copy says it has none, and undefined while a copy's community runs a version that doesn't say.
+ */
+export function pdfAmong<Pdf extends {url: string; cover: string | null}>(said: readonly (Pdf | null | undefined)[]): Pdf | null | undefined {
+  return said.find(one => one) ?? (said.length > 0 && said.every(one => one === null) ? null : undefined);
+}
+
 /** A page of a topic's publications, ten groups of copies at a time, searched by `query` in their titles, authors and abstracts. */
 export async function readTopicPublicationsWith(reads: TopicPublicationReads, topicId: string, query: string, cursor: string | null): Promise<TopicPublicationPage> {
   const result = await reads.groups(topicId, cursor);
@@ -42,8 +50,13 @@ export async function readTopicPublicationsWith(reads: TopicPublicationReads, to
       const search = query.trim().toLocaleLowerCase();
       if (search && !available.some(({location, card}) => `${card.title ?? ""} ${location.metadata.creators.join(" ")} ${location.metadata.abstract ?? ""}`.toLocaleLowerCase().includes(search))) return null;
       const {location, card} = available[0];
+      const shown = publicationOf(card, location.itemKey, location.library.url);
+      const pdf = pdfAmong(available.map(({location}) => location.metadata.pdf));
       return {
-        id: group.key, ...publicationOf(card, location.itemKey, location.library.url), library: location.library,
+        id: group.key, ...shown, library: location.library,
+        // The picture on the copy's card, else the one a copy's community sent with its PDF.
+        cover: shown.cover ?? pdf?.cover ?? undefined,
+        ...(pdf !== undefined && {pdf: pdf && {url: pdf.url}}),
         locations: available.map(({location}) => ({name: location.library.name, url: new URL(`/lib/${location.itemKey}`, location.library.url).href})),
         metadataLocation: {libraryId: location.library.id, itemKey: location.itemKey},
       } satisfies TopicPublication;

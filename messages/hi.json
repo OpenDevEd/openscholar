@@ -5628,6 +5628,7 @@
     "keepInvitation": "आमंत्रण रखें",
     "declineInvitation2": "आमंत्रण अस्वीकार करें",
     "previewCover": "{title} का कवर पूर्वावलोकन",
+    "noPdf": "PDF नहीं",
     "preview": "{title} का पूर्वावलोकन",
     "declineBody": "आपको {name} की पहुँच नहीं मिलेगी। आपकी बाकी कम्युनिटी पर इसका कोई असर नहीं होगा।",
     "owner": "मालिक",

@@ -5629,6 +5629,7 @@
     "keepInvitation": "Conservar la invitación",
     "declineInvitation2": "Rechazar invitación",
     "previewCover": "Vista previa de la portada de {title}",
+    "noPdf": "Sin PDF",
     "preview": "Vista previa de {title}",
     "declineBody": "No tendrá acceso a {name}. Sus otras comunidades no se ven afectadas.",
     "owner": "Propietario",
