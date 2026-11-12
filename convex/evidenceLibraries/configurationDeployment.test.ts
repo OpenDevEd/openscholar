@@ -617,6 +617,7 @@ async function activateChangedConfiguration(
     contractSupport?: { running: boolean; latest: boolean };
     topicsEnabled?: boolean;
     searchTitle?: string;
+    funders?: number;
   } = {},
 ) {
   const fixture = await createReadyLibrary(suffix);
@@ -647,6 +648,7 @@ async function activateChangedConfiguration(
   const sections = {
     ...essentialSetupSections,
     ...(options.topicsEnabled ? { topics: { enabled: true } } : {}),
+    ...(options.funders ? { footer: { funders: Array.from({ length: options.funders }, (_, n) => ({ id: `fu-${n}`, name: `Funder ${n}` })) } } : {}),
     identity: {
       ...essentialSetupSections.identity,
       name: `Changed ${suffix}`,
@@ -2183,6 +2185,14 @@ describe("Evidence Library configuration deployment", () => {
         searchTitle: "Climate adaptation research and evidence",
       }),
     ).rejects.toThrow(/A title in search results needs a newer Evidence Community software version/);
+  });
+
+  it("refuses more than twenty funders until the running software advertises the contract", async () => {
+    await expect(
+      activateChangedConfiguration("funders-without-runtime-support", { funders: 21 }),
+    ).rejects.toThrow(/More than twenty funders need a newer Evidence Community software version/);
+    // Twenty is what every runtime holds.
+    await expect(activateChangedConfiguration("twenty-funders", { funders: 20 })).resolves.toBeDefined();
   });
 
   it("continues from the exact target of this library's failed software update", async () => {
