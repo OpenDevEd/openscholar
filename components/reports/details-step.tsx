@@ -792,7 +792,8 @@ export function DetailsStep({
         ) : null}
         {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
         {words || onCancel ? (
-          <Button disabled={unready} onClick={run}>
+          // A long label ("Vérifier les modifications et les envoyer en relecture") wraps on a phone rather than leaving the screen.
+          <Button disabled={unready} onClick={run} className="max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal">
             <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
           </Button>
         ) : (
