@@ -481,10 +481,10 @@ export function DetailsStep({
             </Field>
             <DateField date={m.date} typed={typedYear} onTyped={setTypedYear} onDate={(date) => set("date", date)} invalid={future || early}>
               {/* A report is published by today, as the author's own calendar has it. A date past it says so here, before the checks are asked for. */}
-              {typedYear !== null || !dated ? (
+              {(typedYear !== null && typedYear.length < 4) || (typedYear === null && !dated) ? (
                 <span className="block ps-1 text-xs text-destructive">{t("yearInvalid")}</span>
-              ) : future || early ? (
-                <span className="block ps-1 text-xs text-destructive">{t(future ? "future" : "tooEarly")}</span>
+              ) : typedYear !== null || future || early ? (
+                <span className="block ps-1 text-xs text-destructive">{t(typedYear === null && future ? "future" : "tooEarly")}</span>
               ) : null}
             </DateField>
             <div className="space-y-1.5">

@@ -68,6 +68,11 @@ test("a page stored upright and turned to read landscape gets an added page that
   const added = (await PDFDocument.load(await withBylinePage(await doc.save(), { line: LINE, series: "Openscholar Reports" }))).getPage(1);
   expect(added.getSize()).toEqual({ width: 842, height: 595 });
   expect(added.getRotation().angle).toBe(0);
+  // A page cropped to landscape reads landscape, whatever size its sheet is.
+  const cropped = await PDFDocument.create();
+  cropped.addPage([595, 842]).setCropBox(0, 0, 595, 300);
+  const page = (await PDFDocument.load(await withBylinePage(await cropped.save(), { line: LINE, series: "Openscholar Reports" }))).getPage(1).getSize();
+  expect(page.width).toBeGreaterThan(page.height);
 });
 
 test("a date is written as precisely as the report states it", async () => {

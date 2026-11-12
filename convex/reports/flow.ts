@@ -77,6 +77,8 @@ const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[]
  * checks, and one left empty is dropped.
  */
 export function checkedDetails(metadata: Metadata) {
+  // A draft may be saved without one, but nothing is checked or published undated: Crossref takes no record without a year.
+  if (!metadata.date) throw createError("VALIDATION_ERROR", "Give the report's date: its year at least.");
   for (const [what, values, known] of FROM_A_LIST) {
     const stray = values(metadata).find((value) => !known(value));
     if (stray !== undefined) throw createError("VALIDATION_ERROR", `"${stray.slice(0, 80)}" isn't ${what} a report can have. Choose one from the list.`);

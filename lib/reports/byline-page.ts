@@ -57,9 +57,10 @@ export async function withoutLastPage(pdf: Uint8Array): Promise<Uint8Array> {
 export async function withBylinePage(pdf: Uint8Array, { line, series, details }: BylinePage, { replaceLast = false } = {}): Promise<Uint8Array> {
   const doc = await PDFDocument.load(pdf, { updateMetadata: false });
   if (replaceLast && doc.getPageCount() > 1) doc.removePage(doc.getPageCount() - 1);
-  // The last page as it shows: one stored upright and turned a quarter by its rotation reads the other way round.
+  // The last page as it shows: the part of it a reader sees (its crop box), and one stored upright and turned a quarter
+  // by its rotation reads the other way round.
   const lastPage = doc.getPage(doc.getPageCount() - 1);
-  const stored = lastPage.getSize();
+  const stored = lastPage.getCropBox();
   const turned = lastPage.getRotation().angle % 180 !== 0;
   const last = turned ? { width: stored.height, height: stored.width } : stored;
   const plain = await doc.embedFont(StandardFonts.Helvetica);
