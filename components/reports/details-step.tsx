@@ -552,6 +552,8 @@ export function DetailsStep({
   };
   // The references a pasted list or an uploaded file holds, added after the ones already listed. One listed already, by
   // its DOI or its words, is left out, but a DOI listed alone (read from the PDF) takes the words the list gives it.
+  // While a list is being read (ReferenceBox says so), the details aren't sent: what it adds would come after them and be lost.
+  const [adding, setAdding] = useState(false);
   const addReferences = async (text: string) => {
     const { referencesIn } = await import("@/lib/reports/reference-list");
     const found = referencesIn(text);
@@ -577,7 +579,7 @@ export function DetailsStep({
   const early = !!dated && dated.year < EARLIEST_YEAR;
   // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
   const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
-  const unready = !m.title.trim() || !m.authors.some((a) => a.name.trim()) || !dated || typedYear !== null || future || early || wrongLinks || (!!onCancel && !resend && !touched);
+  const unready = adding || writing || !m.title.trim() || !m.authors.some((a) => a.name.trim()) || !dated || typedYear !== null || future || early || wrongLinks || (!!onCancel && !resend && !touched);
   // Not in a transition: the page shows the checks running at once, which a transition would hold back until they end.
   const run = () => {
     // The run carries the details as they are, so a save still waiting has nothing left to send.
@@ -893,7 +895,7 @@ export function DetailsStep({
               </ul>
             </Paged>
           ) : null}
-          <ReferenceBox onAdd={addReferences} onTrouble={(words) => void toast.error(words)} />
+          <ReferenceBox onAdd={addReferences} onBusy={setAdding} onTrouble={(words) => void toast.error(words)} />
         </Section>
 
         <Section title={t("links")} help="links">
