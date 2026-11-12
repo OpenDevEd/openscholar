@@ -27,19 +27,18 @@ const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].activations === 1
 const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].activations !== 1);
 const OWN = "own";
 
-/** What a choice costs: activations from the balance when it holds enough, else the plan's price; null when neither is known. */
-export type LicenceCost = { activations: number | null; price: number | null; priceOfThree: number | null };
+/** What each choice costs in US dollars: the activation plan's price, and the three-activation one's; null while there is none. */
+export type LicenceCost = { price: number | null; priceOfThree: number | null };
 
 export function LicenceChoice({ value, onChange, cost, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; cost: LicenceCost; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
   const format = useFormatter();
   const id = useId();
   const other = typeof value !== "string" || !STANDARD.includes(value);
+  // Each licence by its price, whatever the balance holds: a balance pays it the same way a card does.
   const costOf = (activations: number) => {
     const price = activations === 1 ? cost.price : cost.priceOfThree;
-    // A balance with enough in it pays, whatever the price: say what it takes from it.
-    if (cost.activations === null || cost.activations >= activations || price === null) return t("uses", { count: activations });
-    return format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 });
+    return price === null ? null : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 });
   };
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), activations: 1 })),

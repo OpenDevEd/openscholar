@@ -6488,6 +6488,7 @@
       "agreementSaved": "الاتفاقية الإصدار {version}",
       "saveVersion": "حفظ كالإصدار {version}",
       "price": "السعر",
+      "priceOne": "CC BY and CC BY-SA",
       "priceHint": "ما تدفعه مساحة العمل مقابل تفعيل واحد عندما يكون رصيدها فارغًا. وهو سعر خطة Report activation في Autumn.",
       "priceHintNone": "لا توجد خطة Report activation في Autumn، لذا لا تستطيع مساحة عمل رصيدها فارغ أن تفعّل.",
       "notOnSale": "غير معروض للبيع",
@@ -6495,7 +6496,7 @@
       "balances": "الأرصدة",
       "balancesHint": "لكل مساحة عمل رصيد من التفعيلات في Autumn. امنح شخصًا أو منظمة تفعيلات من هناك، مرة واحدة أو تتجدد كل يوم أو أسبوع أو شهر أو سنة. وبند في خطة يمنحها لكل مساحة عمل على تلك الخطة.",
       "openAutumn": "افتح Autumn",
-      "priceThree": "Price for three",
+      "priceThree": "NC, ND and own licences",
       "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
       "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
@@ -6823,7 +6824,6 @@
       },
       "licence": {
         "label": "Licence",
-        "uses": "{count, plural, one {# activation} other {# activations}}",
         "by": "Anyone may share and adapt it, crediting you.",
         "bySa": "As CC BY, and what others make from it keeps this licence.",
         "other": "Another licence",

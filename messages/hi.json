@@ -6487,6 +6487,7 @@
       "agreementSaved": "समझौता संस्करण {version}",
       "saveVersion": "संस्करण {version} के रूप में सहेजें",
       "price": "कीमत",
+      "priceOne": "CC BY and CC BY-SA",
       "priceHint": "बैलेंस खाली होने पर कोई कार्यक्षेत्र एक सक्रियण के लिए जो चुकाता है। यह Autumn में Report activation प्लान की कीमत है।",
       "priceHintNone": "Autumn में Report activation प्लान नहीं है, इसलिए खाली बैलेंस वाला कार्यक्षेत्र सक्रिय नहीं कर सकता।",
       "notOnSale": "बिक्री पर नहीं",
@@ -6494,7 +6495,7 @@
       "balances": "बैलेंस",
       "balancesHint": "हर कार्यक्षेत्र का Autumn में सक्रियणों का एक बैलेंस होता है। वहाँ किसी व्यक्ति या संगठन को सक्रियण दें, एक बार या हर दिन, सप्ताह, महीने या साल फिर से भरने के लिए। किसी प्लान का आइटम उस प्लान के हर कार्यक्षेत्र को सक्रियण देता है।",
       "openAutumn": "Autumn खोलें",
-      "priceThree": "Price for three",
+      "priceThree": "NC, ND and own licences",
       "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
       "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
@@ -6822,7 +6823,6 @@
       },
       "licence": {
         "label": "Licence",
-        "uses": "{count, plural, one {# activation} other {# activations}}",
         "by": "Anyone may share and adapt it, crediting you.",
         "bySa": "As CC BY, and what others make from it keeps this licence.",
         "other": "Another licence",

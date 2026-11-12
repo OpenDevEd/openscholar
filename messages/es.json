@@ -6488,6 +6488,7 @@
       "agreementSaved": "Acuerdo, versión {version}",
       "saveVersion": "Guardar como versión {version}",
       "price": "Precio",
+      "priceOne": "CC BY and CC BY-SA",
       "priceHint": "Lo que paga un espacio de trabajo por una activación cuando su saldo está vacío. Es el precio del plan Report activation en Autumn.",
       "priceHintNone": "Autumn no tiene plan Report activation, así que un espacio de trabajo con el saldo vacío no puede activar.",
       "notOnSale": "No está a la venta",
@@ -6495,7 +6496,7 @@
       "balances": "Saldos",
       "balancesHint": "Cada espacio de trabajo tiene un saldo de activaciones en Autumn. Da allí algunas a una persona o a una organización, una sola vez o renovadas cada día, semana, mes o año. Un elemento de un plan las da a todos los espacios de trabajo que lo tienen.",
       "openAutumn": "Abrir Autumn",
-      "priceThree": "Price for three",
+      "priceThree": "NC, ND and own licences",
       "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
       "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
@@ -6823,7 +6824,6 @@
       },
       "licence": {
         "label": "Licence",
-        "uses": "{count, plural, one {# activation} other {# activations}}",
         "by": "Anyone may share and adapt it, crediting you.",
         "bySa": "As CC BY, and what others make from it keeps this licence.",
         "other": "Another licence",

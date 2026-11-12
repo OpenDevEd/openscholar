@@ -942,7 +942,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
       </StepHead>
       {choosing ? (
         <div className="mb-5">
-          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ activations: starts ? starts.activations : 0, price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null }} />
+          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null }} />
         </div>
       ) : null}
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
@@ -1831,7 +1831,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
             lineItems:
               code || fromCredit > 0
                 ? [
-                    { description: t("activation.activationLine", { count: terms?.needs ?? 1 }), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
+                    { description: t("activation.activationLine"), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
                     ...(code ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" }] : []),
                     ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
                   ]
@@ -2043,8 +2043,8 @@ function PaymentLine({ organization, activations, needs, card, credit, price, pe
               ? t("refused")
               : spendable
                 ? organization
-                  ? t("usesOrg", { organization, count: needs })
-                  : t("uses", { count: needs })
+                  ? t("usesOrg", { organization })
+                  : t("uses")
                 : !card
                   ? covered
                     ? t("coveredHint")

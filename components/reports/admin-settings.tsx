@@ -289,7 +289,7 @@ function Activations({ prices, autumn }: { prices: Prices; autumn: string | null
           const price = prices[plan];
           const cost = price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 });
           return (
-            <Row key={plan} label={t(plan === "one" ? "price" : "priceThree")} hint={t(`${plan === "one" ? "priceHint" : "priceThreeHint"}${price === null ? "None" : ""}`)}>
+            <Row key={plan} label={t(plan === "one" ? "priceOne" : "priceThree")} hint={t(`${plan === "one" ? "priceHint" : "priceThreeHint"}${price === null ? "None" : ""}`)}>
               {autumn ? (
                 <Button variant="outline" size="sm" asChild>
                   <a href={autumn} target="_blank" rel="noopener noreferrer">
