@@ -139,6 +139,17 @@ export function withOverlaysInside<Event extends { target: EventTarget | null; p
   };
 }
 
+/**
+ * Wraps a modal's onEscapeKeyDown so Escape pressed in Clerk's sign-in, opened from inside the modal, closes only the
+ * sign-in.
+ */
+export function withSignInAbove<Event extends { preventDefault(): void }>(handler?: (event: Event) => void) {
+  return (event: Event) => {
+    if (document.querySelector(".cl-modalBackdrop")) event.preventDefault();
+    handler?.(event);
+  };
+}
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
 

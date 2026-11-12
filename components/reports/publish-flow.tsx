@@ -2235,7 +2235,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
           <Button variant="outline" disabled={sending} onClick={close}>
             {t("cancel")}
           </Button>
-          <Button className="relative" disabled={sending} onClick={send}>
+          <Button className="relative max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal" disabled={sending} onClick={send}>
             <Working busy={sending}>
               <span className="flex items-center gap-2">
                 <ReviewQueueIcon /> {t("sendForReview")}

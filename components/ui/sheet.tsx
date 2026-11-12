@@ -7,7 +7,7 @@ import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
-import { withOverlaysInside } from "@/components/ui/sonner"
+import { withOverlaysInside, withSignInAbove } from "@/components/ui/sonner"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <TrackOpen {...props}>{(root) => <SheetPrimitive.Root data-slot="sheet" {...props} {...root} />}</TrackOpen>
@@ -53,6 +53,7 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   onInteractOutside,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
@@ -79,6 +80,7 @@ function SheetContent({
           className
         )}
         onInteractOutside={withOverlaysInside(onInteractOutside)}
+        onEscapeKeyDown={withSignInAbove(onEscapeKeyDown)}
         {...props}
       >
         {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
