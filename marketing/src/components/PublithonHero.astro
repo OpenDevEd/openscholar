@@ -195,31 +195,39 @@ void main(){
           pen.setTransform(1, 0, 0, 1, 0, 0); pen.globalAlpha = 1; pen.globalCompositeOperation = "source-over";
         };
 
-        // The pointer leans the camera; scrolling sinks the planet a little and the stars with it.
+        // With a mouse or trackpad the pointer leans the camera, and scrolling sinks the planet a little and the stars with it.
         let px = 0, py = 0, tx = 0, ty = 0, sink = 0, sway = 0;
-        if (matchMedia("(hover: hover)").matches) {
+        const pointer = matchMedia("(hover: hover)").matches;
+        if (pointer) {
           root.addEventListener("pointermove", (e) => { const box = root.getBoundingClientRect(); tx = (e.clientX - box.left) / box.width - .5; ty = (e.clientY - box.top) / box.height - .5; });
           root.addEventListener("pointerleave", () => { tx = ty = 0; });
         }
+        // On a touch screen the scene holds still while the page is being scrolled and carries on once it stops: a phone
+        // drawing the sky and moving the page at the same time makes the scrolling stutter. Nothing in the scene follows the
+        // scroll there, so the two canvases move with the page as pictures do.
+        let moving = false, settle = 0;
+        if (!pointer) addEventListener("scroll", () => { moving = true; clearTimeout(settle); settle = window.setTimeout(() => { moving = false; run(); }, 140); }, { passive: true });
 
-        let began = 0, last = 0, spin = START, frame = 0, seen = true, lost = false, ready = false, slow = 0, tally = 0, total = 0;
+        // The scene keeps its own clock, which runs only while it draws, so it picks up where it stopped after a pause
+        // (scrolling on a touch screen, the hero off screen, the tab hidden) with nothing jumping ahead.
+        let clock = 0, started = false, last = 0, spin = START, frame = 0, seen = true, lost = false, ready = false, slow = 0, tally = 0, total = 0;
         const draw = (now: number) => {
           frame = 0; if (lost || !ready) return;
-          if (!began) { began = now; last = now; people(now); }
-          const step = Math.min(64, now - last); last = now;
+          if (!started) { started = true; last = now; people(0); }
+          const step = Math.min(64, now - last); last = now; clock += step;
           // A device that can't keep up gets a coarser sky, then fewer pages, then the still.
-          if (step < 250 && now - began > 1200) { tally++; total += step; if (tally === 50) { if (total / tally > 26) { slow++; if (slow === 1 && scale > 1) { scale = Math.max(1, scale - .5); size(); } else if (slow <= 2) { counts = counts.map((count) => Math.ceil(count * .6)); people(now - 4000); } else { lost = true; rest(); return; } } tally = total = 0; } }
-          const seconds = (now - began) / 1000, up = Math.min(1, Math.max(0, (seconds - .25) / 3.4)), risen = up * up * (3 - 2 * up), dawn = risen * (.94 + .06 * Math.sin(seconds * .45));
-          // The camera drifts a little by itself and leans to the pointer; the planet comes up 44 px as the sun does, and sinks as the page scrolls.
-          sway = Math.sin(seconds * .17) * .05; spin += step * .001 * TURN; px += (tx + sway - px) * .06; py += (ty - py) * .06; sink = Math.max(0, Math.min(H, scrollY)) * .22 + 44 * (1 - risen);
+          if (clock > 1200) { tally++; total += step; if (tally === 50) { if (total / tally > 26) { slow++; if (slow === 1 && scale > 1) { scale = Math.max(1, scale - .5); size(); } else if (slow <= 2) { counts = counts.map((count) => Math.ceil(count * .6)); people(clock - 4000); } else { lost = true; rest(); return; } } tally = total = 0; } }
+          const seconds = clock / 1000, up = Math.min(1, Math.max(0, (seconds - .25) / 3.4)), risen = up * up * (3 - 2 * up), dawn = risen * (.94 + .06 * Math.sin(seconds * .45));
+          // The camera drifts a little by itself and leans to the pointer; the planet comes up 44 px as the sun does, and with a pointer sinks as the page scrolls.
+          sway = Math.sin(seconds * .17) * .05; spin += step * .001 * TURN; px += (tx + sway - px) * .06; py += (ty - py) * .06; sink = (pointer ? Math.max(0, Math.min(H, scrollY)) * .22 : 0) + 44 * (1 - risen);
           gl.uniform2f(U.c, (cx - px * 12) * scale, sky.height - (cy + sink - py * 7) * scale); gl.uniform1f(U.r, R * scale); gl.uniform1f(U.d, scale); gl.uniform1f(U.t, seconds); gl.uniform1f(U.spin, spin);
           gl.uniform1f(U.dawn, dawn); gl.uniform1f(U.a0, Math.asin((sunX - cx) / R)); gl.uniform1f(U.fd, (narrow ? 60 : 96) * scale); gl.uniform1f(U.drift, sink * .5);
           gl.drawArrays(gl.TRIANGLES, 0, 3);
-          fly(now);
+          fly(clock);
           if (!root.classList.contains("live")) root.classList.add("live");
-          if (seen && !document.hidden) frame = requestAnimationFrame(draw);
+          if (seen && !document.hidden && !moving) frame = requestAnimationFrame(draw);
         };
-        const run = () => { if (!frame && seen && !document.hidden && !lost) { last = performance.now(); frame = requestAnimationFrame(draw); } };
+        const run = () => { if (!frame && seen && !document.hidden && !lost && !moving) { last = performance.now(); frame = requestAnimationFrame(draw); } };
 
         scale = Math.min(devicePixelRatio || 1, view.clientWidth * view.clientHeight > 1.4e6 ? 1.5 : 2); size();
         Promise.all([picture(root.dataset.night!), picture(root.dataset.clouds!)]).then(([night, clouds]) => {
@@ -230,7 +238,7 @@ void main(){
         }, rest);
         picture(root.dataset.pages!).then((image) => { sharp = image; return picture(root.dataset.pagesSoft!); }).then((image) => { soft = image; }, () => {});
         sky.addEventListener("webglcontextlost", () => { lost = true; rest(); });
-        let sized = 0; addEventListener("resize", () => { cancelAnimationFrame(sized); sized = requestAnimationFrame(() => { if (view.clientWidth !== W || view.clientHeight !== H) { size(); if (began) people(performance.now() - 5000); } }); });
+        let sized = 0; addEventListener("resize", () => { cancelAnimationFrame(sized); sized = requestAnimationFrame(() => { if (view.clientWidth !== W || view.clientHeight !== H) { size(); if (started) people(clock - 5000); } }); });
         new IntersectionObserver(([entry]) => { seen = entry.isIntersecting; run(); }).observe(root);
         document.addEventListener("visibilitychange", run);
       }
