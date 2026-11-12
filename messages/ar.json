@@ -425,11 +425,13 @@
     "activations": {
       "title": "تفعيلات التقارير",
       "left": "{count, plural, zero {لم يبقَ شيء} one {بقي تفعيل واحد} two {بقي تفعيلان} few {بقيت # تفعيلات} many {بقي # تفعيلًا} other {بقي # تفعيل}}",
-      "leftRefills": "{count, plural, zero {لم يبقَ شيء} one {بقي تفعيل واحد} two {بقي تفعيلان} few {بقيت # تفعيلات} many {بقي # تفعيلًا} other {بقي # تفعيل}}، ويتجدد {interval, select, hour {كل ساعة} day {كل يوم} week {كل أسبوع} month {كل شهر} quarter {كل ثلاثة أشهر} semi_annual {كل ستة أشهر} other {كل سنة}}",
       "unlimited": "بلا حد",
       "none": "لم يبقَ شيء",
       "hint": "كل تفعيل ينشر تقريرًا على Openscholar Reports دون أن تدفع شيئًا.",
-      "publish": "انشر"
+      "publish": "انشر",
+      "every": "{interval, select, hour {كل ساعة} day {كل يوم} week {كل أسبوع} month {كل شهر} quarter {كل ثلاثة أشهر} semi_annual {كل ستة أشهر} other {كل سنة}}",
+      "backTo": "تعود إلى {size, number} في {date}",
+      "kept": "{count, number} محفوظة حتى استخدامها"
     }
   },
   "errors": {
@@ -6761,7 +6763,8 @@
           "unlimited": "بلا حد",
           "uses": "التفعيل يستخدم واحدًا من رصيدك. لن يُخصم أي مبلغ.",
           "usesOrg": "التفعيل يستخدم واحدًا من رصيد {organization}. لن يُخصم أي مبلغ.",
-          "leftRefills": "{count, plural, zero {لم يبقَ شيء} one {بقي تفعيل واحد} two {بقي تفعيلان} few {بقيت # تفعيلات} many {بقي # تفعيلًا} other {بقي # تفعيل}}، ويتجدد {interval, select, hour {كل ساعة} day {كل يوم} week {كل أسبوع} month {كل شهر} quarter {كل ثلاثة أشهر} semi_annual {كل ستة أشهر} other {كل سنة}}"
+          "grantRefills": "{left, number} من {size, number} {interval, select, hour {هذه الساعة} day {اليوم} week {هذا الأسبوع} month {هذا الشهر} quarter {هذه الأشهر الثلاثة} semi_annual {هذه الأشهر الستة} other {هذه السنة}}، وتعود إلى {size, number} في {date}.",
+          "grantKept": "{more, select, yes {و{count, number} أخرى} other {{count, number}}} محفوظة حتى استخدامها."
         },
         "creditLine": "رصيد الحساب",
         "declined": "رُفضت بطاقتك ولم يُخصم أي مبلغ. غيّر البطاقة وحاول مرة أخرى.",
@@ -6828,8 +6831,7 @@
           "body": "يُدفع ببطاقة. يمكن لرمز ترويجي أن يخفّض السعر أو يغطيه. يُسجَّل معرّف DOI ويُنشر التقرير.",
           "bodyPriced": "{price} لكل تقرير، تُدفع ببطاقة. يمكن لرمز ترويجي أن يخفّض السعر أو يغطيه. يُسجَّل معرّف DOI ويُنشر التقرير.",
           "bodyBalance": "يستخدم تفعيلًا واحدًا من الرصيد، والمتبقي فيه {count, number}. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير.",
-          "bodyUnlimited": "يستخدم تفعيلًا واحدًا من الرصيد، وهو بلا حد. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير.",
-          "bodyBalanceRefills": "يستخدم تفعيلًا واحدًا من الرصيد، والمتبقي فيه {count, number} ويتجدد {interval, select, hour {كل ساعة} day {كل يوم} week {كل أسبوع} month {كل شهر} quarter {كل ثلاثة أشهر} semi_annual {كل ستة أشهر} other {كل سنة}}. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير."
+          "bodyUnlimited": "يستخدم تفعيلًا واحدًا من الرصيد، وهو بلا حد. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير."
         }
       }
     },

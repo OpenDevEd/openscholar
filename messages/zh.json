@@ -424,11 +424,13 @@
     "activations": {
       "title": "报告激活次数",
       "left": "剩余 {count, number} 次",
-      "leftRefills": "剩余 {count, number} 次，{interval, select, hour {每小时} day {每天} week {每周} month {每月} quarter {每三个月} semi_annual {每六个月} other {每年}}补充",
       "unlimited": "不限次数",
       "none": "已用完",
       "hint": "每次激活可在 Openscholar Reports 上线一份报告，无需付款。",
-      "publish": "发布"
+      "publish": "发布",
+      "every": "{interval, select, hour {每小时} day {每天} week {每周} month {每月} quarter {每三个月} semi_annual {每六个月} other {每年}}",
+      "backTo": "{date}恢复为 {size, number}",
+      "kept": "{count, number} 个保留至使用"
     }
   },
   "errors": {
@@ -6760,7 +6762,8 @@
           "unlimited": "不限次数",
           "uses": "激活会使用你余额中的一次。不会扣款。",
           "usesOrg": "激活会使用 {organization} 余额中的一次。不会扣款。",
-          "leftRefills": "剩余 {count, number} 次，{interval, select, hour {每小时} day {每天} week {每周} month {每月} quarter {每三个月} semi_annual {每六个月} other {每年}}补充"
+          "grantRefills": "{interval, select, hour {本小时} day {今天} week {本周} month {本月} quarter {这三个月} semi_annual {这六个月} other {今年}}剩 {left, number}/{size, number}，{date}恢复为 {size, number}。",
+          "grantKept": "{more, select, yes {另有 {count, number} 个} other {{count, number} 个}}保留至使用。"
         },
         "creditLine": "账户余额抵扣",
         "declined": "你的卡被拒绝了，没有扣款。请更换卡片后重试。",
@@ -6827,8 +6830,7 @@
           "body": "用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
           "bodyPriced": "每份报告 {price}，用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
           "bodyBalance": "使用余额中的一次激活，余额还剩 {count, number} 次。无需付款。DOI 完成注册，报告随即上线。",
-          "bodyUnlimited": "使用余额中的一次激活，余额不限次数。无需付款。DOI 完成注册，报告随即上线。",
-          "bodyBalanceRefills": "使用余额中的一次激活，余额还剩 {count, number} 次，{interval, select, hour {每小时} day {每天} week {每周} month {每月} quarter {每三个月} semi_annual {每六个月} other {每年}}补充。无需付款。DOI 完成注册，报告随即上线。"
+          "bodyUnlimited": "使用余额中的一次激活，余额不限次数。无需付款。DOI 完成注册，报告随即上线。"
         }
       }
     },

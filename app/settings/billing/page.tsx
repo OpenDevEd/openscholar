@@ -191,7 +191,7 @@ export default function BillingPage() {
                   </div>
                 </div>
               ) : null}
-              {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
+              {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} grants={account.activationGrants ?? []} /> : null}
             </div>
             {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>

@@ -425,11 +425,13 @@
     "activations": {
       "title": "Aktivierungen für Berichte",
       "left": "{count, number} übrig",
-      "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt",
       "unlimited": "Ohne Limit",
       "none": "Keine übrig",
       "hint": "Jede bringt einen Bericht auf Openscholar Reports online, ohne dass etwas zu zahlen ist.",
-      "publish": "Veröffentlichen"
+      "publish": "Veröffentlichen",
+      "every": "{interval, select, hour {Jede Stunde} day {Jeden Tag} week {Jede Woche} month {Jeden Monat} quarter {Alle drei Monate} semi_annual {Alle sechs Monate} other {Jedes Jahr}}",
+      "backTo": "Am {date} wieder {size, number}",
+      "kept": "{count, number} bleiben bis zur Nutzung"
     }
   },
   "errors": {
@@ -6761,7 +6763,8 @@
           "unlimited": "Ohne Limit",
           "uses": "Das Aktivieren verbraucht eine aus Ihrem Guthaben. Es wird nichts abgebucht.",
           "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht.",
-          "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt"
+          "grantRefills": "{left, number} von {size, number} {interval, select, hour {in dieser Stunde} day {heute} week {diese Woche} month {diesen Monat} quarter {in diesen drei Monaten} semi_annual {in diesen sechs Monaten} other {dieses Jahr}}, am {date} wieder {size, number}.",
+          "grantKept": "{more, select, yes {{count, number} weitere} other {{count, number}}} bleiben bis zur Nutzung."
         },
         "creditLine": "Guthaben des Kontos",
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
@@ -6828,8 +6831,7 @@
           "body": "Bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
-          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
-          "bodyBalanceRefills": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind und das {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt wird. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
+          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
         }
       }
     },

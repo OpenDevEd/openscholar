@@ -425,11 +425,13 @@
     "activations": {
       "title": "Verslagaktiverings",
       "left": "{count, number} oor",
-      "leftRefills": "{count, number} oor, word {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul",
       "unlimited": "Geen limiet",
       "none": "Niks oor nie",
       "hint": "Elkeen bring 'n verslag regstreeks op Openscholar Reports sonder om iets te betaal.",
-      "publish": "Publiseer"
+      "publish": "Publiseer",
+      "every": "{interval, select, hour {Elke uur} day {Elke dag} week {Elke week} month {Elke maand} quarter {Elke drie maande} semi_annual {Elke ses maande} other {Elke jaar}}",
+      "backTo": "Terug na {size, number} op {date}",
+      "kept": "{count, number} bly tot gebruik"
     }
   },
   "errors": {
@@ -6761,7 +6763,8 @@
           "unlimited": "Geen limiet",
           "uses": "Aktivering gebruik een uit jou saldo. Niks word gehef nie.",
           "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie.",
-          "leftRefills": "{count, number} oor, word {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul"
+          "grantRefills": "{left, number} van {size, number} {interval, select, hour {hierdie uur} day {vandag} week {hierdie week} month {hierdie maand} quarter {hierdie drie maande} semi_annual {hierdie ses maande} other {hierdie jaar}}, terug na {size, number} op {date}.",
+          "grantKept": "{more, select, yes {Nog {count, number}} other {{count, number}}} bly tot gebruik."
         },
         "creditLine": "Rekeningkrediet",
         "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
@@ -6828,8 +6831,7 @@
           "body": "Betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
           "bodyPriced": "{price} vir elke verslag, betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
           "bodyBalance": "Gebruik een aktivering uit die saldo, wat {count, number} oor het. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
-          "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
-          "bodyBalanceRefills": "Gebruik een aktivering uit die saldo, wat {count, number} oor het en {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul word. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks."
+          "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks."
         }
       }
     },

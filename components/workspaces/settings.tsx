@@ -784,7 +784,7 @@ export function WorkspaceBilling() {
                 </div>
               </div>
             ) : null}
-            {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
+            {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} grants={account.activationGrants ?? []} /> : null}
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">

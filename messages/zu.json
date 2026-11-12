@@ -424,11 +424,13 @@
     "activations": {
       "title": "Ukuvula imibiko",
       "left": "Kusele okungu-{count, number}",
-      "leftRefills": "Kusele okungu-{count, number}, kugcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}",
       "unlimited": "Akukho mkhawulo",
       "none": "Akukho okusele",
       "hint": "Ngakunye kwenza umbiko uphile ku-Openscholar Reports ngaphandle kokukhokha lutho.",
-      "publish": "Shicilela"
+      "publish": "Shicilela",
+      "every": "{interval, select, hour {Njalo ngehora} day {Nsuku zonke} week {Njalo ngesonto} month {Njalo ngenyanga} quarter {Njalo ezinyangeni ezintathu} semi_annual {Njalo ezinyangeni eziyisithupha} other {Njalo ngonyaka}}",
+      "backTo": "Zibuyela ku-{size, number} ngo-{date}",
+      "kept": "{count, number} zigcinwa kuze kusetshenziswe"
     }
   },
   "errors": {
@@ -6760,7 +6762,8 @@
           "unlimited": "Akukho mkhawulo",
           "uses": "Ukuvula kusebenzisa okukodwa ebhalansini lakho. Akukho okukhokhiswayo.",
           "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo.",
-          "leftRefills": "Kusele okungu-{count, number}, kugcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}"
+          "grantRefills": "{left, number} kwezingu-{size, number} {interval, select, hour {kuleli hora} day {namuhla} week {kuleli sonto} month {kule nyanga} quarter {kulezi zinyanga ezintathu} semi_annual {kulezi zinyanga eziyisithupha} other {kulo nyaka}}, zibuyela ku-{size, number} ngo-{date}.",
+          "grantKept": "{more, select, yes {Ezinye ezingu-{count, number}} other {{count, number}}} zigcinwa kuze kusetshenziswe."
         },
         "creditLine": "Isikweletu se-akhawunti",
         "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
@@ -6827,8 +6830,7 @@
           "body": "Kukhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa intengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyPriced": "U-{price} ngombiko ngamunye, okhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa leyo ntengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyBalance": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
-          "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
-          "bodyBalanceRefills": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number} futhi eligcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
+          "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
         }
       }
     },

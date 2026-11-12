@@ -20,6 +20,7 @@ import { autumn, type AutumnBalance, type AutumnCustomer } from "./autumn";
 import {
   billingAccountFields,
   billingAccountSnapshotValidator,
+  type ActivationGrant,
   type BillingAccountSnapshot,
 } from "./validators";
 import { ACTIVATIONS_FEATURE, EVIDENCE_LIBRARIES_FEATURE, REFILL_INTERVALS, type RefillInterval, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
@@ -55,16 +56,27 @@ export const customerFor = internalQuery({
   handler: (ctx, { workspaceId }) => customerOf(ctx, workspaceId),
 });
 
-/** The shortest interval any grant of a balance refills by, as `activationsRefill`; nothing when none refills. */
-function refillOf(balance: AutumnBalance | undefined): { activationsRefill?: RefillInterval } {
+/**
+ * A balance's grants by kind, as Autumn spends them: those that refill, shortest interval first, then those that stay
+ * until used. Each kind sums its grants. Kept ones with nothing left are left out: there is nothing to say of them.
+ */
+export function grantsOf(balance: AutumnBalance | undefined): { activationGrants?: ActivationGrant[] } {
+  if (!balance || balance.unlimited) return {};
   // ponytail: the interval alone, not its count, so a grant every two weeks reads as weekly. Autumn's `interval_count` says when it matters.
-  const interval = REFILL_INTERVALS.find((candidate) => balance?.breakdown?.some((grant) => grant.reset?.interval === candidate));
-  return interval ? { activationsRefill: interval } : {};
+  const kindOf = (interval: string | undefined): RefillInterval | "once" | null => (!interval || interval === "one_off" ? "once" : ((REFILL_INTERVALS as readonly string[]).includes(interval) ? (interval as RefillInterval) : null));
+  const grants = ([...REFILL_INTERVALS, "once"] as const).flatMap((interval): ActivationGrant[] => {
+    const of = (balance.breakdown ?? []).filter((grant) => kindOf(grant.reset?.interval) === interval);
+    const left = of.reduce((sum, grant) => sum + grant.remaining, 0);
+    if (of.length === 0 || (interval === "once" && left <= 0)) return [];
+    const resets = of.flatMap((grant) => (grant.reset?.resets_at ? [grant.reset.resets_at] : []));
+    return [{ interval, left, size: of.reduce((sum, grant) => sum + (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0), 0), ...(resets.length > 0 && { resetsAt: Math.min(...resets) }) }];
+  });
+  return grants.length > 0 ? { activationGrants: grants } : {};
 }
 
-/** The workspace's activations as its cached account has them: how many are left (null for no limit) and what they refill by. */
-export function activationsOf(account: { activations?: number | null; activationsRefill?: RefillInterval } | null) {
-  return { activations: account?.activations === null ? null : (account?.activations ?? 0), refill: account?.activationsRefill ?? null };
+/** The workspace's activations as its cached account has them: how many are left (null for no limit) and of what kinds. */
+export function activationsOf(account: { activations?: number | null; activationGrants?: ActivationGrant[] } | null) {
+  return { activations: account?.activations === null ? null : (account?.activations ?? 0), grants: account?.activationGrants ?? [] };
 }
 
 /** Reads what OpenScholar needs from an Autumn customer. */
@@ -100,7 +112,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
     activations: customer.balances[ACTIVATIONS_FEATURE]?.unlimited ? null : (customer.balances[ACTIVATIONS_FEATURE]?.remaining ?? 0),
-    ...refillOf(customer.balances[ACTIVATIONS_FEATURE]),
+    ...grantsOf(customer.balances[ACTIVATIONS_FEATURE]),
     card: customer.payment_method?.card
       ? { brand: customer.payment_method.card.brand, last4: customer.payment_method.card.last4 }
       : undefined,

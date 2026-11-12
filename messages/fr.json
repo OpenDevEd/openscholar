@@ -424,11 +424,13 @@
     "activations": {
       "title": "Activations de rapports",
       "left": "{count, plural, one {# restante} other {# restantes}}",
-      "leftRefills": "{count, plural, one {# restante, renouvelée} other {# restantes, renouvelées}} {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}",
       "unlimited": "Sans limite",
       "none": "Aucune restante",
       "hint": "Chacune met un rapport en ligne sur Openscholar Reports, sans rien à payer.",
-      "publish": "Publier"
+      "publish": "Publier",
+      "every": "{interval, select, hour {Chaque heure} day {Chaque jour} week {Chaque semaine} month {Chaque mois} quarter {Tous les trois mois} semi_annual {Tous les six mois} other {Chaque année}}",
+      "backTo": "De retour à {size, number} le {date}",
+      "kept": "{count, plural, one {# gardée jusqu'à utilisation} other {# gardées jusqu'à utilisation}}"
     }
   },
   "errors": {
@@ -6760,7 +6762,8 @@
           "unlimited": "Sans limite",
           "uses": "L'activation en utilise une de votre solde. Rien n'est débité.",
           "usesOrg": "L'activation en utilise une du solde de {organization}. Rien n'est débité.",
-          "leftRefills": "{count, plural, one {# restante, renouvelée} other {# restantes, renouvelées}} {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}"
+          "grantRefills": "{left, number} sur {size, number} {interval, select, hour {cette heure} day {aujourd'hui} week {cette semaine} month {ce mois-ci} quarter {ces trois mois} semi_annual {ces six mois} other {cette année}}, de retour à {size, number} le {date}.",
+          "grantKept": "{more, select, yes {{count, number} de plus} other {{count, number}}} gardées jusqu'à utilisation."
         },
         "creditLine": "Crédit du compte",
         "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez.",
@@ -6827,8 +6830,7 @@
           "body": "Payé par carte. Un code promo peut réduire le prix ou le couvrir. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyPriced": "{price} par rapport, payés par carte. Un code promo peut réduire ce prix ou le couvrir. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyBalance": "Utilise une activation du solde, qui en compte {count, number}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
-          "bodyUnlimited": "Utilise une activation du solde, qui est sans limite. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
-          "bodyBalanceRefills": "Utilise une activation du solde, qui en compte {count, number} et se renouvelle {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne."
+          "bodyUnlimited": "Utilise une activation du solde, qui est sans limite. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne."
         }
       }
     },

@@ -424,11 +424,13 @@
     "activations": {
       "title": "レポートの有効化",
       "left": "残り{count, number}回",
-      "leftRefills": "残り{count, number}回、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充",
       "unlimited": "無制限",
       "none": "残りなし",
       "hint": "1回ごとに、支払いなしでレポートを Openscholar Reports に公開できます。",
-      "publish": "公開"
+      "publish": "公開",
+      "every": "{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}",
+      "backTo": "{date}に{size, number}に戻ります",
+      "kept": "使うまで残る {count, number}"
     }
   },
   "errors": {
@@ -6760,7 +6762,8 @@
           "unlimited": "無制限",
           "uses": "有効化すると残高から1回分を使います。請求はありません。",
           "usesOrg": "有効化すると{organization}の残高から1回分を使います。請求はありません。",
-          "leftRefills": "残り{count, number}回、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充"
+          "grantRefills": "{interval, select, hour {この1時間} day {今日} week {今週} month {今月} quarter {この3か月} semi_annual {この6か月} other {今年}}は{size, number}のうち{left, number}、{date}に{size, number}に戻ります。",
+          "grantKept": "{more, select, yes {ほかに{count, number}} other {{count, number}}}は使うまで残ります。"
         },
         "creditLine": "アカウントのクレジット",
         "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。",
@@ -6827,8 +6830,7 @@
           "body": "カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。",
           "bodyPriced": "レポート 1 件につき {price}、カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。",
           "bodyBalance": "残高から有効化を1回分使います。残りは{count, number}回です。支払いはありません。DOIが登録され、レポートが公開されます。",
-          "bodyUnlimited": "残高から有効化を1回分使います。残高に上限はありません。支払いはありません。DOIが登録され、レポートが公開されます。",
-          "bodyBalanceRefills": "残高から有効化を1回分使います。残りは{count, number}回で、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充されます。支払いはありません。DOIが登録され、レポートが公開されます。"
+          "bodyUnlimited": "残高から有効化を1回分使います。残高に上限はありません。支払いはありません。DOIが登録され、レポートが公開されます。"
         }
       }
     },

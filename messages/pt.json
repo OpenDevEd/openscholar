@@ -425,11 +425,13 @@
     "activations": {
       "title": "Ativações de relatórios",
       "left": "{count, plural, one {Resta #} other {Restam #}}",
-      "leftRefills": "{count, plural, one {Resta #} other {Restam #}}, renova-se {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}",
       "unlimited": "Sem limite",
       "none": "Nenhuma restante",
       "hint": "Cada uma publica um relatório no Openscholar Reports sem nada a pagar.",
-      "publish": "Publicar"
+      "publish": "Publicar",
+      "every": "{interval, select, hour {A cada hora} day {Todo dia} week {Toda semana} month {Todo mês} quarter {A cada três meses} semi_annual {A cada seis meses} other {Todo ano}}",
+      "backTo": "Volta a {size, number} em {date}",
+      "kept": "{count, number} guardadas até o uso"
     }
   },
   "errors": {
@@ -6761,7 +6763,8 @@
           "unlimited": "Sem limite",
           "uses": "Ativar usa uma do seu saldo. Nada é cobrado.",
           "usesOrg": "Ativar usa uma do saldo de {organization}. Nada é cobrado.",
-          "leftRefills": "{count, plural, one {Resta #} other {Restam #}}, renova-se {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}"
+          "grantRefills": "{left, number} de {size, number} {interval, select, hour {nesta hora} day {hoje} week {nesta semana} month {neste mês} quarter {nestes três meses} semi_annual {nestes seis meses} other {neste ano}}, volta a {size, number} em {date}.",
+          "grantKept": "{more, select, yes {Mais {count, number}} other {{count, number}}} guardadas até o uso."
         },
         "creditLine": "Crédito da conta",
         "declined": "O seu cartão foi recusado. Nada foi cobrado. Mude de cartão e tente novamente.",
@@ -6828,8 +6831,7 @@
           "body": "Pago com cartão. Um código promocional pode baixar o preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyPriced": "{price} por relatório, pagos com cartão. Um código promocional pode baixar esse preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyBalance": "Usa uma ativação do saldo, que tem {count, number}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
-          "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado.",
-          "bodyBalanceRefills": "Usa uma ativação do saldo, que tem {count, number} e se renova {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}. Nada a pagar. O DOI é registado e o relatório fica publicado."
+          "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado."
         }
       }
     },

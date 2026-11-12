@@ -425,11 +425,13 @@
     "activations": {
       "title": "Activaciones de informes",
       "left": "{count, plural, one {Queda #} other {Quedan #}}",
-      "leftRefills": "{count, plural, one {Queda #} other {Quedan #}}, se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}",
       "unlimited": "Sin límite",
       "none": "No queda ninguna",
       "hint": "Cada una publica un informe en Openscholar Reports sin nada que pagar.",
-      "publish": "Publicar"
+      "publish": "Publicar",
+      "every": "{interval, select, hour {Cada hora} day {Cada día} week {Cada semana} month {Cada mes} quarter {Cada tres meses} semi_annual {Cada seis meses} other {Cada año}}",
+      "backTo": "Vuelve a {size, number} el {date}",
+      "kept": "{count, number} guardadas hasta usarlas"
     }
   },
   "errors": {
@@ -6761,7 +6763,8 @@
           "unlimited": "Sin límite",
           "uses": "Activar usa una de tu saldo. No se cobra nada.",
           "usesOrg": "Activar usa una del saldo de {organization}. No se cobra nada.",
-          "leftRefills": "{count, plural, one {Queda #} other {Quedan #}}, se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}"
+          "grantRefills": "{left, number} de {size, number} {interval, select, hour {esta hora} day {hoy} week {esta semana} month {este mes} quarter {estos tres meses} semi_annual {estos seis meses} other {este año}}, vuelve a {size, number} el {date}.",
+          "grantKept": "{more, select, yes {{count, number} más} other {{count, number}}} guardadas hasta usarlas."
         },
         "creditLine": "Saldo a favor de la cuenta",
         "declined": "Tu tarjeta fue rechazada. No se cobró nada. Cambia la tarjeta e inténtalo de nuevo.",
@@ -6828,8 +6831,7 @@
           "body": "Se paga con tarjeta. Un código promocional puede rebajar el precio o cubrirlo. El DOI se registra y el informe se publica.",
           "bodyPriced": "{price} por informe, pagados con tarjeta. Un código promocional puede rebajar ese precio o cubrirlo. El DOI se registra y el informe se publica.",
           "bodyBalance": "Usa una activación del saldo, en el que quedan {count, number}. No hay nada que pagar. El DOI se registra y el informe se publica.",
-          "bodyUnlimited": "Usa una activación del saldo, que no tiene límite. No hay nada que pagar. El DOI se registra y el informe se publica.",
-          "bodyBalanceRefills": "Usa una activación del saldo, en el que quedan {count, number} y que se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}. No hay nada que pagar. El DOI se registra y el informe se publica."
+          "bodyUnlimited": "Usa una activación del saldo, que no tiene límite. No hay nada que pagar. El DOI se registra y el informe se publica."
         }
       }
     },

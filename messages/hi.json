@@ -424,11 +424,13 @@
     "activations": {
       "title": "रिपोर्ट सक्रियण",
       "left": "{count, number} बचे",
-      "leftRefills": "{count, number} बचे, {interval, select, hour {हर घंटे} day {हर दिन} week {हर हफ़्ते} month {हर महीने} quarter {हर तीन महीने} semi_annual {हर छह महीने} other {हर साल}} फिर भरते हैं",
       "unlimited": "कोई सीमा नहीं",
       "none": "कोई नहीं बचा",
       "hint": "हर सक्रियण बिना कुछ चुकाए Openscholar Reports पर एक रिपोर्ट लाइव करता है।",
-      "publish": "प्रकाशित करें"
+      "publish": "प्रकाशित करें",
+      "every": "{interval, select, hour {हर घंटे} day {हर दिन} week {हर हफ़्ते} month {हर महीने} quarter {हर तीन महीने} semi_annual {हर छह महीने} other {हर साल}}",
+      "backTo": "{date} को फिर {size, number}",
+      "kept": "{count, number} इस्तेमाल होने तक रखे गए"
     }
   },
   "errors": {
@@ -6760,7 +6762,8 @@
           "unlimited": "कोई सीमा नहीं",
           "uses": "सक्रिय करने पर आपके बैलेंस से एक सक्रियण लगता है। कोई शुल्क नहीं लिया जाता।",
           "usesOrg": "सक्रिय करने पर {organization} के बैलेंस से एक सक्रियण लगता है। कोई शुल्क नहीं लिया जाता।",
-          "leftRefills": "{count, number} बचे, {interval, select, hour {हर घंटे} day {हर दिन} week {हर हफ़्ते} month {हर महीने} quarter {हर तीन महीने} semi_annual {हर छह महीने} other {हर साल}} फिर भरते हैं"
+          "grantRefills": "{size, number} में से {left, number} {interval, select, hour {इस घंटे} day {आज} week {इस हफ़्ते} month {इस महीने} quarter {इन तीन महीनों में} semi_annual {इन छह महीनों में} other {इस साल}}, {date} को फिर {size, number}।",
+          "grantKept": "{more, select, yes {और {count, number}} other {{count, number}}} इस्तेमाल होने तक रखे गए।"
         },
         "creditLine": "खाते का क्रेडिट",
         "declined": "आपका कार्ड अस्वीकार हो गया। कोई राशि नहीं काटी गई। कार्ड बदलें और फिर से कोशिश करें।",
@@ -6827,8 +6830,7 @@
           "body": "कार्ड से भुगतान। प्रोमो कोड कीमत को घटा या पूरा कवर कर सकता है। DOI पंजीकृत होता है और रिपोर्ट प्रकाशित हो जाती है।",
           "bodyPriced": "हर रिपोर्ट के लिए {price}, कार्ड से भुगतान। प्रोमो कोड इस कीमत को घटा या पूरा कवर कर सकता है। DOI पंजीकृत होता है और रिपोर्ट प्रकाशित हो जाती है।",
           "bodyBalance": "बैलेंस से एक सक्रियण लगता है, जिसमें {count, number} बचे हैं। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
-          "bodyUnlimited": "बैलेंस से एक सक्रियण लगता है, जिसकी कोई सीमा नहीं है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
-          "bodyBalanceRefills": "बैलेंस से एक सक्रियण लगता है, जिसमें {count, number} बचे हैं और जो {interval, select, hour {हर घंटे} day {हर दिन} week {हर हफ़्ते} month {हर महीने} quarter {हर तीन महीने} semi_annual {हर छह महीने} other {हर साल}} फिर भरता है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।"
+          "bodyUnlimited": "बैलेंस से एक सक्रियण लगता है, जिसकी कोई सीमा नहीं है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।"
         }
       }
     },

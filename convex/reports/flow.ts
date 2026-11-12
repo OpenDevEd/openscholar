@@ -3,7 +3,7 @@
 // reports; the report's owner, who started it, and the workspace's admins change them.
 import { v, type Infer } from "convex/values";
 import { activationsOf, readAccount } from "../billing/accounts";
-import { refillValidator } from "../billing/validators";
+import { activationGrantsValidator } from "../billing/validators";
 import { readCatalog } from "../billing/catalog";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { internal } from "../_generated/api";
@@ -177,9 +177,9 @@ export const startsAction = defineUserQuery({
   path: "reports/flow:starts",
   description:
     "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
-    "`activations` is how many activations the workspace has left in its balance, each of which makes one report live at no charge, or null for no limit, and `refill` how often they refill (day, week, month...), or null when they don't. `price` is what activating one costs in US dollars when that balance is empty, or null. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
+    "`activations` is how many activations the workspace has left in its balance, each of which makes one report live at no charge, or null for no limit, and `grants` says of what kinds: each `interval` that refills, back to `size` on `resetsAt`, and `once` for those that stay until used. `price` is what activating one costs in US dollars when that balance is empty, or null. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
-  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()), /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */ activations: v.union(v.number(), v.null()), /** What they refill by; null when none refills. */ refill: v.union(refillValidator, v.null()), /** What activating a report costs with none left, in US dollars, said before a report is started; null while there is no price. */ price: v.union(v.number(), v.null()) }),
+  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()), /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */ activations: v.union(v.number(), v.null()), /** Those activations by kind: what refills, by when, and what stays until used. */ grants: activationGrantsValidator, /** What activating a report costs with none left, in US dollars, said before a report is started; null while there is no price. */ price: v.union(v.number(), v.null()) }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     const price = (await readCatalog(ctx))?.plans.find((plan) => plan.id === ACTIVATION_PLAN)?.price?.amount ?? null;

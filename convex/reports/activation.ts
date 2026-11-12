@@ -18,7 +18,7 @@ import { actorValidator, type Actor } from "../workspaces/actor";
 import { activationsOf, customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
-import { refillValidator } from "../billing/validators";
+import { activationGrantsValidator } from "../billing/validators";
 import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, voidDeclined, voidInvoice } from "../billing/stripeRest";
@@ -97,8 +97,8 @@ export const terms = workspaceQuery({
       credit: v.number(),
       /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */
       activations: v.union(v.number(), v.null()),
-      /** What they refill by; null when none refills. */
-      refill: v.union(refillValidator, v.null()),
+      /** Those activations by kind: what refills, by when, and what stays until used. */
+      grants: activationGrantsValidator,
       /** The activation plan's price in US dollars; null while Autumn's catalog has no such plan. */
       price: v.union(v.number(), v.null()),
       /** A charge the bank asked to confirm, and its page. */
