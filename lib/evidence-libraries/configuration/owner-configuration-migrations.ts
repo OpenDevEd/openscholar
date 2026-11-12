@@ -691,6 +691,42 @@ function migrateVersionThirteenToFourteen(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/**
+ * A community named who funds it in two lists: partners, by name, under its identity, and funders, with a link and a
+ * logo, under its footer. There is one list now, the funders. Each saved partner becomes a funder with that name,
+ * after the funders already there, unless one of them has the name. The partners list goes.
+ */
+function migrateVersionFourteenToFifteen(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 15;
+  const identity = next.sections.find((row) => row.sectionKey === "identity");
+  if (!identity || !isRecord(identity.payload) || !hasOwn(identity.payload, "fundingPartners")) return completeOwnerConfigurationSnapshot(next);
+  const { fundingPartners, ...kept } = identity.payload;
+  identity.payload = kept;
+  const partners = Array.isArray(fundingPartners) ? fundingPartners.filter(isRecord) : [];
+  if (partners.length === 0) return completeOwnerConfigurationSnapshot(next);
+  let footer = next.sections.find((row) => row.sectionKey === "footer");
+  if (!footer) next.sections.push((footer = { sectionKey: "footer", payload: {} }));
+  if (!isRecord(footer.payload)) return completeOwnerConfigurationSnapshot(next);
+  const funders: unknown[] = Array.isArray(footer.payload.funders) ? footer.payload.funders : [];
+  const nameOf = (entry: unknown) => (isRecord(entry) && typeof entry.name === "string" ? entry.name.trim().toLowerCase() : "");
+  const named = new Set(funders.map(nameOf));
+  const taken = new Set(funders.flatMap((funder) => (isRecord(funder) ? [funder.id] : [])));
+  for (const partner of partners) {
+    if (named.has(nameOf(partner))) continue;
+    named.add(nameOf(partner));
+    // The two lists were checked apart, so a partner's id may be a funder's too.
+    let id = partner.id;
+    for (let n = 1; taken.has(id); n += 1) id = `partner-${n}`;
+    taken.add(id);
+    funders.push({ id, name: partner.name });
+  }
+  footer.payload = { ...footer.payload, funders };
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -807,6 +843,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 13,
     to: 14,
     migrate: migrateVersionThirteenToFourteen,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 14,
+    to: 15,
+    migrate: migrateVersionFourteenToFifteen,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

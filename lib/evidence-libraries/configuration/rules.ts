@@ -97,7 +97,6 @@ export type SectionState = "complete" | "edited" | "attention";
 type SectionProblem =
   | "nameMissing"
   | "shortNameMissing"
-  | "partnerName"
   | "badColour"
   | "institutionName"
   | LinkProblem
@@ -197,8 +196,6 @@ export const SCHEMA_LIMITS = {
     tagline: schemaNumber("/identity/tagline", "maxLength"),
     searchTitle: schemaNumber("/identity/searchTitle", "maxLength"),
     description: schemaNumber("/identity/description", "maxLength"),
-    fundingPartners: schemaNumber("/identity/fundingPartners", "maxItems"),
-    partnerName: schemaNumber("/identity/fundingPartners/*/name", "maxLength"),
   },
   institutions: {
     items: schemaNumber("/institutions", "maxItems"),
@@ -385,8 +382,6 @@ const HOME_INVOLVEMENT_DEFAULTS = {
 /* Draft shape                                                         */
 /* ------------------------------------------------------------------ */
 
-type FundingPartner = { id: string; name: string };
-
 type IdentityDraft = {
   name: string;
   shortName: string;
@@ -397,7 +392,6 @@ type IdentityDraft = {
   /** The home page's title in search results; empty keeps the name and tagline. */
   searchTitle: string;
   description: string;
-  fundingPartners: FundingPartner[];
   assets: {
     logoLight: string;
     logoDark: string;
@@ -735,10 +729,6 @@ function payloadOf(rows: readonly SectionRow[], sectionKey: string) {
 function readIdentity(payload: unknown): IdentityDraft {
   const identity = record(payload);
   const assets = record(identity.assets);
-  const partners = list(identity.fundingPartners).map((partner) => {
-    const row = record(partner);
-    return { id: text(row.id) || newId("fp"), name: text(row.name) };
-  });
   // The light file is the main one and dark mode falls back to it. Older rows
   // could hold only a dark logo or a separate light icon; read them into the
   // same files visitors already see.
@@ -754,7 +744,6 @@ function readIdentity(payload: unknown): IdentityDraft {
     tagline: text(identity.tagline),
     searchTitle: text(identity.searchTitle),
     description: text(identity.description),
-    fundingPartners: partners,
     assets: {
       logoLight,
       logoDark: logoDark === logoLight ? "" : logoDark,
@@ -1338,13 +1327,6 @@ function identityPayload(identity: IdentityDraft) {
     tagline: optional(identity.tagline),
     searchTitle: optional(identity.searchTitle),
     description: optional(identity.description),
-    fundingPartners:
-      identity.fundingPartners.length > 0
-        ? identity.fundingPartners.map((partner) => ({
-            id: partner.id,
-            name: partner.name,
-          }))
-        : undefined,
     assets: compact({
       logoLight: optional(identity.assets.logoLight),
       logoDark: optional(identity.assets.logoDark),
@@ -1881,11 +1863,6 @@ export function sectionProblems(
     case "identity":
       if (!draft.identity.name.trim()) problems.push("nameMissing");
       if (!draft.identity.shortName.trim()) problems.push("shortNameMissing");
-      if (
-        draft.identity.fundingPartners.some((partner) => !partner.name.trim())
-      ) {
-        problems.push("partnerName");
-      }
       break;
     case "theme":
       if (

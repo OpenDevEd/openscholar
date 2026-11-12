@@ -205,6 +205,7 @@ export function FooterSection({ draft, saved, patch, reset }: SectionProps) {
 
       <FieldGroup
         title={t("fundersHeading")}
+        hint={t("fundersHint")}
         action={
           <AddButton
             disabled={footer.funders.length >= LIMITS.funders}
