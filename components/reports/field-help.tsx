@@ -42,7 +42,7 @@ const SOURCES = {
   crossrefAbstracts: { mark: "web", href: `${CROSSREF}/abstracts/` },
   openalexTopics: { mark: "openalex", href: "https://help.openalex.org/hc/en-us/articles/24736129405719-Topics" },
   sdgs: { mark: "web", href: "https://sdgs.un.org/goals" },
-  openalexDesigns: { mark: "openalex", href: "https://api.openalex.org/study-designs" },
+  openalexDesigns: { mark: "openalex", href: "https://docs.openalex.org/api-entities/study-designs" },
   iso3166: { mark: "web", href: "https://www.iso.org/iso-3166-country-codes.html" },
   openalexFunders: { mark: "openalex", href: "https://docs.openalex.org/api-entities/funders" },
   rorFunders: { mark: "ror", href: "https://ror.org/" },

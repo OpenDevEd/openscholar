@@ -449,7 +449,7 @@ export function DetailsStep({
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
-  const held = useRef({ own: {} as Partial<Metadata>, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined });
+  const held = useRef({ own: {} as Partial<Metadata>, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined, /** Run or given up: nothing arriving later, such as an abstract, may change it. */ closed: false });
   const sendNow = () => {
     clearTimeout(held.current.timer);
     held.current.send?.();
@@ -515,7 +515,8 @@ export function DetailsStep({
     if (!writingFor) return;
     setWriting(true);
     try {
-      set("abstract", await write({ ...writingFor, language: m.language }));
+      const abstract = await write({ ...writingFor, language: m.language });
+      if (!held.current.closed) set("abstract", abstract);
     } catch {
       toast.error(t("abstractFailed"));
     } finally {
@@ -555,6 +556,7 @@ export function DetailsStep({
     // The run carries the details as they are, so a save still waiting has nothing left to send.
     clearTimeout(held.current.timer);
     held.current.send = undefined;
+    held.current.closed = true;
     void onRun(m, opened);
   };
 
@@ -817,9 +819,7 @@ export function DetailsStep({
                           <span className="min-w-0 flex-1 truncate text-sm">{reference.text}</span>
                         </TooltipHint>
                       ) : (
-                        <span className="min-w-0 flex-1 truncate font-mono text-xs">
-
-                        </span>
+                        <span className="min-w-0 flex-1 truncate font-mono text-xs">{reference.doi}</span>
                       )}
                       {href ? (
                         <TooltipHint label={t("openItsDoi")}>
@@ -918,6 +918,7 @@ export function DetailsStep({
             // What was typed is given up, so a save still waiting must never arrive after it.
             clearTimeout(held.current.timer);
             held.current.send = undefined;
+            held.current.closed = true;
             onCancel(opened);
           }}>
             {t("cancel")}
