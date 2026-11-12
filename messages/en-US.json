@@ -1238,20 +1238,20 @@
     "reviewed": "Reviewed"
   },
   "saveToLibrary": {
-    "save": "Save",
-    "saved": "Saved",
-    "saveToLibrary": "Save to library",
+    "save": "Add to library",
+    "saved": "In library",
+    "saveToLibrary": "Add to library",
     "removeFromLibrary": "Remove from library",
     "addToCollection": "Add to collection",
     "newCollection": "New collection",
     "removed": "Removed from library",
     "undo": "Undo",
-    "saveError": "Couldn't save the paper",
+    "saveError": "Couldn't add the paper to the library",
     "removeError": "Couldn't remove the paper",
     "restoreError": "Couldn't put the paper back",
     "collectionError": "Couldn't change the collection",
     "newCollectionWithPaper": "New collection with this paper",
-    "finishSaving": "Finish saving"
+    "finishSaving": "Finish adding"
   },
   "rating": {
     "noRating": "No rating",
@@ -1451,7 +1451,7 @@
     "ratingFilter": "Rating",
     "loadMore": "Load more",
     "emptyLibraryTitle": "This library is empty",
-    "emptyLibraryDescription": "Save papers from search results to build this library.",
+    "emptyLibraryDescription": "Add papers from search results to build this library.",
     "emptyLibraryCta": "Search papers",
     "noResultsTitle": "No papers match your search or filters",
     "clearFilters": "Clear filters",
@@ -6235,7 +6235,7 @@
       "action": {
         "openPage": "Open its page",
         "open": "Open",
-        "activate": "Activate it",
+        "activate": "Pay",
         "carryOn": "Carry on",
         "seeFailed": "See what failed",
         "manage": "Open in Publish"
@@ -6646,7 +6646,7 @@
       "changeDetails": "Change the details",
       "uploadNew": "Upload a new PDF",
       "publishAnother": "Publish another",
-      "activate": "Activate",
+      "activate": "Pay",
       "needsApproval": "A reviewer has to approve it first",
       "untitled": "Untitled report",
       "startedBy": "{name} started this report. Only they and the workspace's admins can change it.",

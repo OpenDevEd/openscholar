@@ -1238,20 +1238,20 @@
     "reviewed": "Examiné"
   },
   "saveToLibrary": {
-    "save": "Enregistrer",
-    "saved": "Enregistré",
-    "saveToLibrary": "Enregistrer dans la bibliothèque",
+    "save": "Ajouter à la bibliothèque",
+    "saved": "Dans la bibliothèque",
+    "saveToLibrary": "Ajouter à la bibliothèque",
     "removeFromLibrary": "Retirer de la bibliothèque",
     "addToCollection": "Ajouter à une collection",
     "newCollection": "Nouvelle collection",
     "removed": "Retiré de la bibliothèque",
     "undo": "Annuler",
-    "saveError": "Impossible d'enregistrer l'article",
+    "saveError": "Impossible d'ajouter l'article à la bibliothèque",
     "removeError": "Impossible de retirer l'article",
     "restoreError": "Impossible de remettre l'article",
     "collectionError": "Impossible de modifier la collection",
     "newCollectionWithPaper": "Nouvelle collection avec cet article",
-    "finishSaving": "Terminer l’enregistrement"
+    "finishSaving": "Terminer l’ajout"
   },
   "rating": {
     "noRating": "Sans note",
@@ -1451,7 +1451,7 @@
     "ratingFilter": "Filtrer par note minimale",
     "loadMore": "Charger plus",
     "emptyLibraryTitle": "Cette bibliothèque est vide",
-    "emptyLibraryDescription": "Enregistrez des articles depuis les résultats de recherche pour construire cette bibliothèque.",
+    "emptyLibraryDescription": "Ajoutez des articles depuis les résultats de recherche pour construire cette bibliothèque.",
     "emptyLibraryCta": "Rechercher des articles",
     "noResultsTitle": "Aucun article ne correspond à votre recherche ou vos filtres",
     "clearFilters": "Effacer les filtres",
@@ -6235,7 +6235,7 @@
       "action": {
         "openPage": "Ouvrir sa page",
         "open": "Ouvrir",
-        "activate": "L'activer",
+        "activate": "Payer",
         "carryOn": "Continuer",
         "seeFailed": "Voir ce qui a échoué",
         "manage": "Ouvrir dans Publier"
@@ -6646,7 +6646,7 @@
       "changeDetails": "Modifier les informations",
       "uploadNew": "Téléverser un nouveau PDF",
       "publishAnother": "En publier un autre",
-      "activate": "Activer",
+      "activate": "Payer",
       "needsApproval": "Un relecteur doit d'abord l'approuver",
       "untitled": "Rapport sans titre",
       "startedBy": "{name} a commencé ce rapport. Seuls cette personne et les administrateurs de l'espace de travail peuvent le modifier.",

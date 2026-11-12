@@ -161,7 +161,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
       </header>
     }>
       {/* Keeping the paper: in the library, a collection or a community. At the end, what only its workspace does. */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-5 py-3 sm:px-8">
+      <div className="@container flex flex-wrap items-center gap-2 border-b border-border-subtle px-5 py-3 sm:px-8">
         <SaveControl paper={paper} named />
         {extra?.actions ? <div className="sm:ms-auto">{extra.actions}</div> : null}
       </div>

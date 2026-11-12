@@ -1239,20 +1239,20 @@
     "reviewed": "Nagegaan"
   },
   "saveToLibrary": {
-    "save": "Stoor",
-    "saved": "Gestoor",
-    "saveToLibrary": "Stoor in biblioteek",
+    "save": "Voeg by biblioteek",
+    "saved": "In biblioteek",
+    "saveToLibrary": "Voeg by biblioteek",
     "removeFromLibrary": "Verwyder uit biblioteek",
     "addToCollection": "Voeg by versameling",
     "newCollection": "Nuwe versameling",
     "removed": "Uit biblioteek verwyder",
     "undo": "Maak ongedaan",
-    "saveError": "Kon nie die artikel stoor nie",
+    "saveError": "Kon nie die artikel by die biblioteek voeg nie",
     "removeError": "Kon nie die artikel verwyder nie",
     "restoreError": "Kon nie die artikel terugplaas nie",
     "collectionError": "Kon nie die versameling verander nie",
     "newCollectionWithPaper": "Nuwe versameling met hierdie artikel",
-    "finishSaving": "Voltooi stoor"
+    "finishSaving": "Voltooi byvoeging"
   },
   "rating": {
     "noRating": "Geen gradering nie",
@@ -1452,7 +1452,7 @@
     "ratingFilter": "Gradering",
     "loadMore": "Laai meer",
     "emptyLibraryTitle": "Hierdie biblioteek is leeg",
-    "emptyLibraryDescription": "Stoor artikels uit soekresultate om hierdie biblioteek te bou.",
+    "emptyLibraryDescription": "Voeg artikels uit soekresultate by om hierdie biblioteek te bou.",
     "emptyLibraryCta": "Soek artikels",
     "noResultsTitle": "Geen artikels pas by jou soektog of filters nie",
     "clearFilters": "Maak filters leeg",
@@ -6236,7 +6236,7 @@
       "action": {
         "openPage": "Maak sy bladsy oop",
         "open": "Maak oop",
-        "activate": "Aktiveer",
+        "activate": "Betaal",
         "carryOn": "Gaan voort",
         "seeFailed": "Sien wat gefaal het",
         "manage": "Maak oop in Publiseer"
@@ -6647,7 +6647,7 @@
       "changeDetails": "Verander besonderhede",
       "uploadNew": "Laai 'n nuwe PDF op",
       "publishAnother": "Publiseer nog een",
-      "activate": "Aktiveer",
+      "activate": "Betaal",
       "needsApproval": "'n Hersiener moet dit eers goedkeur",
       "untitled": "Verslag sonder titel",
       "startedBy": "{name} het hierdie verslag begin. Net hulle en die werkruimte se administrateurs kan dit verander.",

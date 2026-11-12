@@ -1238,20 +1238,20 @@
     "reviewed": "समीक्षित"
   },
   "saveToLibrary": {
-    "save": "सहेजें",
-    "saved": "सहेजा गया",
-    "saveToLibrary": "लाइब्रेरी में सहेजें",
+    "save": "लाइब्रेरी में जोड़ें",
+    "saved": "लाइब्रेरी में",
+    "saveToLibrary": "लाइब्रेरी में जोड़ें",
     "removeFromLibrary": "लाइब्रेरी से हटाएँ",
     "addToCollection": "संग्रह में जोड़ें",
     "newCollection": "नया संग्रह",
     "removed": "लाइब्रेरी से हटाया गया",
     "undo": "पूर्ववत करें",
-    "saveError": "पेपर सहेजा नहीं जा सका",
+    "saveError": "पेपर लाइब्रेरी में नहीं जोड़ा जा सका",
     "removeError": "पेपर हटाया नहीं जा सका",
     "restoreError": "पेपर वापस नहीं लाया जा सका",
     "collectionError": "संग्रह बदला नहीं जा सका",
     "newCollectionWithPaper": "इस पेपर के साथ नया संग्रह",
-    "finishSaving": "सहेजना पूरा करें"
+    "finishSaving": "जोड़ना पूरा करें"
   },
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
@@ -1451,7 +1451,7 @@
     "ratingFilter": "न्यूनतम रेटिंग से फ़िल्टर करें",
     "loadMore": "और लोड करें",
     "emptyLibraryTitle": "यह लाइब्रेरी खाली है",
-    "emptyLibraryDescription": "इस लाइब्रेरी को बनाने के लिए खोज परिणामों से पेपर सहेजें।",
+    "emptyLibraryDescription": "इस लाइब्रेरी को बनाने के लिए खोज परिणामों से पेपर जोड़ें।",
     "emptyLibraryCta": "शोधपत्र खोजें",
     "noResultsTitle": "आपकी खोज या फ़िल्टर से कोई शोधपत्र मेल नहीं खाता",
     "clearFilters": "फ़िल्टर हटाएं",
@@ -6235,7 +6235,7 @@
       "action": {
         "openPage": "इसका पेज खोलें",
         "open": "खोलें",
-        "activate": "सक्रिय करें",
+        "activate": "भुगतान करें",
         "carryOn": "जारी रखें",
         "seeFailed": "देखें क्या विफल हुआ",
         "manage": "‘प्रकाशित करें’ में खोलें"
@@ -6646,7 +6646,7 @@
       "changeDetails": "विवरण बदलें",
       "uploadNew": "नया PDF अपलोड करें",
       "publishAnother": "एक और प्रकाशित करें",
-      "activate": "सक्रिय करें",
+      "activate": "भुगतान करें",
       "needsApproval": "पहले समीक्षक को इसे स्वीकार करना होगा",
       "untitled": "बिना शीर्षक की रिपोर्ट",
       "startedBy": "{name} ने यह रिपोर्ट शुरू की। केवल वे और कार्यक्षेत्र के व्यवस्थापक इसे बदल सकते हैं।",

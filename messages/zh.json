@@ -1238,20 +1238,20 @@
     "reviewed": "已审核"
   },
   "saveToLibrary": {
-    "save": "保存",
-    "saved": "已保存",
-    "saveToLibrary": "保存到文献库",
+    "save": "加入文献库",
+    "saved": "已在文献库",
+    "saveToLibrary": "加入文献库",
     "removeFromLibrary": "从文献库中移除",
     "addToCollection": "添加到合集",
     "newCollection": "新建合集",
     "removed": "已从文献库中移除",
     "undo": "撤销",
-    "saveError": "无法保存该论文",
+    "saveError": "无法将该论文加入文献库",
     "removeError": "无法移除该论文",
     "restoreError": "无法恢复该论文",
     "collectionError": "无法更改合集",
     "newCollectionWithPaper": "用这篇论文新建集合",
-    "finishSaving": "完成保存"
+    "finishSaving": "完成添加"
   },
   "rating": {
     "noRating": "无评分",
@@ -1451,7 +1451,7 @@
     "ratingFilter": "按最低评分筛选",
     "loadMore": "加载更多",
     "emptyLibraryTitle": "此文献库为空",
-    "emptyLibraryDescription": "从搜索结果中保存论文，建立这个文库。",
+    "emptyLibraryDescription": "从搜索结果中添加论文，建立这个文库。",
     "emptyLibraryCta": "搜索论文",
     "noResultsTitle": "没有符合您搜索或筛选条件的论文",
     "clearFilters": "清除筛选",
@@ -6235,7 +6235,7 @@
       "action": {
         "openPage": "打开其页面",
         "open": "打开",
-        "activate": "激活",
+        "activate": "付款",
         "carryOn": "继续",
         "seeFailed": "查看失败原因",
         "manage": "在“发布”中打开"
@@ -6646,7 +6646,7 @@
       "changeDetails": "修改信息",
       "uploadNew": "上传新的 PDF",
       "publishAnother": "再发布一份",
-      "activate": "激活",
+      "activate": "付款",
       "needsApproval": "需要先由审核人批准",
       "untitled": "无标题报告",
       "startedBy": "{name}开始了此报告。只有此人和工作区管理员可以修改它。",

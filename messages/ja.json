@@ -1238,20 +1238,20 @@
     "reviewed": "確認済み"
   },
   "saveToLibrary": {
-    "save": "保存",
-    "saved": "保存済み",
-    "saveToLibrary": "ライブラリに保存",
+    "save": "ライブラリに追加",
+    "saved": "ライブラリにあり",
+    "saveToLibrary": "ライブラリに追加",
     "removeFromLibrary": "ライブラリから削除",
     "addToCollection": "コレクションに追加",
     "newCollection": "新しいコレクション",
     "removed": "ライブラリから削除しました",
     "undo": "元に戻す",
-    "saveError": "論文を保存できませんでした",
+    "saveError": "論文をライブラリに追加できませんでした",
     "removeError": "論文を削除できませんでした",
     "restoreError": "論文を元に戻せませんでした",
     "collectionError": "コレクションを変更できませんでした",
     "newCollectionWithPaper": "この論文で新しいコレクション",
-    "finishSaving": "保存を完了"
+    "finishSaving": "追加を完了"
   },
   "rating": {
     "noRating": "評価なし",
@@ -1451,7 +1451,7 @@
     "ratingFilter": "最低評価でフィルター",
     "loadMore": "もっと読み込む",
     "emptyLibraryTitle": "このライブラリは空です",
-    "emptyLibraryDescription": "検索結果から論文を保存して、このライブラリを作りましょう。",
+    "emptyLibraryDescription": "検索結果から論文を追加して、このライブラリを作りましょう。",
     "emptyLibraryCta": "論文を検索",
     "noResultsTitle": "検索やフィルターに一致する論文はありません",
     "clearFilters": "フィルターをクリア",
@@ -6235,7 +6235,7 @@
       "action": {
         "openPage": "ページを開く",
         "open": "開く",
-        "activate": "有効化する",
+        "activate": "支払う",
         "carryOn": "続ける",
         "seeFailed": "不合格の内容を見る",
         "manage": "「公開」で開く"
@@ -6646,7 +6646,7 @@
       "changeDetails": "詳細を変更",
       "uploadNew": "新しい PDF をアップロード",
       "publishAnother": "別のレポートを公開",
-      "activate": "有効化",
+      "activate": "支払う",
       "needsApproval": "先に審査者の承認が必要です",
       "untitled": "無題のレポート",
       "startedBy": "{name}がこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
