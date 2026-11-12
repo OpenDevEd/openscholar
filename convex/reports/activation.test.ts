@@ -31,7 +31,7 @@ const emailed = async (world: World, key: string) => {
  * customer has a card only with `card`. With `lost`, Autumn makes the purchase but its answer never arrives, and the
  * customer's invoices then hold `lost`. Stripe has every invoice paid, at $5. Answers the calls made to Autumn, in order.
  */
-function autumnStub({ balance, card = false, due = () => 5, dropFirstQuote = false, lost }: { balance: number; card?: boolean; due?: (code: string | undefined) => number; dropFirstQuote?: boolean; lost?: { status: string; stripe_id: string } }) {
+function autumnStub({ balance, card = false, due = () => 5, dropFirstQuote = false, lost, racy = false }: { balance: number; card?: boolean; due?: (code: string | undefined) => number; dropFirstQuote?: boolean; lost?: { status: string; stripe_id: string }; /** Holds read the balance and take from it a moment apart, as two at once were seen to on our Autumn. */ racy?: boolean }) {
   vi.stubEnv("AUTUMN_URL", "https://autumn.test");
   vi.stubEnv("AUTUMN_SECRET_KEY", "am_sk_test_fake");
   const asked: Array<Record<string, unknown> & { path: string }> = [];
@@ -54,6 +54,7 @@ function autumnStub({ balance, card = false, due = () => 5, dropFirstQuote = fal
     if (path === "balances.check") {
       asked.push({ path, feature_id: body.feature_id, required_balance: body.required_balance, lock_id: body.lock?.lock_id });
       const allowed = left > 0;
+      if (racy) await new Promise((resolve) => setTimeout(resolve, 50));
       if (allowed) left--;
       return Response.json({ allowed, balance: null });
     }
@@ -103,6 +104,23 @@ describe("activating a report", () => {
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect(activation).toMatchObject({ state: "live", hold: asked[0]!.lock_id });
     expect(activation!.charge).toBeUndefined();
+  });
+
+  it("spends a balance of one on one report when two are activated at once", async () => {
+    vi.useRealTimers();
+    const world = await setup();
+    const first = await checked(world, [passed("byline")]);
+    // A second start the same day: the plan's one a day is the author's own, so it is lifted here.
+    await world.t.run(async (ctx) => {
+      for (const started of await ctx.db.query("reportStarts").take(5)) await ctx.db.delete("reportStarts", started._id);
+    });
+    const second = await checked(world, [passed("byline")]);
+    autumnStub({ balance: 1, racy: true });
+    const activate = (key: string) => world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, pay: false }).then(() => "live", (error: { data?: { reason?: string } }) => error.data?.reason ?? String(error));
+    const answers = await Promise.all([activate(first.key), activate(second.key)]);
+    vi.unstubAllGlobals();
+    expect(answers.sort()).toEqual(["live", "noneLeft"]);
+    expect((await activations(world)).map((activation) => activation.state)).toEqual(["live"]);
   });
 
   it("with none left in the balance, buys nothing until the person agrees to pay, and leaves no record", async () => {
