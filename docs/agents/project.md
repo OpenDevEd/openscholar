@@ -115,7 +115,12 @@ development Convex service.
 
 ## Branches and live systems
 
-- `prod` is live: the app at `discover.openscholar.ai` on self-hosted Convex (`convex.openscholar.ai`), and the marketing site from `marketing/` at `openscholar.ai`. Both Coolify apps build from it with auto-deploy off. Never push to or deploy `prod` unless the user asks. `main` and `prod-old` are history.
+- `prod` is live: the app at `discover.openscholar.ai` on self-hosted Convex (`convex.openscholar.ai`). Its Coolify app builds from it with auto-deploy off. Never push to or deploy `prod` unless the user asks. `main` and `prod-old` are history.
+- `marketing` is live too: the marketing site at `openscholar.ai`, built from `marketing/` and the few `lib/` files it imports. Its Coolify app (`openscholar-marketing`) builds from it with auto-deploy off.
+  - A marketing change merges into `dev` like any other. To ship it, move `marketing` forward to that `dev` commit with a plain push (`git push origin <dev commit>:marketing`), then deploy the app.
+  - Never open a pull request into `marketing`, and never commit to it directly. CI pushes a pull request's Convex functions to the test backend, which refuses a branch whose schema is behind `dev`'s.
+  - Cloudflare redirects every path of `openscholar.ai` it doesn't list to discover, so a new page's paths (`/x`, `/x/` and its `og-x.jpg`) go into that redirect rule after the deploy.
+  - A page that sends something new to the app or Convex ships after production has the side that receives it.
 - `dev` deploys to `dev.openscholar.ai` and is where all current work lands.
 - Before deploying to prod or moving or updating a community, read
   `docs/deploy-lessons.md`: what went wrong in the launch week and what to do

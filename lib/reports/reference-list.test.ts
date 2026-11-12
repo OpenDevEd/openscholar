@@ -27,9 +27,10 @@ describe("the references in a pasted text or a file", () => {
   });
 
   it("reads a plain list a line at a time, without its numbers, finding each DOI without the full stop after it", () => {
-    expect(referencesIn("1. Piper, B. (2018). Scaling up successfully. https://doi.org/10.1007/s10833-018-9325-4.\n[2] Banerjee, A., & Duflo, E. (2011). Poor Economics.\n\n10.1596/978-1-4648-1096-1\n")).toEqual([
+    expect(referencesIn("1. Piper, B. (2018). Scaling up successfully. https://doi.org/10.1007/s10833-018-9325-4.\n[2] Banerjee, A., & Duflo, E. (2011). Poor Economics.\n(3) Duflo, E. (2012). Human values and the design of the fight against poverty.\n\n10.1596/978-1-4648-1096-1\n")).toEqual([
       { text: "Piper, B. (2018). Scaling up successfully. https://doi.org/10.1007/s10833-018-9325-4.", doi: "10.1007/s10833-018-9325-4" },
       { text: "Banerjee, A., & Duflo, E. (2011). Poor Economics." },
+      { text: "Duflo, E. (2012). Human values and the design of the fight against poverty." },
       { text: "", doi: "10.1596/978-1-4648-1096-1" },
     ]);
   });

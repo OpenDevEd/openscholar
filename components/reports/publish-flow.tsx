@@ -366,9 +366,11 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const goTo = useMutation(api.reports.flow.goTo).withOptimisticUpdate((store, { key, step }) => {
     for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
       if (!value || !("report" in value) || value.report.key !== key) continue;
-      // Ready to activate or waiting for a reviewer, it can go back to its checks as they were (convex/reports/flow.ts `goTo`).
+      // Ready to activate, waiting for a reviewer, or failed with its author asking for one, it can go back to its checks
+      // as they were (convex/reports/flow.ts `goTo`).
       const stage = value.report.step === "done" ? stageOf(value.report, basics?.humanReview ?? false) : null;
-      store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step, reopened: value.report.reopened || stage === "ready" || stage === "review" } });
+      const waiting = stage === "ready" || stage === "review" || (stage === "failed" && value.report.asked === true);
+      store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step, reopened: value.report.reopened || waiting } });
     }
   });
   const backToChecks = useMutation(api.reports.flow.backToChecks).withOptimisticUpdate((store, { key }) => {
@@ -1308,7 +1310,7 @@ function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string
       <BylineBox byline={byline} />
       <RadioGroup aria-label={t("label")} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
         {([["self", PenLine], ["added", FileCheck2]] as const).map(([value, Icon]) => (
-          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-primary/60 hover:bg-muted/50"))}>
+          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
             <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 text-sm font-medium">
@@ -1327,14 +1329,15 @@ function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string
 function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode; /** Why the way on is shut, said beside it. */ hint?: string }) {
   const t = useTranslations("publishReports.flow");
   return (
-    <div className="mt-6 flex items-center gap-3">
+    // A Next too wide to sit beside Back (a phone at large text) takes a line of its own.
+    <div className="mt-6 flex flex-wrap items-center gap-3">
       {onBack ? (
         <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
           <ArrowLeft /> {t("back")}
         </Button>
       ) : null}
       {hint ? <p className="ms-auto text-sm text-muted-foreground">{hint}</p> : null}
-      <div className={hint ? undefined : "ms-auto"}>{next}</div>
+      <div className={cn("min-w-0 max-w-full", !hint && "ms-auto")}>{next}</div>
     </div>
   );
 }
@@ -1719,6 +1722,9 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
   const spendable = !!terms && (terms.activations === null || terms.activations >= terms.needs);
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
+  // A payment going through, started here or in another tab: the report can't change until it ends (flow.ts `goTo`).
+  const chargeOver = usePassed(terms?.paying?.until ?? undefined);
+  const charging = !!terms?.paying && !chargeOver;
   const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
@@ -1957,6 +1963,13 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
               {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again. */}
               <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t("activatingNow")}</p> : null}</AutoHeight>
               <div className="flex flex-wrap justify-end gap-2">
+                {/* Back to the details, as every other step has a way back to the one before it: wherever the server
+                    lets a checked report change (flow.ts `goTo`). */}
+                {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
+                  <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
+                    <ArrowLeft /> {t("back")}
+                  </Button>
+                ) : null}
                 {stage === "failed" ? (
                   <>
                     {report.asked ? null : (

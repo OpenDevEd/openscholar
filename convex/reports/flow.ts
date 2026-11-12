@@ -313,7 +313,7 @@ export const discard = workspaceMutation({
 /**
  * Back to a step already done, or on from the DOI to the upload. A report past its checks goes back too until it is
  * live, unless its payment is going through. One that failed them, or a reviewer declined, goes back to be fixed. One
- * ready to activate or waiting for a reviewer is `reopened`: with nothing changed it goes back to its checks as they
+ * ready to activate or waiting for a reviewer (or for one its author asked for) is `reopened`: with nothing changed it goes back to its checks as they
  * were (`backToChecks`), and anything changed runs them again.
  */
 export const goTo = workspaceMutation({
@@ -331,7 +331,9 @@ export const goTo = workspaceMutation({
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
     // Its details wait for its PDF to be read: the checks read that PDF's text.
     if (step === "details" && (!details?.metadata || report.pdf?.pages === undefined)) throw createError("CONFLICT", "That step isn't open for this report yet.");
-    await touch(ctx, report, { step, ...(checked && (stage === "ready" || stage === "review") && { reopened: true }) });
+    // So is one that failed them with its author asking for a reviewer: its request stands until something changes.
+    const waiting = stage === "ready" || stage === "review" || (stage === "failed" && report.asked === true);
+    await touch(ctx, report, { step, ...(checked && waiting && { reopened: true }) });
     return null;
   },
 });
