@@ -20,29 +20,22 @@ export const SIGNUP_PLAN = "signup_credits";
 export const TOPUP_PLAN = "top_up";
 
 /**
- * The metered feature a report's activation spends one of (#1261): a workspace's balance of activations. Plans and
- * balances given in Autumn's dashboard refill it by the day, week, month or year, or give an amount that stays.
+ * The metered feature a report's activation is paid from: a workspace's publication balance, in US dollars. Plans and
+ * balances given in Autumn's dashboard refill it by the day, week, month or year, or give an amount that stays; what a
+ * card buys of it stays too.
  */
-export const ACTIVATIONS_FEATURE = "report_activations";
+export const PUBLICATION_FEATURE = "publication_balance";
 
-/** How often a balance in Autumn can refill, shortest first: what a workspace's activations are said to refill by. */
+/** How often a balance in Autumn can refill, shortest first, as Autumn spends them. */
 export const REFILL_INTERVALS = ["hour", "day", "week", "month", "quarter", "semi_annual", "year"] as const;
 export type RefillInterval = (typeof REFILL_INTERVALS)[number];
 
 /**
- * One-off add-on that adds one activation to the workspace's balance, bought when a report is activated with none
- * left (#1261). Its price is the plan's in Autumn; a promotion code on an Autumn reward lowers it.
+ * One-off add-on that sells the publication balance a dollar at a time: what a report's price leaves for a card to pay
+ * is bought here, as that many dollars, and spent on the report at once. A promotion code on an Autumn reward lowers
+ * what the card pays for them.
  */
-export const ACTIVATION_PLAN = "report_activation";
-
-/**
- * One-off add-on that adds three activations, bought when a report under a licence that takes three (`activationsFor`:
- * NC, ND or the author's own) is activated with too few left. Priced at three activations in Autumn.
- */
-export const THREE_ACTIVATIONS_PLAN = "report_activation_custom";
-
-/** The plan that buys what activating a report under a licence takes: one activation, or three. */
-export const activationPlanFor = (activations: number) => (activations === 1 ? ACTIVATION_PLAN : THREE_ACTIVATIONS_PLAN);
+export const PUBLICATION_TOP_UP_PLAN = "publication_top_up";
 
 /** The plan an organization's customer starts on (#650): its own credits, shared by its members, and Free's limits. */
 export const ORGANIZATION_PLAN = "free_organization";

@@ -2,10 +2,8 @@
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
 import { v, type Infer } from "convex/values";
-import { activationsOf, readAccount } from "../billing/accounts";
-import { refillValidator } from "../billing/validators";
-import { readCatalog } from "../billing/catalog";
-import { ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN } from "../../lib/billing/plans";
+import { publicationOf, readAccount } from "../billing/accounts";
+import { balancePartsValidator } from "../billing/validators";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
@@ -27,7 +25,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, bylineByValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
+import { authorRowValidator, bylineByValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator, payWithValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -188,15 +186,22 @@ export const startsAction = defineUserQuery({
   path: "reports/flow:starts",
   description:
     "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
-    "`activations` is how many activations the workspace has left in its balance, each of which makes one report live at no charge, or null for no limit, and `refill` how often they refill (day, week, month...), or null when they don't. `price` is what activating one costs in US dollars when that balance is empty, or null. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
+    "`balance` is what the workspace's publication balance holds in US dollars, which pays for a report before a card does, or null for no limit, and `parts` is that balance by part: what refills (by the day, week, month...) with when it is next back to full, and what stays until it is used. What a report costs is in `reports/settings:forAuthors`. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
-  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()), /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */ activations: v.union(v.number(), v.null()), /** What they refill by; null when none refills. */ refill: v.union(refillValidator, v.null()), /** What activating a report costs with none left, in US dollars, said before a report is started; null while there is no price. */ price: v.union(v.number(), v.null()), /** What the three activations a report under an NC, ND or own licence takes cost, in US dollars; null while there is no price. */ priceOfThree: v.union(v.number(), v.null()) }),
+  returns: v.object({
+    kind: v.union(v.literal("personal"), v.literal("organization")),
+    perDay: v.union(v.number(), v.null()),
+    left: v.union(v.number(), v.null()),
+    /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */
+    untouched: v.optional(v.string()),
+    /** What the workspace's publication balance holds, in US dollars, as last read from Autumn; null for no limit. */
+    balance: v.union(v.number(), v.null()),
+    /** That balance by part: what refills, by when, and what stays until used. */
+    parts: balancePartsValidator,
+  }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
-    const plans = (await readCatalog(ctx))?.plans ?? [];
-    const priceOf = (id: string) => plans.find((plan) => plan.id === id)?.price?.amount ?? null;
-    const account = await readAccount(ctx, workspaceId);
-    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }), ...activationsOf(account), price: priceOf(ACTIVATION_PLAN), priceOfThree: priceOf(THREE_ACTIVATIONS_PLAN) };
+    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }), ...publicationOf(await readAccount(ctx, workspaceId)) };
   },
 });
 export const starts = userQuery(startsAction);
@@ -208,9 +213,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(v.string()) },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(v.string()), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator) },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: typed }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: typed, payWith }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -228,7 +233,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, voucher });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, voucher, payWith });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -253,6 +258,7 @@ export const sign = workspaceMutation({
       seriesName: settings.series.name,
       licence,
       ...(voucher && { voucher }),
+      ...(payWith && { payWith }),
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
       status: "draft",
@@ -353,6 +359,23 @@ export const paymentOf = async (ctx: QueryCtx, reportId: Id<"reports">) => {
     .first();
   return paying ? { until: paying.state === "charging" ? paying.at + CHARGING_MS : null } : null;
 };
+
+/**
+ * How the report is paid for, until it is live: from the balance or by card, and with which promotion code. Chosen
+ * with the licence when it is signed, and open to change wherever its bill shows. `voucher` null takes the code off.
+ * Not a change to the report itself: its place in the list and its forms are left as they are.
+ */
+export const choosePayment = workspaceMutation({
+  args: { key: v.string(), payWith: v.optional(payWithValidator), voucher: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, payWith, voucher }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (report.status === "live") throw createError("CONFLICT", MOVED_ON);
+    await ctx.db.patch("reports", report._id, { ...(payWith && { payWith }), ...(voucher !== undefined && { voucher: voucher?.trim() ? voucher.trim().slice(0, CODE_MAX) : undefined }) });
+    return null;
+  },
+});
 
 /** Back to the checks a report left with nothing changed (`reopened`): as they were, approval and all, without running them again. */
 export const backToChecks = workspaceMutation({
@@ -678,6 +701,8 @@ const reportValidator = v.object({
   agreementVersion: v.number(),
   /** The promotion code applied when it was signed, which the activation offers. */
   voucher: v.optional(v.string()),
+  /** What pays for it, as last chosen; none is the balance while it holds something. */
+  payWith: v.optional(payWithValidator),
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
@@ -729,6 +754,7 @@ export const getAction = defineUserQuery({
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
         agreementVersion: report.agreementVersion,
         ...(report.voucher && { voucher: report.voucher }),
+        ...(report.payWith && { payWith: report.payWith }),
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
         ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),

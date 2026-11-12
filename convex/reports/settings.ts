@@ -13,7 +13,8 @@ import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validat
 import { keptCustomOf, keptCustomValidator, publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, isIssn, type Check } from "../../lib/reports/settings";
-import { checkNamesValidator, checkSummariesValidator, seriesValidator } from "./validators";
+import { DEFAULT_PRICES, PRICE_MAX, isPrice } from "../../lib/reports/report";
+import { checkNamesValidator, checkSummariesValidator, pricesValidator, seriesValidator } from "./validators";
 
 /** What a check runs as: a decision model answers it, or an LLM that returns a structured answer. */
 const CHECK_TASK = "screening";
@@ -76,6 +77,8 @@ export const admin = query({
     enabled: v.boolean(),
     humanReview: v.boolean(),
     series: seriesValidator,
+    /** What publishing a report costs, in whole US dollars, by its licence's tier. */
+    prices: pricesValidator,
     publication: publicationSettingsValidator,
     publicationSavedAt: v.union(v.number(), v.null()),
     publicationCustom: keptCustomValidator,
@@ -94,6 +97,7 @@ export const admin = query({
       enabled: settings.enabled,
       humanReview: settings.humanReview,
       series: settings.series,
+      prices: settings.prices,
       publication: settings.publication,
       publicationSavedAt: settings.row?.publicationSavedAt ?? null,
       publicationCustom: keptCustomOf(settings.publication, settings.row?.customAccounts),
@@ -134,6 +138,8 @@ export const forAuthors = query({
     open: v.boolean(),
     humanReview: v.boolean(),
     series: seriesValidator,
+    /** What publishing a report costs, in whole US dollars, by its licence's tier. */
+    prices: pricesValidator,
     agreement: v.object({ version: v.number(), text: v.string() }),
     checks: checkNamesValidator,
   }),
@@ -143,6 +149,7 @@ export const forAuthors = query({
       open: settings.enabled && canRegister(settings.publication),
       humanReview: settings.humanReview,
       series: settings.series,
+      prices: settings.prices,
       agreement: { version: settings.agreement.version, text: settings.agreement.text },
       checks: settings.checks.filter((check) => check.enabled).map(({ id, name, blocking }) => ({ id, name, blocking })),
     };
@@ -156,9 +163,10 @@ export const update = mutation({
     humanReview: v.optional(v.boolean()),
     // Each part on its own, so two boxes saved one after the other never undo each other.
     series: v.optional(seriesValidator.partial()),
+    prices: v.optional(pricesValidator.partial()),
   },
   returns: v.null(),
-  handler: async (ctx, { enabled, humanReview, series }) => {
+  handler: async (ctx, { enabled, humanReview, series, prices }) => {
     await refuseApps(ctx);
     await requireAdmin(ctx);
     const row = await settingsRow(ctx);
@@ -167,7 +175,10 @@ export const update = mutation({
       await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
       await ctx.scheduler.runAfter(0, internal.reports.review.tellReleased, {});
     }
+    // A price is whole dollars, as the balance that pays it is bought a dollar at a time.
+    for (const dollars of Object.values(prices ?? {})) if (!isPrice(dollars)) throw createError("VALIDATION_ERROR", `A price is a whole number of dollars, from 1 to ${PRICE_MAX}.`);
     await save(ctx, row._id, {
+      ...(prices && { prices: { ...(row.prices ?? DEFAULT_PRICES), ...prices } }),
       ...(enabled !== undefined && { enabled }),
       ...(humanReview !== undefined && { humanReview }),
       ...(series && {

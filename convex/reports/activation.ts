@@ -1,12 +1,13 @@
-// Activating a report (#1261): what makes its DOI live. Only an admin of the report's workspace activates. Each
-// activation spends from the workspace's balance of activations, which Autumn keeps (lib/billing/plans.ts
-// ACTIVATIONS_FEATURE): plans and balances given in Autumn's dashboard fill it, by the day, week, month or year, or
-// once. A report takes one activation, or three under a licence that holds back reuse or is its author's own
-// (`activationsFor`, #1354). With too few left, activating buys what it takes: the "Report activation" plan
-// (ACTIVATION_PLAN) or the three-activation one (THREE_ACTIVATIONS_PLAN) at its price, less what a promotion code
-// takes off, which adds them to the balance, spent on the spot. A charge the bank asks to confirm waits as `pending`:
-// the bank's page comes back to the report, which goes live once Stripe has the invoice paid (`settle`). Activations
-// bought for a report that can't go live any more stay in the balance for the next one.
+// Activating a report (#1261): what makes its DOI live. Only an admin of the report's workspace activates. A report
+// costs its licence's price, in US dollars, set on Admin > Publications (`priceOf`). It is paid from the workspace's
+// publication balance, which Autumn keeps (lib/billing/plans.ts PUBLICATION_FEATURE): plans and balances given in
+// Autumn's dashboard fill it, by the day, week, month or year, or once. The person chooses what pays. From the
+// balance, it pays what it can, its refilling part first, and a card buys the rest as dollars of that balance
+// (PUBLICATION_TOP_UP_PLAN), spent on the spot. By card, the card buys the whole price and the balance is left as it
+// was. A promotion code lowers what the card pays, never what the balance does. A workspace with no saved card pays
+// on Stripe's own page, which comes back to the report. A payment still to be made, there or at the bank, waits as
+// `pending`, and the report goes live once Stripe has it paid (`settle`). What a card bought for a report that can't
+// go live any more stays in the balance for the next one.
 import { ConvexError, v, type Infer } from "convex/values";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -17,21 +18,22 @@ import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
-import { activationsOf, customerOf, readAccount, refreshAccount } from "../billing/accounts";
+import { customerOf, publicationOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
-import { refillValidator } from "../billing/validators";
+import { balancePartsValidator } from "../billing/validators";
 import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, voidDeclined, voidInvoice } from "../billing/stripeRest";
-import { ACTIVATIONS_FEATURE, ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN, activationPlanFor } from "../../lib/billing/plans";
-import { CODE_MAX, activationsFor, licenceOf, stageOf } from "../../lib/reports/report";
+import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/plans";
+import { CODE_MAX, PRICE_MAX, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { MOVED_ON, byKey, changing, paymentOf, touch } from "./flow";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
+import { payWithValidator } from "./validators";
 
 
 /** Where a workspace's report is on Publish: an organisation's pages are under its slug. */
@@ -41,11 +43,8 @@ async function placeOf(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
   return { organization: organization?.name ?? null, prefix: organization ? `/o/${organization.slug}` : "" };
 }
 
-/** How many activations putting the report live takes, by its licence; a report gone since takes one. */
-const needsOf = async (ctx: QueryCtx, reportId: Id<"reports">) => {
-  const report = await ctx.db.get("reports", reportId);
-  return report ? activationsFor(licenceOf(report)) : 1;
-};
+/** What putting the report live costs, in US dollars, by its licence. */
+const priceFor = async (ctx: QueryCtx, report: Doc<"reports">) => priceOf(licenceOf(report), (await reportSettings(ctx)).prices);
 
 /** The report's activation that waits on the bank. */
 const pendingOf = (ctx: QueryCtx, reportId: Id<"reports">) =>
@@ -88,8 +87,9 @@ async function activatable(ctx: QueryCtx, actor: Actor, key: string) {
 const cardValidator = v.object({ brand: v.string(), last4: v.string() });
 
 /**
- * What activating the report takes, for the page that offers it: whether the person may (an admin of its workspace),
- * the activations left in the workspace's balance, and with none left, the price of one and the workspace's saved card.
+ * What activating the report takes, for the page that shows its bill: whether the person may pay (an admin of its
+ * workspace), what the report costs, the workspace's publication balance, the way of paying and the code kept with the
+ * report, and the saved card a charge would go to, if there is one.
  */
 export const terms = workspaceQuery({
   args: { key: v.string() },
@@ -98,27 +98,29 @@ export const terms = workspaceQuery({
       admin: v.boolean(),
       /** The organisation the report is in; null for a person's own workspace. */
       organization: v.union(v.string(), v.null()),
+      /** The card a charge goes to; null with none saved, when a charge is paid on Stripe's page. */
       card: v.union(cardValidator, v.null()),
       /** Credit on the workspace's Stripe balance, in US dollars, which a charge is paid from first. */
       credit: v.number(),
-      /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */
-      activations: v.union(v.number(), v.null()),
-      /** What they refill by; null when none refills. */
-      refill: v.union(refillValidator, v.null()),
-      /** How many activations putting this report live takes, by its licence: one, or three. */
-      needs: v.number(),
-      /** The price in US dollars of the plan that buys what it takes; null while Autumn's catalog has no such plan. */
-      price: v.union(v.number(), v.null()),
-      /** A charge the bank asked to confirm, and its page. */
-      pending: v.union(v.object({ url: v.union(v.string(), v.null()) }), v.null()),
-      /** A charge for it is under way, until `until` at the latest, or waits on the bank (`until` null): the report stays as it is until it is answered. */
+      /** What the report costs, in US dollars, by its licence. */
+      price: v.number(),
+      /** What the workspace's publication balance holds, in US dollars, as last read from Autumn; null for no limit. */
+      balance: v.union(v.number(), v.null()),
+      /** That balance by part: what refills, by when, and what stays until used. */
+      parts: balancePartsValidator,
+      /** What pays, as last chosen; null before anyone chose, when the balance does while it holds something. */
+      payWith: v.union(payWithValidator, v.null()),
+      /** The promotion code kept with the report, for what a card pays. */
+      voucher: v.union(v.string(), v.null()),
+      /** Whether Autumn sells the balance at all: without it, what a card would pay can't be paid. */
+      sells: v.boolean(),
+      /** A payment still to be made: its page, and whether that is Stripe's checkout (true) or the bank's confirmation. */
+      pending: v.union(v.object({ url: v.union(v.string(), v.null()), checkout: v.boolean() }), v.null()),
+      /** A charge for it is under way, until `until` at the latest, or waits to be paid (`until` null): the report stays as it is until it is answered. */
       paying: v.union(v.object({ until: v.union(v.number(), v.null()) }), v.null()),
-      /**
-       * The report's last charge waited on the bank, which didn't confirm it: nothing was charged. With the promotion
-       * code it was asked with, which is still the person's to use.
-       */
-      refused: v.union(v.object({ code: v.union(v.string(), v.null()) }), v.null()),
-      /** An activation was bought for the report, which had moved on by then: it went to the balance. */
+      /** The report's last payment wasn't confirmed by the bank: nothing was charged. */
+      refused: v.boolean(),
+      /** What a card bought for the report went to the balance: it had moved on by then. */
       kept: v.boolean(),
       /** Publishing is switched off where this report's DOI is registered: it can't go live for now. */
       paused: v.boolean(),
@@ -129,26 +131,27 @@ export const terms = workspaceQuery({
     await refuseApps(ctx);
     const report = await byKey(ctx, key);
     if (!report || report.workspaceId !== actor.workspaceId) return null;
-    const needs = activationsFor(licenceOf(report));
-    const plan = (await readCatalog(ctx))?.plans.find((candidate) => candidate.id === activationPlanFor(needs));
     const pending = await pendingOf(ctx, report._id);
     // The last one that came to something: one still under way, or left behind by an action that died, says nothing yet.
     const last = await ctx.db.query("reportActivations").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).order("desc").filter((q) => q.neq(q.field("state"), "charging")).first();
     const account = await readAccount(ctx, actor.workspaceId);
+    const settings = await reportSettings(ctx);
     return {
       admin: actor.role === "admin",
       organization: (await placeOf(ctx, actor.workspaceId)).organization,
       card: account?.card ?? null,
       credit: account?.credit ?? 0,
-      ...activationsOf(account),
-      needs,
-      price: plan?.price?.amount ?? null,
-      // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
-      pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null } : null,
+      price: priceOf(licenceOf(report), settings.prices),
+      ...publicationOf(account),
+      payWith: report.payWith ?? null,
+      voucher: report.voucher ?? null,
+      sells: ((await readCatalog(ctx))?.plans ?? []).some((plan) => plan.id === PUBLICATION_TOP_UP_PLAN),
+      // The page to pay on is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
+      pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null, checkout: !pending.charge?.invoice } : null,
       paying: await paymentOf(ctx, report._id),
-      refused: last?.state === "refused" ? { code: last.code ?? null } : null,
+      refused: last?.state === "refused",
       kept: last?.state === "unused",
-      paused: paused(report, (await reportSettings(ctx)).publication),
+      paused: paused(report, settings.publication),
     };
   },
 });
@@ -162,8 +165,8 @@ const preparedValidator = v.object({
   waitingOn: v.union(v.string(), v.null()),
   /** Who is activating, by their email: an organisation's customer has none until it is given one. */
   email: v.union(v.string(), v.null()),
-  /** How many activations putting the report live takes, by its licence. */
-  needs: v.number(),
+  /** What putting the report live costs, in US dollars, by its licence. */
+  price: v.number(),
 });
 type Prepared = Infer<typeof preparedValidator>;
 
@@ -187,7 +190,7 @@ export const prepare = internalQuery({
       pending: pending ? { url: pending.payUrl ?? null } : null,
       waitingOn: await waitingOther(ctx, actor.workspaceId, report._id),
       email: (await ctx.db.get("users", actor.userId))?.email ?? null,
-      needs: activationsFor(licenceOf(report)),
+      price: await priceFor(ctx, report),
     };
   },
 });
@@ -202,23 +205,34 @@ async function putLive(ctx: MutationCtx, report: Doc<"reports">) {
   await notify(ctx, report._id, "live-author");
 }
 
-/** The page offered an activation from the balance that isn't there any more: spent since, or reset. */
-const NONE_LEFT = "There aren't enough activations left in the balance. Activate it again to pay for them.";
+/** The page offered to pay from a balance that isn't what it was any more: spent since, or reset. */
+const CHANGED = "The publication balance changed since this page read it. Check what is due, then activate again.";
 const STILL_PAYING = "Its payment is still going through. It goes live once it's paid.";
-/** Bought, and its report can't go live: the activation is the balance's. */
-const KEPT = "This report can't go live now, so what you paid for stays in your balance. The next report you activate uses it.";
+/** Bought, and its report can't go live: what was bought is the balance's. */
+const KEPT = "This report can't go live now, so what you paid stays in your publication balance. The next report you activate uses it.";
 
 /**
  * Starts an activation: its record, whose id is the idempotency key of what it buys and names its holds at Autumn,
- * with the code it would be paid with. Refuses while a charge for the report waits on the bank.
+ * with what pays, the report's price and the code a card's part would be paid with. Refuses while a payment for the
+ * report is still to be made.
  */
 export const begin = internalMutation({
-  args: { actor: actorValidator, key: v.string(), code: v.optional(v.string()) },
+  args: { actor: actorValidator, key: v.string(), payWith: payWithValidator, code: v.optional(v.string()) },
   returns: v.id("reportActivations"),
-  handler: async (ctx, { actor, key, code }) => {
+  handler: async (ctx, { actor, key, payWith, code }) => {
     const report = await activatable(ctx, actor, key);
     if (await pendingOf(ctx, report._id)) throw createError("CONFLICT", STILL_PAYING);
-    return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", ...(code && { code }) });
+    return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price: await priceFor(ctx, report), ...(code && { code }) });
+  },
+});
+
+/** What a card buys for an activation, in dollars of the balance: kept with its record once that is known. */
+export const buying = internalMutation({
+  args: { activationId: v.id("reportActivations"), bought: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { activationId, bought }) => {
+    if (await ctx.db.get("reportActivations", activationId)) await ctx.db.patch("reportActivations", activationId, { bought });
+    return null;
   },
 });
 
@@ -233,9 +247,9 @@ export const forget = internalMutation({
 });
 
 const outcomeValidator = v.union(
-  /** One activation of the balance is held for the report, under `hold`: the report goes live. `charge`: what buying it for this report came to. */
+  /** The report's price is held for it in the balance, under `hold`: the report goes live. `charge`: what a card paid toward it. */
   v.object({ kind: v.literal("held"), hold: v.string(), charge: v.optional(chargeValidator) }),
-  /** One was bought for the report, and the balance had none to hold: kept, with the report as it was. */
+  /** A card bought toward it, and the balance couldn't hold its price: kept, with the report as it was. */
   v.object({ kind: v.literal("bought"), charge: chargeValidator }),
   v.object({ kind: v.literal("pending"), invoice: v.string(), url: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("none") }),
@@ -271,7 +285,7 @@ export const settleCharge = internalMutation({
       return false;
     }
     const report = await ctx.db.get("reports", activation.reportId);
-    const stopped: unknown = outcome.kind === "bought" ? "The balance had no activation to hold." : report ? await readyToGoLive(ctx, report).then(() => null, (error: unknown) => error) : createError("NOT_FOUND", MOVED_ON);
+    const stopped: unknown = outcome.kind === "bought" ? "The balance couldn't hold the report's price." : report ? await readyToGoLive(ctx, report).then(() => null, (error: unknown) => error) : createError("NOT_FOUND", MOVED_ON);
     if (report && !stopped && outcome.kind === "held") {
       await ctx.db.patch("reportActivations", activationId, { state: "live", hold: outcome.hold, ...(outcome.charge && { charge: outcome.charge }), payUrl: undefined });
       await putLive(ctx, report);
@@ -294,13 +308,27 @@ const HOLD_MS = 5 * 60_000;
 /** The idempotency key of what a record buys, and the start of its holds' names at Autumn. */
 const nameOf = (activationId: Id<"reportActivations">) => `report-activation-${activationId}`;
 
-/** A record's workspace, the hold its report went live by if it did, and whether it is still under way; null once the record is gone. */
+/**
+ * A record as finishing it needs it: its workspace and that workspace's customer in Autumn, the hold its report went
+ * live by if it did, whether it is still under way, what pays, and the report's price; null once the record is gone.
+ */
 export const held = internalQuery({
   args: { activationId: v.id("reportActivations") },
-  returns: v.union(v.object({ workspaceId: v.id("workspaces"), hold: v.union(v.string(), v.null()), at: v.number(), charging: v.boolean(), needs: v.number() }), v.null()),
+  returns: v.union(v.object({ workspaceId: v.id("workspaces"), customerId: v.string(), hold: v.union(v.string(), v.null()), at: v.number(), charging: v.boolean(), payWith: payWithValidator, price: v.number() }), v.null()),
   handler: async (ctx, { activationId }) => {
     const activation = await ctx.db.get("reportActivations", activationId);
-    return activation ? { workspaceId: activation.workspaceId, hold: activation.state === "live" ? (activation.hold ?? null) : null, at: activation.at, charging: activation.state === "charging", needs: await needsOf(ctx, activation.reportId) } : null;
+    if (!activation) return null;
+    const report = await ctx.db.get("reports", activation.reportId);
+    return {
+      workspaceId: activation.workspaceId,
+      customerId: await customerOf(ctx, activation.workspaceId),
+      hold: activation.state === "live" ? (activation.hold ?? null) : null,
+      at: activation.at,
+      charging: activation.state === "charging",
+      payWith: activation.payWith ?? "balance",
+      // As it was when the activation began; a record from before prices were kept takes the report's own.
+      price: activation.price ?? (report ? await priceFor(ctx, report) : 0),
+    };
   },
 });
 
@@ -322,17 +350,42 @@ export const claimSettle = internalMutation({
   },
 });
 
+/** The end of the name a record's hold takes when a card bought its whole price: nothing is held at Autumn for it. */
+const BOUGHT = "-bought";
+
 /**
- * Finishes one hold at Autumn: its activation is taken when the record's report went live by this very hold, and
- * given back otherwise, so a second hold on a record already settled never takes a second activation. A hold already
- * finished changes nothing. The workspace's balance is read again after.
+ * Takes a report's price from what stays in the customer's balance, never from a part that refills: a card bought
+ * that much for it, so the balance is left as it was. From the one entry that holds the most, which is the one just
+ * bought or one like it. `key` names the taking, so asked twice it is taken once.
+ */
+async function takeKept(customerId: string, price: number, key: string) {
+  const kept = ((await autumn.customer(customerId)).balances[PUBLICATION_FEATURE]?.breakdown ?? []).filter((grant) => !grant.reset?.interval || grant.reset.interval === "one_off").sort((a, b) => b.remaining - a.remaining)[0];
+  if (!kept || kept.remaining < price) console.error(JSON.stringify({ event: "report-activation-kept-short", customerId, key, price, holds: kept?.remaining ?? 0 }));
+  if (!kept) return;
+  try {
+    await autumn.takeFrom({ customerId, feature: PUBLICATION_FEATURE, balanceId: kept.id, amount: Math.min(price, kept.remaining), idempotencyKey: key });
+  } catch (error) {
+    // Taken already, by an earlier try.
+    if (!(error instanceof AutumnError && error.code === "duplicate_idempotency_key")) throw error;
+  }
+}
+
+/**
+ * Finishes one hold: the report's price is taken when the record's report went live by this very hold, and given
+ * back otherwise, so a second hold on a record already settled never takes a second price. A hold on the balance is
+ * finished at Autumn; one whose price a card bought (`BOUGHT`) takes that price from what stays in the balance. A
+ * hold already finished changes nothing. The workspace's balance is read again after.
  */
 async function finish(ctx: ActionCtx, activationId: Id<"reportActivations">, hold: string) {
-  const record: { workspaceId: Id<"workspaces">; hold: string | null } | null = await ctx.runQuery(internal.reports.activation.held, { activationId });
-  try {
-    await autumn.finalize(hold, record?.hold === hold ? "confirm" : "release");
-  } catch (error) {
-    if (!isLockNotFound(error)) throw error;
+  const record: { workspaceId: Id<"workspaces">; customerId: string; hold: string | null; price: number } | null = await ctx.runQuery(internal.reports.activation.held, { activationId });
+  if (hold.endsWith(BOUGHT)) {
+    if (record?.hold === hold) await takeKept(record.customerId, record.price, hold);
+  } else {
+    try {
+      await autumn.finalize(hold, record?.hold === hold ? "confirm" : "release");
+    } catch (error) {
+      if (!isLockNotFound(error)) throw error;
+    }
   }
   if (record) await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: record.workspaceId, card: true });
 }
@@ -360,20 +413,19 @@ export const finishHold = internalAction({
 });
 
 /**
- * Spends what the record's report takes (`credits`, one or three activations) from the customer's balance: held at
- * Autumn under a name of this try's own, the report put live, then taken, or given back when the report couldn't go
- * live or was live already.
- * `charge` is what buying it for this report came to: with one, an activation that can't be held or spent is kept on
- * record all the same. Answers whether the report is live by this record. False with nothing bought means the
- * balance had none.
+ * Spends the report's `price` from the customer's balance, its refilling part first: held at Autumn under a name of
+ * this try's own, the report put live, then taken, or given back when the report couldn't go live or was live
+ * already. `charge` is what a card paid toward it: with one, a price that can't be held or spent is kept on record
+ * all the same. Answers whether the report is live by this record. False with nothing bought means the balance
+ * didn't hold the price.
  */
-async function spend(ctx: ActionCtx, customerId: string, activationId: Id<"reportActivations">, credits: number, charge?: Infer<typeof chargeValidator>): Promise<boolean> {
+async function spend(ctx: ActionCtx, customerId: string, activationId: Id<"reportActivations">, price: number, charge?: Infer<typeof chargeValidator>): Promise<boolean> {
   const hold = `${nameOf(activationId)}-${crypto.randomUUID()}`;
   const record = (outcome: Infer<typeof outcomeValidator>): Promise<boolean> => ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome });
   let holding = false;
   try {
     await ctx.scheduler.runAfter(HOLD_MS, internal.reports.activation.finishHold, { activationId, hold, attempt: 0 });
-    holding = (await autumn.lock({ customerId, feature: ACTIVATIONS_FEATURE, credits, lockId: hold, expiresAt: Date.now() + HOLD_MS })).allowed;
+    holding = (await autumn.lock({ customerId, feature: PUBLICATION_FEATURE, credits: price, lockId: hold, expiresAt: Date.now() + HOLD_MS })).allowed;
     if (!holding && !charge) return false;
     return await record(holding ? { kind: "held", hold, ...(charge && { charge }) } : { kind: "bought", charge: charge! });
   } catch (error) {
@@ -387,7 +439,27 @@ async function spend(ctx: ActionCtx, customerId: string, activationId: Id<"repor
   }
 }
 
-/** What Autumn answered to a charge: paid, or waiting on the bank. */
+/**
+ * Puts the report live on what a card bought for it, the whole of its price, and takes that price from what stays in
+ * the balance, so paying by card leaves the balance as it was. Nothing is held at Autumn: the workspace's
+ * activations run one at a time, and what was bought is this report's alone until it is live. A report that can't go
+ * live keeps what was bought in the balance (`settleCharge`). Answers whether the report is live by this record.
+ */
+async function spendBought(ctx: ActionCtx, activationId: Id<"reportActivations">, charge: Infer<typeof chargeValidator>): Promise<boolean> {
+  const hold = `${nameOf(activationId)}${BOUGHT}`;
+  const live: boolean = await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "held", hold, charge } });
+  if (!live) return false;
+  // Taken now, and again later by its own name if Autumn can't be reached now: asked twice, it is taken once.
+  await ctx.scheduler.runAfter(HOLD_MS, internal.reports.activation.finishHold, { activationId, hold, attempt: 0 });
+  await finish(ctx, activationId, hold).catch((error: unknown) => console.error(JSON.stringify({ event: "report-activation-hold-unfinished", activationId, hold, error: String(error).slice(0, 300) })));
+  return true;
+}
+
+/** Spends what a card paid toward the record's report, as the record says it pays: through the balance, or the card's own dollars. */
+const spendPaid = (ctx: ActionCtx, customerId: string, activationId: Id<"reportActivations">, how: { payWith: PayWith; price: number }, charge: Infer<typeof chargeValidator>) =>
+  how.payWith === "card" ? spendBought(ctx, activationId, charge) : spend(ctx, customerId, activationId, how.price, charge);
+
+/** What Autumn answered to a charge: paid, or still to be paid, on Stripe's page or at the bank. */
 function outcomeOf(charged: AutumnCharge): { kind: "paid"; charge: Infer<typeof chargeValidator> } | { kind: "pending"; invoice: string; url: string | null } {
   const invoice = charged.invoice;
   if (charged.payment_url || (invoice && invoice.status !== "paid")) return { kind: "pending", invoice: invoice?.stripe_id ?? "", url: charged.payment_url ?? invoice?.hosted_invoice_url ?? null };
@@ -421,24 +493,31 @@ const backTo = (prefix: string, key: string, mark: string = crypto.randomUUID())
 
 const actorIn = (ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<Actor> => ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
 
+/** What a quote's lines come to, in US dollars, before any credit on the account. */
+const linesOf = (preview: AutumnPreview) => preview.line_items.reduce((sum, line) => sum + line.total, 0);
+const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+/** So many dollars of the publication balance, as the top-up plan sells them. */
+const dollars = (amount: number) => ({ feature: PUBLICATION_FEATURE, amount });
+
 /**
- * Activates the report. An activation in the workspace's balance is spent first, whatever card or code there is:
- * nothing is charged. With none left, `pay` says the person agreed to buy one: without it the activation is refused,
- * never charged. With it, the activation plan is charged to the saved card, less `code`, or to nothing when the code
- * takes the whole price off, and the activation bought is spent on the report. Answers `live`, or the bank's page when
- * it asks to confirm the charge, after which the report goes live by itself.
+ * Activates the report, paid as `payWith` says. From the balance: it pays what it can, its refilling part first, and
+ * a card buys the rest. By card: the card buys the whole price and the balance is left as it was. `code` lowers what
+ * the card pays. With nothing for a card to pay, nothing is charged. With something, a saved card is charged, and a
+ * workspace with none pays on Stripe's page; a code that takes it all off needs neither. `expect` is what the person
+ * was shown as due, in US dollars: a charge that would take more is refused, never made. Answers `live`, or the page
+ * to pay or confirm on, after which the report goes live by itself.
  */
 export const activate = action({
   args: {
     workspaceId: v.id("workspaces"),
     key: v.string(),
-    pay: v.boolean(),
+    payWith: payWithValidator,
     code: v.optional(v.string()),
-    /** What the person was shown as due, in US dollars: a charge that would take more from the card is refused. */
+    /** What the person was shown as due, in US dollars. */
     expect: v.optional(v.number()),
   },
   returns: v.union(v.object({ live: v.literal(true) }), v.object({ url: v.string() })),
-  handler: async (ctx, { workspaceId, key, pay, code: typed, expect }): Promise<{ live: true } | { url: string }> => {
+  handler: async (ctx, { workspaceId, key, payWith, code: typed, expect }): Promise<{ live: true } | { url: string }> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
@@ -448,67 +527,69 @@ export const activate = action({
       throw createError("CONFLICT", STILL_PAYING);
     }
     // What that payment buys lands in the same balance: nothing else is spent from it until that report has its own.
-    if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
+    if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for its payment. Open it and finish or cancel that first, then activate this one.`);
     // The workspace's activations one at a time, from the balance as from a purchase: Autumn allowed two holds at once on
-    // a balance of one. One pressed meanwhile, in another tab or on another report, waits for this one, then finds the
-    // report live or the balance as this one left it.
+    // a balance that covered one. One pressed meanwhile, in another tab or on another report, waits for this one, then
+    // finds the report live or the balance as this one left it.
     return await holdingPurchaseLock(
       ctx,
       workspaceId,
       async (): Promise<{ live: true } | { url: string }> => {
         // Recorded only once the lock is held, so an activation that never got it leaves nothing behind. Refused when
-        // another tab made the report live, or its payment waits on the bank, while this one waited.
-        const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
+        // another tab made the report live, or its payment is still to be made, while this one waited.
+        const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, payWith, ...(code && { code }) });
+        // The page read the balance before this; what is refused here sends it to read again.
+        const changed = async (message: string): Promise<never> => {
+          await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
+          throw createError("CONFLICT", message, { reason: "changed" });
+        };
         try {
-          // Another report may have spent the balance while this one waited.
-          if (await spend(ctx, first.customerId, activationId, first.needs)) return { live: true };
-          if (!pay) {
-            // The page offered one from a balance read before it was spent or reset: it reads the balance again, and
-            // then offers what buying one takes.
-            await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
-            throw createError("CONFLICT", NONE_LEFT, { reason: "noneLeft" });
-          }
-          // None left: one is bought. The card is read from Autumn, not the cached account: it may have been removed
-          // since. With none, only a code that takes the whole price off buys it.
+          // The balance and the card are read from Autumn, not the cached account: another report may have spent the
+          // balance while this one waited, and the card may have been removed since.
           const customer = await autumn.customer(first.customerId, { card: true });
-          const cardless = !customer.payment_method?.card;
-          if (cardless && !code) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
+          const held = customer.balances[PUBLICATION_FEATURE];
+          const { bought } = payment({ price: first.price, balance: held?.unlimited ? null : (held?.remaining ?? 0), payWith, off: 0 });
+          if (bought === 0) {
+            // The balance covers it: nothing is bought, whatever card or code there is.
+            if (await spend(ctx, first.customerId, activationId, first.price)) return { live: true };
+            return await changed(CHANGED);
+          }
+          await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
           // Nothing is bought while a payment of the customer's is open.
           await payableCustomer(first.customerId, {});
-          const plan = activationPlanFor(first.needs);
-          const quoted = cardless || expect !== undefined ? await autumn.previewAttach(first.customerId, plan, false, undefined, code).catch(refusedCode<AutumnPreview>(code)) : null;
-          // What's due now, after the account's credit, which the page may have read before another purchase spent it.
-          if (quoted && expect !== undefined && quoted.total > expect + 0.005) {
-            await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
-            const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-            throw createError("CONFLICT", `Activating it now takes ${usd(quoted.total)} from your card, not ${usd(expect)}. Check it and activate again.`);
-          }
-          // No card: the code has to take the whole price off, before any credit. Then nothing is charged, and Autumn is
-          // told so (`unbilled`), or it would send a card-less customer to Stripe's page for $0.
-          if (quoted && cardless && linesOf(quoted) > 0.005) throw createError("BILLING_CARD_REQUIRED", `${code} doesn't cover the whole price. Add a payment method to pay the rest.`, { reason: "cardForRest" });
-          // Autumn bills by invoice only a customer with an email, and an organisation's has none until a card is saved:
+          const quoted = await autumn.previewAttach(first.customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, dollars(bought)).catch(refusedCode<AutumnPreview>(code));
+          // What's due now, after the account's credit: more than the page showed (the balance was spent or reset, a
+          // price changed, the credit went) is never charged without the person seeing it.
+          if (expect !== undefined && quoted.total > expect + 0.005) return await changed(`Activating it now takes ${usd(quoted.total)}, not ${usd(expect)}. Check it and activate again.`);
+          const cardless = !customer.payment_method?.card;
+          // Nothing for a card to pay, before any credit: a code took it all off. Autumn is told so (`unbilled`), or it
+          // would send a customer with no card to Stripe's page for $0.
+          const free = linesOf(quoted) <= 0.005;
+          // Autumn bills by invoice only a customer with an email, and an organisation's has none until someone pays:
           // it takes its admin's, who is the one activating.
           if (cardless && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
-          const charged = await autumn.attach({ customerId: first.customerId, planId: plan, code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), ...(cardless && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
+          // With no saved card and something to pay, Autumn answers Stripe's page for it, which comes back to the report.
+          const charged = await autumn.attach({ customerId: first.customerId, planId: PUBLICATION_TOP_UP_PLAN, quantity: dollars(bought), code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), ...(cardless && free && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
           // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code,
           // isn't held up by an invoice left open.
           if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);
           unlessDeclined(charged);
           const done = outcomeOf(charged);
           if (done.kind === "pending") {
-            // Autumn's page for it is Stripe's invoice, which has no way back here: the bank's own page comes back to the report.
+            // Stripe's checkout comes back by itself. The bank's confirmation is Stripe's invoice page, which has no way
+            // back here: the bank's own page comes back to the report.
             const bank = done.invoice ? await bankPage(done.invoice, backTo(first.prefix, key, activationId)) : null;
-            console.log(JSON.stringify({ event: "report-activation-pending", key, invoice: done.invoice, action: charged.required_action?.code, back: bank !== null }));
+            console.log(JSON.stringify({ event: "report-activation-pending", key, invoice: done.invoice, checkout: !done.invoice, action: charged.required_action?.code, back: bank !== null }));
             await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { ...done, url: bank ?? done.url } });
             if (bank ?? done.url) return { url: (bank ?? done.url)! };
             throw createError("CONFLICT", STILL_PAYING);
           }
-          // Bought: the activation is in the balance now, and this report's to spend.
-          if (await spend(ctx, first.customerId, activationId, first.needs, done.charge)) return { live: true as const };
+          // Bought: the dollars are in the balance now, and this report's to spend.
+          if (await spendPaid(ctx, first.customerId, activationId, { payWith, price: first.price }, done.charge)) return { live: true as const };
           throw createError("CONFLICT", KEPT);
         } catch (error) {
-          // A refusal bought nothing: the record goes. Anything else may have bought one, its answer lost: Autumn's
-          // invoices say what became of it.
+          // A refusal bought nothing: the record goes. Anything else may have bought something, its answer lost:
+          // Autumn's invoices say what became of it.
           if (boughtNothing(error)) await ctx.runMutation(internal.reports.activation.forget, { activationId });
           else await reconcile(ctx, first.customerId, activationId).catch(() => ctx.scheduler.runAfter(WATCH_FIRST_MS, internal.reports.activation.reconcileLater, { customerId: first.customerId, activationId, attempt: 0 }));
           throw error;
@@ -525,19 +606,24 @@ const LOCK_WAIT_MS = 20_000;
 /** An error that means nothing was bought: our own refusals, a declined card, a code or a request Autumn refused. */
 const boughtNothing = (error: unknown) => error instanceof ConvexError || (error instanceof AutumnError && error.status >= 400 && error.status < 500);
 
+/** The customer's invoice for what a record bought: the newest for the top-up plan since the record began; undefined when there is none yet. */
+async function invoiceSince(customerId: string, at: number) {
+  // ponytail: the newest top-up invoice since the record, allowing for the two servers' clocks. Purchases of a
+  // workspace run one at a time, so it is this record's; match on the idempotency key if Autumn ever returns it.
+  return (await autumn.customer(customerId, { invoices: true })).invoices?.find((candidate) => candidate.plan_ids?.includes(PUBLICATION_TOP_UP_PLAN) && candidate.created_at >= at - 5_000 && candidate.stripe_id);
+}
+
 /**
- * Finds what became of a record's purchase whose answer was lost, from the customer's invoices at Autumn: paid, its
- * activation is spent on the report (or kept); open, it waits on the bank like any other; none, nothing was bought
- * (or nothing was owed, and the one bought is in the balance) and the record goes. Throws when Autumn can't be read.
+ * Finds what became of a record's purchase whose answer was lost, from the customer's invoices at Autumn: paid, what
+ * it bought is spent on the report (or kept); open, it waits to be paid like any other; none, nothing was bought
+ * (or nothing was owed, and what was given is in the balance) and the record goes. Throws when Autumn can't be read.
  */
 async function reconcile(ctx: ActionCtx, customerId: string, activationId: Id<"reportActivations">) {
-  const record: { at: number; charging: boolean; needs: number } | null = await ctx.runQuery(internal.reports.activation.held, { activationId });
+  const record: { at: number; charging: boolean; payWith: PayWith; price: number } | null = await ctx.runQuery(internal.reports.activation.held, { activationId });
   if (!record?.charging) return;
-  // ponytail: the newest activation invoice since the record, allowing for the two servers' clocks. Purchases of a
-  // workspace run one at a time, so it is this record's; match on the idempotency key if Autumn ever returns it.
-  const invoice = (await autumn.customer(customerId, { invoices: true })).invoices?.find((candidate) => candidate.plan_ids?.some((plan) => plan === ACTIVATION_PLAN || plan === THREE_ACTIVATIONS_PLAN) && candidate.created_at >= record.at - 5_000 && candidate.stripe_id);
+  const invoice = await invoiceSince(customerId, record.at);
   console.log(JSON.stringify({ event: "report-activation-reconciled", activationId, invoice: invoice?.stripe_id ?? null, status: invoice?.status ?? null }));
-  if (invoice?.status === "paid") await spend(ctx, customerId, activationId, record.needs, { invoice: invoice.stripe_id!, total: invoice.total, currency: invoice.currency });
+  if (invoice?.status === "paid") await spendPaid(ctx, customerId, activationId, record, { invoice: invoice.stripe_id!, total: invoice.total, currency: invoice.currency });
   else if (invoice?.status === "open") await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: invoice.stripe_id!, url: invoice.hosted_invoice_url ?? null } });
   else await ctx.runMutation(internal.reports.activation.forget, { activationId });
 }
@@ -557,110 +643,80 @@ export const reconcileLater = internalAction({
   },
 });
 
-const licenceQuoteValidator = v.union(v.object({ price: v.number(), total: v.number() }), v.null());
-
-/** The workspace's customer in Autumn, and which activation plans Autumn sells, for a quote made before a report is started. */
-export const customerFor = internalQuery({
-  args: { actor: actorValidator },
-  returns: v.object({ customerId: v.string(), selling: v.array(v.string()) }),
-  handler: async (ctx, { actor }) => {
-    const plans = (await readCatalog(ctx))?.plans ?? [];
-    return { customerId: await customerOf(ctx, actor.workspaceId), selling: [ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN].filter((id) => plans.some((plan) => plan.id === id)) };
-  },
-});
-
 /**
- * What `code` takes off each licence's price before a report is started, as Autumn quotes it in US dollars, so the
- * agreement step prices its licences with it: the one-activation plan's (CC BY, CC BY-SA) and the three-activation
- * one's (NC, ND or the author's own). A plan Autumn doesn't sell is null.
+ * What `code` takes off what a card buys of the publication balance, as the share Autumn quotes on `amount` dollars
+ * of it (0 to 1), so a page can say what a card would pay with it: before a report is started, where its licence is
+ * chosen, and wherever its bill shows after.
+ * ponytail: a code is taken as a share of what is bought, which every code we give out is. One that takes a fixed
+ * amount off would be quoted for each amount; the charge itself is always Autumn's own sum, checked against what the
+ * page showed (`activate`'s `expect`).
  */
-export const quoteLicences = action({
-  args: { workspaceId: v.id("workspaces"), code: v.string() },
-  returns: v.object({ one: licenceQuoteValidator, three: licenceQuoteValidator }),
-  handler: async (ctx, { workspaceId, code: typed }): Promise<{ one: Infer<typeof licenceQuoteValidator>; three: Infer<typeof licenceQuoteValidator> }> => {
+export const quoteCode = action({
+  args: { workspaceId: v.id("workspaces"), code: v.string(), /** What a card would buy now, in whole US dollars. */ amount: v.number() },
+  returns: v.object({ off: v.number() }),
+  handler: async (ctx, { workspaceId, code: typed, amount }): Promise<{ off: number }> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
     if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
-    const { customerId, selling }: { customerId: string; selling: string[] } = await ctx.runQuery(internal.reports.activation.customerFor, { actor });
-    const quoteOf = async (plan: string) => {
-      if (!selling.includes(plan)) return null;
-      const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, plan, false), autumn.previewAttach(customerId, plan, false, undefined, code).catch(refusedCode<never>(code))]);
-      return { price: linesOf(plain), total: linesOf(discounted) };
-    };
-    const [one, three] = await Promise.all([quoteOf(ACTIVATION_PLAN), quoteOf(THREE_ACTIVATIONS_PLAN)]);
-    if (![one, three].some((quote) => quote && quote.total < quote.price)) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off activating a report.`, { reason: "nothingOff", code });
-    return { one, three };
-  },
-});
-
-/** What a quote's lines come to, in US dollars, before any credit on the account. */
-const linesOf = (preview: AutumnPreview) => preview.line_items.reduce((sum, line) => sum + line.total, 0);
-
-/** What activating the report costs with `code`, as Autumn quotes it, in US dollars: the price, the discount and the total. */
-export const quote = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), code: v.string() },
-  returns: v.object({ price: v.number(), discount: v.number(), total: v.number() }),
-  handler: async (ctx, { workspaceId, key, code: typed }): Promise<{ price: number; discount: number; total: number }> => {
-    await refuseApps(ctx);
-    const actor = await actorIn(ctx, workspaceId);
-    const code = codeOf(typed);
-    if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
-    const { customerId, needs }: Prepared = await ctx.runQuery(internal.reports.activation.prepare, { actor, key });
-    const plan = activationPlanFor(needs);
-    const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, plan, false), autumn.previewAttach(customerId, plan, false, undefined, code).catch(refusedCode<never>(code))]);
+    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: actor.workspaceId });
+    const bought = dollars(Math.min(Math.max(Math.ceil(amount), 1), PRICE_MAX));
+    const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, undefined, bought), autumn.previewAttach(customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, bought).catch(refusedCode<never>(code))]);
     // Read from the quote's lines: its total is what's due after any credit on the account, which a code doesn't change.
     const price = linesOf(plain);
     const total = linesOf(discounted);
-    if (total >= price) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off activating this report.`, { reason: "nothingOff", code });
-    return { price, discount: price - total, total };
+    if (price <= 0 || total >= price) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off publishing a report.`, { reason: "nothingOff", code });
+    return { off: (price - total) / price };
   },
 });
 
-/** The most Stripe's page is given to say above Save. */
-const NOTE_MAX = 300;
-
-/** Stripe's page for saving a card on the workspace's billing account, which comes back to the report. Its admins only. */
-export const addCard = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), /** The code applied in the payment bar, which the way back carries so it needn't be typed again. */ code: v.optional(v.string()), /** What Stripe's page says above Save, in the person's language: that saving a card charges nothing. Theirs alone to read. */ note: v.optional(v.string()), /** The language the person reads the site in, for Stripe's page where Stripe has it. */ locale: v.optional(v.string()) },
-  returns: v.string(),
-  handler: async (ctx, { workspaceId, key, code: typed, note, locale }): Promise<string> => {
-    await refuseApps(ctx);
-    const actor = await actorIn(ctx, workspaceId);
-    const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key });
-    // Stripe writes the session's id into the way back, which names the card saved in it.
-    const code = codeOf(typed);
-    // The code applied goes both ways back: saving a card, and leaving Stripe's page without saving one.
-    const carried = code ? `&code=${encodeURIComponent(code)}` : "";
-    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${carried}`, { note: note?.trim().slice(0, NOTE_MAX) || undefined, locale, cancelUrl: `${requireAppUrl()}${prefix}/publish?report=${encodeURIComponent(key)}${carried}` })).url;
-  },
-});
-
-/** How soon a charge waiting on the bank is first looked at, how far apart the looks grow, and how many there are: about two days. */
+/** How soon a payment still to be made is first looked at, how far apart the looks grow, and how many there are: about two days. */
 const WATCH_FIRST_MS = 20_000;
 const WATCH_MOST_MS = 60 * 60_000;
 const WATCH_LOOKS = 60;
 
-const waitValidator = v.object({ activationId: v.id("reportActivations"), /** The workspace's customer in Autumn. */ customerId: v.string(), invoice: v.string(), /** What its report takes from the balance. */ needs: v.number() });
+const waitValidator = v.object({
+  activationId: v.id("reportActivations"),
+  /** The workspace's customer in Autumn. */
+  customerId: v.string(),
+  /** Its invoice at Stripe; none while it is to be paid on Stripe's checkout, which makes one only once paid. */
+  invoice: v.string(),
+  /** When the activation began: its invoice, once there is one, is the customer's newest since. */
+  at: v.number(),
+  payWith: payWithValidator,
+  /** What its report costs, in US dollars. */
+  price: v.number(),
+});
 type Wait = Infer<typeof waitValidator>;
 
-/** A charge waiting on the bank, by its record, or null once it's settled. */
+/** A record as a wait: with its customer, and what settling it spends. */
+async function waitOf(ctx: QueryCtx, row: Doc<"reportActivations">, customerId: string): Promise<Wait> {
+  const report = await ctx.db.get("reports", row.reportId);
+  return { activationId: row._id, customerId, invoice: row.charge?.invoice ?? "", at: row.at, payWith: row.payWith ?? "balance", price: row.price ?? (report ? await priceFor(ctx, report) : 0) };
+}
+
+/** A payment still to be made, by its record, or null once it's settled. */
 export const waitingCharge = internalQuery({
   args: { activationId: v.id("reportActivations") },
   returns: v.union(waitValidator, v.null()),
   handler: async (ctx, { activationId }) => {
     const activation = await ctx.db.get("reportActivations", activationId);
-    return activation?.state === "pending" ? { activationId, customerId: await customerOf(ctx, activation.workspaceId), invoice: activation.charge?.invoice ?? "", needs: await needsOf(ctx, activation.reportId) } : null;
+    return activation?.state === "pending" ? await waitOf(ctx, activation, await customerOf(ctx, activation.workspaceId)) : null;
   },
 });
 
 /**
- * Settles one waiting charge from its invoice at Stripe, which knows first. Paid, the activation it bought is in the
- * balance and spent on its report; voided, the record goes. A payment the bank or the card refused is voided and
- * dropped too, so Activate starts a new one. Answers how it stands: still `open`, or `settled`.
+ * Settles one payment still to be made. One the bank was asked to confirm is read from its invoice at Stripe, which
+ * knows first. One made on Stripe's checkout has no invoice until it is paid: the customer's newest for the balance
+ * since the activation began is it. Paid, what it bought is in the balance and spent on its report; voided, the
+ * record goes. A payment the bank or the card refused is voided and dropped too, so Activate starts a new one.
+ * Answers how it stands: still `open`, or `settled`.
  */
 async function settleOne(ctx: ActionCtx, wait: Wait): Promise<"open" | "settled"> {
-  const { activationId, invoice } = wait;
+  const { activationId } = wait;
+  const invoice = wait.invoice || (await invoiceSince(wait.customerId, wait.at))?.stripe_id;
+  // Stripe's checkout, not paid yet, or left.
+  if (!invoice) return "open";
   const charge = await chargeOf(invoice);
   if (charge.status === "open" && !charge.refused) return "open";
   if (charge.status === "open") {
@@ -675,12 +731,12 @@ async function settleOne(ctx: ActionCtx, wait: Wait): Promise<"open" | "settled"
   if (charge.status === "paid") {
     // One settlement at a time: another under way finishes it, and this look counts as still open until then.
     if (!(await ctx.runMutation(internal.reports.activation.claimSettle, { activationId }))) return "open";
-    await spend(ctx, wait.customerId, activationId, wait.needs, { invoice, total: charge.total, currency: charge.currency });
+    await spendPaid(ctx, wait.customerId, activationId, wait, { invoice, total: charge.total, currency: charge.currency });
   } else await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: charge.status === "open" ? "refused" : "none" } });
   return "settled";
 }
 
-/** Looks at a charge waiting on the bank, and again later, further apart each time, until it's settled or about two days have gone. */
+/** Looks at a payment still to be made, and again later, further apart each time, until it's settled or about two days have gone. */
 export const watch = internalAction({
   args: { activationId: v.id("reportActivations"), attempt: v.number() },
   returns: v.null(),
@@ -694,12 +750,17 @@ export const watch = internalAction({
       console.error(JSON.stringify({ event: "report-activation-watch-failed", activationId, attempt, error: String(error).slice(0, 300) }));
     }
     if (attempt + 1 < WATCH_LOOKS) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.watch, { activationId, attempt: attempt + 1 });
-    else console.error(JSON.stringify({ event: "report-activation-unsettled", activationId, invoice: waiting.invoice }));
+    else if (!waiting.invoice) {
+      // Stripe's checkout is long shut by now (it lasts a day): nothing was paid, and the record goes, so the report
+      // can be activated again. Paid after all, what it bought is in the balance.
+      console.log(JSON.stringify({ event: "report-activation-checkout-left", activationId }));
+      await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "none" } });
+    } else console.error(JSON.stringify({ event: "report-activation-unsettled", activationId, invoice: waiting.invoice }));
     return null;
   },
 });
 
-/** The workspace's charges waiting on the bank, by their invoice. */
+/** The workspace's payments still to be made. */
 export const waiting = internalQuery({
   args: { workspaceId: v.id("workspaces") },
   returns: v.array(waitValidator),
@@ -707,13 +768,13 @@ export const waiting = internalQuery({
     // A workspace has one at most: a new purchase waits until an open payment is paid (billing/purchases.ts).
     const rows = await ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", "pending")).take(5);
     const customerId = await customerOf(ctx, workspaceId);
-    return await Promise.all(rows.map(async (row) => ({ activationId: row._id, customerId, invoice: row.charge?.invoice ?? "", needs: await needsOf(ctx, row.reportId) })));
+    return await Promise.all(rows.map((row) => waitOf(ctx, row, customerId)));
   },
 });
 
 /**
- * Settles each charge of the workspace that waited on the bank (`settleOne`). Autumn's and Stripe's webhooks call it,
- * and so does the report's page when the bank sends the person back; settling one twice changes nothing.
+ * Settles each payment of the workspace that was still to be made (`settleOne`). Autumn's and Stripe's webhooks call
+ * it, and so does the report's page when Stripe or the bank sends the person back; settling one twice changes nothing.
  */
 export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces">) {
   const waits: Wait[] = await ctx.runQuery(internal.reports.activation.waiting, { workspaceId });
@@ -721,28 +782,63 @@ export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces"
 }
 
 /**
- * What a report's page does as it opens: a charge of the workspace's that waited on the bank and has been answered
- * since is settled, wherever the person answered it. With `card`, when Stripe sent the person back after saving one or
- * from the bank, the workspace's card is read again first. Otherwise its account is read again behind the page:
- * activations given in Autumn's dashboard send no word of their own, so this is where the page learns of them.
+ * What a report's page does as it opens: a payment of the workspace's that was still to be made and has been made
+ * since is settled, wherever the person paid it. With `card`, when Stripe or the bank sent the person back, the
+ * workspace's account is read again first. Otherwise it is read again behind the page: a balance given in Autumn's
+ * dashboard sends no word of its own, so this is where the page learns of it.
  */
 export const settle = action({
-  args: {
-    workspaceId: v.id("workspaces"),
-    card: v.boolean(),
-    /** The Checkout session Stripe saved a card in, when it sent the person back from that: the card charged from now on. */
-    session: v.optional(v.string()),
-  },
+  args: { workspaceId: v.id("workspaces"), card: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, card, session }): Promise<null> => {
+  handler: async (ctx, { workspaceId, card }): Promise<null> => {
+    await refuseApps(ctx);
+    await actorIn(ctx, workspaceId);
+    // Settled first: a payment just made on Stripe's page is spent on its report before the balance is read, so the
+    // page never shows it bought and not yet spent.
+    await settlePending(ctx, workspaceId);
+    if (card) await refreshAccount(ctx, workspaceId, { card: true });
+    else await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId });
+    return null;
+  },
+});
+
+/**
+ * Gives up a payment of the report's that is still to be made, so the report can be changed or paid another way: its
+ * admin's alone. Made after all (the person paid on Stripe's page in another tab), it is settled as paid instead. A
+ * confirmation the bank was asked for is voided at Stripe. A checkout left open can still be paid until Stripe shuts
+ * it, a day on: what it buys then stays in the balance.
+ */
+export const cancelPayment = action({
+  args: { workspaceId: v.id("workspaces"), key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, key }): Promise<null> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
-    // Only an admin changes which card the workspace is charged with, as only an admin saves one.
-    const savedIn = actor.role === "admin" && session?.startsWith("cs_") ? session : undefined;
-    if (card) await refreshAccount(ctx, workspaceId, { card: true, ...(savedIn && { savedIn }) });
-    else await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId });
-    await settlePending(ctx, workspaceId);
+    if (actor.role !== "admin") throw createError("FORBIDDEN", "Only an admin of the workspace gives up its payment.");
+    const wait: Wait | null = await ctx.runQuery(internal.reports.activation.waitingFor, { actor, key });
+    if (!wait) return null;
+    // Paid meanwhile, or refused: settled as that.
+    if ((await settleOne(ctx, wait)) === "settled") return null;
+    if (wait.invoice) {
+      await voidInvoice(wait.invoice).catch(async (error: unknown) => {
+        // Paid in the moment since: it is settled as paid by the next look.
+        if ((await chargeOf(wait.invoice)).status === "open") throw error;
+      });
+      if ((await settleOne(ctx, wait)) === "settled") return null;
+    }
+    await ctx.runMutation(internal.reports.activation.settleCharge, { activationId: wait.activationId, outcome: { kind: "none" } });
     return null;
+  },
+});
+
+/** The report's payment still to be made, as a wait, for the one giving it up; null with none. */
+export const waitingFor = internalQuery({
+  args: { actor: actorValidator, key: v.string() },
+  returns: v.union(waitValidator, v.null()),
+  handler: async (ctx, { actor, key }) => {
+    const report = await changing(ctx, actor, key);
+    const pending = await pendingOf(ctx, report._id);
+    return pending ? await waitOf(ctx, pending, await customerOf(ctx, actor.workspaceId)) : null;
   },
 });
 

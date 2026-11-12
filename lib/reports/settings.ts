@@ -4,7 +4,7 @@ import type { PublicationSettings } from "../../convex/evidenceLibraries/publica
 import type { Effort } from "../ai/core/call-options";
 import { JEV_MODEL } from "../ai/decisions";
 import { DEFAULT_AGREEMENT } from "./agreement-text";
-import type { Licence } from "./report";
+import { DEFAULT_PRICES, type Licence } from "./report";
 
 /** A licence as the byline names it: a Creative Commons one by its short name, an author's own with its address too, since its name alone says nothing of what it allows. */
 export const licenceInByline = (licence: Licence) => (typeof licence === "string" ? licence : `${licence.name} (${licence.url})`);
@@ -107,6 +107,7 @@ export const REPORT_DEFAULTS = {
   humanReview: true,
   series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}, under {licence}" } satisfies Series,
   publication: NO_PUBLICATION,
+  prices: DEFAULT_PRICES,
   metadataModelId: DEFAULT_TEXT_MODEL,
   metadataEffort: DEFAULT_TEXT_EFFORT as Effort | undefined,
   checks: DEFAULT_CHECKS,

@@ -4,7 +4,7 @@ import { keptCustomValidator, publicationSettingsValidator } from "../evidenceLi
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, LICENCE_NAMES, PERSON_KINDS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, LICENCE_NAMES, PERSON_KINDS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS, PAY_WITH } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -30,6 +30,8 @@ export const checkNamesValidator = capped(v.array(v.object({ id: v.string(), nam
 
 export const seriesValidator = v.object({ name: v.string(), issn: v.string(), byline: v.string() });
 
+/** What publishing a report costs, in whole US dollars: under CC BY or CC BY-SA, and under any other licence. */
+export const pricesValidator = v.object({ standard: v.number(), other: v.number() });
 /** The one settings row, once an admin changes something. Until then the series runs on `REPORT_DEFAULTS`. */
 export const reportSettingsFields = {
   enabled: v.boolean(),
@@ -43,7 +45,9 @@ export const reportSettingsFields = {
   customAccounts: v.optional(keptCustomValidator),
   encryptedCustomCredentials: v.optional(v.string()),
   publicationSavedAt: v.optional(v.number()),
-  // Free activations a day, from before activations were a balance in Autumn: cleared by migrations/activationBalance, then dropped.
+  /** What publishing a report costs, in whole US dollars, by its licence's tier. None saved yet is the defaults (`DEFAULT_PRICES`). */
+  prices: v.optional(pricesValidator),
+  // Free activations a day, from before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
   perDay: v.optional(v.number()),
   orgPerDay: v.optional(v.number()),
   metadataModelId: v.string(),
@@ -59,6 +63,8 @@ export const reportSettingsFields = {
 
 const literals = <T extends string>(values: readonly T[]) => v.union(...values.map((value) => v.literal(value)));
 
+/** What pays for a report: the workspace's publication balance, with a card for the rest, or a card alone. */
+export const payWithValidator = literals(PAY_WITH);
 /** A report's licence: one of the Creative Commons ones by name, or the author's own (`ownLicence`). */
 export const licenceValidator = v.union(literals(LICENCE_NAMES), v.object({ name: v.string(), url: v.string() }));
 
@@ -156,8 +162,10 @@ export const reportFields = {
   /** The licence its author chose when signing, which the agreement and byline name: it never changes after. A report
    * signed before authors chose has none, and is CC BY 4.0 (`licenceOf`). */
   licence: v.optional(licenceValidator),
-  /** The promotion code its author applied when choosing the licence, offered again when it is activated. */
+  /** The promotion code applied to what a card pays for it: chosen with the licence, and open to change until it is activated. */
   voucher: v.optional(v.string()),
+  /** What pays for it, chosen with the licence and open to change until it is activated. None is the balance while it holds something. */
+  payWith: v.optional(payWithValidator),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */

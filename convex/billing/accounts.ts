@@ -20,9 +20,10 @@ import { autumn, type AutumnBalance, type AutumnCustomer } from "./autumn";
 import {
   billingAccountFields,
   billingAccountSnapshotValidator,
+  type BalancePart,
   type BillingAccountSnapshot,
 } from "./validators";
-import { ACTIVATIONS_FEATURE, EVIDENCE_LIBRARIES_FEATURE, REFILL_INTERVALS, type RefillInterval, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { PUBLICATION_FEATURE, EVIDENCE_LIBRARIES_FEATURE, REFILL_INTERVALS, type RefillInterval, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
 import { defaultToSavedCard, stripeCredit } from "./stripeRest";
 
@@ -55,16 +56,37 @@ export const customerFor = internalQuery({
   handler: (ctx, { workspaceId }) => customerOf(ctx, workspaceId),
 });
 
-/** The shortest interval any grant of a balance refills by, as `activationsRefill`; nothing when none refills. */
-function refillOf(balance: AutumnBalance | undefined): { activationsRefill?: RefillInterval } {
+/** Which part of a balance a grant belongs to: the interval it refills by, or `once` for one that stays until used. */
+const partOf = (interval: string | undefined): RefillInterval | "once" | null => (!interval || interval === "one_off" ? "once" : (REFILL_INTERVALS as readonly string[]).includes(interval) ? (interval as RefillInterval) : null);
+
+/**
+ * A balance's grants by part, as Autumn spends them: those that refill, shortest interval first, then those that stay
+ * until used. Each part sums its grants. What stays, all spent, is left out: there is nothing to say of it.
+ */
+export function partsOf(balance: AutumnBalance | undefined): { publication?: BalancePart[]; publicationUnlimited?: true } {
+  if (!balance) return {};
+  if (balance.unlimited) return { publicationUnlimited: true };
   // ponytail: the interval alone, not its count, so a grant every two weeks reads as weekly. Autumn's `interval_count` says when it matters.
-  const interval = REFILL_INTERVALS.find((candidate) => balance?.breakdown?.some((grant) => grant.reset?.interval === candidate));
-  return interval ? { activationsRefill: interval } : {};
+  const parts = ([...REFILL_INTERVALS, "once"] as const).flatMap((interval): BalancePart[] => {
+    const of = (balance.breakdown ?? []).filter((grant) => partOf(grant.reset?.interval) === interval);
+    const left = of.reduce((sum, grant) => sum + grant.remaining, 0);
+    if (of.length === 0 || (interval === "once" && left <= 0)) return [];
+    const sizeOf = (grant: (typeof of)[number]) => (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
+    const size = of.reduce((sum, grant) => sum + sizeOf(grant), 0);
+    const resets = of.flatMap((grant) => (grant.reset?.resets_at ? [grant.reset.resets_at] : []));
+    if (resets.length === 0) return [{ interval, left, size }];
+    // Grants of one interval can refill on different days: at the next one, only those come back to full.
+    const resetsAt = Math.min(...resets);
+    const refillsTo = of.reduce((sum, grant) => sum + (grant.reset?.resets_at === resetsAt ? sizeOf(grant) : grant.remaining), 0);
+    return [{ interval, left, size, resetsAt, refillsTo }];
+  });
+  return parts.length > 0 ? { publication: parts } : {};
 }
 
-/** The workspace's activations as its cached account has them: how many are left (null for no limit) and what they refill by. */
-export function activationsOf(account: { activations?: number | null; activationsRefill?: RefillInterval } | null) {
-  return { activations: account?.activations === null ? null : (account?.activations ?? 0), refill: account?.activationsRefill ?? null };
+/** The workspace's publication balance as its cached account has it: its parts, and what it holds in US dollars (null for no limit). */
+export function publicationOf(account: { publication?: BalancePart[]; publicationUnlimited?: boolean } | null) {
+  const parts = account?.publication ?? [];
+  return { parts, balance: account?.publicationUnlimited ? null : parts.reduce((sum, part) => sum + part.left, 0) };
 }
 
 /** Reads what OpenScholar needs from an Autumn customer. */
@@ -99,8 +121,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
-    activations: customer.balances[ACTIVATIONS_FEATURE]?.unlimited ? null : (customer.balances[ACTIVATIONS_FEATURE]?.remaining ?? 0),
-    ...refillOf(customer.balances[ACTIVATIONS_FEATURE]),
+    ...partsOf(customer.balances[PUBLICATION_FEATURE]),
     card: customer.payment_method?.card
       ? { brand: customer.payment_method.card.brand, last4: customer.payment_method.card.last4 }
       : undefined,
@@ -196,8 +217,13 @@ export const writeSnapshot = internalMutation({
       return null;
     }
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
+    // A report being paid for buys into the publication balance and spends it in two steps at Autumn. A read between
+    // them would show the balance up, then back down: while one is under way the balance stays as it was last read,
+    // and the activation reads it again when it is done.
+    const paying = existing !== null && (await payingForReport(ctx, workspaceId));
     const row = {
       ...snapshot,
+      ...(paying && { publication: existing.publication, publicationUnlimited: existing.publicationUnlimited }),
       ...(withCard ? { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt } : { card: existing?.card, credit: existing?.credit, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,
@@ -211,6 +237,16 @@ export const writeSnapshot = internalMutation({
     return null;
   },
 });
+
+/** How long a report's charge can be under way: its hold at Autumn lasts as long (reports/activation.ts `HOLD_MS`). One older was left by an action that died. */
+const CHARGING_MS = 5 * 60_000;
+
+/** Whether a report of the workspace is being paid for now: its charge is under way, or waits on the bank or on Stripe's page. */
+async function payingForReport(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
+  const state = (state: "charging" | "pending") => ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", state)).order("desc").first();
+  const charging = await state("charging");
+  return (charging !== null && charging.at > Date.now() - CHARGING_MS) || (await state("pending")) !== null;
+}
 
 /**
  * Zeroes the cached balance now, so work that only checks the cache stops: a
