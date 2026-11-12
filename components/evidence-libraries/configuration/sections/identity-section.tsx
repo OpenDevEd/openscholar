@@ -6,19 +6,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { newId, SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
+import { SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
-import {
-  AddButton,
-  EmptyList,
-  ListRow,
-  move,
-  ReadOnlyValue,
-  FieldGroup,
-  SortableList,
-  ToggleRow,
-  UploadField,
-} from "../fields";
+import { ReadOnlyValue, ToggleRow, UploadField } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 
 const LIMITS = SCHEMA_LIMITS.identity;
@@ -180,70 +170,6 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
           />
         )}
       </Field>
-
-      <FieldGroup
-        title={t("partnersHeading")}
-        hint={t("partnersHint")}
-        action={
-          <AddButton
-            disabled={identity.fundingPartners.length >= LIMITS.fundingPartners}
-            onClick={() =>
-              patch((d) => {
-                d.identity.fundingPartners.push({ id: newId("fp"), name: "" });
-                return d;
-              })
-            }
-          >
-            {t("addPartner")}
-          </AddButton>
-        }
-      >
-        {identity.fundingPartners.length === 0 ? (
-          <EmptyList>{t("noPartners")}</EmptyList>
-        ) : (
-          <SortableList
-            ids={identity.fundingPartners.map((p) => p.id)}
-            onMove={(from, to) =>
-              patch((d) => {
-                d.identity.fundingPartners = move(d.identity.fundingPartners, from, to);
-                return d;
-              })
-            }
-          >
-            {identity.fundingPartners.map((partner) => (
-              <ListRow
-                key={partner.id}
-                id={partner.id}
-                removeLabel={t("removePartner")}
-                onRemove={() =>
-                  patch((d) => {
-                    d.identity.fundingPartners = d.identity.fundingPartners.filter(
-                      (p) => p.id !== partner.id,
-                    );
-                    return d;
-                  })
-                }
-              >
-                <Input
-                  aria-label={t("partnerName")}
-                  className="bg-background"
-                  maxLength={LIMITS.partnerName}
-                  value={partner.name}
-                  placeholder={t("partnerPlaceholder")}
-                  aria-invalid={!partner.name.trim() || undefined}
-                  onChange={(e) =>
-                    patch((d) => {
-                      const row = d.identity.fundingPartners.find((p) => p.id === partner.id);
-                      if (row) row.name = e.target.value;
-                      return d;
-                    })
-                  }
-                />
-              </ListRow>
-            ))}
-          </SortableList>
-        )}
-      </FieldGroup>
 
       <UploadField
         label={t("shareImageLabel")}

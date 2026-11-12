@@ -767,7 +767,10 @@ export async function activateEvidenceLibraryConfiguration(
       ? "Topics need"
       : (section("identity") as { searchTitle?: unknown } | undefined)?.searchTitle
         ? "A title in search results needs"
-        : null;
+        : // Software from before the one funders list (new-el #850) holds twenty.
+          ((section("footer") as { funders?: unknown[] } | undefined)?.funders?.length ?? 0) > 20
+          ? "More than twenty funders need"
+          : null;
     if (
       needsNewer &&
       publishRuntime.kind === "current" &&

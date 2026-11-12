@@ -190,6 +190,36 @@ describe("owner configuration migrations", () => {
     expect(source!.settings).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } });
   });
 
+  it("moves a community's saved partners into its funders, once each, and keeps every funder as it was", () => {
+    const IDENTITY = { name: "Climate", shortName: "Climate", baseUrl: "https://climate.example.test", assets: {} };
+    const funders = [{ id: "fp", name: "Jacobs Foundation", href: "https://jacobsfoundation.org", logoUrl: "https://assets.example.test/jacobs.svg" }];
+    const migrate = (identity: Record<string, unknown>, footer?: Record<string, unknown>) => {
+      const { snapshot } = migrateOwnerConfiguration({
+        ownerConfigurationVersion: 14,
+        sections: [{ sectionKey: "identity", payload: { ...IDENTITY, ...identity } }, ...(footer ? [{ sectionKey: "footer", payload: footer }] : [])],
+      });
+      const payload = (key: string) => snapshot.sections.find((row) => row.sectionKey === key)?.payload as Record<string, unknown> | undefined;
+      return { identity: payload("identity"), footer: payload("footer") };
+    };
+    // One a funder already names is that funder. One whose id a funder has gets a free id. One left without a name is
+    // dropped. The rest follow in order.
+    const both = migrate(
+      { fundingPartners: [{ id: "a", name: " jacobs foundation " }, { id: "fp", name: "FCDO" }, { id: "blank", name: " " }, { id: "b", name: "World Bank" }] },
+      { disclaimer: "As is.", funders },
+    );
+    expect(both.identity).toEqual(IDENTITY);
+    expect(both.footer).toEqual({ disclaimer: "As is.", funders: [...funders, { id: "partner-1", name: "FCDO" }, { id: "b", name: "World Bank" }] });
+    // Partners with no footer saved yet make one. No partners leaves the footer alone.
+    expect(migrate({ fundingPartners: [{ id: "a", name: "FCDO" }] }).footer).toEqual({ funders: [{ id: "a", name: "FCDO" }] });
+    expect(migrate({ fundingPartners: [] }, { funders })).toEqual({ identity: IDENTITY, footer: { funders } });
+    expect(migrate({}, { funders }).footer).toEqual({ funders });
+    // The most a community could save of each: every one is kept, and the snapshot still passes its check.
+    const twenty = (kind: string) => Array.from({ length: 20 }, (_, n) => ({ id: `${kind}-${n}`, name: `${kind} ${n}` }));
+    expect((migrate({ fundingPartners: twenty("partner") }, { funders: twenty("funder") }).footer?.funders as unknown[]).length).toBe(40);
+    // Partners that can't be read are never dropped: the snapshot is refused with them still in it.
+    for (const unreadable of [["FCDO"], { id: "a", name: "FCDO" }, [{ id: "a" }]]) expect(() => migrate({ fundingPartners: unreadable })).toThrow(OwnerConfigurationMigrationError);
+  });
+
   it("gives a saved tag filter named after a search option a free address name, and drops its * tags, so it still loads", () => {
     const { snapshot } = migrateOwnerConfiguration({
       ownerConfigurationVersion: 13,
@@ -245,7 +275,6 @@ describe("owner configuration migrations", () => {
       baseUrl: "https://climate.example.test",
       tagline: "Evidence for climate decisions",
       description: "A library for climate research.",
-      fundingPartners: [{ id: "partner", name: "Partner" }],
     };
     const missingAssets = migrateOwnerConfiguration({
       ownerConfigurationVersion: 1,
@@ -493,6 +522,7 @@ describe("owner configuration migrations", () => {
       [11, 12],
       [12, 13],
       [13, 14],
+      [14, 15],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -737,6 +767,7 @@ describe("owner configuration migrations", () => {
       [11, 12],
       [12, 13],
       [13, 14],
+      [14, 15],
     ]);
   });
 
