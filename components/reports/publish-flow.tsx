@@ -592,6 +592,10 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
       shown.current = true;
       return;
     }
+    // A screen that changed without a press here, as when the report went live from another tab, opens at its top
+    // too: left where the page was scrolled, its heading sat under the page's bar.
+    // The bars fixed at the top of the page (the notice, the phone's header, the page's own) cover about this much.
+    if (window.scrollY > 0 && node.getBoundingClientRect().top < 160) window.scrollTo({ top: 0 });
     const heading = node.querySelector("h2");
     // Only focus the old screen lost, which has fallen to the page: someone typing elsewhere, in the assistant say, keeps theirs.
     if (!heading || (document.activeElement && document.activeElement !== document.body)) return;
@@ -830,11 +834,32 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
+/** The agreement's two confirmations as last ticked in this tab, for the agreement as it then read. */
+const TICKS = "publish:agreement-ticks";
+type Ticks = { version: number; all: boolean; agreed: boolean };
+function keptTicks(version: number): Ticks | null {
+  try {
+    const kept = JSON.parse(window.sessionStorage.getItem(TICKS) ?? "null") as Ticks | null;
+    return kept && kept.version === version && typeof kept.all === "boolean" && typeof kept.agreed === "boolean" ? { version, all: kept.all, agreed: kept.agreed } : null;
+  } catch {
+    return null;
+  }
+}
+function keepTicks(ticks: Ticks | null) {
+  try {
+    if (ticks) window.sessionStorage.setItem(TICKS, JSON.stringify(ticks));
+    else window.sessionStorage.removeItem(TICKS);
+  } catch {
+    // Without the tab's storage the ticks are made again after signing in.
+  }
+}
+
 function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack }: { /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
   const sign = useMutation(api.reports.flow.sign);
+  const locale = useLocale();
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
   const [today] = useState(() => new Date());
   // The name they are known by, until they type another.
@@ -844,10 +869,16 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const { agreement } = basics;
   // Each tick is for the agreement as it read when it was made. One changed since, while the page was open, is
   // read and ticked again before it can be signed.
-  const [ticks, setTicks] = useState({ version: agreement.version, all: false, agreed: false });
+  // Kept with the tab until the report is signed: someone who ticks them signed out, then signs up, finds them as
+  // they left them and not cleared without a word. The step is drawn only in the browser, once the page has its data.
+  const [ticks, setTicks] = useState(() => keptTicks(agreement.version) ?? { version: agreement.version, all: false, agreed: false });
   const changed = ticks.version !== agreement.version && (ticks.all || ticks.agreed);
   const { all, agreed } = ticks.version === agreement.version ? ticks : { all: false, agreed: false };
-  const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
+  const tick = (next: { all?: boolean; agreed?: boolean }) => {
+    const now = { version: agreement.version, all, agreed, ...next };
+    setTicks(now);
+    keepTicks(now);
+  };
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
   // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
@@ -858,6 +889,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
+        {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
+        {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
@@ -917,7 +950,10 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
             onClick={() =>
               start(async () => {
                 try {
-                  onSigned(await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version }));
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version });
+                  // Signed, the ticks have done their work: the next report's agreement starts unticked.
+                  keepTicks(null);
+                  onSigned(key);
                 } catch (error) {
                   said(t("signFailed"))(error);
                 }
