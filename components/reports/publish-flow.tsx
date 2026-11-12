@@ -2018,7 +2018,7 @@ function PaymentLine({ organization, activations, grants, card, credit, price, p
       .map((grant) =>
         grant.interval === "once"
           ? t("grantKept", { count: grant.left, more: kinds.length > 1 ? "yes" : "no" })
-          : t("grantRefills", { left: grant.left, size: grant.size, interval: grant.interval, date: grant.resetsAt === undefined ? "" : format.dateTime(grant.resetsAt, { day: "numeric", month: "short" }) }),
+          : t("grantRefills", { left: grant.left, size: grant.size, to: grant.refillsTo ?? grant.size, interval: grant.interval, date: grant.resetsAt === undefined ? "" : format.dateTime(grant.resetsAt, { day: "numeric", month: "short" }) }),
       )
       .join(" ");
   const dollars = useDollars();
@@ -2074,13 +2074,13 @@ function PaymentLine({ organization, activations, grants, card, credit, price, p
               : spendable
                 ? // What refills and when, then what stays: the chip's count alone doesn't say.
                   [grantWords(grants), organization ? t("usesOrg", { organization }) : t("uses")].filter(Boolean).join(" ")
-                : !card
-                  ? covered
-                    ? t("coveredHint")
-                    : (costs ?? t("needed"))
-                  : organization
-                    ? t("orgCard", { organization })
-                    : t("yourCard")}
+                : // Empty, a balance that refills still says when it comes back.
+                  [
+                    grantWords(grants.filter((grant) => grant.interval !== "once")),
+                    !card ? (covered ? t("coveredHint") : (costs ?? t("needed"))) : organization ? t("orgCard", { organization }) : t("yourCard"),
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
         </p>
         {/* A code goes in here, before a card or a charge is asked for: one that covers the price needs neither. */}
         {voucher ? <div className="mt-1.5">{voucher}</div> : null}

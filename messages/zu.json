@@ -6762,7 +6762,7 @@
           "unlimited": "Akukho mkhawulo",
           "uses": "Ukuvula kusebenzisa okukodwa ebhalansini lakho. Akukho okukhokhiswayo.",
           "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo.",
-          "grantRefills": "{left, number} kwezingu-{size, number} {interval, select, hour {kuleli hora} day {namuhla} week {kuleli sonto} month {kule nyanga} quarter {kulezi zinyanga ezintathu} semi_annual {kulezi zinyanga eziyisithupha} other {kulo nyaka}}, zibuyela ku-{size, number} ngo-{date}.",
+          "grantRefills": "{left, number} kwezingu-{size, number} {interval, select, hour {kuleli hora} day {namuhla} week {kuleli sonto} month {kule nyanga} quarter {kulezi zinyanga ezintathu} semi_annual {kulezi zinyanga eziyisithupha} other {kulo nyaka}}, zibuyela ku-{to, number} ngo-{date}.",
           "grantKept": "{more, select, yes {Ezinye ezingu-{count, number}} other {{count, number}}} zigcinwa kuze kusetshenziswe."
         },
         "creditLine": "Isikweletu se-akhawunti",

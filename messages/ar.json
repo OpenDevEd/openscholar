@@ -6763,7 +6763,7 @@
           "unlimited": "بلا حد",
           "uses": "التفعيل يستخدم واحدًا من رصيدك. لن يُخصم أي مبلغ.",
           "usesOrg": "التفعيل يستخدم واحدًا من رصيد {organization}. لن يُخصم أي مبلغ.",
-          "grantRefills": "{left, number} من {size, number} {interval, select, hour {هذه الساعة} day {اليوم} week {هذا الأسبوع} month {هذا الشهر} quarter {هذه الأشهر الثلاثة} semi_annual {هذه الأشهر الستة} other {هذه السنة}}، وتعود إلى {size, number} في {date}.",
+          "grantRefills": "{left, number} من {size, number} {interval, select, hour {هذه الساعة} day {اليوم} week {هذا الأسبوع} month {هذا الشهر} quarter {هذه الأشهر الثلاثة} semi_annual {هذه الأشهر الستة} other {هذه السنة}}، وتعود إلى {to, number} في {date}.",
           "grantKept": "{more, select, yes {و{count, number} أخرى} other {{count, number}}} محفوظة حتى استخدامها."
         },
         "creditLine": "رصيد الحساب",

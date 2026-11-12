@@ -6762,7 +6762,7 @@
           "unlimited": "कोई सीमा नहीं",
           "uses": "सक्रिय करने पर आपके बैलेंस से एक सक्रियण लगता है। कोई शुल्क नहीं लिया जाता।",
           "usesOrg": "सक्रिय करने पर {organization} के बैलेंस से एक सक्रियण लगता है। कोई शुल्क नहीं लिया जाता।",
-          "grantRefills": "{size, number} में से {left, number} {interval, select, hour {इस घंटे} day {आज} week {इस हफ़्ते} month {इस महीने} quarter {इन तीन महीनों में} semi_annual {इन छह महीनों में} other {इस साल}}, {date} को फिर {size, number}।",
+          "grantRefills": "{size, number} में से {left, number} {interval, select, hour {इस घंटे} day {आज} week {इस हफ़्ते} month {इस महीने} quarter {इन तीन महीनों में} semi_annual {इन छह महीनों में} other {इस साल}}, {date} को फिर {to, number}।",
           "grantKept": "{more, select, yes {और {count, number}} other {{count, number}}} इस्तेमाल होने तक रखे गए।"
         },
         "creditLine": "खाते का क्रेडिट",

@@ -6763,7 +6763,7 @@
           "unlimited": "Bila kikomo",
           "uses": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio lako. Hakuna kinachotozwa.",
           "usesOrg": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio la {organization}. Hakuna kinachotozwa.",
-          "grantRefills": "{left, number} kati ya {size, number} {interval, select, hour {saa hii} day {leo} week {wiki hii} month {mwezi huu} quarter {miezi hii mitatu} semi_annual {miezi hii sita} other {mwaka huu}}, zinarudi kuwa {size, number} tarehe {date}.",
+          "grantRefills": "{left, number} kati ya {size, number} {interval, select, hour {saa hii} day {leo} week {wiki hii} month {mwezi huu} quarter {miezi hii mitatu} semi_annual {miezi hii sita} other {mwaka huu}}, zinarudi kuwa {to, number} tarehe {date}.",
           "grantKept": "{more, select, yes {{count, number} zaidi} other {{count, number}}} zimehifadhiwa hadi zitumike."
         },
         "creditLine": "Salio la akaunti",

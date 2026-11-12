@@ -68,8 +68,14 @@ export function grantsOf(balance: AutumnBalance | undefined): { activationGrants
     const of = (balance.breakdown ?? []).filter((grant) => kindOf(grant.reset?.interval) === interval);
     const left = of.reduce((sum, grant) => sum + grant.remaining, 0);
     if (of.length === 0 || (interval === "once" && left <= 0)) return [];
+    const sizeOf = (grant: (typeof of)[number]) => (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
     const resets = of.flatMap((grant) => (grant.reset?.resets_at ? [grant.reset.resets_at] : []));
-    return [{ interval, left, size: of.reduce((sum, grant) => sum + (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0), 0), ...(resets.length > 0 && { resetsAt: Math.min(...resets) }) }];
+    const size = of.reduce((sum, grant) => sum + sizeOf(grant), 0);
+    if (resets.length === 0) return [{ interval, left, size }];
+    // Grants of one interval can refill on different days: at the next one, only those come back to full.
+    const resetsAt = Math.min(...resets);
+    const refillsTo = of.reduce((sum, grant) => sum + (grant.reset?.resets_at === resetsAt ? sizeOf(grant) : grant.remaining), 0);
+    return [{ interval, left, size, resetsAt, refillsTo }];
   });
   return grants.length > 0 ? { activationGrants: grants } : {};
 }

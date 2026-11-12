@@ -6762,7 +6762,7 @@
           "unlimited": "不限次数",
           "uses": "激活会使用你余额中的一次。不会扣款。",
           "usesOrg": "激活会使用 {organization} 余额中的一次。不会扣款。",
-          "grantRefills": "{interval, select, hour {本小时} day {今天} week {本周} month {本月} quarter {这三个月} semi_annual {这六个月} other {今年}}剩 {left, number}/{size, number}，{date}恢复为 {size, number}。",
+          "grantRefills": "{interval, select, hour {本小时} day {今天} week {本周} month {本月} quarter {这三个月} semi_annual {这六个月} other {今年}}剩 {left, number}/{size, number}，{date}恢复为 {to, number}。",
           "grantKept": "{more, select, yes {另有 {count, number} 个} other {{count, number} 个}}保留至使用。"
         },
         "creditLine": "账户余额抵扣",

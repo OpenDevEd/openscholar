@@ -10,10 +10,11 @@ export const planLimitsValidator = v.object({ collections: limitValue, concurren
 export const refillValidator = v.union(...REFILL_INTERVALS.map((interval) => v.literal(interval)));
 
 /**
- * One kind of a workspace's activations: those that refill by `interval`, back to `size` on `resetsAt`, or with
- * `once` those that stay until used (granted once, or bought). `left` is what remains of them now.
+ * One kind of a workspace's activations: those that refill by `interval`, back to `refillsTo` on `resetsAt` (`size` once
+ * every grant of it has refilled), or with `once` those that stay until used (granted once, or bought). `left` is what
+ * remains of them now.
  */
-export const activationGrantValidator = v.object({ interval: v.union(refillValidator, v.literal("once")), left: v.number(), size: v.number(), resetsAt: v.optional(v.number()) });
+export const activationGrantValidator = v.object({ interval: v.union(refillValidator, v.literal("once")), left: v.number(), size: v.number(), resetsAt: v.optional(v.number()), refillsTo: v.optional(v.number()) });
 export type ActivationGrant = Infer<typeof activationGrantValidator>;
 /** At most one of each kind: every interval, and `once`. Wrapped whole where it is optional, as `v.optional` copies it. */
 export const activationGrantsValidator = capped(v.array(activationGrantValidator), REFILL_INTERVALS.length + 1);

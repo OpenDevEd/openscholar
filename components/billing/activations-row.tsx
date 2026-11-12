@@ -53,7 +53,7 @@ export function ActivationsRow({ left, grants }: { /** Null for no limit. */ lef
                   {format.number(grant.left)} / {format.number(grant.size)}
                 </span>
               </span>
-              {grant.resetsAt !== undefined ? <span className="whitespace-nowrap">{t("backTo", { size: grant.size, date: format.dateTime(grant.resetsAt, { day: "numeric", month: "short" }) })}</span> : null}
+              {grant.resetsAt !== undefined ? <span className="whitespace-nowrap">{t("backTo", { size: grant.refillsTo ?? grant.size, date: format.dateTime(grant.resetsAt, { day: "numeric", month: "short" }) })}</span> : null}
             </span>
           ))}
           {kept ? (

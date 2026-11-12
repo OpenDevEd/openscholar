@@ -6763,7 +6763,7 @@
           "unlimited": "Sin límite",
           "uses": "Activar usa una de tu saldo. No se cobra nada.",
           "usesOrg": "Activar usa una del saldo de {organization}. No se cobra nada.",
-          "grantRefills": "{left, number} de {size, number} {interval, select, hour {esta hora} day {hoy} week {esta semana} month {este mes} quarter {estos tres meses} semi_annual {estos seis meses} other {este año}}, vuelve a {size, number} el {date}.",
+          "grantRefills": "{left, number} de {size, number} {interval, select, hour {esta hora} day {hoy} week {esta semana} month {este mes} quarter {estos tres meses} semi_annual {estos seis meses} other {este año}}, vuelve a {to, number} el {date}.",
           "grantKept": "{more, select, yes {{count, number} más} other {{count, number}}} guardadas hasta usarlas."
         },
         "creditLine": "Saldo a favor de la cuenta",

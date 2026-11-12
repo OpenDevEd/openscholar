@@ -6763,7 +6763,7 @@
           "unlimited": "Ohne Limit",
           "uses": "Das Aktivieren verbraucht eine aus Ihrem Guthaben. Es wird nichts abgebucht.",
           "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht.",
-          "grantRefills": "{left, number} von {size, number} {interval, select, hour {in dieser Stunde} day {heute} week {diese Woche} month {diesen Monat} quarter {in diesen drei Monaten} semi_annual {in diesen sechs Monaten} other {dieses Jahr}}, am {date} wieder {size, number}.",
+          "grantRefills": "{left, number} von {size, number} {interval, select, hour {in dieser Stunde} day {heute} week {diese Woche} month {diesen Monat} quarter {in diesen drei Monaten} semi_annual {in diesen sechs Monaten} other {dieses Jahr}}, am {date} wieder {to, number}.",
           "grantKept": "{more, select, yes {{count, number} weitere} other {{count, number}}} bleiben bis zur Nutzung."
         },
         "creditLine": "Guthaben des Kontos",

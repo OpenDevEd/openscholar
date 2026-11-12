@@ -69,10 +69,12 @@ describe("a workspace's activations", () => {
     const snapshot = snapshotFromCustomer(customer({ report_activations: { remaining: 108, breakdown: [grant("one_off", 100, 100), grant("month", 3, 5, 2000), grant("day", 1, 1, 1000), grant("month", 2, 2, 1500), grant("one_off", 0, 1)] } }));
     expect(snapshot.activations).toBe(108);
     expect(snapshot.activationGrants).toEqual([
-      { interval: "day", left: 1, size: 1, resetsAt: 1000 },
-      { interval: "month", left: 5, size: 7, resetsAt: 1500 },
+      { interval: "day", left: 1, size: 1, resetsAt: 1000, refillsTo: 1 },
+      { interval: "month", left: 5, size: 7, resetsAt: 1500, refillsTo: 5 },
       { interval: "once", left: 100, size: 101 },
     ]);
+    // Two monthly grants, both spent, on different days: the first day brings back only its own.
+    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, breakdown: [grant("month", 0, 10, 3000), grant("month", 0, 5, 2500)] } })).activationGrants).toEqual([{ interval: "month", left: 0, size: 15, resetsAt: 2500, refillsTo: 5 }]);
     // One-off grants all spent say nothing; no limit has no kinds to tell apart.
     expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, breakdown: [grant("one_off", 0, 1)] } })).activationGrants).toBeUndefined();
     expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, unlimited: true } }))).toMatchObject({ activations: null });

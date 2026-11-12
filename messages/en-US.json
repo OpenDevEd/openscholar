@@ -6762,7 +6762,7 @@
           "unlimited": "No limit",
           "uses": "Activating uses one from your balance. Nothing is charged.",
           "usesOrg": "Activating uses one from {organization}'s balance. Nothing is charged.",
-          "grantRefills": "{left, number} of {size, number} {interval, select, hour {this hour} day {today} week {this week} month {this month} quarter {these three months} semi_annual {these six months} other {this year}}, back to {size, number} on {date}.",
+          "grantRefills": "{left, number} of {size, number} {interval, select, hour {this hour} day {today} week {this week} month {this month} quarter {these three months} semi_annual {these six months} other {this year}}, back to {to, number} on {date}.",
           "grantKept": "{more, select, yes {{count, number} more} other {{count, number}}} kept until used."
         },
         "creditLine": "Account credit",

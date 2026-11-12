@@ -6762,7 +6762,7 @@
           "unlimited": "Sans limite",
           "uses": "L'activation en utilise une de votre solde. Rien n'est débité.",
           "usesOrg": "L'activation en utilise une du solde de {organization}. Rien n'est débité.",
-          "grantRefills": "{left, number} sur {size, number} {interval, select, hour {cette heure} day {aujourd'hui} week {cette semaine} month {ce mois-ci} quarter {ces trois mois} semi_annual {ces six mois} other {cette année}}, de retour à {size, number} le {date}.",
+          "grantRefills": "{left, number} sur {size, number} {interval, select, hour {cette heure} day {aujourd'hui} week {cette semaine} month {ce mois-ci} quarter {ces trois mois} semi_annual {ces six mois} other {cette année}}, de retour à {to, number} le {date}.",
           "grantKept": "{more, select, yes {{count, number} de plus} other {{count, number}}} gardées jusqu'à utilisation."
         },
         "creditLine": "Crédit du compte",

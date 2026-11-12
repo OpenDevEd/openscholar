@@ -6763,7 +6763,7 @@
           "unlimited": "Geen limiet",
           "uses": "Aktivering gebruik een uit jou saldo. Niks word gehef nie.",
           "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie.",
-          "grantRefills": "{left, number} van {size, number} {interval, select, hour {hierdie uur} day {vandag} week {hierdie week} month {hierdie maand} quarter {hierdie drie maande} semi_annual {hierdie ses maande} other {hierdie jaar}}, terug na {size, number} op {date}.",
+          "grantRefills": "{left, number} van {size, number} {interval, select, hour {hierdie uur} day {vandag} week {hierdie week} month {hierdie maand} quarter {hierdie drie maande} semi_annual {hierdie ses maande} other {hierdie jaar}}, terug na {to, number} op {date}.",
           "grantKept": "{more, select, yes {Nog {count, number}} other {{count, number}}} bly tot gebruik."
         },
         "creditLine": "Rekeningkrediet",

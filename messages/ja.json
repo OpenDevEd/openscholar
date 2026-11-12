@@ -6762,7 +6762,7 @@
           "unlimited": "無制限",
           "uses": "有効化すると残高から1回分を使います。請求はありません。",
           "usesOrg": "有効化すると{organization}の残高から1回分を使います。請求はありません。",
-          "grantRefills": "{interval, select, hour {この1時間} day {今日} week {今週} month {今月} quarter {この3か月} semi_annual {この6か月} other {今年}}は{size, number}のうち{left, number}、{date}に{size, number}に戻ります。",
+          "grantRefills": "{interval, select, hour {この1時間} day {今日} week {今週} month {今月} quarter {この3か月} semi_annual {この6か月} other {今年}}は{size, number}のうち{left, number}、{date}に{to, number}に戻ります。",
           "grantKept": "{more, select, yes {ほかに{count, number}} other {{count, number}}}は使うまで残ります。"
         },
         "creditLine": "アカウントのクレジット",

@@ -16,8 +16,9 @@ export const run = internalMutation({
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("billingAccounts").paginate({ numItems: 100, cursor: cursor ?? null });
     for (const account of page.page) {
+      // One with activations, or one that refilled and is empty now, has kinds to show.
+      if (account.activationGrants === undefined && ((account.activations !== 0 && account.activations !== undefined) || account.activationsRefill !== undefined)) await requestRefresh(ctx, account.workspaceId);
       if (account.activationsRefill !== undefined) await ctx.db.patch("billingAccounts", account._id, { activationsRefill: undefined });
-      if (account.activations !== 0 && account.activations !== undefined && account.activationGrants === undefined) await requestRefresh(ctx, account.workspaceId);
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.activationKinds.run, { cursor: page.continueCursor });
     return null;
