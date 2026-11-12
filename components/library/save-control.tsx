@@ -184,7 +184,8 @@ export function useSavePaper(paper: WorkInput | undefined) {
       openSignIn();
       return;
     }
-    if (pending) forgetPendingSave();
+    // Only this paper's press is used up: another paper's Save, pressed meanwhile, leaves it waiting.
+    if (paper && pending === paper.id) forgetPendingSave();
     if (!ready || !paper) return;
     const key = `${userId}:${paper.id}`;
     if (!isSaved) {
