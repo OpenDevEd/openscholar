@@ -389,6 +389,7 @@ import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
 import type * as presence from "../presence.js";
 import type * as ratings from "../ratings.js";
+import type * as reports_abstract from "../reports/abstract.js";
 import type * as reports_activation from "../reports/activation.js";
 import type * as reports_checkRuns from "../reports/checkRuns.js";
 import type * as reports_checks from "../reports/checks.js";
@@ -903,6 +904,7 @@ declare const fullApi: ApiFromModules<{
   "paperSets/search": typeof paperSets_search;
   presence: typeof presence;
   ratings: typeof ratings;
+  "reports/abstract": typeof reports_abstract;
   "reports/activation": typeof reports_activation;
   "reports/checkRuns": typeof reports_checkRuns;
   "reports/checks": typeof reports_checks;

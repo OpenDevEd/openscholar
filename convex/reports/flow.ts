@@ -100,6 +100,9 @@ export function keptDetails(metadata: Metadata) {
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
   const long = [...metadata.keywords, ...metadata.funding.flatMap((funding) => funding.awards)].find((word) => word.length > DETAIL_TEXT.keyword);
   if (long) throw createError("VALIDATION_ERROR", `Keep each keyword and grant number to ${DETAIL_TEXT.keyword} characters.`);
+  if ((metadata.citations?.length ?? 0) > DETAIL_CAPS.references) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS.references.toLocaleString("en")} references.`);
+  if (metadata.citations?.some((c) => c.text.length > DETAIL_TEXT.citation)) throw createError("VALIDATION_ERROR", `Keep each reference to ${DETAIL_TEXT.citation.toLocaleString("en")} characters.`);
+  if (metadata.citations?.some((c) => !c.text.trim() && !c.doi)) throw createError("VALIDATION_ERROR", "A reference needs its words or its DOI.");
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.

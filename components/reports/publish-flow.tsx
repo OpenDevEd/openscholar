@@ -27,6 +27,7 @@ import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { MarkdownContent } from "@/components/markdown-content";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { DetailsStep } from "@/components/reports/details-step";
+import { FieldHelp, type HelpKey } from "@/components/reports/field-help";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
 import { Problem, useProblem } from "@/components/reports/problem";
@@ -688,7 +689,8 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
                 onBack={() => onStep("upload")}
                 ref={form}
                 onReturn={report.reopened ? () => onStep("checks") : undefined}
-                reportKey={report.key}
+                writing={{ key: report.key, workspaceId: workspaceId! }}
+                registrars={report.registration}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -713,7 +715,8 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
-              reportKey={report.key}
+              writing={{ key: report.key, workspaceId: workspaceId! }}
+              registrars={report.registration}
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}
@@ -906,11 +909,14 @@ function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }
   );
 }
 
-function StepHead({ title, aside, children }: { title: string; aside?: ReactNode; children?: ReactNode }) {
+function StepHead({ title, aside, help, children }: { title: string; aside?: ReactNode; /** The "?" beside the title, for a step whose words people may not know. */ help?: HelpKey; children?: ReactNode }) {
   return (
     <div className="mb-5 space-y-1">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 className="flex items-center gap-1 text-lg font-semibold tracking-tight">
+          {title}
+          {help ? <FieldHelp field={help} /> : null}
+        </h2>
         {aside}
       </div>
       {children ? <p className="max-w-xl text-sm text-muted-foreground">{children}</p> : null}
@@ -977,7 +983,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
   return (
     <div>
-      <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
+      <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
         {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
@@ -1092,8 +1098,9 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           <Hash className="size-9" />
         </motion.span>
       </div>
-      <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
+      <motion.h2 className="mt-5 flex items-center gap-1 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
         {t("doiReserved")}
+        <FieldHelp field="doi" />
       </motion.h2>
       <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.4)}>
         {t("doiReservedBody")}
@@ -1130,7 +1137,7 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
       {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
           out as the upload's page is, which comes next. */}
       <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
-        <StepHead title={t("bylineFirst")}>{t("bylineFirstBody")}</StepHead>
+        <StepHead title={t("bylineFirst")} help="byline">{t("bylineFirstBody")}</StepHead>
         <BylineChoice byline={report.byline} by={by} onPick={(picked) => void setBy(picked)} />
         <StepNav
           hint={by ? undefined : t("bylineBy.choose")}
@@ -1381,7 +1388,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   };
   return (
     <div>
-      <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
+      <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
       <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
       <button
         type="button"
@@ -1667,7 +1674,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   const amount = spendable || price === null || due === 0 || requoting ? null : dollars(due);
 
   const head = !report ? (
-    <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
+    <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
     </StepHead>
   ) : stage === "ready" && !admin ? (
@@ -1675,11 +1682,11 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
       {t(report.approved ? "activation.waitingAdminApproved" : "activation.waitingAdminPassed", { organization: organization ?? "" })}
     </StepHead>
   ) : stage === "ready" ? (
-    <StepHead key="ready" title={t("ready")} aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
+    <StepHead key="ready" title={t("ready")} help="activation" aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
       {t(report.approved ? "readyApproved" : "readyPassed")}
     </StepHead>
   ) : stage === "review" ? (
-    <StepHead key="review" title={t("waiting")} aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
+    <StepHead key="review" title={t("waiting")} help="checks" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
       {t(rows.some((r) => r.result && !r.result.pass) ? "waitingFlagged" : "waitingPassed")} {t("reviewTakes")}
     </StepHead>
   ) : stage === "declined" ? (
@@ -1690,7 +1697,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   ) : (
     // Asked of a reviewer, it reads as waiting on them, with how long that takes: "A check failed" alone left people
     // unsure their request had gone anywhere.
-    <StepHead key="failed" title={t("notYet")} aside={report.asked ? <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip> : <StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
+    <StepHead key="failed" title={t("notYet")} help="checks" aside={report.asked ? <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip> : <StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
       {t(report.asked ? "failedAsked" : "failedFix")}
       {report.asked ? ` ${t("reviewTakes")}` : null}
     </StepHead>
@@ -2478,7 +2485,10 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
         <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
           <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
         </TooltipHint>
-        <p className="mt-0.5 text-xs text-muted-foreground">{basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}</p>
+        <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
+          {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
+          <FieldHelp field="issn" />
+        </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {live ? (
             <StatusChip tone="success" icon={BadgeCheck} className="fade-enter">

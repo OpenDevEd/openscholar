@@ -39,6 +39,7 @@ const reading = z.object({
       affiliations: z.array(z.string()).describe("Each institution the PDF gives for this person: the university, institute or organisation's own name, without department, street, city or country"),
       corresponding: z.boolean().describe("True only when the PDF marks this person as the corresponding author"),
       roles: z.array(z.enum(CREDIT_ROLES)).describe("Roles from the PDF's own contributions statement; empty when it has none"),
+      kind: z.enum(["author", "editor", "translator"]).describe("author for the work's authors; editor or translator only for a person the PDF names as its editor or translator"),
     }),
   ),
   abstract: z.string().describe("The abstract or summary section as printed; empty when it prints neither"),
@@ -61,7 +62,7 @@ type Reading = z.infer<typeof reading>;
 const INSTRUCTIONS = [
   "You catalogue one PDF that its author is publishing. Read the whole PDF, including the cover, front matter, acknowledgements, end matter and reference list.",
   "The record holds what the PDF states, copied as it is. What the text itself shows counts as stated, such as its language. The abstract is the abstract or summary section the PDF prints, copied as it is; when it prints neither, the abstract stays empty. Never invent a DOI, ORCID iD, grant number, date, affiliation or author.",
-  "Only those the PDF names as the work's authors are authors; editors, reviewers and advisers are left out. Give each author's institutions by their own names, and an ORCID iD only when the PDF prints it for that person. Mark a corresponding author only when the PDF marks one. Give contributor roles only from a contributions statement in the PDF.",
+  "List the work's authors, then anyone the PDF names as its editor or translator, each marked as such; reviewers and advisers are left out. Give each author's institutions by their own names, and an ORCID iD only when the PDF prints it for that person. Mark a corresponding author only when the PDF marks one. Give contributor roles only from a contributions statement in the PDF.",
   "Funding is what the acknowledgements or funding statement say: each funder's name as printed, with the grant numbers given for it.",
   "List the DOI of every work in the reference list that prints one, and the links the PDF gives to its own data, code, other versions or supplements.",
   "The goals, study designs and places are your judgement of what the work is about: the Sustainable Development Goals it substantially addresses (at most three), the designs the study itself uses (none when it is not an empirical study of that kind), and the countries it studies, not the countries its authors work in.",
@@ -216,6 +217,7 @@ export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { /**
             affiliations,
             corresponding: a.corresponding,
             roles: a.roles,
+            ...(a.kind !== "author" && { kind: a.kind }),
           };
         }),
     ),

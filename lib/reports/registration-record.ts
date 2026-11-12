@@ -3,7 +3,7 @@
 // field of a report's details that either registrar takes (plans/registrar-metadata).
 import { CREDIT_ROLES, type CreditRole } from "@opendeved/doi-sync-core";
 import { SDGS, STUDY_DESIGNS } from "../openalex/vocabulary";
-import { doiIn, type Metadata, type RelationKind, wholeDate } from "./report";
+import { doiIn, isAuthor, type Metadata, type RelationKind, wholeDate } from "./report";
 import type { Series } from "./settings";
 
 /**
@@ -53,7 +53,7 @@ const placeOf = (code: string) =>
 
 /** A person's name as the registrars keep one: family name, then given names. A single word is a family name. A body keeps its name as it is. */
 function creator(author: Metadata["authors"][number], institutions: RegistryIds["institutions"]) {
-  if (!author.orcid && (BODY.test(author.name) || ACRONYM.test(author.name))) return { type: "organizational" as const, name: author.name.trim(), creatorType: "author" };
+  if (!author.orcid && (BODY.test(author.name) || ACRONYM.test(author.name))) return { type: "organizational" as const, name: author.name.trim(), creatorType: author.kind ?? "author" };
   const words = author.name.trim().split(/\s+/);
   const familyName = words.at(-1)!;
   const givenName = words.slice(0, -1).join(" ");
@@ -68,7 +68,7 @@ function creator(author: Metadata["authors"][number], institutions: RegistryIds[
   return {
     type: "personal" as const,
     name: [familyName, givenName].filter(Boolean).join(", "),
-    creatorType: "author",
+    creatorType: author.kind ?? "author",
     ...(givenName && { givenName }),
     familyName,
     ...(affiliations.length && { affiliations }),
@@ -127,7 +127,8 @@ export function registrationRecord(
       const registryDoi = doiIn(known?.doi ?? "") ?? (ror ? doiIn(ids.rorFunders?.[ror] ?? "") : null);
       return { funderName: f.funder.name, ...(registryDoi && { funderIdentifier: `https://doi.org/${registryDoi}` }), ...(ror && { funderRor: ror }), awards: f.awards };
     }),
-    references: m.references,
+    // Each work cited by its DOI, or as its reference list writes it when it has none.
+    references: m.citations ? m.citations.map((c) => c.doi ?? c.text.trim()).filter(Boolean) : m.references,
     relations: m.relations.map((relation) => {
       const doi = doiIn(relation.target);
       return { ...RELATION[relation.kind], identifierType: doi ? ("doi" as const) : ("uri" as const), identifier: doi ?? relation.target.trim() };
@@ -159,7 +160,7 @@ const ZENODO_ITEM_TYPE: Record<string, string> = {
 export function zenodoRecord<R extends ReturnType<typeof registrationRecord>>(record: R, m: Metadata): R {
   // A thesis names the university that awarded it: its first author's first institution, never Openscholar (the
   // publisher, which doi-sync-core falls back to). Without one, a dissertation stays a report.
-  const university = m.authors[0]?.affiliations[0]?.name;
+  const university = m.authors.find(isAuthor)?.affiliations[0]?.name;
   const itemType = ZENODO_ITEM_TYPE[m.type] === "Thesis" && !university ? "Report" : (ZENODO_ITEM_TYPE[m.type] ?? "Report");
   // Zenodo takes only a whole date, where Crossref takes a year or a month as the report states it.
   return { ...record, publicationDate: wholeDate(record.publicationDate), itemType, ...(itemType === "Thesis" && { institution: university }) };

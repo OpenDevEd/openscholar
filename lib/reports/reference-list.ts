@@ -1,4 +1,4 @@
-// mock: the references a pasted text or an uploaded file holds, for the References box on a report's details.
+// The references a pasted text or an uploaded file holds, for the References box on a report's details.
 // A BibTeX or RIS file gives one reference a record, written out in APA; any other text gives one a line, or one a
 // block when blank lines part them. Loaded when someone adds references, since it brings the citation styles with it.
 

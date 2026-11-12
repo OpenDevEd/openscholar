@@ -79,7 +79,7 @@ export function AdminPublishing() {
             </Button>
             <DetailsStep
               key={editable.key}
-              reportKey={editable.key}
+              writing={{ key: editable.key }}
               initial={editable.metadata!}
               version={editable.updatedAt}
               onTouched={() => setTyped({ key: editable.key, lost: false })}
