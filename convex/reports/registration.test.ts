@@ -77,6 +77,19 @@ describe("a report's record for its registrars", () => {
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { series: { title: "Openscholar Reports", issns: ["2049-3630"] }, freeToRead: true } });
   });
 
+  it("sends a funder only ROR knows by its ROR ID, with the Funder Registry DOI ROR lists for it where it lists one", () => {
+    const funding = [
+      { funder: { id: null, name: "The LEGO Foundation", ror: "https://ror.org/020yc1y85" }, awards: ["G-1"] },
+      { funder: { id: null, name: "Foreign, Commonwealth & Development Office", ror: "https://ror.org/037wke960" }, awards: [] },
+    ];
+    const record = registrationRecord(report, { ...m, funding }, series, "https://openscholar.ai", { funders: {}, institutions: {}, rorFunders: { "020yc1y85": "10.13039/100018325" } });
+    expect(record.funding).toEqual([
+      { funderName: "The LEGO Foundation", funderIdentifier: "https://doi.org/10.13039/100018325", funderRor: "020yc1y85", awards: ["G-1"] },
+      // Not in the Funder Registry: Crossref still knows it by its ROR ID.
+      { funderName: "Foreign, Commonwealth & Development Office", funderRor: "037wke960", awards: [] },
+    ]);
+  });
+
   it("keeps a date its PDF gives as a month as a month for Crossref, and gives Zenodo, which takes only a whole date, the first of it", () => {
     const record = registrationRecord(report, { ...m, date: "2026-10" }, series, "https://openscholar.ai");
     const mapped = mapCrossrefRecord(record, report.doi);

@@ -83,7 +83,8 @@ export type Author = {
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
-export type Funding = { funder: { id: string | null; name: string }; awards: string[] };
+/** A funder: OpenAlex's where it has it (F…), with its ROR ID (https://ror.org/…) where OpenAlex or ROR know it, or the name as typed. */
+export type Funding = { funder: { id: string | null; name: string; ror?: string }; awards: string[] };
 export const RELATION_KINDS = [
   { id: "data", name: "Data" },
   { id: "code", name: "Code" },

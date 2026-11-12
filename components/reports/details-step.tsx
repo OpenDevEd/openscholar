@@ -9,7 +9,8 @@ import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Paged, pagerOf } from "@/components/settings/parts";
-import { FunderName } from "@/components/papers/paper-entities";
+import { FunderName, RorLink } from "@/components/papers/paper-entities";
+import { findRor } from "@/app/actions/people-lookup";
 import { AffiliationPicker } from "@/components/people/affiliation-picker";
 import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -202,6 +203,12 @@ function Sureness({ score }: { score: number }) {
 
 const typedId = (name: string) => `typed:${name}`;
 
+/** A funder's chip: OpenAlex's by its ID, one only ROR knows by its ROR ID, or the name as typed. */
+const funderChip = (funder: Metadata["funding"][number]["funder"]) => funder.id ?? (funder.ror ? `ror:${funder.ror}` : typedId(funder.name));
+/** The funder a picked option is: OpenAlex's with the ROR ID it has, one found on ROR by its ROR ID, or the name as typed. */
+const funderOf = (option: { id: string; name: string; ror?: string }): Metadata["funding"][number]["funder"] =>
+  option.id.startsWith("typed:") ? { id: null, name: option.name } : { id: option.id.startsWith("ror:") ? null : option.id, name: option.name, ...(option.ror && { ror: option.ror }) };
+
 /** One page of an editable list, and where it starts; `last` turns to the page a new row lands on. */
 function usePage<T>(list: T[], size: number) {
   const [page, setPage] = useState(1);
@@ -352,6 +359,7 @@ export function DetailsStep({
   const [own, setOwn] = useState<Partial<Metadata>>({});
   const m: Metadata = { ...initial, ...own };
   const t = useTranslations("publishReports.details");
+  const tPeople = useTranslations("people");
   const format = useFormatter();
   const vocabulary = useVocabulary();
   const locale = useLocale();
@@ -410,8 +418,8 @@ export function DetailsStep({
     [next[i], next[i + by]] = [next[i + by]!, next[i]!];
     set("authors", next);
   };
-  const funderIds = m.funding.map((f) => f.funder.id ?? typedId(f.funder.name));
-  const funderNames = { ...useFunderNames(funderIds.filter((id) => !id.startsWith("typed:"))), ...Object.fromEntries(m.funding.map((f) => [f.funder.id ?? typedId(f.funder.name), f.funder.name])) };
+  const funderIds = m.funding.map((f) => funderChip(f.funder));
+  const funderNames = { ...useFunderNames(funderIds.filter((id) => /^F\d/.test(id))), ...Object.fromEntries(m.funding.map((f) => [funderChip(f.funder), f.funder.name])) };
   const refs = pagerOf(m.references.length, REFS_PER_PAGE, refPage, setRefPage);
   const shownRefs = m.references.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
   const authors = usePage(m.authors, AUTHORS_PER_PAGE);
@@ -612,9 +620,12 @@ export function DetailsStep({
         <Section title={t("funding")} crossref>
           <OpenAlexLookupFilter
             selected={funderIds}
-            onChange={(next) => set("funding", m.funding.filter((f) => next.includes(f.funder.id ?? typedId(f.funder.name))))}
-            onPicked={(option) => set("funding", [...m.funding, { funder: option.id.startsWith("typed:") ? { id: null, name: option.name } : { id: option.id, name: option.name }, awards: [] }])}
+            onChange={(next) => set("funding", m.funding.filter((f) => next.includes(funderChip(f.funder))))}
+            onPicked={(option) => set("funding", [...m.funding, { funder: funderOf(option), awards: [] }])}
             lookup={{ entity: "funders", useNames: () => funderNames, remember: rememberFunderNames, typed: (query) => ({ id: typedId(query), name: query, detail: t("asTyped") }) }}
+            // Governments and foundations that fund work are often on ROR and not among OpenAlex's funders.
+            also={{ key: "ror", search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror, aliases: o.aliases })) }}
+            after={Object.fromEntries(m.funding.filter((f) => f.funder.ror).map((f) => [funderChip(f.funder), <RorLink key="ror" ror={f.funder.ror!} label={tPeople("onRor", { name: f.funder.name })} />]))}
             labels={{ label: t("funders"), placeholder: t("addFunder"), searchPlaceholder: t("findFunder"), typeToSearch: t("typeFunder"), unavailable: t("fundersDown") }}
           />
           {m.funding.length ? (
@@ -623,8 +634,16 @@ export function DetailsStep({
               {funders.shown.map((f, at) => {
                 const i = funders.offset + at;
                 return (
-                <li key={f.funder.id ?? f.funder.name} className="grid grid-cols-[minmax(0,1fr)] items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
-                  <FunderName id={f.funder.id} name={f.funder.name} className="truncate text-sm font-medium" />
+                <li key={funderChip(f.funder)} className="grid grid-cols-[minmax(0,1fr)] items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                  <span className="flex min-w-0 items-center gap-1">
+                    {/* The full name shows on hover once the ROR mark beside it leaves too little room for it. */}
+                    <TooltipHint label={f.funder.name} onlyWhenClipped>
+                      <span className="min-w-0 truncate text-sm font-medium">
+                        <FunderName id={f.funder.id} name={f.funder.name} />
+                      </span>
+                    </TooltipHint>
+                    {f.funder.ror ? <RorLink ror={f.funder.ror} label={tPeople("onRor", { name: f.funder.name })} /> : null}
+                  </span>
                   <ChipInput
                     values={f.awards}
                     onChange={(awards) => set("funding", m.funding.map((x, n) => (n === i ? { ...x, awards } : x)))}

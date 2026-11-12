@@ -11,7 +11,11 @@ import type { LookupEntity } from "@/lib/openalex/autocomplete";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
-type Option = { id: string; name: string; detail?: string; ror?: string };
+/** `aliases` are a record's other names and acronyms, so one typed by any of them is that record. */
+type Option = { id: string; name: string; detail?: string; ror?: string; aliases?: string[] };
+
+/** A name as two registers both write it: "Foreign, Commonwealth & Development Office" is OpenAlex's "Foreign, Commonwealth and Development Office". */
+const nameKey = (name: string) => name.toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 /**
  * A filter picked from OpenAlex's autocomplete, for things there are too many
@@ -61,13 +65,14 @@ export function OpenAlexLookupFilter({
   const text = search.trim();
   const typed = text ? lookup.typed?.(text) : null;
   const found = query ? (results.data ?? []) : [];
-  const known = new Set(found.flatMap((option) => [option.name.toLowerCase(), ...(option.ror ? [option.ror] : [])]));
-  const more = query && also ? (elsewhere.data ?? []).filter((option) => !known.has(option.name.toLowerCase()) && !(option.ror && known.has(option.ror))) : [];
+  const known = new Set(found.flatMap((option) => [nameKey(option.name), ...(option.ror ? [option.ror] : [])]));
+  const more = query && also ? (elsewhere.data ?? []).filter((option) => ![option.name, ...(option.aliases ?? [])].some((name) => known.has(nameKey(name))) && !(option.ror && known.has(option.ror))) : [];
   // A record named exactly as typed takes the typed row's place at the top: the words typed are then no record of their own.
-  const listed = [...found, ...more];
-  const exact = typed && listed.find((option) => option.name.trim().toLowerCase() === typed.name.trim().toLowerCase());
+  const listed: Option[] = [...found, ...more];
+  const exact = typed && listed.find((option) => [option.name, ...(option.aliases ?? [])].some((name) => nameKey(name) === nameKey(typed.name)));
   const first = exact || typed;
-  // Each institution with a ROR ID says so in its row, as its chip does once picked, whichever register found it.
+  // Each record with a ROR ID says so in its row, as its chip does once picked, whichever register found it. A search
+  // filter's funders leave it off: there, ROR is no help in picking one.
   // Records found for words since changed can't be picked until the answer to what's typed is in: Enter never takes
   // one from the last search. The row of words as typed always can.
   const searching = !!text && (text !== query || results.isValidating || elsewhere.isValidating);
@@ -75,7 +80,7 @@ export function OpenAlexLookupFilter({
   const stale = searching || (!!text && !!results.error);
   const options = [...(first ? [first] : []), ...listed.filter((option) => option !== exact)].map((option) => ({
     ...option,
-    ...(option.ror && { mark: <RorIcon className="ms-1 opacity-80" /> }),
+    ...(option.ror && (lookup.entity !== "funders" || also) && { mark: <RorIcon className="ms-1 opacity-80" /> }),
     ...(stale && option !== typed && { disabled: true }),
   }));
   const names = {
