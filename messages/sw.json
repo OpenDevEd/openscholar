@@ -6197,7 +6197,8 @@
       "studyDesign": "Muundo wa utafiti",
       "seeChanges": "Tazama mabadiliko yako",
       "correct": "Sahihisha maelezo",
-      "takeDownTitle": "Kuiondoa"
+      "takeDownTitle": "Kuiondoa",
+      "openDoi": "Fungua DOI {doi}"
     },
     "stages": {
       "draft": "Rasimu",
@@ -6851,10 +6852,7 @@
       "moveUpLabel": "Sogeza {name} juu",
       "moveDownLabel": "Sogeza {name} chini",
       "author": "Mwandishi",
-      "roles": "Majukumu ya mchangiaji",
-      "roleCount": "{count, plural, one {jukumu #} other {majukumu #}}",
-      "findRole": "Tafuta jukumu",
-      "noRole": "Hakuna jukumu kama hilo",
+      "noContribution": "Hakuna mchango kama huo. Kuhariri au kutafsiri ripoti ni jukumu: lichague chini ya Jukumu.",
       "corresponding": "Mwandishi wa mawasiliano",
       "orcidFound": "Imepatikana kwenye ORCID kwa jina lake na {institution}",
       "correctTitle": "Sahihisha maelezo",
@@ -6880,7 +6878,7 @@
       "licence": "Leseni",
       "authors": "Waandishi",
       "authorsPager": "waandishi",
-      "addAuthor": "Ongeza mwandishi",
+      "addPerson": "Ongeza mtu",
       "abstract": "Muhtasari",
       "subjects": "Somo",
       "topics": "Mada",
@@ -6938,7 +6936,328 @@
       "runChecks": "Wasilisha",
       "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400.",
       "back": "Rudi",
-      "backToChecks": "Rudi kwenye ukaguzi"
+      "backToChecks": "Rudi kwenye ukaguzi",
+      "role": "Jukumu",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Michango",
+      "contributionsPlaceholder": "Kile mtu huyu alifanya",
+      "contributionCount": "{count, plural, one {mchango #} other {michango #}}",
+      "findContribution": "Tafuta mchango",
+      "writeAbstract": "Andika kutoka kwenye PDF",
+      "replaceAbstractTitle": "Badilisha muhtasari?",
+      "replaceAbstractBody": "Muhtasari mpya unaandikwa kutoka kwenye PDF na kuchukua nafasi ya ule ulio kwenye kisanduku.",
+      "keepAbstract": "Ubaki",
+      "replaceAbstract": "Badilisha",
+      "noAbstract": "PDF yako haina muhtasari uliochapishwa. Andika mmoja, au uandikiwe kutoka kwenye PDF.",
+      "abstractFailed": "Muhtasari haukuweza kuandikwa. Jaribu tena.",
+      "addReferences": "Ongeza marejeleo",
+      "referencesPlaceholder": "Bandika marejeleo au DOI, moja kila mstari",
+      "uploadReferences": "Pakia faili",
+      "uploadReferencesLabel": "Pakia faili ya marejeleo",
+      "referenceFormats": "BibTeX, RIS au maandishi ya kawaida",
+      "noReferencesFound": "Hakuna marejeleo yaliyopatikana humo.",
+      "referencesListed": "Yote hayo tayari yamo kwenye orodha.",
+      "referencesAdded": "{count, plural, one {Rejeleo # limeongezwa} other {Marejeleo # yameongezwa}}",
+      "undo": "Tendua",
+      "referencesTooBig": "Faili hiyo ni kubwa kuliko MB 2. Orodha ya marejeleo ni ndogo zaidi ya hapo.",
+      "openItsDoi": "Fungua DOI yake",
+      "openReferenceDoi": "Fungua DOI ya rejeleo {number}"
+    },
+    "kinds": {
+      "author": "Mwandishi",
+      "editor": "Mhariri",
+      "chair": "Mwenyekiti",
+      "translator": "Mfasiri",
+      "reviewer": "Mkaguzi",
+      "review-assistant": "Msaidizi wa ukaguzi",
+      "reviewer-external": "Mkaguzi (wa nje)",
+      "stats-reviewer": "Mkaguzi (takwimu)",
+      "reader": "Msomaji",
+      "other": "Mwingine"
+    },
+    "roleDetails": {
+      "conceptualization": "Alitoa mawazo na kuweka malengo",
+      "dataCuration": "Alipanga, alisafisha na kutunza data",
+      "formalAnalysis": "Alifanya takwimu au uchambuzi rasmi mwingine",
+      "fundingAcquisition": "Alipata fedha za mradi",
+      "investigation": "Alifanya utafiti na kukusanya ushahidi",
+      "methodology": "Alibuni mbinu au miundo",
+      "projectAdministration": "Alisimamia na kuratibu mradi",
+      "resources": "Alitoa vifaa, sampuli, zana au kompyuta",
+      "software": "Aliandika au kujaribu msimbo",
+      "supervision": "Aliongoza na kuelekeza timu",
+      "validation": "Alihakikisha matokeo yanaweza kurudiwa",
+      "visualization": "Alitengeneza michoro na uwasilishaji wa data",
+      "writingOriginalDraft": "Aliandika rasimu ya kwanza",
+      "writingReviewEditing": "Alipitia na kusahihisha maandishi"
+    },
+    "help": {
+      "aboutLabel": "Kuhusu: {title}",
+      "sentTo": "Hutumwa kwa",
+      "does": {
+        "crossref": "Husajili DOI",
+        "zenodo": "Huhifadhi nakala",
+        "openscholar": "Huonyesha ripoti"
+      },
+      "sent": "{name}, hupokea hiki: {does}",
+      "notSent": "{name}, haipokei hiki: {does}",
+      "filled": {
+        "pdf": "Imesomwa kutoka kwenye PDF yako",
+        "judged": "Imekadiriwa kutoka kwenye PDF yako",
+        "matched": "Imesomwa kutoka kwenye PDF yako, kisha ikatafutwa",
+        "classified": "Imependekezwa na OpenAlex",
+        "author": "Huanza kama Mwandishi",
+        "fixed": "Huwekwa na Openscholar",
+        "reserved": "Huhifadhiwa unaposaini"
+      },
+      "entry": {
+        "list": "Huchaguliwa kwenye orodha",
+        "typed": "Huandikwa kwa uhuru",
+        "either": "Kwenye orodha, au huandikwa",
+        "pasted": "Hubandikwa au hupakiwa",
+        "toggle": "Imewashwa au imezimwa",
+        "chosen": "Uamuzi wako"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "Aina za kazi za OpenAlex",
+          "detail": "Orodha ambayo kichaguzi hiki huonyesha"
+        },
+        "zenodoTypes": {
+          "name": "Aina za rasilimali za Zenodo",
+          "detail": "Kila aina inakuwa nini kwenye Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Ripoti kwenye Crossref",
+          "detail": "Rekodi ambayo Crossref huhifadhi"
+        },
+        "iso639": {
+          "name": "Misimbo ya lugha ya ISO 639",
+          "detail": "Misimbo ambayo OpenAlex hutumia"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Attribution 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Wachangiaji kwenye Crossref",
+          "detail": "Jinsi Crossref inavyorekodi watu"
+        },
+        "crossrefRoles": {
+          "name": "Majukumu ya wachangiaji ya Crossref",
+          "detail": "Orodha ambayo kichaguzi hiki huonyesha"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "iD ni nini"
+        },
+        "orcidRegister": {
+          "name": "Pata iD",
+          "detail": "Bure, inachukua dakika moja"
+        },
+        "openalexInstitutions": {
+          "name": "Taasisi za OpenAlex",
+          "detail": "Hutafutwa kwanza"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Hutafutwa kwa zile ambazo OpenAlex haina"
+        },
+        "rorAdd": {
+          "name": "Iombe ROR iongeze shirika",
+          "detail": "Kwa shirika lisilo kwenye orodha yoyote"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "Mpangilio wa majukumu ya wachangiaji wa NISO"
+        },
+        "crossrefAbstracts": {
+          "name": "Muhtasari kwenye Crossref",
+          "detail": "Jinsi Crossref huhifadhi muhtasari"
+        },
+        "openalexTopics": {
+          "name": "Mada za OpenAlex",
+          "detail": "Orodha ambayo kichaguzi hiki hutafuta"
+        },
+        "sdgs": {
+          "name": "Malengo 17",
+          "detail": "Umoja wa Mataifa"
+        },
+        "openalexDesigns": {
+          "name": "Miundo ya tafiti ya OpenAlex",
+          "detail": "Orodha ambayo kichaguzi hiki huonyesha"
+        },
+        "iso3166": {
+          "name": "Misimbo ya nchi ya ISO 3166",
+          "detail": "Nchi zilizo kwenye kichaguzi hiki"
+        },
+        "openalexFunders": {
+          "name": "Wafadhili wa OpenAlex",
+          "detail": "Hutafutwa kwanza"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Hutafutwa pia, kwa serikali na wakfu"
+        },
+        "funderRegistry": {
+          "name": "Funder Registry ya Crossref",
+          "detail": "Vitambulisho ambavyo Crossref hutumia kuwatambua wafadhili"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "DOI ni nini"
+        },
+        "crossrefReferences": {
+          "name": "Marejeleo kwenye Crossref",
+          "detail": "Jinsi manukuu yanavyohesabiwa kutokana nayo"
+        },
+        "crossrefRelations": {
+          "name": "Mahusiano kwenye Crossref",
+          "detail": "Jinsi Crossref inavyounganisha kazi"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "ISSN ni nini"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Kichwa",
+          "about": "Kichwa cha ripoti kama kilivyochapishwa kwenye jalada lake."
+        },
+        "subtitle": {
+          "title": "Kichwa kidogo",
+          "about": "Mstari ulio chini ya kichwa, ikiwa jalada lina mmoja.",
+          "note": "Huwa tupu ikiwa PDF haina kimoja."
+        },
+        "type": {
+          "title": "Aina",
+          "about": "Aina ya kazi hii.",
+          "note": "Crossref husajili kila Openscholar Report kama ripoti. Zenodo na Openscholar hutumia aina iliyochaguliwa hapa."
+        },
+        "language": {
+          "title": "Lugha",
+          "about": "Lugha ambayo ripoti imeandikwa."
+        },
+        "date": {
+          "title": "Tarehe ya kuchapishwa",
+          "about": "Ripoti ilichapishwa lini: mwaka, mwezi au siku, kwa usahihi ambao PDF inaeleza, na si zaidi ya leo.",
+          "note": "Crossref huihifadhi kwa usahihi ilionao. Zenodo huchukua tarehe kamili, hivyo mwaka au mwezi hutumwa kama siku yake ya kwanza. PDF isiyo na tarehe hupewa ya leo."
+        },
+        "licence": {
+          "title": "Leseni",
+          "about": "Kila Openscholar Report huchapishwa chini ya CC BY 4.0, kama makubaliano uliyosaini yanavyosema."
+        },
+        "authors": {
+          "title": "Waandishi",
+          "about": "Kila mtu ambaye ripoti inampa sifa, kwa mpangilio wa nukuu yake.",
+          "note": "Waandishi wa PDF wameshajazwa. Ongeza hapa wahariri, wafasiri na wengine, na uweke majukumu yao."
+        },
+        "name": {
+          "title": "Jina",
+          "about": "Jina kama ripoti inavyolichapisha. Jina kamili la shirika pia linafaa.",
+          "note": "Jina la mtu hufika Crossref na Zenodo kama jina la ukoo, kisha majina mengine: neno la mwisho huchukuliwa kuwa jina la ukoo. Jina la shirika, lenye neno kama Department, Ministry au University, hutumwa lote."
+        },
+        "kind": {
+          "title": "Jukumu",
+          "about": "Mtu huyu ni nani kwa ripoti hii. Watu wengi ni waandishi.",
+          "note": "Waandishi pekee ndio hutajwa katika nukuu ya ripoti. Wengine wote huorodheshwa pamoja na jukumu lao chini ya Michango kwenye ukurasa wa ripoti, na Crossref na Zenodo hupokea jukumu la kila mtu."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "Namba ya bure inayotofautisha watafiti wenye jina moja.",
+          "note": "Ikiwa PDF haina, ORCID hutafutwa mtu mmoja mwenye jina hili hasa katika moja ya taasisi hizi."
+        },
+        "affiliations": {
+          "title": "Taasisi",
+          "about": "Mahali mtu huyu alipofanya kazi ripoti ilipoandikwa.",
+          "note": "Taasisi yenye kitambulisho cha ROR hutumwa nacho, ili Crossref na Zenodo wajue ni ipi. Iliyoandikwa kwa mkono hutumwa kwa jina pekee."
+        },
+        "contributions": {
+          "title": "Michango",
+          "about": "Kile mtu huyu alifanya kwa kazi hii, kwa majukumu 14 ya CRediT.",
+          "note": "Hujazwa tu PDF ikiwa na taarifa ya michango. Kuacha tupu ni sawa."
+        },
+        "corresponding": {
+          "title": "Mwandishi wa mawasiliano",
+          "about": "Mtu ambaye wasomaji humwandikia kuhusu ripoti.",
+          "note": "Huwashwa tu PDF ikimwonyesha mmoja."
+        },
+        "abstract": {
+          "title": "Muhtasari",
+          "about": "Muhtasari au ufupisho ambao PDF yako imechapisha, ulionakiliwa kama ulivyo.",
+          "note": "PDF isipochapisha kimojawapo, Andika kutoka kwenye PDF huandaa rasimu ili uikague na kuibadilisha."
+        },
+        "topics": {
+          "title": "Mada",
+          "about": "Ripoti inahusu nini, kwa mada za OpenAlex.",
+          "note": "Kiainishi cha OpenAlex husoma kichwa na muhtasari. Upau kwenye mada huonyesha kilikuwa na uhakika kiasi gani. Mada unazoongeza hazina upau."
+        },
+        "keywords": {
+          "title": "Maneno muhimu",
+          "about": "Maneno yako mwenyewe kuhusu ripoti inahusu nini.",
+          "note": "Maneno muhimu ya PDF. Isipoorodhesha yoyote, hadi matano kutoka kwa kiainishi cha OpenAlex."
+        },
+        "sdgs": {
+          "title": "Malengo ya Maendeleo Endelevu",
+          "about": "Malengo ya Umoja wa Mataifa ambayo ripoti inayashughulikia kwa kina.",
+          "note": "Hujazwa yasiyozidi matatu. Ongeza au ondoa yoyote."
+        },
+        "design": {
+          "title": "Muundo wa utafiti",
+          "about": "Jinsi utafiti ulivyofanywa.",
+          "note": "Hujazwa tu PDF ikiweka wazi. Zenodo huuonyesha kama dokezo la mbinu."
+        },
+        "places": {
+          "title": "Maeneo yaliyochunguzwa",
+          "about": "Nchi na kanda ambazo ripoti inazihusu, si mahali waandishi wake wanapofanya kazi."
+        },
+        "funding": {
+          "title": "Ufadhili",
+          "about": "Nani alilipia kazi hii, pamoja na namba za ruzuku kama zilivyochapishwa.",
+          "note": "Wafadhili hutafutwa kwenye OpenAlex na ROR. Anayepatikana huko hutumwa na kitambulisho chake cha ROR, na cha Funder Registry ikiwa anacho. Aliyeandikwa kwa mkono hutumwa kwa jina pekee."
+        },
+        "references": {
+          "title": "Marejeleo",
+          "about": "Kazi ambazo ripoti hii inanukuu, kama orodha yake ya marejeleo inavyoziandika.",
+          "note": "Bandika orodha, au ipakie kama faili ya BibTeX, RIS au maandishi ya kawaida. Kila DOI iliyochapishwa kwenye PDF imeshajazwa, na Crossref huunganisha kila rejeleo lenye DOI na kazi inayonukuliwa."
+        },
+        "links": {
+          "title": "Data, msimbo na matoleo",
+          "about": "Mahali data, msimbo, matoleo mengine na nyongeza za ripoti zilipo.",
+          "note": "Kila moja ni anwani ya wavuti au DOI."
+        },
+        "agreement": {
+          "title": "Makubaliano ya uchapishaji",
+          "about": "Kile wewe na Openscholar mnakubaliana kabla ripoti yako haijachapishwa.",
+          "note": "Hakimiliki inabaki kwako. Kuweka alama kwenye kisanduku ni kukubali kwa niaba yako na ya kila mwandishi mwenza, kwa hiyo hakikisha kwanza wamekubali. Makubaliano yaliyosainiwa hayawezi kubadilishwa."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "Kiungo cha kudumu cha ripoti yako kinachofanya kazi popote ukurasa wake utakapohamishwa.",
+          "note": "Huhifadhiwa unaposaini, ili uweze kuichapisha kwenye PDF yako. Hufanya kazi ripoti yako ikiwa hewani."
+        },
+        "byline": {
+          "title": "Mstari wa mfululizo",
+          "about": "Mstari ambao kila ripoti ya mfululizo huu huchapisha, wenye jina la mfululizo, ISSN yake na DOI ya ripoti.",
+          "note": "Lazima uwe maandishi kwenye PDF, si picha, kwa sababu ukaguzi huutafuta. Chagua Niongezeeni na Openscholar huongeza ukurasa wa mwisho wenye mstari huo."
+        },
+        "checks": {
+          "title": "Ukaguzi",
+          "about": "Kile Openscholar hukagua kabla ripoti haijawa hewani, kama mstari wa mfululizo kwenye PDF na ikiwa kazi tayari imechapishwa.",
+          "note": "Kila ukaguzi husema ulitafuta nini, na nini cha kurekebisha ukishindwa. Ukiwa na uhakika kwamba ukaguzi umekosea, omba mtu aukague."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Namba inayotambulisha mfululizo, kama ya jarida.",
+          "note": "Inasubiri hadi mfululizo usajiliwe. DOI ya ripoti yako hufanya kazi bila hiyo."
+        },
+        "activation": {
+          "title": "Kuwezesha",
+          "about": "Kuwezesha hufanya ripoti yako iwe ya umma: ukurasa wake hufunguka, DOI yake huanza kufanya kazi, na husajiliwa.",
+          "note": "Uwezeshaji hutoka kwenye salio la eneo lako la kazi, au hulipiwa hapa. Msimbo wa vocha hupunguza bei yake."
+        }
+      }
     }
   },
   "people": {

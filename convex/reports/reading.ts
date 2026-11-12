@@ -33,6 +33,7 @@ function capped(metadata: Metadata): Metadata {
     countries: cut(metadata.countries, DETAIL_CAPS.countries),
     funding: cut(metadata.funding, DETAIL_CAPS.funding).map((funding) => ({ ...funding, awards: cut(funding.awards, DETAIL_CAPS.awards).map(word) })),
     references: cut(metadata.references, DETAIL_CAPS.references),
+    ...(metadata.citations && { citations: cut(metadata.citations, DETAIL_CAPS.references).map((c) => ({ ...c, text: c.text.slice(0, DETAIL_TEXT.citation) })) }),
     relations: cut(metadata.relations, DETAIL_CAPS.relations),
   };
 }

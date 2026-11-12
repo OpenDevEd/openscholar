@@ -6197,7 +6197,8 @@
       "studyDesign": "Diseño del estudio",
       "seeChanges": "Ver tus cambios",
       "correct": "Corregir los datos",
-      "takeDownTitle": "Retirar el informe"
+      "takeDownTitle": "Retirar el informe",
+      "openDoi": "Abrir el DOI {doi}"
     },
     "stages": {
       "draft": "Borrador",
@@ -6851,10 +6852,7 @@
       "moveUpLabel": "Subir a {name}",
       "moveDownLabel": "Bajar a {name}",
       "author": "autor",
-      "roles": "Funciones de los colaboradores",
-      "roleCount": "{count, plural, one {# función} other {# funciones}}",
-      "findRole": "Buscar una función",
-      "noRole": "No existe esa función",
+      "noContribution": "No hay ninguna contribución así. Editar o traducir el informe es una función: elígela en Función.",
       "corresponding": "Autor de correspondencia",
       "orcidFound": "Encontrado en ORCID por su nombre y {institution}",
       "correctTitle": "Corregir los datos",
@@ -6880,7 +6878,7 @@
       "licence": "Licencia",
       "authors": "Autores",
       "authorsPager": "autores",
-      "addAuthor": "Añadir un autor",
+      "addPerson": "Añadir una persona",
       "abstract": "Resumen",
       "subjects": "Materias",
       "topics": "Temas",
@@ -6938,7 +6936,328 @@
       "runChecks": "Enviar",
       "tooEarly": "Un informe no puede tener una fecha anterior a 1400.",
       "back": "Atrás",
-      "backToChecks": "Volver a las comprobaciones"
+      "backToChecks": "Volver a las comprobaciones",
+      "role": "Función",
+      "orcidLabel": "Identificador ORCID",
+      "contributions": "Contribuciones",
+      "contributionsPlaceholder": "Lo que hizo esta persona",
+      "contributionCount": "{count, plural, one {# contribución} other {# contribuciones}}",
+      "findContribution": "Buscar una contribución",
+      "writeAbstract": "Redactar a partir del PDF",
+      "replaceAbstractTitle": "¿Sustituir el resumen?",
+      "replaceAbstractBody": "Se redacta uno nuevo a partir del PDF y ocupa el lugar del que hay en el cuadro.",
+      "keepAbstract": "Conservarlo",
+      "replaceAbstract": "Sustituir",
+      "noAbstract": "Tu PDF no imprime ningún resumen. Escribe uno o haz que se redacte a partir del PDF.",
+      "abstractFailed": "No se pudo redactar el resumen. Inténtalo de nuevo.",
+      "addReferences": "Añadir referencias",
+      "referencesPlaceholder": "Pega referencias o DOI, una por línea",
+      "uploadReferences": "Subir un archivo",
+      "uploadReferencesLabel": "Subir un archivo de referencias",
+      "referenceFormats": "BibTeX, RIS o texto sin formato",
+      "noReferencesFound": "No se encontraron referencias ahí.",
+      "referencesListed": "Todas ya están en la lista.",
+      "referencesAdded": "{count, plural, one {# referencia añadida} other {# referencias añadidas}}",
+      "undo": "Deshacer",
+      "referencesTooBig": "Ese archivo supera los 2 MB. Una lista de referencias es mucho más pequeña.",
+      "openItsDoi": "Abrir su DOI",
+      "openReferenceDoi": "Abrir el DOI de la referencia {number}"
+    },
+    "kinds": {
+      "author": "Autor",
+      "editor": "Editor",
+      "chair": "Presidente",
+      "translator": "Traductor",
+      "reviewer": "Revisor",
+      "review-assistant": "Asistente de revisión",
+      "reviewer-external": "Revisor (externo)",
+      "stats-reviewer": "Revisor (estadística)",
+      "reader": "Lector",
+      "other": "Otro"
+    },
+    "roleDetails": {
+      "conceptualization": "Tuvo las ideas y fijó los objetivos",
+      "dataCuration": "Organizó, limpió y conservó los datos",
+      "formalAnalysis": "Hizo la estadística u otro análisis formal",
+      "fundingAcquisition": "Consiguió la financiación del proyecto",
+      "investigation": "Hizo la investigación y reunió los datos",
+      "methodology": "Diseñó los métodos o los modelos",
+      "projectAdministration": "Gestionó y coordinó el proyecto",
+      "resources": "Aportó materiales, muestras, herramientas o cálculo",
+      "software": "Escribió o probó el código",
+      "supervision": "Dirigió y orientó al equipo",
+      "validation": "Comprobó que los resultados se pueden reproducir",
+      "visualization": "Hizo las figuras y la presentación de los datos",
+      "writingOriginalDraft": "Escribió el primer borrador",
+      "writingReviewEditing": "Revisó y corrigió el texto"
+    },
+    "help": {
+      "aboutLabel": "Acerca de: {title}",
+      "sentTo": "Se envía a",
+      "does": {
+        "crossref": "Registra el DOI",
+        "zenodo": "Archiva una copia",
+        "openscholar": "Muestra el informe"
+      },
+      "sent": "{name}, recibe esto: {does}",
+      "notSent": "{name}, no recibe esto: {does}",
+      "filled": {
+        "pdf": "Leído de tu PDF",
+        "judged": "Deducido de tu PDF",
+        "matched": "Leído de tu PDF y luego buscado",
+        "classified": "Sugerido por OpenAlex",
+        "author": "Autor por defecto",
+        "fixed": "Fijado por Openscholar",
+        "reserved": "Reservado al firmar"
+      },
+      "entry": {
+        "list": "Elegido de una lista",
+        "typed": "Escrito libremente",
+        "either": "De una lista o escrito",
+        "pasted": "Pegado o subido",
+        "toggle": "Activado o desactivado",
+        "chosen": "A tu elección"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "Tipos de trabajo de OpenAlex",
+          "detail": "La lista de este selector"
+        },
+        "zenodoTypes": {
+          "name": "Tipos de recurso de Zenodo",
+          "detail": "En qué se convierte cada tipo en Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Informes en Crossref",
+          "detail": "El registro que guarda Crossref"
+        },
+        "iso639": {
+          "name": "Códigos de idioma ISO 639",
+          "detail": "Los códigos que usa OpenAlex"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Atribución 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Colaboradores en Crossref",
+          "detail": "Cómo registra Crossref a las personas"
+        },
+        "crossrefRoles": {
+          "name": "Funciones de colaborador de Crossref",
+          "detail": "La lista de este selector"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "Qué es un identificador"
+        },
+        "orcidRegister": {
+          "name": "Obtener un identificador",
+          "detail": "Gratis y en un minuto"
+        },
+        "openalexInstitutions": {
+          "name": "Instituciones de OpenAlex",
+          "detail": "Se buscan primero"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Se busca para las que faltan en OpenAlex"
+        },
+        "rorAdd": {
+          "name": "Pedir a ROR que añada una organización",
+          "detail": "Para una que no está en ninguna lista"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "La taxonomía de funciones de colaborador de NISO"
+        },
+        "crossrefAbstracts": {
+          "name": "Resúmenes en Crossref",
+          "detail": "Cómo guarda Crossref uno"
+        },
+        "openalexTopics": {
+          "name": "Temas de OpenAlex",
+          "detail": "La lista en la que busca este selector"
+        },
+        "sdgs": {
+          "name": "Los 17 objetivos",
+          "detail": "Naciones Unidas"
+        },
+        "openalexDesigns": {
+          "name": "Diseños de estudio de OpenAlex",
+          "detail": "La lista de este selector"
+        },
+        "iso3166": {
+          "name": "Códigos de país ISO 3166",
+          "detail": "Los países de este selector"
+        },
+        "openalexFunders": {
+          "name": "Financiadores de OpenAlex",
+          "detail": "Se buscan primero"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "También se busca, para gobiernos y fundaciones"
+        },
+        "funderRegistry": {
+          "name": "Funder Registry de Crossref",
+          "detail": "Los identificadores con que Crossref reconoce a los financiadores"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "Qué es un DOI"
+        },
+        "crossrefReferences": {
+          "name": "Referencias en Crossref",
+          "detail": "Cómo se cuentan las citas a partir de ellas"
+        },
+        "crossrefRelations": {
+          "name": "Relaciones en Crossref",
+          "detail": "Cómo enlaza Crossref unos trabajos con otros"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "Qué es un ISSN"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Título",
+          "about": "El título del informe tal como lo imprime su portada."
+        },
+        "subtitle": {
+          "title": "Subtítulo",
+          "about": "La línea bajo el título, cuando la portada la tiene.",
+          "note": "Vacío cuando el PDF no imprime ninguno."
+        },
+        "type": {
+          "title": "Tipo",
+          "about": "La clase de trabajo que es.",
+          "note": "Crossref archiva cada Openscholar Report como informe. Zenodo y Openscholar usan el tipo elegido aquí."
+        },
+        "language": {
+          "title": "Idioma",
+          "about": "El idioma en que está escrito el informe."
+        },
+        "date": {
+          "title": "Fecha de publicación",
+          "about": "Cuándo se publicó el informe: un año, un mes o un día, con la precisión con que lo indica el PDF, y como mucho hoy.",
+          "note": "Crossref la guarda con la precisión que tiene. Zenodo toma una fecha completa, así que un año o un mes llega como su primer día. Un PDF sin fecha toma la de hoy."
+        },
+        "licence": {
+          "title": "Licencia",
+          "about": "Cada Openscholar Report se publica con CC BY 4.0, como dice el acuerdo que firmaste."
+        },
+        "authors": {
+          "title": "Autores",
+          "about": "Todas las personas a las que el informe da crédito, en el orden en que las nombra su cita.",
+          "note": "Los autores del PDF ya están rellenados. Añade aquí editores, traductores y otros, y elige su función."
+        },
+        "name": {
+          "title": "Nombre",
+          "about": "El nombre tal como lo imprime el informe. También vale el nombre completo de una organización.",
+          "note": "El nombre de una persona llega a Crossref y Zenodo como apellido y luego nombres: la última palabra se toma como apellido. El nombre de una organización, con una palabra como Department, Ministry o University, se envía completo."
+        },
+        "kind": {
+          "title": "Función",
+          "about": "Lo que esta persona es para el informe. La mayoría son autores.",
+          "note": "Solo los autores aparecen en la cita del informe. Las demás personas figuran con su función en Contribuciones, en la página del informe, y Crossref y Zenodo reciben la función de cada una."
+        },
+        "orcid": {
+          "title": "Identificador ORCID",
+          "about": "Un número gratuito que distingue a investigadores con el mismo nombre.",
+          "note": "Cuando el PDF no imprime ninguno, se busca en ORCID a una sola persona con exactamente este nombre en una de estas instituciones."
+        },
+        "affiliations": {
+          "title": "Afiliaciones",
+          "about": "Dónde trabajaba esta persona cuando se escribió el informe.",
+          "note": "Una institución con identificador ROR se envía con él, para que Crossref y Zenodo sepan cuál es. Una escrita a mano se envía solo con su nombre."
+        },
+        "contributions": {
+          "title": "Contribuciones",
+          "about": "Lo que esta persona hizo para el trabajo, según las 14 funciones de CRediT.",
+          "note": "Solo se rellena cuando el PDF tiene una declaración de contribuciones. Dejarlo vacío está bien."
+        },
+        "corresponding": {
+          "title": "Autor de correspondencia",
+          "about": "La persona a la que escriben los lectores sobre el informe.",
+          "note": "Solo se activa cuando el PDF señala una."
+        },
+        "abstract": {
+          "title": "Resumen",
+          "about": "El resumen o la síntesis que imprime tu PDF, copiado tal cual.",
+          "note": "Cuando el PDF no imprime ninguno de los dos, Redactar a partir del PDF prepara uno para que lo revises y cambies."
+        },
+        "topics": {
+          "title": "Temas",
+          "about": "De qué trata el informe, según los temas de OpenAlex.",
+          "note": "El clasificador de OpenAlex lee el título y el resumen. La barra de un tema muestra lo seguro que estaba. Los temas que añades no la tienen."
+        },
+        "keywords": {
+          "title": "Palabras clave",
+          "about": "Tus propias palabras sobre de qué trata el informe.",
+          "note": "Las palabras clave del PDF. Si no da ninguna, hasta cinco del clasificador de OpenAlex."
+        },
+        "sdgs": {
+          "title": "Objetivos de Desarrollo Sostenible",
+          "about": "Los objetivos de la ONU de los que trata a fondo el informe.",
+          "note": "Se rellenan tres como mucho. Añade o quita los que quieras."
+        },
+        "design": {
+          "title": "Diseño del estudio",
+          "about": "Cómo se hizo el estudio.",
+          "note": "Solo se rellena cuando el PDF lo deja claro. Zenodo lo muestra como una nota de métodos."
+        },
+        "places": {
+          "title": "Lugares estudiados",
+          "about": "Los países y regiones de los que trata el informe, no donde trabajan sus autores."
+        },
+        "funding": {
+          "title": "Financiación",
+          "about": "Quién pagó el trabajo, con los números de subvención tal como están impresos.",
+          "note": "Los financiadores se buscan en OpenAlex y en ROR. Uno encontrado allí se envía con su identificador ROR, y con su identificador del Funder Registry si lo tiene. Uno escrito a mano se envía solo con su nombre."
+        },
+        "references": {
+          "title": "Referencias",
+          "about": "Los trabajos que cita este informe, tal como los escribe su lista de referencias.",
+          "note": "Pega la lista o súbela como archivo BibTeX, RIS o de texto. Cada DOI que imprime el PDF ya está rellenado, y Crossref enlaza cada referencia con DOI con el trabajo citado."
+        },
+        "links": {
+          "title": "Datos, código y versiones",
+          "about": "Dónde están los datos, el código, otras versiones y los materiales complementarios del informe.",
+          "note": "Cada uno es una dirección web o un DOI."
+        },
+        "agreement": {
+          "title": "El acuerdo de publicación",
+          "about": "Lo que tú y Openscholar aceptáis antes de que se publique tu informe.",
+          "note": "Conservas los derechos de autor. Marcar la casilla vale como acuerdo tuyo y de cada coautor, así que comprueba antes que están de acuerdo. Un acuerdo firmado no se puede cambiar."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "Un enlace permanente a tu informe que sigue funcionando aunque su página cambie de sitio.",
+          "note": "Se reserva al firmar, para que puedas imprimirlo en tu PDF. Funciona cuando tu informe se publica."
+        },
+        "byline": {
+          "title": "La línea de la serie",
+          "about": "La línea que imprime cada informe de esta serie, con el nombre de la serie, su ISSN y el DOI del informe.",
+          "note": "Tiene que ser texto en el PDF, no una imagen, porque las comprobaciones la buscan. Elige Añadidla por mí y Openscholar añade una última página con la línea."
+        },
+        "checks": {
+          "title": "Comprobaciones",
+          "about": "Lo que comprueba Openscholar antes de que un informe pueda publicarse, como la línea de la serie en el PDF o si el trabajo ya está publicado.",
+          "note": "Cada comprobación dice qué buscó y qué corregir si falla. Si estás seguro de que una comprobación se equivoca, pide que una persona la revise."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "El número que identifica la serie, como el de una revista.",
+          "note": "Pendiente hasta que se registre la serie. El DOI de tu informe funciona sin él."
+        },
+        "activation": {
+          "title": "Activación",
+          "about": "Activar hace público tu informe: se abre su página, su DOI empieza a funcionar y queda registrado.",
+          "note": "Una activación sale del saldo de tu espacio de trabajo o se paga aquí. Un código de descuento rebaja su precio."
+        }
+      }
     }
   },
   "people": {

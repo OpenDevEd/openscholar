@@ -18,7 +18,7 @@ import { workspacesOf } from "../workspaces/personal";
 import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
@@ -101,6 +101,11 @@ export function keptDetails(metadata: Metadata) {
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
   const long = [...metadata.keywords, ...metadata.funding.flatMap((funding) => funding.awards)].find((word) => word.length > DETAIL_TEXT.keyword);
   if (long) throw createError("VALIDATION_ERROR", `Keep each keyword and grant number to ${DETAIL_TEXT.keyword} characters.`);
+  if ((metadata.citations?.length ?? 0) > DETAIL_CAPS.references) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS.references.toLocaleString("en")} references.`);
+  if (metadata.citations?.some((c) => c.text.length > DETAIL_TEXT.citation)) throw createError("VALIDATION_ERROR", `Keep each reference to ${DETAIL_TEXT.citation.toLocaleString("en")} characters.`);
+  if (metadata.citations?.some((c) => !c.text.trim() && !c.doi)) throw createError("VALIDATION_ERROR", "A reference needs its words or its DOI.");
+  const notDoi = metadata.citations?.find((c) => c.doi !== undefined && !doiIn(c.doi));
+  if (notDoi) throw createError("VALIDATION_ERROR", `"${notDoi.doi}" isn't a DOI. One looks like 10.1234/abcd.`);
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
@@ -739,7 +744,7 @@ export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
     byline: report.byline,
     doi: report.doi,
     ...(metadata?.title && { title: metadata.title }),
-    authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
+    authors: (metadata?.authors ?? []).filter(isAuthor).map((author) => author.name).filter(Boolean),
     ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
   };
 }

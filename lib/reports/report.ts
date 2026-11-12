@@ -80,6 +80,8 @@ export type Author = {
   affiliations: Affiliation[];
   corresponding: boolean;
   roles: string[];
+  /** What the person is to the report, in Crossref's roles; none is an author. */
+  kind?: PersonKind;
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
@@ -93,6 +95,15 @@ export const RELATION_KINDS = [
 ] as const;
 export type RelationKind = (typeof RELATION_KINDS)[number]["id"];
 export type Relation = { kind: RelationKind; target: string };
+
+/** A work a report cites, as its reference list writes it, with its DOI when it has one. A DOI alone has no words. */
+export type Reference = { text: string; doi?: string };
+
+/** What a person can be to a report: Crossref's roles for a person, but its corresponding author, which is a switch. */
+export const PERSON_KINDS = ["author", "editor", "chair", "translator", "reviewer", "review-assistant", "reviewer-external", "stats-reviewer", "reader", "other"] as const;
+export type PersonKind = (typeof PERSON_KINDS)[number];
+/** Whether a person is one of the report's authors, as its citation names them. */
+export const isAuthor = (person: { kind?: PersonKind }) => !person.kind || person.kind === "author";
 
 export type Metadata = {
   title: string;
@@ -115,6 +126,8 @@ export type Metadata = {
   funding: Funding[];
   /** DOIs the work cites. */
   references: string[];
+  /** The works cited as their list writes them, where the author gave them so; `references` holds their DOIs. */
+  citations?: Reference[];
   relations: Relation[];
 };
 
@@ -122,7 +135,7 @@ export type Metadata = {
 export const DETAIL_CAPS = { authors: 200, affiliations: 10, roles: CREDIT_ROLES.length, topics: 20, keywords: 50, sdgs: 17, studyDesigns: 20, countries: 300, funding: 50, awards: 20, references: 1000, relations: 50 } as const;
 export const DETAILS_MAX_BYTES = 300_000;
 /** The longest each of a report's texts is, which its box shows as it's typed. */
-export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500 } as const;
+export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500, citation: 2000 } as const;
 
 /** Where each licence a report can carry is written out. */
 export const LICENCE_URL: Record<Metadata["licence"], string> = { "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/" };
@@ -235,7 +248,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Type", (m) => m.type],
   ["Language", (m) => m.language],
   ["Date", (m) => m.date],
-  ["Authors", (m) => m.authors.map((a) => [a.name, a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
+  ["Authors", (m) => m.authors.map((a) => [a.name, a.kind && a.kind !== "author" ? a.kind : "", a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
   ["Abstract", (m) => m.abstract],
   ["Topics", (m) => m.topics.map((t) => t.name).join(", ")],
   ["Keywords", (m) => m.keywords.join(", ")],
@@ -243,7 +256,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Study designs", (m) => m.studyDesigns.join(", ")],
   ["Places", (m) => m.countries.join(", ")],
   ["Funding", (m) => m.funding.map((f) => [f.funder.name, ...f.awards].join(", ")).join("\n")],
-  ["References", (m) => m.references.join("\n")],
+  ["References", (m) => (m.citations ?? m.references.map((doi) => ({ text: "", doi }))).map((c) => [c.text, c.doi].filter(Boolean).join(", ")).join("\n")],
   ["Links", (m) => m.relations.map((r) => `${r.kind}: ${r.target}`).join("\n")],
 ];
 /** What a correction changes, field by field, as text: what it was and what it would be. */

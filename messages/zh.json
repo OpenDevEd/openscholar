@@ -6196,7 +6196,8 @@
       "studyDesign": "研究设计",
       "seeChanges": "查看您的修改",
       "correct": "更正信息",
-      "takeDownTitle": "撤下报告"
+      "takeDownTitle": "撤下报告",
+      "openDoi": "打开 DOI {doi}"
     },
     "stages": {
       "draft": "草稿",
@@ -6850,10 +6851,7 @@
       "moveUpLabel": "上移{name}",
       "moveDownLabel": "下移{name}",
       "author": "作者",
-      "roles": "贡献者角色",
-      "roleCount": "{count, plural, other {# 个角色}}",
-      "findRole": "查找角色",
-      "noRole": "没有此角色",
+      "noContribution": "没有这样的贡献。编辑或翻译报告属于角色：请在“角色”中选择。",
       "corresponding": "通讯作者",
       "orcidFound": "通过姓名和 {institution} 在 ORCID 上找到",
       "correctTitle": "更正信息",
@@ -6879,7 +6877,7 @@
       "licence": "许可",
       "authors": "作者",
       "authorsPager": "位作者",
-      "addAuthor": "添加作者",
+      "addPerson": "添加人员",
       "abstract": "摘要",
       "subjects": "主题领域",
       "topics": "主题",
@@ -6937,7 +6935,328 @@
       "runChecks": "提交",
       "tooEarly": "报告日期不能早于 1400 年。",
       "back": "返回",
-      "backToChecks": "返回检查"
+      "backToChecks": "返回检查",
+      "role": "角色",
+      "orcidLabel": "ORCID 标识符",
+      "contributions": "贡献",
+      "contributionsPlaceholder": "此人做了什么",
+      "contributionCount": "{count, plural, other {# 项贡献}}",
+      "findContribution": "查找贡献",
+      "writeAbstract": "根据 PDF 撰写",
+      "replaceAbstractTitle": "替换摘要？",
+      "replaceAbstractBody": "将根据 PDF 撰写新的摘要，替换框中现有的摘要。",
+      "keepAbstract": "保留",
+      "replaceAbstract": "替换",
+      "noAbstract": "你的 PDF 没有印出摘要。可以自己输入，或让系统根据 PDF 撰写一篇。",
+      "abstractFailed": "未能撰写摘要。请重试。",
+      "addReferences": "添加参考文献",
+      "referencesPlaceholder": "粘贴参考文献或 DOI，每行一条",
+      "uploadReferences": "上传文件",
+      "uploadReferencesLabel": "上传参考文献文件",
+      "referenceFormats": "BibTeX、RIS 或纯文本",
+      "noReferencesFound": "其中没有找到参考文献。",
+      "referencesListed": "这些都已在列表中。",
+      "referencesAdded": "{count, plural, other {已添加 # 条参考文献}}",
+      "undo": "撤销",
+      "referencesTooBig": "该文件超过 2 MB。参考文献列表要小得多。",
+      "openItsDoi": "打开其 DOI",
+      "openReferenceDoi": "打开第 {number} 条参考文献的 DOI"
+    },
+    "kinds": {
+      "author": "作者",
+      "editor": "编者",
+      "chair": "主席",
+      "translator": "译者",
+      "reviewer": "审稿人",
+      "review-assistant": "审稿助理",
+      "reviewer-external": "审稿人（外部）",
+      "stats-reviewer": "审稿人（统计）",
+      "reader": "审读人",
+      "other": "其他"
+    },
+    "roleDetails": {
+      "conceptualization": "提出想法并确定目标",
+      "dataCuration": "整理、清洗并保管数据",
+      "formalAnalysis": "进行统计或其他形式化分析",
+      "fundingAcquisition": "争取到项目经费",
+      "investigation": "开展研究并收集证据",
+      "methodology": "设计方法或模型",
+      "projectAdministration": "管理并协调项目",
+      "resources": "提供材料、样本、工具或计算资源",
+      "software": "编写或测试代码",
+      "supervision": "领导并指导团队",
+      "validation": "核实结果可以重现",
+      "visualization": "制作图表和数据展示",
+      "writingOriginalDraft": "撰写初稿",
+      "writingReviewEditing": "审阅并修改文本"
+    },
+    "help": {
+      "aboutLabel": "关于：{title}",
+      "sentTo": "发送至",
+      "does": {
+        "crossref": "注册 DOI",
+        "zenodo": "存档一份副本",
+        "openscholar": "展示报告"
+      },
+      "sent": "{name}，会收到：{does}",
+      "notSent": "{name}，不会收到：{does}",
+      "filled": {
+        "pdf": "从你的 PDF 读取",
+        "judged": "根据你的 PDF 判断",
+        "matched": "从你的 PDF 读取后查询",
+        "classified": "由 OpenAlex 推荐",
+        "author": "默认为作者",
+        "fixed": "由 Openscholar 设定",
+        "reserved": "签署时预留"
+      },
+      "entry": {
+        "list": "从列表中选择",
+        "typed": "自由输入",
+        "either": "从列表选择或输入",
+        "pasted": "粘贴或上传",
+        "toggle": "开或关",
+        "chosen": "由你选择"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex 作品类型",
+          "detail": "此选择器显示的列表"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo 资源类型",
+          "detail": "每种类型在 Zenodo 上对应什么"
+        },
+        "crossrefReports": {
+          "name": "Crossref 报告",
+          "detail": "Crossref 保存的记录"
+        },
+        "iso639": {
+          "name": "ISO 639 语言代码",
+          "detail": "OpenAlex 使用的代码"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "知识共享署名 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Crossref 贡献者",
+          "detail": "Crossref 如何记录人员"
+        },
+        "crossrefRoles": {
+          "name": "Crossref 贡献者角色",
+          "detail": "此选择器显示的列表"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "什么是 ORCID 标识符"
+        },
+        "orcidRegister": {
+          "name": "获取标识符",
+          "detail": "免费，一分钟即可"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex 机构",
+          "detail": "首先搜索"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "搜索 OpenAlex 中没有的机构"
+        },
+        "rorAdd": {
+          "name": "请 ROR 添加机构",
+          "detail": "适用于两个列表中都没有的机构"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO 的贡献者角色分类"
+        },
+        "crossrefAbstracts": {
+          "name": "Crossref 摘要",
+          "detail": "Crossref 如何保存摘要"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex 主题",
+          "detail": "此选择器搜索的列表"
+        },
+        "sdgs": {
+          "name": "17 个目标",
+          "detail": "联合国"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex 研究设计",
+          "detail": "此选择器显示的列表"
+        },
+        "iso3166": {
+          "name": "ISO 3166 国家代码",
+          "detail": "此选择器列出的国家"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex 资助方",
+          "detail": "首先搜索"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "也会搜索，用于政府和基金会"
+        },
+        "funderRegistry": {
+          "name": "Crossref 资助方注册库",
+          "detail": "Crossref 用来识别资助方的标识符"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "什么是 DOI"
+        },
+        "crossrefReferences": {
+          "name": "Crossref 参考文献",
+          "detail": "如何据此统计引用"
+        },
+        "crossrefRelations": {
+          "name": "Crossref 关系",
+          "detail": "Crossref 如何把作品互相关联"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "什么是 ISSN"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "标题",
+          "about": "报告封面上印的标题。"
+        },
+        "subtitle": {
+          "title": "副标题",
+          "about": "标题下方的那一行，如果封面上有的话。",
+          "note": "PDF 没有印出时为空。"
+        },
+        "type": {
+          "title": "类型",
+          "about": "作品的种类。",
+          "note": "Crossref 把每份 Openscholar Report 都登记为报告。Zenodo 和 Openscholar 使用这里选择的类型。"
+        },
+        "language": {
+          "title": "语言",
+          "about": "报告所用的语言。"
+        },
+        "date": {
+          "title": "发布日期",
+          "about": "报告发布的时间：年份、月份或具体日期，与 PDF 写明的精确程度一致，最晚为今天。",
+          "note": "Crossref 按原有精度保存。Zenodo 需要完整日期，因此年份或月份会以其第一天提交。PDF 没有写明日期时使用今天。"
+        },
+        "licence": {
+          "title": "许可",
+          "about": "每份 Openscholar Report 都按 CC BY 4.0 发布，正如你签署的协议所写。"
+        },
+        "authors": {
+          "title": "作者",
+          "about": "报告署名的所有人，按引用中的顺序排列。",
+          "note": "PDF 中的作者已填好。在这里添加编者、译者等人员，并设置他们的角色。"
+        },
+        "name": {
+          "title": "姓名",
+          "about": "报告上印的姓名。也可以填写机构的全称。",
+          "note": "个人姓名以先姓、后名的方式发送给 Crossref 和 Zenodo：最后一个词被视为姓。机构名称（含有 Department、Ministry 或 University 等词）会完整发送。"
+        },
+        "kind": {
+          "title": "角色",
+          "about": "此人对报告而言是什么身份。大多数人是作者。",
+          "note": "只有作者会出现在报告的引用中。其他人员会连同其角色列在报告页面的“贡献”下，Crossref 和 Zenodo 也会收到每个人的角色。"
+        },
+        "orcid": {
+          "title": "ORCID 标识符",
+          "about": "一个免费编号，用来区分同名的研究人员。",
+          "note": "PDF 没有印出时，会在 ORCID 中查找在这些机构之一、与此姓名完全相同的唯一一人。"
+        },
+        "affiliations": {
+          "title": "所属机构",
+          "about": "撰写报告时此人的工作单位。",
+          "note": "有 ROR 标识符的机构会连同标识符一起发送，让 Crossref 和 Zenodo 知道是哪一家。手动输入的机构只发送名称。"
+        },
+        "contributions": {
+          "title": "贡献",
+          "about": "此人为这项工作做了什么，按 CRediT 的 14 种角色描述。",
+          "note": "仅当 PDF 有贡献声明时才会填写。留空也没关系。"
+        },
+        "corresponding": {
+          "title": "通讯作者",
+          "about": "读者就报告联系的人。",
+          "note": "仅当 PDF 标明通讯作者时才开启。"
+        },
+        "abstract": {
+          "title": "摘要",
+          "about": "你的 PDF 印出的摘要或概要，原样复制。",
+          "note": "PDF 两者都没有时，“根据 PDF 撰写”会起草一篇，供你检查和修改。"
+        },
+        "topics": {
+          "title": "主题",
+          "about": "报告的内容，用 OpenAlex 的主题表示。",
+          "note": "OpenAlex 的分类器会读取标题和摘要。主题上的条形显示其把握程度。你添加的主题没有条形。"
+        },
+        "keywords": {
+          "title": "关键词",
+          "about": "你自己描述报告内容的词语。",
+          "note": "PDF 中的关键词。PDF 没有列出时，取 OpenAlex 分类器给出的最多五个。"
+        },
+        "sdgs": {
+          "title": "可持续发展目标",
+          "about": "报告实质性涉及的联合国目标。",
+          "note": "最多填写三个。可随意添加或删除。"
+        },
+        "design": {
+          "title": "研究设计",
+          "about": "研究是如何进行的。",
+          "note": "仅当 PDF 写得清楚时才会填写。Zenodo 会把它显示为方法说明。"
+        },
+        "places": {
+          "title": "研究地点",
+          "about": "报告所涉及的国家和地区，而不是作者工作的地方。"
+        },
+        "funding": {
+          "title": "资助",
+          "about": "谁资助了这项工作，以及印出的资助编号。",
+          "note": "会在 OpenAlex 和 ROR 中查找资助方。在那里找到的资助方会连同 ROR 标识符一起发送，如有资助方注册库标识符也会一起发送。手动输入的资助方只发送名称。"
+        },
+        "references": {
+          "title": "参考文献",
+          "about": "本报告引用的作品，按其参考文献列表的写法。",
+          "note": "粘贴列表，或以 BibTeX、RIS 或纯文本文件上传。PDF 印出的每个 DOI 都已填好，Crossref 会把每条带 DOI 的参考文献与所引作品关联。"
+        },
+        "links": {
+          "title": "数据、代码和版本",
+          "about": "报告的数据、代码、其他版本和补充材料所在的位置。",
+          "note": "每项都是网址或 DOI。"
+        },
+        "agreement": {
+          "title": "出版协议",
+          "about": "在报告发布前，你和 Openscholar 达成一致的内容。",
+          "note": "你保留版权。勾选此框即代表你和每位合著者同意，请先确认他们已经同意。签署后的协议不能更改。"
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "指向你的报告的永久链接，无论页面迁到哪里都能使用。",
+          "note": "签署时即会预留，方便你印在 PDF 中。报告上线后即可使用。"
+        },
+        "byline": {
+          "title": "系列行",
+          "about": "本系列每份报告都会印出的一行，写明系列名称、ISSN 和报告的 DOI。",
+          "note": "它必须是 PDF 中的文字而不是图片，因为检查会查找它。选择“请替我添加”，Openscholar 会添加包含该行的最后一页。"
+        },
+        "checks": {
+          "title": "检查",
+          "about": "报告上线前 Openscholar 检查的内容，例如 PDF 中的系列行，以及该作品是否已经发表。",
+          "note": "每项检查都会说明它查找了什么，失败时应修改什么。如果你确定某项检查有误，可以请人复核。"
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "标识该系列的编号，就像期刊的编号一样。",
+          "note": "在系列完成注册前处于待定状态。你的报告的 DOI 不受影响。"
+        },
+        "activation": {
+          "title": "激活",
+          "about": "激活会让你的报告公开：页面开放，DOI 开始生效，并完成注册。",
+          "note": "激活从工作区余额中扣除，或在这里付费。优惠码可以降低价格。"
+        }
+      }
     }
   },
   "people": {

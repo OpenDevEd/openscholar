@@ -4,7 +4,7 @@ import { keptCustomValidator, publicationSettingsValidator } from "../evidenceLi
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, PERSON_KINDS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -90,7 +90,7 @@ export const metadataValidator = v.object({
   language: v.string(),
   date: v.string(),
   licence: v.literal("CC BY 4.0"),
-  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
+  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles), kind: v.optional(literals(PERSON_KINDS)) })), DETAIL_CAPS.authors),
   abstract: v.string(),
   topics: capped(v.array(v.object({ id: v.string(), name: v.string(), score: v.number() })), DETAIL_CAPS.topics),
   keywords: capped(v.array(v.string()), DETAIL_CAPS.keywords),
@@ -99,6 +99,7 @@ export const metadataValidator = v.object({
   countries: capped(v.array(v.string()), DETAIL_CAPS.countries),
   funding: capped(v.array(v.object({ funder: v.object({ id: v.union(v.string(), v.null()), name: v.string(), ror: v.optional(v.string()) }), awards: capped(v.array(v.string()), DETAIL_CAPS.awards) })), DETAIL_CAPS.funding),
   references: capped(v.array(v.string()), DETAIL_CAPS.references),
+  citations: capped(v.optional(v.array(v.object({ text: v.string(), doi: v.optional(v.string()) }))), DETAIL_CAPS.references),
   relations: capped(v.array(v.object({ kind: literals(RELATION_KINDS.map((kind) => kind.id)), target: v.string() })), DETAIL_CAPS.relations),
 });
 

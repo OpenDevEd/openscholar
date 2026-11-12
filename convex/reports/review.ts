@@ -10,7 +10,7 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, isAuthor, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { becameReady, notify } from "./mail";
@@ -33,7 +33,7 @@ const said = (note: string | undefined) => note?.trim().slice(0, REVIEW_TEXT_MAX
 async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof adminRowValidator>> {
   const { key, doi, step, status, approved, flagged, asked, changes, note, registration, deposit, archive, updatedAt } = report;
   // Its first author, with where they work, as the list names a report's people.
-  const first = (await detailsOf(ctx, report._id)).metadata?.authors[0];
+  const first = (await detailsOf(ctx, report._id)).metadata?.authors.find(isAuthor);
   return {
     key, doi, step, status, registration, deposit, archive, updatedAt,
     ...(approved && { approved }),
