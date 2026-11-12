@@ -6,7 +6,7 @@ import { fetchOwnWorks, readOpenAlexWorks } from "@/lib/openalex/read-works";
 import { SearchError } from "@/lib/search/search-error";
 import { MAX_LOCATIONS } from "@/lib/topics/publications";
 import { normalizeDoi } from "@/lib/topics/identity";
-import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
+import { readPublicationPdf } from "@/lib/evidence-libraries/publication-card";
 import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
 import { paperPageId, paperPath } from "@/lib/papers/page-address";
@@ -86,15 +86,6 @@ export const readOpenAlexForPage = unstable_cache(
 export const copyKeysOf = (doi: string | null, openalexId: string | null) =>
   [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
 
-/**
- * A community record's PDF and the picture of its first page: the slow part, read from the community, so kept a minute.
- * The community adds them after it publishes the record, so a reload soon after shows them.
- */
-const readCopyPdf = unstable_cache(
-  async (libraryId: string, itemKey: string, url: string) => fetchPublicationPdf(libraryId, itemKey, url),
-  ["paper-page-copy-pdf"],
-  { revalidate: 60 },
-);
 
 /**
  * The paper's published records in public Evidence Communities, read as they stand, so one just published shows on the
@@ -107,7 +98,7 @@ export async function readCommunityCopies(doi: string | null, openalexId: string
   const locations = [...new Map(pages.flatMap((page) => page.page).map((location) => [location.id, location])).values()];
   // The community says each record's PDF and the picture of its first page; one from a runtime that doesn't is asked.
   // One that can't be read just has neither.
-  const pdfs = await Promise.allSettled(locations.map((location) => (location.metadata.pdf !== undefined ? location.metadata.pdf : readCopyPdf(location.library.id, location.itemKey, location.library.url))));
+  const pdfs = await Promise.allSettled(locations.map((location) => (location.metadata.pdf !== undefined ? location.metadata.pdf : readPublicationPdf(location.library.id, location.itemKey, location.library.url))));
   return locations.map((location, index) => {
     const read = pdfs[index]!;
     if (read.status === "rejected") console.error("[paper page] community record unavailable", { library: location.library.id, item: location.itemKey, error: read.reason });

@@ -229,7 +229,6 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(12),
   v.literal(13),
   v.literal(14),
-  // Accepted before any code writes it (#1335), so a branch that does never leaves rows the others' schema refuses.
   v.literal(15),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
@@ -245,10 +244,9 @@ export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(12),
   v.literal(13),
   v.literal(14),
-  // Accepted before any code writes it (#1335), so a branch that does never leaves rows the others' schema refuses.
   v.literal(15),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(14);
+export const currentOwnerConfigurationVersionValidator = v.literal(15);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),

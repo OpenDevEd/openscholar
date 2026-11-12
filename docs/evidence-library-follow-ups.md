@@ -22,3 +22,19 @@ facts on each source row in
 a Zotero account in OpenScholar, not only library owners. Write back needs it.
 The person can still refuse it on Zotero's consent page. Update the Outline
 "Current decisions" page when this merges.
+
+## Remove the runtime's funding partners key (recorded 2026-11-12)
+
+A community's funders are one list now, `footer.funders`. Settings version 15
+moves every saved `identity.fundingPartners` entry into it, and OpenScholar no
+longer writes that key.
+
+The runtime still reads it. It refuses keys it doesn't know, and nothing stops
+a new runtime release reaching a community whose OpenScholar is older than
+version 15 and still sends the key. So the runtime shows each partner as a
+funder (`fundersOf` in new-el `src/config/library-config/public.ts`).
+
+Next: once production OpenScholar is on version 15 and every running
+community's active settings were published from it, delete
+`identity.fundingPartners` and `fundersOf` from new-el, then sync the contract
+here with `npm run schema:sync:evidence-library-config`.

@@ -184,6 +184,15 @@ describe("validateOwnerSection", () => {
     ).toEqual(["/identity/baseUrl"]);
   });
 
+  test("refuses funding partners on a current identity row, and never sends the key to a community", () => {
+    // The footer's funders are the one list. The runtime's schema still allows the old key, for older settings.
+    expect(
+      validateOwnerSection("identity", { ...ownerSections.identity, fundingPartners: [{ id: "fp", name: "FCDO" }] }).issues.map((issue) => issue.pointer),
+    ).toEqual(["/identity/fundingPartners"]);
+    const configuration = assembleEvidenceLibraryConfiguration({ sections: ownerSections, managed: managedConfiguration, now: new Date("2026-08-24T19:00:00.000Z") });
+    expect(configuration.identity).not.toHaveProperty("fundingPartners");
+  });
+
   test("lets a draft carry a source without its write-only key", () => {
     expect(
       validateOwnerSection("sources", [

@@ -691,6 +691,46 @@ function migrateVersionThirteenToFourteen(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/**
+ * A community named who funds it in two lists: partners, by name, under its identity, and funders, with a link and a
+ * logo, under its footer. There is one list now, the funders. Each saved partner becomes a funder with that name,
+ * after the funders already there, unless one of them has the name. The partners list goes.
+ */
+function migrateVersionFourteenToFifteen(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 15;
+  const identity = next.sections.find((row) => row.sectionKey === "identity");
+  if (!identity || !isRecord(identity.payload) || !hasOwn(identity.payload, "fundingPartners")) return completeOwnerConfigurationSnapshot(next);
+  const { fundingPartners: partners, ...kept } = identity.payload;
+  // Anything but a list of named partners, or a footer that isn't one, is left where it is for the check of the
+  // finished snapshot to refuse: dropping what can't be read would lose it without a word.
+  const named = (entry: unknown): entry is { id: string; name: string } => isRecord(entry) && typeof entry.id === "string" && typeof entry.name === "string";
+  let footer = next.sections.find((row) => row.sectionKey === "footer");
+  if (!Array.isArray(partners) || !partners.every(named) || (footer && !isRecord(footer.payload))) return completeOwnerConfigurationSnapshot(next);
+  identity.payload = kept;
+  if (partners.length === 0) return completeOwnerConfigurationSnapshot(next);
+  if (!footer) next.sections.push((footer = { sectionKey: "footer", payload: {} }));
+  const saved = isRecord(footer.payload) ? footer.payload : {};
+  const funders: unknown[] = Array.isArray(saved.funders) ? saved.funders : [];
+  const nameOf = (entry: unknown) => (isRecord(entry) && typeof entry.name === "string" ? entry.name.trim().toLowerCase() : "");
+  const listed = new Set(funders.map(nameOf));
+  const taken = new Set(funders.flatMap((funder) => (isRecord(funder) ? [funder.id] : [])));
+  for (const partner of partners) {
+    // A row left without a name names nobody.
+    if (!nameOf(partner) || listed.has(nameOf(partner))) continue;
+    listed.add(nameOf(partner));
+    // The two lists were checked apart, so a partner's id may be a funder's too.
+    let id = partner.id;
+    for (let n = 1; taken.has(id); n += 1) id = `partner-${n}`;
+    taken.add(id);
+    funders.push({ id, name: partner.name });
+  }
+  footer.payload = { ...saved, funders };
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -807,6 +847,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 13,
     to: 14,
     migrate: migrateVersionThirteenToFourteen,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 14,
+    to: 15,
+    migrate: migrateVersionFourteenToFifteen,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },
