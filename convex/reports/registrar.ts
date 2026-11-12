@@ -15,7 +15,8 @@ import { requireAppUrl } from "../lib/env";
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import type { Metadata } from "../../lib/reports/report";
-import { openAlexKey, registrationRecord, zenodoRecord, type RegistryIds } from "../../lib/reports/registration-record";
+import { openAlexKey, registrationRecord, rorKey, zenodoRecord, type RegistryIds } from "../../lib/reports/registration-record";
+import { fundrefOf } from "../../lib/people/identifiers";
 
 /** OpenAlex couldn't say who a report's funders and institutions are in the Funder Registry and ROR: worth trying again, like a registrar that couldn't be reached. */
 class IdsUnread extends Error {}
@@ -48,7 +49,11 @@ async function registryIds(m: Metadata): Promise<RegistryIds> {
     ask("funders", unique(m.funding.map((f) => f.funder.id))),
     ask("institutions", unique(m.authors.flatMap((author) => author.affiliations.map((affiliation) => affiliation.id)))),
   ]);
+  // A funder only ROR knows: its Funder Registry ID, which ROR lists as "fundref" where Crossref has the funder.
+  const onRor = [...new Set(m.funding.flatMap((f) => (!f.funder.id && f.funder.ror ? (rorKey(f.funder.ror) ?? []) : [])))];
+  const rorFunders = Object.fromEntries((await Promise.all(onRor.map(async (ror) => [ror, await fundrefOf(ror).catch((error: unknown) => { throw new IdsUnread(`ROR couldn't say whether funder ${ror} is in the Funder Registry: ${String(error).slice(0, 200)}`); })] as const))).flatMap(([ror, fundref]) => (fundref ? [[ror, `10.13039/${fundref}`]] : [])));
   return {
+    rorFunders,
     funders: Object.fromEntries(funders.map((funder) => [openAlexKey(funder.id), { ...(funder.ids?.doi && { doi: funder.ids.doi }), ...(funder.ids?.ror && { ror: funder.ids.ror }) }])),
     institutions: Object.fromEntries(institutions.flatMap((institution) => (institution.ids?.ror ? [[openAlexKey(institution.id), institution.ids.ror]] : []))),
   };
