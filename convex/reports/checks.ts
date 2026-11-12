@@ -18,7 +18,7 @@ import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/repor
 import { CHECK_SAID, carries, doiIn, linkHref } from "../../lib/reports/report";
 import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { storedBytes } from "./pdfBytes";
-import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
+import { alreadyPublished, decide, reportSays, type Candidate, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
 
 const QUESTION_RULES = [
@@ -42,7 +42,7 @@ const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? co
 type Result = CheckResult & { model: string };
 
 /** One check's answer. A question goes to its model; Already published searches, then has its model compare. */
-async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string }, text: string, metadata: Metadata, communities: Community[]): Promise<Result> {
+async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string }, text: string, metadata: Metadata, communities: Community[], ours: Candidate[]): Promise<Result> {
   const fill = (words: string) => words.replaceAll("{byline}", report.byline).replaceAll("{doi}", `https://doi.org/${report.doi}`);
   const base = { checkId: check.id, name: check.name, model: on.name, blocking: check.blocking };
   // What to do about it, for the author, when it fails.
@@ -52,7 +52,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
     const named = metadata.relations.map((relation) => ({ relation, href: linkHref(relation.target) })).find(({ relation, href }) => relation.kind === "version" && href && doiIn(href) !== report.doi.toLowerCase());
     if (named) return { ...base, ...failed, pass: false, evidence: { title: named.relation.target, url: named.href!, where: "the report's own links" }, reasoning: "The report names another version of itself among its links." };
     // With its PDF's text, which a report with no abstract is compared by.
-    const found = await alreadyPublished({ ...metadata, text }, report.doi, on, communities);
+    const found = await alreadyPublished({ ...metadata, text }, report.doi, on, communities, ours);
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
       : { ...base, pass: true, detail: CHECK_SAID.notPublished };
@@ -127,12 +127,22 @@ export const run = action({
     const communities: Community[] = started.checks.some((check) => check.builtIn)
       ? (await ctx.runQuery(api.evidenceLibraries.directory.directory, { paginationOpts: { cursor: null, numItems: COMMUNITIES_SEARCHED }, sort: "records" })).page.map((card) => ({ name: card.name, address: card.address }))
       : [];
+    // Live reports of our own with a title like this one's, each with what it says of itself: its abstract, or with
+    // none, the opening of its PDF's text, as the report itself is compared.
+    const ours: Candidate[] = started.checks.some((check) => check.builtIn)
+      ? await Promise.all(
+          (await ctx.runQuery(internal.reports.ownReports.alike, { reportId, title: metadata.title })).map(async ({ text: file, ...report }) => ({
+            ...report,
+            abstract: report.abstract.trim() || (file ? reportSays({ abstract: "", text: (await (await ctx.storage.get(file))?.text()) ?? "" }) : ""),
+          })),
+        )
+      : [];
     const results = await Promise.all(
       started.checks.map(async ({ model: modelId, ...check }) => {
         const result = await (async (): Promise<Result> => {
           if (!modelId) throw new Error("its model is no longer offered");
           const { model, modelSlug } = await resolveOpenRouterModel(ctx, modelId);
-          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort }, started, text, metadata, communities);
+          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort }, started, text, metadata, communities, ours);
         })().catch((error: unknown): Result => {
           console.error(JSON.stringify({ event: "report-check-failed", reportId, check: check.id, error: String(error).slice(0, 500) }));
           // A check that can't answer holds the report for a person rather than pass it. Why it couldn't is the

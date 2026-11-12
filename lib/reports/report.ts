@@ -62,7 +62,7 @@ export const dateMoment = (date: string) => {
 
 /** The fixed things a check says (`detail`, `reasoning`), which a page shows in its own language (`publishReports.flow.check.said`). */
 export const CHECK_SAID = {
-  notPublished: "Not in OpenAlex, Openscholar's index or our communities.",
+  notPublished: "Not in Openscholar Reports, OpenAlex, Openscholar's index or our communities.",
   unfinished: "This check couldn't finish.",
   bylineFound: "The PDF's text has the line word for word.",
 } as const;

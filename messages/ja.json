@@ -6603,7 +6603,7 @@
         "foundIn": "{where}で見つかりました：",
         "foundAs": "見つかった作品",
         "said": {
-          "notPublished": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "notPublished": "Openscholar Reports、OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
           "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
         },
