@@ -46,7 +46,8 @@ function PopoverContent({
   const closing = useClosing()
   const modal = React.useContext(PopoverIsModal)
   const triggerId = React.useContext(PopoverTriggerId)
-  // A popover held to an anchor instead of a trigger has nothing to be named after: it names itself (aria-label).
+  // A popover held to an anchor instead of a trigger has nothing to be named after: it names itself (aria-label). So
+  // does a picker whose trigger is a combobox: through aria-labelledby a combobox gives its value, not its name.
   const named = props["aria-label"] || props["aria-labelledby"] ? undefined : triggerId
   return (
     <PopoverPrimitive.Portal>

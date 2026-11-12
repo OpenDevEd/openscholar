@@ -223,7 +223,7 @@ function AddAdmin() {
           {mode === "user" ? (
             <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
               <PopoverTrigger asChild>
-                <Button type="button" variant="outline" role="combobox" aria-expanded={pickerOpen} className="h-11 w-full justify-between rounded-xl px-3 font-normal">
+                <Button type="button" variant="outline" role="combobox" aria-expanded={pickerOpen} aria-label={t("chooseUser")} className="h-11 w-full justify-between rounded-xl px-3 font-normal">
                   {picked ? (
                     <span className="flex min-w-0 items-center gap-2">
                       <IdentityAvatar name={picked.name ?? picked.email} imageUrl={picked.imageUrl} className="size-6" />
@@ -235,7 +235,7 @@ function AddAdmin() {
                   <ChevronsUpDown className="size-3.5 text-muted-foreground" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
+              <PopoverContent align="start" aria-label={t("chooseUser")} className="w-(--radix-popover-trigger-width) p-0">
                 {/* The server searches by email, so the list isn't filtered again here. */}
                 <Command shouldFilter={false}>
                   <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} busy={candidates.status === "LoadingFirstPage"} />
