@@ -79,7 +79,7 @@ export function AdminPublishing() {
             </Button>
             <DetailsStep
               key={editable.key}
-              writing={{ key: editable.key }}
+              writing={editable.pdf?.trouble === "textless" ? undefined : { key: editable.key }}
               registrars={editable.registration}
               initial={editable.metadata!}
               version={editable.updatedAt}

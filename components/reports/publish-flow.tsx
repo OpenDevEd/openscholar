@@ -689,7 +689,7 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
                 onBack={() => onStep("upload")}
                 ref={form}
                 onReturn={report.reopened ? () => onStep("checks") : undefined}
-                writing={{ key: report.key, workspaceId: workspaceId! }}
+                writing={report.pdf?.trouble === "textless" ? undefined : { key: report.key, workspaceId: workspaceId! }}
                 registrars={report.registration}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
@@ -715,7 +715,7 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
-              writing={{ key: report.key, workspaceId: workspaceId! }}
+              writing={report.pdf?.trouble === "textless" ? undefined : { key: report.key, workspaceId: workspaceId! }}
               registrars={report.registration}
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
