@@ -13,7 +13,7 @@ import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { matchOrcid, matchRor } from "../../lib/people/identifiers";
-import { CREDIT_ROLES, DETAIL_TEXT, RELATION_KINDS, isOrcid, type Affiliation, type Funding, type Metadata, type Topic } from "../../lib/reports/report";
+import { CREDIT_ROLES, DETAIL_TEXT, RELATION_KINDS, isOrcid, type Affiliation, type Funding, type Metadata, type Topic, dateParts } from "../../lib/reports/report";
 
 /** The model a reading runs on, as the server resolved it, and the effort it reads at. */
 export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
@@ -168,8 +168,8 @@ const funder = async (name: string): Promise<Funding["funder"] | null> => {
 const DOI = /10\.\d{4,9}\/\S+/;
 /** The ORCID iD the PDF prints, or none: a mistyped one is never kept. */
 const orcidOf = (printed: string) => (isOrcid(printed.trim().toUpperCase()) ? printed.trim().toUpperCase() : "");
-/** A date the PDF states in part gets its first month or day, for the author to correct; none is today. */
-const dateOf = (stated: string) => (/^\d{4}-\d{2}-\d{2}$/.test(stated) ? stated : /^\d{4}-\d{2}$/.test(stated) ? `${stated}-01` : /^\d{4}$/.test(stated) ? `${stated}-01-01` : new Date().toISOString().slice(0, 10));
+/** The date as precisely as the PDF states it: a year, a month or a day, never one it doesn't give. None is today. */
+const dateOf = (stated: string) => (dateParts(stated) ? stated : new Date().toISOString().slice(0, 10));
 
 /** The report's details, ready for its author to correct. Throws when the model can't read the PDF at all. */
 export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { /** The PDF's bytes; null for one too large to send whose text is given, so its reading never holds the file. */ pdf: Uint8Array | null; text: string; fileName: string; ownDoi: string; reader: Reader }): Promise<Metadata> {

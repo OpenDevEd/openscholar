@@ -27,8 +27,38 @@ export type CheckResult = {
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country, and its ROR ID (https://ror.org/…) where OpenAlex or ROR know it. */
 export type Affiliation = { id: string | null; name: string; country: string; ror?: string };
 /** CRediT's 14 contributor roles (credit.niso.org). */
-/** The earliest date a report can carry: Crossref registers no year before 1400. */
-export const EARLIEST_DATE = "1400-01-01";
+/** The earliest year a report can carry: Crossref registers no year before 1400. */
+export const EARLIEST_YEAR = 1400;
+
+/**
+ * A report's date as its PDF states it, as precisely as it states it: a year (2026), a month (2026-10) or a day
+ * (2026-10-11). Crossref takes each as it is; only what goes to Zenodo is made a whole date (`wholeDate`).
+ */
+export function dateParts(date: string): { year: number; month?: number; day?: number } | null {
+  const found = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(date);
+  if (!found) return null;
+  const year = Number(found[1]);
+  const month = found[2] ? Number(found[2]) : undefined;
+  const day = found[3] ? Number(found[3]) : undefined;
+  if (month !== undefined && (month < 1 || month > 12)) return null;
+  if (day !== undefined && (day < 1 || day > daysIn(year, month!))) return null;
+  return { year, ...(month && { month }), ...(day && { day }) };
+}
+
+/** How many days a month of a year has. */
+export const daysIn = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/** A date as a whole date, for what takes nothing less: the first of the month, or of the year, the report doesn't name. */
+export const wholeDate = (date: string) => (date.length === 4 ? `${date}-01-01` : date.length === 7 ? `${date}-01` : date);
+
+/** How to write a date as precisely as it is known (Intl), for a page that shows it: never a month or a day it doesn't have. */
+export const dateStyleOf = (parts: { month?: number; day?: number }, month: "long" | "short" = "long"): { year: "numeric"; month?: "long" | "short"; day?: "numeric"; timeZone: "UTC" } => ({ year: "numeric", ...(parts.month && { month }), ...(parts.day && { day: "numeric" }), timeZone: "UTC" });
+
+/** A date as a moment to hand to Intl, at the start of the period it names in UTC; null for one that isn't a date. */
+export const dateMoment = (date: string) => {
+  const parts = dateParts(date);
+  return parts ? { at: new Date(Date.UTC(parts.year, (parts.month ?? 1) - 1, parts.day ?? 1)), parts } : null;
+};
 
 /** The fixed things a check says (`detail`, `reasoning`), which a page shows in its own language (`publishReports.flow.check.said`). */
 export const CHECK_SAID = {

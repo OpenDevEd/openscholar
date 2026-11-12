@@ -3,7 +3,7 @@
 // A report's details as the model read them from its PDF, for the author to correct (plans/publish-reports).
 // Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
@@ -25,7 +25,7 @@ import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useRelationName, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, LICENCE_URL, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 const REFS_PER_PAGE = 5;
@@ -64,6 +64,80 @@ function Field({ label, children, className, counter }: { label: string; childre
     </label>
   );
 }
+/** No month, or no day: the date stops at the year, or at the month. */
+const NONE = "none";
+const pad = (n: number) => String(n).padStart(2, "0");
+const dateOf = (year: number, month?: number, day?: number) => `${year}${month ? `-${pad(month)}${day ? `-${pad(day)}` : ""}` : ""}`;
+
+/**
+ * A report's date as its PDF states it: a year, then a month and a day where it gives them. The form saves as it is
+ * typed and saving refuses what isn't a date, so a year is saved only once it is a whole one; until then it is held
+ * here, and the form says so. A day the month doesn't have goes when the month changes.
+ */
+function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: string; /** A year being typed that isn't one yet. */ typed: string | null; onTyped: (typed: string | null) => void; onDate: (date: string) => void; invalid: boolean; children?: ReactNode }) {
+  const t = useTranslations("publishReports.details");
+  const format = useFormatter();
+  const id = useId();
+  const parts = dateParts(date);
+  const year = parts?.year;
+  const dayIn = (y: number, month: number) => (parts?.day && parts.day <= daysIn(y, month) ? parts.day : undefined);
+  const typeYear = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length < 4 || Number(digits) < EARLIEST_YEAR) return onTyped(digits);
+    onTyped(null);
+    const y = Number(digits);
+    onDate(dateOf(y, parts?.month, parts?.month ? dayIn(y, parts.month) : undefined));
+  };
+  const name = (month: number) => format.dateTime(new Date(Date.UTC(2000, month - 1, 1)), { month: "short", timeZone: "UTC" });
+  return (
+    <div role="group" aria-labelledby={id} className="min-w-0 space-y-1.5">
+      <span id={id} className="block ps-1 text-xs font-medium text-muted-foreground">
+        {t("date")}
+      </span>
+      <div className="flex gap-1.5">
+        <Input
+          aria-label={t("dateYear")}
+          inputMode="numeric"
+          autoComplete="off"
+          value={typed ?? (year ? String(year) : "")}
+          aria-invalid={typed !== null || !parts || invalid || undefined}
+          onChange={(e) => typeYear(e.target.value)}
+          className="w-[4.25rem] shrink-0 tabular-nums"
+        />
+        <Select value={parts?.month ? pad(parts.month) : ""} disabled={!year || typed !== null} onValueChange={(month) => year && onDate(month === NONE ? dateOf(year) : dateOf(year, Number(month), dayIn(year, Number(month))))}>
+          <SelectTrigger className="min-w-0 flex-1" aria-label={t("dateMonth")}>
+            <SelectValue placeholder={t("dateMonth")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>{t("noMonth")}</SelectItem>
+            {Array.from({ length: 12 }, (_, i) => (
+              <SelectItem key={i} value={pad(i + 1)}>
+                {name(i + 1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={parts?.day ? pad(parts.day) : ""} disabled={!year || !parts?.month || typed !== null} onValueChange={(day) => year && parts?.month && onDate(dateOf(year, parts.month, day === NONE ? undefined : Number(day)))}>
+          <SelectTrigger className="w-[4.25rem] shrink-0" aria-label={t("dateDay")}>
+            <SelectValue placeholder={t("dateDay")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>{t("noDay")}</SelectItem>
+            {year && parts?.month
+              ? Array.from({ length: daysIn(year, parts.month) }, (_, i) => (
+                  <SelectItem key={i} value={pad(i + 1)}>
+                    {format.number(i + 1)}
+                  </SelectItem>
+                ))
+              : null}
+          </SelectContent>
+        </Select>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** How much of a box with a limit is used, in the reader's numerals. */
 function useUsed() {
   const format = useFormatter();
@@ -341,8 +415,12 @@ export function DetailsStep({
     set("references", [...m.references, bare]);
     setDoi("");
   };
+  // A year as it is typed, until it is a whole one: only a date that is one is ever saved.
+  const [typedYear, setTypedYear] = useState<string | null>(null);
+  const dated = dateParts(m.date);
+  // A year, a month or a day compares with today as text does: 2026-11 isn't after 2026-11-12, and 2026-12 is.
   const future = m.date > localToday();
-  const early = !!m.date && m.date < EARLIEST_DATE;
+  const early = !!dated && dated.year < EARLIEST_YEAR;
   // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
   const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
 
@@ -371,7 +449,8 @@ export function DetailsStep({
           <Field label={t("subtitle")} counter={m.subtitle ? used(m.subtitle, DETAIL_TEXT.subtitle) : undefined}>
             <Input value={m.subtitle} maxLength={DETAIL_TEXT.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder={t("none")} />
           </Field>
-          <div className="grid gap-3 sm:grid-cols-2 @3xl:grid-cols-4">
+          {/* The date takes a little more of the row: a year, a month and a day side by side. */}
+          <div className="grid gap-3 sm:grid-cols-2 @3xl:grid-cols-[1fr_1fr_1.45fr_1fr]">
             <Field label={t("type")}>
               <Select value={m.type} onValueChange={(type) => set("type", type)}>
                 <SelectTrigger className="w-full" aria-label={t("type")}>
@@ -400,11 +479,14 @@ export function DetailsStep({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label={t("date")}>
-              {/* A report is published by today, as the author's own calendar has it. A date typed past it says so here, before the checks are asked for. */}
-              <Input type="date" value={m.date} min={EARLIEST_DATE} max={localToday()} aria-invalid={future || early || undefined} onChange={(e) => set("date", e.target.value)} />
-              {future || early ? <span className="block ps-1 text-xs text-destructive">{t(future ? "future" : "tooEarly")}</span> : null}
-            </Field>
+            <DateField date={m.date} typed={typedYear} onTyped={setTypedYear} onDate={(date) => set("date", date)} invalid={future || early}>
+              {/* A report is published by today, as the author's own calendar has it. A date past it says so here, before the checks are asked for. */}
+              {typedYear !== null || !dated ? (
+                <span className="block ps-1 text-xs text-destructive">{t("yearInvalid")}</span>
+              ) : future || early ? (
+                <span className="block ps-1 text-xs text-destructive">{t(future ? "future" : "tooEarly")}</span>
+              ) : null}
+            </DateField>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">{t("licence")}</span>
               <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
@@ -649,7 +731,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || future || early || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || !dated || typedYear !== null || future || early || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;

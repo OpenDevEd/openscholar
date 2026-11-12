@@ -27,7 +27,8 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   // splitting the display name; DOI metadata can supply structured names later.
   const author = paper.authorships?.flatMap(({ author }) => author.display_name?.trim() ? [{ literal: author.display_name.trim() }] : []);
   if (author?.length) data.author = author;
-  if (paper.publication_date && /^\d{4}-\d{2}-\d{2}$/.test(paper.publication_date)) {
+  // A year, a month or a day, as precisely as the work states it: a report's PDF may give only a month.
+  if (paper.publication_date && /^\d{4}(?:-\d{2}){0,2}$/.test(paper.publication_date)) {
     data.issued = { "date-parts": [paper.publication_date.split("-").map(Number)] };
   } else if (paper.publication_year) data.issued = { "date-parts": [[paper.publication_year]] };
   // An Openscholar Report is numbered in a series Openscholar publishes, and is cited as such: "Title (Openscholar

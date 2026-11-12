@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildZenodoRecordPayload, mapCrossrefRecord } from "@opendeved/doi-sync-core";
+import { buildCrossrefPublicationXml, buildZenodoRecordPayload, mapCrossrefRecord } from "@opendeved/doi-sync-core";
 import { api, internal } from "../_generated/api";
 import { registrationRecord, zenodoRecord } from "../../lib/reports/registration-record";
 import { REGISTRATION_TRIES } from "./registration";
@@ -75,6 +75,16 @@ describe("a report's record for its registrars", () => {
       fullTextUrl: "https://openscholar.ai/papers/R100001/report.pdf",
     });
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { series: { title: "Openscholar Reports", issns: ["2049-3630"] }, freeToRead: true } });
+  });
+
+  it("keeps a date its PDF gives as a month as a month for Crossref, and gives Zenodo, which takes only a whole date, the first of it", () => {
+    const record = registrationRecord(report, { ...m, date: "2026-10" }, series, "https://openscholar.ai");
+    const mapped = mapCrossrefRecord(record, report.doi);
+    if (!mapped.ok) throw new Error("Crossref refused the record");
+    const xml = buildCrossrefPublicationXml({ batchId: "b", timestamp: "1", depositorName: "d", emailAddress: "e@example.org", registrant: "r", record: mapped.record });
+    expect(xml.match(/<publication_date[^>]*>[\s\S]*?<\/publication_date>/)?.[0].replace(/\s+/g, "")).toBe('<publication_datemedia_type="online"><month>10</month><year>2026</year></publication_date>');
+    const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, date: "2026-10" });
+    expect(buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.publication_date).toBe("2026-10-01");
   });
 
   it("goes to Zenodo as the kind of work its author chose, while Crossref still takes it as a report in the series", () => {
