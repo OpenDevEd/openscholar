@@ -621,7 +621,7 @@ export function DetailsStep({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {vocabulary.workTypes.map((type) => (
+                  {vocabulary.reportTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
                     </SelectItem>

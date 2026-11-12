@@ -7342,6 +7342,7 @@
       "preprint": "Preprint",
       "book": "Book",
       "report": "Report",
+      "presentation": "Presentation",
       "review": "Review",
       "reference-entry": "Reference entry",
       "conference-abstract": "Conference abstract",
