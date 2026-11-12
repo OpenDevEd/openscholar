@@ -246,7 +246,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           <div className="my-2 h-px w-8 bg-foreground/10" />
 
           {/* A short window scrolls the sections, faded at an edge that has more, with a scrollbar only while it moves. */}
-          <ScrollArea shades type="scroll" className="min-h-0 w-full flex-1">
+          <ScrollArea shades className="min-h-0 w-full flex-1">
             <nav aria-label={t("main")} className="flex w-full flex-col items-center gap-0.5 px-2">
               {item({ href: "/", icon: Search, label: tc("search"), active: is("/") })}
               {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
