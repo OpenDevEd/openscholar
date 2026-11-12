@@ -227,9 +227,9 @@ export function useSavePaper(paper: WorkInput | undefined) {
   return { ready, isSignedIn, openSignIn, saved, isSaved, finishing, toggle };
 }
 
-/** A named button of the group and its name: on a phone the three keep their icons, and their names stay for screen readers. */
-const NAMED = "max-sm:px-2 max-sm:has-[>svg]:px-2";
-const NAME = "max-sm:sr-only";
+/** A named button of the group and its name: where the row (an `@container`) is too narrow for all three names, as in German or French below a desktop, the three keep their icons and their names stay for screen readers. */
+const NAMED = "@max-2xl:px-2 @max-2xl:has-[>svg]:px-2";
+const NAME = "@max-2xl:sr-only";
 
 /**
  * Save to library, add to a collection and add to a community, beside the rating. Icon-only when `compact`. On a

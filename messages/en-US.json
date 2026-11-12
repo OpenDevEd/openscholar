@@ -420,7 +420,16 @@
     "chargesLabel": "charges",
     "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
     "fixPayment": "Fix payment",
-    "seePlans": "See plans"
+    "seePlans": "See plans",
+    "activations": {
+      "title": "Report activations",
+      "left": "{count, number} left",
+      "leftRefills": "{count, number} left, refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}",
+      "unlimited": "No limit",
+      "none": "None left",
+      "hint": "Each one makes a report live on Openscholar Reports with nothing to pay.",
+      "publish": "Publish"
+    }
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -1238,20 +1247,20 @@
     "reviewed": "Reviewed"
   },
   "saveToLibrary": {
-    "save": "Save",
-    "saved": "Saved",
-    "saveToLibrary": "Save to library",
+    "save": "Add to library",
+    "saved": "In library",
+    "saveToLibrary": "Add to library",
     "removeFromLibrary": "Remove from library",
     "addToCollection": "Add to collection",
     "newCollection": "New collection",
     "removed": "Removed from library",
     "undo": "Undo",
-    "saveError": "Couldn't save the paper",
+    "saveError": "Couldn't add the paper to the library",
     "removeError": "Couldn't remove the paper",
     "restoreError": "Couldn't put the paper back",
     "collectionError": "Couldn't change the collection",
     "newCollectionWithPaper": "New collection with this paper",
-    "finishSaving": "Finish saving"
+    "finishSaving": "Finish adding"
   },
   "rating": {
     "noRating": "No rating",
@@ -1451,7 +1460,7 @@
     "ratingFilter": "Rating",
     "loadMore": "Load more",
     "emptyLibraryTitle": "This library is empty",
-    "emptyLibraryDescription": "Save papers from search results to build this library.",
+    "emptyLibraryDescription": "Add papers from search results to build this library.",
     "emptyLibraryCta": "Search papers",
     "noResultsTitle": "No papers match your search or filters",
     "clearFilters": "Clear filters",
@@ -6235,7 +6244,7 @@
       "action": {
         "openPage": "Open its page",
         "open": "Open",
-        "activate": "Activate it",
+        "activate": "Pay",
         "carryOn": "Carry on",
         "seeFailed": "See what failed",
         "manage": "Open in Publish"
@@ -6646,7 +6655,7 @@
       "changeDetails": "Change the details",
       "uploadNew": "Upload a new PDF",
       "publishAnother": "Publish another",
-      "activate": "Activate",
+      "activate": "Pay",
       "needsApproval": "A reviewer has to approve it first",
       "untitled": "Untitled report",
       "startedBy": "{name} started this report. Only they and the workspace's admins can change it.",
@@ -6747,14 +6756,17 @@
           "left": "{count, number} left",
           "unlimited": "No limit",
           "uses": "Activating uses one from your balance. Nothing is charged.",
-          "usesOrg": "Activating uses one from {organization}'s balance. Nothing is charged."
+          "usesOrg": "Activating uses one from {organization}'s balance. Nothing is charged.",
+          "leftRefills": "{count, number} left, refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}"
         },
         "creditLine": "Account credit",
         "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
         "noneLeft": "There's no activation left in the balance. Activate again to pay for one.",
         "kept": "The activation paid for this report went to your balance. The next report you activate uses it.",
-        "keptOrg": "The activation paid for this report went to {organization}'s balance. The next report activated there uses it."
+        "keptOrg": "The activation paid for this report went to {organization}'s balance. The next report activated there uses it.",
+        "keptNote": "If a reviewer declines the report before the payment goes through, the activation stays in your balance for your next report.",
+        "keptNoteOrg": "If a reviewer declines the report before the payment goes through, the activation stays in {organization}'s balance for the next report."
       },
       "back": "Back",
       "bylineFirst": "Your PDF carries this line",
@@ -6812,7 +6824,8 @@
           "body": "Paid with a card. A voucher code can lower the price or cover it. The DOI is registered and the report goes live.",
           "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
           "bodyBalance": "Uses one activation from the balance, which has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyUnlimited": "Uses one activation from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live."
+          "bodyUnlimited": "Uses one activation from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live.",
+          "bodyBalanceRefills": "Uses one activation from the balance, which has {count, number} left and refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}. Nothing to pay. The DOI is registered and the report goes live."
         }
       }
     },

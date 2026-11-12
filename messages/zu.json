@@ -420,7 +420,16 @@
     "chargesLabel": "izindleko",
     "paymentFailedEnds": "Inkokhelo engu-{amount} yehlulekile. I-{plan} iphela ngo-{date} uma ingakhokhiwe.",
     "fixPayment": "Lungisa inkokhelo",
-    "seePlans": "Bona amapulani"
+    "seePlans": "Bona amapulani",
+    "activations": {
+      "title": "Ukuvula imibiko",
+      "left": "Kusele okungu-{count, number}",
+      "leftRefills": "Kusele okungu-{count, number}, kugcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}",
+      "unlimited": "Akukho mkhawulo",
+      "none": "Akukho okusele",
+      "hint": "Ngakunye kwenza umbiko uphile ku-Openscholar Reports ngaphandle kokukhokha lutho.",
+      "publish": "Shicilela"
+    }
   },
   "errors": {
     "unexpectedIssue": "Sibhekene nenkinga engalindelekile. Sicela uzame futhi, noma ubuyele ekhasini elizinzile.",
@@ -1238,20 +1247,20 @@
     "reviewed": "Kubuyekeziwe"
   },
   "saveToLibrary": {
-    "save": "Gcina",
-    "saved": "Kugciniwe",
-    "saveToLibrary": "Gcina emtapweni wolwazi",
+    "save": "Engeza emtapweni wolwazi",
+    "saved": "Lisemtapweni wolwazi",
+    "saveToLibrary": "Engeza emtapweni wolwazi",
     "removeFromLibrary": "Susa emtapweni wolwazi",
     "addToCollection": "Engeza eqoqweni",
     "newCollection": "Iqoqo elisha",
     "removed": "Kususwe emtapweni wolwazi",
     "undo": "Hlehlisa",
-    "saveError": "Ayikwazanga ukugcina iphepha",
+    "saveError": "Ayikwazanga ukwengeza iphepha emtapweni wolwazi",
     "removeError": "Ayikwazanga ukususa iphepha",
     "restoreError": "Ayikwazanga ukubuyisela iphepha",
     "collectionError": "Ayikwazanga ukushintsha iqoqo",
     "newCollectionWithPaper": "Iqoqo elisha nalelu phepha",
-    "finishSaving": "Qedela ukugcina"
+    "finishSaving": "Qedela ukwengeza"
   },
   "rating": {
     "noRating": "Akukho isilinganiso",
@@ -1451,7 +1460,7 @@
     "ratingFilter": "Isilinganiso",
     "loadMore": "Layisha okwengeziwe",
     "emptyLibraryTitle": "Lo mtapo wolwazi awunalutho",
-    "emptyLibraryDescription": "Londoloza amaphepha emiphumeleni yosesho ukuze wakhe lo mtapo wolwazi.",
+    "emptyLibraryDescription": "Engeza amaphepha emiphumeleni yosesho ukuze wakhe lo mtapo wolwazi.",
     "emptyLibraryCta": "Sesha amaphepha",
     "noResultsTitle": "Akukho maphepha ahambisana nokusesha kwakho noma nezihlungi",
     "clearFilters": "Sula izihlungi",
@@ -6235,7 +6244,7 @@
       "action": {
         "openPage": "Vula ikhasi lawo",
         "open": "Vula",
-        "activate": "Yenza kusebenze",
+        "activate": "Khokha",
         "carryOn": "Qhubeka",
         "seeFailed": "Bona okuhlulekile",
         "manage": "Vula ku-Shicilela"
@@ -6646,7 +6655,7 @@
       "changeDetails": "Shintsha imininingwane",
       "uploadNew": "Layisha i-PDF entsha",
       "publishAnother": "Shicilela omunye",
-      "activate": "Yenza kusebenze",
+      "activate": "Khokha",
       "needsApproval": "Umbuyekezi kufanele awuvume kuqala",
       "untitled": "Umbiko ongenasihloko",
       "startedBy": "U-{name} uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
@@ -6747,14 +6756,17 @@
           "left": "Kusele okungu-{count, number}",
           "unlimited": "Akukho mkhawulo",
           "uses": "Ukuvula kusebenzisa okukodwa ebhalansini lakho. Akukho okukhokhiswayo.",
-          "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo."
+          "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo.",
+          "leftRefills": "Kusele okungu-{count, number}, kugcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}"
         },
         "creditLine": "Isikweletu se-akhawunti",
         "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
         "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo.",
         "noneLeft": "Akusekho ukuvula okusele ebhalansini. Yenze isebenze futhi ukuze ukhokhele okukodwa.",
         "kept": "Ukuvula okukhokhelwe lo mbiko kungene ebhalansini lakho. Umbiko olandelayo owenza usebenze uzokusebenzisa.",
-        "keptOrg": "Ukuvula okukhokhelwe lo mbiko kungene ebhalansini le-{organization}. Umbiko olandelayo owenziwa usebenze lapho uzokusebenzisa."
+        "keptOrg": "Ukuvula okukhokhelwe lo mbiko kungene ebhalansini le-{organization}. Umbiko olandelayo owenziwa usebenze lapho uzokusebenzisa.",
+        "keptNote": "Uma umbuyekezi enqaba umbiko ngaphambi kokuba inkokhelo iphothulwe, ukuvula kuhlala ebhalansini lakho kubiko wakho olandelayo.",
+        "keptNoteOrg": "Uma umbuyekezi enqaba umbiko ngaphambi kokuba inkokhelo iphothulwe, ukuvula kuhlala ebhalansini le-{organization} kubiko olandelayo."
       },
       "back": "Emuva",
       "bylineFirst": "I-PDF yakho inalo mugqa",
@@ -6812,7 +6824,8 @@
           "body": "Kukhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa intengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyPriced": "U-{price} ngombiko ngamunye, okhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa leyo ntengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyBalance": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
-          "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
+          "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
+          "bodyBalanceRefills": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number} futhi eligcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
         }
       }
     },

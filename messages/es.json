@@ -421,7 +421,16 @@
     "topUpDue": "A pagar ahora",
     "topUpBalanceNow": "Saldo",
     "topUpBalanceAfter": "Después",
-    "seePlans": "Ver planes"
+    "seePlans": "Ver planes",
+    "activations": {
+      "title": "Activaciones de informes",
+      "left": "{count, plural, one {Queda #} other {Quedan #}}",
+      "leftRefills": "{count, plural, one {Queda #} other {Quedan #}}, se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}",
+      "unlimited": "Sin límite",
+      "none": "No queda ninguna",
+      "hint": "Cada una publica un informe en Openscholar Reports sin nada que pagar.",
+      "publish": "Publicar"
+    }
   },
   "errors": {
     "unexpectedIssue": "Se ha producido un problema inesperado. Inténtelo de nuevo o vuelva a una página estable.",
@@ -1239,20 +1248,20 @@
     "reviewed": "Revisado"
   },
   "saveToLibrary": {
-    "save": "Guardar",
-    "saved": "Guardado",
-    "saveToLibrary": "Guardar en la biblioteca",
+    "save": "Añadir a la biblioteca",
+    "saved": "En la biblioteca",
+    "saveToLibrary": "Añadir a la biblioteca",
     "removeFromLibrary": "Quitar de la biblioteca",
     "addToCollection": "Añadir a colección",
     "newCollection": "Nueva colección",
     "removed": "Quitado de la biblioteca",
     "undo": "Deshacer",
-    "saveError": "No se pudo guardar el artículo",
+    "saveError": "No se pudo añadir el artículo a la biblioteca",
     "removeError": "No se pudo quitar el artículo",
     "restoreError": "No se pudo devolver el artículo",
     "collectionError": "No se pudo cambiar la colección",
     "newCollectionWithPaper": "Nueva colección con este artículo",
-    "finishSaving": "Terminar de guardar"
+    "finishSaving": "Terminar de añadir"
   },
   "rating": {
     "noRating": "Sin valoración",
@@ -1452,7 +1461,7 @@
     "ratingFilter": "Valoración",
     "loadMore": "Cargar más",
     "emptyLibraryTitle": "Esta biblioteca está vacía",
-    "emptyLibraryDescription": "Guarda artículos de los resultados de búsqueda para llenar esta biblioteca.",
+    "emptyLibraryDescription": "Añade artículos de los resultados de búsqueda para llenar esta biblioteca.",
     "emptyLibraryCta": "Buscar artículos",
     "noResultsTitle": "Ningún artículo coincide con su búsqueda o filtros",
     "clearFilters": "Quitar filtros",
@@ -6236,7 +6245,7 @@
       "action": {
         "openPage": "Abrir su página",
         "open": "Abrir",
-        "activate": "Activarlo",
+        "activate": "Pagar",
         "carryOn": "Continuar",
         "seeFailed": "Ver qué falló",
         "manage": "Abrir en Publicar"
@@ -6647,7 +6656,7 @@
       "changeDetails": "Cambiar los datos",
       "uploadNew": "Subir un PDF nuevo",
       "publishAnother": "Publicar otro",
-      "activate": "Activar",
+      "activate": "Pagar",
       "needsApproval": "Primero tiene que aprobarlo un revisor",
       "untitled": "Informe sin título",
       "startedBy": "{name} empezó este informe. Solo esa persona y los administradores del espacio de trabajo pueden cambiarlo.",
@@ -6748,14 +6757,17 @@
           "left": "{count, plural, one {Queda #} other {Quedan #}}",
           "unlimited": "Sin límite",
           "uses": "Activar usa una de tu saldo. No se cobra nada.",
-          "usesOrg": "Activar usa una del saldo de {organization}. No se cobra nada."
+          "usesOrg": "Activar usa una del saldo de {organization}. No se cobra nada.",
+          "leftRefills": "{count, plural, one {Queda #} other {Quedan #}}, se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}"
         },
         "creditLine": "Saldo a favor de la cuenta",
         "declined": "Tu tarjeta fue rechazada. No se cobró nada. Cambia la tarjeta e inténtalo de nuevo.",
         "paused": "La publicación está en pausa por ahora, así que nada puede publicarse. Tu informe conserva su lugar.",
         "noneLeft": "No queda ninguna activación en el saldo. Actívalo de nuevo para pagar una.",
         "kept": "La activación pagada para este informe pasó a tu saldo. El próximo informe que actives la usará.",
-        "keptOrg": "La activación pagada para este informe pasó al saldo de {organization}. El próximo informe que se active allí la usará."
+        "keptOrg": "La activación pagada para este informe pasó al saldo de {organization}. El próximo informe que se active allí la usará.",
+        "keptNote": "Si un revisor rechaza el informe antes de que se complete el pago, la activación queda en tu saldo para tu próximo informe.",
+        "keptNoteOrg": "Si un revisor rechaza el informe antes de que se complete el pago, la activación queda en el saldo de {organization} para el próximo informe."
       },
       "back": "Atrás",
       "bylineFirst": "Tu PDF lleva esta mención",
@@ -6813,7 +6825,8 @@
           "body": "Se paga con tarjeta. Un código promocional puede rebajar el precio o cubrirlo. El DOI se registra y el informe se publica.",
           "bodyPriced": "{price} por informe, pagados con tarjeta. Un código promocional puede rebajar ese precio o cubrirlo. El DOI se registra y el informe se publica.",
           "bodyBalance": "Usa una activación del saldo, en el que quedan {count, number}. No hay nada que pagar. El DOI se registra y el informe se publica.",
-          "bodyUnlimited": "Usa una activación del saldo, que no tiene límite. No hay nada que pagar. El DOI se registra y el informe se publica."
+          "bodyUnlimited": "Usa una activación del saldo, que no tiene límite. No hay nada que pagar. El DOI se registra y el informe se publica.",
+          "bodyBalanceRefills": "Usa una activación del saldo, en el que quedan {count, number} y que se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}. No hay nada que pagar. El DOI se registra y el informe se publica."
         }
       }
     },
