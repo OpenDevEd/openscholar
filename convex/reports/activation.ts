@@ -437,7 +437,7 @@ export const addCard = action({
     const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
     // Stripe writes the session's id into the way back, which names the card saved in it.
     const code = codeOf(typed);
-    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${code ? `&code=${encodeURIComponent(code)}` : ""}`, note?.trim().slice(0, NOTE_MAX) || undefined, locale)).url;
+    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${code ? `&code=${encodeURIComponent(code)}` : ""}`, { note: note?.trim().slice(0, NOTE_MAX) || undefined, locale, cancelUrl: `${requireAppUrl()}${prefix}/publish?report=${encodeURIComponent(key)}` })).url;
   },
 });
 
