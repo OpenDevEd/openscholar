@@ -6319,7 +6319,6 @@
       },
       "which": "Yimiphi imibiko",
       "pagerItems": "imibiko",
-      "approvedToast": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
       "sentAgain": "Kuthunyelwe futhi",
       "noMatch": "Ayikho imibiko efanayo",
       "noReports": "Ayikho imibiko okwamanje",
@@ -6336,7 +6335,7 @@
       "openPage": "Vula ikhasi lawo",
       "openPageLabel": "Vula ikhasi le-{key}",
       "done": {
-        "approve": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
+        "approve": "Kuvunyiwe. Manje ungenziwa usebenze.",
         "reinstate": "Kubuyiselwe. Kushicilelwe futhi.",
         "withdraw": "Kuhoxisiwe",
         "decline": "Kwenqatshiwe"
@@ -6517,7 +6516,12 @@
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
         "live": "Kushicilelwe",
-        "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe."
+        "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe.",
+        "paying": "Inkokhelo yayo isaqhubeka, ngakho izinyathelo zayo azikwazi ukuvulwa manje. Uma ibhange liyenqaba, ziyavuleka futhi.",
+        "liveNow": "Isiku-inthanethi. Shintsha imininingwane yayo nge-{action}.",
+        "closed": "Umbuyekezi uyikhiphile, ngakho ayikwazi ukushintshwa.",
+        "running": "Ukuhlola kwayo kuyaqhubeka. Izinyathelo zizovuleka futhi uma kuqedile.",
+        "notYours": "Umuntu oqale lo mbiko kuphela ongawushintsha."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",
@@ -6543,11 +6547,10 @@
       "agreementIntro": "Ugcina i-copyright futhi ushicilela ngaphansi kwe-CC BY 4.0. Ukusayina kugodla i-DOI yakho.",
       "agreementShared": "Ugcina i-copyright futhi ushicilela ngaphansi kwe-CC BY 4.0. Ukusayina kugodla i-DOI yakho. Lo mbiko ungowale ndawo yokusebenza: amalungu ayo angawubona, futhi wena nabaphathi bayo niyawusebenza.",
       "signedBy": "Kusayinwa ngu-",
-      "signForAll": "Ngisayina egameni labo bonke ababhali abavumile",
-      "agree": "Ngiyavumelana nalesi sivumelwano",
+      "agree": "Ngiyavumelana nalesi sivumelwano, egameni lami nelabo bonke ababhali engibhala nabo, bonke abavumile",
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
-      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza amabhokisi.",
+      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza ibhokisi.",
       "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
@@ -6964,7 +6967,8 @@
       "checkAndPublish": "Hlola izinguquko bese ushicilela",
       "runChecks": "Thumela",
       "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400.",
-      "back": "Emuva"
+      "back": "Emuva",
+      "backToChecks": "Buyela ekuhloleni"
     }
   },
   "people": {

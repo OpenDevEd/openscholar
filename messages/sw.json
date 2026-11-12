@@ -6320,7 +6320,6 @@
       },
       "which": "Ripoti zipi",
       "pagerItems": "ripoti",
-      "approvedToast": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
       "sentAgain": "Imetumwa tena",
       "noMatch": "Hakuna ripoti inayolingana",
       "noReports": "Bado hakuna ripoti",
@@ -6337,7 +6336,7 @@
       "openPage": "Fungua ukurasa wake",
       "openPageLabel": "Fungua ukurasa wa {key}",
       "done": {
-        "approve": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
+        "approve": "Imeidhinishwa. Sasa inaweza kuwashwa.",
         "reinstate": "Imerejeshwa. Imechapishwa tena.",
         "withdraw": "Imeondolewa",
         "decline": "Imekataliwa"
@@ -6518,7 +6517,12 @@
         "details": "Maelezo",
         "checks": "Ukaguzi",
         "live": "Imechapishwa",
-        "sealed": "Imefungwa baada ya makubaliano kutiwa saini."
+        "sealed": "Imefungwa baada ya makubaliano kutiwa saini.",
+        "paying": "Malipo yake yanaendelea, kwa hiyo hatua zake haziwezi kufunguliwa sasa. Benki ikiyakataa, zitafunguka tena.",
+        "liveNow": "Iko hewani. Badilisha maelezo yake kwa {action}.",
+        "closed": "Mkaguzi aliiondoa, kwa hiyo haiwezi kubadilishwa.",
+        "running": "Ukaguzi wake unaendelea. Hatua zitafunguka tena ukimalizika.",
+        "notYours": "Ni mtu aliyeanzisha ripoti hii pekee anayeweza kuibadilisha."
       },
       "publish": "Chapisha",
       "newReport": "Ripoti mpya",
@@ -6544,11 +6548,10 @@
       "agreementIntro": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0. Kusaini kunahifadhi DOI yako.",
       "agreementShared": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0. Kusaini kunahifadhi DOI yako. Ripoti hii ni ya eneo hili la kazi: wanachama wake wanaweza kuiona, na wewe na wasimamizi wake mnaifanyia kazi.",
       "signedBy": "Inasainiwa na",
-      "signForAll": "Ninasaini kwa niaba ya waandishi wote waliokubali",
-      "agree": "Ninakubali makubaliano haya",
+      "agree": "Ninakubali makubaliano haya, kwa niaba yangu na ya waandishi wenza wote, ambao wote wamekubali",
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
-      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye visanduku.",
+      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye kisanduku.",
       "agreementInEnglish": "Makubaliano yenyewe yameandikwa kwa Kiingereza.",
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
@@ -6965,7 +6968,8 @@
       "checkAndPublish": "Kagua mabadiliko na uchapishe",
       "runChecks": "Wasilisha",
       "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400.",
-      "back": "Rudi"
+      "back": "Rudi",
+      "backToChecks": "Rudi kwenye ukaguzi"
     }
   },
   "people": {

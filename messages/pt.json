@@ -6320,7 +6320,6 @@
       },
       "which": "Que relatórios",
       "pagerItems": "relatórios",
-      "approvedToast": "Aprovado. O autor já pode ativá-lo.",
       "sentAgain": "Enviado de novo",
       "noMatch": "Nenhum relatório corresponde",
       "noReports": "Ainda não há relatórios",
@@ -6337,7 +6336,7 @@
       "openPage": "Abrir a página",
       "openPageLabel": "Abrir a página de {key}",
       "done": {
-        "approve": "Aprovado. O autor já pode ativá-lo.",
+        "approve": "Aprovado. Já pode ser ativado.",
         "reinstate": "Reposto. Está publicado de novo.",
         "withdraw": "Retirado",
         "decline": "Recusado"
@@ -6518,7 +6517,12 @@
         "details": "Dados",
         "checks": "Verificações",
         "live": "Publicado",
-        "sealed": "Bloqueado depois de o acordo ser assinado."
+        "sealed": "Bloqueado depois de o acordo ser assinado.",
+        "paying": "O pagamento está em andamento, então as etapas não podem ser abertas agora. Se o banco recusar, elas abrem de novo.",
+        "liveNow": "Está publicado. Altere os detalhes com {action}.",
+        "closed": "Um revisor o retirou, então ele não pode ser alterado.",
+        "running": "As verificações estão em andamento. As etapas abrem de novo quando terminarem.",
+        "notYours": "Só a pessoa que começou este relatório pode alterá-lo."
       },
       "publish": "Publicar",
       "newReport": "Novo relatório",
@@ -6544,11 +6548,10 @@
       "agreementIntro": "Mantém os direitos de autor e publica com a licença CC BY 4.0. Ao assinar, reserva o seu DOI.",
       "agreementShared": "Mantém os direitos de autor e publica com a licença CC BY 4.0. Ao assinar, reserva o seu DOI. O relatório pertence a este espaço de trabalho: os membros podem vê-lo, e o utilizador e os administradores trabalham nele.",
       "signedBy": "Assinado por",
-      "signForAll": "Assino em nome de todos os autores, que concordaram",
-      "agree": "Aceito este acordo",
+      "agree": "Aceito este acordo, por mim e por eventuais coautores, que concordaram",
       "untouched": "Já reservou um DOI para <mono>{key}</mono> e ainda não carregou o PDF.",
       "continueWith": "Continuar com ele",
-      "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale as caixas.",
+      "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale a caixa.",
       "agreementInEnglish": "O acordo em si está redigido em inglês.",
       "limit": {
         "personal": "O seu plano permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",
@@ -6965,7 +6968,8 @@
       "checkAndPublish": "Verificar e publicar as alterações",
       "runChecks": "Enviar",
       "tooEarly": "Um relatório não pode ter data anterior a 1400.",
-      "back": "Voltar"
+      "back": "Voltar",
+      "backToChecks": "Voltar às verificações"
     }
   },
   "people": {

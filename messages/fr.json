@@ -6319,7 +6319,6 @@
       },
       "which": "Quels rapports",
       "pagerItems": "rapports",
-      "approvedToast": "Approuvé. Son auteur peut l'activer maintenant.",
       "sentAgain": "Renvoyé",
       "noMatch": "Aucun rapport ne correspond",
       "noReports": "Aucun rapport pour l'instant",
@@ -6336,7 +6335,7 @@
       "openPage": "Ouvrir sa page",
       "openPageLabel": "Ouvrir la page de {key}",
       "done": {
-        "approve": "Approuvé. Son auteur peut l'activer maintenant.",
+        "approve": "Approuvé. Il peut maintenant être activé.",
         "reinstate": "Rétabli. Il est de nouveau en ligne.",
         "withdraw": "Retiré",
         "decline": "Refusé"
@@ -6517,7 +6516,12 @@
         "details": "Informations",
         "checks": "Vérifications",
         "live": "En ligne",
-        "sealed": "Verrouillé une fois l'accord signé."
+        "sealed": "Verrouillé une fois l'accord signé.",
+        "paying": "Son paiement est en cours, ses étapes ne peuvent donc pas être rouvertes pour l'instant. Si la banque le refuse, elles se rouvrent.",
+        "liveNow": "Il est en ligne. Modifiez ses informations avec {action}.",
+        "closed": "Un relecteur l'a retiré, il ne peut donc plus être modifié.",
+        "running": "Ses vérifications sont en cours. Les étapes se rouvrent quand elles sont terminées.",
+        "notYours": "Seule la personne qui a commencé ce rapport peut le modifier."
       },
       "publish": "Publier",
       "newReport": "Nouveau rapport",
@@ -6543,11 +6547,10 @@
       "agreementIntro": "Vous gardez le droit d'auteur et publiez sous licence CC BY 4.0. La signature réserve votre DOI.",
       "agreementShared": "Vous gardez le droit d'auteur et publiez sous licence CC BY 4.0. La signature réserve votre DOI. Le rapport appartient à cet espace de travail : ses membres peuvent le voir, et vous et ses administrateurs y travaillez.",
       "signedBy": "Signé par",
-      "signForAll": "Je signe pour tous les auteurs, qui ont donné leur accord",
-      "agree": "J'accepte cet accord",
+      "agree": "J'accepte cet accord, pour moi et pour les éventuels coauteurs, qui ont donné leur accord",
       "untouched": "Vous avez déjà réservé un DOI pour <mono>{key}</mono> et n'avez pas téléversé son PDF.",
       "continueWith": "Continuer avec celui-ci",
-      "agreementChanged": "L'accord a changé pendant que cette page était ouverte. Relisez-le, puis cochez les cases.",
+      "agreementChanged": "L'accord a changé pendant que cette page était ouverte. Relisez-le, puis cochez la case.",
       "agreementInEnglish": "L’accord lui-même est rédigé en anglais.",
       "limit": {
         "personal": "Votre offre permet de commencer {count, plural, one {# rapport} other {# rapports}} par jour. Revenez demain, ou passez à une offre qui en permet plus.",
@@ -6964,7 +6967,8 @@
       "checkAndPublish": "Vérifier et publier les modifications",
       "runChecks": "Soumettre",
       "tooEarly": "Un rapport ne peut pas être daté d’avant 1400.",
-      "back": "Retour"
+      "back": "Retour",
+      "backToChecks": "Retour aux vérifications"
     }
   },
   "people": {

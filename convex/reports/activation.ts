@@ -28,7 +28,7 @@ import { ACTIVATIONS_FEATURE, ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN, activatio
 import { CODE_MAX, activationsFor, licenceOf, stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
-import { MOVED_ON, byKey, changing, touch } from "./flow";
+import { MOVED_ON, byKey, changing, paymentOf, touch } from "./flow";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
@@ -111,6 +111,8 @@ export const terms = workspaceQuery({
       price: v.union(v.number(), v.null()),
       /** A charge the bank asked to confirm, and its page. */
       pending: v.union(v.object({ url: v.union(v.string(), v.null()) }), v.null()),
+      /** A charge for it is under way, until `until` at the latest, or waits on the bank (`until` null): the report stays as it is until it is answered. */
+      paying: v.union(v.object({ until: v.union(v.number(), v.null()) }), v.null()),
       /**
        * The report's last charge waited on the bank, which didn't confirm it: nothing was charged. With the promotion
        * code it was asked with, which is still the person's to use.
@@ -143,6 +145,7 @@ export const terms = workspaceQuery({
       price: plan?.price?.amount ?? null,
       // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
       pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null } : null,
+      paying: await paymentOf(ctx, report._id),
       refused: last?.state === "refused" ? { code: last.code ?? null } : null,
       kept: last?.state === "unused",
       paused: paused(report, (await reportSettings(ctx)).publication),

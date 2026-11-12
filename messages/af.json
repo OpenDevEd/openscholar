@@ -6320,7 +6320,6 @@
       },
       "which": "Watter verslae",
       "pagerItems": "verslae",
-      "approvedToast": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
       "sentAgain": "Weer gestuur",
       "noMatch": "Geen verslae pas nie",
       "noReports": "Nog geen verslae nie",
@@ -6337,7 +6336,7 @@
       "openPage": "Maak sy bladsy oop",
       "openPageLabel": "Maak {key} se bladsy oop",
       "done": {
-        "approve": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
+        "approve": "Goedgekeur. Dit kan nou geaktiveer word.",
         "reinstate": "Herstel. Dit is weer gepubliseer.",
         "withdraw": "Teruggetrek",
         "decline": "Afgekeur"
@@ -6518,7 +6517,12 @@
         "details": "Besonderhede",
         "checks": "Kontroles",
         "live": "Gepubliseer",
-        "sealed": "Gesluit sodra die ooreenkoms onderteken is."
+        "sealed": "Gesluit sodra die ooreenkoms onderteken is.",
+        "paying": "Die betaling is aan die gang, so die stappe kan nie nou oopgemaak word nie. As die bank dit weier, gaan hulle weer oop.",
+        "liveNow": "Dit is lewendig. Verander die besonderhede met {action}.",
+        "closed": "’n Beoordelaar het dit afgehaal, so dit kan nie verander word nie.",
+        "running": "Die kontroles loop. Die stappe gaan weer oop wanneer hulle klaar is.",
+        "notYours": "Net die persoon wat hierdie verslag begin het, kan dit verander."
       },
       "publish": "Publiseer",
       "newReport": "Nuwe verslag",
@@ -6544,11 +6548,10 @@
       "agreementIntro": "Jy behou die kopiereg en publiseer onder CC BY 4.0. Ondertekening reserveer jou DOI.",
       "agreementShared": "Jy behou die kopiereg en publiseer onder CC BY 4.0. Ondertekening reserveer jou DOI. Hierdie verslag behoort aan hierdie werkruimte: sy lede kan dit sien, en jy en sy administrateurs werk daaraan.",
       "signedBy": "Onderteken deur",
-      "signForAll": "Ek onderteken namens al die skrywers wat ingestem het",
-      "agree": "Ek stem in tot hierdie ooreenkoms",
+      "agree": "Ek stem in tot hierdie ooreenkoms, vir myself en enige medeskrywers, wat ingestem het",
       "untouched": "Jy het reeds 'n DOI vir <mono>{key}</mono> gereserveer en nog nie sy PDF opgelaai nie.",
       "continueWith": "Gaan daarmee voort",
-      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkies.",
+      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkie.",
       "agreementInEnglish": "Die ooreenkoms self is in Engels geskryf.",
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
@@ -6965,7 +6968,8 @@
       "checkAndPublish": "Kontroleer wysigings en publiseer",
       "runChecks": "Dien in",
       "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
-      "back": "Terug"
+      "back": "Terug",
+      "backToChecks": "Terug na die kontroles"
     }
   },
   "people": {

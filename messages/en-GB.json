@@ -6319,7 +6319,6 @@
       },
       "which": "Which reports",
       "pagerItems": "reports",
-      "approvedToast": "Approved. Its author can activate it now.",
       "sentAgain": "Sent again",
       "noMatch": "No reports match",
       "noReports": "No reports yet",
@@ -6336,7 +6335,7 @@
       "openPage": "Open its page",
       "openPageLabel": "Open the page of {key}",
       "done": {
-        "approve": "Approved. Its author can activate it now.",
+        "approve": "Approved. It can be activated now.",
         "reinstate": "Reinstated. It's live again.",
         "withdraw": "Withdrawn",
         "decline": "Declined"
@@ -6517,7 +6516,12 @@
         "details": "Details",
         "checks": "Checks",
         "live": "Live",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "Locked once the agreement is signed.",
+        "paying": "Its payment is going through, so its steps can't be opened now. If the bank refuses it, they open again.",
+        "liveNow": "It's live. Change its details with {action}.",
+        "closed": "A reviewer took it down, so it can't be changed.",
+        "running": "Its checks are running. The steps open again when they finish.",
+        "notYours": "Only the person who started this report can change it."
       },
       "publish": "Publish",
       "newReport": "New report",
@@ -6543,11 +6547,10 @@
       "agreementIntro": "You keep the copyright and choose the licence. Signing reserves your DOI.",
       "agreementShared": "You keep the copyright and choose the licence. Signing reserves your DOI. The report is this workspace's: its members can see it, and you and its admins work on it.",
       "signedBy": "Signed by",
-      "signForAll": "I sign for all the authors, who have agreed",
-      "agree": "I agree to this agreement",
+      "agree": "I agree to this agreement, for myself and any co-authors, who have agreed",
       "untouched": "You already reserved a DOI for <mono>{key}</mono> and haven't uploaded its PDF.",
       "continueWith": "Continue with it",
-      "agreementChanged": "The agreement changed while this page was open. Read it again, then tick the boxes.",
+      "agreementChanged": "The agreement changed while this page was open. Read it again, then tick the box.",
       "agreementInEnglish": "The agreement itself is written in English.",
       "limit": {
         "personal": "Your plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
@@ -6964,7 +6967,8 @@
       "checkAndPublish": "Check and publish the changes",
       "runChecks": "Submit",
       "tooEarly": "A report can't be dated before 1400.",
-      "back": "Back"
+      "back": "Back",
+      "backToChecks": "Back to the checks"
     }
   },
   "people": {

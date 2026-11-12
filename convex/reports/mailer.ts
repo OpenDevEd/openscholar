@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
-import { optionalPlatformMailService } from "../evidenceLibraries/runtimeActionConfig";
+import { optionalPlatformMailService, optionalRuntimeEnvironment } from "../evidenceLibraries/runtimeActionConfig";
 import { requireAppUrl } from "../lib/env";
 import { sendInvitationEmail } from "../lib/invitationDelivery";
 import { mailAbout, reportEmail } from "../../lib/reports/emails";
@@ -25,9 +25,11 @@ export const send = internalAction({
       // Its author has no address to write to.
       if (!email) return null;
       kept = { audience: email.audience, subject: email.subject, text: email.text };
-      const mail = optionalPlatformMailService((message) => new Error(message));
+      // Shared dev sets REPORT_EMAILS=off: its test reports would fill the team's inbox. The email is still kept below.
+      const off = optionalRuntimeEnvironment("REPORT_EMAILS") === "off";
+      const mail = off ? undefined : optionalPlatformMailService((message) => new Error(message));
       if (mail) for (const to of email.to) await sendInvitationEmail(mail, { senderName: "Openscholar Reports", to, replyTo: email.replyTo, subject: email.subject, text: email.text, html: email.html });
-      else error = "Mail isn't set up on this deployment.";
+      else error = off ? "Report emails are off on this deployment." : "Mail isn't set up on this deployment.";
     } catch (failure) {
       error = String(failure).slice(0, 300);
       console.error(JSON.stringify({ event: "report-email-failed", reportId, email: event, error }));

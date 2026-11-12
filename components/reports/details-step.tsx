@@ -3,7 +3,7 @@
 // A report's details as the model read them from its PDF, for the author to correct (plans/publish-reports).
 // Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
@@ -94,11 +94,12 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
   };
   const name = (month: number) => format.dateTime(new Date(Date.UTC(2000, month - 1, 1)), { month: "short", timeZone: "UTC" });
   return (
-    <div role="group" aria-labelledby={id} className="min-w-0 space-y-1.5">
+    <div role="group" aria-labelledby={id} className="@container min-w-0 space-y-1.5">
       <span id={id} className="block ps-1 text-xs font-medium text-muted-foreground">
         {t("date")}
       </span>
-      <div className="flex gap-1.5">
+      {/* On a phone at large text the three don't fit a row: they stack, each full width. */}
+      <div className="flex gap-1.5 max-sm:@max-[14.5rem]:flex-col">
         <Input
           aria-label={t("dateYear")}
           inputMode="numeric"
@@ -111,10 +112,10 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
             onTyped(null);
             if (typed === "") onDate("");
           }}
-          className="w-[4.25rem] shrink-0 tabular-nums"
+          className="w-[4.25rem] shrink-0 tabular-nums max-sm:@max-[14.5rem]:w-full"
         />
         <Select value={parts?.month ? pad(parts.month) : ""} disabled={!year || typed !== null} onValueChange={(month) => year && onDate(month === NONE ? dateOf(year) : dateOf(year, Number(month), dayIn(year, Number(month))))}>
-          <SelectTrigger className="min-w-0 flex-1" aria-label={t("dateMonth")}>
+          <SelectTrigger className="min-w-0 flex-1 max-sm:@max-[14.5rem]:w-full max-sm:@max-[14.5rem]:flex-none" aria-label={t("dateMonth")}>
             <SelectValue placeholder={t("dateMonth")} />
           </SelectTrigger>
           <SelectContent>
@@ -128,7 +129,7 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
         </Select>
         <Select value={parts?.day ? pad(parts.day) : ""} disabled={!year || !parts?.month || typed !== null} onValueChange={(day) => year && parts?.month && onDate(dateOf(year, parts.month, day === NONE ? undefined : Number(day)))}>
           {/* As wide as its word, in every language: "Day", "Jour", "Tag". */}
-          <SelectTrigger className="min-w-[4.25rem] shrink-0" aria-label={t("dateDay")}>
+          <SelectTrigger className="min-w-[4.25rem] shrink-0 max-sm:@max-[14.5rem]:w-full" aria-label={t("dateDay")}>
             <SelectValue placeholder={t("dateDay")} />
           </SelectTrigger>
           <SelectContent>
@@ -326,6 +327,8 @@ export function DetailsStep({
   onTouched,
   onCancel,
   onBack,
+  onReturn,
+  ref,
   resend = false,
   waits = false,
   words,
@@ -351,6 +354,10 @@ export function DetailsStep({
   onCancel?: (version: number | undefined) => void;
   /** Back to the PDF, while the report is still being made. */
   onBack?: () => void;
+  /** Back to the checks it was taken from, as they were. Offered until something in the form changes. */
+  onReturn?: () => void;
+  /** Sends an edit still waiting to be saved now: the page does before it moves the report to another step, which a save arriving after would be refused by. */
+  ref?: Ref<{ flush: () => void }>;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
@@ -383,6 +390,7 @@ export function DetailsStep({
     held.current.send?.();
     held.current.send = undefined;
   };
+  useImperativeHandle(ref, () => ({ flush: sendNow }));
   const change = (update: (was: Metadata) => Metadata) => {
     const was: Metadata = { ...initial, ...held.current.own };
     const next = update(was);
@@ -768,6 +776,11 @@ export function DetailsStep({
             onBack();
           }}>
             <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
+        {onReturn && !touched ? (
+          <Button variant="outline" onClick={onReturn}>
+            {t("backToChecks")}
           </Button>
         ) : null}
         {onCancel ? (

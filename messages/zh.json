@@ -6319,7 +6319,6 @@
       },
       "which": "哪些报告",
       "pagerItems": "份报告",
-      "approvedToast": "已批准。作者现在可以激活它。",
       "sentAgain": "已重新发送",
       "noMatch": "没有匹配的报告",
       "noReports": "还没有报告",
@@ -6336,7 +6335,7 @@
       "openPage": "打开其页面",
       "openPageLabel": "打开 {key} 的页面",
       "done": {
-        "approve": "已批准。作者现在可以激活它。",
+        "approve": "已批准。现在可以激活了。",
         "reinstate": "已恢复，重新上线。",
         "withdraw": "已撤回",
         "decline": "已拒绝"
@@ -6517,7 +6516,12 @@
         "details": "信息",
         "checks": "检查",
         "live": "上线",
-        "sealed": "协议签署后即锁定。"
+        "sealed": "协议签署后即锁定。",
+        "paying": "付款正在处理中，因此现在无法打开这些步骤。如果银行拒绝付款，它们会重新开放。",
+        "liveNow": "已上线。请通过“{action}”更改详情。",
+        "closed": "审核人员已将其撤下，因此无法更改。",
+        "running": "检查正在运行。完成后这些步骤会重新开放。",
+        "notYours": "只有开始这份报告的人才能更改它。"
       },
       "publish": "发布",
       "newReport": "新报告",
@@ -6543,8 +6547,7 @@
       "agreementIntro": "您保留版权，以 CC BY 4.0 许可发布。签署即预留您的 DOI。",
       "agreementShared": "您保留版权，以 CC BY 4.0 许可发布。签署即预留您的 DOI。此报告属于本工作区：成员都能看到，您和工作区管理员负责处理。",
       "signedBy": "签署人",
-      "signForAll": "我代表已同意的全体作者签署",
-      "agree": "我同意此协议",
+      "agree": "我代表本人及全体合著者同意此协议，全体合著者均已同意",
       "untouched": "您已为 <mono>{key}</mono> 预留了 DOI，但尚未上传其 PDF。",
       "continueWith": "继续处理它",
       "agreementChanged": "此页面打开期间协议已更改。请重新阅读，然后勾选方框。",
@@ -6964,7 +6967,8 @@
       "checkAndPublish": "检查并发布修改",
       "runChecks": "提交",
       "tooEarly": "报告日期不能早于 1400 年。",
-      "back": "返回"
+      "back": "返回",
+      "backToChecks": "返回检查"
     }
   },
   "people": {

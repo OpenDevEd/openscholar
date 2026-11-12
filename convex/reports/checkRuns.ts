@@ -70,7 +70,8 @@ export const start = internalMutation({
       // Details typed over another PDF's, as a tab left open across a new upload would send, are never checked.
       if (report.pdf?.at !== from.pdfAt) throw createError("CONFLICT", "A new PDF replaced the one these details were read from. Check the details it was read into.");
       await ctx.db.patch("reportDetails", details._id, { metadata: checkedDetails(metadata, licenceOf(report)), running: [] });
-      await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim() });
+      // Its details are as they are sent now: the checks they left are no longer theirs to go back to.
+      await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim(), reopened: undefined });
     }
     // Changes to a live report are checked as it was published: by the checks of that version and against the line
     // its PDF carries, so new checks or a new byline never fail a report published before them.
@@ -167,6 +168,7 @@ export const finish = internalMutation({
       checksVersion: version,
       approved: undefined,
       asked: undefined,
+      reopened: undefined,
     });
     // The team hears of a report that waits for a reviewer, and of a check that couldn't answer when nothing waits.
     const checked = (await ctx.db.get("reports", reportId))!;

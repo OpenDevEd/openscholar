@@ -6320,7 +6320,6 @@
       },
       "which": "Qué informes",
       "pagerItems": "informes",
-      "approvedToast": "Aprobado. Su autor ya puede activarlo.",
       "sentAgain": "Enviado de nuevo",
       "noMatch": "Ningún informe coincide",
       "noReports": "Aún no hay informes",
@@ -6337,7 +6336,7 @@
       "openPage": "Abrir su página",
       "openPageLabel": "Abrir la página de {key}",
       "done": {
-        "approve": "Aprobado. Su autor ya puede activarlo.",
+        "approve": "Aprobado. Ya se puede activar.",
         "reinstate": "Restablecido. Vuelve a estar publicado.",
         "withdraw": "Retirado",
         "decline": "Rechazado"
@@ -6518,7 +6517,12 @@
         "details": "Datos",
         "checks": "Comprobaciones",
         "live": "Publicado",
-        "sealed": "Bloqueado una vez firmado el acuerdo."
+        "sealed": "Bloqueado una vez firmado el acuerdo.",
+        "paying": "Su pago está en curso, así que sus pasos no se pueden abrir ahora. Si el banco lo rechaza, se abren de nuevo.",
+        "liveNow": "Está publicado. Cambia sus datos con {action}.",
+        "closed": "Un revisor lo retiró, así que no se puede cambiar.",
+        "running": "Sus comprobaciones están en curso. Los pasos se abren de nuevo cuando terminen.",
+        "notYours": "Solo la persona que empezó este informe puede cambiarlo."
       },
       "publish": "Publicar",
       "newReport": "Informe nuevo",
@@ -6544,11 +6548,10 @@
       "agreementIntro": "Conservas los derechos de autor y publicas con licencia CC BY 4.0. Al firmar reservas tu DOI.",
       "agreementShared": "Conservas los derechos de autor y publicas con licencia CC BY 4.0. Al firmar reservas tu DOI. El informe pertenece a este espacio de trabajo: sus miembros pueden verlo, y tú y sus administradores trabajáis en él.",
       "signedBy": "Firmado por",
-      "signForAll": "Firmo en nombre de todos los autores, que están de acuerdo",
-      "agree": "Acepto este acuerdo",
+      "agree": "Acepto este acuerdo, en mi nombre y en el de los coautores, que están de acuerdo",
       "untouched": "Ya reservaste un DOI para <mono>{key}</mono> y no has subido su PDF.",
       "continueWith": "Continuar con él",
-      "agreementChanged": "El acuerdo cambió mientras esta página estaba abierta. Léelo de nuevo y marca las casillas.",
+      "agreementChanged": "El acuerdo cambió mientras esta página estaba abierta. Léelo de nuevo y marca la casilla.",
       "agreementInEnglish": "El acuerdo en sí está redactado en inglés.",
       "limit": {
         "personal": "Tu plan permite empezar {count, plural, one {# informe} other {# informes}} al día. Vuelve mañana o cámbiate a un plan con más.",
@@ -6965,7 +6968,8 @@
       "checkAndPublish": "Comprobar y publicar los cambios",
       "runChecks": "Enviar",
       "tooEarly": "Un informe no puede tener una fecha anterior a 1400.",
-      "back": "Atrás"
+      "back": "Atrás",
+      "backToChecks": "Volver a las comprobaciones"
     }
   },
   "people": {

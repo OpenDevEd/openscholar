@@ -140,7 +140,7 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
                     row={row}
                     stage={stageOf(row, shown.humanReview)}
                     onOpen={() => onOpen(row.key)}
-                    onApprove={() => decide({ key: row.key, decision: "approve", seenAt: row.updatedAt, ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success(t("approvedToast")), failed)}
+                    onApprove={() => decide({ key: row.key, decision: "approve", seenAt: row.updatedAt, ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success(t("done.approve")), failed)}
                     onRetry={() => retry({ key: row.key }).then(() => void toast.success(t("sentAgain")), failed)}
                   />
                 ))}

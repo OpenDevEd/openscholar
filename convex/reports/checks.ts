@@ -51,7 +51,8 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
     // A report that names another version of itself says where it was published before: no search is needed to find it.
     const named = metadata.relations.map((relation) => ({ relation, href: linkHref(relation.target) })).find(({ relation, href }) => relation.kind === "version" && href && doiIn(href) !== report.doi.toLowerCase());
     if (named) return { ...base, ...failed, pass: false, evidence: { title: named.relation.target, url: named.href!, where: "the report's own links" }, reasoning: "The report names another version of itself among its links." };
-    const found = await alreadyPublished(metadata, report.doi, on, communities);
+    // With its PDF's text, which a report with no abstract is compared by.
+    const found = await alreadyPublished({ ...metadata, text }, report.doi, on, communities);
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
       : { ...base, pass: true, detail: CHECK_SAID.notPublished };
