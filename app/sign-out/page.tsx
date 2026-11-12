@@ -36,7 +36,8 @@ export default async function SignOutPage({ searchParams }: { searchParams: Prom
   const [{ redirect_url: asked }, requestHeaders] = await Promise.all([searchParams, headers()]);
   const [back, from] = await Promise.all([communityOrigin(asked), communityOrigin(requestHeaders.get("referer"))]);
   if (!back) redirect("/");
-  // A browser that sends no Referer still gets back to its community, signed out there only, as before this page existed.
-  if (from !== back) redirect(asked as string);
-  return <SignOut to={asked as string} />;
+  // A browser that sends no Referer still gets back to its community, signed out there only, as before this page
+  // existed. The page is drawn either way, never redirected from here: as the session ends, Clerk's script asks for
+  // this page again, and that request's Referer is this page itself.
+  return <SignOut to={asked as string} end={from === back} />;
 }

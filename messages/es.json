@@ -335,6 +335,7 @@
     "password": "Contraseña de Crossref",
     "prefix": "Prefijo DOI",
     "registrant": "Registrante",
+    "registrantHint": "Crossref lo completa a partir del prefijo al guardar.",
     "depositorName": "Nombre del depositante",
     "email": "Correo del depositante",
     "namespace": "Espacio de nombres DOI",
@@ -6562,6 +6563,7 @@
       "untouched": "Ya reservaste un DOI para <mono>{key}</mono> y no has subido su PDF.",
       "continueWith": "Continuar con él",
       "agreementChanged": "El acuerdo cambió mientras esta página estaba abierta. Léelo de nuevo y marca las casillas.",
+      "agreementInEnglish": "El acuerdo en sí está redactado en inglés.",
       "limit": {
         "personal": "Tu plan permite empezar {count, plural, one {# informe} other {# informes}} al día. Vuelve mañana o cámbiate a un plan con más.",
         "personalClosed": "Tu plan no incluye publicar. Cámbiate a un plan que lo incluya.",

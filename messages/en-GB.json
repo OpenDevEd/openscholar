@@ -335,6 +335,7 @@
     "password": "Crossref password",
     "prefix": "DOI prefix",
     "registrant": "Registrant",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Depositor name",
     "email": "Depositor email",
     "namespace": "DOI namespace",
@@ -6561,6 +6562,7 @@
       "untouched": "You already reserved a DOI for <mono>{key}</mono> and haven't uploaded its PDF.",
       "continueWith": "Continue with it",
       "agreementChanged": "The agreement changed while this page was open. Read it again, then tick the boxes.",
+      "agreementInEnglish": "The agreement itself is written in English.",
       "limit": {
         "personal": "Your plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
         "personalClosed": "Your plan doesn't include publishing. Move to a plan that does.",

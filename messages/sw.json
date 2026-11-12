@@ -335,6 +335,7 @@
     "password": "Nenosiri la Crossref",
     "prefix": "Kiambishi awali cha DOI",
     "registrant": "Msajili",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Jina la mwasilishaji",
     "email": "Barua pepe ya mwasilishaji",
     "namespace": "Nafasi ya majina ya DOI",
@@ -6562,6 +6563,7 @@
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
       "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye visanduku.",
+      "agreementInEnglish": "Makubaliano yenyewe yameandikwa kwa Kiingereza.",
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
         "personalClosed": "Mpango wako haujumuishi uchapishaji. Hamia mpango unaoujumuisha.",

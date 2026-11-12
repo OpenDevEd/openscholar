@@ -53,6 +53,26 @@ export async function verifyCrossrefCredentials(
   }
 }
 
+/**
+ * Who Crossref registered a DOI prefix to, in Crossref's own words: what a deposit names as its registrant, so nobody
+ * types it. Throws when Crossref has no such prefix, which would otherwise only show when the first deposit fails.
+ */
+async function crossrefRegistrant(prefix: string) {
+  if (!/^10\.\d{4,9}$/.test(prefix)) throw new Error("A DOI prefix looks like 10.12345. Check the prefix and try again.");
+  const response = await fetch(`https://api.crossref.org/prefixes/${prefix}`, {
+    headers: { Accept: "application/json", "User-Agent": userAgent },
+    signal: timeout(),
+    redirect: "error",
+  });
+  if (response.status === 404) throw new Error(`Crossref has no DOI prefix ${prefix}. Check the prefix and try again.`);
+  const name = response.ok ? (await response.json().catch(() => null))?.message?.name : null;
+  if (typeof name !== "string" || !name.trim()) {
+    console.error("Publishing credential verification rejected", { provider: "crossref", operation: "prefix", prefix, status: response.status });
+    throw new Error("Crossref could not look up this DOI prefix. Nothing was saved. Try again.");
+  }
+  return name.trim();
+}
+
 export async function verifyZenodoCredentials(token: string, sandbox: boolean) {
   const base = sandbox ? "https://sandbox.zenodo.org" : "https://zenodo.org";
   const headers = {
@@ -192,6 +212,7 @@ export async function verifiedPublication(
   }
   if (settings.crossref.mode === "custom") {
     for (const key of CUSTOM_CROSSREF) settings.crossref[key] ||= before.crossref?.[key] ?? "";
+    if (settings.crossref.prefix) settings.crossref.registrant = await crossrefRegistrant(settings.crossref.prefix);
     custom.crossref = Object.fromEntries(CUSTOM_CROSSREF.map((key) => [key, settings.crossref[key]])) as CustomCrossref;
     custom.credentials.crossrefLoginId = credentials.crossrefLoginId =
       asked.credentials.crossrefLoginId?.trim() || before.credentials.crossrefLoginId;
