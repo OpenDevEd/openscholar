@@ -6876,7 +6876,7 @@
       "licence": "Ilayisensi",
       "authors": "Ababhali",
       "authorsPager": "ababhali",
-      "addAuthor": "Engeza umbhali",
+      "addPerson": "Engeza umuntu",
       "abstract": "Isifinyezo",
       "subjects": "Isifundo",
       "topics": "Izihloko zocwaningo",
@@ -7154,12 +7154,12 @@
         "name": {
           "title": "Igama",
           "about": "Igama njengoba umbiko uliphrinta. Igama eliphelele lenhlangano nalo liyasebenza.",
-          "note": "I-Crossref ne-Zenodo ziligcina njengesibongo, bese kuba amagama. Igama lokugcina lithathwa njengesibongo."
+          "note": "Igama lomuntu lifika ku-Crossref naku-Zenodo njengesibongo, bese kuba amagama: igama lokugcina lithathwa njengesibongo. Igama lenhlangano, elinegama elifana no-Department, Ministry noma University, lithunyelwa lonke."
         },
         "kind": {
           "title": "Indima",
           "about": "Lo muntu uyini embikweni. Iningi labantu lingababhali.",
-          "note": "Ngababhali kuphela abaphawulwa ekucaphuneni kombiko. Lokho umbhali akwenzile kufakwa ngaphansi kweMinikelo."
+          "note": "Ababhali kuphela abaqanjwa ekucaphuneni kombiko. Abanye bonke babhalwe nendima yabo ngaphansi kwe-Iminikelo ekhasini lombiko, futhi i-Crossref ne-Zenodo bathola indima yomuntu ngamunye."
         },
         "orcid": {
           "title": "I-ORCID iD",

@@ -6876,7 +6876,7 @@
       "licence": "许可",
       "authors": "作者",
       "authorsPager": "位作者",
-      "addAuthor": "添加作者",
+      "addPerson": "添加人员",
       "abstract": "摘要",
       "subjects": "主题领域",
       "topics": "主题",
@@ -7154,12 +7154,12 @@
         "name": {
           "title": "姓名",
           "about": "报告上印的姓名。也可以填写机构的全称。",
-          "note": "Crossref 和 Zenodo 按先姓、后名的方式保存。最后一个词被视为姓。"
+          "note": "个人姓名以先姓、后名的方式发送给 Crossref 和 Zenodo：最后一个词被视为姓。机构名称（含有 Department、Ministry 或 University 等词）会完整发送。"
         },
         "kind": {
           "title": "角色",
           "about": "此人对报告而言是什么身份。大多数人是作者。",
-          "note": "只有作者会出现在报告的引用中。作者做了什么，请填在“贡献”下。"
+          "note": "只有作者会出现在报告的引用中。其他人员会连同其角色列在报告页面的“贡献”下，Crossref 和 Zenodo 也会收到每个人的角色。"
         },
         "orcid": {
           "title": "ORCID 标识符",

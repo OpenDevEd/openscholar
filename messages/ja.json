@@ -6876,7 +6876,7 @@
       "licence": "ライセンス",
       "authors": "著者",
       "authorsPager": "人の著者",
-      "addAuthor": "著者を追加",
+      "addPerson": "人を追加",
       "abstract": "要旨",
       "subjects": "主題",
       "topics": "トピック",
@@ -7154,12 +7154,12 @@
         "name": {
           "title": "氏名",
           "about": "報告書に印刷されている氏名。組織の正式名称でもかまいません。",
-          "note": "Crossref と Zenodo は姓、名の順で保管します。最後の語が姓とみなされます。"
+          "note": "個人名は姓、名の順で Crossref と Zenodo に送られ、最後の語が姓とみなされます。Department、Ministry、University などの語を含む組織名は、そのまま送られます。"
         },
         "kind": {
           "title": "役割",
           "about": "この人が報告書にとってどんな立場か。ほとんどの人は著者です。",
-          "note": "報告書の引用に名前が載るのは著者だけです。著者が何をしたかは「貢献」に入れます。"
+          "note": "レポートの引用に名前が載るのは著者だけです。それ以外の人は、レポートのページの「貢献」に役割とともに表示され、Crossref と Zenodo には各人の役割が送られます。"
         },
         "orcid": {
           "title": "ORCID iD",

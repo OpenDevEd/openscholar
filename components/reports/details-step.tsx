@@ -663,7 +663,7 @@ export function DetailsStep({
               authors.last(m.authors.length + 1);
             }}
           >
-            <Plus /> {t("addAuthor")}
+            <Plus /> {t("addPerson")}
           </Button>
         </Section>
 
@@ -817,11 +817,11 @@ export function DetailsStep({
                           <span className="min-w-0 flex-1 truncate text-sm">{reference.text}</span>
                         </TooltipHint>
                       ) : (
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-xs underline-offset-4 hover:underline">
-                          {reference.doi}
-                        </a>
+                        <span className="min-w-0 flex-1 truncate font-mono text-xs">
+
+                        </span>
                       )}
-                      {reference.text && href ? (
+                      {href ? (
                         <TooltipHint label={t("openItsDoi")}>
                           <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
                             <a href={href} target="_blank" rel="noopener noreferrer" aria-label={t("openReferenceDoi", { number: format.number(i + 1) })}>

@@ -6876,7 +6876,7 @@
       "licence": "License",
       "authors": "Authors",
       "authorsPager": "authors",
-      "addAuthor": "Add an author",
+      "addPerson": "Add a person",
       "abstract": "Abstract",
       "subjects": "Subjects",
       "topics": "Topics",
@@ -7154,12 +7154,12 @@
         "name": {
           "title": "Name",
           "about": "The name as the report prints it. An organization's full name works too.",
-          "note": "Crossref and Zenodo keep it as family name, then given names. The last word is taken as the family name."
+          "note": "A person's name reaches Crossref and Zenodo as family name, then given names: the last word is taken as the family name. An organization's name, one with a word such as Department, Ministry or University in it, is sent whole."
         },
         "kind": {
           "title": "Role",
           "about": "What this person is to the report. Most people are authors.",
-          "note": "Only authors are named in the report's citation. What an author did goes under Contributions."
+          "note": "Only authors are named in the report's citation. Everyone else is listed with their role under Contributions on the report's page, and Crossref and Zenodo get each person's role."
         },
         "orcid": {
           "title": "ORCID iD",

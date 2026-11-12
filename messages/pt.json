@@ -6877,7 +6877,7 @@
       "licence": "Licença",
       "authors": "Autores",
       "authorsPager": "autores",
-      "addAuthor": "Adicionar um autor",
+      "addPerson": "Adicionar uma pessoa",
       "abstract": "Resumo",
       "subjects": "Assuntos",
       "topics": "Tópicos",
@@ -7155,12 +7155,12 @@
         "name": {
           "title": "Nome",
           "about": "O nome tal como o relatório o imprime. O nome completo de uma organização também serve.",
-          "note": "A Crossref e o Zenodo guardam-no como apelido e depois nomes próprios. A última palavra é tomada como apelido."
+          "note": "O nome de uma pessoa chega ao Crossref e ao Zenodo como sobrenome, depois prenomes: a última palavra é tomada como sobrenome. O nome de uma organização, com uma palavra como Department, Ministry ou University, é enviado inteiro."
         },
         "kind": {
           "title": "Função",
           "about": "O que esta pessoa é para o relatório. A maioria são autores.",
-          "note": "Só os autores aparecem na citação do relatório. O que um autor fez vai em Contribuições."
+          "note": "Só os autores aparecem na citação do relatório. As demais pessoas aparecem com sua função em Contribuições, na página do relatório, e o Crossref e o Zenodo recebem a função de cada uma."
         },
         "orcid": {
           "title": "Identificador ORCID",

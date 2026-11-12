@@ -6877,7 +6877,7 @@
       "licence": "Leseni",
       "authors": "Waandishi",
       "authorsPager": "waandishi",
-      "addAuthor": "Ongeza mwandishi",
+      "addPerson": "Ongeza mtu",
       "abstract": "Muhtasari",
       "subjects": "Somo",
       "topics": "Mada",
@@ -7155,12 +7155,12 @@
         "name": {
           "title": "Jina",
           "about": "Jina kama ripoti inavyolichapisha. Jina kamili la shirika pia linafaa.",
-          "note": "Crossref na Zenodo hulihifadhi kama jina la ukoo, kisha majina mengine. Neno la mwisho huchukuliwa kuwa jina la ukoo."
+          "note": "Jina la mtu hufika Crossref na Zenodo kama jina la ukoo, kisha majina mengine: neno la mwisho huchukuliwa kuwa jina la ukoo. Jina la shirika, lenye neno kama Department, Ministry au University, hutumwa lote."
         },
         "kind": {
           "title": "Jukumu",
           "about": "Mtu huyu ni nani kwa ripoti hii. Watu wengi ni waandishi.",
-          "note": "Waandishi pekee ndio hutajwa kwenye nukuu ya ripoti. Kile mwandishi alifanya huwekwa chini ya Michango."
+          "note": "Waandishi pekee ndio hutajwa katika nukuu ya ripoti. Wengine wote huorodheshwa pamoja na nafasi yao chini ya Michango kwenye ukurasa wa ripoti, na Crossref na Zenodo hupokea nafasi ya kila mtu."
         },
         "orcid": {
           "title": "ORCID iD",

@@ -6877,7 +6877,7 @@
       "licence": "Lizenz",
       "authors": "Autorinnen und Autoren",
       "authorsPager": "Autorinnen und Autoren",
-      "addAuthor": "Eine Autorin oder einen Autor hinzufügen",
+      "addPerson": "Person hinzufügen",
       "abstract": "Zusammenfassung",
       "subjects": "Fachgebiete",
       "topics": "Themen",
@@ -7155,12 +7155,12 @@
         "name": {
           "title": "Name",
           "about": "Der Name, wie der Bericht ihn druckt. Der volle Name einer Organisation geht auch.",
-          "note": "Crossref und Zenodo führen ihn als Familienname, dann Vornamen. Das letzte Wort gilt als Familienname."
+          "note": "Der Name einer Person kommt bei Crossref und Zenodo als Familienname, dann Vornamen an: Das letzte Wort gilt als Familienname. Der Name einer Organisation, mit einem Wort wie Department, Ministry oder University, wird vollständig gesendet."
         },
         "kind": {
           "title": "Rolle",
           "about": "Was diese Person für den Bericht ist. Die meisten sind Autorinnen oder Autoren.",
-          "note": "Nur Autorinnen und Autoren stehen in der Zitation des Berichts. Was eine Autorin oder ein Autor getan hat, gehört unter Beiträge."
+          "note": "Nur Autorinnen und Autoren stehen in der Zitation des Berichts. Alle anderen stehen mit ihrer Rolle unter Beiträge auf der Seite des Berichts, und Crossref und Zenodo erhalten die Rolle jeder Person."
         },
         "orcid": {
           "title": "ORCID iD",

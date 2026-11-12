@@ -6877,7 +6877,7 @@
       "licence": "Lisensie",
       "authors": "Skrywers",
       "authorsPager": "skrywers",
-      "addAuthor": "Voeg skrywer by",
+      "addPerson": "Voeg ’n persoon by",
       "abstract": "Opsomming",
       "subjects": "Vakgebied",
       "topics": "Onderwerpe",
@@ -7155,12 +7155,12 @@
         "name": {
           "title": "Naam",
           "about": "Die naam soos die verslag dit druk. ’n Organisasie se volle naam werk ook.",
-          "note": "Crossref en Zenodo hou dit as van, dan voorname. Die laaste woord word as die van geneem."
+          "note": "’n Persoon se naam bereik Crossref en Zenodo as van, dan voorname: die laaste woord word as die van geneem. ’n Organisasie se naam, met ’n woord soos Department, Ministry of University daarin, word heel gestuur."
         },
         "kind": {
           "title": "Rol",
           "about": "Wat hierdie persoon vir die verslag is. Die meeste mense is skrywers.",
-          "note": "Net skrywers word in die verslag se aanhaling genoem. Wat ’n skrywer gedoen het, gaan onder Bydraes."
+          "note": "Net outeurs word in die verslag se aanhaling genoem. Almal anders word met hul rol onder Bydraes op die verslag se bladsy gelys, en Crossref en Zenodo kry elke persoon se rol."
         },
         "orcid": {
           "title": "ORCID iD",
