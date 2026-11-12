@@ -53,8 +53,10 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick, type LicenceQuote } from "@/components/reports/licence-choice";
 import { mockQuoteLicences, useMockVoucher, keepMockLicence, mockAgreementText, mockByline, mockSeries, mockTerms, useMockLicence } from "@/components/reports/licence-mock";
+import { PaymentChoice, balanceOf, payment, type PayWith } from "@/components/reports/payment-choice";
+import { keepMockPayWith, mockCodeOff, spendMockBalance, useMockBalance, useMockPayWith } from "@/components/reports/publication-mock";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, activationsFor, changesOf, licenceName, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -104,6 +106,8 @@ const said = (otherwise: string) => (error: unknown) => void toast.error(getErro
 const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
+/** The part of what is bought that a code takes off, 0 to 1. */
+const codeOff = (quote: Quote | null | undefined) => (quote && quote.price > 0 ? quote.discount / quote.price : 0);
 
 function copy(text: string, copied: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(copied));
@@ -978,6 +982,12 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   // A promotion code, applied to the licences' prices here and kept with the report for its activation.
   const [voucher, setVoucher] = useState<{ quote: Quote; licences: { one: LicenceQuote; three: LicenceQuote } } | null>(null);
   const [typedCode, setTypedCode] = useState("");
+  // mock: the workspace's publication balance, kept in this browser (publication-mock.ts). The real build reads it with `starts`.
+  const parts = useMockBalance();
+  // How the report is to be paid: from the balance while there is one, unless the author picks the card. Kept with the
+  // report when it is signed, and open to change until it is activated.
+  const [picked, setPicked] = useState<PayWith | null>(null);
+  const payWith: PayWith = picked ?? (balanceOf(parts) > 0 ? "balance" : "card");
   // mock: dev's server has no quote before a report is started; licence-mock.ts quotes dev's two test codes. The real
   // build calls useAction(api.reports.activation.quoteLicences) with the workspace, and sign takes `voucher`.
   const quoteLicences = (code: string) => mockQuoteLicences(code, { one: starts?.price ?? null, three: starts?.priceOfThree ?? null });
@@ -1014,10 +1024,24 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
       </StepHead>
       {choosing ? (
         <div className="mb-5">
-          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null, quoted: voucher?.licences ?? null }} />
-          {/* Only where a price is shown: a workspace whose activations have no price has nothing for a code to take off. */}
-          {starts?.price != null ? (
-            <div className="mt-3">
+          <LicenceChoice
+            value={pick}
+            onChange={setPick}
+            disabled={busy || !!signed}
+            cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null, quoted: voucher?.licences ?? null, due: (price) => payment({ price, balance: balanceOf(parts), payWith, off: codeOff(voucher?.quote) }).due }}
+          />
+          {/* Only where a price is shown: a workspace whose reports have no price has nothing to pay or take off. */}
+          {starts?.price != null && starts.priceOfThree != null ? (
+            <div className="mt-3 space-y-1.5">
+              <PaymentChoice
+                licence={licenceName(named)}
+                price={activationsFor(named) === 1 ? starts.price : starts.priceOfThree}
+                parts={parts}
+                payWith={payWith}
+                onPayWith={setPicked}
+                code={voucher ? { code: voucher.quote.code, off: codeOff(voucher.quote) } : null}
+                disabled={busy || !!signed}
+                voucher={
               <PromoCode
                 applied={voucher?.quote ?? null}
                 // Applying is done in onQuote, which has both plans' quotes; this only hears a code removed.
@@ -1034,6 +1058,9 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
                 typed={typedCode}
                 onTyped={setTypedCode}
               />
+                }
+              />
+              <p className="ps-1 text-xs text-muted-foreground">{t("payment.later")}</p>
             </div>
           ) : null}
         </div>
@@ -1099,6 +1126,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
                   // mock: dev's server takes no licence yet; this browser keeps it (licence-mock.ts).
                   const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version } as Parameters<typeof sign>[0]);
                   keepMockLicence(key, licence!, voucher?.quote.code);
+                  // mock: and how it is to be paid (publication-mock.ts); the real `sign` takes `payWith`.
+                  keepMockPayWith(key, payWith);
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);
@@ -1282,7 +1311,9 @@ function Overview({ series, reviewed, activations, refill, price, priceOfThree, 
     { id: "checks", icon: ShieldCheck },
     { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
-  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? (refill ? t("activate.bodyBalanceRefills", { count: activations, interval: refill }) : t("activate.bodyBalance", { count: activations })) : price !== null ? (priceOfThree !== null ? t("activate.bodyPricedThree", { price: dollars(Math.round(price * 100)), priceOfThree: dollars(Math.round(priceOfThree * 100)) }) : t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) })) : t("activate.body");
+  // mock: the publication balance this browser keeps (publication-mock.ts): with one, the step says both prices and both ways to pay.
+  const hasBalance = balanceOf(useMockBalance()) > 0;
+  const activating = hasBalance && price !== null && priceOfThree !== null ? t("activate.bodyPrices", { price: dollars(Math.round(price * 100)), priceOfThree: dollars(Math.round(priceOfThree * 100)) }) : activations === null ? t("activate.bodyUnlimited") : activations > 0 ? (refill ? t("activate.bodyBalanceRefills", { count: activations, interval: refill }) : t("activate.bodyBalance", { count: activations })) : price !== null ? (priceOfThree !== null ? t("activate.bodyPricedThree", { price: dollars(Math.round(price * 100)), priceOfThree: dollars(Math.round(priceOfThree * 100)) }) : t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) })) : t("activate.body");
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1644,20 +1675,29 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
-  /** Where a code can be used: with nothing in the balance, while there is a price and no payment waiting. */
-  const vouchers = !spendable && price !== null && !pending && !!onQuote;
+  // mock: the workspace's publication balance, in dollars, and how the report was to be paid when it was signed, both
+  // kept in this browser (publication-mock.ts). The real build reads them with `terms`.
+  const parts = useMockBalance();
+  const signedWith = useMockPayWith(report?.key);
+  // mock: the licence this browser signed the report with (licence-mock.ts); the real report carries its own.
+  const licence = useMockLicence(report?.key);
+  // Everything but the licence can still change here: the balance or the card, and the code.
+  const [picked, setPicked] = useState<PayWith | null>(null);
+  const payWith: PayWith = balanceOf(parts) > 0 ? (picked ?? signedWith ?? "balance") : "card";
+  /** Where a code can be used: while there is a price and no payment waiting. It lowers what the card pays. */
+  const vouchers = price !== null && !pending && !!onQuote;
   // What is typed in the bar's code field, kept here so every way of charging sees it. Back from saving a card on
   // Stripe's page, the code applied before leaving is in the address and starts typed in.
   const [carried, setCarried] = useQueryState("code", parseAsString);
   // Quoted again by the server on the way back, the code is applied already; one it couldn't quote stays typed.
   // A code applied when the report was signed starts typed in too.
-  const [typed, setTyped] = useState(quoted ? "" : (carried ?? report?.voucher ?? ""));
+  const [typed, setTyped] = useState(quoted ? "" : (carried ?? ""));
   // A code typed and not applied: nothing is charged past it, or the price without the code would be.
   const unapplied = vouchers && typed.trim() !== "";
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
   // It never stays open over a code still to be applied either.
   if (paying && (!admin || unapplied)) setPaying(false);
-  const [code, setCode] = useState<Quote | null>(quoted);
+  const [applied, setCode] = useState<Quote | null>(quoted);
   // The person applied or removed a code here: from then on the code is theirs, not the last payment's.
   const [chose, setChose] = useState(false);
   // The same, for a requote that answers after the choice: it reads this when it lands, not what it was asked with.
@@ -1678,6 +1718,10 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
     }
     setTyped(value);
   };
+  // The code applied when the report was signed is applied here too, until the person applies or removes one.
+  // mock: dev's two test codes, quoted here (publication-mock.ts); the real build quotes the kept code with `terms`.
+  const signedOff = mockCodeOff(report?.voucher);
+  const code: Quote | null = applied ?? (!chose && report?.voucher && signedOff !== undefined && price !== null ? { code: report.voucher, price: price / 100, discount: (price / 100) * signedOff, total: (price / 100) * (1 - signedOff) } : null);
   const [quoting, setQuoting] = useState(false);
   // What went wrong with activating or paying, said above the payment bar.
   const { problem, say, failed } = useProblem();
@@ -1705,7 +1749,9 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
       )
       .finally(() => setQuoting(false));
   };
-  const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
+  // What the report's price comes to, in dollars: what the balance pays, what the card pays, and what the code takes off that.
+  const sum = payment({ price: (price ?? 0) / 100, balance: balanceOf(parts), payWith, off: codeOff(code) });
+  const subtotal = Math.round(sum.due * 100);
   const fromCredit = Math.min(credit, subtotal);
   const due = subtotal - fromCredit;
   const activateNow = (pay: boolean, withCode?: string, expect?: number) =>
@@ -1713,6 +1759,8 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
       say(null);
       try {
         await onActivate?.(pay, withCode, expect);
+        // mock: dev's server made the report live with one of its own activations; the balance here pays its part.
+        spendMockBalance(sum.fromBalance);
       } catch (error) {
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
@@ -1724,8 +1772,8 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
     });
   // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
   const requoting = !chose && !code && !!terms?.refused?.code;
-  /** What Activate takes from the card, beside the word; null when the balance pays, or a code or credit covers it. */
-  const amount = spendable || price === null || due === 0 || requoting ? null : dollars(due);
+  /** What Activate takes from the card, beside the word; null when the balance, a code or credit covers it all. */
+  const amount = price === null || due === 0 || requoting ? null : dollars(due);
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1785,9 +1833,36 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
               <Problem className="pb-3 ps-1">{problem}</Problem>
-              {stage === "ready" && admin && terms ? (
-                // An admin's Activate sits in the payment bar, beside what it's paid with: the balance, or the card. With
-                // neither, or while the bank confirms a charge, the bar offers that instead.
+              {stage === "ready" && admin && terms && price !== null && !pending && !terms.paused ? (
+                // An admin's Activate sits with how the report is paid: from the balance or by card, with a code, and
+                // what that leaves due. Only the licence, which set the price, is fixed.
+                <div className="mb-4">
+                  <PaymentChoice
+                    licence={licenceName(licence)}
+                    price={price / 100}
+                    parts={parts}
+                    payWith={payWith}
+                    onPayWith={setPicked}
+                    code={code ? { code: code.code, off: codeOff(code) } : null}
+                    disabled={activating}
+                    voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={type} /> : null}
+                    action={
+                      unapplied ? (
+                        <TooltipHint label={t("activation.promo.applyFirst")}>
+                          <span tabIndex={0}>
+                            <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                          </span>
+                        </TooltipHint>
+                      ) : (
+                        // Nothing due charges nothing: no dialog to confirm a charge. mock: dev's server spends one of its activations either way.
+                        <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
+                      )
+                    }
+                  />
+                  {terms.refused ? <p className="mt-1.5 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
+                </div>
+              ) : stage === "ready" && admin && terms ? (
+                // While the bank confirms a charge, or publishing is paused, the bar says that instead.
                 <PaymentLine
                   onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
@@ -1902,7 +1977,9 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
           isConfirming={false}
           onConfirm={() => {
             setPaying(false);
-            activateNow(true, code?.code, due / 100);
+            // mock: dev's server has no publication balance to top up, so the report goes live with one of its own
+            // activations. The real build buys what is due and spends the price from the balance.
+            activateNow(false);
           }}
           cardBrand={card?.brand}
           cardLast4={card?.last4}
@@ -1913,10 +1990,11 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
             targetPlan: t("activation.live"),
             targetPlanCreditsPerMonth: 0,
             lineItems:
-              code || fromCredit > 0
+              sum.fromBalance > 0 || sum.discount > 0 || fromCredit > 0
                 ? [
-                    { description: t("activation.activationLine"), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
-                    ...(code ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" }] : []),
+                    { description: licenceName(licence), amountCents: price ?? 0, currency: "USD" },
+                    ...(sum.fromBalance > 0 ? [{ description: t("activation.balanceLine"), amountCents: -Math.round(sum.fromBalance * 100), currency: "USD" }] : []),
+                    ...(code && sum.discount > 0 ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(sum.discount * 100), currency: "USD" }] : []),
                     ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
                   ]
                 : [],

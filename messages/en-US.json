@@ -429,6 +429,14 @@
       "none": "None left",
       "hint": "Each one makes a report live on Openscholar Reports with nothing to pay.",
       "publish": "Publish"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6771,10 +6779,12 @@
         "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
         "noneLeft": "There aren't enough activations left in the balance. Activate again to pay for them.",
-        "kept": "What was paid for this report went to your balance. The next report you activate uses it.",
-        "keptOrg": "What was paid for this report went to {organization}'s balance. The next report activated there uses it.",
-        "keptNote": "If a reviewer declines the report before the payment goes through, the activation stays in your balance for your next report.",
-        "keptNoteOrg": "If a reviewer declines the report before the payment goes through, the activation stays in {organization}'s balance for the next report."
+        "kept": "What was paid for this report went to your publication balance. The next report you activate uses it.",
+        "keptOrg": "What was paid for this report went to {organization}'s publication balance. The next report activated there uses it.",
+        "keptNote": "If a reviewer declines the report before the payment goes through, what you paid goes to your publication balance.",
+        "keptNoteOrg": "If a reviewer declines the report before the payment goes through, what was paid goes to {organization}'s publication balance.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "Back",
       "next": "Next",
@@ -6834,7 +6844,8 @@
           "bodyBalance": "Paid from the balance, which has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
           "bodyUnlimited": "Paid from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live.",
           "bodyBalanceRefills": "Paid from the balance, which has {count, number} left and refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own license, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own license, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6862,6 +6873,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

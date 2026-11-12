@@ -429,6 +429,14 @@
       "none": "कोई नहीं बचा",
       "hint": "हर सक्रियण बिना कुछ चुकाए Openscholar Reports पर एक रिपोर्ट लाइव करता है।",
       "publish": "प्रकाशित करें"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6774,7 +6782,9 @@
         "kept": "इस रिपोर्ट के लिए चुकाया गया सक्रियण आपके बैलेंस में चला गया। अगली रिपोर्ट जिसे आप सक्रिय करेंगे, उसमें यह लगेगा।",
         "keptOrg": "इस रिपोर्ट के लिए चुकाया गया सक्रियण {organization} के बैलेंस में चला गया। वहाँ सक्रिय होने वाली अगली रिपोर्ट में यह लगेगा।",
         "keptNote": "अगर भुगतान पूरा होने से पहले कोई समीक्षक रिपोर्ट अस्वीकार कर देता है, तो सक्रियण आपकी अगली रिपोर्ट के लिए आपके बैलेंस में रहता है।",
-        "keptNoteOrg": "अगर भुगतान पूरा होने से पहले कोई समीक्षक रिपोर्ट अस्वीकार कर देता है, तो सक्रियण अगली रिपोर्ट के लिए {organization} के बैलेंस में रहता है।"
+        "keptNoteOrg": "अगर भुगतान पूरा होने से पहले कोई समीक्षक रिपोर्ट अस्वीकार कर देता है, तो सक्रियण अगली रिपोर्ट के लिए {organization} के बैलेंस में रहता है।",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "वापस",
       "next": "आगे",
@@ -6834,7 +6844,8 @@
           "bodyBalance": "बैलेंस से एक सक्रियण लगता है, जिसमें {count, number} बचे हैं। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
           "bodyUnlimited": "बैलेंस से एक सक्रियण लगता है, जिसकी कोई सीमा नहीं है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
           "bodyBalanceRefills": "बैलेंस से एक सक्रियण लगता है, जिसमें {count, number} बचे हैं और जो {interval, select, hour {हर घंटे} day {हर दिन} week {हर हफ़्ते} month {हर महीने} quarter {हर तीन महीने} semi_annual {हर छह महीने} other {हर साल}} फिर भरता है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6862,6 +6873,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

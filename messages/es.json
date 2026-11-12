@@ -430,6 +430,14 @@
       "none": "No queda ninguna",
       "hint": "Cada una publica un informe en Openscholar Reports sin nada que pagar.",
       "publish": "Publicar"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6775,7 +6783,9 @@
         "kept": "La activación pagada para este informe pasó a tu saldo. El próximo informe que actives la usará.",
         "keptOrg": "La activación pagada para este informe pasó al saldo de {organization}. El próximo informe que se active allí la usará.",
         "keptNote": "Si un revisor rechaza el informe antes de que se complete el pago, la activación queda en tu saldo para tu próximo informe.",
-        "keptNoteOrg": "Si un revisor rechaza el informe antes de que se complete el pago, la activación queda en el saldo de {organization} para el próximo informe."
+        "keptNoteOrg": "Si un revisor rechaza el informe antes de que se complete el pago, la activación queda en el saldo de {organization} para el próximo informe.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "Atrás",
       "next": "Siguiente",
@@ -6835,7 +6845,8 @@
           "bodyBalance": "Usa una activación del saldo, en el que quedan {count, number}. No hay nada que pagar. El DOI se registra y el informe se publica.",
           "bodyUnlimited": "Usa una activación del saldo, que no tiene límite. No hay nada que pagar. El DOI se registra y el informe se publica.",
           "bodyBalanceRefills": "Usa una activación del saldo, en el que quedan {count, number} y que se recarga {interval, select, hour {cada hora} day {cada día} week {cada semana} month {cada mes} quarter {cada tres meses} semi_annual {cada seis meses} other {cada año}}. No hay nada que pagar. El DOI se registra y el informe se publica.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6863,6 +6874,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

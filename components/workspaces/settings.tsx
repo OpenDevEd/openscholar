@@ -24,7 +24,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ActivationsRow } from "@/components/billing/activations-row";
+import { PublicationBalanceRow } from "@/components/billing/publication-balance-row";
+import { useMockBalance } from "@/components/reports/publication-mock";
 import { SeatStepper } from "@/components/billing/seat-stepper";
 import { PaymentReceived, TopUpBundles, useTopUps } from "@/components/billing/top-up-bundles";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
@@ -688,6 +689,7 @@ export function WorkspaceBilling() {
   const [review, setReview] = useState<(SeatPreview & { seats: number }) | null>(null);
   // Whether reports can be published, so the organisation's activations for them are worth a row, as on a person's page.
   const publishing = useQuery(api.reports.settings.open, {});
+  const publicationParts = useMockBalance();
   if (!organization || !account || !catalog || !spending.ready || counts === undefined || publishing === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
@@ -784,7 +786,8 @@ export function WorkspaceBilling() {
                 </div>
               </div>
             ) : null}
-            {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
+            {/* mock: the publication balance this browser keeps (publication-mock.ts); the real build reads it with the account. */}
+              {publishing ? <PublicationBalanceRow parts={publicationParts} /> : null}
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">

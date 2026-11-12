@@ -429,6 +429,14 @@
       "none": "Akukho okusele",
       "hint": "Ngakunye kwenza umbiko uphile ku-Openscholar Reports ngaphandle kokukhokha lutho.",
       "publish": "Shicilela"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6774,7 +6782,9 @@
         "kept": "Ukuvula okukhokhelwe lo mbiko kungene ebhalansini lakho. Umbiko olandelayo owenza usebenze uzokusebenzisa.",
         "keptOrg": "Ukuvula okukhokhelwe lo mbiko kungene ebhalansini le-{organization}. Umbiko olandelayo owenziwa usebenze lapho uzokusebenzisa.",
         "keptNote": "Uma umbuyekezi enqaba umbiko ngaphambi kokuba inkokhelo iphothulwe, ukuvula kuhlala ebhalansini lakho kubiko wakho olandelayo.",
-        "keptNoteOrg": "Uma umbuyekezi enqaba umbiko ngaphambi kokuba inkokhelo iphothulwe, ukuvula kuhlala ebhalansini le-{organization} kubiko olandelayo."
+        "keptNoteOrg": "Uma umbuyekezi enqaba umbiko ngaphambi kokuba inkokhelo iphothulwe, ukuvula kuhlala ebhalansini le-{organization} kubiko olandelayo.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "Emuva",
       "next": "Okulandelayo",
@@ -6834,7 +6844,8 @@
           "bodyBalance": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
           "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
           "bodyBalanceRefills": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number} futhi eligcwaliswa kabusha {interval, select, hour {njalo ngehora} day {nsuku zonke} week {masonto onke} month {nyanga zonke} quarter {njalo ezinyangeni ezintathu} semi_annual {njalo ezinyangeni eziyisithupha} other {minyaka yonke}}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6862,6 +6873,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

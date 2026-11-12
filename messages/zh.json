@@ -429,6 +429,14 @@
       "none": "已用完",
       "hint": "每次激活可在 Openscholar Reports 上线一份报告，无需付款。",
       "publish": "发布"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6774,7 +6782,9 @@
         "kept": "为这份报告支付的激活次数已转入你的余额。你下次激活报告时会使用它。",
         "keptOrg": "为这份报告支付的激活次数已转入 {organization} 的余额。那里下次激活报告时会使用它。",
         "keptNote": "如果审稿人在付款完成前拒绝了报告，这次激活会留在你的余额中，供下一份报告使用。",
-        "keptNoteOrg": "如果审稿人在付款完成前拒绝了报告，这次激活会留在 {organization} 的余额中，供下一份报告使用。"
+        "keptNoteOrg": "如果审稿人在付款完成前拒绝了报告，这次激活会留在 {organization} 的余额中，供下一份报告使用。",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "返回",
       "next": "下一步",
@@ -6834,7 +6844,8 @@
           "bodyBalance": "使用余额中的一次激活，余额还剩 {count, number} 次。无需付款。DOI 完成注册，报告随即上线。",
           "bodyUnlimited": "使用余额中的一次激活，余额不限次数。无需付款。DOI 完成注册，报告随即上线。",
           "bodyBalanceRefills": "使用余额中的一次激活，余额还剩 {count, number} 次，{interval, select, hour {每小时} day {每天} week {每周} month {每月} quarter {每三个月} semi_annual {每六个月} other {每年}}补充。无需付款。DOI 完成注册，报告随即上线。",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6862,6 +6873,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

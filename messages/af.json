@@ -430,6 +430,14 @@
       "none": "Niks oor nie",
       "hint": "Elkeen bring 'n verslag regstreeks op Openscholar Reports sonder om iets te betaal.",
       "publish": "Publiseer"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6775,7 +6783,9 @@
         "kept": "Die aktivering wat vir hierdie verslag betaal is, is in jou saldo. Die volgende verslag wat jy aktiveer, gebruik dit.",
         "keptOrg": "Die aktivering wat vir hierdie verslag betaal is, is in {organization} se saldo. Die volgende verslag wat daar geaktiveer word, gebruik dit.",
         "keptNote": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in jou saldo vir jou volgende verslag.",
-        "keptNoteOrg": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in {organization} se saldo vir die volgende verslag."
+        "keptNoteOrg": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in {organization} se saldo vir die volgende verslag.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "Terug",
       "next": "Volgende",
@@ -6835,7 +6845,8 @@
           "bodyBalance": "Gebruik een aktivering uit die saldo, wat {count, number} oor het. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
           "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
           "bodyBalanceRefills": "Gebruik een aktivering uit die saldo, wat {count, number} oor het en {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul word. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6863,6 +6874,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

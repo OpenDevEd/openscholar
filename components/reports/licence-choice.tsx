@@ -33,7 +33,7 @@ export type LicenceQuote = { price: number; total: number } | null;
  * What each choice costs in US dollars: the activation plan's price, and the three-activation one's; null while there
  * is none. With a code applied, what it comes to with the code.
  */
-export type LicenceCost = { price: number | null; priceOfThree: number | null; quoted?: { one: LicenceQuote; three: LicenceQuote } | null };
+export type LicenceCost = { price: number | null; priceOfThree: number | null; quoted?: { one: LicenceQuote; three: LicenceQuote } | null; /** What is due for a licence of `price` dollars, with the way of paying and the code chosen: shown after its price where it is less. */ due?: (price: number) => number };
 
 export function LicenceChoice({ value, onChange, cost, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; cost: LicenceCost; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
@@ -45,15 +45,17 @@ export function LicenceChoice({ value, onChange, cost, disabled = false }: { val
   // shows what it comes to, after the price it takes it from.
   const costOf = (activations: number) => {
     const price = activations === 1 ? cost.price : cost.priceOfThree;
-    const quoted = activations === 1 ? cost.quoted?.one : cost.quoted?.three;
-    if (quoted && quoted.total < quoted.price)
+    if (price === null) return null;
+    // What picking it would leave to pay, after its price: the balance and a code each take some off.
+    const due = cost.due ? cost.due(price) : price;
+    if (due < price)
       return (
         <>
-          <s className="me-1.5 text-muted-foreground/70">{dollars(quoted.price)}</s>
-          <span className="font-medium text-foreground">{dollars(quoted.total)}</span>
+          <s className="me-1.5 text-muted-foreground/70">{dollars(price)}</s>
+          <span className="font-medium text-foreground">{dollars(due)}</span>
         </>
       );
-    return price === null ? null : dollars(price);
+    return dollars(price);
   };
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), activations: 1 })),

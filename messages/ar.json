@@ -430,6 +430,14 @@
       "none": "لم يبقَ شيء",
       "hint": "كل تفعيل ينشر تقريرًا على Openscholar Reports دون أن تدفع شيئًا.",
       "publish": "انشر"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6775,7 +6783,9 @@
         "kept": "التفعيل المدفوع لهذا التقرير أُضيف إلى رصيدك. سيستخدمه التقرير التالي الذي تفعّله.",
         "keptOrg": "التفعيل المدفوع لهذا التقرير أُضيف إلى رصيد {organization}. سيستخدمه التقرير التالي الذي يُفعَّل هناك.",
         "keptNote": "إذا رفض مراجع التقرير قبل اكتمال الدفع، يبقى التفعيل في رصيدك لتقريرك التالي.",
-        "keptNoteOrg": "إذا رفض مراجع التقرير قبل اكتمال الدفع، يبقى التفعيل في رصيد {organization} للتقرير التالي."
+        "keptNoteOrg": "إذا رفض مراجع التقرير قبل اكتمال الدفع، يبقى التفعيل في رصيد {organization} للتقرير التالي.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "رجوع",
       "next": "التالي",
@@ -6835,7 +6845,8 @@
           "bodyBalance": "يستخدم تفعيلًا واحدًا من الرصيد، والمتبقي فيه {count, number}. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير.",
           "bodyUnlimited": "يستخدم تفعيلًا واحدًا من الرصيد، وهو بلا حد. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير.",
           "bodyBalanceRefills": "يستخدم تفعيلًا واحدًا من الرصيد، والمتبقي فيه {count, number} ويتجدد {interval, select, hour {كل ساعة} day {كل يوم} week {كل أسبوع} month {كل شهر} quarter {كل ثلاثة أشهر} semi_annual {كل ستة أشهر} other {كل سنة}}. لا شيء يُدفع. يُسجَّل الـDOI ويُنشر التقرير.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6863,6 +6874,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

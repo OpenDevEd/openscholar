@@ -429,6 +429,14 @@
       "none": "残りなし",
       "hint": "1回ごとに、支払いなしでレポートを Openscholar Reports に公開できます。",
       "publish": "公開"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6774,7 +6782,9 @@
         "kept": "このレポートのために支払われた有効化は、あなたの残高に入りました。次に有効化するレポートで使われます。",
         "keptOrg": "このレポートのために支払われた有効化は、{organization}の残高に入りました。そこで次に有効化するレポートで使われます。",
         "keptNote": "支払いが完了する前にレビュアーがレポートを却下した場合、有効化はあなたの残高に残り、次のレポートで使えます。",
-        "keptNoteOrg": "支払いが完了する前にレビュアーがレポートを却下した場合、有効化は{organization}の残高に残り、次のレポートで使えます。"
+        "keptNoteOrg": "支払いが完了する前にレビュアーがレポートを却下した場合、有効化は{organization}の残高に残り、次のレポートで使えます。",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "戻る",
       "next": "次へ",
@@ -6834,7 +6844,8 @@
           "bodyBalance": "残高から有効化を1回分使います。残りは{count, number}回です。支払いはありません。DOIが登録され、レポートが公開されます。",
           "bodyUnlimited": "残高から有効化を1回分使います。残高に上限はありません。支払いはありません。DOIが登録され、レポートが公開されます。",
           "bodyBalanceRefills": "残高から有効化を1回分使います。残りは{count, number}回で、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充されます。支払いはありません。DOIが登録され、レポートが公開されます。",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6862,6 +6873,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {

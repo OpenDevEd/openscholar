@@ -429,6 +429,14 @@
       "none": "Aucune restante",
       "hint": "Chacune met un rapport en ligne sur Openscholar Reports, sans rien à payer.",
       "publish": "Publier"
+    },
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish"
     }
   },
   "errors": {
@@ -6774,7 +6782,9 @@
         "kept": "L'activation payée pour ce rapport a rejoint votre solde. Le prochain rapport que vous activerez l'utilisera.",
         "keptOrg": "L'activation payée pour ce rapport a rejoint le solde de {organization}. Le prochain rapport activé là l'utilisera.",
         "keptNote": "Si un relecteur refuse le rapport avant que le paiement aboutisse, l'activation reste dans votre solde pour votre prochain rapport.",
-        "keptNoteOrg": "Si un relecteur refuse le rapport avant que le paiement aboutisse, l'activation reste dans le solde de {organization} pour le prochain rapport."
+        "keptNoteOrg": "Si un relecteur refuse le rapport avant que le paiement aboutisse, l'activation reste dans le solde de {organization} pour le prochain rapport.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment, then comes back here."
       },
       "back": "Retour",
       "next": "Suivant",
@@ -6834,7 +6844,8 @@
           "bodyBalance": "Utilise une activation du solde, qui en compte {count, number}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyUnlimited": "Utilise une activation du solde, qui est sans limite. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyBalanceRefills": "Utilise une activation du solde, qui en compte {count, number} et se renouvelle {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6862,6 +6873,16 @@
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
         }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Paid by card",
+        "due": "Due at activation",
+        "nothing": "Nothing",
+        "fromBalance": "Balance",
+        "later": "Nothing is charged until the report is activated. How you pay can change until then."
       }
     },
     "meta": {
