@@ -6809,7 +6809,7 @@
           "title": "Activar",
           "body": "Se paga con tarjeta. Un código promocional puede rebajar el precio o cubrirlo. El DOI se registra y el informe se publica.",
           "bodyPriced": "{price} por informe, pagados con tarjeta. Un código promocional puede rebajar ese precio o cubrirlo. El DOI se registra y el informe se publica.",
-          "bodyBalance": "Usa una activación del saldo, en el que quedan {count}. No hay nada que pagar. El DOI se registra y el informe se publica.",
+          "bodyBalance": "Usa una activación del saldo, en el que quedan {count, number}. No hay nada que pagar. El DOI se registra y el informe se publica.",
           "bodyUnlimited": "Usa una activación del saldo, que no tiene límite. No hay nada que pagar. El DOI se registra y el informe se publica."
         }
       }

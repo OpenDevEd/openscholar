@@ -6741,7 +6741,7 @@
           "coveredHint": "无需付款，因此不需要银行卡。",
           "costsWith": "使用 {code} 后，本次激活费用为 {price}。",
           "balance": "激活次数",
-          "left": "剩余 {count} 次",
+          "left": "剩余 {count, number} 次",
           "unlimited": "不限次数",
           "uses": "激活会使用你余额中的一次。不会扣款。",
           "usesOrg": "激活会使用 {organization} 余额中的一次。不会扣款。"
@@ -6808,7 +6808,7 @@
           "title": "激活",
           "body": "用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
           "bodyPriced": "每份报告 {price}，用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
-          "bodyBalance": "使用余额中的一次激活，余额还剩 {count} 次。无需付款。DOI 完成注册，报告随即上线。",
+          "bodyBalance": "使用余额中的一次激活，余额还剩 {count, number} 次。无需付款。DOI 完成注册，报告随即上线。",
           "bodyUnlimited": "使用余额中的一次激活，余额不限次数。无需付款。DOI 完成注册，报告随即上线。"
         }
       }

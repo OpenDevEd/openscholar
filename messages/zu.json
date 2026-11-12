@@ -6741,7 +6741,7 @@
           "coveredHint": "Akukho okukhokhwayo, ngakho alikho ikhadi elidingekayo.",
           "costsWith": "Nge-{code}, lokhu kuvula kubiza u-{price}.",
           "balance": "Ukuvula",
-          "left": "Kusele okungu-{count}",
+          "left": "Kusele okungu-{count, number}",
           "unlimited": "Akukho mkhawulo",
           "uses": "Ukuvula kusebenzisa okukodwa ebhalansini lakho. Akukho okukhokhiswayo.",
           "usesOrg": "Ukuvula kusebenzisa okukodwa ebhalansini le-{organization}. Akukho okukhokhiswayo."
@@ -6808,7 +6808,7 @@
           "title": "Yenza kusebenze",
           "body": "Kukhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa intengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
           "bodyPriced": "U-{price} ngombiko ngamunye, okhokhwa ngekhadi. Ikhodi yesaphulelo ingehlisa leyo ntengo noma iyikhokhele yonke. I-DOI iyabhaliswa bese umbiko uyashicilelwa.",
-          "bodyBalance": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
+          "bodyBalance": "Kusebenzisa ukuvula okukodwa ebhalansini, elisele nokungu-{count, number}. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila.",
           "bodyUnlimited": "Kusebenzisa ukuvula okukodwa ebhalansini, elingenamkhawulo. Akukho okukhokhwayo. I-DOI iyabhaliswa bese umbiko uyaphila."
         }
       }
