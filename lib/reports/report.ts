@@ -119,7 +119,8 @@ export type Metadata = {
   /** ISO 639-1, as OpenAlex keeps it. */
   language: string;
   date: string;
-  licence: "CC BY 4.0";
+  /** The licence chosen when the agreement was signed: the report's own, which its details never change. */
+  licence: Licence;
   authors: Author[];
   abstract: string;
   topics: Topic[];
@@ -143,8 +144,77 @@ export const DETAILS_MAX_BYTES = 300_000;
 /** The longest each of a report's texts is, which its box shows as it's typed. */
 export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500, citation: 2000 } as const;
 
-/** Where each licence a report can carry is written out. */
-export const LICENCE_URL: Record<Metadata["licence"], string> = { "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/" };
+/**
+ * The Creative Commons licences an author picks from when signing (Björn, 11 Nov 2026): CC BY and CC BY-SA at the
+ * standard price, and the ones that hold back commercial use or changed versions at the other, as does a licence of
+ * the author's own. Each with its ID in Zenodo's vocabulary, which also gives Crossref its address.
+ */
+export const LICENCES = {
+  "CC BY 4.0": { title: "Creative Commons Attribution 4.0 International", zenodo: "cc-by-4.0", url: "https://creativecommons.org/licenses/by/4.0/", tier: "standard" },
+  "CC BY-SA 4.0": { title: "Creative Commons Attribution-ShareAlike 4.0 International", zenodo: "cc-by-sa-4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/", tier: "standard" },
+  "CC BY-NC 4.0": { title: "Creative Commons Attribution-NonCommercial 4.0 International", zenodo: "cc-by-nc-4.0", url: "https://creativecommons.org/licenses/by-nc/4.0/", tier: "other" },
+  "CC BY-ND 4.0": { title: "Creative Commons Attribution-NoDerivatives 4.0 International", zenodo: "cc-by-nd-4.0", url: "https://creativecommons.org/licenses/by-nd/4.0/", tier: "other" },
+  "CC BY-NC-SA 4.0": { title: "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International", zenodo: "cc-by-nc-sa-4.0", url: "https://creativecommons.org/licenses/by-nc-sa/4.0/", tier: "other" },
+  "CC BY-NC-ND 4.0": { title: "Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International", zenodo: "cc-by-nc-nd-4.0", url: "https://creativecommons.org/licenses/by-nc-nd/4.0/", tier: "other" },
+} as const;
+export type LicenceName = keyof typeof LICENCES;
+export const LICENCE_NAMES = Object.keys(LICENCES) as LicenceName[];
+/** A licence of the author's own: its name and the address of its text. */
+export type OwnLicence = { name: string; url: string };
+export type Licence = LicenceName | OwnLicence;
+/** What a report signed before authors chose is published under. */
+export const DEFAULT_LICENCE: LicenceName = "CC BY 4.0";
+/** The longest name an author's own licence takes. */
+export const LICENCE_NAME_MAX = 200;
+
+/** The longest promotion code taken: Stripe's are at most 500 characters, people's a few words. */
+export const CODE_MAX = 100;
+
+/** The licence a report is published under, a report signed before authors chose included. */
+export const licenceOf = (report: { licence?: Licence | undefined }): Licence => report.licence ?? DEFAULT_LICENCE;
+export const licenceName = (licence: Licence) => (typeof licence === "string" ? licence : licence.name);
+export const licenceUrl = (licence: Licence) => (typeof licence === "string" ? LICENCES[licence].url : licence.url);
+/** Which of the two prices a licence is published at: an author's own costs what the dearer Creative Commons ones do. */
+export type LicenceTier = "standard" | "other";
+export const tierOf = (licence: Licence): LicenceTier => (typeof licence === "string" ? LICENCES[licence].tier : "other");
+/** What publishing a report costs, in whole US dollars, by its licence's tier: set on Admin > Publications. */
+export type Prices = Record<LicenceTier, number>;
+export const DEFAULT_PRICES: Prices = { standard: 10, other: 30 };
+/** The most a price can be set to, and the least: a whole number of dollars, as the balance that pays it is bought. */
+export const PRICE_MAX = 10_000;
+export const isPrice = (dollars: number) => Number.isInteger(dollars) && dollars >= 1 && dollars <= PRICE_MAX;
+export const priceOf = (licence: Licence, prices: Prices) => prices[tierOf(licence)];
+
+/** What pays for a report: the workspace's publication balance, with a card for what it can't cover, or a card alone. */
+export const PAY_WITH = ["balance", "card"] as const;
+export type PayWith = (typeof PAY_WITH)[number];
+/**
+ * What a price comes to, in US dollars: what the balance pays, what is bought by card, what a code takes off that,
+ * and what is due. With the balance, it pays what it can and the card the rest; by card, the balance is left as it
+ * is. What is bought is whole dollars, so a balance with cents in it keeps them. `balance` null is one with no limit.
+ */
+export function payment({ price, balance, payWith, off }: { price: number; balance: number | null; payWith: PayWith; /** The share of what is bought that a code takes off, 0 to 1. */ off: number }) {
+  const bought = payWith === "card" ? price : balance === null ? 0 : Math.ceil(price - Math.min(Math.max(balance, 0), price));
+  const discount = Math.round(bought * off * 100) / 100;
+  return { fromBalance: price - bought, bought, discount, due: Math.round((bought - discount) * 100) / 100 };
+}
+
+/**
+ * The letters the page Openscholar adds to a PDF can print (lib/reports/byline-page.ts, Helvetica in WinAnsi): Latin
+ * ones with their accents, digits and the usual punctuation. A licence's name is printed there, in the byline.
+ */
+const PRINTABLE = /^[\x20-\x7E\u00A0-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u2013\u2014\u2018-\u201A\u201C-\u201E\u2026\u20AC\u2122]+$/;
+
+/**
+ * An author's own licence as it may be kept: a name the byline can print, and a web address for its text. Null when
+ * it can't be.
+ */
+export function ownLicence(name: string, url: string): OwnLicence | null {
+  const named = name.trim();
+  const address = url.trim();
+  if (!named || named.length > LICENCE_NAME_MAX || !PRINTABLE.test(named) || LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase())) return null;
+  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? { name: named, url: address } : null;
+}
 
 /** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */
 export function isOrcid(id: string) {
@@ -293,7 +363,7 @@ export const keyOf = (n: number) => `R${String(100_000 + n).padStart(6, "0")}`;
 export const isReportKey = (id: string) => /^R\d{6,}$/.test(id);
 /** The details a PDF's reading couldn't give: its file's name as the title, for its author to fill in. */
 export const blankDetails = (fileName: string, today: string): Metadata => ({
-  title: fileName.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: today, licence: "CC BY 4.0",
+  title: fileName.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: today, licence: DEFAULT_LICENCE,
   authors: [], abstract: "", topics: [], keywords: [], sdgs: [], studyDesigns: [], countries: [], funding: [], references: [], relations: [],
 });
 

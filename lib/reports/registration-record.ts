@@ -3,7 +3,7 @@
 // field of a report's details that either registrar takes (plans/registrar-metadata).
 import { CREDIT_ROLES, type CreditRole } from "@opendeved/doi-sync-core";
 import { SDGS, STUDY_DESIGNS } from "../openalex/vocabulary";
-import { doiIn, isAuthor, type Metadata, type RelationKind, wholeDate } from "./report";
+import { LICENCES, doiIn, isAuthor, type Metadata, type RelationKind, wholeDate } from "./report";
 import type { Series } from "./settings";
 
 /**
@@ -14,8 +14,6 @@ import type { Series } from "./settings";
 const BODY = /\b(organi[sz]ation|universit[yé]|institut[eo]?|minist(ry|ère|erio)|foundation|bank|agency|council|committee|commission|department|cent(er|re)|network|association|society|programme|consortium|collaboration|authority|ltd|inc|gmbh|llc)\b/i;
 const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
 
-/** A report's licence as Zenodo's vocabulary names it. */
-const LICENSE_ID: Record<Metadata["licence"], string> = { "CC BY 4.0": "cc-by-4.0" };
 
 /** How Crossref names each kind of link a report's details hold, with the words its record shows beside the link. */
 const RELATION: Record<RelationKind, { type: "isSupplementedBy" | "hasVersion"; description: string }> = {
@@ -104,8 +102,10 @@ export function registrationRecord(
     ...(m.language && { language: m.language }),
     publisher: "Openscholar",
     institution: series.name,
-    // The licence its author agreed to publish under, as Zenodo names it: the same wherever the report is registered.
-    license: LICENSE_ID[m.licence],
+    // The licence its author agreed to publish under, as Zenodo names it, or the author's own by name and address: the
+    // same wherever the report is registered. Openscholar keeps every report free to read, whatever its licence.
+    ...(typeof m.licence === "string" ? { license: LICENCES[m.licence].zenodo } : { customLicense: { title: m.licence.name, url: m.licence.url } }),
+    freeToRead: true,
     copyright: `© ${m.date.slice(0, 4)} The authors`,
     creators: m.authors.filter((author) => author.name.trim()).map((author) => creator(author, ids.institutions)),
     tags: m.keywords,

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
@@ -51,9 +52,11 @@ import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirma
 import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
-import { fillAgreement } from "@/lib/reports/agreement";
+import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
+import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { Bill, PayWithSwitch, PaymentChoice, useMoney } from "@/components/reports/payment-choice";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, isAuthor, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -69,7 +72,8 @@ type Report = Extract<Found, { report: unknown }>["report"];
 type Starts = FunctionReturnType<typeof api.reports.flow.starts>;
 type Terms = NonNullable<FunctionReturnType<typeof api.reports.activation.terms>>;
 /** What an activation costs with a promotion code, in US dollars, as Autumn quotes it. */
-type Quote = { code: string; price: number; discount: number; total: number };
+/** A promotion code applied, with the share of what a card pays that Autumn quoted it takes off, 0 to 1. */
+type Quote = { code: string; off: number };
 
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
 const STUCK_MS = RUN_STUCK_MS;
@@ -103,6 +107,26 @@ const said = (otherwise: string) => (error: unknown) => void toast.error(getErro
 const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
+/**
+ * The report's bill under its cover, from the moment it is signed until it is live: what its licence costs, and what
+ * that comes to with the way of paying and the code kept with it. Where the report is activated, the checks' own bar
+ * draws it with what is chosen there.
+ */
+function KeptBill({ report, terms, humanReview, beside }: { report: Report; terms: Terms; humanReview: boolean; beside: HTMLDivElement }) {
+  const t = useTranslations("publishReports.flow");
+  const stage = stageOf(report, humanReview);
+  // The checks' bar has it, where the report is activated.
+  const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
+  // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
+  if (stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} balance={terms} payWith={payWithOf(terms)} code={terms.voucher} credit={terms.credit} note={t("payment.later")} />, beside);
+}
+
+/** What pays for a report: as kept with it, else the balance while it holds something, else a card. */
+const payWithOf = (terms: Pick<Terms, "payWith" | "balance">): PayWith => (terms.balance === 0 ? "card" : (terms.payWith ?? "balance"));
+
+/** A section's name inside a step: the step's own heading is above them all. */
+const SECTION = "mb-3 flex items-center gap-1 text-sm font-semibold";
 
 function copy(text: string, copied: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(copied));
@@ -248,11 +272,9 @@ const PLACE = {
   page: parseAsInteger.withDefault(1),
   /** Who adds the byline to the report shown, as chosen on the way to its upload. It is one report's choice: another report starts without one. */
   byline: parseAsStringLiteral(BYLINE_BY),
-  /** The voucher applied on the report shown, so a reload applies it again (app/publish/page.tsx quotes it). Another report starts without one. */
-  code: parseAsString,
 };
 
-export function PublishFlow({ carried = null }: { /** A code applied before the trip to Stripe's page, quoted again by the server for the report it was applied on. */ carried?: (Quote & { key: string }) | null }) {
+export function PublishFlow() {
   const { isLoaded, isSignedIn } = useAuth();
   const workspaceId = useWorkspace();
   const t = useTranslations("publishReports.flow");
@@ -266,14 +288,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // the browser puts the place back on the way back.
   // What went wrong with something done on this page, said on the screen it was done on, until the page moves on.
   const trouble = useProblem(`${view}:${asked ?? ""}`);
-  // The voucher applied on a report, kept here above its steps so Back and Forward between them don't drop it. A reload
-  // brings it back from the address, which the server quotes again (`carried`).
-  const [applied, setApplied] = useState(carried);
   const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => {
     trouble.say(null);
-    // Opening a report again brings back the voucher applied on it, so a reload there still has it; anywhere else goes without.
-    const code = next.report && next.report === applied?.key ? applied.code : null;
-    void setPlace("report" in next ? { byline: null, code, ...next } : "view" in next ? { code: null, ...next } : next, { history: "push", scroll: true });
+    void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
   };
   // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
   // Back afterwards never reopens it; what a link or a reload opened closes in place.
@@ -303,7 +320,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (entry !== "" && used.split(" ").includes(entry));
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
-  // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
+  // What the shown report costs and what pays for it, read with it so its screen opens with its bill in place.
   const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // A charge left under way by an action that died stops holding the report once its time is up.
   const chargeOver = usePassed(terms?.paying?.until ?? undefined);
@@ -335,6 +352,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const saved = found && "report" in found ? found.report : null;
   // The details form open now: an edit it still holds is saved before the report moves, so the move never leaves it behind.
   const form = useRef<{ flush: () => void }>(null);
+  // The place under the cover, beside the steps on a wide page, where a step shows what it is working out: the element
+  // itself, given by its ref, so the step draws into it.
+  const [beside, setBeside] = useState<HTMLDivElement | null>(null);
   const send = (step: BackStep | "checks") => void (saved && workspaceId && (form.current?.flush(), step === "checks" ? backToChecks({ workspaceId, key: saved.key }) : goTo({ workspaceId, key: saved.key, step })).catch(trouble.failed(t("stepFailed"))));
   useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
@@ -531,8 +551,6 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             workspaceId={workspaceId}
             fresh={fresh}
             setFresh={setFresh}
-            carried={applied}
-            onApplied={setApplied}
             onSigned={(key) => {
               const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
@@ -544,6 +562,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onStep={toStep}
             onMoved={stepOn}
             form={form}
+            beside={beside}
             trouble={trouble}
             onCorrect={() => {
               setFresh(null);
@@ -551,7 +570,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             }}
             onCorrected={() => up("correct")}
           />
-          <ReportCover basics={basics} report={report} />
+          <ReportCover basics={basics} report={report} slot={setBeside} />
+          {/* The report's bill stays under its cover from signing until it is live. */}
+          {report && terms && beside ? <KeptBill report={report} terms={terms} humanReview={basics.humanReview} beside={beside} /> : null}
         </div>
       )}
     </LibraryPageShell>
@@ -585,15 +606,21 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** A code applied or removed on a report's checks. */ onApplied: (quote: (Quote & { key: string }) | null) => void; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** The place under the cover, on a wide page. */ beside: HTMLDivElement | null; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
   const activate = useAction(api.reports.activation.activate);
-  const addCard = useAction(api.reports.activation.addCard);
-  const quote = useAction(api.reports.activation.quote);
+  const quoteCode = useAction(api.reports.activation.quoteCode);
+  const cancelPayment = useAction(api.reports.activation.cancelPayment);
+  // Said at once: the bill follows the press, before the server has kept the choice.
+  const choosePayment = useMutation(api.reports.flow.choosePayment).withOptimisticUpdate((store, { key, payWith, voucher }) => {
+    for (const { args, value } of store.getAllQueries(api.reports.activation.terms)) {
+      if (value && args.key === key) store.setQuery(api.reports.activation.terms, args, { ...value, ...(payWith && { payWith }), ...(voucher !== undefined && { voucher }) });
+    }
+  });
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
@@ -660,10 +687,11 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} refill={starts?.refill ?? null} price={starts?.price ?? null} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} prices={basics.prices} balance={starts ? starts.balance : 0} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
+              beside={beside}
               basics={basics}
               shared={shared}
               starts={starts}
@@ -774,19 +802,18 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
             <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
           ) : (
             <Checks
+              beside={beside}
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
               report={report}
-              carried={carried?.key === report.key ? carried : null}
-              onApplied={(quote) => onApplied(quote && { ...quote, key: report.key })}
               humanReview={basics.humanReview}
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
               terms={terms}
-              onActivate={(pay, code, expect) => {
+              onActivate={(payWith, code, price, expect) => {
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key, pay, ...(code && { code }), ...(expect !== undefined && { expect }) }).then(
+                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect }).then(
                   (done) => {
-                    // The bank asks to confirm the charge on Stripe's page, which comes back here.
+                    // The payment is made on Stripe's page, or confirmed at the bank: both come back here.
                     if ("url" in done) {
                       setFresh(null);
                       window.location.assign(done.url);
@@ -798,8 +825,9 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
                   },
                 );
               }}
-              onAddCard={(code) => addCard({ ...here, key: report.key, note: t("savingNote"), locale, ...(code && { code }) }).then((url) => window.location.assign(url))}
-              onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
+              onChoose={(choice) => void choosePayment({ ...here, key: report.key, ...choice }).catch(said(t("saveFailed")))}
+              onQuote={(code, amount) => quoteCode({ ...here, code, amount }).then(({ off }) => ({ code: code.trim(), off }))}
+              onCancelPayment={() => cancelPayment({ ...here, key: report.key }).then(() => undefined)}
               onFix={() => onStep("upload")}
               onDetails={() => onStep("details")}
               onRequestReview={(comment) => requestReview({ ...here, key: report.key, comment }).then(() => undefined)}
@@ -945,7 +973,7 @@ function keepTicks(ticks: Ticks | null) {
   }
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack }: { /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
+function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack, beside }: { /** The place under the cover, on a wide page: the bill goes there. */ beside: HTMLDivElement | null; /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
@@ -959,6 +987,23 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const name = typed ?? user?.fullName ?? "";
   const [busy, start] = useTransition();
   const { agreement } = basics;
+  // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
+  const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
+  // A promotion code, quoted here and kept with the report when it is signed, for what a card pays to activate it.
+  const [voucher, setVoucher] = useState<Quote | null>(null);
+  const [typedCode, setTypedCode] = useState("");
+  const quoteCode = useAction(api.reports.activation.quoteCode);
+  // How the report is to be paid: from the balance while it holds something, unless the author picks the card. Kept
+  // with the report when it is signed, and open to change until it is activated.
+  const [picked, setPicked] = useState<PayWith | null>(null);
+  const payWith: PayWith = starts?.balance === 0 ? "card" : (picked ?? "balance");
+  const choosing = choosesLicence(agreement.text);
+  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
+  // An own licence still being typed reads in the agreement as far as it goes.
+  const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
+  // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
+  const priceNow = priceOf(named, basics.prices);
+  const bought = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: 0 }).bought : 0;
   // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
   // aren't known until the PDF is read, so a tick only some signers needed let reports with several go unconfirmed.
   // It is for the agreement as it read when it was made. One changed since, while the page was open, is read and
@@ -986,8 +1031,37 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
         {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
+      {/* Three things in turn, each under its own name: the licence, how it is paid, and the agreement to sign. What
+          the first two come to is a bill beside them, under the cover, so the steps themselves stay short. */}
+      {choosing ? (
+        <section className="mb-7">
+          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} />
+        </section>
+      ) : null}
+      {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
+      {starts && workspaceId ? (
+        <section className="mb-7" inert={busy || !!signed || undefined}>
+          <h3 className={SECTION}>{t("payment.title")}</h3>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <PayWithSwitch balance={starts} payWith={payWith} onPayWith={setPicked} />
+            {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
+                is kept, and is back when a card pays again. */}
+            <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
+              {bought > 0 ? (
+                <div className="px-3 py-1">
+                  <PromoCode applied={voucher} onApply={setVoucher} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off }))} typed={typedCode} onTyped={setTypedCode} />
+                </div>
+              ) : null}
+            </AutoHeight>
+          </div>
+          {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />, beside) : null}
+        </section>
+      ) : null}
+      <h3 className={SECTION}>{t("payment.sign")}</h3>
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <label className="space-y-1.5">
@@ -1024,6 +1098,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
             <ArrowLeft /> {t("back")}
           </Button>
         ) : null}
+        {/* Why Sign is shut while an own licence lacks its name or address, said beside it. */}
+        {!licence && !blocked ? <p className="text-sm text-muted-foreground">{t("licence.ownNeeded")}</p> : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -1037,12 +1113,13 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
         {starts ? (
           <NextButton
             busy={busy || !!signed}
-            disabled={!agreed || !name.trim() || busy || !!signed || !!blocked || !workspaceId}
+            disabled={!agreed || !name.trim() || !licence || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
                 say(null);
                 try {
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version });
+                  // The licence is the report's from here on; what pays and the code can still change until it is activated.
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, payWith, ...(voucher && { voucher }) });
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);
@@ -1224,12 +1301,12 @@ function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, activations, refill, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What they refill by; null when none refills. */ refill: Terms["refill"]; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, prices, balance, onStart }: { series: string; /** What a report costs under each kind of licence, in US dollars, said here so it is no surprise at the last step. */ prices: Prices; /** What the workspace's publication balance holds, which pays for the last step before a card does; null for no limit, 0 signed out. */ balance: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const flow = useTranslations("publishReports.flow");
-  const dollars = useDollars();
-  /** The balance pays for the last step: no card comes into it. */
-  const spendable = activations === null || activations > 0;
+  const money = useMoney();
+  /** The balance has something to pay the last step with. */
+  const spendable = balance !== 0;
   const items = [
     { id: "agreement", icon: PenLine },
     { id: "doi", icon: Hash },
@@ -1238,7 +1315,7 @@ function Overview({ series, reviewed, activations, refill, price, onStart }: { s
     { id: "checks", icon: ShieldCheck },
     { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
-  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? (refill ? t("activate.bodyBalanceRefills", { count: activations, interval: refill }) : t("activate.bodyBalance", { count: activations })) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
+  const activating = t(spendable ? "activate.bodyPrices" : "activate.bodyCard", { price: money(prices.standard), priceOfThree: money(prices.other) });
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1583,7 +1660,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; /** A code applied or removed here, for the page to keep while its steps come and go. */ onApplied?: (quote: Quote | null) => void; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: from the balance, or by buying one once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ beside = null, rows, report, humanReview, terms, onActivate, onChoose, onQuote, onCancelPayment, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What the report costs and what pays for it; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, paid as chosen, with the code applied to a card's part, and the price and what is due as they were shown, in US dollars. */ onActivate?: (payWith: PayWith, code: string | undefined, price: number, expect: number) => Promise<void>; /** Keeps with the report what pays, or the code applied (null takes it off). */ onChoose?: (choice: { payWith?: PayWith; voucher?: Quote | null }) => void; /** The share a code takes off `amount` dollars a card would buy. */ onQuote?: (code: string, amount: number) => Promise<Quote>; /** Gives up a payment still to be made. */ onCancelPayment?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1592,103 +1669,60 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   /** A report a reviewer declined before it ever went live: its author changes it and runs the checks again. */
   const reopens = stage === "declined" && !!report && !report.withdrawn && report.activatedAt === undefined;
   const [activating, start] = useTransition();
-  // Only the workspace's admins activate (#1261). An activation in the workspace's balance is spent first, with no
-  // card or code asked for. With none left, a code goes in the payment bar, before anything is asked for: one that
-  // covers the whole price activates with no card. A charge to the saved card is confirmed in a dialog first.
+  // Only the workspace's admins activate (#1261). The report costs its licence's price. What pays is the person's to
+  // choose until it is live: the workspace's publication balance, which pays what it can and leaves a card the rest, or
+  // a card alone. A code lowers what the card pays. Nothing due activates at once; a charge is confirmed in a dialog
+  // first, and with no saved card it is paid on Stripe's page.
   const organization = terms?.organization ?? null;
   const admin = terms?.admin ?? true;
-  /** The balance has an activation to spend; null is a balance with no limit. */
-  const spendable = !!terms && (terms.activations === null || terms.activations > 0);
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
   // A payment going through, started here or in another tab: the report can't change until it ends (flow.ts `goTo`).
   const chargeOver = usePassed(terms?.paying?.until ?? undefined);
   const charging = !!terms?.paying && !chargeOver;
-  const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
+  /** In US dollars. */
+  const price = terms?.price ?? 0;
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
-  /** Where a code can be used: with nothing in the balance, while there is a price and no payment waiting. */
-  const vouchers = !spendable && price !== null && !pending && !!onQuote;
-  // What is typed in the bar's code field, kept here so every way of charging sees it. Back from saving a card on
-  // Stripe's page, the code applied before leaving is in the address and starts typed in.
-  const [carried, setCarried] = useQueryState("code", parseAsString);
-  // Quoted again by the server on the way back, the code is applied already; one it couldn't quote stays typed.
-  const [typed, setTyped] = useState(quoted ? "" : (carried ?? ""));
+  // What pays and the code are kept with the report, so the bill reads the same on every step and after a reload.
+  const payWith: PayWith = terms ? payWithOf(terms) : "card";
+  const code = terms?.voucher ?? null;
+  // What the report's price comes to: what the balance pays, what a card buys, and what the code takes off that.
+  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0 });
+  /** Where a code can be used: while a card pays something and no payment is waiting. It lowers what the card pays. */
+  const vouchers = !!terms && sum.bought > 0 && !pending && !!onQuote;
+  // What is typed in the code's field, kept here so paying sees it.
+  const [typed, setTyped] = useState("");
   // A code typed and not applied: nothing is charged past it, or the price without the code would be.
   const unapplied = vouchers && typed.trim() !== "";
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
   // It never stays open over a code still to be applied either.
   if (paying && (!admin || unapplied)) setPaying(false);
-  const [code, setCode] = useState<Quote | null>(quoted);
-  // The person applied or removed a code here: from then on the code is theirs, not the last payment's.
-  const [chose, setChose] = useState(false);
-  // The same, for a requote that answers after the choice: it reads this when it lands, not what it was asked with.
-  const chosen = useRef(false);
-  const choose = (quote: Quote | null) => {
-    chosen.current = true;
-    setChose(true);
-    setCode(quote);
-    // Kept by the page while its steps come and go, and in the address for a reload, which the server quotes again.
-    onApplied?.(quote);
-    void setCarried(quote?.code ?? null, { history: "replace" });
-  };
-  // Typing a code is choosing one too: a requote that answers meanwhile must not put the old code over the field.
-  const type = (value: string) => {
-    if (value.trim()) {
-      chosen.current = true;
-      setChose(true);
-    }
-    setTyped(value);
-  };
-  const [quoting, setQuoting] = useState(false);
   // What went wrong with activating or paying, said above the payment bar.
   const { problem, say, failed } = useProblem();
-  // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
-  // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
-  // quote that couldn't be had leaves it closed, so a code still good is never dropped from the charge.
-  const openPay = () => {
-    const again = chose ? null : terms?.refused?.code;
-    if (!again || !onQuote) return setPaying(true);
-    setQuoting(true);
-    onQuote(again)
-      .then(
-        (quote) => {
-          // A code applied or removed while this was asked is the person's: the old one's answer changes nothing.
-          if (chosen.current) return;
-          setCode(quote);
-          setPaying(true);
-        },
-        (error: unknown) => {
-          if (chosen.current) return;
-          if (!promoReason(error)) return failed(t("activateFailed"))(error);
-          setCode(null);
-          setPaying(true);
-        },
-      )
-      .finally(() => setQuoting(false));
-  };
-  const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
+  const subtotal = Math.round(sum.due * 100);
   const fromCredit = Math.min(credit, subtotal);
+  /** What a card is charged, in cents: nothing when the balance, a code or the account's credit covers it all. */
   const due = subtotal - fromCredit;
-  const activateNow = (pay: boolean, withCode?: string, expect?: number) =>
+  const activateNow = () =>
     start(async () => {
       say(null);
       try {
-        await onActivate?.(pay, withCode, expect);
+        // The code goes with it only where a card buys something for it to lower.
+        await onActivate?.(payWith, sum.bought > 0 ? code?.code : undefined, price, due / 100);
       } catch (error) {
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
-        else if (refusalOf(error)?.reason === "noneLeft") say(t("activation.noneLeft"));
+        else if (refusalOf(error)?.reason === "changed") say(t("activation.changed"));
         else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
-        else if (reason) say(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
+        else if (reason) say(t(`activation.promo.${reason}`, { code: code?.code ?? "" }));
         else failed(t("activateFailed"))(error);
       }
     });
-  // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
-  const requoting = !chose && !code && !!terms?.refused?.code;
-  /** What Activate takes from the card, beside the word; null when the balance pays, or a code or credit covers it. */
-  const amount = spendable || price === null || due === 0 || requoting ? null : dollars(due);
+  const [cancelling, cancel] = useTransition();
+  /** Why the report can't be paid for now, said on its button; null when it can. */
+  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : null;
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1748,50 +1782,60 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
               <Problem className="pb-3 ps-1">{problem}</Problem>
-              {stage === "ready" && admin && terms ? (
-                // An admin's Activate sits in the payment bar, beside what it's paid with: the balance, or the card. With
-                // neither, or while the bank confirms a charge, the bar offers that instead.
-                <PaymentLine
-                  onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
-                  organization={organization}
-                  activations={terms.activations}
-                  refill={terms.refill}
-                  card={card}
-                  credit={credit}
-                  price={price}
+              {stage === "ready" && admin && terms && !pending ? (
+                // An admin's Activate sits with how the report is paid: from the balance or by card, with a code, and
+                // what that leaves due. Only the licence, which set the price, is fixed.
+                <div className="mb-4">
+                  <PaymentChoice
+                    licence={licenceName(report.licence)}
+                    price={price}
+                    balance={terms}
+                    payWith={payWith}
+                    onPayWith={(next) => onChoose?.({ payWith: next })}
+                    code={code}
+                    credit={terms.credit}
+                    disabled={activating}
+                    voucher={vouchers ? <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} /> : null}
+                    action={(withAmount) =>
+                      shut ? (
+                        // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
+                        <TooltipHint label={shut}>
+                          <span tabIndex={0}>
+                            <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                          </span>
+                        </TooltipHint>
+                      ) : (
+                        // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
+                        // something due, it pays. Under the bill it carries no amount, the total being right above
+                        // it; beside the bill, it does.
+                        <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={withAmount && due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? activateNow : () => setPaying(true)} />
+                      )
+                    }
+                  />
+                  {/* The bill stays under the cover, where it has been since the report was signed: here with what is chosen now. */}
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
+                  {terms.refused ? <p className="mt-1.5 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
+                </div>
+              ) : admin && pending && stage !== "live" ? (
+                // A payment still to be made, on Stripe's page or at the bank: the way back to it, and the way out of it.
+                // Wherever the report stands: declined meanwhile, the payment still holds it and the workspace's others.
+                <PendingPayment
                   pending={pending}
-                  refused={terms.refused !== null}
-                  onAddCard={onAddCard}
-                  quoted={code && { code: code.code, total: subtotal }}
-                  voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={type} /> : null}
-                  action={
-                    terms.paused || (!spendable && price === null) ? (
-                      <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
-                        <span tabIndex={0}>
-                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                        </span>
-                      </TooltipHint>
-                    ) : unapplied ? (
-                      <TooltipHint label={t("activation.promo.applyFirst")}>
-                        <span tabIndex={0}>
-                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                        </span>
-                      </TooltipHint>
-                    ) : (
-                      <ActivateButton
-                        label={t("activate")}
-                        amount={amount}
-                        busy={activating || quoting}
-                        disabled={false}
-                        // The balance, or a code that takes the whole price off, charges nothing: no card, and no dialog to confirm a charge.
-                        onClick={spendable ? () => activateNow(false) : code && subtotal === 0 ? () => activateNow(true, code.code, 0) : openPay}
-                      />
-                    )
+                  cancelling={cancelling}
+                  onCancel={
+                    onCancelPayment
+                      ? () =>
+                          cancel(async () => {
+                            say(null);
+                            await onCancelPayment().catch(failed(t("activation.card.cancelFailed")));
+                          })
+                      : undefined
                   }
                 />
               ) : null}
-              {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again. */}
-              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t("activatingNow")}</p> : null}</AutoHeight>
+              {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again.
+                  With something to pay and no saved card, what it is doing is opening Stripe's page: nothing is activated yet. */}
+              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t(due > 0 && !card ? "activation.onStripe" : "activatingNow")}</p> : null}</AutoHeight>
               <div className="flex flex-wrap justify-end gap-2">
                 {/* Back to the details, as every other step has a way back to the one before it: wherever the server
                     lets a checked report change (flow.ts `goTo`). */}
@@ -1839,7 +1883,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                       <TooltipHint label={t("activation.onlyAdmin")}>
                         <span tabIndex={0}>
                           <Button disabled>
-                            <BadgeCheck /> {t("activate")}
+                            <BadgeCheck /> {t("activateFree")}
                           </Button>
                         </span>
                       </TooltipHint>
@@ -1847,7 +1891,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                       <TooltipHint label={t("needsApproval")}>
                         <span tabIndex={0}>
                           <Button disabled>
-                            <BadgeCheck /> {t("activate")}
+                            <BadgeCheck /> {t("activateFree")}
                           </Button>
                         </span>
                       </TooltipHint>
@@ -1860,21 +1904,22 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
         </AnimatePresence>
       </AutoHeight>
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
-      {report && price !== null ? (
-        // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
+      {report && terms ? (
+        // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in
+        // between. With none saved, confirming goes on to Stripe's page, and the dialog says so.
         <UpgradeConfirmationDialog
           open={paying}
           onOpenChange={setPaying}
-          title={due === 0 ? t("activation.freeTitle", { key: report.key }) : t("activation.payTitle", { price: dollars(due), key: report.key })}
-          // Who pays, then what becomes of the activation bought if the report is declined while the payment goes through.
-          description={[organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : null, organization ? t("activation.keptNoteOrg", { organization }) : t("activation.keptNote")].filter(Boolean).join(" ")}
-          confirmLabel={due === 0 ? t("activate") : t("activation.payConfirm")}
+          title={t("activation.payTitle", { price: dollars(due), key: report.key })}
+          // Who pays and where, then what becomes of what was paid if the report is declined while the payment goes through.
+          description={[!card ? t("activation.onStripe") : organization ? t("activation.orgCardCharged", { organization }) : null, organization ? t("activation.keptNoteOrg", { organization }) : t("activation.keptNote")].filter(Boolean).join(" ")}
+          confirmLabel={t(card ? "activate" : "activation.toStripe")}
           totalLabel={t("activation.dueNow")}
           labels={{ from: t("activation.doiNow"), to: t("activation.after") }}
           isConfirming={false}
           onConfirm={() => {
             setPaying(false);
-            activateNow(true, code?.code, due / 100);
+            activateNow();
           }}
           cardBrand={card?.brand}
           cardLast4={card?.last4}
@@ -1885,11 +1930,12 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
             targetPlan: t("activation.live"),
             targetPlanCreditsPerMonth: 0,
             lineItems:
-              code || fromCredit > 0
+              sum.fromBalance > 0 || sum.discount > 0 || fromCredit > 0
                 ? [
-                    { description: t("activation.activationLine"), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
-                    ...(code ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" }] : []),
-                    ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
+                    { description: licenceName(report.licence), amountCents: Math.round(price * 100), currency: "USD" },
+                    ...(sum.fromBalance > 0 ? [{ description: t("activation.balanceLine"), amountCents: -Math.round(sum.fromBalance * 100), currency: "USD" }] : []),
+                    ...(code && sum.discount > 0 ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(sum.discount * 100), currency: "USD" }] : []),
+                    ...(fromCredit > 0 ? [{ description: t("payment.credit"), amountCents: -fromCredit, currency: "USD" }] : []),
                   ]
                 : [],
           }}
@@ -1932,7 +1978,7 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
   // A code already typed (it came back from Stripe's page in the address) opens the field with it.
   const [open, setOpen] = useState(typed !== "");
   const [wrong, setWrong] = useState<string | null>(null);
@@ -1944,6 +1990,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
   const apply = () =>
     check(async () => {
       try {
+        if (!onQuote) return;
         onApply(await onQuote(typed));
         setWrong(null);
         onTyped("");
@@ -1954,7 +2001,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
         field.current?.focus();
       }
     });
-  const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
+  const off = applied ? Math.round(applied.off * 100) : 0;
   return (
     // Room around it for the buttons' focus rings, which its height animation would clip (WebKit has no clip margin).
     <AutoHeight className="-mx-3 -my-1">
@@ -2032,119 +2079,48 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
   );
 }
 
-/**
- * What activating is paid with, above the Activate button: the workspace's balance of activations while it has one,
- * else its saved card. With neither, the way to add a card: Stripe's page for saving one, which comes back here. A
- * charge the bank asked to confirm says so, with the way back to its page.
- */
 /** The return from Stripe's pages already brought into view: a page opens at its top, and on a phone the bar is below it. */
 let returnedTo: string | null = null;
 /**
- * Back from Stripe's page for a card, or the bank's, the bar the person left from is brought into view, once per return:
- * the page opens at its top, which on a phone leaves Activate out of sight.
+ * Back from Stripe's page, or the bank's, the bar the person left from is brought into view, once per return: the
+ * page opens at its top, which on a phone leaves the bar out of sight.
  */
 function inViewOnReturn(node: HTMLDivElement | null) {
   if (!node) return;
-  const params = new URLSearchParams(window.location.search);
-  const mark = params.get("session") ?? params.get("back");
+  const mark = new URLSearchParams(window.location.search).get("back");
   if (!mark || mark === returnedTo) return;
   returnedTo = mark;
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, activations, refill, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; /** What they refill by; null when none refills. */ refill: Terms["refill"]; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
-  const [saving, save] = useTransition();
+/**
+ * A payment for the report that is still to be made: on Stripe's page, where a workspace with no saved card pays, or
+ * at the bank, which asked to confirm it. The way back to that page, and the way out: giving the payment up opens the
+ * report's steps and its other ways of paying again.
+ */
+function PendingPayment({ pending, cancelling, onCancel }: { pending: NonNullable<Terms["pending"]>; cancelling: boolean; onCancel?: () => void }) {
   const t = useTranslations("publishReports.flow.activation.card");
-  const dollars = useDollars();
-  const costs = price === null ? null : quoted ? t("costsWith", { price: dollars(quoted.total), code: quoted.code }) : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
-  /** The code takes the whole price off: nothing to pay, so no card is asked for. */
-  const covered = quoted?.total === 0;
-  /** The balance pays: neither a card nor a code comes into it. */
-  const spendable = activations === null || activations > 0;
-  // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
-  const saveCard = () =>
-    save(async () => {
-      onFailed(null);
-      try {
-        // The code applied goes with it, so the way back from Stripe opens the field with it typed in.
-        await onAddCard?.(quoted?.code);
-      } catch (error) {
-        onFailed(error);
-      }
-    });
   return (
-    <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
-      {/* The icon sits beside the first lines, at the top: the bar grows downwards when a code is added under them. */}
-      <span className="flex size-9 shrink-0 items-center justify-center self-start rounded-xl bg-background text-muted-foreground">
-        {/* The balance pays with no card: its mark is the activation's own. */}
-        {spendable && !pending ? <BadgeCheck className="size-4" /> : <CreditCard className="size-4" />}
-      </span>
-      {/* On a phone the words keep a readable width and the buttons go under them. */}
+    <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 p-3">
+      <CreditCard className="size-4 shrink-0 self-start text-muted-foreground max-sm:hidden sm:mt-0.5" />
       <div className="min-w-0 flex-1 basis-48">
-        {pending ? (
-          <p className="text-sm font-medium">{t("bankAsked")}</p>
-        ) : spendable ? (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-            {t("balance")}
-            <StatusChip tone="success" icon={CircleCheck}>
-              {activations === null ? t("unlimited") : refill ? t("leftRefills", { count: activations, interval: refill }) : t("left", { count: activations })}
-            </StatusChip>
-          </p>
-        ) : card ? (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-            <span className="capitalize">{card.brand}</span>
-            {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
-            <span className="tabular-nums">&bull;&bull;&bull;&bull; {card.last4}</span>
-            {credit > 0 ? <StatusChip tone="neutral">{t("credit", { amount: dollars(credit) })}</StatusChip> : null}
-          </p>
-        ) : (
-          <p className="text-sm font-medium">{t(covered ? "covered" : "add")}</p>
-        )}
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {pending
-            ? t("goesLive")
-            : refused
-              ? t("refused")
-              : spendable
-                ? organization
-                  ? t("usesOrg", { organization })
-                  : t("uses")
-                : !card
-                  ? covered
-                    ? t("coveredHint")
-                    : (costs ?? t("needed"))
-                  : organization
-                    ? t("orgCard", { organization })
-                    : t("yourCard")}
-        </p>
-        {/* A code goes in here, before a card or a charge is asked for: one that covers the price needs neither. */}
-        {voucher ? <div className="mt-1.5">{voucher}</div> : null}
+        <p className="text-sm font-medium">{t(pending.checkout ? "unfinished" : "bankAsked")}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("goesLive")}</p>
       </div>
-      {pending?.url ? (
-        <Button variant="outline" asChild className="ms-auto shrink-0">
-          <a href={pending.url}>
-            {t("confirm")} <ArrowUpRight />
-          </a>
-        </Button>
-      ) : pending ? null : card || spendable || covered ? (
-        // One from the balance, or one a code covers, needs no card: Activate is there either way.
-        <div className="ms-auto flex shrink-0 items-center gap-2">
-          {card && !spendable ? (
-            <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
-              <Working busy={saving}>{t("change")}</Working>
-            </Button>
-          ) : null}
-          {action}
-        </div>
-      ) : onAddCard ? (
-        <Button variant="outline" className="relative ms-auto shrink-0" disabled={saving} onClick={saveCard}>
-          <Working busy={saving}>
-            <span className="flex items-center gap-2">
-              <CreditCard /> {t("addButton")}
-            </span>
-          </Working>
-        </Button>
-      ) : null}
+      <div className="ms-auto flex shrink-0 items-center gap-2">
+        {onCancel ? (
+          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={cancelling} onClick={onCancel}>
+            <Working busy={cancelling}>{t("cancel")}</Working>
+          </Button>
+        ) : null}
+        {pending.url ? (
+          <Button variant="outline" asChild>
+            <a href={pending.url}>
+              {t(pending.checkout ? "toPayment" : "confirm")} <ArrowUpRight />
+            </a>
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -2490,7 +2466,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
  * The report as it will stand: the cover its page wears, which opens the PDF once there is one, with its DOI and
  * what's on its record under it.
  */
-function ReportCover({ basics, report }: { basics: Basics; report: Report | null }) {
+function ReportCover({ basics, report, slot }: { basics: Basics; report: Report | null; /** Given the element under the cover, on a wide page, where a step shows what it is working out. */ slot?: (element: HTMLDivElement | null) => void }) {
   const t = useTranslations("publishReports.flow");
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
@@ -2546,6 +2522,8 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
             ),
           )}
         </div>
+        {/* Where a step shows what it is working out, on a wide page: the agreement's bill. */}
+        <div ref={slot} />
       </div>
     </aside>
   );

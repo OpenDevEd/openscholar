@@ -337,7 +337,6 @@ import type * as library_queries from "../library/queries.js";
 import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
-import type * as migrations_activationBalance from "../migrations/activationBalance.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_authorMakers from "../migrations/authorMakers.js";
 import type * as migrations_authorRecordLinks from "../migrations/authorRecordLinks.js";
@@ -362,6 +361,7 @@ import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtract
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
+import type * as migrations_publicationBalance from "../migrations/publicationBalance.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
@@ -854,7 +854,6 @@ declare const fullApi: ApiFromModules<{
   "library/sortName": typeof library_sortName;
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
-  "migrations/activationBalance": typeof migrations_activationBalance;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
   "migrations/authorMakers": typeof migrations_authorMakers;
   "migrations/authorRecordLinks": typeof migrations_authorRecordLinks;
@@ -879,6 +878,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/placeRatings": typeof migrations_placeRatings;
+  "migrations/publicationBalance": typeof migrations_publicationBalance;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;

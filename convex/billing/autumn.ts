@@ -13,8 +13,13 @@ export type AutumnBalance = {
   unlimited?: boolean;
   breakdown?: Array<{
     id: string;
+    /** The plan that gave or sold it; none for one given by hand. */
     plan_id: string | null;
     remaining: number;
+    /** What the grant gives, which a refill restores. */
+    included_grant?: number;
+    /** What was bought of it, beside what it gives. */
+    prepaid_grant?: number;
     reset?: { interval: string; resets_at: number | null } | null;
   }>;
 };
@@ -141,9 +146,6 @@ function config() {
   return { url, secretKey };
 }
 
-/** Our languages that Stripe's pages are written in, as Stripe names them; any other gets the browser's (`auto`). */
-const STRIPE_LOCALES: Record<string, string> = { "en-US": "en", "en-GB": "en-GB", zh: "zh", fr: "fr", ja: "ja", pt: "pt", es: "es", de: "de" };
-
 async function call<T>(
   path: string,
   body: Record<string, unknown>,
@@ -260,9 +262,34 @@ export const autumn = {
     );
   },
 
-  /** Gives the customer a balance of `feature` that refills to `amount` every `interval`. */
-  createBalance(args: { customerId: string; feature: string; amount: number; interval: "day" | "week" | "month" | "year"; idempotencyKey: string }) {
-    return call<{ success: boolean }>("balances.create", { customer_id: args.customerId, feature_id: args.feature, included_grant: args.amount, reset: { interval: args.interval } }, args.idempotencyKey);
+  /**
+   * Gives the customer a balance of `feature`: one that refills to `amount` every `interval`, one of `amount` that
+   * stays until used (no `interval`), or one with no limit.
+   */
+  createBalance(args: { customerId: string; feature: string; idempotencyKey: string } & ({ amount: number; interval?: string } | { unlimited: true })) {
+    return call<{ success: boolean }>(
+      "balances.create",
+      { customer_id: args.customerId, feature_id: args.feature, ...("unlimited" in args ? { unlimited: true } : { included_grant: args.amount, ...(args.interval && { reset: { interval: args.interval } }) }) },
+      args.idempotencyKey,
+    );
+  },
+
+  /** Sets what is left now of the customer's balance of `feature` that refills every `interval`. */
+  setBalance(args: { customerId: string; feature: string; interval: string; left: number }) {
+    return call<{ success: boolean }>("balances.update", { customer_id: args.customerId, feature_id: args.feature, interval: args.interval, current_balance: args.left });
+  },
+
+  /** Removes one of the customer's balances of `feature`, with whatever is left in it. */
+  deleteBalance(args: { customerId: string; feature: string; balanceId: string }) {
+    return call<{ success: boolean }>("balances.delete", { customer_id: args.customerId, feature_id: args.feature, balance_id: args.balanceId });
+  },
+
+  /**
+   * Takes `amount` of `feature` from one of the customer's balances and no other, stopping at zero. Asked twice under
+   * one `idempotencyKey`, Autumn refuses the second (409 `duplicate_idempotency_key`), so it is only ever taken once.
+   */
+  takeFrom(args: { customerId: string; feature: string; balanceId: string; amount: number; idempotencyKey: string }) {
+    return call<unknown>("balances.update", { customer_id: args.customerId, feature_id: args.feature, balance_id: args.balanceId, add_to_balance: -args.amount }, args.idempotencyKey);
   },
 
   /** Removes `credits` from one balance, stopping at zero. For refunds. */
@@ -287,6 +314,8 @@ export const autumn = {
     idempotencyKey?: string;
     newMonth?: boolean;
     seats?: SeatQuantity;
+    /** How much of a feature sold by the unit is bought, in place of `credits`: dollars of a publication balance. */
+    quantity?: { feature: string; amount: number };
     /** A promotion code of an Autumn reward, taken off the charge. */
     code?: string;
     /**
@@ -306,6 +335,7 @@ export const autumn = {
         ...(args.credits
           ? { feature_quantities: [{ feature_id: "credits", quantity: args.credits }] }
           : {}),
+        ...(args.quantity ? { feature_quantities: [{ feature_id: args.quantity.feature, quantity: args.quantity.amount }] } : {}),
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
         ...(args.unbilled ? { invoice_mode: { enabled: true, enable_plan_immediately: true, finalize: true } } : {}),
@@ -315,21 +345,16 @@ export const autumn = {
     );
   },
 
-  /** What `attach` would charge now, with the same `newMonth`, `seats` and promotion `code`. */
-  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity, code?: string) {
-    return call<AutumnPreview>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}), ...licenseQuantities(seats), ...promotion(code) });
-  },
-
-  /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
-  setupPayment(customerId: string, successUrl: string, { note, locale, cancelUrl }: { /** Said above Save. */ note?: string; locale?: string; /** Where Stripe's own way back leads: without one its page has none. */ cancelUrl?: string } = {}) {
-    // A card typed in, and nothing else. Link and Amazon Pay save a method that isn't a card, which nothing here
-    // charges or shows, and Apple Pay on a computer asks for a phone to scan a code: people took it for a payment and
-    // got stuck. Stripe hides the wallets only through a payment method configuration of the account's
-    // (STRIPE_CARD_ONLY_CONFIG, one per Stripe account); without it the page is cards and their wallets, Link hidden.
-    const only = process.env.STRIPE_CARD_ONLY_CONFIG;
-    const methods = only ? { payment_method_configuration: only } : { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } };
-    // Said above Save, in the person's language: saving a card is not paying.
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { ...methods, locale: STRIPE_LOCALES[locale ?? ""] ?? "auto", ...(cancelUrl ? { cancel_url: cancelUrl } : {}), ...(note ? { custom_text: { submit: { message: note } } } : {}) } });
+  /** What `attach` would charge now, with the same `newMonth`, `seats`, promotion `code` and `quantity`. */
+  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity, code?: string, quantity?: { feature: string; amount: number }) {
+    return call<AutumnPreview>("billing.preview_attach", {
+      customer_id: customerId,
+      plan_id: planId,
+      ...(newMonth ? { billing_cycle_anchor: "now" } : {}),
+      ...licenseQuantities(seats),
+      ...promotion(code),
+      ...(quantity ? { feature_quantities: [{ feature_id: quantity.feature, quantity: quantity.amount }] } : {}),
+    });
   },
 
   /**

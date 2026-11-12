@@ -7,12 +7,12 @@ import { createError } from "../lib/errors";
 import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
-import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
+import { RUN_STUCK_MS, changeStageOf, licenceOf, stageOf } from "../../lib/reports/report";
 import { seriesOf } from "../../lib/reports/settings";
 import { becameReady, notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
-import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
+import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, licenceValidator, metadataValidator, runFromValidator } from "./validators";
 
 /**
  * Starts a run: the author's corrections are saved before anything runs, so a run that fails keeps them, and the
@@ -36,6 +36,8 @@ export const start = internalMutation({
     version: v.number(),
     checks: v.array(v.object({ ...checkValidator.fields, model: v.union(v.id("models"), v.null()) })),
     changes: v.boolean(),
+    /** The licence the report was signed under: its details are checked, kept and printed with it, whatever was sent. */
+    licence: licenceValidator,
     /** The PDF whose last page Openscholar added, for a report on its way out: that page is written again with these details. */
     page: v.optional(v.object({ file: v.id("_storage"), at: v.number(), line: v.string(), series: v.string() })),
   })),
@@ -61,15 +63,15 @@ export const start = internalMutation({
       // Details put back to exactly what the report already says are no changes, and nothing is done about them:
       // changes that are waiting are given up with Discard, never by this. Compared whole, so a change a reader of
       // the page can't see, such as an institution's catalogue ID, still counts as one.
-      if (JSON.stringify(details.metadata) === JSON.stringify(checkedDetails(metadata))) return { unchanged: true as const, waiting: details.correction !== undefined };
+      if (JSON.stringify(details.metadata) === JSON.stringify(checkedDetails(metadata, licenceOf(report)))) return { unchanged: true as const, waiting: details.correction !== undefined };
       // The changes are kept while they are checked, so a run that never ends loses none of them.
-      await ctx.db.patch("reportDetails", details._id, { running: [], trying: checkedDetails(metadata) });
+      await ctx.db.patch("reportDetails", details._id, { running: [], trying: checkedDetails(metadata, licenceOf(report)) });
       await touch(ctx, report, { run: { id: runId, at: Date.now(), changes: true } });
     } else {
       if (report.step !== "details") throw createError("CONFLICT", "This report isn't waiting for its checks any more.");
       // Details typed over another PDF's, as a tab left open across a new upload would send, are never checked.
       if (report.pdf?.at !== from.pdfAt) throw createError("CONFLICT", "A new PDF replaced the one these details were read from. Check the details it was read into.");
-      await ctx.db.patch("reportDetails", details._id, { metadata: checkedDetails(metadata), running: [] });
+      await ctx.db.patch("reportDetails", details._id, { metadata: checkedDetails(metadata, licenceOf(report)), running: [] });
       // Its details are as they are sent now: the checks they left are no longer theirs to go back to.
       await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim(), reopened: undefined });
     }
@@ -88,6 +90,7 @@ export const start = internalMutation({
       version,
       checks: await Promise.all(on.map(async (check) => ({ ...check, model: (await slugPick(ctx, check.modelId, check.effort, "screening"))?.modelId ?? null }))),
       changes,
+      licence: licenceOf(report),
       ...(!changes && report.pdf?.stamped && { page: { file: report.pdf.file, at: report.pdf.at, line: report.byline, series: seriesOf(report, (await reportSettings(ctx)).series).name } }),
     };
   },
@@ -138,7 +141,7 @@ export const finish = internalMutation({
     if (report.run.changes) {
       if (report.status !== "live" || !read) return null;
       // As the run kept them when it started: an empty link dropped then is never published, nor counted as a change next time.
-      const metadata = checkedDetails(read);
+      const metadata = checkedDetails(read, licenceOf(report));
       await ctx.db.patch("reportDetails", details._id, { running: undefined, trying: undefined });
       await ctx.db.patch("reports", reportId, { run: undefined });
       const settings = await reportSettings(ctx);

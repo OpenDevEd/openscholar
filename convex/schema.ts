@@ -73,7 +73,7 @@ import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./t
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { checksValidator, reportDetailFields, reportFields, reportFileFields, reportReviewFields, reportSettingsFields, reportEmailFields } from "./reports/validators";
+import { checksValidator, payWithValidator, reportDetailFields, reportFields, reportFileFields, reportReviewFields, reportSettingsFields, reportEmailFields } from "./reports/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 
@@ -603,19 +603,20 @@ export default defineSchema({
   // Each version of the checks and of the agreement, kept because a report records which it was checked and signed under.
   reportCheckVersions: defineTable({ version: v.number(), checks: checksValidator }).index("by_version", ["version"]),
   reportAgreementVersions: defineTable({ version: v.number(), text: v.string() }).index("by_version", ["version"]),
-  // Emptied by migrations/activationBalance, which moves each number to the workspace's balance in Autumn; then dropped.
+  // Emptied by migrations/publicationBalance, which moves each number to the workspace's balance in Autumn; then dropped.
   reportLimits: defineTable({ workspaceId: v.id("workspaces"), perDay: v.number(), updatedAt: v.number(), updatedBy: v.id("users") }).index("by_workspaceId", ["workspaceId"]),
   // One row per report started, which is what a workspace's day is counted against its plan's: a discarded report keeps its row.
   reportStarts: defineTable({ workspaceId: v.id("workspaces"), at: v.number() }).index("by_workspaceId_and_at", ["workspaceId", "at"]),
-  // One row per activation (#1261), each spending one from the workspace's balance of activations in Autumn. Its id
-  // is the idempotency key of the one it buys when the balance is empty, whose invoice it keeps. `pending` is a charge the bank asked to confirm, which goes live once its invoice is paid.
+  // One row per activation (#1261), each paying its report's price from the workspace's publication balance in Autumn.
+  // Its id is the idempotency key of what a card buys of that balance for it, whose invoice it keeps. `pending` is a
+  // payment still to be made: on Stripe's page, or one the bank asked to confirm. It goes live once that is paid.
   reportActivations: defineTable({
     workspaceId: v.id("workspaces"),
     reportId: v.id("reports"),
     at: v.number(),
     by: v.id("users"),
     // `charging`: under way, from before Autumn is asked anything. One that comes to nothing goes.
-    // `unused`: bought, but the report had moved on (declined, say) when the charge came back: the activation stays
+    // `unused`: bought, but the report had moved on (declined, say) when the charge came back: what was bought stays
     // in the balance.
     // `refused`: the bank didn't confirm the payment, or the card refused it, after it waited on the bank: nothing was
     // charged, and the report says so until it's activated again.
@@ -623,13 +624,20 @@ export default defineSchema({
     /** The promotion code it was asked with. */
     code: v.optional(v.string()),
     charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
-    /** Stripe's page for confirming a pending charge. */
+    /** What pays for it: the balance, with a card for the rest, or a card alone, which leaves the balance as it is. */
+    payWith: v.optional(payWithValidator),
+    /** What the report costs, in US dollars, and how many of them a card buys for it. */
+    price: v.optional(v.number()),
+    bought: v.optional(v.number()),
+    /** Stripe's page for a pending payment: its checkout, or the bank's confirmation. */
     payUrl: v.optional(v.string()),
-    /** The hold at Autumn the report went live by: that hold alone takes an activation from the balance. */
+    /** The hold at Autumn the report went live by: that hold alone takes its price from the balance. */
     hold: v.optional(v.string()),
+    /** When that hold was last finished at Autumn: the balance read before then may show the price not yet taken (billing/accounts.ts `payingForReport`). */
+    finishedAt: v.optional(v.number()),
     /** When a paid charge waiting on the bank was claimed for settling, so the watch and the webhooks never settle it twice at once. */
     settling: v.optional(v.number()),
-    // From before activations were a balance: cleared by migrations/activationBalance, then dropped.
+    // From before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
     free: v.optional(v.boolean()),
     unbilled: v.optional(v.boolean()),
     refund: v.optional(v.object({ card: v.number(), credit: v.number(), at: v.number() })),
