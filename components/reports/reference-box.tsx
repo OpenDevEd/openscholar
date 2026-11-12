@@ -14,26 +14,32 @@ import { cn } from "@/lib/utils";
 /** The largest file read: a list of a thousand references is far under it. */
 const MAX_BYTES = 2 * 1024 * 1024;
 
-export function ReferenceBox({ onAdd, onTrouble }: { /** Given the text pasted or the file's; resolves once its references are in the list. */ onAdd: (text: string) => Promise<void>; onTrouble: (words: string) => void }) {
+export function ReferenceBox({ onAdd, onBusy, onTrouble }: { /** Given the text pasted or the file's; resolves once its references are in the list. */ onAdd: (text: string) => Promise<void>; /** Whether a list is being read: a file's text, then its references. */ onBusy?: (busy: boolean) => void; onTrouble: (words: string) => void }) {
   const t = useTranslations("publishReports.details");
   const [text, setText] = useState("");
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const add = async (words: string, typed: boolean) => {
-    if (!words.trim()) return;
-    setBusy(true);
+  const working = (on: boolean) => {
+    setBusy(on);
+    onBusy?.(on);
+  };
+  // Busy from the moment a file is dropped, while its text is read, until its references are in the list.
+  const add = async (words: string | Promise<string>, typed: boolean) => {
+    working(true);
     try {
-      await onAdd(words);
+      const read = await words;
+      if (!read.trim()) return;
+      await onAdd(read);
       if (typed) setText("");
     } finally {
-      setBusy(false);
+      working(false);
     }
   };
   const read = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_BYTES) return onTrouble(t("referencesTooBig"));
-    await add(await file.text(), false);
+    await add(file.text(), false);
   };
   return (
     <div

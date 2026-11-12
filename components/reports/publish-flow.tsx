@@ -1173,7 +1173,17 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           <Hash className="size-9" />
         </motion.span>
       </div>
-      <motion.h2 className="mt-5 flex items-center gap-1 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
+      <motion.h2
+        // Just reserved, the signing screen it replaced took the focus with it: the heading takes it, as each step's does,
+        // so a keyboard carries on from here and a screen reader says the DOI is reserved.
+        ref={(heading) => {
+          if (!heading || !fresh || (document.activeElement && document.activeElement !== document.body)) return;
+          heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+        }}
+        className="mt-5 flex items-center gap-1 text-2xl font-semibold tracking-tight"
+        {...rise(0.3)}
+      >
         {t("doiReserved")}
         <FieldHelp field="doi" />
       </motion.h2>
@@ -1973,6 +1983,8 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
   const [open, setOpen] = useState(typed !== "");
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
+  const field = useRef<HTMLInputElement>(null);
+  const wrongId = useId();
   const t = useTranslations("publishReports.flow.activation.promo");
   const close = useTranslations("common");
   const apply = () =>
@@ -1985,6 +1997,8 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
       } catch (error) {
         const reason = promoReason(error);
         setWrong(reason ? t(reason, { code: typed.trim() }) : getErrorMessage(error, t("failed")));
+        // Apply was disabled while the code was checked, which took the keyboard's place: it goes back to the field.
+        field.current?.focus();
       }
     });
   const off = applied ? Math.round(applied.off * 100) : 0;
@@ -2019,8 +2033,10 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
                   setWrong(null);
                 }}
                 placeholder={t("label")}
+                ref={field}
                 aria-label={t("label")}
                 aria-invalid={!!wrong}
+                aria-describedby={wrong ? wrongId : undefined}
                 className="font-mono placeholder:font-sans"
               />
               <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
@@ -2043,7 +2059,9 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
               </Button>
             </div>
             {wrong ? (
-              <p className="text-xs text-destructive">{wrong}</p>
+              <p id={wrongId} role="alert" className="text-xs text-destructive">
+                {wrong}
+              </p>
             ) : typed.trim() ? (
               // Said under the field, not only in Activate's tooltip: a touch screen shows no tooltip on a disabled button.
               // Out of sight while the code is being checked, its line kept so nothing moves: Apply was just pressed,

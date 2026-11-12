@@ -15,8 +15,8 @@ export function NextButton({ children, busy = false, className, ...props }: Comp
     <Button className={cn("relative gap-0 overflow-hidden p-0 has-[>svg]:px-0 max-sm:h-auto max-sm:max-w-full max-sm:shrink max-sm:whitespace-normal", className)} {...props}>
       <Working busy={busy}>
         <span className="flex h-9 items-stretch max-sm:h-auto max-sm:min-h-9 max-sm:flex-wrap">
-          <span className="flex shrink-0 items-center bg-white/25 ps-3 pe-2.5 font-normal">{t("next")}</span>
-          <span className="flex min-w-0 items-center gap-2 ps-3 pe-3.5 max-sm:min-w-[min(8rem,100%)] max-sm:flex-1 max-sm:justify-between max-sm:py-1.5 max-sm:text-start">
+          <span className="flex shrink-0 items-center bg-white/25 ps-3 pe-2.5 font-normal max-sm:max-w-full max-sm:[overflow-wrap:anywhere]">{t("next")}</span>
+          <span className="flex min-w-0 items-center gap-2 ps-3 pe-3.5 max-sm:min-w-[min(8rem,100%)] max-sm:flex-1 max-sm:justify-between max-sm:py-1.5 max-sm:text-start max-sm:[overflow-wrap:anywhere]">
             {children}
             <ArrowRight />
           </span>

@@ -61,8 +61,8 @@ const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's no
 const QUESTIONS: Row = ["Questions", "Reply to this email."];
 /** What a payment for a report that then couldn't go live says: where what it bought is now, and why. */
 const keptRows = (r: MailFacts, origin: string): Row[] => [
-  ["Why", "The report changed while its payment went through, so it didn't go live."],
-  ["What you paid", `It is in ${r.admins ? `${r.admins.organization}'s` : "your"} publication balance. The next report activated is paid from it.`],
+  ["Why", "The report couldn't go live when its payment went through, for example because it had changed, been declined, or whoever paid no longer had access."],
+  ["What you paid", `It stays in ${r.admins ? `${r.admins.organization}'s` : "your"} publication balance. The next report activated is paid from it, and nothing more is charged.`],
   publishLink("The report", r, origin),
   QUESTIONS,
 ];
