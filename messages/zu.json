@@ -6561,6 +6561,7 @@
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
       "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza amabhokisi.",
+      "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
         "personalClosed": "Uhlelo lwakho alukufaki ukushicilela. Thuthela ohlelweni olukufakayo.",

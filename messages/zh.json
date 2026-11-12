@@ -6561,6 +6561,7 @@
       "untouched": "您已为 <mono>{key}</mono> 预留了 DOI，但尚未上传其 PDF。",
       "continueWith": "继续处理它",
       "agreementChanged": "此页面打开期间协议已更改。请重新阅读，然后勾选方框。",
+      "agreementInEnglish": "协议本身以英文撰写。",
       "limit": {
         "personal": "你的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
         "personalClosed": "你的方案不包含发布。请换一个包含发布的方案。",

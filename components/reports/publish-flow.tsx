@@ -859,6 +859,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
   const sign = useMutation(api.reports.flow.sign);
+  const locale = useLocale();
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
   const [today] = useState(() => new Date());
   // The name they are known by, until they type another.
@@ -888,6 +889,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
+        {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
+        {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />

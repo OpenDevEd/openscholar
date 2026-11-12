@@ -6561,6 +6561,7 @@
       "untouched": "Vous avez déjà réservé un DOI pour <mono>{key}</mono> et n'avez pas téléversé son PDF.",
       "continueWith": "Continuer avec celui-ci",
       "agreementChanged": "L'accord a changé pendant que cette page était ouverte. Relisez-le, puis cochez les cases.",
+      "agreementInEnglish": "L’accord lui-même est rédigé en anglais.",
       "limit": {
         "personal": "Votre offre permet de commencer {count, plural, one {# rapport} other {# rapports}} par jour. Revenez demain, ou passez à une offre qui en permet plus.",
         "personalClosed": "Votre offre ne comprend pas la publication. Passez à une offre qui la comprend.",

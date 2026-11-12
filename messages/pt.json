@@ -6562,6 +6562,7 @@
       "untouched": "Já reservou um DOI para <mono>{key}</mono> e ainda não carregou o PDF.",
       "continueWith": "Continuar com ele",
       "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale as caixas.",
+      "agreementInEnglish": "O acordo em si está redigido em inglês.",
       "limit": {
         "personal": "O seu plano permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",
         "personalClosed": "O seu plano não inclui publicação. Mude para um plano que inclua.",

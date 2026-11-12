@@ -6562,6 +6562,7 @@
       "untouched": "Sie haben bereits einen DOI für <mono>{key}</mono> reserviert und sein PDF noch nicht hochgeladen.",
       "continueWith": "Damit weitermachen",
       "agreementChanged": "Die Vereinbarung hat sich geändert, während diese Seite offen war. Lesen Sie sie erneut und setzen Sie dann die Häkchen.",
+      "agreementInEnglish": "Die Vereinbarung selbst ist auf Englisch verfasst.",
       "limit": {
         "personal": "Mit Ihrem Plan beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
         "personalClosed": "Ihr Plan enthält kein Veröffentlichen. Wechseln Sie zu einem Plan, der es enthält.",
