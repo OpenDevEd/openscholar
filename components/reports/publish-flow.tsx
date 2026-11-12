@@ -2227,8 +2227,9 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
     ...(report?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: t("checksVersion", { version: report.checksVersion }) }] : []),
   ];
   return (
-    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it.
-    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-24 @3xl:block @3xl:self-start">
+    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it. As the
+    // page scrolls it stays under the page's bar, as far from it as it is from the card's edge.
+    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
       <PaperCover
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
