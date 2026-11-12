@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { cloneElement, useRef, useState, type UIEvent } from "react";
+import { cloneElement, useEffect, useRef, useState, type UIEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -101,6 +101,9 @@ export function paperArgs(paper: WorkInput) {
   return { ...trimPaperData(paper), paperData: JSON.stringify(paper) };
 }
 
+/** A Save pressed before signing in, by the paper's id, kept with the tab until the person is signed in. */
+const SAVE_AFTER_SIGN_IN = "library:save-after-sign-in";
+
 /**
  * One paper's place in the library and the actions that change it. The Save button
  * and focus mode's B key share it.
@@ -152,8 +155,29 @@ export function useSavePaper(paper: WorkInput | undefined) {
     })().finally(() => settleSaved(paper.id, token));
   };
 
+  // Save pressed before signing in is carried out once the person is: signing up runs through Clerk's pages and the
+  // profile setup, which draw this page afresh, so the press is kept in the tab's storage, the outside system here.
+  useEffect(() => {
+    if (!ready || !paper || saved === undefined) return;
+    let pending: string | null = null;
+    try {
+      pending = window.sessionStorage.getItem(SAVE_AFTER_SIGN_IN);
+      if (pending === paper.id) window.sessionStorage.removeItem(SAVE_AFTER_SIGN_IN);
+    } catch {
+      return;
+    }
+    if (pending === paper.id && !saved) saveBack(paper, undefined);
+    // Once per paper and per answer about it: saveBack is this render's, and only the stored press decides.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, paper?.id, saved]);
+
   const toggle = () => {
     if (!isSignedIn) {
+      try {
+        if (paper) window.sessionStorage.setItem(SAVE_AFTER_SIGN_IN, paper.id);
+      } catch {
+        // Without the tab's storage the press is asked for again after signing in.
+      }
       openSignIn();
       return;
     }
