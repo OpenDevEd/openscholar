@@ -61,10 +61,10 @@ const faq = [
     </div>
   </section>
 
-  {/* The steps, right under the hero and on the same night sky. The section stays on screen while six short scrolls
-      go by: the thread fills, the step in hand opens with its emblem, and its real screen takes the window.
+  {/* The steps, right under the hero and on the same night sky: one screen that plays itself. Each step takes its
+      turn, opening with its emblem while its real screen takes the window, and the thread creeps on to the next.
       Laid out after Midday's list beside a product screen and Giga's lit progress line (Mobbin). */}
-  <section class="bleed how" id="publish" aria-labelledby="how-h" data-how data-at="0" style={`--n:${steps.length}`}>
+  <section class="bleed how" id="publish" aria-labelledby="how-h" data-how data-at="0">
     <div class="stage">
       <div class="inner how-in">
         <div class="how-head"><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About ten minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
@@ -133,30 +133,31 @@ const faq = [
   <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
 </Base>
 <script>
-  // The steps follow the scroll while their section is pinned: which step is in hand, and how far it is to the next.
+  // The steps play by themselves while their section is on screen: each takes its turn, the thread creeping on toward
+  // the next, and the run rests on the last. Choosing a step shows it and ends the run.
   const how = document.querySelector<HTMLElement>("[data-how]");
   if (how) {
-    const stage = how.querySelector<HTMLElement>(".stage")!, rows = [...how.querySelectorAll<HTMLElement>("[data-step]")], shots = [...how.querySelectorAll<HTMLElement>("[data-shot]")];
-    const n = rows.length, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let at = 0, queued = false;
-    const pinned = () => getComputedStyle(stage).position === "sticky";
-    const span = () => how.offsetHeight - stage.offsetHeight;
+    const rows = [...how.querySelectorAll<HTMLElement>("[data-step]")], shots = [...how.querySelectorAll<HTMLElement>("[data-shot]")], n = rows.length;
+    // A turn is the time the rows take to open and shut; a step holds the screen for DWELL in all.
+    const TURN = 600, DWELL = 2600;
+    let at = 0, playing = false, chosen = false, fillT = 0, nextT = 0;
+    how.style.setProperty("--pub-dwell", `${DWELL - TURN}ms`);
     const show = (i: number) => {
-      if (i === at) return;
-      at = i; how.dataset.at = String(i); how.style.setProperty("--step", String(i)); how.style.setProperty("--pub-tint", rows[i].style.getPropertyValue("--c"));
+      at = i; how.dataset.at = String(i); how.style.setProperty("--pub-step", String(i)); how.style.setProperty("--pub-tint", rows[i].style.getPropertyValue("--c"));
       rows.forEach((r, j) => { r.classList.toggle("on", j === i); r.classList.toggle("done", j < i); r.querySelector("button")!.setAttribute("aria-current", j === i ? "step" : "false"); });
       shots.forEach((s, j) => { s.classList.toggle("on", j === i); s.classList.toggle("done", j < i); });
     };
-    const read = () => {
-      queued = false;
-      if (!pinned() || span() <= 0) return;
-      const x = Math.min(n - 1e-4, Math.max(0, -how.getBoundingClientRect().top / span()) * n), i = Math.floor(x);
-      show(i); how.style.setProperty("--frac", i === n - 1 ? "0" : (x - i).toFixed(3));
+    // The thread's reach past the step in hand: none, or on its way to the next at a steady pace.
+    const fill = (on: boolean) => { how.classList.toggle("run", on); how.style.setProperty("--pub-frac", on ? "1" : "0"); };
+    const rest = () => { clearTimeout(fillT); clearTimeout(nextT); };
+    const turn = (i: number) => {
+      rest(); show(i); fill(false);
+      if (!playing || i === n - 1) return;
+      fillT = window.setTimeout(() => fill(true), TURN); nextT = window.setTimeout(() => turn(i + 1), DWELL);
     };
-    const ask = () => { if (!queued) { queued = true; requestAnimationFrame(read); } };
-    addEventListener("scroll", ask, { passive: true }); addEventListener("resize", ask); read();
-    // A step in the list takes the page to it.
-    rows.forEach((r, j) => r.querySelector("button")!.addEventListener("click", () => { if (pinned()) scrollTo({ top: how.getBoundingClientRect().top + scrollY + span() * (j + .5) / n, behavior: still ? "auto" : "smooth" }); }));
+    rows.forEach((r, j) => r.querySelector("button")!.addEventListener("click", () => { chosen = true; playing = false; turn(j); }));
+    // It plays only while most of it is on screen, and picks up at the step it left.
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) new IntersectionObserver(([e]) => { if (chosen) return; playing = e.isIntersecting; if (playing) turn(at); else { rest(); fill(false); } }, { threshold: .6 }).observe(how.querySelector(".stage")!);
   }
 </script>
 <style>
@@ -228,9 +229,16 @@ const faq = [
   :global(.js) .ch-table:not(.in) .was b { background-size: 0 1.5px; } :global(.js) .ch-table.in .was b { transition: background-size .5s cubic-bezier(.65, 0, .35, 1) calc(.3s + var(--i) * .3s); }
   :global(.js) .ch-table:not(.in) .now { opacity: 0; translate: -10px 0; } :global(.js) .ch-table.in .now { transition: opacity .5s var(--ease) calc(.5s + var(--i) * .3s), translate .6s var(--ease) calc(.5s + var(--i) * .3s); }
 
-  /* The steps. Without the pin (no script, or a window too short for it) they are a plain list beside the last screen. */
+  /* The steps: one screen that plays itself. Without script, or in a window too short for it, they are a plain list
+     beside the last screen. The thread's numbers are registered, so they move with the rows they follow. */
   @property --pub-tint { syntax: "<color>"; inherits: true; initial-value: #3b82f6; }
-  .how { --h0: 52px; --h1: 132px; --em0: 40px; --em1: 96px; --step: 0; --frac: 0; --top: calc(var(--h0) / 2); background: var(--night); transition: --pub-tint .8s var(--ease); /* Flush under the hero: the strip's gap between sections would show as a white line across the sky. */ margin-top: calc(var(--gap) * -1); }
+  @property --pub-step { syntax: "<number>"; inherits: true; initial-value: 0; }
+  @property --pub-frac { syntax: "<number>"; inherits: true; initial-value: 0; }
+  @property --pub-top { syntax: "<length>"; inherits: true; initial-value: 26px; }
+  /* Flush under the hero: the strip's gap between sections would show as a white line across the sky. */
+  .how { --h0: 52px; --h1: 132px; --em0: 40px; --em1: 96px; --pub-top: calc(var(--h0) / 2); background: var(--night); margin-top: calc(var(--gap) * -1); transition: --pub-tint .8s var(--ease), --pub-step .55s var(--ease), --pub-top .55s var(--ease), --pub-frac .55s var(--ease); }
+  /* While a step holds the screen, the thread creeps on toward the next one at a steady pace. */
+  .how.run { transition: --pub-tint .8s var(--ease), --pub-step .55s var(--ease), --pub-top .55s var(--ease), --pub-frac var(--pub-dwell, 2s) linear; }
   /* The contents sit in the middle of the stage, and start at its top when they are taller than it. */
   .stage { position: relative; isolation: isolate; display: grid; align-items: start; padding-block: clamp(64px, 7vw, 104px); }
   .stage::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(44% 56% at 72% 58%, color-mix(in srgb, var(--pub-tint) 22%, transparent), transparent 72%); }
@@ -244,10 +252,8 @@ const faq = [
   .shots { position: relative; justify-self: end; width: min(100%, calc((100vh - 300px) * 1.6)); aspect-ratio: 1120 / 700; overflow: clip; border-radius: 16px; background: #0d1326; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 50px 120px -40px #000, 0 0 140px -30px color-mix(in srgb, var(--pub-tint) 65%, transparent); }
   .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; } .shot:last-child { opacity: 1; }
 
-  /* Pinned: the section is six short scrolls tall and its stage holds the screen while they go by. */
   @media (min-height: 561px) {
-    :global(.has-js) .how { height: calc(100vh + var(--n) * 55vh); height: calc(100svh + var(--n) * 55svh); }
-    :global(.has-js) .stage { position: sticky; top: 0; height: 100vh; height: 100svh; padding-block: 104px 36px; }
+    :global(.has-js) .stage { min-height: 100vh; min-height: 100svh; padding-block: 104px 36px; }
     :global(.has-js) .road { gap: 0; }
     /* Each step is a row: shut it is its emblem and its name; in hand it opens, its emblem grows and its line shows. */
     :global(.has-js) .road li { height: var(--h0); transition: height .55s var(--ease); } :global(.has-js) .road li.on { height: var(--h1); }
@@ -257,17 +263,17 @@ const faq = [
     :global(.has-js) .txt b { font-size: 18px; color: rgb(255 255 255 / .46); transition: font-size .5s var(--ease), color .4s var(--ease); } :global(.has-js) .done .txt b { color: rgb(255 255 255 / .78); } :global(.has-js) .on .txt b { font-size: 28px; letter-spacing: -.02em; color: #fff; }
     :global(.has-js) .road button:hover .txt b { color: #fff; }
     :global(.has-js) .txt > span { max-height: 0; overflow: hidden; opacity: 0; transition: max-height .5s var(--ease), opacity .25s var(--ease); } :global(.has-js) .on .txt > span { max-height: 4.4em; opacity: 1; transition: max-height .5s var(--ease), opacity .45s var(--ease) .15s; }
-    /* The thread runs through the emblems' middles and lights as far as the step in hand, then on toward the next as
-       the page moves. Its ends sit on the first and last emblems, wherever those are while a row opens or shuts. */
-    :global(.has-js) .how[data-at="0"] { --top: calc(var(--h1) / 2); }
-    :global(.has-js) .thread { display: block; position: absolute; z-index: -1; left: calc(var(--em1) / 2 - 1px); width: 2px; top: var(--top); bottom: calc(var(--h0) / 2); border-radius: 2px; background: rgb(255 255 255 / .1); transition: top .55s var(--ease), bottom .55s var(--ease); }
+    /* The thread runs through the emblems' middles and is lit as far as the step in hand, then on toward the next
+       while that step holds the screen. Its ends sit on the first and last emblems as their rows open and shut. */
+    :global(.has-js) .how[data-at="0"] { --pub-top: calc(var(--h1) / 2); }
+    :global(.has-js) .thread { display: block; position: absolute; z-index: -1; left: calc(var(--em1) / 2 - 1px); width: 2px; top: var(--pub-top); bottom: calc(var(--h0) / 2); border-radius: 2px; background: rgb(255 255 255 / .1); transition: bottom .55s var(--ease); }
     :global(.has-js) .how[data-at="5"] .thread { bottom: calc(var(--h1) / 2); }
-    :global(.has-js) .thread i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .5); clip-path: inset(0 0 calc(100% - (var(--step) * var(--h0) + var(--h1) / 2 - var(--top) + var(--frac) * (var(--h1) / 2 + var(--h0) / 2))) 0); transition: clip-path .55s var(--ease); }
+    :global(.has-js) .thread i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .5); clip-path: inset(0 0 calc(100% - (var(--pub-step) * var(--h0) + var(--h1) / 2 - var(--pub-top) + var(--pub-frac) * (var(--h1) / 2 + var(--h0) / 2))) 0); }
     /* The window stays; each step's screen comes up into it as the last one leaves through the top. */
     :global(.has-js) .shot, :global(.has-js) .shot:last-child { opacity: 0; transform: translateY(36px) scale(.985); transition: opacity .45s var(--ease), transform .7s var(--ease); }
     :global(.has-js) .shot.done { transform: translateY(-28px) scale(.985); } :global(.has-js) .shot.on { opacity: 1; transform: none; }
   }
-  /* A short window keeps the pin with everything a size down. */
+  /* A short window keeps the stage with everything a size down. */
   @media (min-height: 561px) and (max-height: 720px) and (min-width: 1001px) { .how { --h0: 44px; --h1: 116px; --em0: 34px; --em1: 80px; } .how-in { row-gap: 18px; } .how-head h2 { font-size: 34px; } :global(.has-js) .on .txt b { font-size: 24px; } :global(.has-js) .stage { padding-block: 92px 24px; } }
 
   /* Sponsors: the world lights up where the work comes from, and every thread leads to one medallion. */
@@ -309,7 +315,7 @@ const faq = [
     :global(.has-js) .txt { position: absolute; left: 0; right: 0; top: 68px; pointer-events: none; opacity: 0; translate: 0 8px; transition: opacity .25s var(--ease), translate .4s var(--ease); } :global(.has-js) .on .txt { opacity: 1; translate: 0; transition: opacity .45s var(--ease) .12s, translate .5s var(--ease) .12s; }
     :global(.has-js) .txt b, :global(.has-js) .on .txt b, :global(.has-js) .done .txt b { font-size: 22px; color: #fff; } :global(.has-js) .txt > span, :global(.has-js) .on .txt > span { max-height: none; opacity: 1; font-size: 15px; }
     :global(.has-js) .thread, :global(.has-js) .how[data-at="5"] .thread { top: 27px; bottom: auto; left: calc(100% / 12); right: calc(100% / 12); width: auto; height: 2px; }
-    :global(.has-js) .thread i { background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); clip-path: inset(0 calc(100% - (var(--step) + var(--frac)) / 5 * 100%) 0 0); }
+    :global(.has-js) .thread i { background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); clip-path: inset(0 calc(100% - (var(--pub-step) + var(--pub-frac)) / 5 * 100%) 0 0); }
   }
   @media (prefers-reduced-motion: reduce) { .how, .how * { transition: none !important; } }
 </style>
