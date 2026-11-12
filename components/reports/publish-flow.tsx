@@ -1260,12 +1260,15 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
     // Said before it goes up: a PDF this large can't have the page added, so its author picks the other way now.
     if (by === "added" && picked.size > BYLINE_PAGE_MAX_BYTES) return say(t("bylineBy.tooBigToAdd", { name: picked.name, max: BYLINE_PAGE_MAX_MB }));
     setSending(picked);
+    // Whether the file got as far as Openscholar: a failure says which half went wrong.
+    let arrived = false;
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
       const [file, cover] = await Promise.all([
         put(picked, "application/pdf"),
         drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
       ]);
+      arrived = true;
       const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
       if (refused) return say(refused);
       onAttached();
@@ -1273,7 +1276,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
       // A browser's own words for a request that never left ("Load failed") tell an author nothing: the file wasn't
       // kept, and the connection is what to look at.
       if (error instanceof TypeError) say(t("offline"));
-      else failed(t("uploadFailed"))(error);
+      else failed(t(arrived ? "uploadFailed" : "notSent"))(error);
     } finally {
       setSending(null);
       if (input.current) input.current.value = "";

@@ -6586,7 +6586,8 @@
       "emptyFile": "Lelo fayela alinalutho. Khetha i-PDF futhi.",
       "tooBig": "I-PDF inkulu kuno-{max} MB",
       "offline": "I-PDF ayikwazanga ukulayishwa. Hlola ukuxhumana kwakho, bese uyikhetha futhi.",
-      "uploadFailed": "I-PDF ayikwazanga ukulayishwa. Zama futhi.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
       "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Kopisha umugqa womnikazi",
       "bylineCopied": "Umugqa womnikazi ukopishiwe",
@@ -6783,6 +6784,11 @@
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Okulandelayo: layisha i-PDF",
       "nextDetails": "Okulandelayo: hlola imininingwane",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",

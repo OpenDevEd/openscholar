@@ -6587,7 +6587,8 @@
       "emptyFile": "Ese archivo está vacío. Elige el PDF de nuevo.",
       "tooBig": "El PDF supera los {max} MB",
       "offline": "No se pudo subir el PDF. Revisa tu conexión y vuelve a elegirlo.",
-      "uploadFailed": "No se pudo subir el PDF. Inténtalo de nuevo.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
       "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copiar la mención",
       "bylineCopied": "Mención copiada",
@@ -6784,6 +6785,11 @@
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Siguiente: subir el PDF",
       "nextDetails": "Siguiente: revisar los datos",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",

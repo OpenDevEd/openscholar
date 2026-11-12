@@ -6586,7 +6586,8 @@
       "emptyFile": "该文件为空。请重新选择 PDF。",
       "tooBig": "PDF 超过 {max} MB",
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
-      "uploadFailed": "无法上传 PDF。请重试。",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
       "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
@@ -6783,6 +6784,11 @@
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "下一步：上传 PDF",
       "nextDetails": "下一步：核对信息",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",

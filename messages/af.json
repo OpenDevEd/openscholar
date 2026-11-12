@@ -6587,7 +6587,8 @@
       "emptyFile": "Daardie lêer is leeg. Kies die PDF weer.",
       "tooBig": "Die PDF is groter as {max} MB",
       "offline": "Die PDF kon nie opgelaai word nie. Kontroleer jou verbinding en kies dit dan weer.",
-      "uploadFailed": "Die PDF kon nie opgelaai word nie. Probeer weer.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
       "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Kopieer eienaarsreël",
       "bylineCopied": "Eienaarsreël gekopieer",
@@ -6784,6 +6785,11 @@
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Volgende: laai die PDF op",
       "nextDetails": "Volgende: gaan die besonderhede na",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",

@@ -6586,7 +6586,8 @@
       "emptyFile": "वह फ़ाइल खाली है। PDF फिर से चुनें।",
       "tooBig": "PDF {max} MB से बड़ा है",
       "offline": "PDF अपलोड नहीं हो सका। अपना कनेक्शन जाँचें, फिर इसे फिर से चुनें।",
-      "uploadFailed": "PDF अपलोड नहीं हो सका। फिर से कोशिश करें।",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
       "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "उल्लेख कॉपी करें",
       "bylineCopied": "उल्लेख कॉपी हो गया",
@@ -6783,6 +6784,11 @@
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "आगे: PDF अपलोड करें",
       "nextDetails": "आगे: विवरण जाँचें",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",

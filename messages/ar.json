@@ -6587,7 +6587,8 @@
       "emptyFile": "هذا الملف فارغ. اختر ملف PDF مرة أخرى.",
       "tooBig": "ملف PDF أكبر من {max} ميغابايت",
       "offline": "تعذّر رفع ملف PDF. تحقق من اتصالك، ثم اختره مرة أخرى.",
-      "uploadFailed": "تعذّر رفع ملف PDF. حاول مرة أخرى.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
       "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "نسخ سطر الإسناد",
       "bylineCopied": "تم نسخ سطر الإسناد",
@@ -6784,6 +6785,11 @@
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "التالي: رفع ملف PDF",
       "nextDetails": "التالي: مراجعة التفاصيل",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
       "bylineBy": {
         "label": "Who adds the line",
         "choose": "Choose who adds the line to continue.",
