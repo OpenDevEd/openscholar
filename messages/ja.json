@@ -6538,7 +6538,7 @@
       "newReport": "新しいレポート",
       "yourReports": "あなたのレポート",
       "discarded": "レポートを破棄しました",
-      "discardFailed": "レポートを破棄できませんでした",
+      "discardFailed": "レポートを破棄できませんでした。",
       "closedTitle": "公開は現在停止中です",
       "closedWithReports": "現在、新しいレポートは開始できません。既存のレポートはそのままです。",
       "closedNoReports": "現在、新しいレポートは開始できません。後でもう一度お試しください。",
@@ -6548,8 +6548,8 @@
       "elsewhereTitle": "このレポートは別のワークスペースにあります",
       "missingTitle": "このレポートはここにありません",
       "offNotice": "現在、新しいレポートの公開は停止中です。このレポートの作業は続けられます。",
-      "stepFailed": "そのステップを開けませんでした",
-      "checksFailed": "チェックを実行できませんでした",
+      "stepFailed": "そのステップを開けませんでした。",
+      "checksFailed": "チェックを実行できませんでした。",
       "saveFailed": "変更を保存できませんでした",
       "changesLive": "変更が公開されました",
       "changesWithReviewer": "変更は審査者が確認中です",
@@ -6570,8 +6570,8 @@
         "workspace": "このワークスペースのプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
         "workspaceClosed": "このワークスペースのプランには公開が含まれていません。公開を含むプランに変更してください。"
       },
-      "signFailed": "契約に署名できませんでした",
-      "sign": "署名して DOI を予約",
+      "signFailed": "契約に署名できませんでした。",
+      "sign": "次へ：署名して DOI を予約",
       "signIn": "サインインして公開",
       "doiReserved": "DOI を予約しました",
       "doiReservedBody": "DOI はレポートに付いたままで、レポートと同時に公開されます。",
@@ -6581,17 +6581,17 @@
       "doiCopied": "DOI をコピーしました",
       "uploadPdf": "PDF をアップロード",
       "textless": "この PDF にはスキャン画像のように文字が含まれていません。チェックは表記を見つけられません。文字を含む PDF として書き出してアップロードするか、詳細を手入力してください。",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "この PDF にはスキャンと同じくテキストが含まれていないため、チェックはレポートを読み取れません。表記は当方で追加したページにあります。テキスト付きの PDF として書き出してアップロードするか、詳細を手入力してください。",
       "unreadPdf": "Openscholar はこの PDF から詳細を読み取れませんでした。手入力してください。",
       "uploadAnother": "別の PDF をアップロード",
       "uploadLost": "アップロードが届きませんでした。もう一度お試しください。",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} は PDF ではありません。レポートを PDF として保存または書き出し、そのファイルを選んでください。",
       "emptyFile": "そのファイルは空です。PDF を選び直してください。",
-      "tooBig": "PDF が {max} MB を超えています",
+      "tooBig": "PDF が {max} MB を超えています。より小さいものを選んでください。",
       "offline": "PDF をアップロードできませんでした。接続を確認して、もう一度選んでください。",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "PDF を送信できませんでした。",
+      "uploadFailed": "PDF は届きましたが、サーバーがレポートに追加しませんでした。",
+      "uploadIntro": "このシリーズのレポートはすべて、PDF 内にこの表記をテキストとして含みます。チェックはこれを探します。",
       "copyByline": "表記をコピー",
       "bylineCopied": "表記をコピーしました",
       "uploading": "{name} をアップロード中",
@@ -6600,13 +6600,13 @@
       "drop": "ここに PDF をドロップするか、選んでください",
       "dropHint": "PDF 1 つ、{max} MB まで",
       "unopenedPdf": "{name} を PDF として開けませんでした。パスワードがかかっている場合は外してから、PDF として保存し直してアップロードしてください。",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} には上の表記がありません。表記を追加して PDF をもう一度アップロードするか、当方に追加をお任せください。",
       "keptDetails": "これは PDF を差し替える前の詳細です。",
       "readAgain": "この PDF から読み込む",
       "readAgainTitle": "この PDF から詳細を読み込みますか？",
       "readAgainBody": "いま表示されている詳細は、入力した内容も含めて、この PDF の詳細に置き換わります。",
       "readAgainKeep": "この詳細を残す",
-      "readAgainFailed": "詳細を読み込み直せませんでした",
+      "readAgainFailed": "詳細を読み込み直せませんでした。",
       "stuck": "{name} の読み取りに時間がかかりすぎています。アップロードし直してください。",
       "replaces": "再アップロードすると {name} が置き換わります",
       "check": {
@@ -6643,7 +6643,7 @@
           }
         }
       },
-      "activateFailed": "有効化できませんでした",
+      "activateFailed": "有効化できませんでした。",
       "running": "チェックを実行中",
       "ofTotal": "{done}/{total}",
       "runningHint": "以前のコピーの検索には数秒かかります。このページを離れてもチェックは続きます。",
@@ -6688,7 +6688,7 @@
       "savingNote": "カードは Openscholar でレポートを有効化するために保存されます。今は請求されません。",
       "registering": "ページはすでに公開されており、共有できます。DOI は登録が済むと使えるようになります。通常は数分以内です。",
       "sentToReviewer": "審査者に送信しました",
-      "requestFailed": "依頼を送信できませんでした",
+      "requestFailed": "依頼を送信できませんでした。",
       "reviewIntro": "審査者があなたのレポートとチェックの結果を読みます。チェックが誤っていると思うときに依頼してください。",
       "reviewQuestion": "チェックはどこを誤りましたか？",
       "cancel": "キャンセル",
@@ -6713,7 +6713,7 @@
       "discardBody": "レポートは現在のまま公開されます。行った変更は失われます。",
       "keepThem": "残す",
       "changesDiscarded": "変更を破棄しました",
-      "changesDiscardFailed": "変更を破棄できませんでした",
+      "changesDiscardFailed": "変更を破棄できませんでした。",
       "discard": "破棄",
       "pages": "{count, plural, other {# ページ}}",
       "agreementVersion": "契約 v{version}",
@@ -6770,7 +6770,7 @@
           "confirm": "支払いを確認",
           "change": "変更",
           "addButton": "支払い方法を追加",
-          "stripeFailed": "Stripeのページを開けませんでした",
+          "stripeFailed": "Stripeのページを開けませんでした。",
           "credit": "クレジット {amount}",
           "freeTitle": "無料の有効化",
           "covered": "コードでこの有効化をまかなえます",
@@ -6785,36 +6785,36 @@
         "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。"
       },
       "back": "戻る",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "PDF にこの表記を入れます",
+      "bylineFirstBody": "このシリーズのレポートはすべて、PDF 内にこの表記をテキストとして含みます。アップロード後、チェックがこれを探します。",
       "nextUpload": "次へ：PDF をアップロード",
       "nextDetails": "次へ：詳細を確認",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "このページとサーバーのバージョンが異なります。ページを再読み込みしてから、もう一度お試しください。",
+        "retry": "もう一度お試しください。繰り返し起きる場合は、<link>問題を報告</link>してください。",
+        "retryQuote": "もう一度お試しください。繰り返し起きる場合は、{reference} を添えて<link>問題を報告</link>してください。"
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "表記を追加する人",
+        "choose": "続けるには、表記を追加する人を選んでください。",
+        "chooseFirst": "先に、表記を追加する人を選んでください",
+        "failed": "{name} にページを追加できませんでした。ご自身で表記を追加し、PDF をもう一度アップロードしてください。",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} は {max} MB を超えており、ページを追加するには大きすぎます。ご自身で表記を入れるか、より小さい PDF をアップロードしてください。",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "自分で追加する",
+          "body": "アップロードする前に、表記を一字一句そのまま PDF の表紙または表紙裏に入れてください。"
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "追加を任せる",
+          "body": "この表記とレポートの詳細を載せた最終ページを追加します。{max} MB までの PDF が対象です。"
         }
       },
       "overview": {
         "title": "{series} でレポートを公開する",
         "intro": "最初から最後まで約 10 分です。各ステップで必要なことは次のとおりです。",
         "introReviewed": "あなたの作業は約 10 分です。その後、公開前に審査者がレポートを承認し、メールでお知らせします。",
-        "start": "開始",
+        "start": "次へ：契約に署名",
         "agreement": {
           "title": "公開契約に署名する",
           "body": "著作権はあなたに残り、CC BY 4.0 で公開します。"
@@ -6825,7 +6825,7 @@
         },
         "pdf": {
           "title": "PDF をアップロードする",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "シリーズ名と DOI を示す表記を 1 行入れます。ご自身で追加するか、当方が最終ページに追加します。"
         },
         "details": {
           "title": "詳細を確認する",
@@ -6833,7 +6833,7 @@
         },
         "checks": {
           "title": "自動チェック",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "約 1 分。その表記と、すでに公開されているものを探します。"
         },
         "activate": {
           "title": "有効化",
@@ -6937,7 +6937,7 @@
       "cancel": "キャンセル",
       "sendForReview": "変更をチェックして審査に送る",
       "checkAndPublish": "変更をチェックして公開",
-      "runChecks": "チェックを実行",
+      "runChecks": "次へ：チェックを実行",
       "tooEarly": "レポートの日付を1400年より前にすることはできません。",
       "back": "戻る"
     }

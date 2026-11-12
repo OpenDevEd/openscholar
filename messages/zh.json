@@ -6538,7 +6538,7 @@
       "newReport": "新报告",
       "yourReports": "您的报告",
       "discarded": "报告已放弃",
-      "discardFailed": "无法放弃报告",
+      "discardFailed": "无法放弃报告。",
       "closedTitle": "发布功能暂时关闭",
       "closedWithReports": "目前无法开始新的报告。您已有的报告保持不变。",
       "closedNoReports": "目前无法开始新的报告。请稍后再来。",
@@ -6548,8 +6548,8 @@
       "elsewhereTitle": "此报告在另一个工作区",
       "missingTitle": "此报告不在这里",
       "offNotice": "发布功能暂时不接受新报告。您可以继续处理这份。",
-      "stepFailed": "无法打开该步骤",
-      "checksFailed": "检查无法运行",
+      "stepFailed": "无法打开该步骤。",
+      "checksFailed": "检查无法运行。",
       "saveFailed": "无法保存您的修改",
       "changesLive": "您的修改已上线",
       "changesWithReviewer": "您的修改正在由审核人处理",
@@ -6570,8 +6570,8 @@
         "workspace": "此工作区的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
         "workspaceClosed": "此工作区的方案不包含发布。请换一个包含发布的方案。"
       },
-      "signFailed": "无法签署协议",
-      "sign": "签署并预留 DOI",
+      "signFailed": "无法签署协议。",
+      "sign": "下一步：签署并预留 DOI",
       "signIn": "登录以发布",
       "doiReserved": "您的 DOI 已预留",
       "doiReservedBody": "它随您的报告保留，并在报告上线时一同上线。",
@@ -6581,17 +6581,17 @@
       "doiCopied": "DOI 已复制",
       "uploadPdf": "上传 PDF",
       "textless": "此 PDF 不含文字，像扫描件一样。检查无法在其中找到署名。请将报告导出为带文字的 PDF 再上传，或手动填写信息。",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "这个 PDF 不含文字，就像扫描件一样，因此检查无法从中读取您的报告。署名在我们添加的那一页上。请将报告导出为带文字的 PDF 再上传，或手动填写详情。",
       "unreadPdf": "Openscholar 无法从此 PDF 读取信息。请手动填写。",
       "uploadAnother": "上传另一个 PDF",
       "uploadLost": "上传未送达。请重试。",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} 不是 PDF。请将报告保存或导出为 PDF，然后选择该文件。",
       "emptyFile": "该文件为空。请重新选择 PDF。",
-      "tooBig": "PDF 超过 {max} MB",
+      "tooBig": "PDF 超过 {max} MB。请选择较小的文件。",
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "PDF 未能发送给我们。",
+      "uploadFailed": "我们收到了 PDF，但服务器没有把它添加到您的报告中。",
+      "uploadIntro": "本系列的每份报告都在 PDF 中以文字形式带有这行署名。我们的检查会查找它。",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
       "uploading": "正在上传 {name}",
@@ -6600,13 +6600,13 @@
       "drop": "将 PDF 拖到这里，或选择文件",
       "dropHint": "一个 PDF，最大 {max} MB",
       "unopenedPdf": "无法将 {name} 作为 PDF 打开。如果它设有密码，请先移除密码，再重新另存为 PDF 后上传。",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} 没有上面这行署名。请添加后重新上传 PDF，或由我们来添加。",
       "keptDetails": "这些是您替换 PDF 之前的信息。",
       "readAgain": "改为从此 PDF 读取",
       "readAgainTitle": "从此 PDF 读取信息？",
       "readAgainBody": "当前显示的信息将被此 PDF 的信息替换，您在其中输入的内容也会一并替换。",
       "readAgainKeep": "保留这些信息",
-      "readAgainFailed": "无法重新读取信息",
+      "readAgainFailed": "无法重新读取信息。",
       "stuck": "读取 {name} 用时过长。请重新上传。",
       "replaces": "重新上传将替换 {name}",
       "check": {
@@ -6643,7 +6643,7 @@
           }
         }
       },
-      "activateFailed": "无法激活",
+      "activateFailed": "无法激活。",
       "running": "正在运行检查",
       "ofTotal": "{done}/{total}",
       "runningHint": "查找早期版本需要几秒钟。您可以离开此页面，检查会继续进行。",
@@ -6688,7 +6688,7 @@
       "savingNote": "您的银行卡将被保存，用于在 Openscholar 上激活报告。现在不会扣款。",
       "registering": "页面现已开放，可以分享。DOI 在登记完成后生效，通常只需几分钟。",
       "sentToReviewer": "已发送给审核人",
-      "requestFailed": "无法发送请求",
+      "requestFailed": "无法发送请求。",
       "reviewIntro": "审核人会阅读您的报告和检查结果。如果您认为某项检查有误，请提出申请。",
       "reviewQuestion": "检查哪里出错了？",
       "cancel": "取消",
@@ -6713,7 +6713,7 @@
       "discardBody": "您的报告保持当前状态上线。您所做的修改将被放弃。",
       "keepThem": "保留",
       "changesDiscarded": "修改已放弃",
-      "changesDiscardFailed": "无法放弃修改",
+      "changesDiscardFailed": "无法放弃修改。",
       "discard": "放弃",
       "pages": "{count, plural, other {# 页}}",
       "agreementVersion": "协议 v{version}",
@@ -6770,7 +6770,7 @@
           "confirm": "确认付款",
           "change": "更换",
           "addButton": "添加付款方式",
-          "stripeFailed": "无法打开 Stripe 页面",
+          "stripeFailed": "无法打开 Stripe 页面。",
           "credit": "余额 {amount}",
           "freeTitle": "免费激活",
           "covered": "您的优惠码可抵扣本次激活",
@@ -6785,36 +6785,36 @@
         "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。"
       },
       "back": "返回",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "您的 PDF 带有这行署名",
+      "bylineFirstBody": "本系列的每份报告都在 PDF 中以文字形式带有这行署名。您上传后，我们的检查会查找它。",
       "nextUpload": "下一步：上传 PDF",
       "nextDetails": "下一步：核对信息",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "此页面与服务器的版本不一致。请刷新页面后重试。",
+        "retry": "请重试。如果仍然出现，请<link>报告问题</link>。",
+        "retryQuote": "请重试。如果仍然出现，请<link>报告问题</link>并注明 {reference}。"
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "由谁添加署名",
+        "choose": "请选择由谁添加署名以继续。",
+        "chooseFirst": "请先选择由谁添加署名",
+        "failed": "我们无法在 {name} 中添加该页。请自行添加署名并重新上传 PDF。",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} 超过 {max} MB，太大了，我们无法为它添加页面。请自行加入署名，或上传较小的 PDF。",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "我自己添加",
+          "body": "上传前，请将这行署名原样放在 PDF 的封面或封二上。"
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "请替我添加",
+          "body": "我们会添加最后一页，写上这行署名和您报告的详情。适用于不超过 {max} MB 的 PDF。"
         }
       },
       "overview": {
         "title": "通过 {series} 发布报告",
         "intro": "从开始到结束大约十分钟。以下是每一步需要您做的事。",
         "introReviewed": "大约占用您十分钟。之后由审核人批准，报告才能上线，我们会通过邮件通知您。",
-        "start": "开始",
+        "start": "下一步：签署协议",
         "agreement": {
           "title": "签署发布协议",
           "body": "您保留版权，并以 CC BY 4.0 发布。"
@@ -6825,7 +6825,7 @@
         },
         "pdf": {
           "title": "上传您的 PDF",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "须有一行署名，写明系列名称和 DOI。您可以自行添加，或由我们加在最后一页。"
         },
         "details": {
           "title": "核对信息",
@@ -6833,7 +6833,7 @@
         },
         "checks": {
           "title": "自动检查",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "大约一分钟。检查会查找这行署名以及任何已发表的内容。"
         },
         "activate": {
           "title": "激活",
@@ -6937,7 +6937,7 @@
       "cancel": "取消",
       "sendForReview": "检查修改并提交审核",
       "checkAndPublish": "检查并发布修改",
-      "runChecks": "运行检查",
+      "runChecks": "下一步：运行检查",
       "tooEarly": "报告日期不能早于 1400 年。",
       "back": "返回"
     }

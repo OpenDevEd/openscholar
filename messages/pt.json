@@ -6539,7 +6539,7 @@
       "newReport": "Novo relatório",
       "yourReports": "Os seus relatórios",
       "discarded": "Relatório descartado",
-      "discardFailed": "Não foi possível descartar o relatório",
+      "discardFailed": "Não foi possível descartar o relatório.",
       "closedTitle": "A publicação está fechada por agora",
       "closedWithReports": "Por agora não é possível começar um novo relatório. Os relatórios que já tem ficam como estão.",
       "closedNoReports": "Por agora não é possível começar um novo relatório. Volte mais tarde.",
@@ -6549,8 +6549,8 @@
       "elsewhereTitle": "Este relatório está noutro espaço de trabalho",
       "missingTitle": "Este relatório não está aqui",
       "offNotice": "A publicação está fechada a novos relatórios por agora. Pode continuar a trabalhar neste.",
-      "stepFailed": "Não foi possível abrir esse passo",
-      "checksFailed": "Não foi possível executar as verificações",
+      "stepFailed": "Não foi possível abrir esse passo.",
+      "checksFailed": "Não foi possível executar as verificações.",
       "saveFailed": "Não foi possível guardar as suas alterações",
       "changesLive": "As suas alterações estão publicadas",
       "changesWithReviewer": "As suas alterações estão com um revisor",
@@ -6571,8 +6571,8 @@
         "workspace": "O plano deste espaço permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",
         "workspaceClosed": "O plano deste espaço não inclui publicação. Mude para um plano que inclua."
       },
-      "signFailed": "Não foi possível assinar o acordo",
-      "sign": "Assinar e reservar um DOI",
+      "signFailed": "Não foi possível assinar o acordo.",
+      "sign": "Seguinte: assinar e reservar um DOI",
       "signIn": "Iniciar sessão para publicar",
       "doiReserved": "O seu DOI está reservado",
       "doiReservedBody": "Fica com o seu relatório e é publicado quando o relatório for.",
@@ -6582,17 +6582,17 @@
       "doiCopied": "DOI copiado",
       "uploadPdf": "Carregar o PDF",
       "textless": "Este PDF não contém texto, como acontece com uma digitalização. As verificações não conseguem encontrar a menção. Exporte o relatório como PDF com texto e carregue-o, ou preencha os dados à mão.",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "Este PDF não contém texto, como acontece com uma digitalização, por isso as verificações não conseguem ler nele o seu relatório. A menção está na página que acrescentámos. Exporte o relatório em PDF com o seu texto e carregue-o, ou preencha os dados à mão.",
       "unreadPdf": "O Openscholar não conseguiu ler os dados deste PDF. Preencha-os à mão.",
       "uploadAnother": "Carregar outro PDF",
       "uploadLost": "O carregamento não chegou. Tente de novo.",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} não é um PDF. Guarde ou exporte o seu relatório em PDF e escolha esse ficheiro.",
       "emptyFile": "Esse ficheiro está vazio. Escolha o PDF de novo.",
-      "tooBig": "O PDF tem mais de {max} MB",
+      "tooBig": "O PDF tem mais de {max} MB. Escolha um mais pequeno.",
       "offline": "Não foi possível carregar o PDF. Verifique a ligação e escolha-o de novo.",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "Não foi possível enviar-nos o PDF.",
+      "uploadFailed": "O PDF chegou até nós, mas o servidor não o acrescentou ao seu relatório.",
+      "uploadIntro": "Todos os relatórios desta série têm esta menção no PDF, como texto. A nossa verificação procura-a.",
       "copyByline": "Copiar a menção",
       "bylineCopied": "Menção copiada",
       "uploading": "A carregar {name}",
@@ -6601,13 +6601,13 @@
       "drop": "Largue o PDF aqui, ou escolha-o",
       "dropHint": "Um PDF, até {max} MB",
       "unopenedPdf": "Não foi possível abrir {name} como PDF. Se tiver senha, remova-a; depois guarde-o de novo como PDF e carregue-o.",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} não tem a menção acima. Acrescente-a e carregue o PDF de novo, ou deixe que a acrescentemos.",
       "keptDetails": "Estes são os dados que tinha antes de substituir o PDF.",
       "readAgain": "Lê-los antes deste PDF",
       "readAgainTitle": "Ler os dados deste PDF?",
       "readAgainBody": "Os dados agora apresentados são substituídos pelos deste PDF, com tudo o que tiver escrito neles.",
       "readAgainKeep": "Manter estes dados",
-      "readAgainFailed": "Não foi possível ler os dados de novo",
+      "readAgainFailed": "Não foi possível ler os dados de novo.",
       "stuck": "A leitura de {name} está a demorar mais do que devia. Carregue-o de novo.",
       "replaces": "Carregar de novo substitui {name}",
       "check": {
@@ -6644,7 +6644,7 @@
           }
         }
       },
-      "activateFailed": "Não foi possível ativá-lo",
+      "activateFailed": "Não foi possível ativá-lo.",
       "running": "A executar as verificações",
       "ofTotal": "{done} de {total}",
       "runningHint": "Procurar cópias anteriores demora alguns segundos. Pode sair desta página: as verificações continuam.",
@@ -6689,7 +6689,7 @@
       "savingNote": "O seu cartão fica guardado para ativar relatórios no Openscholar. Nada é cobrado agora.",
       "registering": "A página já está aberta e pode ser compartilhada. O DOI começa a funcionar quando é registrado, geralmente em alguns minutos.",
       "sentToReviewer": "Enviado a um revisor",
-      "requestFailed": "Não foi possível enviar o pedido",
+      "requestFailed": "Não foi possível enviar o pedido.",
       "reviewIntro": "Um revisor lê o seu relatório e o que as verificações disseram. Peça quando achar que uma verificação se enganou.",
       "reviewQuestion": "Em que é que as verificações se enganaram?",
       "cancel": "Cancelar",
@@ -6714,7 +6714,7 @@
       "discardBody": "O seu relatório continua publicado como está agora. As alterações que fez perdem-se.",
       "keepThem": "Mantê-las",
       "changesDiscarded": "Alterações descartadas",
-      "changesDiscardFailed": "Não foi possível descartar as alterações",
+      "changesDiscardFailed": "Não foi possível descartar as alterações.",
       "discard": "Descartar",
       "pages": "{count, plural, one {# página} other {# páginas}}",
       "agreementVersion": "Acordo v{version}",
@@ -6771,7 +6771,7 @@
           "confirm": "Confirmar pagamento",
           "change": "Alterar",
           "addButton": "Adicionar método de pagamento",
-          "stripeFailed": "Não foi possível abrir a página do Stripe",
+          "stripeFailed": "Não foi possível abrir a página do Stripe.",
           "credit": "{amount} de crédito",
           "freeTitle": "Ativação gratuita",
           "covered": "O seu código cobre esta ativação",
@@ -6786,36 +6786,36 @@
         "paused": "A publicação está em pausa por agora, por isso nada pode ser publicado. O seu relatório mantém o seu lugar."
       },
       "back": "Voltar",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "O seu PDF tem esta menção",
+      "bylineFirstBody": "Todos os relatórios desta série têm esta menção no PDF, como texto. As nossas verificações procuram-na assim que carrega o ficheiro.",
       "nextUpload": "Seguinte: carregar o PDF",
       "nextDetails": "Seguinte: verificar os dados",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "Esta página e o servidor estão em versões diferentes. Recarregue a página e tente de novo.",
+        "retry": "Tente de novo. Se continuar a acontecer, <link>comunique um problema</link>.",
+        "retryQuote": "Tente de novo. Se continuar a acontecer, <link>comunique um problema</link> e indique {reference}."
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "Quem acrescenta a menção",
+        "choose": "Escolha quem acrescenta a menção para continuar.",
+        "chooseFirst": "Escolha primeiro quem acrescenta a menção",
+        "failed": "Não conseguimos acrescentar a página a {name}. Acrescente a menção e carregue o PDF de novo.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} tem mais de {max} MB, o que é demasiado para lhe acrescentarmos uma página. Ponha a menção no ficheiro, ou carregue um PDF mais pequeno.",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "Acrescento eu",
+          "body": "Ponha a menção, palavra por palavra, na capa ou no verso da capa do seu PDF antes de o carregar."
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "Acrescentem por mim",
+          "body": "Acrescentamos uma última página com esta menção e os dados do seu relatório. Para PDF até {max} MB."
         }
       },
       "overview": {
         "title": "Publicar um relatório com {series}",
         "intro": "Cerca de dez minutos do início ao fim. Isto é o que cada passo lhe pede.",
         "introReviewed": "Cerca de dez minutos do seu tempo. Depois, um revisor aprova o relatório antes de ele poder ficar publicado, e é avisado por e-mail.",
-        "start": "Começar",
+        "start": "Seguinte: assinar o acordo",
         "agreement": {
           "title": "Assinar o acordo de publicação",
           "body": "Mantém os direitos de autor e publica sob CC BY 4.0."
@@ -6826,7 +6826,7 @@
         },
         "pdf": {
           "title": "Carregar o seu PDF",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "Com uma menção que nomeia a série e o DOI. Acrescente-a, ou acrescentamo-la numa última página."
         },
         "details": {
           "title": "Verificar os dados",
@@ -6834,7 +6834,7 @@
         },
         "checks": {
           "title": "Verificações automáticas",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "Cerca de um minuto. Procuram essa menção e tudo o que já tenha sido publicado."
         },
         "activate": {
           "title": "Ativar",
@@ -6938,7 +6938,7 @@
       "cancel": "Cancelar",
       "sendForReview": "Verificar as alterações e enviá-las para revisão",
       "checkAndPublish": "Verificar e publicar as alterações",
-      "runChecks": "Executar as verificações",
+      "runChecks": "Seguinte: executar as verificações",
       "tooEarly": "Um relatório não pode ter data anterior a 1400.",
       "back": "Voltar"
     }

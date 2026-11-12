@@ -6539,7 +6539,7 @@
       "newReport": "Neuer Bericht",
       "yourReports": "Ihre Berichte",
       "discarded": "Bericht verworfen",
-      "discardFailed": "Der Bericht konnte nicht verworfen werden",
+      "discardFailed": "Der Bericht konnte nicht verworfen werden.",
       "closedTitle": "Die Veröffentlichung ist vorerst geschlossen",
       "closedWithReports": "Derzeit kann kein neuer Bericht begonnen werden. Ihre vorhandenen Berichte bleiben, wie sie sind.",
       "closedNoReports": "Derzeit kann kein neuer Bericht begonnen werden. Schauen Sie später wieder vorbei.",
@@ -6549,8 +6549,8 @@
       "elsewhereTitle": "Dieser Bericht liegt in einem anderen Arbeitsbereich",
       "missingTitle": "Dieser Bericht ist nicht hier",
       "offNotice": "Die Veröffentlichung ist für neue Berichte vorerst geschlossen. Sie können an diesem weiterarbeiten.",
-      "stepFailed": "Dieser Schritt konnte nicht geöffnet werden",
-      "checksFailed": "Die Prüfungen konnten nicht laufen",
+      "stepFailed": "Dieser Schritt konnte nicht geöffnet werden.",
+      "checksFailed": "Die Prüfungen konnten nicht laufen.",
       "saveFailed": "Ihre Änderungen konnten nicht gespeichert werden",
       "changesLive": "Ihre Änderungen sind online",
       "changesWithReviewer": "Ihre Änderungen liegen bei einer Prüferin oder einem Prüfer",
@@ -6571,8 +6571,8 @@
         "workspace": "Mit dem Plan dieses Arbeitsbereichs beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
         "workspaceClosed": "Der Plan dieses Arbeitsbereichs enthält kein Veröffentlichen. Wechseln Sie zu einem Plan, der es enthält."
       },
-      "signFailed": "Die Vereinbarung konnte nicht unterzeichnet werden",
-      "sign": "Unterzeichnen und einen DOI reservieren",
+      "signFailed": "Die Vereinbarung konnte nicht unterzeichnet werden.",
+      "sign": "Weiter: unterzeichnen und DOI reservieren",
       "signIn": "Zum Veröffentlichen anmelden",
       "doiReserved": "Ihr DOI ist reserviert",
       "doiReservedBody": "Er bleibt bei Ihrem Bericht und geht online, wenn der Bericht online geht.",
@@ -6582,17 +6582,17 @@
       "doiCopied": "DOI kopiert",
       "uploadPdf": "PDF hochladen",
       "textless": "Dieses PDF enthält keinen Text, wie bei einem Scan. Die Prüfungen können den Vermerk darin nicht finden. Exportieren Sie den Bericht als PDF mit Text und laden Sie dieses hoch, oder füllen Sie die Angaben von Hand aus.",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "Dieses PDF enthält keinen Text, wie ein Scan, daher können die Prüfungen Ihren Bericht darin nicht lesen. Der Vermerk steht auf der Seite, die wir hinzugefügt haben. Exportieren Sie den Bericht als PDF mit Text und laden Sie es hoch, oder tragen Sie die Angaben von Hand ein.",
       "unreadPdf": "Openscholar konnte die Angaben aus diesem PDF nicht lesen. Füllen Sie sie von Hand aus.",
       "uploadAnother": "Ein anderes PDF hochladen",
       "uploadLost": "Der Upload ist nicht angekommen. Versuchen Sie es erneut.",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} ist kein PDF. Speichern oder exportieren Sie Ihren Bericht als PDF und wählen Sie dann diese Datei.",
       "emptyFile": "Diese Datei ist leer. Wählen Sie das PDF erneut.",
-      "tooBig": "Das PDF ist größer als {max} MB",
+      "tooBig": "Das PDF ist größer als {max} MB. Wählen Sie ein kleineres.",
       "offline": "Das PDF konnte nicht hochgeladen werden. Prüfen Sie Ihre Verbindung und wählen Sie es dann erneut.",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "Das PDF konnte nicht an uns gesendet werden.",
+      "uploadFailed": "Das PDF ist bei uns angekommen, aber der Server hat es Ihrem Bericht nicht hinzugefügt.",
+      "uploadIntro": "Jeder Bericht dieser Reihe trägt diesen Vermerk in seinem PDF, als Text. Unsere Prüfung sucht danach.",
       "copyByline": "Vermerk kopieren",
       "bylineCopied": "Vermerk kopiert",
       "uploading": "{name} wird hochgeladen",
@@ -6601,13 +6601,13 @@
       "drop": "PDF hier ablegen oder auswählen",
       "dropHint": "Ein PDF, bis zu {max} MB",
       "unopenedPdf": "{name} konnte nicht als PDF geöffnet werden. Hat es ein Passwort, entfernen Sie es; speichern Sie es dann erneut als PDF und laden Sie dieses hoch.",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} trägt den Vermerk oben nicht. Fügen Sie ihn hinzu und laden Sie das PDF erneut hoch, oder lassen Sie ihn von uns hinzufügen.",
       "keptDetails": "Dies sind die Angaben, die Sie hatten, bevor Sie das PDF ersetzt haben.",
       "readAgain": "Stattdessen aus diesem PDF lesen",
       "readAgainTitle": "Angaben aus diesem PDF lesen?",
       "readAgainBody": "Die jetzt angezeigten Angaben werden durch die dieses PDFs ersetzt, samt allem, was Sie darin eingegeben haben.",
       "readAgainKeep": "Diese Angaben behalten",
-      "readAgainFailed": "Die Angaben konnten nicht erneut gelesen werden",
+      "readAgainFailed": "Die Angaben konnten nicht erneut gelesen werden.",
       "stuck": "Das Lesen von {name} dauert länger als erwartet. Laden Sie es erneut hoch.",
       "replaces": "Ein erneuter Upload ersetzt {name}",
       "check": {
@@ -6644,7 +6644,7 @@
           }
         }
       },
-      "activateFailed": "Er konnte nicht aktiviert werden",
+      "activateFailed": "Er konnte nicht aktiviert werden.",
       "running": "Prüfungen laufen",
       "ofTotal": "{done} von {total}",
       "runningHint": "Die Suche nach früheren Fassungen dauert ein paar Sekunden. Sie können diese Seite verlassen: Die Prüfungen laufen weiter.",
@@ -6689,7 +6689,7 @@
       "savingNote": "Ihre Karte wird gespeichert, um Berichte auf Openscholar zu aktivieren. Jetzt wird nichts abgebucht.",
       "registering": "Die Seite ist jetzt offen und kann geteilt werden. Der DOI funktioniert, sobald er registriert ist, meist innerhalb weniger Minuten.",
       "sentToReviewer": "An eine Prüfung gesendet",
-      "requestFailed": "Die Anfrage konnte nicht gesendet werden",
+      "requestFailed": "Die Anfrage konnte nicht gesendet werden.",
       "reviewIntro": "Jemand liest Ihren Bericht und was die Prüfungen gesagt haben. Fragen Sie an, wenn Sie meinen, dass eine Prüfung sich geirrt hat.",
       "reviewQuestion": "Was haben die Prüfungen falsch gemacht?",
       "cancel": "Abbrechen",
@@ -6714,7 +6714,7 @@
       "discardBody": "Ihr Bericht bleibt so online, wie er jetzt ist. Ihre Änderungen werden aufgegeben.",
       "keepThem": "Behalten",
       "changesDiscarded": "Änderungen verworfen",
-      "changesDiscardFailed": "Die Änderungen konnten nicht verworfen werden",
+      "changesDiscardFailed": "Die Änderungen konnten nicht verworfen werden.",
       "discard": "Verwerfen",
       "pages": "{count, plural, one {# Seite} other {# Seiten}}",
       "agreementVersion": "Vereinbarung v{version}",
@@ -6771,7 +6771,7 @@
           "confirm": "Zahlung bestätigen",
           "change": "Ändern",
           "addButton": "Zahlungsmethode hinzufügen",
-          "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden",
+          "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden.",
           "credit": "{amount} Guthaben",
           "freeTitle": "Kostenlose Aktivierung",
           "covered": "Ihr Code deckt diese Aktivierung",
@@ -6786,36 +6786,36 @@
         "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz."
       },
       "back": "Zurück",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "Ihr PDF trägt diesen Vermerk",
+      "bylineFirstBody": "Jeder Bericht dieser Reihe trägt diesen Vermerk in seinem PDF, als Text. Unsere Prüfungen suchen danach, sobald Sie hochladen.",
       "nextUpload": "Weiter: PDF hochladen",
       "nextDetails": "Weiter: Angaben prüfen",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "Diese Seite und der Server haben unterschiedliche Versionen. Laden Sie die Seite neu und versuchen Sie es dann erneut.",
+        "retry": "Versuchen Sie es erneut. Wenn es weiter passiert, <link>melden Sie ein Problem</link>.",
+        "retryQuote": "Versuchen Sie es erneut. Wenn es weiter passiert, <link>melden Sie ein Problem</link> und nennen Sie {reference}."
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "Wer den Vermerk hinzufügt",
+        "choose": "Wählen Sie, wer den Vermerk hinzufügt, um fortzufahren.",
+        "chooseFirst": "Wählen Sie zuerst, wer den Vermerk hinzufügt",
+        "failed": "Wir konnten die Seite nicht zu {name} hinzufügen. Fügen Sie den Vermerk selbst hinzu und laden Sie das PDF erneut hoch.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} ist größer als {max} MB und damit zu groß, als dass wir eine Seite hinzufügen könnten. Setzen Sie den Vermerk selbst ein oder laden Sie ein kleineres PDF hoch.",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "Ich füge ihn selbst hinzu",
+          "body": "Setzen Sie den Vermerk wortwörtlich auf das Deckblatt oder die Innenseite des Deckblatts Ihres PDFs, bevor Sie es hochladen."
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "Für mich hinzufügen",
+          "body": "Wir fügen eine letzte Seite mit diesem Vermerk und den Angaben Ihres Berichts hinzu. Für PDFs bis {max} MB."
         }
       },
       "overview": {
         "title": "Einen Bericht bei {series} veröffentlichen",
         "intro": "Etwa zehn Minuten von Anfang bis Ende. Das verlangt jeder Schritt von Ihnen.",
         "introReviewed": "Etwa zehn Minuten Ihrer Zeit. Danach genehmigt ein Gutachter den Bericht, bevor er online gehen kann, und Sie erhalten eine E-Mail.",
-        "start": "Starten",
+        "start": "Weiter: Vereinbarung unterzeichnen",
         "agreement": {
           "title": "Die Veröffentlichungsvereinbarung unterzeichnen",
           "body": "Sie behalten das Urheberrecht und veröffentlichen unter CC BY 4.0."
@@ -6826,7 +6826,7 @@
         },
         "pdf": {
           "title": "Ihr PDF hochladen",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "Mit einem Vermerk, der die Reihe und die DOI nennt. Fügen Sie ihn selbst hinzu, oder wir fügen ihn auf einer letzten Seite hinzu."
         },
         "details": {
           "title": "Die Angaben prüfen",
@@ -6834,7 +6834,7 @@
         },
         "checks": {
           "title": "Automatische Prüfungen",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "Etwa eine Minute. Sie suchen nach diesem Vermerk und nach allem, was bereits veröffentlicht wurde."
         },
         "activate": {
           "title": "Aktivieren",
@@ -6938,7 +6938,7 @@
       "cancel": "Abbrechen",
       "sendForReview": "Änderungen prüfen und zur Prüfung senden",
       "checkAndPublish": "Änderungen prüfen und veröffentlichen",
-      "runChecks": "Prüfungen ausführen",
+      "runChecks": "Weiter: Prüfungen ausführen",
       "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein.",
       "back": "Zurück"
     }

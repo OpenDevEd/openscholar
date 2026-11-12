@@ -6539,7 +6539,7 @@
       "newReport": "Ripoti mpya",
       "yourReports": "Ripoti zako",
       "discarded": "Ripoti imeachwa",
-      "discardFailed": "Ripoti haikuweza kuachwa",
+      "discardFailed": "Ripoti haikuweza kuachwa.",
       "closedTitle": "Uchapishaji umefungwa kwa sasa",
       "closedWithReports": "Ripoti mpya haziwezi kuanzishwa kwa sasa. Ripoti zako zilizopo zinabaki kama zilivyo.",
       "closedNoReports": "Ripoti mpya haziwezi kuanzishwa kwa sasa. Rudi baadaye.",
@@ -6549,8 +6549,8 @@
       "elsewhereTitle": "Ripoti hii iko katika eneo jingine la kazi",
       "missingTitle": "Ripoti hii haipo hapa",
       "offNotice": "Uchapishaji umezimwa kwa ripoti mpya kwa sasa. Unaweza kuendelea kufanyia kazi hii.",
-      "stepFailed": "Hatua hiyo haikuweza kufunguliwa",
-      "checksFailed": "Ukaguzi haukuweza kuendeshwa",
+      "stepFailed": "Hatua hiyo haikuweza kufunguliwa.",
+      "checksFailed": "Ukaguzi haukuweza kuendeshwa.",
       "saveFailed": "Mabadiliko yako hayakuweza kuhifadhiwa",
       "changesLive": "Mabadiliko yako yamechapishwa",
       "changesWithReviewer": "Mabadiliko yako yako kwa mkaguzi",
@@ -6571,8 +6571,8 @@
         "workspace": "Mpango wa eneo hili la kazi unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
         "workspaceClosed": "Mpango wa eneo hili la kazi haujumuishi uchapishaji. Hamia mpango unaoujumuisha."
       },
-      "signFailed": "Makubaliano hayakuweza kusainiwa",
-      "sign": "Saini na uhifadhi DOI",
+      "signFailed": "Makubaliano hayakuweza kusainiwa.",
+      "sign": "Ifuatayo: tia saini na uhifadhi DOI",
       "signIn": "Ingia ili uchapishe",
       "doiReserved": "DOI yako imehifadhiwa",
       "doiReservedBody": "Inakaa na ripoti yako, na inachapishwa ripoti inapochapishwa.",
@@ -6582,17 +6582,17 @@
       "doiCopied": "DOI imenakiliwa",
       "uploadPdf": "Pakia PDF",
       "textless": "PDF hii haina maandishi, kama ilivyo kwa skani. Ukaguzi hauwezi kupata mstari wa utambulisho ndani yake. Hamisha ripoti kama PDF yenye maandishi na uipakie, au jaza maelezo kwa mkono.",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "PDF hii haina maandishi, kama ilivyo skani, kwa hiyo ukaguzi hauwezi kusoma ripoti yako ndani yake. Mstari uko kwenye ukurasa tulioongeza. Hamisha ripoti kama PDF yenye maandishi yake na uipakie, au jaza maelezo kwa mkono.",
       "unreadPdf": "Openscholar haikuweza kusoma maelezo kutoka PDF hii. Yajaze kwa mkono.",
       "uploadAnother": "Pakia PDF nyingine",
       "uploadLost": "Upakiaji haukufika. Jaribu tena.",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} si PDF. Hifadhi au hamisha ripoti yako kama PDF, kisha chagua faili hiyo.",
       "emptyFile": "Faili hiyo ni tupu. Chagua PDF tena.",
-      "tooBig": "PDF ni kubwa kuliko MB {max}",
+      "tooBig": "PDF inazidi MB {max}. Chagua ndogo zaidi.",
       "offline": "PDF haikuweza kupakiwa. Angalia muunganisho wako, kisha uichague tena.",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "PDF haikuweza kutumwa kwetu.",
+      "uploadFailed": "PDF imetufikia, lakini seva haikuiongeza kwenye ripoti yako.",
+      "uploadIntro": "Kila ripoti katika mfululizo huu ina mstari huu ndani ya PDF yake, kama maandishi. Ukaguzi wetu huutafuta.",
       "copyByline": "Nakili mstari wa utambulisho",
       "bylineCopied": "Mstari wa utambulisho umenakiliwa",
       "uploading": "Inapakia {name}",
@@ -6601,13 +6601,13 @@
       "drop": "Dondosha PDF hapa, au uichague",
       "dropHint": "PDF moja, hadi MB {max}",
       "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} haina mstari ulio hapo juu. Ongeza mstari na upakie PDF tena, au tuache tuuongeze.",
       "keptDetails": "Haya ni maelezo uliyokuwa nayo kabla ya kubadilisha PDF.",
       "readAgain": "Yasome kutoka PDF hii badala yake",
       "readAgainTitle": "Soma maelezo kutoka PDF hii?",
       "readAgainBody": "Maelezo yanayoonekana sasa yatabadilishwa na ya PDF hii, pamoja na chochote ulichoandika ndani yake.",
       "readAgainKeep": "Baki na maelezo haya",
-      "readAgainFailed": "Maelezo hayakuweza kusomwa tena",
+      "readAgainFailed": "Maelezo hayakuweza kusomwa tena.",
       "stuck": "Kusoma {name} kunachukua muda mrefu kuliko inavyopaswa. Ipakie tena.",
       "replaces": "Kupakia tena kunabadilisha {name}",
       "check": {
@@ -6644,7 +6644,7 @@
           }
         }
       },
-      "activateFailed": "Haikuweza kuwashwa",
+      "activateFailed": "Haikuweza kuwashwa.",
       "running": "Inaendesha ukaguzi",
       "ofTotal": "{done} kati ya {total}",
       "runningHint": "Kutafuta nakala za awali huchukua sekunde chache. Unaweza kuondoka kwenye ukurasa huu: ukaguzi unaendelea.",
@@ -6689,7 +6689,7 @@
       "savingNote": "Kadi yako inahifadhiwa ili kuwasha ripoti kwenye Openscholar. Hakuna kinachotozwa sasa.",
       "registering": "Ukurasa uko wazi sasa na unaweza kushirikiwa. DOI huanza kufanya kazi ikishasajiliwa, kwa kawaida ndani ya dakika chache.",
       "sentToReviewer": "Imetumwa kwa mkaguzi",
-      "requestFailed": "Ombi halikuweza kutumwa",
+      "requestFailed": "Ombi halikuweza kutumwa.",
       "reviewIntro": "Mkaguzi anasoma ripoti yako na matokeo ya ukaguzi. Omba ikiwa unaamini ukaguzi ulikosea.",
       "reviewQuestion": "Ukaguzi ulikosea nini?",
       "cancel": "Ghairi",
@@ -6714,7 +6714,7 @@
       "discardBody": "Ripoti yako inabaki imechapishwa kama ilivyo sasa. Mabadiliko uliyofanya yanaachwa.",
       "keepThem": "Yabaki",
       "changesDiscarded": "Mabadiliko yameachwa",
-      "changesDiscardFailed": "Mabadiliko hayakuweza kuachwa",
+      "changesDiscardFailed": "Mabadiliko hayakuweza kuachwa.",
       "discard": "Acha",
       "pages": "{count, plural, one {ukurasa #} other {kurasa #}}",
       "agreementVersion": "Makubaliano toleo {version}",
@@ -6771,7 +6771,7 @@
           "confirm": "Thibitisha malipo",
           "change": "Badilisha",
           "addButton": "Ongeza njia ya kulipa",
-          "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
+          "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka.",
           "credit": "Salio {amount}",
           "freeTitle": "Mwasho wa bure",
           "covered": "Msimbo wako unagharamia mwasho huu",
@@ -6786,36 +6786,36 @@
         "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake."
       },
       "back": "Rudi",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "PDF yako ina mstari huu",
+      "bylineFirstBody": "Kila ripoti katika mfululizo huu ina mstari huu ndani ya PDF yake, kama maandishi. Ukaguzi wetu huutafuta mara unapopakia.",
       "nextUpload": "Ifuatayo: pakia PDF",
       "nextDetails": "Ifuatayo: kagua maelezo",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "Ukurasa huu na seva viko kwenye matoleo tofauti. Pakia upya ukurasa, kisha jaribu tena.",
+        "retry": "Jaribu tena. Likiendelea kutokea, <link>ripoti tatizo</link>.",
+        "retryQuote": "Jaribu tena. Likiendelea kutokea, <link>ripoti tatizo</link> na utaje {reference}."
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "Nani anaongeza mstari",
+        "choose": "Chagua nani anaongeza mstari ili kuendelea.",
+        "chooseFirst": "Chagua kwanza nani anaongeza mstari",
+        "failed": "Hatukuweza kuongeza ukurasa kwenye {name}. Ongeza mstari mwenyewe na upakie PDF tena.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} inazidi MB {max}, ni kubwa mno kwetu kuiongezea ukurasa. Weka mstari mwenyewe, au pakia PDF ndogo zaidi.",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "Nitauongeza mwenyewe",
+          "body": "Weka mstari, neno kwa neno, kwenye jalada au jalada la ndani la PDF yako kabla ya kuipakia."
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "Niongezeeni",
+          "body": "Tunaongeza ukurasa wa mwisho wenye mstari huu na maelezo ya ripoti yako. Kwa PDF hadi MB {max}."
         }
       },
       "overview": {
         "title": "Kuchapisha ripoti kwa {series}",
         "intro": "Takriban dakika kumi mwanzo hadi mwisho. Hiki ndicho kila hatua inakuomba.",
         "introReviewed": "Takriban dakika kumi za muda wako. Kisha mkaguzi huidhinisha ripoti kabla haijachapishwa, na utapokea barua pepe.",
-        "start": "Anza",
+        "start": "Ifuatayo: tia saini makubaliano",
         "agreement": {
           "title": "Tia saini makubaliano ya uchapishaji",
           "body": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0."
@@ -6826,7 +6826,7 @@
         },
         "pdf": {
           "title": "Pakia PDF yako",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "Ikiwa na mstari unaotaja mfululizo na DOI. Uongeze mwenyewe, au tunauongeza kwenye ukurasa wa mwisho."
         },
         "details": {
           "title": "Kagua maelezo",
@@ -6834,7 +6834,7 @@
         },
         "checks": {
           "title": "Ukaguzi wa kiotomatiki",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "Takriban dakika moja. Hutafuta mstari huo na chochote kilichochapishwa awali."
         },
         "activate": {
           "title": "Washa",
@@ -6938,7 +6938,7 @@
       "cancel": "Ghairi",
       "sendForReview": "Kagua mabadiliko na utume kwa ukaguzi",
       "checkAndPublish": "Kagua mabadiliko na uchapishe",
-      "runChecks": "Endesha ukaguzi",
+      "runChecks": "Ifuatayo: endesha ukaguzi",
       "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400.",
       "back": "Rudi"
     }
