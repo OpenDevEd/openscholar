@@ -1398,8 +1398,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Siyawuhlonipha ubumfihlo bakho",
-    "bannerDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie.",
-    "dialogDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie. Ungashintsha ukukhetha kwakho noma nini.",
+    "bannerDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar nemiphakathi yayo isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie.",
+    "dialogDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar nemiphakathi yayo isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie. Ungashintsha ukukhetha kwakho noma nini.",
     "acceptAll": "Amukela konke",
     "rejectNonEssential": "Yenqaba engadingekile",
     "preferencesTitle": "Izintandokazi zama-cookie",

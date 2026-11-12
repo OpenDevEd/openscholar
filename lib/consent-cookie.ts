@@ -1,7 +1,9 @@
 /**
- * The analytics answer, shared by openscholar.ai (the marketing site) and the app on discover.openscholar.ai. A
- * cookie on the parent domain is the one store both read, so a choice on either site holds on both. Kept with its
- * time and policy version for the record. No framework imports: the marketing site uses this file too.
+ * The analytics answer, shared by openscholar.ai (the marketing site), the app on discover.openscholar.ai and every
+ * community at an openscholar.ai address. A cookie on the parent domain is the one store they all read, so a choice
+ * on any of them holds on all. Communities read and write this exact name and format (new-el
+ * `src/lib/analytics-consent.ts`), so a change to either goes to both repositories. Kept with its time and policy
+ * version for the record. No framework imports: the marketing site uses this file too.
  */
 import type { PostHog } from "posthog-js";
 

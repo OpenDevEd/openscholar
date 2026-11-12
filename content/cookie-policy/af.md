@@ -12,7 +12,7 @@ Wanneer jy openscholar.ai blaai, kan klein datalêers wat koekies genoem word, o
 | `NEXT_LOCALE` | Onthou jou taal | 1 jaar |
 | `__cf_bm`, `_cfuvid` | Cloudflare gebruik dit om die webwerf teen outomatiese verkeer te beskerm | 30 minute, of totdat jy jou blaaier toemaak |
 
-Jou koekiekeuse bly in 'n koekie genaamd openscholar_consent. Vertooninstellings, soos oop panele, bly in jou blaaier se plaaslike berging.
+Jou koekiekeuse bly in 'n koekie genaamd openscholar_consent. Dit is vir openscholar.ai gestel, so dieselfde keuse geld op elke Openscholar-werf en op elke gemeenskap met 'n openscholar.ai-adres. Vertooninstellings, soos oop panele, bly in jou blaaier se plaaslike berging.
 
 ## Prestasie- en ontledingskoekies (opsioneel)
 

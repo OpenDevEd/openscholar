@@ -1398,8 +1398,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "我们重视您的隐私",
-    "bannerDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。",
-    "dialogDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。您可以随时更改选择。",
+    "bannerDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 及其社区的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。",
+    "dialogDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 及其社区的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。您可以随时更改选择。",
     "acceptAll": "接受全部",
     "rejectNonEssential": "拒绝非必要",
     "preferencesTitle": "Cookie 偏好设置",

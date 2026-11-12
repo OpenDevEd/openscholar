@@ -1399,8 +1399,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Ons waardeer jou privaatheid",
-    "bannerDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies.",
-    "dialogDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies. Jy kan jou keuse enige tyd verander.",
+    "bannerDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar en sy gemeenskappe gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies.",
+    "dialogDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar en sy gemeenskappe gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies. Jy kan jou keuse enige tyd verander.",
     "acceptAll": "Aanvaar alles",
     "rejectNonEssential": "Weier nie-noodsaaklike",
     "preferencesTitle": "Koekievoorkeure",
