@@ -127,8 +127,10 @@ export function PaperCover({ href, pdf, image, shape = null, className, ink, mar
   const [shaped, setShaped] = useState<{ image: string; shape: number; fades: boolean } | null>(null);
   const [broken, setBroken] = useState<string | null>(null);
   const picture = image && broken !== image ? image : null;
-  const given = picture && shape !== null && isCoverShape(shape) ? shape : null;
-  const known = picture && shaped?.image === picture ? shaped : given !== null ? { image: picture!, shape: given, fades: false } : null;
+  // Taken from the picture's address, not whether it loaded: a picture that fails keeps the frame it was given, and the
+  // title page shows in it, so nothing around it moves.
+  const given = image && shape !== null && isCoverShape(shape) ? shape : null;
+  const known = picture && shaped?.image === picture ? shaped : picture && given !== null ? { image: picture, shape: given, fades: false } : null;
   const fit = coverFit(known?.shape ?? null);
   // A wide picture whose shape was known from the start has a frame of its own shape; any other keeps the 3 by 4 one,
   // which a picture learned only once loaded can't change without moving what is around it.
