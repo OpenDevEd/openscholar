@@ -12,7 +12,7 @@ import { createError } from "../lib/errors";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
-import { getCountryCodesForRegions } from "../../lib/constants";
+import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
@@ -67,7 +67,7 @@ const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[]
   ["a language", (metadata) => (metadata.language ? [metadata.language] : []), (code) => WORK_LANGUAGES.includes(code)],
   ["a goal", (metadata) => metadata.sdgs, listed(SDGS)],
   ["a study design", (metadata) => metadata.studyDesigns, listed(STUDY_DESIGNS)],
-  ["a place", (metadata) => metadata.countries, (place) => getCountryCodesForRegions([place], true).countries.length > 0],
+  ["a place", (metadata) => metadata.countries, listed(PLACES)],
 ];
 
 /**

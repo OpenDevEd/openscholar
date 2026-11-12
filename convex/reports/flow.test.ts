@@ -340,7 +340,7 @@ describe("a report's links and words", () => {
     await expect(run(withLinks("javascript:alert(1)"), "bad-link")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await expect(run(withLinks("https://?"), "no-host")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     // A value that has a list is one of the list's, whoever sends it: the registrars take no other.
-    for (const stray of [{ language: "English" }, { type: "essay" }, { sdgs: ["18"] }, { studyDesigns: ["survey"] }, { countries: ["Atlantis"] }])
+    for (const stray of [{ language: "English" }, { type: "essay" }, { sdgs: ["18"] }, { studyDesigns: ["survey"] }, { countries: ["Atlantis"] }, { countries: ["world"] }])
       await expect(run({ ...details(), ...stray }, "off-list")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     // A DOI and its doi.org address are the same link: the first is kept.
     await run(withLinks("https://example.org/data", "  ", "10.5281/zenodo.1234567", "https://doi.org/10.5281/ZENODO.1234567"), "good-links");

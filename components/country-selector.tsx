@@ -5,32 +5,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { Globe } from "@/components/icons";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { CountryFlag } from "@/components/ui/country-flag";
-import { COUNTRY_HIERARCHY, COUNTRY_NAME_CHANGES, getCountryCodesForRegions } from "@/lib/constants";
+import { COUNTRY_NAME_CHANGES, PLACES, getCountryCodesForRegions } from "@/lib/constants";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
-
-type Entry = { label: string; children?: Entry[] };
-type Place = { id: string; isCountry: boolean; parents: string[] };
-
-/**
- * Every region and country as one flat list, each with the regions it sits in,
- * nearest first. A region's id is its name in lower case, as the search keeps it.
- */
-const PLACES: Place[] = (() => {
-  const places = new Map<string, Place>();
-  const walk = (entry: Entry, parents: string[]) => {
-    for (const child of entry.children ?? []) {
-      if (!child.children?.length) {
-        if (!places.has(child.label)) places.set(child.label, { id: child.label, isCountry: true, parents });
-        continue;
-      }
-      const id = child.label.toLowerCase().replace(/\s+/g, "_");
-      places.set(id, { id, isCountry: false, parents });
-      walk(child, [id, ...parents]);
-    }
-  };
-  walk(COUNTRY_HIERARCHY, []);
-  return [...places.values()];
-})();
 
 /** Lower case and without accents, so "cote" finds Côte d'Ivoire. */
 const plain = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();

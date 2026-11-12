@@ -763,6 +763,30 @@ function createRegionToCountriesMap(): Record<string, string[]> {
   return map;
 }
 
+type Place = { id: string; isCountry: boolean; parents: string[] };
+
+/**
+ * Every region and country as one flat list, each with the regions it sits in,
+ * nearest first. A region's id is its name in lower case, as the search keeps it.
+ * What the place picker offers, and all a report's places may be.
+ */
+export const PLACES: Place[] = (() => {
+  const places = new Map<string, Place>();
+  const walk = (entry: Entry, parents: string[]) => {
+    for (const child of entry.children ?? []) {
+      if (!child.children?.length) {
+        if (!places.has(child.label)) places.set(child.label, { id: child.label, isCountry: true, parents });
+        continue;
+      }
+      const id = child.label.toLowerCase().replace(/\s+/g, "_");
+      places.set(id, { id, isCountry: false, parents });
+      walk(child, [id, ...parents]);
+    }
+  };
+  walk(COUNTRY_HIERARCHY, []);
+  return [...places.values()];
+})();
+
 // Pre-compute the region to countries mapping
 const REGION_TO_COUNTRIES_MAP = createRegionToCountriesMap();
 
