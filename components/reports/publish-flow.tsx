@@ -367,7 +367,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
       return stepOn(step as "upload" | "details");
     }
     // A step back the address alone makes, or one the history then sends the report to (useStepHistory).
-    if ((saved.step === step || hearsHistory()) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
+    // Only where the history will send the report there itself (it won't for one a review was asked for, which Back
+    // must leave alone): otherwise this button's own press sends it, in place.
+    if ((saved.step === step || (hearsHistory() && opens(saved, step, basics.humanReview))) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
     if (saved.step !== step) send(step);
     void setPlace({ step: step === "doi" ? null : step });
   };
