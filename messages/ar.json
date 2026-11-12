@@ -335,6 +335,7 @@
     "password": "كلمة مرور Crossref",
     "prefix": "بادئة DOI",
     "registrant": "المسجِّل",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "اسم المودِع",
     "email": "البريد الإلكتروني للمودِع",
     "namespace": "نطاق DOI",

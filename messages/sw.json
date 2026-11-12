@@ -335,6 +335,7 @@
     "password": "Nenosiri la Crossref",
     "prefix": "Kiambishi awali cha DOI",
     "registrant": "Msajili",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Jina la mwasilishaji",
     "email": "Barua pepe ya mwasilishaji",
     "namespace": "Nafasi ya majina ya DOI",

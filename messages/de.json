@@ -335,6 +335,7 @@
     "password": "Crossref-Passwort",
     "prefix": "DOI-Präfix",
     "registrant": "Registrant",
+    "registrantHint": "Crossref trägt dies beim Speichern anhand des Präfixes ein.",
     "depositorName": "Name des Einreichers",
     "email": "E-Mail des Einreichers",
     "namespace": "DOI-Namensraum",

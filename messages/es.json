@@ -335,6 +335,7 @@
     "password": "Contraseña de Crossref",
     "prefix": "Prefijo DOI",
     "registrant": "Registrante",
+    "registrantHint": "Crossref lo completa a partir del prefijo al guardar.",
     "depositorName": "Nombre del depositante",
     "email": "Correo del depositante",
     "namespace": "Espacio de nombres DOI",

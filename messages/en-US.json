@@ -335,6 +335,7 @@
     "password": "Crossref password",
     "prefix": "DOI prefix",
     "registrant": "Registrant",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Depositor name",
     "email": "Depositor email",
     "namespace": "DOI namespace",
