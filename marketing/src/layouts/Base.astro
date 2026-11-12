@@ -55,7 +55,8 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
         <svg class="mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" set:html={MARK} />
         <span class="name">Openscholar</span><span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>
       </a>
-      <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
+      {/* A link is the current page when it leads to this page, whichever part of it: Product leads to /#product, on the home page. */}
+      <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href.split("#")[0] ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
         <a class="signin" href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a>
         <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
