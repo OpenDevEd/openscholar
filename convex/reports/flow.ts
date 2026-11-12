@@ -18,7 +18,8 @@ import { workspacesOf } from "../workspaces/personal";
 import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
+import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
@@ -100,6 +101,11 @@ export function keptDetails(metadata: Metadata) {
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
   const long = [...metadata.keywords, ...metadata.funding.flatMap((funding) => funding.awards)].find((word) => word.length > DETAIL_TEXT.keyword);
   if (long) throw createError("VALIDATION_ERROR", `Keep each keyword and grant number to ${DETAIL_TEXT.keyword} characters.`);
+  if ((metadata.citations?.length ?? 0) > DETAIL_CAPS.references) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS.references.toLocaleString("en")} references.`);
+  if (metadata.citations?.some((c) => c.text.length > DETAIL_TEXT.citation)) throw createError("VALIDATION_ERROR", `Keep each reference to ${DETAIL_TEXT.citation.toLocaleString("en")} characters.`);
+  if (metadata.citations?.some((c) => !c.text.trim() && !c.doi)) throw createError("VALIDATION_ERROR", "A reference needs its words or its DOI.");
+  const notDoi = metadata.citations?.find((c) => c.doi !== undefined && !doiIn(c.doi));
+  if (notDoi) throw createError("VALIDATION_ERROR", `"${notDoi.doi}" isn't a DOI. One looks like 10.1234/abcd.`);
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
@@ -409,9 +415,9 @@ export const startUpload = workspaceMutation({
  * anew, for the checks. A file that can't be this report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")), /** Who adds the byline, as the author chose at the upload. A page still open from before the choice sends none. */ bylineBy: v.optional(bylineByValidator) },
+  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")), /** The cover's width over its height, as the browser drew it. */ coverShape: v.optional(v.number()), /** Who adds the byline, as the author chose at the upload. A page still open from before the choice sends none. */ bylineBy: v.optional(bylineByValidator) },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, actor, { key, file, name, cover, bylineBy }) => {
+  handler: async (ctx, actor, { key, file, name, cover, coverShape, bylineBy }) => {
     await refuseApps(ctx);
     const stored = await uploaded(ctx, file);
     const picture = cover ? await uploaded(ctx, cover) : null;
@@ -440,7 +446,7 @@ export const attachPdf = workspaceMutation({
     await ctx.db.insert("reportFiles", { file, reportId: report._id });
     if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", reopened: undefined, approved: undefined, asked: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at, ...(coverShape !== undefined && isCoverShape(coverShape) && { shape: coverShape }) } : undefined, run: undefined, step: "upload", reopened: undefined, approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -549,7 +555,7 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanRev
     ...((report.title ?? report.pdf?.name) && { title: report.title ?? report.pdf?.name }),
     withdrawn: report.withdrawnAt !== undefined,
     signer: report.signedBy.name,
-    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
+    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
     mine: mayChange(actor, report),
   };
 }
@@ -738,7 +744,7 @@ export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
     byline: report.byline,
     doi: report.doi,
     ...(metadata?.title && { title: metadata.title }),
-    authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
+    authors: (metadata?.authors ?? []).filter(isAuthor).map((author) => author.name).filter(Boolean),
     ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
   };
 }

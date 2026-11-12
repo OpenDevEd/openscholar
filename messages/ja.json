@@ -6196,7 +6196,8 @@
       "studyDesign": "研究デザイン",
       "seeChanges": "変更を見る",
       "correct": "詳細を修正",
-      "takeDownTitle": "取り下げについて"
+      "takeDownTitle": "取り下げについて",
+      "openDoi": "DOI {doi} を開く"
     },
     "stages": {
       "draft": "下書き",
@@ -6603,7 +6604,8 @@
         "foundIn": "{where}で見つかりました：",
         "foundAs": "見つかった作品",
         "said": {
-          "notPublished": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "notPublished": "Openscholar Reports、OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "notPublishedElsewhere": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
           "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
         },
@@ -6799,8 +6801,8 @@
       },
       "overview": {
         "title": "{series} でレポートを公開する",
-        "intro": "最初から最後まで約 10 分です。各ステップで必要なことは次のとおりです。",
-        "introReviewed": "あなたの作業は約 10 分です。その後、公開前に審査者がレポートを承認し、メールでお知らせします。",
+        "intro": "最初から最後まで約 5 分です。各ステップで必要なことは次のとおりです。",
+        "introReviewed": "あなたの作業は約 5 分です。その後、公開前に審査者がレポートを承認し、メールでお知らせします。",
         "start": "契約に署名",
         "agreement": {
           "title": "公開契約に署名する",
@@ -6849,10 +6851,7 @@
       "moveUpLabel": "{name}を上へ",
       "moveDownLabel": "{name}を下へ",
       "author": "著者",
-      "roles": "貢献者の役割",
-      "roleCount": "{count, plural, other {# 件の役割}}",
-      "findRole": "役割を検索",
-      "noRole": "その役割はありません",
+      "noContribution": "該当する貢献はありません。レポートの編集や翻訳は役割です。「役割」で選んでください。",
       "corresponding": "責任著者",
       "orcidFound": "名前と {institution} で ORCID から見つかりました",
       "correctTitle": "詳細を修正",
@@ -6878,7 +6877,7 @@
       "licence": "ライセンス",
       "authors": "著者",
       "authorsPager": "人の著者",
-      "addAuthor": "著者を追加",
+      "addPerson": "人を追加",
       "abstract": "要旨",
       "subjects": "主題",
       "topics": "トピック",
@@ -6936,7 +6935,328 @@
       "runChecks": "送信",
       "tooEarly": "レポートの日付を1400年より前にすることはできません。",
       "back": "戻る",
-      "backToChecks": "チェックに戻る"
+      "backToChecks": "チェックに戻る",
+      "role": "役割",
+      "orcidLabel": "ORCID iD",
+      "contributions": "貢献",
+      "contributionsPlaceholder": "この人が行ったこと",
+      "contributionCount": "{count, plural, other {# 件の貢献}}",
+      "findContribution": "貢献を検索",
+      "writeAbstract": "PDF から作成",
+      "replaceAbstractTitle": "要旨を置き換えますか？",
+      "replaceAbstractBody": "PDF から新しい要旨を作成し、欄にある要旨と置き換えます。",
+      "keepAbstract": "このままにする",
+      "replaceAbstract": "置き換える",
+      "noAbstract": "PDF に要旨が印刷されていません。入力するか、PDF から作成してください。",
+      "abstractFailed": "要旨を作成できませんでした。もう一度お試しください。",
+      "addReferences": "参考文献を追加",
+      "referencesPlaceholder": "参考文献または DOI を 1 行に 1 件ずつ貼り付け",
+      "uploadReferences": "ファイルをアップロード",
+      "uploadReferencesLabel": "参考文献のファイルをアップロード",
+      "referenceFormats": "BibTeX、RIS、またはテキスト",
+      "noReferencesFound": "参考文献が見つかりませんでした。",
+      "referencesListed": "すべてすでに一覧にあります。",
+      "referencesAdded": "{count, plural, other {# 件の参考文献を追加しました}}",
+      "undo": "元に戻す",
+      "referencesTooBig": "このファイルは 2 MB を超えています。参考文献の一覧はずっと小さいはずです。",
+      "openItsDoi": "DOI を開く",
+      "openReferenceDoi": "参考文献 {number} の DOI を開く"
+    },
+    "kinds": {
+      "author": "著者",
+      "editor": "編者",
+      "chair": "議長",
+      "translator": "翻訳者",
+      "reviewer": "査読者",
+      "review-assistant": "査読補助",
+      "reviewer-external": "査読者（外部）",
+      "stats-reviewer": "査読者（統計）",
+      "reader": "閲読者",
+      "other": "その他"
+    },
+    "roleDetails": {
+      "conceptualization": "アイデアを出し、目標を定めた",
+      "dataCuration": "データを整理・クリーニングし、保管した",
+      "formalAnalysis": "統計などの形式的な分析を行った",
+      "fundingAcquisition": "プロジェクトの資金を獲得した",
+      "investigation": "研究を行い、データを集めた",
+      "methodology": "方法やモデルを設計した",
+      "projectAdministration": "プロジェクトを管理・調整した",
+      "resources": "材料、試料、道具、計算資源を提供した",
+      "software": "コードを書いた、またはテストした",
+      "supervision": "チームを率い、指導した",
+      "validation": "結果を再現できることを確かめた",
+      "visualization": "図とデータの表示を作成した",
+      "writingOriginalDraft": "最初の原稿を書いた",
+      "writingReviewEditing": "文章を見直し、修正した"
+    },
+    "help": {
+      "aboutLabel": "{title} について",
+      "sentTo": "送信先",
+      "does": {
+        "crossref": "DOI を登録",
+        "zenodo": "コピーを保存",
+        "openscholar": "報告書を表示"
+      },
+      "sent": "{name}、これを受け取る：{does}",
+      "notSent": "{name}、これは受け取らない：{does}",
+      "filled": {
+        "pdf": "PDF から読み取り",
+        "judged": "PDF から判断",
+        "matched": "PDF から読み取り、照合",
+        "classified": "OpenAlex の提案",
+        "author": "最初は著者",
+        "fixed": "Openscholar が設定",
+        "reserved": "署名時に予約"
+      },
+      "entry": {
+        "list": "一覧から選択",
+        "typed": "自由に入力",
+        "either": "一覧から選択または入力",
+        "pasted": "貼り付けまたはアップロード",
+        "toggle": "オンまたはオフ",
+        "chosen": "あなたが選択"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex の資料種別",
+          "detail": "この選択欄の一覧"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo のリソース種別",
+          "detail": "各種別が Zenodo で何になるか"
+        },
+        "crossrefReports": {
+          "name": "Crossref の報告書",
+          "detail": "Crossref が保管する記録"
+        },
+        "iso639": {
+          "name": "ISO 639 言語コード",
+          "detail": "OpenAlex が使うコード"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "クリエイティブ・コモンズ 表示 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Crossref の寄与者",
+          "detail": "Crossref が人を記録する方法"
+        },
+        "crossrefRoles": {
+          "name": "Crossref の寄与者の役割",
+          "detail": "この選択欄の一覧"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "iD とは"
+        },
+        "orcidRegister": {
+          "name": "iD を取得",
+          "detail": "無料、1 分で完了"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex の機関",
+          "detail": "最初に検索"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "OpenAlex にない機関を検索"
+        },
+        "rorAdd": {
+          "name": "ROR に組織の追加を依頼",
+          "detail": "どちらの一覧にもない組織向け"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO の寄与者役割分類"
+        },
+        "crossrefAbstracts": {
+          "name": "Crossref の要旨",
+          "detail": "Crossref が要旨を保管する方法"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex のトピック",
+          "detail": "この選択欄が検索する一覧"
+        },
+        "sdgs": {
+          "name": "17 の目標",
+          "detail": "国連"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex の研究デザイン",
+          "detail": "この選択欄の一覧"
+        },
+        "iso3166": {
+          "name": "ISO 3166 国コード",
+          "detail": "この選択欄の国"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex の助成機関",
+          "detail": "最初に検索"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "政府や財団のためにあわせて検索"
+        },
+        "funderRegistry": {
+          "name": "Crossref の Funder Registry",
+          "detail": "Crossref が助成機関を識別する ID"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "DOI とは"
+        },
+        "crossrefReferences": {
+          "name": "Crossref の参考文献",
+          "detail": "そこから被引用数を数える方法"
+        },
+        "crossrefRelations": {
+          "name": "Crossref の関係",
+          "detail": "Crossref が資料どうしを結び付ける方法"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "ISSN とは"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "タイトル",
+          "about": "表紙に印刷されている報告書のタイトル。"
+        },
+        "subtitle": {
+          "title": "サブタイトル",
+          "about": "表紙にある場合、タイトルの下の行。",
+          "note": "PDF に印刷されていない場合は空欄です。"
+        },
+        "type": {
+          "title": "種別",
+          "about": "どのような種類の資料か。",
+          "note": "Crossref はすべての Openscholar Report を報告書として登録します。Zenodo と Openscholar はここで選んだ種別を使います。"
+        },
+        "language": {
+          "title": "言語",
+          "about": "報告書が書かれている言語。"
+        },
+        "date": {
+          "title": "公開日",
+          "about": "報告書が公開された日。PDF の記載に合わせて年、月、または日で、遅くとも今日まで。",
+          "note": "Crossref はその精度のまま保管します。Zenodo は完全な日付を使うため、年や月はその初日として送られます。日付の記載がない PDF には今日の日付が入ります。"
+        },
+        "licence": {
+          "title": "ライセンス",
+          "about": "署名した契約のとおり、すべての Openscholar Report は CC BY 4.0 で公開されます。"
+        },
+        "authors": {
+          "title": "著者",
+          "about": "報告書がクレジットするすべての人。引用で並ぶ順。",
+          "note": "PDF の著者は入力済みです。編者や翻訳者などをここに加え、役割を設定してください。"
+        },
+        "name": {
+          "title": "氏名",
+          "about": "報告書に印刷されている氏名。組織の正式名称でもかまいません。",
+          "note": "個人名は姓、名の順で Crossref と Zenodo に送られ、最後の語が姓とみなされます。Department、Ministry、University などの語を含む組織名は、そのまま送られます。"
+        },
+        "kind": {
+          "title": "役割",
+          "about": "この人が報告書にとってどんな立場か。ほとんどの人は著者です。",
+          "note": "レポートの引用に名前が載るのは著者だけです。それ以外の人は、レポートのページの「貢献」に役割とともに表示され、Crossref と Zenodo には各人の役割が送られます。"
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "同姓同名の研究者を区別する無料の番号。",
+          "note": "PDF に印刷されていない場合、これらの機関のいずれかに所属し、この氏名と完全に一致する 1 人を ORCID で探します。"
+        },
+        "affiliations": {
+          "title": "所属",
+          "about": "報告書を書いたときにこの人が勤めていた機関。",
+          "note": "ROR ID のある機関は ID とともに送られ、Crossref と Zenodo がどの機関か分かるようになります。手で入力した機関は名前だけが送られます。"
+        },
+        "contributions": {
+          "title": "貢献",
+          "about": "この人がこの研究で行ったこと。CRediT の 14 の役割で表します。",
+          "note": "PDF に貢献の記載がある場合だけ入力されます。空欄のままでもかまいません。"
+        },
+        "corresponding": {
+          "title": "責任著者",
+          "about": "読者が報告書について連絡する相手。",
+          "note": "PDF に記載がある場合だけオンになります。"
+        },
+        "abstract": {
+          "title": "要旨",
+          "about": "PDF に印刷されている要旨や概要を、そのまま写したもの。",
+          "note": "どちらも印刷されていない場合は、「PDF から作成」で下書きを作り、確認して修正できます。"
+        },
+        "topics": {
+          "title": "トピック",
+          "about": "報告書の内容を OpenAlex のトピックで表したもの。",
+          "note": "OpenAlex の分類器がタイトルと要旨を読みます。トピックのバーは確信度を示します。自分で加えたトピックにはありません。"
+        },
+        "keywords": {
+          "title": "キーワード",
+          "about": "報告書の内容を表すあなた自身の言葉。",
+          "note": "PDF のキーワードです。記載がない場合は OpenAlex の分類器から最大 5 つ。"
+        },
+        "sdgs": {
+          "title": "持続可能な開発目標",
+          "about": "報告書が実質的に扱う国連の目標。",
+          "note": "入力されるのは最大 3 つです。自由に追加・削除できます。"
+        },
+        "design": {
+          "title": "研究デザイン",
+          "about": "研究がどのように行われたか。",
+          "note": "PDF に明記されている場合だけ入力されます。Zenodo では方法の注記として表示されます。"
+        },
+        "places": {
+          "title": "対象地域",
+          "about": "報告書が扱う国や地域。著者の勤務地ではありません。"
+        },
+        "funding": {
+          "title": "助成",
+          "about": "研究の費用を出した組織と、印刷されている助成番号。",
+          "note": "助成機関は OpenAlex と ROR で検索されます。見つかった機関は ROR ID とともに、ある場合は Funder Registry ID とともに送られます。手で入力した機関は名前だけが送られます。"
+        },
+        "references": {
+          "title": "参考文献",
+          "about": "この報告書が引用する資料。参考文献一覧の書き方のまま。",
+          "note": "一覧を貼り付けるか、BibTeX、RIS、テキストのファイルでアップロードしてください。PDF に印刷された DOI は入力済みで、Crossref は DOI のある参考文献を引用先の資料と結び付けます。"
+        },
+        "links": {
+          "title": "データ、コード、版",
+          "about": "報告書のデータ、コード、ほかの版、補足資料の置き場所。",
+          "note": "それぞれウェブアドレスまたは DOI です。"
+        },
+        "agreement": {
+          "title": "出版契約",
+          "about": "報告書を公開する前に、あなたと Openscholar が合意する内容。",
+          "note": "著作権はあなたが持ちます。チェックを入れると、あなたとすべての共著者の同意になるので、先に共著者の同意を確認してください。署名した契約は変更できません。"
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "報告書への恒久的なリンク。ページの場所が変わっても機能します。",
+          "note": "署名時に予約されるので、PDF に印刷できます。報告書が公開されると機能します。"
+        },
+        "byline": {
+          "title": "シリーズ行",
+          "about": "このシリーズのすべての報告書に印刷する行。シリーズ名、ISSN、報告書の DOI が入ります。",
+          "note": "チェックで探すため、画像ではなく PDF 内の文字である必要があります。「追加を任せる」を選ぶと、Openscholar がこの行を載せた最終ページを加えます。"
+        },
+        "checks": {
+          "title": "チェック",
+          "about": "報告書を公開する前に Openscholar が確かめること。PDF のシリーズ行や、すでに出版された資料かどうかなど。",
+          "note": "各チェックは何を探したか、失敗したら何を直すかを示します。チェックが間違っていると確信できる場合は、人による確認を依頼してください。"
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "雑誌の番号と同じように、シリーズを識別する番号。",
+          "note": "シリーズが登録されるまでは保留中です。報告書の DOI はなくても機能します。"
+        },
+        "activation": {
+          "title": "有効化",
+          "about": "有効化すると報告書が公開されます。ページが開き、DOI が機能し、登録されます。",
+          "note": "有効化はワークスペースの残高から使うか、ここで支払います。クーポンコードで価格が下がります。"
+        }
+      }
     }
   },
   "people": {

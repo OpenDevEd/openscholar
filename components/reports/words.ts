@@ -1,10 +1,10 @@
 "use client";
 
-// Names a report's details store in English, in the reader's language: CRediT's roles and the kinds of link.
+// Names a report's details store in English, in the reader's language: CRediT's roles, people's roles and the kinds of link.
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import type { CREDIT_ROLES, RelationKind } from "@/lib/reports/report";
+import type { CREDIT_ROLES, PersonKind, RelationKind } from "@/lib/reports/report";
 import { DEFAULT_CHECKS } from "@/lib/reports/settings";
 
 const ROLE_KEY = {
@@ -17,6 +17,18 @@ const ROLE_KEY = {
 export function useRoleName() {
   const t = useTranslations("publishReports.roles");
   return (role: string) => (Object.hasOwn(ROLE_KEY, role) ? t(ROLE_KEY[role as keyof typeof ROLE_KEY]) : role);
+}
+
+/** A CRediT role in a line, shortened from its definition at credit.niso.org; none for a role the list doesn't hold. */
+export function useRoleDetail() {
+  const t = useTranslations("publishReports.roleDetails");
+  return (role: string) => (Object.hasOwn(ROLE_KEY, role) ? t(ROLE_KEY[role as keyof typeof ROLE_KEY]) : undefined);
+}
+
+/** What a person is to a report, in Crossref's roles: author, editor, translator. */
+export function useKindName() {
+  const t = useTranslations("publishReports.kinds");
+  return (kind: PersonKind) => t(kind);
 }
 
 /** A kind of link's name: data, code, another version, a supplement. */

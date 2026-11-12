@@ -6197,7 +6197,8 @@
       "studyDesign": "Studie-ontwerp",
       "seeChanges": "Sien jou wysigings",
       "correct": "Korrigeer besonderhede",
-      "takeDownTitle": "Om dit te laat verwyder"
+      "takeDownTitle": "Om dit te laat verwyder",
+      "openDoi": "Maak die DOI {doi} oop"
     },
     "stages": {
       "draft": "Konsep",
@@ -6604,7 +6605,8 @@
         "foundIn": "Gevind in {where}:",
         "foundAs": "Gevind as",
         "said": {
-          "notPublished": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "notPublished": "Nie in Openscholar Reports, OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "notPublishedElsewhere": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
           "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
         },
@@ -6800,8 +6802,8 @@
       },
       "overview": {
         "title": "Publiseer 'n verslag by {series}",
-        "intro": "Omtrent tien minute van begin tot einde. Dit is wat elke stap van jou vra.",
-        "introReviewed": "Omtrent tien minute van jou tyd. Daarna keur 'n hersiener die verslag goed voordat dit kan verskyn, en jy kry 'n e-pos.",
+        "intro": "Omtrent vyf minute van begin tot einde. Dit is wat elke stap van jou vra.",
+        "introReviewed": "Omtrent vyf minute van jou tyd. Daarna keur 'n hersiener die verslag goed voordat dit kan verskyn, en jy kry 'n e-pos.",
         "start": "Teken die ooreenkoms",
         "agreement": {
           "title": "Onderteken die publikasie-ooreenkoms",
@@ -6850,10 +6852,7 @@
       "moveUpLabel": "Skuif {name} op",
       "moveDownLabel": "Skuif {name} af",
       "author": "Skrywer",
-      "roles": "Bydraerrolle",
-      "roleCount": "{count, plural, one {# rol} other {# rolle}}",
-      "findRole": "Soek 'n rol",
-      "noRole": "Geen sulke rol nie",
+      "noContribution": "Geen sulke bydrae nie. Om die verslag te redigeer of te vertaal is ’n rol: kies dit onder Rol.",
       "corresponding": "Korresponderende skrywer",
       "orcidFound": "Op ORCID gevind deur hul naam en {institution}",
       "correctTitle": "Korrigeer besonderhede",
@@ -6879,7 +6878,7 @@
       "licence": "Lisensie",
       "authors": "Skrywers",
       "authorsPager": "skrywers",
-      "addAuthor": "Voeg skrywer by",
+      "addPerson": "Voeg ’n persoon by",
       "abstract": "Opsomming",
       "subjects": "Vakgebied",
       "topics": "Onderwerpe",
@@ -6937,7 +6936,328 @@
       "runChecks": "Dien in",
       "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
       "back": "Terug",
-      "backToChecks": "Terug na die kontroles"
+      "backToChecks": "Terug na die kontroles",
+      "role": "Rol",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Bydraes",
+      "contributionsPlaceholder": "Wat hierdie persoon gedoen het",
+      "contributionCount": "{count, plural, one {# bydrae} other {# bydraes}}",
+      "findContribution": "Soek ’n bydrae",
+      "writeAbstract": "Skryf uit die PDF",
+      "replaceAbstractTitle": "Vervang die opsomming?",
+      "replaceAbstractBody": "’n Nuwe een word uit die PDF geskryf en neem die plek in van die een in die blokkie.",
+      "keepAbstract": "Hou dit",
+      "replaceAbstract": "Vervang",
+      "noAbstract": "Jou PDF druk geen opsomming nie. Tik een, of laat een uit die PDF skryf.",
+      "abstractFailed": "Die opsomming kon nie geskryf word nie. Probeer weer.",
+      "addReferences": "Voeg verwysings by",
+      "referencesPlaceholder": "Plak verwysings of DOI’s, een per reël",
+      "uploadReferences": "Laai ’n lêer op",
+      "uploadReferencesLabel": "Laai ’n lêer met verwysings op",
+      "referenceFormats": "BibTeX, RIS of gewone teks",
+      "noReferencesFound": "Geen verwysings daarin gevind nie.",
+      "referencesListed": "Al hierdie is reeds gelys.",
+      "referencesAdded": "{count, plural, one {# verwysing bygevoeg} other {# verwysings bygevoeg}}",
+      "undo": "Ontdoen",
+      "referencesTooBig": "Daardie lêer is groter as 2 MB. ’n Verwysingslys is baie kleiner.",
+      "openItsDoi": "Maak sy DOI oop",
+      "openReferenceDoi": "Maak die DOI van verwysing {number} oop"
+    },
+    "kinds": {
+      "author": "Skrywer",
+      "editor": "Redakteur",
+      "chair": "Voorsitter",
+      "translator": "Vertaler",
+      "reviewer": "Beoordelaar",
+      "review-assistant": "Beoordelingsassistent",
+      "reviewer-external": "Beoordelaar (ekstern)",
+      "stats-reviewer": "Beoordelaar (statistiek)",
+      "reader": "Leser",
+      "other": "Ander"
+    },
+    "roleDetails": {
+      "conceptualization": "Het die idees gehad en die doelwitte gestel",
+      "dataCuration": "Het die data georganiseer, skoongemaak en bewaar",
+      "formalAnalysis": "Het die statistiek of ander formele ontleding gedoen",
+      "fundingAcquisition": "Het die geld vir die projek verkry",
+      "investigation": "Het die navorsing gedoen en die bewyse ingesamel",
+      "methodology": "Het die metodes of modelle ontwerp",
+      "projectAdministration": "Het die projek bestuur en gekoördineer",
+      "resources": "Het materiaal, monsters, gereedskap of rekenaarkrag verskaf",
+      "software": "Het die kode geskryf of getoets",
+      "supervision": "Het die span gelei en begelei",
+      "validation": "Het nagegaan dat die resultate herhaal kan word",
+      "visualization": "Het die figure en datavoorstelling gemaak",
+      "writingOriginalDraft": "Het die eerste konsep geskryf",
+      "writingReviewEditing": "Het die teks nagegaan en hersien"
+    },
+    "help": {
+      "aboutLabel": "Oor: {title}",
+      "sentTo": "Gestuur na",
+      "does": {
+        "crossref": "Registreer die DOI",
+        "zenodo": "Argiveer ’n kopie",
+        "openscholar": "Wys die verslag"
+      },
+      "sent": "{name}, kry dit: {does}",
+      "notSent": "{name}, kry dit nie: {does}",
+      "filled": {
+        "pdf": "Uit jou PDF gelees",
+        "judged": "Uit jou PDF beoordeel",
+        "matched": "Uit jou PDF gelees en dan opgesoek",
+        "classified": "Deur OpenAlex voorgestel",
+        "author": "Begin as Skrywer",
+        "fixed": "Deur Openscholar vasgestel",
+        "reserved": "Gereserveer wanneer jy teken"
+      },
+      "entry": {
+        "list": "Uit ’n lys gekies",
+        "typed": "Vrylik getik",
+        "either": "Uit ’n lys, of getik",
+        "pasted": "Geplak of opgelaai",
+        "toggle": "Aan of af",
+        "chosen": "Jou keuse"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex se werksoorte",
+          "detail": "Die lys wat hierdie kieser wys"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo se hulpbronsoorte",
+          "detail": "Wat elke soort op Zenodo word"
+        },
+        "crossrefReports": {
+          "name": "Verslae by Crossref",
+          "detail": "Die rekord wat Crossref hou"
+        },
+        "iso639": {
+          "name": "ISO 639-taalkodes",
+          "detail": "Die kodes wat OpenAlex gebruik"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Erkenning 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Bydraers by Crossref",
+          "detail": "Hoe Crossref mense opteken"
+        },
+        "crossrefRoles": {
+          "name": "Crossref se bydraerrolle",
+          "detail": "Die lys wat hierdie kieser wys"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "Wat ’n iD is"
+        },
+        "orcidRegister": {
+          "name": "Kry ’n iD",
+          "detail": "Gratis, en dit neem ’n minuut"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex se instellings",
+          "detail": "Eerste deursoek"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Deursoek vir dié wat OpenAlex nie het nie"
+        },
+        "rorAdd": {
+          "name": "Vra ROR om ’n organisasie by te voeg",
+          "detail": "Vir een wat op nie een van die lyste is nie"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO se taksonomie van bydraerrolle"
+        },
+        "crossrefAbstracts": {
+          "name": "Opsommings by Crossref",
+          "detail": "Hoe Crossref een hou"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex se onderwerpe",
+          "detail": "Die lys wat hierdie kieser deursoek"
+        },
+        "sdgs": {
+          "name": "Die 17 doelwitte",
+          "detail": "Verenigde Nasies"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex se studie-ontwerpe",
+          "detail": "Die lys wat hierdie kieser wys"
+        },
+        "iso3166": {
+          "name": "ISO 3166-landkodes",
+          "detail": "Die lande wat hierdie kieser lys"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex se befondsers",
+          "detail": "Eerste deursoek"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Ook deursoek, vir regerings en stigtings"
+        },
+        "funderRegistry": {
+          "name": "Crossref se Funder Registry",
+          "detail": "Die ID’s waarmee Crossref befondsers herken"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "Wat ’n DOI is"
+        },
+        "crossrefReferences": {
+          "name": "Verwysings by Crossref",
+          "detail": "Hoe aanhalings daaruit getel word"
+        },
+        "crossrefRelations": {
+          "name": "Verhoudings by Crossref",
+          "detail": "Hoe Crossref werke aan mekaar koppel"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "Wat ’n ISSN is"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Titel",
+          "about": "Die verslag se titel soos sy voorblad dit druk."
+        },
+        "subtitle": {
+          "title": "Subtitel",
+          "about": "Die reël onder die titel, as die voorblad een het.",
+          "note": "Leeg as die PDF nie een druk nie."
+        },
+        "type": {
+          "title": "Soort",
+          "about": "Watter soort werk dit is.",
+          "note": "Crossref teken elke Openscholar Report as ’n verslag op. Zenodo en Openscholar gebruik die soort wat hier gekies is."
+        },
+        "language": {
+          "title": "Taal",
+          "about": "Die taal waarin die verslag geskryf is."
+        },
+        "date": {
+          "title": "Publikasiedatum",
+          "about": "Wanneer die verslag gepubliseer is: ’n jaar, ’n maand of ’n dag, so presies as wat die PDF dit sê, en hoogstens vandag.",
+          "note": "Crossref hou dit so presies as wat dit is. Zenodo neem ’n volle datum, dus gaan ’n jaar of ’n maand daarheen as sy eerste dag. ’n PDF sonder ’n datum kry vandag s’n."
+        },
+        "licence": {
+          "title": "Lisensie",
+          "about": "Elke Openscholar Report word onder CC BY 4.0 gepubliseer, soos die ooreenkoms wat jy geteken het sê."
+        },
+        "authors": {
+          "title": "Skrywers",
+          "about": "Almal wat die verslag erken, in die volgorde wat sy aanhaling hulle noem.",
+          "note": "Die PDF se skrywers is reeds ingevul. Voeg redakteurs, vertalers en ander hier by, en kies hulle rol."
+        },
+        "name": {
+          "title": "Naam",
+          "about": "Die naam soos die verslag dit druk. ’n Organisasie se volle naam werk ook.",
+          "note": "’n Persoon se naam bereik Crossref en Zenodo as van, dan voorname: die laaste woord word as die van geneem. ’n Organisasie se naam, met ’n woord soos Department, Ministry of University daarin, word heel gestuur."
+        },
+        "kind": {
+          "title": "Rol",
+          "about": "Wat hierdie persoon vir die verslag is. Die meeste mense is skrywers.",
+          "note": "Net outeurs word in die verslag se aanhaling genoem. Almal anders word met hul rol onder Bydraes op die verslag se bladsy gelys, en Crossref en Zenodo kry elke persoon se rol."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "’n Gratis nommer wat navorsers met dieselfde naam van mekaar onderskei.",
+          "note": "As die PDF nie een druk nie, word ORCID deursoek vir een persoon met presies hierdie naam by een van hierdie instellings."
+        },
+        "affiliations": {
+          "title": "Affiliasies",
+          "about": "Waar hierdie persoon gewerk het toe die verslag geskryf is.",
+          "note": "’n Instelling met ’n ROR-ID word daarmee gestuur, sodat Crossref en Zenodo weet watter een dit is. Een wat met die hand getik is, gaan net as ’n naam."
+        },
+        "contributions": {
+          "title": "Bydraes",
+          "about": "Wat hierdie persoon vir die werk gedoen het, in die 14 rolle van CRediT.",
+          "note": "Net ingevul as die PDF ’n verklaring oor bydraes het. Dit leeg los is goed."
+        },
+        "corresponding": {
+          "title": "Korresponderende skrywer",
+          "about": "Die persoon aan wie lesers oor die verslag skryf.",
+          "note": "Net aangeskakel as die PDF een aandui."
+        },
+        "abstract": {
+          "title": "Opsomming",
+          "about": "Die opsomming wat jou PDF druk, net so oorgeneem.",
+          "note": "As die PDF geen druk nie, stel Skryf uit die PDF ’n konsep op wat jy nagaan en verander."
+        },
+        "topics": {
+          "title": "Onderwerpe",
+          "about": "Waaroor die verslag gaan, in OpenAlex se onderwerpe.",
+          "note": "OpenAlex se klassifiseerder lees die titel en opsomming. Die balk by ’n onderwerp wys hoe seker dit was. Onderwerpe wat jy byvoeg, het nie een nie."
+        },
+        "keywords": {
+          "title": "Sleutelwoorde",
+          "about": "Jou eie woorde vir waaroor die verslag gaan.",
+          "note": "Die PDF se sleutelwoorde. As dit geen lys nie, tot vyf van OpenAlex se klassifiseerder."
+        },
+        "sdgs": {
+          "title": "Volhoubare Ontwikkelingsdoelwitte",
+          "about": "Die VN-doelwitte waaroor die verslag wesenlik gaan.",
+          "note": "Hoogstens drie word ingevul. Voeg enige by of verwyder dit."
+        },
+        "design": {
+          "title": "Studie-ontwerp",
+          "about": "Hoe die studie gedoen is.",
+          "note": "Net ingevul as die PDF dit duidelik maak. Zenodo wys dit as ’n nota oor die metodes."
+        },
+        "places": {
+          "title": "Plekke bestudeer",
+          "about": "Die lande en streke waaroor die verslag gaan, nie waar sy skrywers werk nie."
+        },
+        "funding": {
+          "title": "Befondsing",
+          "about": "Wie vir die werk betaal het, met die toekenningsnommers soos gedruk.",
+          "note": "Befondsers word op OpenAlex en ROR opgesoek. Een wat daar gevind word, gaan met sy ROR-ID, en met sy Funder Registry-ID as hy een het. Een wat met die hand getik is, gaan net as ’n naam."
+        },
+        "references": {
+          "title": "Verwysings",
+          "about": "Die werke wat hierdie verslag aanhaal, soos sy verwysingslys hulle skryf.",
+          "note": "Plak die lys, of laai dit op as ’n BibTeX-, RIS- of gewone tekslêer. Elke DOI wat die PDF druk, is reeds ingevul, en Crossref koppel elke verwysing met ’n DOI aan die werk wat dit aanhaal."
+        },
+        "links": {
+          "title": "Data, kode en weergawes",
+          "about": "Waar die verslag se data, kode, ander weergawes en aanvullings is.",
+          "note": "Elkeen is ’n webadres of ’n DOI."
+        },
+        "agreement": {
+          "title": "Die publikasie-ooreenkoms",
+          "about": "Waartoe jy en Openscholar instem voordat jou verslag gepubliseer word.",
+          "note": "Jy behou die kopiereg. Om die blokkie te merk stem in namens jou en elke medeskrywer, so maak eers seker dat hulle ingestem het. ’n Getekende ooreenkoms kan nie verander word nie."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "’n Permanente skakel na jou verslag wat werk waarheen sy bladsy ook al skuif.",
+          "note": "Dit word gereserveer wanneer jy teken, sodat jy dit in jou PDF kan druk. Dit werk sodra jou verslag regstreeks is."
+        },
+        "byline": {
+          "title": "Die reeksreël",
+          "about": "Die reël wat elke verslag in hierdie reeks druk, met die reeks se naam, sy ISSN en die verslag se DOI.",
+          "note": "Dit moet teks in die PDF wees, nie ’n prent nie, want die toetse soek daarna. Kies Voeg dit vir my by en Openscholar voeg ’n laaste bladsy met die reël by."
+        },
+        "checks": {
+          "title": "Toetse",
+          "about": "Wat Openscholar nagaan voordat ’n verslag regstreeks kan gaan, soos die reeksreël in die PDF en of die werk reeds gepubliseer is.",
+          "note": "Elke toets sê waarna dit gesoek het, en wat om reg te stel as dit misluk. As jy seker is dat ’n toets verkeerd is, vra dat ’n persoon dit beoordeel."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Die nommer wat die reeks identifiseer, soos ’n tydskrif s’n.",
+          "note": "Hangende totdat die reeks geregistreer is. Jou verslag se DOI werk daarsonder."
+        },
+        "activation": {
+          "title": "Aktiveer",
+          "about": "Aktivering maak jou verslag openbaar: sy bladsy gaan oop, sy DOI begin werk, en dit word geregistreer.",
+          "note": "’n Aktivering kom uit jou werkruimte se saldo, of word hier betaal. ’n Koeponkode haal geld van sy prys af."
+        }
+      }
     }
   },
   "people": {
