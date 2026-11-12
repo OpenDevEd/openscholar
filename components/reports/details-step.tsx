@@ -325,6 +325,7 @@ export function DetailsStep({
   onTouched,
   onCancel,
   onBack,
+  onReturn,
   resend = false,
   waits = false,
   words,
@@ -347,6 +348,8 @@ export function DetailsStep({
   onCancel?: (version: number | undefined) => void;
   /** Back to the PDF, while the report is still being made. */
   onBack?: () => void;
+  /** Back to the checks it was taken from, as they were. Offered until something in the form changes. */
+  onReturn?: () => void;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
@@ -756,6 +759,11 @@ export function DetailsStep({
             onBack();
           }}>
             <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
+        {onReturn && !touched ? (
+          <Button variant="outline" onClick={onReturn}>
+            {t("backToChecks")}
           </Button>
         ) : null}
         {onCancel ? (

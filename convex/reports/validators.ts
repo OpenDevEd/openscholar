@@ -157,6 +157,11 @@ export const reportFields = {
   flagged: v.optional(v.boolean()),
   /** Its author asked a person to look at a report its checks failed. */
   asked: v.optional(v.boolean()),
+  /**
+   * Taken back from its checks (ready to activate, or waiting for a reviewer) with nothing changed since: it can go
+   * back to them as they were, approval and all, without running them again. A new PDF or a change to its details ends it.
+   */
+  reopened: v.optional(v.boolean()),
   /** Where its waiting changes stand, when it is live with some. */
   changes: v.optional(changeStageValidator),
   /** Its title as its details have it, for lists. */

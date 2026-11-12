@@ -271,7 +271,8 @@ export const saveDetails = workspaceMutation({
     if (!details.metadata) return null;
     const metadata = keptDetails({ ...details.metadata, ...changes });
     await ctx.db.patch("reportDetails", details._id, { metadata });
-    await touch(ctx, report, { title: metadata.title.trim() || undefined });
+    // Changed, its checks run again before it goes on.
+    await touch(ctx, report, { title: metadata.title.trim() || undefined, reopened: undefined });
     return null;
   },
 });
@@ -290,8 +291,12 @@ export const discard = workspaceMutation({
   },
 });
 
-/** Back to a step already done, or on from the DOI to the upload. A report past its checks goes back only when it
- * failed them: to replace its PDF, or to change the details its PDF was read into. */
+/**
+ * Back to a step already done, or on from the DOI to the upload. A report past its checks goes back too until it is
+ * live, unless its payment is going through. One that failed them, or a reviewer declined, goes back to be fixed. One
+ * ready to activate or waiting for a reviewer is `reopened`: with nothing changed it goes back to its checks as they
+ * were (`backToChecks`), and anything changed runs them again.
+ */
 export const goTo = workspaceMutation({
   args: { key: v.string(), step: v.union(v.literal("doi"), v.literal("upload"), v.literal("details")) },
   returns: v.null(),
@@ -299,14 +304,39 @@ export const goTo = workspaceMutation({
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     const checked = report.step === "done";
-    // One that failed its checks goes back to be fixed, and so does one a reviewer declined before it ever went
-    // live: their note is a reason to change it, not the end of it. One taken down after going live stays down.
+    // One taken down after going live stays down; one live changes through its corrections.
     const stage = checked ? stageOf(report, (await reportSettings(ctx)).humanReview) : null;
-    if (checked && stage !== "failed" && !(stage === "declined" && report.activatedAt === undefined)) throw createError("CONFLICT", MOVED_ON);
+    if (checked && !(stage === "failed" || stage === "ready" || stage === "review" || (stage === "declined" && report.activatedAt === undefined))) throw createError("CONFLICT", MOVED_ON);
+    // A payment under way is for the report as it stands.
+    if (checked && (await payingFor(ctx, report._id))) throw createError("CONFLICT", PAYING);
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
     // Its details wait for its PDF to be read: the checks read that PDF's text.
     if (step === "details" && (!details?.metadata || report.pdf?.pages === undefined)) throw createError("CONFLICT", "That step isn't open for this report yet.");
-    await touch(ctx, report, { step });
+    await touch(ctx, report, { step, ...(checked && (stage === "ready" || stage === "review") && { reopened: true }) });
+    return null;
+  },
+});
+
+const PAYING = "Its payment is going through, so it can't change now. If the bank refuses it, the report opens again.";
+/** How long a charge stays under way: its hold at Autumn lasts as long (activation.ts `HOLD_MS`). One older was left by an action that died. */
+const CHARGING_MS = 5 * 60_000;
+/** Its payment is going through: an activation of the report waits on the bank, or is being charged now. */
+export const payingFor = async (ctx: QueryCtx, reportId: Id<"reports">) =>
+  (await ctx.db
+    .query("reportActivations")
+    .withIndex("by_reportId", (q) => q.eq("reportId", reportId))
+    .filter((q) => q.or(q.eq(q.field("state"), "pending"), q.and(q.eq(q.field("state"), "charging"), q.gt(q.field("at"), Date.now() - CHARGING_MS))))
+    .first()) !== null;
+
+/** Back to the checks a report left with nothing changed (`reopened`): as they were, approval and all, without running them again. */
+export const backToChecks = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (!report.reopened || report.step === "done" || report.run) throw createError("CONFLICT", MOVED_ON);
+    await touch(ctx, report, { step: "done", reopened: undefined });
     return null;
   },
 });
@@ -328,7 +358,7 @@ export const readAgain = workspaceMutation({
     await forget(ctx, report.pdf.text);
     const { file, name, bytes, bylineBy, stamped } = report.pdf;
     const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at, ...(bylineBy && { bylineBy }), ...(stamped && { stamped }) }, step: "upload" });
+    await touch(ctx, report, { pdf: { file, name, bytes, at, ...(bylineBy && { bylineBy }), ...(stamped && { stamped }) }, step: "upload", reopened: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -349,7 +379,7 @@ export const addByline = workspaceMutation({
     await forget(ctx, report.pdf.text);
     const { file, name, bytes } = report.pdf;
     const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" }, step: "upload" });
+    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" }, step: "upload", reopened: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -405,7 +435,7 @@ export const attachPdf = workspaceMutation({
     await ctx.db.insert("reportFiles", { file, reportId: report._id });
     if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", reopened: undefined, approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -615,6 +645,8 @@ const reportValidator = v.object({
   /** The line its PDF must carry, with its DOI and the series' ISSN as they are now. */
   byline: v.string(),
   asked: v.boolean(),
+  /** It left its checks with nothing changed since, and can go back to them without running them again (`backToChecks`). */
+  reopened: v.boolean(),
   signedAt: v.number(),
   onBehalfOfAll: v.boolean(),
   agreementVersion: v.number(),
@@ -664,6 +696,7 @@ export const getAction = defineUserQuery({
         doi: report.doi,
         byline: report.byline,
         asked: report.asked === true,
+        reopened: report.reopened === true,
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
         agreementVersion: report.agreementVersion,

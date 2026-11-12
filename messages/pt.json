@@ -6513,7 +6513,12 @@
         "details": "Dados",
         "checks": "Verificações",
         "live": "Publicado",
-        "sealed": "Bloqueado depois de o acordo ser assinado."
+        "sealed": "Bloqueado depois de o acordo ser assinado.",
+        "paying": "O pagamento está em andamento, então as etapas não podem ser abertas agora. Se o banco recusar, elas abrem de novo.",
+        "liveNow": "Está publicado. Altere os detalhes com {action}.",
+        "closed": "Um revisor o retirou, então ele não pode ser alterado.",
+        "running": "As verificações estão em andamento. As etapas abrem de novo quando terminarem.",
+        "notYours": "Só a pessoa que começou este relatório pode alterá-lo."
       },
       "publish": "Publicar",
       "newReport": "Novo relatório",
@@ -6933,7 +6938,8 @@
       "checkAndPublish": "Verificar e publicar as alterações",
       "runChecks": "Enviar",
       "tooEarly": "Um relatório não pode ter data anterior a 1400.",
-      "back": "Voltar"
+      "back": "Voltar",
+      "backToChecks": "Voltar às verificações"
     }
   },
   "people": {
