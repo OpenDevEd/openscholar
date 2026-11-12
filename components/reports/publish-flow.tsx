@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
@@ -53,7 +54,7 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick, type LicenceQuote } from "@/components/reports/licence-choice";
 import { mockQuoteLicences, useMockVoucher, keepMockLicence, mockAgreementText, mockByline, mockSeries, mockTerms, useMockLicence } from "@/components/reports/licence-mock";
-import { PaymentChoice, balanceOf, payment, type PayWith } from "@/components/reports/payment-choice";
+import { Bill, PayWithSwitch, PaymentChoice, balanceOf, buysByCard, payment, type PayWith } from "@/components/reports/payment-choice";
 import { keepMockPayWith, mockCodeOff, spendMockBalance, useMockBalance, useMockPayWith } from "@/components/reports/publication-mock";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, activationsFor, changesOf, licenceName, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
@@ -106,6 +107,8 @@ const said = (otherwise: string) => (error: unknown) => void toast.error(getErro
 const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
+/** A section's name inside a step: the step's own heading is above them all. */
+const SECTION = "mb-3 flex items-center gap-1 text-sm font-semibold";
 /** The part of what is bought that a code takes off, 0 to 1. */
 const codeOff = (quote: Quote | null | undefined) => (quote && quote.price > 0 ? quote.discount / quote.price : 0);
 
@@ -350,6 +353,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const saved = found && "report" in found ? found.report : null;
   // The details form open now: an edit it still holds is saved before the report moves, so the move never leaves it behind.
   const form = useRef<{ flush: () => void }>(null);
+  // The place under the cover, beside the steps on a wide page, where a step shows what it is working out: the element
+  // itself, given by its ref, so the step draws into it.
+  const [beside, setBeside] = useState<HTMLDivElement | null>(null);
   const send = (step: BackStep | "checks") => void (saved && workspaceId && (form.current?.flush(), step === "checks" ? backToChecks({ workspaceId, key: saved.key }) : goTo({ workspaceId, key: saved.key, step })).catch(trouble.failed(t("stepFailed"))));
   useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
@@ -559,6 +565,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onStep={toStep}
             onMoved={stepOn}
             form={form}
+            beside={beside}
             trouble={trouble}
             onCorrect={() => {
               setFresh(null);
@@ -566,7 +573,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             }}
             onCorrected={() => up("correct")}
           />
-          <ReportCover basics={basics} report={report} />
+          <ReportCover basics={basics} report={report} slot={setBeside} />
         </div>
       )}
     </LibraryPageShell>
@@ -600,7 +607,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** A code applied or removed on a report's checks. */ onApplied: (quote: (Quote & { key: string }) | null) => void; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ form, beside, carried, onApplied, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** The place under the cover, on a wide page. */ beside: HTMLDivElement | null; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** A code applied or removed on a report's checks. */ onApplied: (quote: (Quote & { key: string }) | null) => void; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
@@ -681,6 +688,7 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
+              beside={beside}
               basics={basics}
               shared={shared}
               starts={starts}
@@ -963,7 +971,7 @@ function keepTicks(ticks: Ticks | null) {
   }
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack }: { /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
+function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack, beside }: { /** The place under the cover, on a wide page: the bill goes there. */ beside: HTMLDivElement | null; /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
@@ -995,6 +1003,9 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
   // An own licence still being typed reads in the agreement as far as it goes.
   const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
+  // What the licence picked costs, in dollars, and the code applied with the part it takes off what a card pays.
+  const priceNow = (activationsFor(named) === 1 ? starts?.price : starts?.priceOfThree) ?? 0;
+  const codeNow = voucher ? { code: voucher.quote.code, off: codeOff(voucher.quote) } : null;
   // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
   // aren't known until the PDF is read, so a tick only some signers needed let reports with several go unconfirmed.
   // It is for the agreement as it read when it was made. One changed since, while the page was open, is read and
@@ -1022,26 +1033,24 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
         {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
+      {/* Three things in turn, each under its own name: the licence, how it is paid, and the agreement to sign. What
+          the first two come to is a bill beside them, under the cover, so the steps themselves stay short. */}
       {choosing ? (
-        <div className="mb-5">
-          <LicenceChoice
-            value={pick}
-            onChange={setPick}
-            disabled={busy || !!signed}
-            cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null, quoted: voucher?.licences ?? null, due: (price) => payment({ price, balance: balanceOf(parts), payWith, off: codeOff(voucher?.quote) }).due }}
-          />
-          {/* Only where a price is shown: a workspace whose reports have no price has nothing to pay or take off. */}
-          {starts?.price != null && starts.priceOfThree != null ? (
-            <div className="mt-3 space-y-1.5">
-              <PaymentChoice
-                licence={licenceName(named)}
-                price={activationsFor(named) === 1 ? starts.price : starts.priceOfThree}
-                parts={parts}
-                payWith={payWith}
-                onPayWith={setPicked}
-                code={voucher ? { code: voucher.quote.code, off: codeOff(voucher.quote) } : null}
-                disabled={busy || !!signed}
-                voucher={
+        <section className="mb-7">
+          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null }} />
+        </section>
+      ) : null}
+      {/* Only where a price is shown: a workspace whose reports have no price has nothing to pay or take off. */}
+      {starts?.price != null && starts.priceOfThree != null ? (
+        <section className="mb-7" inert={busy || !!signed || undefined}>
+          <h3 className={SECTION}>{t("payment.title")}</h3>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <PayWithSwitch parts={parts} payWith={payWith} onPayWith={setPicked} />
+            {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
+                is kept, and is back when a card pays again. */}
+            <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
+              {buysByCard({ price: priceNow, parts, payWith }) ? (
+                <div className="px-3 py-1">
               <PromoCode
                 applied={voucher?.quote ?? null}
                 // Applying is done in onQuote, which has both plans' quotes; this only hears a code removed.
@@ -1058,13 +1067,16 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
                 typed={typedCode}
                 onTyped={setTypedCode}
               />
-                }
-              />
-              <p className="ps-1 text-xs text-muted-foreground">{t("payment.later")}</p>
-            </div>
-          ) : null}
-        </div>
+                </div>
+              ) : null}
+            </AutoHeight>
+          </div>
+          {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} parts={parts} payWith={payWith} code={codeNow} note={t("payment.later")} />
+          {beside ? createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(named)} price={priceNow} parts={parts} payWith={payWith} code={codeNow} note={t("payment.later")} />, beside) : null}
+        </section>
       ) : null}
+      <h3 className={SECTION}>{t("payment.sign")}</h3>
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
@@ -2587,7 +2599,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
  * The report as it will stand: the cover its page wears, which opens the PDF once there is one, with its DOI and
  * what's on its record under it.
  */
-function ReportCover({ basics, report }: { basics: Basics; report: Report | null }) {
+function ReportCover({ basics, report, slot }: { basics: Basics; report: Report | null; /** Given the element under the cover, on a wide page, where a step shows what it is working out. */ slot?: (element: HTMLDivElement | null) => void }) {
   const t = useTranslations("publishReports.flow");
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
@@ -2639,6 +2651,8 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
             ),
           )}
         </div>
+        {/* Where a step shows what it is working out, on a wide page: the agreement's bill. */}
+        <div ref={slot} className="hidden @3xl:block" />
       </div>
     </aside>
   );

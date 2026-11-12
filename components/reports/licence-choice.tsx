@@ -63,10 +63,11 @@ export function LicenceChoice({ value, onChange, cost, disabled = false }: { val
   ];
   return (
     <div className="space-y-3">
-      <span className="flex items-center gap-0.5 ps-1 text-xs font-medium text-muted-foreground">
+      {/* Named as the step's other sections are. */}
+      <h3 className="flex items-center gap-1 text-sm font-semibold">
         <span id={`${id}-label`}>{t("label")}</span>
         <LicenceHelp />
-      </span>
+      </h3>
       <RadioGroup
         aria-labelledby={`${id}-label`}
         value={other ? "other" : (value as string)}

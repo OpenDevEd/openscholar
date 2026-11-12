@@ -58,6 +58,68 @@ function RollingMoney({ value }: { value: number }) {
   return <motion.span className="tabular-nums">{text}</motion.span>;
 }
 
+/** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
+export function PayWithSwitch({ parts, payWith, onPayWith, className }: { parts: BalancePart[]; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
+  const t = useTranslations("publishReports.flow.payment");
+  const money = useMoney();
+  const balance = balanceOf(parts);
+  if (balance > 0)
+    return (
+      <Segmented
+        size="md"
+        label={t("payWith")}
+        value={payWith}
+        onChange={onPayWith}
+        className={className}
+        options={[
+          { id: "balance", label: t("balance"), icon: Wallet, detail: <bdi className="tabular-nums">{money(balance)}</bdi> },
+          { id: "card", label: t("card"), icon: CreditCard },
+        ]}
+      />
+    );
+  return (
+    // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
+    <p className="flex h-9 items-center gap-2 text-sm font-medium">
+      <CreditCard className="size-4 text-muted-foreground" />
+      {t("byCard")}
+    </p>
+  );
+}
+
+/**
+ * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
+ * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
+ */
+export function Bill({ licence, price, parts, payWith, code, action, note, boxed = false, className }: { /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; parts: BalancePart[]; payWith: PayWith; /** The code applied, with the part of what is bought it takes off. */ code: { code: string; off: number } | null; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+  const t = useTranslations("publishReports.flow.payment");
+  const money = useMoney();
+  const balance = balanceOf(parts);
+  const sum = payment({ price, balance, payWith: balance > 0 ? payWith : "card", off: code?.off ?? 0 });
+  return (
+    <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
+      <AutoHeight>
+        <dl className="space-y-2">
+          <Line label={licence} amount={money(price)} />
+          {sum.fromBalance > 0 ? <Line label={t("balance")} amount={`−${money(sum.fromBalance)}`} off /> : null}
+          {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} amount={`−${money(sum.discount)}`} off /> : null}
+        </dl>
+      </AutoHeight>
+      <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
+        <span className="font-medium">{t(action ? "dueNow" : "due")}</span>
+        <bdi className="text-lg/6 font-semibold">
+          <RollingMoney value={sum.due} />
+        </bdi>
+      </div>
+      {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
+      {action ? <div className="mt-3 flex justify-end">{action}</div> : null}
+    </div>
+  );
+}
+
+/** Whether a card pays anything, before any code: where a code has something to lower. */
+export const buysByCard = ({ price, parts, payWith }: { price: number; parts: BalancePart[]; payWith: PayWith }) => payment({ price, balance: balanceOf(parts), payWith: balanceOf(parts) > 0 ? payWith : "card", off: 0 }).bought > 0;
+
+/** The choices and the bill in one bar, where the report is activated: what pays and a code beside what that comes to, with the button that pays. */
 export function PaymentChoice({
   licence,
   price,
@@ -69,72 +131,28 @@ export function PaymentChoice({
   action,
   disabled = false,
 }: {
-  /** The licence the price is for, by name. */
   licence: string;
-  /** In dollars. */
   price: number;
   parts: BalancePart[];
   payWith: PayWith;
   onPayWith: (payWith: PayWith) => void;
-  /** The code applied, with the part of what is bought it takes off. */
   code: { code: string; off: number } | null;
   /** The field a code goes in, shown while a card pays something. */
   voucher?: ReactNode;
-  /** The button that pays, where the report is activated, under what is due. */
   action?: ReactNode;
   disabled?: boolean;
 }) {
   const t = useTranslations("publishReports.flow.payment");
-  const money = useMoney();
-  const balance = balanceOf(parts);
-  const sum = payment({ price, balance, payWith: balance > 0 ? payWith : "card", off: code?.off ?? 0 });
   return (
     <div inert={disabled || undefined} className={cn("grid gap-x-6 gap-y-3 rounded-2xl bg-inset/60 p-3 transition-opacity sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]", disabled && "opacity-60")}>
-      {/* The choices: what pays, and a code. */}
       <div className="min-w-0 space-y-2">
-        {balance > 0 ? (
-          <>
-            <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p>
-            <Segmented
-              size="md"
-              label={t("payWith")}
-              value={payWith}
-              onChange={onPayWith}
-              className="bg-background"
-              options={[
-                { id: "balance", label: t("balance"), icon: Wallet, detail: <bdi className="tabular-nums">{money(balance)}</bdi> },
-                { id: "card", label: t("card"), icon: CreditCard },
-              ]}
-            />
-          </>
-        ) : (
-          // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
-          <p className="flex h-9 items-center gap-2 ps-1 text-sm font-medium">
-            <CreditCard className="size-4 text-muted-foreground" />
-            {t("byCard")}
-          </p>
-        )}
+        {balanceOf(parts) > 0 ? <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p> : null}
+        <PayWithSwitch parts={parts} payWith={payWith} onPayWith={onPayWith} className="bg-background" />
         {/* A code lowers what the card pays: with nothing for a card to pay, there is nothing for one to do, so its
             field is put away. A code applied is kept, and is back when a card pays again. */}
-        <AutoHeight>{voucher && sum.bought > 0 ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
+        <AutoHeight>{voucher && buysByCard({ price, parts, payWith }) ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
       </div>
-      {/* What that comes to, as a bill reads: the price, what is taken off it, and what is left to pay. */}
-      <div className="min-w-0 self-start rounded-xl border border-border-subtle bg-background text-sm">
-        <AutoHeight>
-          <dl className="space-y-2 px-3.5 pt-3">
-            <Line label={licence} amount={money(price)} />
-            {sum.fromBalance > 0 ? <Line label={t("balance")} amount={`−${money(sum.fromBalance)}`} off /> : null}
-            {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} amount={`−${money(sum.discount)}`} off /> : null}
-          </dl>
-        </AutoHeight>
-        <div className="mx-3.5 mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle py-2.5">
-          <span className="font-medium">{t(action ? "dueNow" : "due")}</span>
-          <bdi className="text-lg/6 font-semibold">
-            <RollingMoney value={sum.due} />
-          </bdi>
-        </div>
-        {action ? <div className="flex justify-end px-3.5 pb-3">{action}</div> : null}
-      </div>
+      <Bill boxed className="self-start" licence={licence} price={price} parts={parts} payWith={payWith} code={code} action={action} />
     </div>
   );
 }
@@ -143,7 +161,7 @@ export function PaymentChoice({
 function Line({ label, amount, off = false }: { label: string; amount: string; off?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="min-w-0 text-muted-foreground">{label}</dt>
+      <dt className="min-w-0 truncate text-muted-foreground">{label}</dt>
       {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
       <dd className={cn("shrink-0 tabular-nums", off && "ink-success")}>
         <bdi>{amount}</bdi>

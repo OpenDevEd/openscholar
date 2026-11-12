@@ -6881,9 +6881,11 @@
         "card": "Card",
         "byCard": "Paid by card",
         "due": "Due at activation",
-        "later": "Nothing is charged until the report is activated. How you pay can change until then.",
+        "later": "Nothing is charged until the report is activated, and how you pay can still change.",
         "code": "Code {code}",
-        "dueNow": "Due now"
+        "dueNow": "Due now",
+        "title": "Payment",
+        "sign": "Read and sign"
       }
     },
     "meta": {
