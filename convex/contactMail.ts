@@ -11,7 +11,7 @@ import { contactEmail, type ContactMessage } from "../lib/contact";
 export const deliver = internalAction({
   args: {
     message: v.object({
-      topic: v.union(v.literal("community"), v.literal("southern"), v.literal("partner"), v.literal("account"), v.literal("bug"), v.literal("other")),
+      topic: v.union(v.literal("community"), v.literal("southern"), v.literal("partner"), v.literal("sponsor"), v.literal("account"), v.literal("bug"), v.literal("other")),
       name: v.string(),
       email: v.string(),
       org: v.optional(v.string()),
