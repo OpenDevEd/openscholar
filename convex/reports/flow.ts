@@ -23,7 +23,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, bylineByValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
+import { authorRowValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -291,7 +291,10 @@ export const goTo = workspaceMutation({
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     const checked = report.step === "done";
-    if (checked && stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
+    // One that failed its checks goes back to be fixed, and so does one a reviewer declined before it ever went
+    // live: their note is a reason to change it, not the end of it. One taken down after going live stays down.
+    const stage = checked ? stageOf(report, (await reportSettings(ctx)).humanReview) : null;
+    if (checked && stage !== "failed" && !(stage === "declined" && report.activatedAt === undefined)) throw createError("CONFLICT", MOVED_ON);
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
     // Its details wait for its PDF to be read: the checks read that PDF's text.
     if (step === "details" && (!details?.metadata || report.pdf?.pages === undefined)) throw createError("CONFLICT", "That step isn't open for this report yet.");
@@ -315,30 +318,9 @@ export const readAgain = workspaceMutation({
     // Back to a PDF just attached, its reading to come: the reading stores its text afresh. It counts as attached now,
     // so a Details form left open in another tab on the kept details is refused when it saves or asks for the checks.
     await forget(ctx, report.pdf.text);
-    const { file, name, bytes, bylineBy, stamped } = report.pdf;
-    const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at, ...(bylineBy && { bylineBy }), ...(stamped && { stamped }) }, step: "upload" });
-    await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
-    return null;
-  },
-});
-
-/**
- * The author has Openscholar add the byline to the PDF already uploaded, which lacks it: the PDF is read again, and
- * that reading adds the page (./reading.ts). The report's details stay as they are.
- */
-export const addByline = workspaceMutation({
-  args: { key: v.string() },
-  returns: v.null(),
-  handler: async (ctx, actor, { key }) => {
-    await refuseApps(ctx);
-    const report = await changing(ctx, actor, key);
-    // Asked from the upload, which an author who went back to the DOI's page reaches again without the report moving.
-    if ((report.step !== "upload" && report.step !== "doi") || !report.pdf?.lacksByline) throw createError("CONFLICT", MOVED_ON);
-    await forget(ctx, report.pdf.text);
     const { file, name, bytes } = report.pdf;
     const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" }, step: "upload" });
+    await touch(ctx, report, { pdf: { file, name, bytes, at }, step: "upload" });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -363,9 +345,9 @@ export const startUpload = workspaceMutation({
  * anew, for the checks. A file that can't be this report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")), /** Who adds the byline, as the author chose at the upload. A page still open from before the choice sends none. */ bylineBy: v.optional(bylineByValidator) },
+  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")) },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, actor, { key, file, name, cover, bylineBy }) => {
+  handler: async (ctx, actor, { key, file, name, cover }) => {
     await refuseApps(ctx);
     const stored = await uploaded(ctx, file);
     const picture = cover ? await uploaded(ctx, cover) : null;
@@ -385,8 +367,7 @@ export const attachPdf = workspaceMutation({
       return refused;
     }
     await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
-    // Later than the PDF it replaces, even within one millisecond: a reading of that one must never be taken for this one's.
-    const at = Math.max(Date.now(), (report.pdf?.at ?? 0) + 1);
+    const at = Date.now();
     // The picture of its first page, drawn by the browser that uploaded it. One that is too big or no picture is
     // dropped, and the report keeps its title page.
     const pictured = !!picture && picture.size <= COVER_MAX_BYTES && (picture.contentType === undefined || picture.contentType.startsWith("image/"));
@@ -394,7 +375,7 @@ export const attachPdf = workspaceMutation({
     await ctx.db.insert("reportFiles", { file, reportId: report._id });
     if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -610,7 +591,7 @@ const reportValidator = v.object({
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), bylineBy: v.optional(bylineByValidator), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: optionalPlainResults,
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
@@ -658,7 +639,7 @@ export const getAction = defineUserQuery({
         agreementVersion: report.agreementVersion,
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),
