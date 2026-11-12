@@ -6587,7 +6587,7 @@
       "tooBig": "PDF 超过 {max} MB",
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
       "uploadFailed": "无法上传 PDF。请重试。",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
       "uploading": "正在上传 {name}",
@@ -6779,7 +6779,7 @@
       },
       "back": "返回",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "下一步：上传 PDF",
       "nextDetails": "下一步：核对信息",
       "bylineBy": {
@@ -6813,7 +6813,7 @@
         },
         "pdf": {
           "title": "上传您的 PDF",
-          "body": "封面上须有一行署名，写明系列名称和 DOI。签署后您会得到这行署名。"
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "核对信息",
@@ -6821,7 +6821,7 @@
         },
         "checks": {
           "title": "自动检查",
-          "body": "大约一分钟。检查封面上的署名以及是否曾经发布过。"
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "激活",

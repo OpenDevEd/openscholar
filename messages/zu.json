@@ -6587,7 +6587,7 @@
       "tooBig": "I-PDF inkulu kuno-{max} MB",
       "offline": "I-PDF ayikwazanga ukulayishwa. Hlola ukuxhumana kwakho, bese uyikhetha futhi.",
       "uploadFailed": "I-PDF ayikwazanga ukulayishwa. Zama futhi.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Kopisha umugqa womnikazi",
       "bylineCopied": "Umugqa womnikazi ukopishiwe",
       "uploading": "Kulayishwa i-{name}",
@@ -6779,7 +6779,7 @@
       },
       "back": "Emuva",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Okulandelayo: layisha i-PDF",
       "nextDetails": "Okulandelayo: hlola imininingwane",
       "bylineBy": {
@@ -6813,7 +6813,7 @@
         },
         "pdf": {
           "title": "Layisha i-PDF yakho",
-          "body": "Inomugqa owodwa ekhasini layo langaphandle osho uchungechunge ne-DOI. Uthola umugqa ngemva kokusayina."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Hlola imininingwane",
@@ -6821,7 +6821,7 @@
         },
         "checks": {
           "title": "Ukuhlolwa okuzenzakalelayo",
-          "body": "Cishe umzuzu. Kufuna umugqa ekhasini langaphandle nanoma yini eshicilelwe ngaphambilini."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Yenza kusebenze",

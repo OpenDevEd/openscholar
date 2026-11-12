@@ -1261,7 +1261,8 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           <>
             <FileUp className="size-6 text-primary" />
             <span className="text-sm font-medium">{t(by ? "drop" : "bylineBy.chooseFirst")}</span>
-            <span className="text-xs text-muted-foreground">{t("dropHint", { max: MAX_PDF_MB })}</span>
+            {/* One limit said at a time: the smaller one while Openscholar is to add the page. */}
+            <span className="text-xs text-muted-foreground">{t("dropHint", { max: by === "added" ? BYLINE_PAGE_MAX_MB : MAX_PDF_MB })}</span>
           </>
         )}
       </button>

@@ -6588,7 +6588,7 @@
       "tooBig": "Das PDF ist größer als {max} MB",
       "offline": "Das PDF konnte nicht hochgeladen werden. Prüfen Sie Ihre Verbindung und wählen Sie es dann erneut.",
       "uploadFailed": "Das PDF konnte nicht hochgeladen werden. Versuchen Sie es erneut.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Vermerk kopieren",
       "bylineCopied": "Vermerk kopiert",
       "uploading": "{name} wird hochgeladen",
@@ -6780,7 +6780,7 @@
       },
       "back": "Zurück",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Weiter: PDF hochladen",
       "nextDetails": "Weiter: Angaben prüfen",
       "bylineBy": {
@@ -6814,7 +6814,7 @@
         },
         "pdf": {
           "title": "Ihr PDF hochladen",
-          "body": "Mit einem Vermerk auf dem Deckblatt, der die Reihe und die DOI nennt. Den Vermerk erhalten Sie nach dem Unterzeichnen."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Die Angaben prüfen",
@@ -6822,7 +6822,7 @@
         },
         "checks": {
           "title": "Automatische Prüfungen",
-          "body": "Etwa eine Minute. Sie suchen den Vermerk auf dem Deckblatt und frühere Veröffentlichungen."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Aktivieren",

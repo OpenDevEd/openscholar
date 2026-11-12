@@ -6587,7 +6587,7 @@
       "tooBig": "Le PDF dépasse {max} Mo",
       "offline": "Le PDF n'a pas pu être téléversé. Vérifiez votre connexion, puis choisissez-le de nouveau.",
       "uploadFailed": "Le PDF n'a pas pu être téléversé. Réessayez.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copier la mention",
       "bylineCopied": "Mention copiée",
       "uploading": "Téléversement de {name}",
@@ -6779,7 +6779,7 @@
       },
       "back": "Retour",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Suivant : téléverser le PDF",
       "nextDetails": "Suivant : vérifier les informations",
       "bylineBy": {
@@ -6813,7 +6813,7 @@
         },
         "pdf": {
           "title": "Téléverser votre PDF",
-          "body": "Avec une mention sur sa couverture qui nomme la collection et le DOI. Vous recevez la mention après la signature."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Vérifier les informations",
@@ -6821,7 +6821,7 @@
         },
         "checks": {
           "title": "Vérifications automatiques",
-          "body": "Environ une minute. Elles recherchent la mention sur la couverture et toute publication antérieure."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Activer",

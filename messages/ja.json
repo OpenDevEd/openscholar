@@ -6587,7 +6587,7 @@
       "tooBig": "PDF が {max} MB を超えています",
       "offline": "PDF をアップロードできませんでした。接続を確認して、もう一度選んでください。",
       "uploadFailed": "PDF をアップロードできませんでした。もう一度お試しください。",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "表記をコピー",
       "bylineCopied": "表記をコピーしました",
       "uploading": "{name} をアップロード中",
@@ -6779,7 +6779,7 @@
       },
       "back": "戻る",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "次へ：PDF をアップロード",
       "nextDetails": "次へ：詳細を確認",
       "bylineBy": {
@@ -6813,7 +6813,7 @@
         },
         "pdf": {
           "title": "PDF をアップロードする",
-          "body": "表紙に、シリーズ名と DOI を示す表記を 1 行入れます。表記は署名後に受け取れます。"
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "詳細を確認する",
@@ -6821,7 +6821,7 @@
         },
         "checks": {
           "title": "自動チェック",
-          "body": "約 1 分です。表紙の表記と、過去に公開されたものがないかを確認します。"
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "有効化",

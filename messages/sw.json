@@ -6588,7 +6588,7 @@
       "tooBig": "PDF ni kubwa kuliko MB {max}",
       "offline": "PDF haikuweza kupakiwa. Angalia muunganisho wako, kisha uichague tena.",
       "uploadFailed": "PDF haikuweza kupakiwa. Jaribu tena.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Nakili mstari wa utambulisho",
       "bylineCopied": "Mstari wa utambulisho umenakiliwa",
       "uploading": "Inapakia {name}",
@@ -6780,7 +6780,7 @@
       },
       "back": "Rudi",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Ifuatayo: pakia PDF",
       "nextDetails": "Ifuatayo: kagua maelezo",
       "bylineBy": {
@@ -6814,7 +6814,7 @@
         },
         "pdf": {
           "title": "Pakia PDF yako",
-          "body": "Ikiwa na mstari mmoja kwenye jalada lake unaotaja mfululizo na DOI. Unapata mstari huo baada ya kutia saini."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Kagua maelezo",
@@ -6822,7 +6822,7 @@
         },
         "checks": {
           "title": "Ukaguzi wa kiotomatiki",
-          "body": "Takriban dakika moja. Hutafuta mstari kwenye jalada na chochote kilichochapishwa awali."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Washa",

@@ -6588,7 +6588,7 @@
       "tooBig": "O PDF tem mais de {max} MB",
       "offline": "Não foi possível carregar o PDF. Verifique a ligação e escolha-o de novo.",
       "uploadFailed": "Não foi possível carregar o PDF. Tente de novo.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copiar a menção",
       "bylineCopied": "Menção copiada",
       "uploading": "A carregar {name}",
@@ -6780,7 +6780,7 @@
       },
       "back": "Voltar",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Seguinte: carregar o PDF",
       "nextDetails": "Seguinte: verificar os dados",
       "bylineBy": {
@@ -6814,7 +6814,7 @@
         },
         "pdf": {
           "title": "Carregar o seu PDF",
-          "body": "Com uma menção na capa que nomeia a série e o DOI. Recebe a menção depois de assinar."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Verificar os dados",
@@ -6822,7 +6822,7 @@
         },
         "checks": {
           "title": "Verificações automáticas",
-          "body": "Cerca de um minuto. Procuram a menção na capa e qualquer publicação anterior."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Ativar",

@@ -6587,7 +6587,7 @@
       "tooBig": "The PDF is over {max} MB. Choose a smaller one.",
       "offline": "The PDF couldn't be uploaded. Check your connection, then choose it again.",
       "uploadFailed": "The PDF couldn't be uploaded. Try again.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copy byline",
       "bylineCopied": "Byline copied",
       "uploading": "Uploading {name}",
@@ -6779,7 +6779,7 @@
       },
       "back": "Back",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Next: upload the PDF",
       "nextDetails": "Next: check the details",
       "bylineBy": {
@@ -6813,7 +6813,7 @@
         },
         "pdf": {
           "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Check the details",
@@ -6821,7 +6821,7 @@
         },
         "checks": {
           "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Activate",

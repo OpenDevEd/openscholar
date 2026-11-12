@@ -6587,7 +6587,7 @@
       "tooBig": "PDF {max} MB से बड़ा है",
       "offline": "PDF अपलोड नहीं हो सका। अपना कनेक्शन जाँचें, फिर इसे फिर से चुनें।",
       "uploadFailed": "PDF अपलोड नहीं हो सका। फिर से कोशिश करें।",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "उल्लेख कॉपी करें",
       "bylineCopied": "उल्लेख कॉपी हो गया",
       "uploading": "{name} अपलोड हो रहा है",
@@ -6779,7 +6779,7 @@
       },
       "back": "वापस",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "आगे: PDF अपलोड करें",
       "nextDetails": "आगे: विवरण जाँचें",
       "bylineBy": {
@@ -6813,7 +6813,7 @@
         },
         "pdf": {
           "title": "अपना PDF अपलोड करें",
-          "body": "इसके कवर पर एक पंक्ति के साथ, जो शृंखला और DOI का नाम देती है। पंक्ति आपको हस्ताक्षर के बाद मिलती है।"
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "विवरण जाँचें",
@@ -6821,7 +6821,7 @@
         },
         "checks": {
           "title": "स्वचालित जाँचें",
-          "body": "लगभग एक मिनट। ये कवर पर पंक्ति और पहले के किसी प्रकाशन को खोजती हैं।"
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "सक्रिय करें",

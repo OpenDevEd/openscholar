@@ -6588,7 +6588,7 @@
       "tooBig": "ملف PDF أكبر من {max} ميغابايت",
       "offline": "تعذّر رفع ملف PDF. تحقق من اتصالك، ثم اختره مرة أخرى.",
       "uploadFailed": "تعذّر رفع ملف PDF. حاول مرة أخرى.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "نسخ سطر الإسناد",
       "bylineCopied": "تم نسخ سطر الإسناد",
       "uploading": "جارٍ رفع {name}",
@@ -6780,7 +6780,7 @@
       },
       "back": "رجوع",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "التالي: رفع ملف PDF",
       "nextDetails": "التالي: مراجعة التفاصيل",
       "bylineBy": {
@@ -6814,7 +6814,7 @@
         },
         "pdf": {
           "title": "ارفع ملف PDF",
-          "body": "مع سطر على غلافه يذكر السلسلة ومعرّف DOI. تحصل على السطر بعد التوقيع."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "راجع التفاصيل",
@@ -6822,7 +6822,7 @@
         },
         "checks": {
           "title": "فحوصات تلقائية",
-          "body": "نحو دقيقة. تبحث عن السطر على الغلاف وعن أي نشر سابق."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "تفعيل",

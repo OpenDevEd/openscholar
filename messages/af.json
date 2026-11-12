@@ -6588,7 +6588,7 @@
       "tooBig": "Die PDF is groter as {max} MB",
       "offline": "Die PDF kon nie opgelaai word nie. Kontroleer jou verbinding en kies dit dan weer.",
       "uploadFailed": "Die PDF kon nie opgelaai word nie. Probeer weer.",
-      "uploadIntro": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our check looks for it.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Kopieer eienaarsreël",
       "bylineCopied": "Eienaarsreël gekopieer",
       "uploading": "Laai {name} op",
@@ -6780,7 +6780,7 @@
       },
       "back": "Terug",
       "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its PDF carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Volgende: laai die PDF op",
       "nextDetails": "Volgende: gaan die besonderhede na",
       "bylineBy": {
@@ -6814,7 +6814,7 @@
         },
         "pdf": {
           "title": "Laai jou PDF op",
-          "body": "Met een reël op sy voorblad wat die reeks en die DOI noem. Jy kry die reël nadat jy geteken het."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Gaan die besonderhede na",
@@ -6822,7 +6822,7 @@
         },
         "checks": {
           "title": "Outomatiese kontroles",
-          "body": "Omtrent 'n minuut. Hulle soek die reël op die voorblad en enigiets wat reeds gepubliseer is."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Aktiveer",
