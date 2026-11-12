@@ -6196,7 +6196,8 @@
       "studyDesign": "Uhlaka locwaningo",
       "seeChanges": "Bona izinguquko zakho",
       "correct": "Lungisa imininingwane",
-      "takeDownTitle": "Ukuwususa"
+      "takeDownTitle": "Ukuwususa",
+      "openDoi": "Vula i-DOI {doi}"
     },
     "stages": {
       "draft": "Uhlaka",
@@ -6849,9 +6850,6 @@
       "moveUpLabel": "Hambisa u-{name} phezulu",
       "moveDownLabel": "Hambisa u-{name} phansi",
       "author": "Umbhali",
-      "roles": "Izindima zomnikeli",
-      "roleCount": "{count, plural, one {indima engu-#} other {izindima ezingu-#}}",
-      "findRole": "Sesha indima",
       "noRole": "Ayikho indima enjalo",
       "corresponding": "Umbhali wokuxhumana",
       "orcidFound": "Kutholwe ku-ORCID ngegama labo kanye ne-{institution}",
@@ -6936,7 +6934,328 @@
       "runChecks": "Thumela",
       "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400.",
       "back": "Emuva",
-      "backToChecks": "Buyela ekuhloleni"
+      "backToChecks": "Buyela ekuhloleni",
+      "role": "Indima",
+      "orcidLabel": "I-ORCID iD",
+      "contributions": "Iminikelo",
+      "contributionsPlaceholder": "Lokho lo muntu akwenzile",
+      "contributionCount": "{count, plural, one {umnikelo o-#} other {iminikelo e-#}}",
+      "findContribution": "Thola umnikelo",
+      "writeAbstract": "Bhala kusuka ku-PDF",
+      "replaceAbstractTitle": "Shintsha isifinyezo?",
+      "replaceAbstractBody": "Kubhalwa esisha kusuka ku-PDF, bese sithatha indawo yalesi esisebhokisini.",
+      "keepAbstract": "Sigcine",
+      "replaceAbstract": "Shintsha",
+      "noAbstract": "I-PDF yakho ayinasifinyezo esiphrintiwe. Thayipha esisodwa, noma sibhalwe kusuka ku-PDF.",
+      "abstractFailed": "Isifinyezo asikwazanga ukubhalwa. Zama futhi.",
+      "addReferences": "Engeza izinkomba",
+      "referencesPlaceholder": "Namathisela izinkomba noma ama-DOI, eyodwa emgqeni ngamunye",
+      "uploadReferences": "Layisha ifayela",
+      "uploadReferencesLabel": "Layisha ifayela lezinkomba",
+      "referenceFormats": "I-BibTeX, i-RIS noma umbhalo ojwayelekile",
+      "noReferencesFound": "Azikho izinkomba ezitholakele lapho.",
+      "referencesListed": "Zonke lezo sezivele zisohlwini.",
+      "referencesAdded": "{count, plural, one {Kungezwe inkomba e-#} other {Kungezwe izinkomba ezi-#}}",
+      "undo": "Hlehlisa",
+      "referencesTooBig": "Lelo fayela lingaphezu kuka-2 MB. Uhlu lwezinkomba luncane kakhulu kunalokho.",
+      "openItsDoi": "Vula i-DOI yayo",
+      "openReferenceDoi": "Vula i-DOI yenkomba {number}"
+    },
+    "kinds": {
+      "author": "Umbhali",
+      "editor": "Umhleli",
+      "chair": "Usihlalo",
+      "translator": "Umhumushi",
+      "reviewer": "Umbuyekezi",
+      "review-assistant": "Umsizi wokubuyekeza",
+      "reviewer-external": "Umbuyekezi (wangaphandle)",
+      "stats-reviewer": "Umbuyekezi (wezibalo)",
+      "reader": "Umfundi",
+      "other": "Okunye"
+    },
+    "roleDetails": {
+      "conceptualization": "Weza nemibono futhi wabeka izinhloso",
+      "dataCuration": "Wahlela, wahlanza futhi wagcina idatha",
+      "formalAnalysis": "Wenza izibalo noma okunye ukuhlaziya okusemthethweni",
+      "fundingAcquisition": "Wathola imali yephrojekthi",
+      "investigation": "Wenza ucwaningo futhi waqoqa ubufakazi",
+      "methodology": "Waklama izindlela noma amamodeli",
+      "projectAdministration": "Waphatha futhi wahlanganisa iphrojekthi",
+      "resources": "Wanikeza izinto, amasampula, amathuluzi noma amakhompyutha",
+      "software": "Wabhala noma wahlola ikhodi",
+      "supervision": "Wahola futhi weluleka ithimba",
+      "validation": "Wahlola ukuthi imiphumela ingaphindwa",
+      "visualization": "Wenza izithombe nokwethulwa kwedatha",
+      "writingOriginalDraft": "Wabhala uhlaka lokuqala",
+      "writingReviewEditing": "Wabuyekeza futhi walungisa umbhalo"
+    },
+    "help": {
+      "aboutLabel": "Mayelana: {title}",
+      "sentTo": "Kuthunyelwa ku",
+      "does": {
+        "crossref": "Ibhalisa i-DOI",
+        "zenodo": "Igcina ikhophi",
+        "openscholar": "Ibonisa umbiko"
+      },
+      "sent": "{name}, iyakuthola lokhu: {does}",
+      "notSent": "{name}, ayikutholi lokhu: {does}",
+      "filled": {
+        "pdf": "Kufundwe ku-PDF yakho",
+        "judged": "Kucatshangwe ku-PDF yakho",
+        "matched": "Kufundwe ku-PDF yakho, bese kuyabhekwa",
+        "classified": "Kuphakanyiswe yi-OpenAlex",
+        "author": "Iqala njengoMbhali",
+        "fixed": "Kusethwe yi-Openscholar",
+        "reserved": "Kubekelwa eceleni uma usayina"
+      },
+      "entry": {
+        "list": "Kukhethwa ohlwini",
+        "typed": "Kuthayiphwa ngokukhululeka",
+        "either": "Ohlwini, noma kuthayiphwe",
+        "pasted": "Kunamathiselwe noma kulayishiwe",
+        "toggle": "Kuvuliwe noma kuvaliwe",
+        "chosen": "Ukukhetha kwakho"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "Izinhlobo zemisebenzi ze-OpenAlex",
+          "detail": "Uhlu olukhonjiswa yilesi sikhethi"
+        },
+        "zenodoTypes": {
+          "name": "Izinhlobo zezinsiza ze-Zenodo",
+          "detail": "Lokho uhlobo ngalunye oluba yikho ku-Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Imibiko ku-Crossref",
+          "detail": "Irekhodi i-Crossref eyigcinayo"
+        },
+        "iso639": {
+          "name": "Amakhodi olimi e-ISO 639",
+          "detail": "Amakhodi i-OpenAlex ewasebenzisayo"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "I-Creative Commons Attribution 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Abanikeli ku-Crossref",
+          "detail": "Indlela i-Crossref erekhoda ngayo abantu"
+        },
+        "crossrefRoles": {
+          "name": "Izindima zabanikeli ze-Crossref",
+          "detail": "Uhlu olukhonjiswa yilesi sikhethi"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "Iyini i-iD"
+        },
+        "orcidRegister": {
+          "name": "Thola i-iD",
+          "detail": "Mahhala, kuthatha umzuzu"
+        },
+        "openalexInstitutions": {
+          "name": "Izikhungo ze-OpenAlex",
+          "detail": "Kusesha kuqala"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Kusesha lezo i-OpenAlex engenazo"
+        },
+        "rorAdd": {
+          "name": "Cela i-ROR ukuthi yengeze inhlangano",
+          "detail": "Ngenhlangano engekho kunoma yiluphi uhlu"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "Uhlelo lwe-NISO lwezindima zabanikeli"
+        },
+        "crossrefAbstracts": {
+          "name": "Izifinyezo ku-Crossref",
+          "detail": "Indlela i-Crossref esigcina ngayo"
+        },
+        "openalexTopics": {
+          "name": "Izihloko ze-OpenAlex",
+          "detail": "Uhlu lesi sikhethi esisesha kulo"
+        },
+        "sdgs": {
+          "name": "Izinhloso eziyi-17",
+          "detail": "Izizwe Ezihlangene"
+        },
+        "openalexDesigns": {
+          "name": "Imiklamo yocwaningo ye-OpenAlex",
+          "detail": "Uhlu olukhonjiswa yilesi sikhethi"
+        },
+        "iso3166": {
+          "name": "Amakhodi amazwe e-ISO 3166",
+          "detail": "Amazwe asohlwini lwalesi sikhethi"
+        },
+        "openalexFunders": {
+          "name": "Abaxhasi be-OpenAlex",
+          "detail": "Kusesha kuqala"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Kusesha nakulokhu, ohulumeni nezisekelo"
+        },
+        "funderRegistry": {
+          "name": "I-Funder Registry ye-Crossref",
+          "detail": "Ama-ID i-Crossref ehlonza ngawo abaxhasi"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "Iyini i-DOI"
+        },
+        "crossrefReferences": {
+          "name": "Izinkomba ku-Crossref",
+          "detail": "Indlela izingcaphuno ezibalwa ngayo kuzo"
+        },
+        "crossrefRelations": {
+          "name": "Ubudlelwano ku-Crossref",
+          "detail": "Indlela i-Crossref exhumanisa ngayo imisebenzi"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "Iyini i-ISSN"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Isihloko",
+          "about": "Isihloko sombiko njengoba siphrintiwe ekhasini langaphambili."
+        },
+        "subtitle": {
+          "title": "Isihlokwana",
+          "about": "Umugqa ongaphansi kwesihloko, uma ikhasi langaphambili linawo.",
+          "note": "Akunalutho uma i-PDF ingasiphrinti."
+        },
+        "type": {
+          "title": "Uhlobo",
+          "about": "Uhlobo lomsebenzi lona.",
+          "note": "I-Crossref ifaka yonke i-Openscholar Report njengombiko. I-Zenodo ne-Openscholar zisebenzisa uhlobo olukhethwe lapha."
+        },
+        "language": {
+          "title": "Ulimi",
+          "about": "Ulimi umbiko obhalwe ngalo."
+        },
+        "date": {
+          "title": "Usuku lokushicilelwa",
+          "about": "Lapho umbiko ushicilelwe khona: unyaka, inyanga noma usuku, ngokunemba i-PDF ekusho ngakho, futhi kungadluli namuhla.",
+          "note": "I-Crossref iyigcina inembile njengoba injalo. I-Zenodo ithatha usuku oluphelele, ngakho unyaka noma inyanga iya khona njengosuku lwayo lokuqala. I-PDF engashongo usuku ithola olwanamuhla."
+        },
+        "licence": {
+          "title": "Ilayisensi",
+          "about": "Yonke i-Openscholar Report ishicilelwa ngaphansi kwe-CC BY 4.0, njengoba isivumelwano osisayinile sisho."
+        },
+        "authors": {
+          "title": "Ababhali",
+          "about": "Wonke umuntu umbiko omnika udumo, ngokulandelana kokucaphuna kwawo.",
+          "note": "Ababhali be-PDF sebegcwalisiwe. Engeza abahleli, abahumushi nabanye lapha, bese ukhetha izindima zabo."
+        },
+        "name": {
+          "title": "Igama",
+          "about": "Igama njengoba umbiko uliphrinta. Igama eliphelele lenhlangano nalo liyasebenza.",
+          "note": "I-Crossref ne-Zenodo ziligcina njengesibongo, bese kuba amagama. Igama lokugcina lithathwa njengesibongo."
+        },
+        "kind": {
+          "title": "Indima",
+          "about": "Lo muntu uyini embikweni. Iningi labantu lingababhali.",
+          "note": "Ngababhali kuphela abaphawulwa ekucaphuneni kombiko. Lokho umbhali akwenzile kufakwa ngaphansi kweMinikelo."
+        },
+        "orcid": {
+          "title": "I-ORCID iD",
+          "about": "Inombolo yamahhala ehlukanisa abacwaningi abanegama elifanayo.",
+          "note": "Uma i-PDF ingayiphrinti, kuseshwa ku-ORCID umuntu oyedwa onegama eliqondile kwesinye salezi zikhungo."
+        },
+        "affiliations": {
+          "title": "Izikhungo ahlobene nazo",
+          "about": "Lapho lo muntu ayesebenza khona lapho umbiko ubhalwa.",
+          "note": "Isikhungo esine-ID ye-ROR sithunyelwa nayo, ukuze i-Crossref ne-Zenodo zazi ukuthi yisiphi. Esithayiphwe ngesandla sihamba nje ngegama."
+        },
+        "contributions": {
+          "title": "Iminikelo",
+          "about": "Lokho lo muntu akwenzela umsebenzi, ngezindima eziyi-14 ze-CRediT.",
+          "note": "Kugcwaliswa kuphela uma i-PDF inesitatimende seminikelo. Ukukushiya kungenalutho kulungile."
+        },
+        "corresponding": {
+          "title": "Umbhali wokuxhumana",
+          "about": "Umuntu abafundi abambhalela ngombiko.",
+          "note": "Kuvulwa kuphela uma i-PDF ikhombisa oyedwa."
+        },
+        "abstract": {
+          "title": "Isifinyezo",
+          "about": "Isifinyezo noma isiqephu i-PDF yakho esiphrintayo, esikopishwe njengoba sinjalo.",
+          "note": "Uma i-PDF ingaphrinti nokukodwa, u-Bhala kusuka ku-PDF wenza uhlaka ukuze ulubheke futhi uluguqule."
+        },
+        "topics": {
+          "title": "Izihloko",
+          "about": "Lokho umbiko okhuluma ngakho, ngezihloko ze-OpenAlex.",
+          "note": "Isihlukanisi se-OpenAlex sifunda isihloko nesifinyezo. Ibha esihlokweni ikhombisa ukuthi sasiqiniseka kangakanani. Izihloko ozengezayo azinayo."
+        },
+        "keywords": {
+          "title": "Amagama abalulekile",
+          "about": "Amagama akho mayelana nalokho umbiko okhuluma ngakho.",
+          "note": "Amagama abalulekile e-PDF. Uma ingabalanga, afika kwamahlanu avela esihlukanisini se-OpenAlex."
+        },
+        "sdgs": {
+          "title": "Izinhloso Zentuthuko Esimeme",
+          "about": "Izinhloso ze-UN umbiko okhuluma ngazo kakhulu.",
+          "note": "Kugcwaliswa ezingeqi kwezintathu. Engeza noma ususe noma yisiphi."
+        },
+        "design": {
+          "title": "Umklamo wocwaningo",
+          "about": "Indlela ucwaningo olwenziwa ngayo.",
+          "note": "Kugcwaliswa kuphela uma i-PDF ikucacisa. I-Zenodo ikubonisa njengenothi lezindlela."
+        },
+        "places": {
+          "title": "Izindawo ezicwaningiwe",
+          "about": "Amazwe nezifunda umbiko okhuluma ngazo, hhayi lapho ababhali bawo besebenza khona."
+        },
+        "funding": {
+          "title": "Uxhaso",
+          "about": "Ubani owakhokhela umsebenzi, nezinombolo zoxhaso njengoba ziphrintiwe.",
+          "note": "Abaxhasi bayabhekwa ku-OpenAlex naku-ROR. Otholakala lapho uhamba ne-ID yakhe ye-ROR, kanye ne-ID ye-Funder Registry uma enayo. Othayiphwe ngesandla uhamba nje ngegama."
+        },
+        "references": {
+          "title": "Izinkomba",
+          "about": "Imisebenzi lo mbiko oyicaphunayo, njengoba uhlu lwawo lwezinkomba luyibhala.",
+          "note": "Namathisela uhlu, noma lulayishe njengefayela le-BibTeX, i-RIS noma lombhalo ojwayelekile. Yonke i-DOI i-PDF eyiphrintayo isigcwalisiwe, futhi i-Crossref ixhumanisa inkomba ngayinye ene-DOI nomsebenzi oyicaphunayo."
+        },
+        "links": {
+          "title": "Idatha, ikhodi nezinguqulo",
+          "about": "Lapho idatha yombiko, ikhodi, ezinye izinguqulo nezengezo kukhona.",
+          "note": "Ngayinye ingukheli lewebhu noma i-DOI."
+        },
+        "agreement": {
+          "title": "Isivumelwano sokushicilela",
+          "about": "Lokho wena ne-Openscholar enivumelana ngakho ngaphambi kokuba umbiko wakho ushicilelwe.",
+          "note": "Ugcina amalungelo obunikazi. Ukumaka ibhokisi kuwukuvuma egameni lakho nelalowo nalowo mbhali ohlanganyele nawe, ngakho qala uqinisekise ukuthi bavumile. Isivumelwano esisayiniwe asikwazi ukushintshwa."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "Isixhumanisi esihlala njalo esiya embikweni wakho, esisebenza noma ngabe ikhasi lawo lithuthelwa kuphi.",
+          "note": "Ibekelwa eceleni uma usayina, ukuze ukwazi ukuyiphrinta ku-PDF yakho. Iyasebenza uma umbiko wakho usuku-inthanethi."
+        },
+        "byline": {
+          "title": "Umugqa wochungechunge",
+          "about": "Umugqa wonke umbiko kulolu chungechunge owuphrintayo, onegama lochungechunge, i-ISSN yalo ne-DOI yombiko.",
+          "note": "Kumele ube umbhalo ku-PDF, hhayi isithombe, ngoba ukuhlola kuyawufuna. Khetha u-Ngengezeleni wona, i-Openscholar yengeza ikhasi lokugcina elinomugqa."
+        },
+        "checks": {
+          "title": "Ukuhlola",
+          "about": "Lokho i-Openscholar ekuhlolayo ngaphambi kokuba umbiko uye ku-inthanethi, njengomugqa wochungechunge ku-PDF nokuthi umsebenzi usushicilelwe yini.",
+          "note": "Ukuhlola ngakunye kusho ukuthi bekufunani, nokuthi yini okufanele ilungiswe uma kwehluleka. Uma uqinisekile ukuthi ukuhlola akulungile, cela ukuthi umuntu akubuyekeze."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Inombolo ehlonza uchungechunge, njengeyejenali.",
+          "note": "Ilindile kuze kube uchungechunge selubhalisiwe. I-DOI yombiko wakho iyasebenza ngaphandle kwayo."
+        },
+        "activation": {
+          "title": "Ukwenza kusebenze",
+          "about": "Ukwenza kusebenze kwenza umbiko wakho ube sobala: ikhasi lawo liyavuleka, i-DOI yawo iqala ukusebenza, futhi uyabhaliswa.",
+          "note": "Ukwenza kusebenze kuvela ebhalansini yendawo yakho yokusebenza, noma kukhokhelwa lapha. Ikhodi yevawusha yehlisa intengo."
+        }
+      }
     }
   },
   "people": {
