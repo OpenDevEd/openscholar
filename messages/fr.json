@@ -420,7 +420,16 @@
     "chargesLabel": "débits",
     "paymentFailedEnds": "Le paiement de {amount} a échoué. {plan} prend fin le {date} s'il n'est pas réglé.",
     "fixPayment": "Régler le paiement",
-    "seePlans": "Voir les plans"
+    "seePlans": "Voir les plans",
+    "activations": {
+      "title": "Activations de rapports",
+      "left": "{count, plural, one {# restante} other {# restantes}}",
+      "leftRefills": "{count, plural, one {# restante, renouvelée} other {# restantes, renouvelées}} {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}",
+      "unlimited": "Sans limite",
+      "none": "Aucune restante",
+      "hint": "Chacune met un rapport en ligne sur Openscholar Reports, sans rien à payer.",
+      "publish": "Publier"
+    }
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",
@@ -1238,20 +1247,20 @@
     "reviewed": "Examiné"
   },
   "saveToLibrary": {
-    "save": "Enregistrer",
-    "saved": "Enregistré",
-    "saveToLibrary": "Enregistrer dans la bibliothèque",
+    "save": "Ajouter à la bibliothèque",
+    "saved": "Dans la bibliothèque",
+    "saveToLibrary": "Ajouter à la bibliothèque",
     "removeFromLibrary": "Retirer de la bibliothèque",
     "addToCollection": "Ajouter à une collection",
     "newCollection": "Nouvelle collection",
     "removed": "Retiré de la bibliothèque",
     "undo": "Annuler",
-    "saveError": "Impossible d'enregistrer l'article",
+    "saveError": "Impossible d'ajouter l'article à la bibliothèque",
     "removeError": "Impossible de retirer l'article",
     "restoreError": "Impossible de remettre l'article",
     "collectionError": "Impossible de modifier la collection",
     "newCollectionWithPaper": "Nouvelle collection avec cet article",
-    "finishSaving": "Terminer l’enregistrement"
+    "finishSaving": "Terminer l’ajout"
   },
   "rating": {
     "noRating": "Sans note",
@@ -1398,8 +1407,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Nous respectons votre vie privée",
-    "bannerDescription": "Nous et nos prestataires d'analyse, PostHog et Google, utilisons des cookies pour comprendre comment Openscholar est utilisé et l'améliorer. Si vous refusez, nous comptons seulement les visites, sans cookies.",
-    "dialogDescription": "Nous et nos prestataires d'analyse, PostHog et Google, utilisons des cookies pour comprendre comment Openscholar est utilisé et l'améliorer. Si vous refusez, nous comptons seulement les visites, sans cookies. Vous pouvez modifier votre choix à tout moment.",
+    "bannerDescription": "Nous et nos prestataires d'analyse, PostHog et Google, utilisons des cookies pour comprendre comment Openscholar et ses communautés sont utilisés et les améliorer. Si vous refusez, nous comptons seulement les visites, sans cookies.",
+    "dialogDescription": "Nous et nos prestataires d'analyse, PostHog et Google, utilisons des cookies pour comprendre comment Openscholar et ses communautés sont utilisés et les améliorer. Si vous refusez, nous comptons seulement les visites, sans cookies. Vous pouvez modifier votre choix à tout moment.",
     "acceptAll": "Tout accepter",
     "rejectNonEssential": "Refuser les non-essentiels",
     "preferencesTitle": "Préférences de cookies",
@@ -1451,7 +1460,7 @@
     "ratingFilter": "Filtrer par note minimale",
     "loadMore": "Charger plus",
     "emptyLibraryTitle": "Cette bibliothèque est vide",
-    "emptyLibraryDescription": "Enregistrez des articles depuis les résultats de recherche pour construire cette bibliothèque.",
+    "emptyLibraryDescription": "Ajoutez des articles depuis les résultats de recherche pour construire cette bibliothèque.",
     "emptyLibraryCta": "Rechercher des articles",
     "noResultsTitle": "Aucun article ne correspond à votre recherche ou vos filtres",
     "clearFilters": "Effacer les filtres",
@@ -6235,7 +6244,7 @@
       "action": {
         "openPage": "Ouvrir sa page",
         "open": "Ouvrir",
-        "activate": "L'activer",
+        "activate": "Payer",
         "carryOn": "Continuer",
         "seeFailed": "Voir ce qui a échoué",
         "manage": "Ouvrir dans Publier"
@@ -6651,7 +6660,7 @@
       "changeDetails": "Modifier les informations",
       "uploadNew": "Téléverser un nouveau PDF",
       "publishAnother": "En publier un autre",
-      "activate": "Activer",
+      "activate": "Payer",
       "needsApproval": "Un relecteur doit d'abord l'approuver",
       "untitled": "Rapport sans titre",
       "startedBy": "{name} a commencé ce rapport. Seuls cette personne et les administrateurs de l'espace de travail peuvent le modifier.",
@@ -6752,14 +6761,17 @@
           "left": "{count, plural, one {# restante} other {# restantes}}",
           "unlimited": "Sans limite",
           "uses": "L'activation en utilise une de votre solde. Rien n'est débité.",
-          "usesOrg": "L'activation en utilise une du solde de {organization}. Rien n'est débité."
+          "usesOrg": "L'activation en utilise une du solde de {organization}. Rien n'est débité.",
+          "leftRefills": "{count, plural, one {# restante, renouvelée} other {# restantes, renouvelées}} {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}"
         },
         "creditLine": "Crédit du compte",
         "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez.",
         "paused": "La publication est en pause pour le moment : rien ne peut être mis en ligne. Votre rapport garde sa place.",
         "noneLeft": "Il ne reste plus d'activation dans le solde. Activez-le à nouveau pour en payer une.",
         "kept": "L'activation payée pour ce rapport a rejoint votre solde. Le prochain rapport que vous activerez l'utilisera.",
-        "keptOrg": "L'activation payée pour ce rapport a rejoint le solde de {organization}. Le prochain rapport activé là l'utilisera."
+        "keptOrg": "L'activation payée pour ce rapport a rejoint le solde de {organization}. Le prochain rapport activé là l'utilisera.",
+        "keptNote": "Si un relecteur refuse le rapport avant que le paiement aboutisse, l'activation reste dans votre solde pour votre prochain rapport.",
+        "keptNoteOrg": "Si un relecteur refuse le rapport avant que le paiement aboutisse, l'activation reste dans le solde de {organization} pour le prochain rapport."
       },
       "back": "Retour",
       "bylineFirst": "Votre PDF porte cette mention",
@@ -6777,14 +6789,13 @@
         "chooseFirst": "Choisissez d’abord qui ajoute la mention",
         "failed": "Nous n’avons pas pu ajouter la page à {name}. Ajoutez la mention vous-même et téléversez de nouveau le PDF.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} dépasse {max} Mo, ce qui est trop volumineux pour que nous y ajoutions une page. Mettez-y la mention vous-même, ou téléversez un PDF plus léger.",
         "self": {
           "title": "Je l’ajoute moi-même",
           "body": "Placez la mention, mot pour mot, sur la couverture ou la deuxième de couverture de votre PDF avant de le téléverser."
         },
         "added": {
           "title": "Ajoutez-la pour moi",
-          "body": "Nous ajoutons une dernière page avec cette mention et les informations de votre rapport. Pour les PDF jusqu’à {max} Mo."
+          "body": "Nous ajoutons une dernière page avec cette mention et les informations de votre rapport."
         }
       },
       "overview": {
@@ -6818,6 +6829,7 @@
           "bodyPriced": "{price} par rapport, payés par carte. Un code promo peut réduire ce prix ou le couvrir. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyBalance": "Utilise une activation du solde, qui en compte {count, number}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyUnlimited": "Utilise une activation du solde, qui est sans limite. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
+          "bodyBalanceRefills": "Utilise une activation du solde, qui en compte {count, number} et se renouvelle {interval, select, hour {chaque heure} day {chaque jour} week {chaque semaine} month {chaque mois} quarter {tous les trois mois} semi_annual {tous les six mois} other {chaque année}}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
           "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
@@ -6949,7 +6961,7 @@
       "cancel": "Annuler",
       "sendForReview": "Vérifier les modifications et les envoyer en relecture",
       "checkAndPublish": "Vérifier et publier les modifications",
-      "runChecks": "Suivant : lancer les vérifications",
+      "runChecks": "Soumettre",
       "tooEarly": "Un rapport ne peut pas être daté d’avant 1400.",
       "back": "Retour"
     }

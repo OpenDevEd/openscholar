@@ -421,7 +421,16 @@
     "topUpDue": "A pagar agora",
     "topUpBalanceNow": "Saldo",
     "topUpBalanceAfter": "Depois",
-    "seePlans": "Ver planos"
+    "seePlans": "Ver planos",
+    "activations": {
+      "title": "Ativações de relatórios",
+      "left": "{count, plural, one {Resta #} other {Restam #}}",
+      "leftRefills": "{count, plural, one {Resta #} other {Restam #}}, renova-se {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}",
+      "unlimited": "Sem limite",
+      "none": "Nenhuma restante",
+      "hint": "Cada uma publica um relatório no Openscholar Reports sem nada a pagar.",
+      "publish": "Publicar"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ocorreu um problema inesperado. Tente novamente ou volte a uma página estável.",
@@ -1239,20 +1248,20 @@
     "reviewed": "Revisto"
   },
   "saveToLibrary": {
-    "save": "Guardar",
-    "saved": "Guardado",
-    "saveToLibrary": "Guardar na biblioteca",
+    "save": "Adicionar à biblioteca",
+    "saved": "Na biblioteca",
+    "saveToLibrary": "Adicionar à biblioteca",
     "removeFromLibrary": "Remover da biblioteca",
     "addToCollection": "Adicionar à coleção",
     "newCollection": "Nova coleção",
     "removed": "Removido da biblioteca",
     "undo": "Anular",
-    "saveError": "Não foi possível guardar o artigo",
+    "saveError": "Não foi possível adicionar o artigo à biblioteca",
     "removeError": "Não foi possível remover o artigo",
     "restoreError": "Não foi possível repor o artigo",
     "collectionError": "Não foi possível alterar a coleção",
     "newCollectionWithPaper": "Nova coleção com este artigo",
-    "finishSaving": "Terminar de guardar"
+    "finishSaving": "Terminar de adicionar"
   },
   "rating": {
     "noRating": "Sem avaliação",
@@ -1399,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Valorizamos a sua privacidade",
-    "bannerDescription": "Nós e os nossos fornecedores de análise, PostHog e Google, utilizamos cookies para perceber como o Openscholar é utilizado e melhorá-lo. Se rejeitar, apenas contamos as visitas, sem cookies.",
-    "dialogDescription": "Nós e os nossos fornecedores de análise, PostHog e Google, utilizamos cookies para perceber como o Openscholar é utilizado e melhorá-lo. Se rejeitar, apenas contamos as visitas, sem cookies. Pode alterar a sua escolha em qualquer altura.",
+    "bannerDescription": "Nós e os nossos fornecedores de análise, PostHog e Google, utilizamos cookies para perceber como o Openscholar e as suas comunidades são utilizados e melhorá-los. Se rejeitar, apenas contamos as visitas, sem cookies.",
+    "dialogDescription": "Nós e os nossos fornecedores de análise, PostHog e Google, utilizamos cookies para perceber como o Openscholar e as suas comunidades são utilizados e melhorá-los. Se rejeitar, apenas contamos as visitas, sem cookies. Pode alterar a sua escolha em qualquer altura.",
     "acceptAll": "Aceitar todos",
     "rejectNonEssential": "Rejeitar os não essenciais",
     "preferencesTitle": "Preferências de cookies",
@@ -1452,7 +1461,7 @@
     "ratingFilter": "Avaliação",
     "loadMore": "Carregar mais",
     "emptyLibraryTitle": "Esta biblioteca está vazia",
-    "emptyLibraryDescription": "Guarde artigos dos resultados de pesquisa para criar esta biblioteca.",
+    "emptyLibraryDescription": "Adicione artigos dos resultados de pesquisa para criar esta biblioteca.",
     "emptyLibraryCta": "Pesquisar artigos",
     "noResultsTitle": "Nenhum artigo corresponde à sua pesquisa ou aos filtros",
     "clearFilters": "Limpar filtros",
@@ -6236,7 +6245,7 @@
       "action": {
         "openPage": "Abrir a página",
         "open": "Abrir",
-        "activate": "Ativá-lo",
+        "activate": "Pagar",
         "carryOn": "Continuar",
         "seeFailed": "Ver o que falhou",
         "manage": "Abrir em Publicar"
@@ -6652,7 +6661,7 @@
       "changeDetails": "Alterar os dados",
       "uploadNew": "Carregar um novo PDF",
       "publishAnother": "Publicar outro",
-      "activate": "Ativar",
+      "activate": "Pagar",
       "needsApproval": "Um revisor tem de o aprovar primeiro",
       "untitled": "Relatório sem título",
       "startedBy": "{name} começou este relatório. Só essa pessoa e os administradores do espaço de trabalho o podem alterar.",
@@ -6753,14 +6762,17 @@
           "left": "{count, plural, one {Resta #} other {Restam #}}",
           "unlimited": "Sem limite",
           "uses": "Ativar usa uma do seu saldo. Nada é cobrado.",
-          "usesOrg": "Ativar usa uma do saldo de {organization}. Nada é cobrado."
+          "usesOrg": "Ativar usa uma do saldo de {organization}. Nada é cobrado.",
+          "leftRefills": "{count, plural, one {Resta #} other {Restam #}}, renova-se {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}"
         },
         "creditLine": "Crédito da conta",
         "declined": "O seu cartão foi recusado. Nada foi cobrado. Mude de cartão e tente novamente.",
         "paused": "A publicação está em pausa por agora, por isso nada pode ser publicado. O seu relatório mantém o seu lugar.",
         "noneLeft": "Já não resta nenhuma ativação no saldo. Ative-o novamente para pagar uma.",
         "kept": "A ativação paga para este relatório passou para o seu saldo. O próximo relatório que ativar usa-a.",
-        "keptOrg": "A ativação paga para este relatório passou para o saldo de {organization}. O próximo relatório ativado lá usa-a."
+        "keptOrg": "A ativação paga para este relatório passou para o saldo de {organization}. O próximo relatório ativado lá usa-a.",
+        "keptNote": "Se um revisor recusar o relatório antes de o pagamento ser concluído, a ativação fica no seu saldo para o próximo relatório.",
+        "keptNoteOrg": "Se um revisor recusar o relatório antes de o pagamento ser concluído, a ativação fica no saldo de {organization} para o próximo relatório."
       },
       "back": "Voltar",
       "bylineFirst": "O seu PDF tem esta menção",
@@ -6778,14 +6790,13 @@
         "chooseFirst": "Escolha primeiro quem acrescenta a menção",
         "failed": "Não conseguimos acrescentar a página a {name}. Acrescente a menção e carregue o PDF de novo.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} tem mais de {max} MB, o que é demasiado para lhe acrescentarmos uma página. Ponha a menção no ficheiro, ou carregue um PDF mais pequeno.",
         "self": {
           "title": "Acrescento eu",
           "body": "Ponha a menção, palavra por palavra, na capa ou no verso da capa do seu PDF antes de o carregar."
         },
         "added": {
           "title": "Acrescentem por mim",
-          "body": "Acrescentamos uma última página com esta menção e os dados do seu relatório. Para PDF até {max} MB."
+          "body": "Acrescentamos uma última página com esta menção e os dados do seu relatório."
         }
       },
       "overview": {
@@ -6819,6 +6830,7 @@
           "bodyPriced": "{price} por relatório, pagos com cartão. Um código promocional pode baixar esse preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyBalance": "Usa uma ativação do saldo, que tem {count, number}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
           "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado.",
+          "bodyBalanceRefills": "Usa uma ativação do saldo, que tem {count, number} e se renova {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
           "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
@@ -6950,7 +6962,7 @@
       "cancel": "Cancelar",
       "sendForReview": "Verificar as alterações e enviá-las para revisão",
       "checkAndPublish": "Verificar e publicar as alterações",
-      "runChecks": "Seguinte: executar as verificações",
+      "runChecks": "Enviar",
       "tooEarly": "Um relatório não pode ter data anterior a 1400.",
       "back": "Voltar"
     }

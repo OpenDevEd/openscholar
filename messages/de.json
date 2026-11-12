@@ -421,7 +421,16 @@
     "topUpDue": "Jetzt fällig",
     "topUpBalanceNow": "Guthaben",
     "topUpBalanceAfter": "Danach",
-    "seePlans": "Pläne ansehen"
+    "seePlans": "Pläne ansehen",
+    "activations": {
+      "title": "Aktivierungen für Berichte",
+      "left": "{count, number} übrig",
+      "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt",
+      "unlimited": "Ohne Limit",
+      "none": "Keine übrig",
+      "hint": "Jede bringt einen Bericht auf Openscholar Reports online, ohne dass etwas zu zahlen ist.",
+      "publish": "Veröffentlichen"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ein unerwartetes Problem ist aufgetreten. Versuchen Sie es erneut oder kehren Sie zu einer stabilen Seite zurück.",
@@ -1239,20 +1248,20 @@
     "reviewed": "Geprüft"
   },
   "saveToLibrary": {
-    "save": "Speichern",
-    "saved": "Gespeichert",
-    "saveToLibrary": "In Bibliothek speichern",
+    "save": "Zur Bibliothek hinzufügen",
+    "saved": "In der Bibliothek",
+    "saveToLibrary": "Zur Bibliothek hinzufügen",
     "removeFromLibrary": "Aus Bibliothek entfernen",
     "addToCollection": "Zu Sammlung hinzufügen",
     "newCollection": "Neue Sammlung",
     "removed": "Aus der Bibliothek entfernt",
     "undo": "Rückgängig",
-    "saveError": "Der Artikel konnte nicht gespeichert werden",
+    "saveError": "Der Artikel konnte nicht zur Bibliothek hinzugefügt werden",
     "removeError": "Der Artikel konnte nicht entfernt werden",
     "restoreError": "Der Artikel konnte nicht wiederhergestellt werden",
     "collectionError": "Die Sammlung konnte nicht geändert werden",
     "newCollectionWithPaper": "Neue Sammlung mit diesem Artikel",
-    "finishSaving": "Speichern abschließen"
+    "finishSaving": "Hinzufügen abschließen"
   },
   "rating": {
     "noRating": "Keine Bewertung",
@@ -1399,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Wir schätzen Ihre Privatsphäre",
-    "bannerDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar genutzt wird, und es zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies.",
-    "dialogDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar genutzt wird, und es zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies. Sie können Ihre Entscheidung jederzeit ändern.",
+    "bannerDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar und seine Communities genutzt werden, und sie zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies.",
+    "dialogDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar und seine Communities genutzt werden, und sie zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies. Sie können Ihre Entscheidung jederzeit ändern.",
     "acceptAll": "Alle akzeptieren",
     "rejectNonEssential": "Nicht notwendige ablehnen",
     "preferencesTitle": "Cookie-Einstellungen",
@@ -1452,7 +1461,7 @@
     "ratingFilter": "Bewertung",
     "loadMore": "Mehr laden",
     "emptyLibraryTitle": "Diese Bibliothek ist leer",
-    "emptyLibraryDescription": "Speichern Sie Artikel aus den Suchergebnissen, um diese Bibliothek aufzubauen.",
+    "emptyLibraryDescription": "Fügen Sie Artikel aus den Suchergebnissen hinzu, um diese Bibliothek aufzubauen.",
     "emptyLibraryCta": "Artikel suchen",
     "noResultsTitle": "Keine Artikel passen zu Ihrer Suche oder Ihren Filtern",
     "clearFilters": "Filter löschen",
@@ -6236,7 +6245,7 @@
       "action": {
         "openPage": "Seite öffnen",
         "open": "Öffnen",
-        "activate": "Aktivieren",
+        "activate": "Bezahlen",
         "carryOn": "Weitermachen",
         "seeFailed": "Ansehen, was fehlschlug",
         "manage": "In Publizieren öffnen"
@@ -6652,7 +6661,7 @@
       "changeDetails": "Angaben ändern",
       "uploadNew": "Ein neues PDF hochladen",
       "publishAnother": "Noch einen veröffentlichen",
-      "activate": "Aktivieren",
+      "activate": "Bezahlen",
       "needsApproval": "Er muss zuerst genehmigt werden",
       "untitled": "Bericht ohne Titel",
       "startedBy": "{name} hat diesen Bericht begonnen. Nur diese Person und die Admins des Arbeitsbereichs können ihn ändern.",
@@ -6753,14 +6762,17 @@
           "left": "{count, number} übrig",
           "unlimited": "Ohne Limit",
           "uses": "Das Aktivieren verbraucht eine aus Ihrem Guthaben. Es wird nichts abgebucht.",
-          "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht."
+          "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht.",
+          "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt"
         },
         "creditLine": "Guthaben des Kontos",
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
         "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz.",
         "noneLeft": "Im Guthaben ist keine Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um eine zu bezahlen.",
         "kept": "Die für diesen Bericht bezahlte Aktivierung ist in Ihr Guthaben gegangen. Der nächste Bericht, den Sie aktivieren, verbraucht sie.",
-        "keptOrg": "Die für diesen Bericht bezahlte Aktivierung ist in das Guthaben von {organization} gegangen. Der nächste dort aktivierte Bericht verbraucht sie."
+        "keptOrg": "Die für diesen Bericht bezahlte Aktivierung ist in das Guthaben von {organization} gegangen. Der nächste dort aktivierte Bericht verbraucht sie.",
+        "keptNote": "Lehnt eine Prüferin oder ein Prüfer den Bericht ab, bevor die Zahlung durch ist, bleibt die Aktivierung für Ihren nächsten Bericht in Ihrem Guthaben.",
+        "keptNoteOrg": "Lehnt eine Prüferin oder ein Prüfer den Bericht ab, bevor die Zahlung durch ist, bleibt die Aktivierung für den nächsten Bericht im Guthaben von {organization}."
       },
       "back": "Zurück",
       "bylineFirst": "Ihr PDF trägt diesen Vermerk",
@@ -6778,14 +6790,13 @@
         "chooseFirst": "Wählen Sie zuerst, wer den Vermerk hinzufügt",
         "failed": "Wir konnten die Seite nicht zu {name} hinzufügen. Fügen Sie den Vermerk selbst hinzu und laden Sie das PDF erneut hoch.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} ist größer als {max} MB und damit zu groß, als dass wir eine Seite hinzufügen könnten. Setzen Sie den Vermerk selbst ein oder laden Sie ein kleineres PDF hoch.",
         "self": {
           "title": "Ich füge ihn selbst hinzu",
           "body": "Setzen Sie den Vermerk wortwörtlich auf das Deckblatt oder die Innenseite des Deckblatts Ihres PDFs, bevor Sie es hochladen."
         },
         "added": {
           "title": "Für mich hinzufügen",
-          "body": "Wir fügen eine letzte Seite mit diesem Vermerk und den Angaben Ihres Berichts hinzu. Für PDFs bis {max} MB."
+          "body": "Wir fügen eine letzte Seite mit diesem Vermerk und den Angaben Ihres Berichts hinzu."
         }
       },
       "overview": {
@@ -6819,6 +6830,7 @@
           "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
           "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
+          "bodyBalanceRefills": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind und das {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt wird. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
           "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
@@ -6950,7 +6962,7 @@
       "cancel": "Abbrechen",
       "sendForReview": "Änderungen prüfen und zur Prüfung senden",
       "checkAndPublish": "Änderungen prüfen und veröffentlichen",
-      "runChecks": "Weiter: Prüfungen ausführen",
+      "runChecks": "Absenden",
       "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein.",
       "back": "Zurück"
     }

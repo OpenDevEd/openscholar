@@ -83,7 +83,8 @@ export type Author = {
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
-export type Funding = { funder: { id: string | null; name: string }; awards: string[] };
+/** A funder: OpenAlex's where it has it (F…), with its ROR ID (https://ror.org/…) where OpenAlex or ROR know it, or the name as typed. */
+export type Funding = { funder: { id: string | null; name: string; ror?: string }; awards: string[] };
 export const RELATION_KINDS = [
   { id: "data", name: "Data" },
   { id: "code", name: "Code" },
@@ -198,13 +199,6 @@ export const carries = (text: string, line: string) => {
   return chars.length > 0 && new RegExp(`${chars.join("\\s*")}(?![\\p{L}\\p{N}])`, "iu").test(text);
 };
 
-/**
- * The largest PDF Openscholar adds the byline's page to. Adding it loads the whole PDF beside the reading's own copies,
- * and a PDF near the upload limit ran the reading out of memory (512 MB) on 2026-11-11. A larger PDF carries the line
- * its author put on it.
- */
-export const BYLINE_PAGE_MAX_MB = 30;
-export const BYLINE_PAGE_MAX_BYTES = BYLINE_PAGE_MAX_MB * 1024 * 1024;
 
 export const STEPS = ["doi", "upload", "details", "done"] as const;
 /** Where a report is in being made: its DOI just reserved, its PDF going up or being read, its details open, or checked. */

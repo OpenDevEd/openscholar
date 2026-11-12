@@ -17,9 +17,10 @@ import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
-import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
+import { activationsOf, customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
+import { refillValidator } from "../billing/validators";
 import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, voidDeclined, voidInvoice } from "../billing/stripeRest";
@@ -102,6 +103,8 @@ export const terms = workspaceQuery({
       credit: v.number(),
       /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */
       activations: v.union(v.number(), v.null()),
+      /** What they refill by; null when none refills. */
+      refill: v.union(refillValidator, v.null()),
       /** How many activations putting this report live takes, by its licence: one, or three. */
       needs: v.number(),
       /** The price in US dollars of the plan that buys what it takes; null while Autumn's catalog has no such plan. */
@@ -135,7 +138,7 @@ export const terms = workspaceQuery({
       organization: (await placeOf(ctx, actor.workspaceId)).organization,
       card: account?.card ?? null,
       credit: account?.credit ?? 0,
-      activations: account?.activations === null ? null : (account?.activations ?? 0),
+      ...activationsOf(account),
       needs,
       price: plan?.price?.amount ?? null,
       // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).

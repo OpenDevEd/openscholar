@@ -52,10 +52,11 @@ describe("the emails about a report", () => {
     await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.lab, key: failed.key, comment: "It is there" });
     await decide(world, failed.key, "decline", "Not research");
     expect(await emailed(world, failed.key)).toEqual(["author: Declined", "team: Review requested"]);
-    // The email carries the reviewer's note and the author's own words, and opens the report where its next step is.
+    // The email carries the reviewer's note and the author's own words, and opens the report where its next step is:
+    // in the organisation it was started in, not one step away in the author's own workspace.
     const text = await world.t.run(async (ctx) => (await ctx.db.query("reportEmails").take(50)).find((email) => email.event === "Declined")!.text);
     expect(text).toContain("Not research");
-    expect(text).toContain(`https://openscholar.test/publish?report=${failed.key}`);
+    expect(text).toContain(`https://openscholar.test/o/lab/publish?report=${failed.key}`);
   });
 
   it("tell an author their report was withdrawn and reinstated, and that a reviewer edited its details", async () => {

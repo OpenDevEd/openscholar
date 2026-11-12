@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useRef, useState } from "react";
 import type React from "react";
-import { Check, ChevronDown, X } from "@/components/icons";
+import { Check, Plus, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -80,7 +80,7 @@ export function OptionPicker({
             <span className={cn("truncate", selected.length === 0 && "text-subtle-foreground")}>
               {selected.length === 0 ? placeholder : selectedText}
             </span>
-            <ChevronDown className="size-4 shrink-0 opacity-50" />
+            <Plus className="size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent aria-label={label} className="w-(--radix-popover-trigger-width) p-0" align="start">

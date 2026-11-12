@@ -31,7 +31,7 @@ export const lookupRequests = (entity: LookupEntity) => (entity === "sources" ? 
 
 /** Records whose names start with the words typed, as OpenAlex's autocomplete finds them, with what tells them apart. */
 export async function searchOpenAlex(entity: LookupEntity, query: string, source: SearchSource = "openalex"): Promise<LookupOption[]> {
-  const options = autocompleteOptions(await readOpenAlex(`autocomplete/${entity}`, autocompleteParameters(query, entity, source), source), { ror: entity === "institutions" });
+  const options = autocompleteOptions(await readOpenAlex(`autocomplete/${entity}`, autocompleteParameters(query, entity, source), source), { ror: entity === "institutions" || entity === "funders" });
   if (entity !== "sources" || !options.length) return options;
   return withSourceTypes(options, await readOpenAlex("sources", sourceTypesParameters(options.map((option) => option.id)), source));
 }

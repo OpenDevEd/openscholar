@@ -29,6 +29,8 @@ export const openAlexKey = (id: string) => id.replace(/^https?:\/\/openalex\.org
 /** What OpenAlex says of the funders and institutions a report names, by `openAlexKey`: Funder Registry DOIs and RORs. */
 export type RegistryIds = {
   funders: Record<string, { doi?: string | undefined; ror?: string | undefined }>;
+  /** Funder Registry DOIs ROR gives, by ROR key, for the funders known only to ROR. */
+  rorFunders?: Record<string, string>;
   institutions: Record<string, string>;
 };
 const NO_IDS: RegistryIds = { funders: {}, institutions: {} };
@@ -118,9 +120,11 @@ export function registrationRecord(
     locations: m.countries.map(placeOf),
     funding: m.funding.map((f) => {
       const known = f.funder.id ? ids.funders[openAlexKey(f.funder.id)] : undefined;
+      // The ROR ID it was picked or read with, else the one OpenAlex gives its funder now.
+      const ror = rorKey(f.funder.ror) ?? rorKey(known?.ror);
       // OpenAlex has given the DOI bare and documents it as an address: either way it goes in once, behind one resolver.
-      const registryDoi = doiIn(known?.doi ?? "");
-      const ror = rorKey(known?.ror);
+      // A funder only ROR knows takes the Funder Registry ID ROR lists for it, where it lists one.
+      const registryDoi = doiIn(known?.doi ?? "") ?? (ror ? doiIn(ids.rorFunders?.[ror] ?? "") : null);
       return { funderName: f.funder.name, ...(registryDoi && { funderIdentifier: `https://doi.org/${registryDoi}` }), ...(ror && { funderRor: ror }), awards: f.awards };
     }),
     references: m.references,

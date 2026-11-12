@@ -12,7 +12,7 @@ openscholar.aiを閲覧すると、小さなデータファイルであるCookie
 | `NEXT_LOCALE` | 言語を記憶します | 1年 |
 | `__cf_bm`, `_cfuvid` | Cloudflareが自動化されたトラフィックからサイトを保護するために使用します | 30分、またはブラウザを閉じるまで |
 
-Cookieの選択は、openscholar_consentという名前のCookieに保存されます。開いているパネルなどの表示設定は、ブラウザのローカルストレージに保存されます。
+Cookieの選択は、openscholar_consentという名前のCookieに保存されます。このCookieはopenscholar.ai全体に設定されるため、同じ選択がOpenscholarのすべてのサイトと、openscholar.aiのアドレスを持つすべてのコミュニティに適用されます。開いているパネルなどの表示設定は、ブラウザのローカルストレージに保存されます。
 
 ## パフォーマンスおよび分析Cookie（任意）
 

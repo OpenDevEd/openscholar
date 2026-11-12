@@ -29,7 +29,8 @@ const factsValidator = v.object({
   deposit: v.string(),
   archive: v.string(),
   edited: v.optional(v.string()),
-  admins: v.optional(v.object({ emails: v.array(v.string()), organization: v.string(), prefix: v.string() })),
+  prefix: v.string(),
+  admins: v.optional(v.object({ emails: v.array(v.string()), organization: v.string() })),
 });
 export const mailArgs = { reportId: v.id("reports"), event: mailEventValidator, report: factsValidator };
 
@@ -69,6 +70,7 @@ export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: M
       }),
       deposit: report.deposit,
       archive: report.archive,
+      prefix: await prefixOf(ctx, report.workspaceId),
       ...(edited && { edited }),
       // An organisation's report is activated by its admins: its author's emails say so too, and name it.
       ...((event === "waiting-for-admin" || event === "kept-admins" || event === "approved" || event === "released") && { admins: await adminsOf(ctx, report.workspaceId) }),
@@ -79,7 +81,14 @@ export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: M
 /** The most admins an organisation's email about a report goes to. */
 const ADMINS_WRITTEN = 20;
 
-/** The addresses of the active admins of the organisation a workspace is, its name, and where its pages are. */
+/** Where a workspace's pages are: `/o/<slug>` for an organisation's, empty for a person's own. */
+async function prefixOf(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
+  return organization ? `/o/${organization.slug}` : "";
+}
+
+/** The addresses of the active admins of the organisation a workspace is, and its name. */
 async function adminsOf(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
@@ -89,7 +98,7 @@ async function adminsOf(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
     .withIndex("by_organizationId_and_state_and_role", (q) => q.eq("organizationId", organization._id).eq("state", "active").eq("role", "org:admin"))
     .take(ADMINS_WRITTEN);
   const people = await Promise.all(memberships.map((membership) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique()));
-  return { emails: people.flatMap((person) => (person?.state === "active" ? [person.email] : [])), organization: organization.name, prefix: `/o/${organization.slug}` };
+  return { emails: people.flatMap((person) => (person?.state === "active" ? [person.email] : [])), organization: organization.name };
 }
 
 /**

@@ -420,7 +420,16 @@
     "chargesLabel": "件",
     "paymentFailedEnds": "{amount}の支払いに失敗しました。支払われない場合、{plan}は{date}に終了します。",
     "fixPayment": "支払いを修正",
-    "seePlans": "プランを見る"
+    "seePlans": "プランを見る",
+    "activations": {
+      "title": "レポートの有効化",
+      "left": "残り{count, number}回",
+      "leftRefills": "残り{count, number}回、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充",
+      "unlimited": "無制限",
+      "none": "残りなし",
+      "hint": "1回ごとに、支払いなしでレポートを Openscholar Reports に公開できます。",
+      "publish": "公開"
+    }
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -1238,20 +1247,20 @@
     "reviewed": "確認済み"
   },
   "saveToLibrary": {
-    "save": "保存",
-    "saved": "保存済み",
-    "saveToLibrary": "ライブラリに保存",
+    "save": "ライブラリに追加",
+    "saved": "ライブラリにあり",
+    "saveToLibrary": "ライブラリに追加",
     "removeFromLibrary": "ライブラリから削除",
     "addToCollection": "コレクションに追加",
     "newCollection": "新しいコレクション",
     "removed": "ライブラリから削除しました",
     "undo": "元に戻す",
-    "saveError": "論文を保存できませんでした",
+    "saveError": "論文をライブラリに追加できませんでした",
     "removeError": "論文を削除できませんでした",
     "restoreError": "論文を元に戻せませんでした",
     "collectionError": "コレクションを変更できませんでした",
     "newCollectionWithPaper": "この論文で新しいコレクション",
-    "finishSaving": "保存を完了"
+    "finishSaving": "追加を完了"
   },
   "rating": {
     "noRating": "評価なし",
@@ -1398,8 +1407,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "プライバシーを尊重します",
-    "bannerDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。",
-    "dialogDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。選択はいつでも変更できます。",
+    "bannerDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarとそのコミュニティの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。",
+    "dialogDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarとそのコミュニティの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。選択はいつでも変更できます。",
     "acceptAll": "すべて受け入れ",
     "rejectNonEssential": "必須でないものを拒否",
     "preferencesTitle": "Cookie設定",
@@ -1451,7 +1460,7 @@
     "ratingFilter": "最低評価でフィルター",
     "loadMore": "もっと読み込む",
     "emptyLibraryTitle": "このライブラリは空です",
-    "emptyLibraryDescription": "検索結果から論文を保存して、このライブラリを作りましょう。",
+    "emptyLibraryDescription": "検索結果から論文を追加して、このライブラリを作りましょう。",
     "emptyLibraryCta": "論文を検索",
     "noResultsTitle": "検索やフィルターに一致する論文はありません",
     "clearFilters": "フィルターをクリア",
@@ -6235,7 +6244,7 @@
       "action": {
         "openPage": "ページを開く",
         "open": "開く",
-        "activate": "有効化する",
+        "activate": "支払う",
         "carryOn": "続ける",
         "seeFailed": "不合格の内容を見る",
         "manage": "「公開」で開く"
@@ -6651,7 +6660,7 @@
       "changeDetails": "詳細を変更",
       "uploadNew": "新しい PDF をアップロード",
       "publishAnother": "別のレポートを公開",
-      "activate": "有効化",
+      "activate": "支払う",
       "needsApproval": "先に審査者の承認が必要です",
       "untitled": "無題のレポート",
       "startedBy": "{name}がこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
@@ -6752,14 +6761,17 @@
           "left": "残り{count, number}回",
           "unlimited": "無制限",
           "uses": "有効化すると残高から1回分を使います。請求はありません。",
-          "usesOrg": "有効化すると{organization}の残高から1回分を使います。請求はありません。"
+          "usesOrg": "有効化すると{organization}の残高から1回分を使います。請求はありません。",
+          "leftRefills": "残り{count, number}回、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充"
         },
         "creditLine": "アカウントのクレジット",
         "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。",
         "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。",
         "noneLeft": "残高に有効化が残っていません。もう一度有効化すると、1回分を購入できます。",
         "kept": "このレポートのために支払われた有効化は、あなたの残高に入りました。次に有効化するレポートで使われます。",
-        "keptOrg": "このレポートのために支払われた有効化は、{organization}の残高に入りました。そこで次に有効化するレポートで使われます。"
+        "keptOrg": "このレポートのために支払われた有効化は、{organization}の残高に入りました。そこで次に有効化するレポートで使われます。",
+        "keptNote": "支払いが完了する前にレビュアーがレポートを却下した場合、有効化はあなたの残高に残り、次のレポートで使えます。",
+        "keptNoteOrg": "支払いが完了する前にレビュアーがレポートを却下した場合、有効化は{organization}の残高に残り、次のレポートで使えます。"
       },
       "back": "戻る",
       "bylineFirst": "PDF にこの表記を入れます",
@@ -6777,14 +6789,13 @@
         "chooseFirst": "先に、表記を追加する人を選んでください",
         "failed": "{name} にページを追加できませんでした。ご自身で表記を追加し、PDF をもう一度アップロードしてください。",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} は {max} MB を超えており、ページを追加するには大きすぎます。ご自身で表記を入れるか、より小さい PDF をアップロードしてください。",
         "self": {
           "title": "自分で追加する",
           "body": "アップロードする前に、表記を一字一句そのまま PDF の表紙または表紙裏に入れてください。"
         },
         "added": {
           "title": "追加を任せる",
-          "body": "この表記とレポートの詳細を載せた最終ページを追加します。{max} MB までの PDF が対象です。"
+          "body": "この表記とレポートの詳細を載せた最終ページを追加します。"
         }
       },
       "overview": {
@@ -6818,6 +6829,7 @@
           "bodyPriced": "レポート 1 件につき {price}、カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。",
           "bodyBalance": "残高から有効化を1回分使います。残りは{count, number}回です。支払いはありません。DOIが登録され、レポートが公開されます。",
           "bodyUnlimited": "残高から有効化を1回分使います。残高に上限はありません。支払いはありません。DOIが登録され、レポートが公開されます。",
+          "bodyBalanceRefills": "残高から有効化を1回分使います。残りは{count, number}回で、{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}補充されます。支払いはありません。DOIが登録され、レポートが公開されます。",
           "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
@@ -6949,7 +6961,7 @@
       "cancel": "キャンセル",
       "sendForReview": "変更をチェックして審査に送る",
       "checkAndPublish": "変更をチェックして公開",
-      "runChecks": "次へ：チェックを実行",
+      "runChecks": "送信",
       "tooEarly": "レポートの日付を1400年より前にすることはできません。",
       "back": "戻る"
     }

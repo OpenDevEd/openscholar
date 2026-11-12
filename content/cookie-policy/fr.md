@@ -12,7 +12,7 @@ Lorsque vous naviguez sur openscholar.ai, de petits fichiers de données appelé
 | `NEXT_LOCALE` | Mémorise votre langue | 1 an |
 | `__cf_bm`, `_cfuvid` | Cloudflare les utilise pour protéger le site du trafic automatisé | 30 minutes, ou jusqu'à la fermeture du navigateur |
 
-Votre choix concernant les cookies reste dans un cookie nommé openscholar_consent. Vos réglages d'affichage, comme les panneaux ouverts, restent dans le stockage local de votre navigateur.
+Votre choix concernant les cookies reste dans un cookie nommé openscholar_consent. Il est défini pour openscholar.ai, donc le même choix s'applique sur chaque site Openscholar et dans chaque communauté ayant une adresse openscholar.ai. Vos réglages d'affichage, comme les panneaux ouverts, restent dans le stockage local de votre navigateur.
 
 ## Cookies de performance et d'analyse (facultatifs)
 

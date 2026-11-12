@@ -421,7 +421,16 @@
     "topUpDue": "Nou betaalbaar",
     "topUpBalanceNow": "Saldo",
     "topUpBalanceAfter": "Daarna",
-    "seePlans": "Sien planne"
+    "seePlans": "Sien planne",
+    "activations": {
+      "title": "Verslagaktiverings",
+      "left": "{count, number} oor",
+      "leftRefills": "{count, number} oor, word {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul",
+      "unlimited": "Geen limiet",
+      "none": "Niks oor nie",
+      "hint": "Elkeen bring 'n verslag regstreeks op Openscholar Reports sonder om iets te betaal.",
+      "publish": "Publiseer"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ons het ’n onverwagte probleem ondervind. Probeer weer, of gaan terug na ’n stabiele bladsy.",
@@ -1239,20 +1248,20 @@
     "reviewed": "Nagegaan"
   },
   "saveToLibrary": {
-    "save": "Stoor",
-    "saved": "Gestoor",
-    "saveToLibrary": "Stoor in biblioteek",
+    "save": "Voeg by biblioteek",
+    "saved": "In biblioteek",
+    "saveToLibrary": "Voeg by biblioteek",
     "removeFromLibrary": "Verwyder uit biblioteek",
     "addToCollection": "Voeg by versameling",
     "newCollection": "Nuwe versameling",
     "removed": "Uit biblioteek verwyder",
     "undo": "Maak ongedaan",
-    "saveError": "Kon nie die artikel stoor nie",
+    "saveError": "Kon nie die artikel by die biblioteek voeg nie",
     "removeError": "Kon nie die artikel verwyder nie",
     "restoreError": "Kon nie die artikel terugplaas nie",
     "collectionError": "Kon nie die versameling verander nie",
     "newCollectionWithPaper": "Nuwe versameling met hierdie artikel",
-    "finishSaving": "Voltooi stoor"
+    "finishSaving": "Voltooi byvoeging"
   },
   "rating": {
     "noRating": "Geen gradering nie",
@@ -1399,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Ons waardeer jou privaatheid",
-    "bannerDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies.",
-    "dialogDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies. Jy kan jou keuse enige tyd verander.",
+    "bannerDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar en sy gemeenskappe gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies.",
+    "dialogDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar en sy gemeenskappe gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies. Jy kan jou keuse enige tyd verander.",
     "acceptAll": "Aanvaar alles",
     "rejectNonEssential": "Weier nie-noodsaaklike",
     "preferencesTitle": "Koekievoorkeure",
@@ -1452,7 +1461,7 @@
     "ratingFilter": "Gradering",
     "loadMore": "Laai meer",
     "emptyLibraryTitle": "Hierdie biblioteek is leeg",
-    "emptyLibraryDescription": "Stoor artikels uit soekresultate om hierdie biblioteek te bou.",
+    "emptyLibraryDescription": "Voeg artikels uit soekresultate by om hierdie biblioteek te bou.",
     "emptyLibraryCta": "Soek artikels",
     "noResultsTitle": "Geen artikels pas by jou soektog of filters nie",
     "clearFilters": "Maak filters leeg",
@@ -6236,7 +6245,7 @@
       "action": {
         "openPage": "Maak sy bladsy oop",
         "open": "Maak oop",
-        "activate": "Aktiveer",
+        "activate": "Betaal",
         "carryOn": "Gaan voort",
         "seeFailed": "Sien wat gefaal het",
         "manage": "Maak oop in Publiseer"
@@ -6652,7 +6661,7 @@
       "changeDetails": "Verander besonderhede",
       "uploadNew": "Laai 'n nuwe PDF op",
       "publishAnother": "Publiseer nog een",
-      "activate": "Aktiveer",
+      "activate": "Betaal",
       "needsApproval": "'n Hersiener moet dit eers goedkeur",
       "untitled": "Verslag sonder titel",
       "startedBy": "{name} het hierdie verslag begin. Net hulle en die werkruimte se administrateurs kan dit verander.",
@@ -6753,14 +6762,17 @@
           "left": "{count, number} oor",
           "unlimited": "Geen limiet",
           "uses": "Aktivering gebruik een uit jou saldo. Niks word gehef nie.",
-          "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie."
+          "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie.",
+          "leftRefills": "{count, number} oor, word {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul"
         },
         "creditLine": "Rekeningkrediet",
         "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek.",
         "noneLeft": "Daar is geen aktivering in die saldo oor nie. Aktiveer dit weer om vir een te betaal.",
         "kept": "Die aktivering wat vir hierdie verslag betaal is, is in jou saldo. Die volgende verslag wat jy aktiveer, gebruik dit.",
-        "keptOrg": "Die aktivering wat vir hierdie verslag betaal is, is in {organization} se saldo. Die volgende verslag wat daar geaktiveer word, gebruik dit."
+        "keptOrg": "Die aktivering wat vir hierdie verslag betaal is, is in {organization} se saldo. Die volgende verslag wat daar geaktiveer word, gebruik dit.",
+        "keptNote": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in jou saldo vir jou volgende verslag.",
+        "keptNoteOrg": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in {organization} se saldo vir die volgende verslag."
       },
       "back": "Terug",
       "bylineFirst": "Jou PDF dra hierdie reël",
@@ -6778,14 +6790,13 @@
         "chooseFirst": "Kies eers wie die reël byvoeg",
         "failed": "Ons kon nie die bladsy by {name} voeg nie. Voeg self die reël by en laai die PDF weer op.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is groter as {max} MB, wat te groot is vir ons om ’n bladsy by te voeg. Sit self die reël daarop, of laai ’n kleiner PDF op.",
         "self": {
           "title": "Ek voeg dit self by",
           "body": "Sit die reël, woord vir woord, op die voorblad of binneblad van jou PDF voordat jy dit oplaai."
         },
         "added": {
           "title": "Voeg dit vir my by",
-          "body": "Ons voeg ’n laaste bladsy by met hierdie reël en jou verslag se besonderhede. Vir PDF’s tot {max} MB."
+          "body": "Ons voeg ’n laaste bladsy by met hierdie reël en jou verslag se besonderhede."
         }
       },
       "overview": {
@@ -6819,6 +6830,7 @@
           "bodyPriced": "{price} vir elke verslag, betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
           "bodyBalance": "Gebruik een aktivering uit die saldo, wat {count, number} oor het. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
           "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
+          "bodyBalanceRefills": "Gebruik een aktivering uit die saldo, wat {count, number} oor het en {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul word. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
           "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
@@ -6950,7 +6962,7 @@
       "cancel": "Kanselleer",
       "sendForReview": "Kontroleer wysigings en stuur vir hersiening",
       "checkAndPublish": "Kontroleer wysigings en publiseer",
-      "runChecks": "Volgende: laat die kontroles loop",
+      "runChecks": "Dien in",
       "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
       "back": "Terug"
     }

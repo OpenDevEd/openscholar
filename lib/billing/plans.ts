@@ -25,6 +25,10 @@ export const TOPUP_PLAN = "top_up";
  */
 export const ACTIVATIONS_FEATURE = "report_activations";
 
+/** How often a balance in Autumn can refill, shortest first: what a workspace's activations are said to refill by. */
+export const REFILL_INTERVALS = ["hour", "day", "week", "month", "quarter", "semi_annual", "year"] as const;
+export type RefillInterval = (typeof REFILL_INTERVALS)[number];
+
 /**
  * One-off add-on that adds one activation to the workspace's balance, bought when a report is activated with none
  * left (#1261). Its price is the plan's in Autumn; a promotion code on an Autumn reward lowers it.

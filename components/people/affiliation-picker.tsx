@@ -46,7 +46,7 @@ export function AffiliationPicker({ value, onChange }: { value: Affiliation[]; o
       }}
       also={{
         key: "ror",
-        search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror })),
+        search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror, aliases: o.aliases })),
       }}
       labels={{ label: t("affiliations"), placeholder: t("addInstitution"), searchPlaceholder: t("findInstitution"), typeToSearch: t("typeInstitution"), unavailable: t("institutionsDown") }}
     />

@@ -22,7 +22,7 @@ export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
 async function bestMatch(entity: "institutions" | "funders", name: string) {
   const response = await openAlexFetch(openAlexUrl(`autocomplete/${entity}`, autocompleteParameters(name, entity, "openalex")), { timeoutMs: 12_000 });
   if (!response.ok) throw new Error(`OpenAlex autocomplete ${response.status}`);
-  return autocompleteOptions(await response.json(), { ror: entity === "institutions" })[0];
+  return autocompleteOptions(await response.json(), { ror: true })[0];
 }
 
 const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) => item.id) as [string, ...string[]];
@@ -154,15 +154,23 @@ const institution = async (name: string): Promise<Affiliation> => {
   return { id: null, name, country: "" };
 };
 
-/** OpenAlex's funder by its own name, or null: a name with describing words around it finds nothing there. */
+/**
+ * OpenAlex's funder by its own name, with its ROR ID where OpenAlex knows it; else the organisation ROR's matcher is
+ * sure the name is, as many governments and foundations that fund work are on ROR and not among OpenAlex's funders; else
+ * null. A name with describing words around it finds nothing in either.
+ */
 const funder = async (name: string): Promise<Funding["funder"] | null> => {
-  try {
-    const best = await bestMatch("funders", name);
-    if (best) return { id: best.id, name: best.name };
-  } catch (error) {
-    console.error(JSON.stringify({ event: "report-funder-lookup-failed", name, error: String(error).slice(0, 300) }));
-  }
-  return null;
+  // Each register asked on its own: OpenAlex busy or down still leaves ROR to find the funder.
+  const best = await bestMatch("funders", name).catch((error: unknown) => {
+    console.error(JSON.stringify({ event: "report-funder-lookup-failed", source: "openalex", name, error: String(error).slice(0, 300) }));
+    return undefined;
+  });
+  if (best) return { id: best.id, name: best.name, ...(best.ror && { ror: best.ror }) };
+  const onRor = await matchRor(name).catch((error: unknown) => {
+    console.error(JSON.stringify({ event: "report-funder-lookup-failed", source: "ror", name, error: String(error).slice(0, 300) }));
+    return null;
+  });
+  return onRor ? { id: null, name: onRor.name, ror: onRor.ror } : null;
 };
 
 const DOI = /10\.\d{4,9}\/\S+/;
