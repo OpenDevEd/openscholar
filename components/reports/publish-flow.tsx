@@ -704,6 +704,7 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
                 onBack={() => onStep("upload")}
                 ref={form}
                 onReturn={report.reopened ? () => onStep("checks") : undefined}
+                reportKey={report.key}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -730,6 +731,7 @@ function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare,
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
+              reportKey={report.key}
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}
@@ -2518,8 +2520,9 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
     ...(report?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: t("checksVersion", { version: report.checksVersion }) }] : []),
   ];
   return (
-    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it.
-    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-24 @3xl:block @3xl:self-start">
+    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it. As the
+    // page scrolls it stays under the page's bar, as far from it as it is from the card's edge.
+    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
       <PaperCover
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
