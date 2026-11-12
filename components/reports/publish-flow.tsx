@@ -1818,8 +1818,11 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                         </Button>
                       </>
                     ) : null}
-                    {onAnother ? (
-                      <Button variant={stage === "declined" && !reopens ? "default" : stage === "ready" && admin ? "ghost" : "outline"} onClick={onAnother}>
+                    {/* Only where this report has come to its end, declined for good or taken down: there it is the way
+                        on. Beside Pay, or beside the buttons that change the report, it read as one more thing to do with
+                        this report. A new one starts from the list, as ever. */}
+                    {onAnother && stage === "declined" && !reopens ? (
+                      <Button onClick={onAnother}>
                         <Plus /> {t("publishAnother")}
                       </Button>
                     ) : null}
