@@ -1,7 +1,7 @@
 ---
 import Base from "../../layouts/Base.astro";
+import PublithonHero from "../../components/PublithonHero.astro";
 import Device from "../../components/Device.astro";
-import Art from "../../components/Art.astro";
 import Arrow from "../../components/Arrow.astro";
 import Faq from "../../components/Faq.astro";
 import Close from "../../components/Close.astro";
@@ -51,14 +51,7 @@ const faq = [
 ];
 ---
 <Base og="/og.jpg" top="#070b1a" title="Publithon: Openscholar" description="Publish your research at a publithon: bring a finished report or paper, and it goes live with its own DOI, under your name and open for anyone to read and cite.">
-  <section class="bleed hero">
-    <Art name="pub-rise" eager pos="70% 100%" class="h-art" />
-    <div class="inner h-copy">
-      <h1>Publish together</h1>
-      <p class="lead">At a publithon, researchers publish their own work at the same time, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name for anyone to read and cite.</p>
-      <div class="acts"><a class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a><a class="btn ghost" href="#sponsor">Sponsor a publithon</a></div>
-    </div>
-  </section>
+  <PublithonHero />
 
   {/* The steps, right under the hero and on the same night sky, one full screen. The icons are the picture: six
       emblems on one thread (after Giga's lit progress line, Mobbin). As the row comes on screen a light runs along
@@ -152,22 +145,6 @@ const faq = [
   }
 </script>
 <style>
-  @keyframes up { from { opacity: 0; transform: translateY(20px); } }
-
-  /* The sheets rise off the horizon behind the words; the words sit in the calm sky on the left. */
-  .hero { background: var(--night); min-height: clamp(620px, 52vw, 760px); padding-block: clamp(150px, 13vw, 210px) clamp(120px, 12vw, 180px); }
-  .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent, #000 12%); mask-image: linear-gradient(transparent, #000 12%); }
-  .hero > :global(.h-art img) { animation: rise 2.6s var(--ease) both; } @keyframes rise { from { opacity: 0; transform: translateY(36px) scale(1.04); } }
-  /* The words keep a calm night behind them wherever the art runs under them. */
-  .hero::before, .sponsor::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgb(7 11 26 / .88), rgb(7 11 26 / .62) 36%, transparent 60%); }
-  /* The Earth sinks into the same night the steps stand on, so the two read as one sky. */
-  .hero::after { content: ""; position: absolute; inset: auto 0 0; height: 140px; z-index: -1; pointer-events: none; background: linear-gradient(transparent, var(--night)); }
-  .h-copy { position: relative; display: grid; gap: 22px; justify-items: start; }
-  .h-copy h1 { font-size: clamp(56px, 8.4vw, 128px); line-height: .94; letter-spacing: -.045em; max-width: 7em; }
-  .h-copy .lead { max-width: 29em; color: rgb(255 255 255 / .86); }
-  .h-copy > * { animation: up .9s var(--ease) both; } .h-copy > :nth-child(2) { animation-delay: .08s; } .h-copy > :nth-child(3) { animation-delay: .16s; }
-  .acts { display: flex; flex-wrap: wrap; gap: 10px; }
-
   /* Two tall doors side by side, the art filling each and the words at its foot. */
   /* Dark blocks take the strip's full width, as the panels do; headings and text keep the margin. */
   .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding-top: clamp(72px, 8vw, 120px); } .ways h2 { padding-inline: var(--pad); }
@@ -295,11 +272,12 @@ const faq = [
   :global(.js) .sponsor.play .w-sun { animation: pub-sun-in .9s var(--ease) .15s both, pub-sun 5.2s ease-in-out 2.9s infinite; } @keyframes pub-sun-in { from { opacity: 0; scale: .5; } to { opacity: .5; scale: 1; } } @keyframes pub-sun { 0%, 50%, 82%, 100% { opacity: .5; scale: 1; } 61% { opacity: 1; scale: 1.3; } }
   :global(.js) .sponsor.play .sa { animation: pub-shimmer 3.6s ease-in-out 2.6s infinite alternate; } :global(.js) .sponsor.play .sb { animation: pub-shimmer 4.9s ease-in-out 3.1s infinite alternate; } @keyframes pub-shimmer { from { opacity: 0; } to { opacity: .85; } }
   .sponsor.away .w img, .sponsor.away .w-pulse, .sponsor.away .w-spark, .sponsor.away .w-sun { animation-play-state: paused; }
+  /* The words keep a calm night behind them where the picture runs under them. */
+  .sponsor::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgb(7 11 26 / .88), rgb(7 11 26 / .62) 36%, transparent 60%); }
   .s-copy { position: relative; display: grid; gap: 20px; justify-items: start; } .s-copy h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; max-width: 6.5em; } .s-copy .lead { max-width: 30em; color: rgb(255 255 255 / .84); }
 
   @media (max-width: 900px) {
-    .hero > :global(.h-art img) { opacity: 1; }
-    .hero { min-height: 0; padding-block: 120px 300px; } .hero::before { display: none; } .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent 46%, #000 72%); mask-image: linear-gradient(transparent 46%, #000 72%); } .sponsor::before { display: none; } .hero > :global(.h-art img) { object-position: 75% 100%; }
+    .sponsor::before { display: none; }
     .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
     .d-head { grid-template-columns: minmax(0, 1fr); }
     .lands { grid-template-columns: minmax(0, 1fr); } .gains { padding-bottom: 0; } .d-shot { margin-bottom: -9%; }
