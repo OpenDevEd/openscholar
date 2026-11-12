@@ -1251,7 +1251,8 @@
     "removeError": "Der Artikel konnte nicht entfernt werden",
     "restoreError": "Der Artikel konnte nicht wiederhergestellt werden",
     "collectionError": "Die Sammlung konnte nicht geändert werden",
-    "newCollectionWithPaper": "Neue Sammlung mit diesem Artikel"
+    "newCollectionWithPaper": "Neue Sammlung mit diesem Artikel",
+    "finishSaving": "Speichern abschließen"
   },
   "rating": {
     "noRating": "Keine Bewertung",
@@ -6186,7 +6187,8 @@
       "places": "Untersuchte Orte",
       "studyDesign": "Studiendesign",
       "seeChanges": "Ihre Änderungen ansehen",
-      "correct": "Angaben korrigieren"
+      "correct": "Angaben korrigieren",
+      "takeDownTitle": "Zurückziehen lassen"
     },
     "stages": {
       "draft": "Entwurf",
@@ -6236,7 +6238,8 @@
         "open": "Öffnen",
         "activate": "Aktivieren",
         "carryOn": "Weitermachen",
-        "seeFailed": "Ansehen, was fehlschlug"
+        "seeFailed": "Ansehen, was fehlschlug",
+        "manage": "In Publizieren öffnen"
       },
       "seeChanges": "Ihre Änderungen ansehen",
       "correct": "Angaben korrigieren"

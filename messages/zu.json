@@ -1250,7 +1250,8 @@
     "removeError": "Ayikwazanga ukususa iphepha",
     "restoreError": "Ayikwazanga ukubuyisela iphepha",
     "collectionError": "Ayikwazanga ukushintsha iqoqo",
-    "newCollectionWithPaper": "Iqoqo elisha nalelu phepha"
+    "newCollectionWithPaper": "Iqoqo elisha nalelu phepha",
+    "finishSaving": "Qedela ukugcina"
   },
   "rating": {
     "noRating": "Akukho isilinganiso",
@@ -6185,7 +6186,8 @@
       "places": "Izindawo ezifundiwe",
       "studyDesign": "Uhlaka locwaningo",
       "seeChanges": "Bona izinguquko zakho",
-      "correct": "Lungisa imininingwane"
+      "correct": "Lungisa imininingwane",
+      "takeDownTitle": "Ukuwususa"
     },
     "stages": {
       "draft": "Uhlaka",
@@ -6235,7 +6237,8 @@
         "open": "Vula",
         "activate": "Yenza kusebenze",
         "carryOn": "Qhubeka",
-        "seeFailed": "Bona okuhlulekile"
+        "seeFailed": "Bona okuhlulekile",
+        "manage": "Vula ku-Shicilela"
       },
       "seeChanges": "Bona izinguquko zakho",
       "correct": "Lungisa imininingwane"

@@ -1251,7 +1251,8 @@
     "removeError": "تعذّرت إزالة الورقة",
     "restoreError": "تعذّرت إعادة الورقة",
     "collectionError": "تعذّر تغيير المجموعة",
-    "newCollectionWithPaper": "مجموعة جديدة تضم هذه الورقة"
+    "newCollectionWithPaper": "مجموعة جديدة تضم هذه الورقة",
+    "finishSaving": "إكمال الحفظ"
   },
   "rating": {
     "noRating": "بلا تقييم",
@@ -6186,7 +6187,8 @@
       "places": "الأماكن المدروسة",
       "studyDesign": "تصميم الدراسة",
       "seeChanges": "عرض تعديلاتك",
-      "correct": "تصحيح التفاصيل"
+      "correct": "تصحيح التفاصيل",
+      "takeDownTitle": "سحب التقرير"
     },
     "stages": {
       "draft": "مسودة",
@@ -6236,7 +6238,8 @@
         "open": "فتح",
         "activate": "تفعيل",
         "carryOn": "متابعة",
-        "seeFailed": "عرض ما أخفق"
+        "seeFailed": "عرض ما أخفق",
+        "manage": "فتح في النشر"
       },
       "seeChanges": "عرض تعديلاتك",
       "correct": "تصحيح التفاصيل"

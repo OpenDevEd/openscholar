@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { useRelationName, useRoleName } from "@/components/reports/words";
 import { linkHref, type Metadata } from "@/lib/reports/report";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 
 const CHIP = "inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs text-muted-foreground";
 const REFS_PER_PAGE = 8;
@@ -94,8 +95,9 @@ export function ReportMain({ m }: { m: Metadata }) {
 }
 
 /** In the sidebar: the places the report is about and how it was studied. */
-export function ReportSide({ m }: { m: Metadata }) {
+export function ReportSide({ m, reportKey }: { m: Metadata; /** Its key, which a request to take it down names. */ reportKey: string }) {
   const t = useTranslations("publishReports.page");
+  const tf = useTranslations("publishReports.flow");
   const placeName = usePlaceName();
   const designs = useVocabulary().studyDesigns.filter((d) => m.studyDesigns.includes(d.id));
   return (
@@ -123,6 +125,20 @@ export function ReportSide({ m }: { m: Metadata }) {
           </div>
         </Section>
       ) : null}
+      {/* Anyone reading it, not only its workspace, is told how a report comes down: by writing to us. */}
+      <Section id="report-take-down" title={t("takeDownTitle")}>
+        <p className="text-sm text-muted-foreground">
+          {tf.rich("takeDown", {
+            email: CONTACT_EMAIL,
+            key: reportKey,
+            mail: (chunks) => (
+              <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(reportKey)}`} className="text-foreground underline underline-offset-2">
+                {chunks}
+              </a>
+            ),
+          })}
+        </p>
+      </Section>
     </>
   );
 }

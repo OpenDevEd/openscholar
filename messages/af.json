@@ -1251,7 +1251,8 @@
     "removeError": "Kon nie die artikel verwyder nie",
     "restoreError": "Kon nie die artikel terugplaas nie",
     "collectionError": "Kon nie die versameling verander nie",
-    "newCollectionWithPaper": "Nuwe versameling met hierdie artikel"
+    "newCollectionWithPaper": "Nuwe versameling met hierdie artikel",
+    "finishSaving": "Voltooi stoor"
   },
   "rating": {
     "noRating": "Geen gradering nie",
@@ -6186,7 +6187,8 @@
       "places": "Plekke bestudeer",
       "studyDesign": "Studie-ontwerp",
       "seeChanges": "Sien jou wysigings",
-      "correct": "Korrigeer besonderhede"
+      "correct": "Korrigeer besonderhede",
+      "takeDownTitle": "Om dit te laat verwyder"
     },
     "stages": {
       "draft": "Konsep",
@@ -6236,7 +6238,8 @@
         "open": "Maak oop",
         "activate": "Aktiveer",
         "carryOn": "Gaan voort",
-        "seeFailed": "Sien wat gefaal het"
+        "seeFailed": "Sien wat gefaal het",
+        "manage": "Maak oop in Publiseer"
       },
       "seeChanges": "Sien jou wysigings",
       "correct": "Korrigeer besonderhede"

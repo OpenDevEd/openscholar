@@ -1250,7 +1250,8 @@
     "removeError": "論文を削除できませんでした",
     "restoreError": "論文を元に戻せませんでした",
     "collectionError": "コレクションを変更できませんでした",
-    "newCollectionWithPaper": "この論文で新しいコレクション"
+    "newCollectionWithPaper": "この論文で新しいコレクション",
+    "finishSaving": "保存を完了"
   },
   "rating": {
     "noRating": "評価なし",
@@ -6185,7 +6186,8 @@
       "places": "調査地域",
       "studyDesign": "研究デザイン",
       "seeChanges": "変更を見る",
-      "correct": "詳細を修正"
+      "correct": "詳細を修正",
+      "takeDownTitle": "取り下げについて"
     },
     "stages": {
       "draft": "下書き",
@@ -6235,7 +6237,8 @@
         "open": "開く",
         "activate": "有効化する",
         "carryOn": "続ける",
-        "seeFailed": "不合格の内容を見る"
+        "seeFailed": "不合格の内容を見る",
+        "manage": "「公開」で開く"
       },
       "seeChanges": "変更を見る",
       "correct": "詳細を修正"

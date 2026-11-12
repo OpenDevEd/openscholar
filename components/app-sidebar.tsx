@@ -6,7 +6,7 @@ import { useSidebarStore } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { PanelLeft } from "@/components/icons";
+import { HamburgerMenu } from "@/components/icons";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { SidebarContent } from "@/components/workspaces/rail";
@@ -88,7 +88,8 @@ export function MobileSidebarTrigger() {
         aria-expanded={isOpen}
         className="lg:hidden"
       >
-        <PanelLeft className="h-5 w-5" />
+        {/* The three lines everyone reads as "menu": two phone walkers didn't take the panel icon for one. */}
+        <HamburgerMenu className="h-6 w-6" />
       </Button>
     </motion.div>
   );

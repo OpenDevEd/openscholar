@@ -1250,7 +1250,8 @@
     "removeError": "Impossible de retirer l'article",
     "restoreError": "Impossible de remettre l'article",
     "collectionError": "Impossible de modifier la collection",
-    "newCollectionWithPaper": "Nouvelle collection avec cet article"
+    "newCollectionWithPaper": "Nouvelle collection avec cet article",
+    "finishSaving": "Terminer l’enregistrement"
   },
   "rating": {
     "noRating": "Sans note",
@@ -6185,7 +6186,8 @@
       "places": "Lieux étudiés",
       "studyDesign": "Type d'étude",
       "seeChanges": "Voir vos modifications",
-      "correct": "Corriger les informations"
+      "correct": "Corriger les informations",
+      "takeDownTitle": "Faire retirer le rapport"
     },
     "stages": {
       "draft": "Brouillon",
@@ -6235,7 +6237,8 @@
         "open": "Ouvrir",
         "activate": "L'activer",
         "carryOn": "Continuer",
-        "seeFailed": "Voir ce qui a échoué"
+        "seeFailed": "Voir ce qui a échoué",
+        "manage": "Ouvrir dans Publier"
       },
       "seeChanges": "Voir vos modifications",
       "correct": "Corriger les informations"
