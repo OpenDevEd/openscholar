@@ -73,7 +73,8 @@ export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: M
       archive: report.archive,
       ...(edited && { edited }),
       ...(refund && { refund }),
-      ...((event === "waiting-for-admin" || event === "refunded-admins") && { admins: await adminsOf(ctx, report.workspaceId) }),
+      // An organisation's report is activated by its admins: its author's emails say so too, and name it.
+      ...((event === "waiting-for-admin" || event === "refunded-admins" || event === "approved" || event === "released") && { admins: await adminsOf(ctx, report.workspaceId) }),
     },
   });
 }

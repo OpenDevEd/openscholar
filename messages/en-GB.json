@@ -6343,6 +6343,7 @@
         "humanReview": "Human review is on, so changes wait for a reviewer."
       },
       "approving": "Approving lets its author activate it, and it goes live when they do.",
+      "approvingOrg": "Approving lets an admin of {organization} activate it, and it goes live when they do.",
       "standing": {
         "failedAsked": "A check failed. {approving}",
         "failed": "A check failed, so the report is with its author to fix. You can still decide. {approving}",
@@ -6530,7 +6531,7 @@
       "newReport": "New report",
       "yourReports": "Your reports",
       "discarded": "Report discarded",
-      "discardFailed": "The report couldn't be discarded",
+      "discardFailed": "The report couldn't be discarded.",
       "closedTitle": "Publishing is off for now",
       "closedWithReports": "No new report can be started for now. The reports you already have stay as they are.",
       "closedNoReports": "No new report can be started for now. Come back later.",
@@ -6540,8 +6541,8 @@
       "elsewhereTitle": "This report is in another workspace",
       "missingTitle": "This report isn't here",
       "offNotice": "Publishing is off for new reports for now. You can keep working on this one.",
-      "stepFailed": "That step couldn't be opened",
-      "checksFailed": "The checks couldn't run",
+      "stepFailed": "That step couldn't be opened.",
+      "checksFailed": "The checks couldn't run.",
       "saveFailed": "Your changes couldn't be saved",
       "changesLive": "Your changes are live",
       "changesWithReviewer": "Your changes are with a reviewer",
@@ -6562,8 +6563,8 @@
         "workspace": "This workspace's plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
         "workspaceClosed": "This workspace's plan doesn't include publishing. Move to a plan that does."
       },
-      "signFailed": "The agreement couldn't be signed",
-      "sign": "Sign and reserve a DOI",
+      "signFailed": "The agreement couldn't be signed.",
+      "sign": "Next: sign and reserve a DOI",
       "signIn": "Sign in to publish",
       "doiReserved": "Your DOI is reserved",
       "doiReservedBody": "It stays with your report, and goes live when the report does.",
@@ -6573,15 +6574,17 @@
       "doiCopied": "DOI copied",
       "uploadPdf": "Upload the PDF",
       "textless": "This PDF holds no text, as a scan doesn't. The checks can't find the byline in it. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "Openscholar couldn't read the details from this PDF. Fill them in by hand.",
       "uploadAnother": "Upload another PDF",
       "uploadLost": "The upload didn't arrive. Try again.",
-      "choosePdf": "Choose a PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "That file is empty. Choose the PDF again.",
-      "tooBig": "The PDF is over {max} MB",
+      "tooBig": "The PDF is over {max} MB. Choose a smaller one.",
       "offline": "The PDF couldn't be uploaded. Check your connection, then choose it again.",
-      "uploadFailed": "The PDF couldn't be uploaded. Try again.",
-      "uploadIntro": "Put the following text, verbatim, on the cover or the inside cover before you upload. Our check looks for this line.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copy byline",
       "bylineCopied": "Byline copied",
       "uploading": "Uploading {name}",
@@ -6590,13 +6593,13 @@
       "drop": "Drop the PDF here, or choose it",
       "dropHint": "One PDF, up to {max} MB",
       "unopenedPdf": "{name} couldn't be opened as a PDF. If it has a password, remove it, then save it again as a PDF and upload that.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "These are the details you had before you replaced the PDF.",
       "readAgain": "Read them from this PDF instead",
       "readAgainTitle": "Read the details from this PDF?",
       "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
       "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "readAgainFailed": "The details couldn't be read again.",
       "stuck": "Reading {name} is taking longer than it should. Upload it again.",
       "replaces": "Uploading again replaces {name}",
       "check": {
@@ -6633,7 +6636,7 @@
           }
         }
       },
-      "activateFailed": "It couldn't be activated",
+      "activateFailed": "It couldn't be activated.",
       "running": "Running the checks",
       "ofTotal": "{done} of {total}",
       "runningHint": "Looking for earlier copies takes a few seconds. You can leave this page: the checks carry on.",
@@ -6676,7 +6679,7 @@
       "savingNote": "Your card is saved to activate reports on Openscholar. Nothing is charged now.",
       "registering": "The page is open now and can be shared. The DOI starts working once it is registered, usually within a few minutes.",
       "sentToReviewer": "Sent to a reviewer",
-      "requestFailed": "The request couldn't be sent",
+      "requestFailed": "The request couldn't be sent.",
       "reviewIntro": "A reviewer reads your report and what the checks said. Ask when you think a check got it wrong.",
       "reviewQuestion": "What did the checks get wrong?",
       "cancel": "Cancel",
@@ -6701,7 +6704,7 @@
       "discardBody": "Your report stays live as it is now. The changes you made are given up.",
       "keepThem": "Keep them",
       "changesDiscarded": "Changes discarded",
-      "changesDiscardFailed": "The changes couldn't be discarded",
+      "changesDiscardFailed": "The changes couldn't be discarded.",
       "discard": "Discard",
       "pages": "{count, plural, one {# page} other {# pages}}",
       "agreementVersion": "Agreement v{version}",
@@ -6758,7 +6761,7 @@
           "confirm": "Confirm payment",
           "change": "Change",
           "addButton": "Add payment method",
-          "stripeFailed": "Stripe's page couldn't be opened",
+          "stripeFailed": "Stripe's page couldn't be opened.",
           "credit": "{amount} credit",
           "freeTitle": "Free activation",
           "covered": "Your code covers this activation",
@@ -6773,15 +6776,36 @@
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place."
       },
       "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Next: upload the PDF",
       "nextDetails": "Next: check the details",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added.",
+        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+        }
+      },
       "overview": {
         "title": "Publishing a report with {series}",
         "intro": "About ten minutes from start to finish. This is what each step asks of you.",
         "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "start": "Next: sign the agreement",
         "agreement": {
           "title": "Sign the publishing agreement",
           "body": "You keep the copyright and publish under CC BY 4.0."
@@ -6792,7 +6816,7 @@
         },
         "pdf": {
           "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Check the details",
@@ -6800,7 +6824,7 @@
         },
         "checks": {
           "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Activate",
@@ -6904,7 +6928,7 @@
       "cancel": "Cancel",
       "sendForReview": "Check the changes and send them for review",
       "checkAndPublish": "Check and publish the changes",
-      "runChecks": "Run the checks",
+      "runChecks": "Next: run the checks",
       "tooEarly": "A report can't be dated before 1400.",
       "back": "Back"
     }

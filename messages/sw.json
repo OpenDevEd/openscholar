@@ -6344,6 +6344,7 @@
         "humanReview": "Ukaguzi wa binadamu umewashwa, kwa hiyo mabadiliko yanasubiri mkaguzi."
       },
       "approving": "Kuidhinisha kunamruhusu mwandishi wake kuiwasha, na inachapishwa mara tu anapoiwasha.",
+      "approvingOrg": "Kuidhinisha humruhusu msimamizi wa {organization} kuiwasha, na huchapishwa anapofanya hivyo.",
       "standing": {
         "failedAsked": "Ukaguzi ulishindwa. {approving}",
         "failed": "Ukaguzi ulishindwa, kwa hiyo ripoti iko kwa mwandishi ili airekebishe. Bado unaweza kuamua. {approving}",
@@ -6574,15 +6575,17 @@
       "doiCopied": "DOI imenakiliwa",
       "uploadPdf": "Pakia PDF",
       "textless": "PDF hii haina maandishi, kama ilivyo kwa skani. Ukaguzi hauwezi kupata mstari wa utambulisho ndani yake. Hamisha ripoti kama PDF yenye maandishi na uipakie, au jaza maelezo kwa mkono.",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "Openscholar haikuweza kusoma maelezo kutoka PDF hii. Yajaze kwa mkono.",
       "uploadAnother": "Pakia PDF nyingine",
       "uploadLost": "Upakiaji haukufika. Jaribu tena.",
-      "choosePdf": "Chagua PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Faili hiyo ni tupu. Chagua PDF tena.",
       "tooBig": "PDF ni kubwa kuliko MB {max}",
       "offline": "PDF haikuweza kupakiwa. Angalia muunganisho wako, kisha uichague tena.",
-      "uploadFailed": "PDF haikuweza kupakiwa. Jaribu tena.",
-      "uploadIntro": "Weka maandishi yafuatayo, neno kwa neno, kwenye jalada au jalada la ndani kabla ya kupakia. Ukaguzi wetu unatafuta mstari huu.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Nakili mstari wa utambulisho",
       "bylineCopied": "Mstari wa utambulisho umenakiliwa",
       "uploading": "Inapakia {name}",
@@ -6591,7 +6594,7 @@
       "drop": "Dondosha PDF hapa, au uichague",
       "dropHint": "PDF moja, hadi MB {max}",
       "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
-      "lacksByline": "{name} haina mstari ulio hapo juu kwenye jalada lake. Ongeza mstari huo na upakie PDF tena, la sivyo ukaguzi wa mstari wa utambulisho utashindwa.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "Haya ni maelezo uliyokuwa nayo kabla ya kubadilisha PDF.",
       "readAgain": "Yasome kutoka PDF hii badala yake",
       "readAgainTitle": "Soma maelezo kutoka PDF hii?",
@@ -6774,10 +6777,31 @@
         "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake."
       },
       "back": "Rudi",
-      "bylineFirst": "Weka mstari huu kwenye jalada la PDF yako",
-      "bylineFirstBody": "Openscholar inachapisha ripoti yako pamoja nawe, kwa hiyo jalada lake au jalada la ndani lina mstari huu kama maandishi. Ukaguzi wetu huutafuta baada ya kupakia.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Ifuatayo: pakia PDF",
       "nextDetails": "Ifuatayo: kagua maelezo",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+        }
+      },
       "overview": {
         "title": "Kuchapisha ripoti kwa {series}",
         "intro": "Takriban dakika kumi mwanzo hadi mwisho. Hiki ndicho kila hatua inakuomba.",
@@ -6793,7 +6817,7 @@
         },
         "pdf": {
           "title": "Pakia PDF yako",
-          "body": "Ikiwa na mstari mmoja kwenye jalada lake unaotaja mfululizo na DOI. Unapata mstari huo baada ya kutia saini."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Kagua maelezo",
@@ -6801,7 +6825,7 @@
         },
         "checks": {
           "title": "Ukaguzi wa kiotomatiki",
-          "body": "Takriban dakika moja. Hutafuta mstari kwenye jalada na chochote kilichochapishwa awali."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Washa",
