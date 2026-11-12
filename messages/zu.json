@@ -6551,7 +6551,7 @@
         "workspaceClosed": "Uhlelo lwale ndawo yokusebenza alukufaki ukushicilela. Thuthela ohlelweni olukufakayo."
       },
       "signFailed": "Isivumelwano asikwazanga ukusayinwa.",
-      "sign": "Okulandelayo: sayina ubekise i-DOI",
+      "sign": "Sayina ubekise i-DOI",
       "signIn": "Ngena ngemvume ukuze ushicilele",
       "doiReserved": "I-DOI yakho igodliwe",
       "doiReservedBody": "Ihlala nombiko wakho, futhi ishicilelwa lapho umbiko ushicilelwa.",
@@ -6769,10 +6769,11 @@
         "keptNoteOrg": "Uma umbuyekezi enqaba umbiko ngaphambi kokuba inkokhelo iphothulwe, ukuvula kuhlala ebhalansini le-{organization} kubiko olandelayo."
       },
       "back": "Emuva",
+      "next": "Okulandelayo",
       "bylineFirst": "I-PDF yakho inalo mugqa",
       "bylineFirstBody": "Wonke umbiko kulolu chungechunge unalo mugqa ku-PDF yawo, njengombhalo. Ukuhlola kwethu kuyawufuna uma usulayishile.",
-      "nextUpload": "Okulandelayo: layisha i-PDF",
-      "nextDetails": "Okulandelayo: hlola imininingwane",
+      "nextUpload": "Layisha i-PDF",
+      "nextDetails": "Hlola imininingwane",
       "problem": {
         "outOfStep": "Leli khasi neseva kusezinguqulweni ezahlukene. Layisha kabusha ikhasi, bese uzama futhi.",
         "retry": "Zama futhi. Uma kuqhubeka kwenzeka, <link>bika inkinga</link>.",
@@ -6798,7 +6799,7 @@
         "title": "Ukushicilela umbiko nge-{series}",
         "intro": "Cishe imizuzu eyishumi kusukela ekuqaleni kuya ekugcineni. Yilokhu okucelwa yisinyathelo ngasinye kuwe.",
         "introReviewed": "Cishe imizuzu eyishumi yesikhathi sakho. Bese umbuyekezi evuma umbiko ngaphambi kokuthi ushicilelwe, futhi uzothola i-imeyili.",
-        "start": "Okulandelayo: sayina isivumelwano",
+        "start": "Sayina isivumelwano",
         "agreement": {
           "title": "Sayina isivumelwano sokushicilela",
           "body": "Ugcina ilungelo lobunikazi futhi ushicilela ngaphansi kwe-CC BY 4.0."

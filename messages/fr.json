@@ -6551,7 +6551,7 @@
         "workspaceClosed": "L'offre de cet espace ne comprend pas la publication. Passez à une offre qui la comprend."
       },
       "signFailed": "L'accord n'a pas pu être signé.",
-      "sign": "Suivant : signer et réserver un DOI",
+      "sign": "Signer et réserver un DOI",
       "signIn": "Se connecter pour publier",
       "doiReserved": "Votre DOI est réservé",
       "doiReservedBody": "Il reste attaché à votre rapport, et est mis en ligne en même temps que lui.",
@@ -6769,10 +6769,11 @@
         "keptNoteOrg": "Si un relecteur refuse le rapport avant que le paiement aboutisse, l'activation reste dans le solde de {organization} pour le prochain rapport."
       },
       "back": "Retour",
+      "next": "Suivant",
       "bylineFirst": "Votre PDF porte cette mention",
       "bylineFirstBody": "Chaque rapport de cette collection porte cette mention dans son PDF, sous forme de texte. Nos vérifications la recherchent dès que vous téléversez.",
-      "nextUpload": "Suivant : téléverser le PDF",
-      "nextDetails": "Suivant : vérifier les informations",
+      "nextUpload": "Téléverser le PDF",
+      "nextDetails": "Vérifier les informations",
       "problem": {
         "outOfStep": "Cette page et le serveur n’ont pas la même version. Rechargez la page, puis réessayez.",
         "retry": "Réessayez. Si cela se reproduit, <link>signalez un problème</link>.",
@@ -6798,7 +6799,7 @@
         "title": "Publier un rapport avec {series}",
         "intro": "Environ dix minutes du début à la fin. Voici ce que chaque étape vous demande.",
         "introReviewed": "Environ dix minutes de votre temps. Un relecteur approuve ensuite le rapport avant sa mise en ligne, et vous êtes prévenu par e-mail.",
-        "start": "Suivant : signer l’accord",
+        "start": "Signer l’accord",
         "agreement": {
           "title": "Signer l'accord de publication",
           "body": "Vous conservez le droit d'auteur et publiez sous CC BY 4.0."

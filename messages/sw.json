@@ -6552,7 +6552,7 @@
         "workspaceClosed": "Mpango wa eneo hili la kazi haujumuishi uchapishaji. Hamia mpango unaoujumuisha."
       },
       "signFailed": "Makubaliano hayakuweza kusainiwa.",
-      "sign": "Ifuatayo: tia saini na uhifadhi DOI",
+      "sign": "Tia saini na uhifadhi DOI",
       "signIn": "Ingia ili uchapishe",
       "doiReserved": "DOI yako imehifadhiwa",
       "doiReservedBody": "Inakaa na ripoti yako, na inachapishwa ripoti inapochapishwa.",
@@ -6770,10 +6770,11 @@
         "keptNoteOrg": "Mkaguzi akikataa ripoti kabla malipo hayajakamilika, mwasho unabaki kwenye salio la {organization} kwa ajili ya ripoti inayofuata."
       },
       "back": "Rudi",
+      "next": "Ifuatayo",
       "bylineFirst": "PDF yako ina mstari huu",
       "bylineFirstBody": "Kila ripoti katika mfululizo huu ina mstari huu ndani ya PDF yake, kama maandishi. Ukaguzi wetu huutafuta mara unapopakia.",
-      "nextUpload": "Ifuatayo: pakia PDF",
-      "nextDetails": "Ifuatayo: kagua maelezo",
+      "nextUpload": "Pakia PDF",
+      "nextDetails": "Kagua maelezo",
       "problem": {
         "outOfStep": "Ukurasa huu na seva viko kwenye matoleo tofauti. Pakia upya ukurasa, kisha jaribu tena.",
         "retry": "Jaribu tena. Likiendelea kutokea, <link>ripoti tatizo</link>.",
@@ -6799,7 +6800,7 @@
         "title": "Kuchapisha ripoti kwa {series}",
         "intro": "Takriban dakika kumi mwanzo hadi mwisho. Hiki ndicho kila hatua inakuomba.",
         "introReviewed": "Takriban dakika kumi za muda wako. Kisha mkaguzi huidhinisha ripoti kabla haijachapishwa, na utapokea barua pepe.",
-        "start": "Ifuatayo: tia saini makubaliano",
+        "start": "Tia saini makubaliano",
         "agreement": {
           "title": "Tia saini makubaliano ya uchapishaji",
           "body": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0."

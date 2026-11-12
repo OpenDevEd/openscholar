@@ -6552,7 +6552,7 @@
         "workspaceClosed": "O plano deste espaço não inclui publicação. Mude para um plano que inclua."
       },
       "signFailed": "Não foi possível assinar o acordo.",
-      "sign": "Seguinte: assinar e reservar um DOI",
+      "sign": "Assinar e reservar um DOI",
       "signIn": "Iniciar sessão para publicar",
       "doiReserved": "O seu DOI está reservado",
       "doiReservedBody": "Fica com o seu relatório e é publicado quando o relatório for.",
@@ -6770,10 +6770,11 @@
         "keptNoteOrg": "Se um revisor recusar o relatório antes de o pagamento ser concluído, a ativação fica no saldo de {organization} para o próximo relatório."
       },
       "back": "Voltar",
+      "next": "Seguinte",
       "bylineFirst": "O seu PDF tem esta menção",
       "bylineFirstBody": "Todos os relatórios desta série têm esta menção no PDF, como texto. As nossas verificações procuram-na assim que carrega o ficheiro.",
-      "nextUpload": "Seguinte: carregar o PDF",
-      "nextDetails": "Seguinte: verificar os dados",
+      "nextUpload": "Carregar o PDF",
+      "nextDetails": "Verificar os dados",
       "problem": {
         "outOfStep": "Esta página e o servidor estão em versões diferentes. Recarregue a página e tente de novo.",
         "retry": "Tente de novo. Se continuar a acontecer, <link>comunique um problema</link>.",
@@ -6799,7 +6800,7 @@
         "title": "Publicar um relatório com {series}",
         "intro": "Cerca de dez minutos do início ao fim. Isto é o que cada passo lhe pede.",
         "introReviewed": "Cerca de dez minutos do seu tempo. Depois, um revisor aprova o relatório antes de ele poder ficar publicado, e é avisado por e-mail.",
-        "start": "Seguinte: assinar o acordo",
+        "start": "Assinar o acordo",
         "agreement": {
           "title": "Assinar o acordo de publicação",
           "body": "Mantém os direitos de autor e publica sob CC BY 4.0."

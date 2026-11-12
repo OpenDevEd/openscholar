@@ -6552,7 +6552,7 @@
         "workspaceClosed": "El plan de este espacio no incluye publicar. Cámbiate a un plan que lo incluya."
       },
       "signFailed": "No se pudo firmar el acuerdo.",
-      "sign": "Siguiente: firmar y reservar un DOI",
+      "sign": "Firmar y reservar un DOI",
       "signIn": "Iniciar sesión para publicar",
       "doiReserved": "Tu DOI está reservado",
       "doiReservedBody": "Se queda con tu informe y se publica cuando lo hace el informe.",
@@ -6770,10 +6770,11 @@
         "keptNoteOrg": "Si un revisor rechaza el informe antes de que se complete el pago, la activación queda en el saldo de {organization} para el próximo informe."
       },
       "back": "Atrás",
+      "next": "Siguiente",
       "bylineFirst": "Tu PDF lleva esta mención",
       "bylineFirstBody": "Todos los informes de esta serie llevan esta mención en su PDF, como texto. Nuestras comprobaciones la buscan en cuanto lo subes.",
-      "nextUpload": "Siguiente: subir el PDF",
-      "nextDetails": "Siguiente: revisar los datos",
+      "nextUpload": "Subir el PDF",
+      "nextDetails": "Revisar los datos",
       "problem": {
         "outOfStep": "Esta página y el servidor tienen versiones distintas. Recarga la página y vuelve a intentarlo.",
         "retry": "Vuelve a intentarlo. Si sigue ocurriendo, <link>informa de un problema</link>.",
@@ -6799,7 +6800,7 @@
         "title": "Publicar un informe con {series}",
         "intro": "Unos diez minutos de principio a fin. Esto es lo que te pide cada paso.",
         "introReviewed": "Unos diez minutos de tu tiempo. Después un revisor aprueba el informe antes de que pueda publicarse, y te avisamos por correo.",
-        "start": "Siguiente: firmar el acuerdo",
+        "start": "Firmar el acuerdo",
         "agreement": {
           "title": "Firmar el acuerdo de publicación",
           "body": "Conservas los derechos de autor y publicas bajo CC BY 4.0."
