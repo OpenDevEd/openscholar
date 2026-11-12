@@ -1166,7 +1166,7 @@ function BylineBox({ byline, className }: { byline: string; className?: string }
     <div className={cn("flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3", className)}>
       <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{byline}</span>
       <TooltipHint label={t("copyByline")}>
-        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copyText(byline, { copied: t("bylineCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
+        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => void copyText(byline, { copied: t("bylineCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
           <Copy />
         </Button>
       </TooltipHint>
@@ -2348,7 +2348,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
             doi.org/{report.doi}
           </a>
           <TooltipHint label={t("copyDoi")}>
-            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
+            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
               <Copy />
             </Button>
           </TooltipHint>

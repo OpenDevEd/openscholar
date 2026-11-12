@@ -55,7 +55,7 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
                 <Hash aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                 <span dir="ltr" className="min-w-0 truncate font-mono">{report.doi}</span>
                 <TooltipHint label={t("copyDoi")}>
-                  <Button variant="ghost" size="icon-xs" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
+                  <Button variant="ghost" size="icon-xs" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
                     <Copy />
                   </Button>
                 </TooltipHint>

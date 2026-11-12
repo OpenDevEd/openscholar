@@ -67,7 +67,7 @@ export function usePaperShare(paper: Paper | undefined, href?: string): (() => P
         if ((error as DOMException).name === "AbortError") return;
       }
     }
-    copyText(url, { copied: t("linkCopied"), failed: tTopics("copyFailed"), select: tToast("copyFailedDescription") });
+    await copyText(url, { copied: t("linkCopied"), failed: tTopics("copyFailed"), select: tToast("copyFailedDescription") });
   };
 }
 
