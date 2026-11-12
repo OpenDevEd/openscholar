@@ -12,7 +12,7 @@ On 6 November four releases went out this way with nothing broken (#1073, #1074,
 2. Confirm `dev.openscholar.ai` serves the merge and a real search works.
 3. Read what differs between `prod` and `dev`: migrations, `convex/schema.ts`, `package-lock.json`, new environment variables, new settings rows.
 4. Move `prod` to a commit with the same files as `dev`.
-5. Deploy the app, then the marketing site.
+5. Deploy the app, then the marketing site. Since 12 November the marketing site builds from its own `marketing` branch, so it ships by moving that branch to the `dev` commit and deploying it (`docs/agents/project.md`, Branches and live systems).
 6. Push prod's Convex only if `convex/` changed, after the app is live, from a clean `prod` checkout, with a prod export taken first (`~/.os-rehearsal/before-<sha>.zip` on 5 November).
 7. Run a real search on `openscholar.ai` and `discover.openscholar.ai`, read the app's errors, and say what wasn't checked.
 
