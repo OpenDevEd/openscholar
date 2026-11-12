@@ -19,7 +19,7 @@ import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
 import { isLockNotFound } from "../billing/charge";
-import { purchasing, unlessDeclined } from "../billing/purchases";
+import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { ACTIVATIONS_FEATURE, ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
@@ -430,65 +430,75 @@ export const activate = action({
     // What that payment buys lands in the same balance: nothing else is spent from it until that report has its own.
     if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
     const activationId: Id<"reportActivations"> = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
-    try {
-      if (await spend(ctx, first.customerId, activationId)) return { live: true };
-      if (!pay) {
-        // The page offered one from a balance read before it was spent or reset: it reads the balance again, and
-        // then offers what buying one takes.
-        await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
-        throw createError("CONFLICT", NONE_LEFT, { reason: "noneLeft" });
-      }
-      // None left: one is bought. The card is read from Autumn, not the cached account: it may have been removed
-      // since. With none, only a code that takes the whole price off buys it.
-      const customer = await autumn.customer(first.customerId, { card: true });
-      const cardless = !customer.payment_method?.card;
-      if (cardless && !code) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
-      // Under the workspace's purchase lock from the quote to the report going live, so another tab's activation waits
-      // for this one, and then finds the report live or the balance as this one left it.
-      return await purchasing(ctx, workspaceId, first.customerId, {}, async () => {
-        // Another tab may have made it live, or bought one that is still in the balance, while this one waited.
-        await ctx.runQuery(internal.reports.activation.prepare, { actor, key });
-        if (await spend(ctx, first.customerId, activationId)) return { live: true as const };
-        const quoted = cardless || expect !== undefined ? await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<AutumnPreview>(code)) : null;
-        // What's due now, after the account's credit, which the page may have read before another purchase spent it.
-        if (quoted && expect !== undefined && quoted.total > expect + 0.005) {
-          await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
-          const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-          throw createError("CONFLICT", `Activating it now takes ${usd(quoted.total)} from your card, not ${usd(expect)}. Check it and activate again.`);
+    // The workspace's activations one at a time, from the balance as from a purchase: Autumn allowed two holds at once on
+    // a balance of one. One pressed meanwhile, in another tab or on another report, waits for this one, then finds the
+    // report live or the balance as this one left it.
+    return await holdingPurchaseLock(
+      ctx,
+      workspaceId,
+      async (): Promise<{ live: true } | { url: string }> => {
+        try {
+          // Another tab may have made it live, or another report spent the balance, while this one waited.
+          await ctx.runQuery(internal.reports.activation.prepare, { actor, key });
+          if (await spend(ctx, first.customerId, activationId)) return { live: true };
+          if (!pay) {
+            // The page offered one from a balance read before it was spent or reset: it reads the balance again, and
+            // then offers what buying one takes.
+            await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
+            throw createError("CONFLICT", NONE_LEFT, { reason: "noneLeft" });
+          }
+          // None left: one is bought. The card is read from Autumn, not the cached account: it may have been removed
+          // since. With none, only a code that takes the whole price off buys it.
+          const customer = await autumn.customer(first.customerId, { card: true });
+          const cardless = !customer.payment_method?.card;
+          if (cardless && !code) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
+          // Nothing is bought while a payment of the customer's is open.
+          await payableCustomer(first.customerId, {});
+          const quoted = cardless || expect !== undefined ? await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<AutumnPreview>(code)) : null;
+          // What's due now, after the account's credit, which the page may have read before another purchase spent it.
+          if (quoted && expect !== undefined && quoted.total > expect + 0.005) {
+            await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
+            const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+            throw createError("CONFLICT", `Activating it now takes ${usd(quoted.total)} from your card, not ${usd(expect)}. Check it and activate again.`);
+          }
+          // No card: the code has to take the whole price off, before any credit. Then nothing is charged, and Autumn is
+          // told so (`unbilled`), or it would send a card-less customer to Stripe's page for $0.
+          if (quoted && cardless && linesOf(quoted) > 0.005) throw createError("BILLING_CARD_REQUIRED", `${code} doesn't cover the whole price. Add a payment method to pay the rest.`, { reason: "cardForRest" });
+          // Autumn bills by invoice only a customer with an email, and an organisation's has none until a card is saved:
+          // it takes its admin's, who is the one activating.
+          if (cardless && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
+          const charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), ...(cardless && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
+          // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code,
+          // isn't held up by an invoice left open.
+          if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);
+          unlessDeclined(charged);
+          const done = outcomeOf(charged);
+          if (done.kind === "pending") {
+            // Autumn's page for it is Stripe's invoice, which has no way back here: the bank's own page comes back to the report.
+            const bank = done.invoice ? await bankPage(done.invoice, backTo(first.prefix, key, activationId)) : null;
+            console.log(JSON.stringify({ event: "report-activation-pending", key, invoice: done.invoice, action: charged.required_action?.code, back: bank !== null }));
+            await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { ...done, url: bank ?? done.url } });
+            if (bank ?? done.url) return { url: (bank ?? done.url)! };
+            throw createError("CONFLICT", STILL_PAYING);
+          }
+          // Bought: the activation is in the balance now, and this report's to spend.
+          if (await spend(ctx, first.customerId, activationId, done.charge)) return { live: true as const };
+          throw createError("CONFLICT", KEPT);
+        } catch (error) {
+          // A refusal bought nothing: the record goes. Anything else may have bought one, its answer lost: Autumn's
+          // invoices say what became of it.
+          if (boughtNothing(error)) await ctx.runMutation(internal.reports.activation.forget, { activationId });
+          else await reconcile(ctx, first.customerId, activationId).catch(() => ctx.scheduler.runAfter(WATCH_FIRST_MS, internal.reports.activation.reconcileLater, { customerId: first.customerId, activationId, attempt: 0 }));
+          throw error;
         }
-        // No card: the code has to take the whole price off, before any credit. Then nothing is charged, and Autumn is
-        // told so (`unbilled`), or it would send a card-less customer to Stripe's page for $0.
-        if (quoted && cardless && linesOf(quoted) > 0.005) throw createError("BILLING_CARD_REQUIRED", `${code} doesn't cover the whole price. Add a payment method to pay the rest.`, { reason: "cardForRest" });
-        // Autumn bills by invoice only a customer with an email, and an organisation's has none until a card is saved:
-        // it takes its admin's, who is the one activating.
-        if (cardless && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
-        const charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), ...(cardless && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
-        // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code,
-        // isn't held up by an invoice left open.
-        if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);
-        unlessDeclined(charged);
-        const done = outcomeOf(charged);
-        if (done.kind === "pending") {
-          // Autumn's page for it is Stripe's invoice, which has no way back here: the bank's own page comes back to the report.
-          const bank = done.invoice ? await bankPage(done.invoice, backTo(first.prefix, key, activationId)) : null;
-          console.log(JSON.stringify({ event: "report-activation-pending", key, invoice: done.invoice, action: charged.required_action?.code, back: bank !== null }));
-          await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { ...done, url: bank ?? done.url } });
-          if (bank ?? done.url) return { url: (bank ?? done.url)! };
-          throw createError("CONFLICT", STILL_PAYING);
-        }
-        // Bought: the activation is in the balance now, and this report's to spend.
-        if (await spend(ctx, first.customerId, activationId, done.charge)) return { live: true as const };
-        throw createError("CONFLICT", KEPT);
-      });
-    } catch (error) {
-      // A refusal bought nothing: the record goes. Anything else may have bought one, its answer lost: Autumn's
-      // invoices say what became of it.
-      if (boughtNothing(error)) await ctx.runMutation(internal.reports.activation.forget, { activationId });
-      else await reconcile(ctx, first.customerId, activationId).catch(() => ctx.scheduler.runAfter(WATCH_FIRST_MS, internal.reports.activation.reconcileLater, { customerId: first.customerId, activationId, attempt: 0 }));
-      throw error;
-    }
+      },
+      LOCK_WAIT_MS,
+    );
   },
 });
+
+/** How long an activation waits for another of its workspace's to finish: far longer than one takes, unless a bank is asked. */
+const LOCK_WAIT_MS = 20_000;
 
 /** An error that means nothing was bought: our own refusals, a declined card, a code or a request Autumn refused. */
 const boughtNothing = (error: unknown) => error instanceof ConvexError || (error instanceof AutumnError && error.status >= 400 && error.status < 500);

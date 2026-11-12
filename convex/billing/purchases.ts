@@ -29,23 +29,44 @@ export function unlessPaymentOpen(customer: AutumnCustomer) {
 }
 
 /**
- * Runs `buy` as the workspace's only purchase under way, once no payment of its customer's is open:
- * two at once could both find none open, and Autumn gives the second for nothing when the first was
- * declined. `buy` gets the customer, read with `plans` when asked. `resuming` is a purchase asked again under its own
- * idempotency key, whose open payment, if any, is its own.
+ * Runs `work` as the workspace's only billing change under way: a purchase, or a report's activation spent from its
+ * balance, which Autumn's own holds don't keep apart (two at once were both allowed one activation). With `waitMs`,
+ * waits up to that long for another to finish first; otherwise, or past it, refuses.
  */
-export async function purchasing<T>(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, read: { plans?: true; resuming?: true }, buy: (customer: AutumnCustomer) => Promise<T>): Promise<T> {
-  const since: number | null = await ctx.runMutation(internal.billing.purchases.claim, { workspaceId });
+export async function holdingPurchaseLock<T>(ctx: ActionCtx, workspaceId: Id<"workspaces">, work: () => Promise<T>, waitMs = 0): Promise<T> {
+  const until = Date.now() + waitMs;
+  let since: number | null = await ctx.runMutation(internal.billing.purchases.claim, { workspaceId });
+  while (since === null && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, CLAIM_RETRY_MS));
+    since = await ctx.runMutation(internal.billing.purchases.claim, { workspaceId });
+  }
   if (since === null) throw createError("BILLING_PLAN_CHANGE_CONFLICT", "Another billing change is under way. Try again in a moment.");
   try {
-    const { resuming, ...reading } = read;
-    const customer = await autumn.customer(customerId, { ...reading, invoices: true });
-    // A purchase asked again with its own idempotency key, after its answer was lost, may be the open payment itself.
-    if (!resuming) unlessPaymentOpen(customer);
-    return await buy(customer);
+    return await work();
   } finally {
     await ctx.runMutation(internal.billing.purchases.release, { workspaceId, since });
   }
+}
+
+/** How often a wait for the purchase lock asks again. */
+const CLAIM_RETRY_MS = 500;
+
+/**
+ * The customer, read with `invoices` and with `plans` when asked, once no payment of theirs is open: two purchases at
+ * once could both find none open, and Autumn gives the second for nothing when the first was declined, so it is read
+ * under the purchase lock. `resuming` is a purchase asked again under its own idempotency key, whose open payment, if
+ * any, is its own.
+ */
+export async function payableCustomer(customerId: string, read: { plans?: true; resuming?: true }): Promise<AutumnCustomer> {
+  const { resuming, ...reading } = read;
+  const customer = await autumn.customer(customerId, { ...reading, invoices: true });
+  if (!resuming) unlessPaymentOpen(customer);
+  return customer;
+}
+
+/** Runs `buy` as the workspace's only billing change under way, once no payment of its customer's is open (`payableCustomer`). */
+export async function purchasing<T>(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, read: { plans?: true; resuming?: true }, buy: (customer: AutumnCustomer) => Promise<T>): Promise<T> {
+  return holdingPurchaseLock(ctx, workspaceId, async () => buy(await payableCustomer(customerId, read)));
 }
 
 /** Takes the workspace's purchase lock: when it was taken, which lets go of it, or null while another purchase holds it. */
