@@ -6796,7 +6796,7 @@
         },
         "added": {
           "title": "Add it for me",
-          "body": "We add a last page to the PDF you upload, carrying this line and your report's details. Nothing else in your PDF changes. For PDFs up to {max} MB."
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
         }
       },
       "overview": {
