@@ -390,10 +390,11 @@ const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
 
 /**
  * A report author's name as the registrars, and its citations, take it: the last word is the family name and the
- * words before it the given names. Null for a body (an organisation, an agency), whose name stays whole.
+ * words before it the given names. Null for a body (an organisation, an agency) without an ORCID iD, whose name stays whole.
  */
-export function personName(name: string): { given: string; family: string } | null {
-  if (BODY.test(name) || ACRONYM.test(name)) return null;
+export function personName(name: string, orcid?: string | null): { given: string; family: string } | null {
+  // An ORCID iD is a person's, whatever words the name has ("John Bank").
+  if (!orcid && (BODY.test(name) || ACRONYM.test(name))) return null;
   const words = name.trim().split(/\s+/);
   return { given: words.slice(0, -1).join(" "), family: words.at(-1)! };
 }

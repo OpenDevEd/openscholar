@@ -32,8 +32,8 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   const author = paper.authorships?.flatMap(({ author }) => {
     const name = author.display_name?.trim();
     if (!name) return [];
-    const parts = report ? personName(name) : null;
-    return [parts?.given ? { given: parts.given, family: parts.family } : { literal: name }];
+    const parts = report ? personName(name, author.orcid) : null;
+    return [parts ? { family: parts.family, ...(parts.given && { given: parts.given }) } : { literal: name }];
   });
   if (author?.length) data.author = author;
   // A year, a month or a day, as precisely as the work states it: a report's PDF may give only a month.

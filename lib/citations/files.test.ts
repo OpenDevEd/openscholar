@@ -36,6 +36,9 @@ describe("a citation file", () => {
     const people = [{ author: { display_name: "Diego Ramírez" } }, { author: { display_name: "Ana Maria Torres" } }];
     const report = { id: "R100556", title: "Agua segura", type: "report", publication_year: 2026, authorships: people, primary_location: { source: { display_name: "Openscholar Reports", type: "repository" } } } as unknown as PaperResult;
     expect(formatCitation(paperToCitationData(report)!, "en", "apa").text).toMatch(/^Ramírez, D\., & Torres, A\. M\./);
+    // A person with an ORCID iD whose name looks like a body's, as the Crossref record has them.
+    const banked = { ...report, authorships: [{ author: { display_name: "John Bank", orcid: "https://orcid.org/0000-0002-1825-0097" } }] } as unknown as PaperResult;
+    expect(formatCitation(paperToCitationData(banked)!, "en", "apa").text).toMatch(/^Bank, J\./);
     const work = { ...report, id: "W1", primary_location: { source: { display_name: "A Journal", type: "journal" } } } as unknown as PaperResult;
     expect(formatCitation(paperToCitationData(work)!, "en", "apa").text).toMatch(/^Diego Ramírez, & Ana Maria Torres/);
   });

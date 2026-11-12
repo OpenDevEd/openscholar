@@ -49,11 +49,9 @@ const placeOf = (code: string) =>
 
 /** A person's name as the registrars keep one: family name, then given names. A single word is a family name. A body keeps its name as it is. */
 function creator(author: Metadata["authors"][number], institutions: RegistryIds["institutions"]) {
-  const parts = personName(author.name);
-  if (!author.orcid && !parts) return { type: "organizational" as const, name: author.name.trim(), creatorType: author.kind ?? "author" };
-  const words = author.name.trim().split(/\s+/);
-  const familyName = parts?.family ?? words.at(-1)!;
-  const givenName = parts?.given ?? words.slice(0, -1).join(" ");
+  const parts = personName(author.name, author.orcid);
+  if (!parts) return { type: "organizational" as const, name: author.name.trim(), creatorType: author.kind ?? "author" };
+  const { family: familyName, given: givenName } = parts;
   const roles = author.roles.flatMap((role) => creditId(role) ?? []);
   const affiliations = author.affiliations
     .filter((affiliation) => affiliation.name.trim())
