@@ -121,7 +121,7 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
             {t("showLess")} <ChevronDown className="size-3" />
           </motion.button>
           {/* Newest at the bottom, where the stack's front card was; the list scrolls up through the older ones. */}
-          <motion.div layoutScroll className="scrollbar-hover flex w-full flex-col-reverse gap-2 overflow-y-auto overscroll-contain" style={{ maxHeight: `min(${Math.round(LISTED * (JOB_CARD_H + GAP))}px, calc(100dvh - 22rem))` }}>
+          <motion.div layoutScroll className="flex w-full flex-col-reverse gap-2 overflow-y-auto overscroll-contain" style={{ maxHeight: `min(${Math.round(LISTED * (JOB_CARD_H + GAP))}px, calc(100dvh - 22rem))` }}>
             {jobs.map((job) => (
               <motion.div key={job.stepId} data-job-card={job.stepId} layoutId={cardLayoutId(job.stepId)} transition={spring} className="shrink-0 rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]" style={{ height: JOB_CARD_H }}>
                 {card(job.stepId, false)}
