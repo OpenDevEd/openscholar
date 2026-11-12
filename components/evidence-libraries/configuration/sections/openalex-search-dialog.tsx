@@ -102,7 +102,7 @@ function SearchWorkspace({
         animate={{ x: 0, opacity: 1 }}
         exit={reducedMotion ? { opacity: 0 } : { x: 96, opacity: 0 }}
         transition={reducedMotion ? { duration: 0 } : sidebarSpring}
-        className="z-0 min-h-0 w-full shrink-0 overflow-y-auto [scrollbar-width:none] lg:w-80 [&_[data-filter-section=active]]:bg-sidebar-accent [&_[data-filter-section=idle]]:bg-card [&_[data-filter-section]]:shadow-lg [&_[data-filter-section]]:shadow-black/10"
+        className="z-0 min-h-0 w-full shrink-0 overflow-y-auto lg:w-80 [&_[data-filter-section=active]]:bg-sidebar-accent [&_[data-filter-section=idle]]:bg-card [&_[data-filter-section]]:shadow-lg [&_[data-filter-section]]:shadow-black/10"
         data-openalex-filters
       >
         <div className="sticky top-0 z-10 flex justify-end px-4 pt-4">

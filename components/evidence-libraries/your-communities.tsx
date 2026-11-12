@@ -212,7 +212,7 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
       {framed ? <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" /> : null}
       {/* The filter in the search bar's look, and its row the search row's height, so the two cards' dividers line up. */}
       {framed ? <div className="relative shrink-0 border-b border-border-subtle p-4">{filterSelect}</div> : null}
-      <div className="relative min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
+      <div className="relative min-h-0 flex-1 overflow-y-auto p-2">
         {/* The list arrives after the page, and changes length with the filter: it slides to its height. */}
         <AutoHeight>
           {loading && !read.isStale ? (
