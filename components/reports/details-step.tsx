@@ -31,7 +31,8 @@ import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useRelationName, useRoleName } from "@/components/reports/words";
 import { CONTRIBUTION_DETAIL, FieldHelp, FieldLabel, PERSON_KINDS, type HelpKey } from "@/components/reports/field-help";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, LICENCE_URL, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, LICENCE_URL, RELATION_KINDS, linkHref, type Author, type Metadata, type Reference } from "@/lib/reports/report";
+import { ReferenceBox } from "@/components/reports/reference-box";
 import { cn } from "@/lib/utils";
 
 const REFS_PER_PAGE = 5;
@@ -278,8 +279,8 @@ const localToday = () => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 };
 const SAVE_AFTER_MS = 250;
-/** mock: the details without each person's role, which the server has no place for yet. */
-const saved = <M extends Partial<Metadata>>(m: M): M => (m.authors ? { ...m, authors: m.authors.map(({ kind: _kind, ...author }) => author) } : m);
+/** mock: the details without each person's role and the references as written, which the server has no place for yet. */
+const saved = <M extends Partial<Metadata>>({ cited: _cited, ...m }: M): M => (m.authors ? { ...m, authors: m.authors.map(({ kind: _kind, ...author }) => author) } : m) as M;
 
 export function DetailsStep({
   initial,
@@ -374,7 +375,6 @@ export function DetailsStep({
     return () => window.removeEventListener("beforeunload", ask);
   }, []);
   const [topicSearch, setTopicSearch] = useState("");
-  const [doi, setDoi] = useState("");
   const [refPage, setRefPage] = useState(1);
   const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => change((was) => ({ ...was, [key]: value }));
   const setAuthor = (i: number, patch: Partial<Author>) => set("authors", m.authors.map((a, at) => (at === i ? { ...a, ...patch } : a)));
@@ -385,13 +385,16 @@ export function DetailsStep({
   };
   const funderIds = m.funding.map((f) => f.funder.id ?? typedId(f.funder.name));
   const funderNames = { ...useFunderNames(funderIds.filter((id) => !id.startsWith("typed:"))), ...Object.fromEntries(m.funding.map((f) => [f.funder.id ?? typedId(f.funder.name), f.funder.name])) };
-  const refs = pagerOf(m.references.length, REFS_PER_PAGE, refPage, setRefPage);
-  const shownRefs = m.references.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
+  // mock: the works cited as their list writes them. Until the server keeps them, the ones with no DOI are held on this
+  // page only, and the saved list is still the DOIs among them.
+  const cited: Reference[] = m.cited ?? m.references.map((doi) => ({ text: "", doi }));
+  const setCited = (next: Reference[]) => change((was) => ({ ...was, cited: next, references: next.flatMap((reference) => reference.doi ?? []) }));
+  const refs = pagerOf(cited.length, REFS_PER_PAGE, refPage, setRefPage);
+  const refsFrom = (refs.page - 1) * REFS_PER_PAGE;
+  const shownRefs = cited.slice(refsFrom, refsFrom + REFS_PER_PAGE);
   const authors = usePage(m.authors, AUTHORS_PER_PAGE);
   const funders = usePage(m.funding, ROWS_PER_PAGE);
   const links = usePage(m.relations, ROWS_PER_PAGE);
-  // Why the DOI typed wasn't added, said under its box until it is typed again.
-  const [doiTrouble, setDoiTrouble] = useState<string | null>(null);
   // mock: an abstract being written from the PDF.
   const [writing, setWriting] = useState(false);
   const writeAbstract = async () => {
@@ -406,13 +409,21 @@ export function DetailsStep({
       setWriting(false);
     }
   };
-  const addDoi = () => {
-    const bare = doiIn(doi);
-    if (!bare) return setDoiTrouble(t("notDoi"));
-    if (m.references.includes(bare)) return setDoiTrouble(t("doiListed"));
-    if (m.references.length >= DETAIL_CAPS.references) return setDoiTrouble(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
-    set("references", [...m.references, bare]);
-    setDoi("");
+  // mock: the references a pasted list or an uploaded file holds, added after the ones already listed. One listed already,
+  // by its DOI or its words, is left out.
+  const addReferences = async (text: string) => {
+    const { referencesIn } = await import("@/lib/reports/reference-list");
+    const found = referencesIn(text);
+    const key = (reference: Reference) => reference.doi ?? reference.text.toLowerCase();
+    const listed = new Set(cited.map(key));
+    const fresh = found.filter((reference) => !listed.has(key(reference)) && listed.add(key(reference)));
+    const added = fresh.slice(0, DETAIL_CAPS.references - cited.length);
+    if (!found.length) return void toast.error("No references found in that.");
+    if (!fresh.length) return void toast("Every one of those is listed already.");
+    if (!added.length) return void toast.error(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
+    setCited([...cited, ...added]);
+    setRefPage(Math.ceil((cited.length + added.length) / REFS_PER_PAGE));
+    toast(`${format.number(added.length)} ${added.length === 1 ? "reference" : "references"} added`, { id: "references-added", action: { label: "Undo", onClick: () => setCited(cited) } });
   };
   const future = m.date > localToday();
   const early = !!m.date && m.date < EARLIEST_DATE;
@@ -641,32 +652,47 @@ export function DetailsStep({
           ) : null}
         </Section>
 
-        <Section title={t("references")} help="references" aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
-          {m.references.length ? (
+        <Section title={t("references")} help="references" aside={<span className="text-xs tabular-nums text-muted-foreground">{format.number(cited.length)}</span>}>
+          {cited.length ? (
             <Paged pager={refs} rowHeight={REF_ROW} label={t("referencesPager")}>
               <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
-                {shownRefs.map((ref) => (
-                  <li key={ref} style={{ height: REF_ROW - 1 }} className="flex items-center gap-2 px-3">
-                    <a href={`https://doi.org/${ref}`} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-xs underline-offset-4 hover:underline">
-                      {ref}
-                    </a>
-                    <TooltipHint label={t("removeReference")}>
-                      <Button type="button" variant="ghost" size="icon-xs" aria-label={t("remove", { name: ref })} className="text-muted-foreground hover:text-destructive" onClick={() => set("references", m.references.filter((r) => r !== ref))}>
-                        <Trash2 />
-                      </Button>
-                    </TooltipHint>
-                  </li>
-                ))}
+                {shownRefs.map((reference, at) => {
+                  const i = refsFrom + at;
+                  const href = reference.doi ? `https://doi.org/${reference.doi}` : undefined;
+                  return (
+                    <li key={i} style={{ height: REF_ROW - 1 }} className="flex items-center gap-2 px-3">
+                      <span className="w-7 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{format.number(i + 1)}</span>
+                      {reference.text ? (
+                        // One line a reference, so a page of them is always as tall; the rest of a long one shows on hover.
+                        <TooltipHint label={reference.text} onlyWhenClipped>
+                          <span className="min-w-0 flex-1 truncate text-sm">{reference.text}</span>
+                        </TooltipHint>
+                      ) : (
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-xs underline-offset-4 hover:underline">
+                          {reference.doi}
+                        </a>
+                      )}
+                      {reference.text && href ? (
+                        <TooltipHint label="Open its DOI">
+                          <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
+                            <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open the DOI of reference ${i + 1}`}>
+                              <ExternalLink />
+                            </a>
+                          </Button>
+                        </TooltipHint>
+                      ) : null}
+                      <TooltipHint label={t("removeReference")}>
+                        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("remove", { name: reference.text || reference.doi! })} className="text-muted-foreground hover:text-destructive" onClick={() => setCited(cited.filter((_, other) => other !== i))}>
+                          <Trash2 />
+                        </Button>
+                      </TooltipHint>
+                    </li>
+                  );
+                })}
               </ul>
             </Paged>
           ) : null}
-          <div className="flex gap-2">
-            <Input aria-label={t("addReference")} aria-invalid={!!doiTrouble} placeholder={t("doiPlaceholder")} value={doi} onChange={(e) => (setDoi(e.target.value), setDoiTrouble(null))} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addDoi())} className="font-mono text-xs" />
-            <Button type="button" variant="outline" disabled={!doi.trim()} onClick={addDoi}>
-              <Plus /> {t("add")}
-            </Button>
-          </div>
-          {doiTrouble ? <p role="alert" className="ps-1 text-xs text-destructive">{doiTrouble}</p> : null}
+          <ReferenceBox onAdd={addReferences} onTrouble={(words) => void toast.error(words)} />
         </Section>
 
         <Section title={t("links")} help="links">

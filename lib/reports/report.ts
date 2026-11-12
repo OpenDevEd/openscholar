@@ -65,6 +65,9 @@ export const RELATION_KINDS = [
 export type RelationKind = (typeof RELATION_KINDS)[number]["id"];
 export type Relation = { kind: RelationKind; target: string };
 
+/** mock: a work a report cites, as its reference list writes it, with its DOI when it has one. A DOI alone has no words. */
+export type Reference = { text: string; doi?: string };
+
 export type Metadata = {
   title: string;
   subtitle: string;
@@ -86,6 +89,8 @@ export type Metadata = {
   funding: Funding[];
   /** DOIs the work cites. */
   references: string[];
+  /** mock: the works cited as their list writes them. Held by the details form only; never saved or sent. */
+  cited?: Reference[];
   relations: Relation[];
 };
 

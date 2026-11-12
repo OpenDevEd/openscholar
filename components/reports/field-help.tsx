@@ -30,6 +30,7 @@ const ENTRY = {
   list: { icon: ListChecks, text: "Picked from a list" },
   typed: { icon: Pencil, text: "Typed freely" },
   either: { icon: ListChecks, text: "From a list, or typed" },
+  pasted: { icon: Pencil, text: "Pasted or uploaded" },
   toggle: { icon: Check, text: "On or off" },
   fixed: { icon: Lock, text: "Can't be changed" },
 } as const satisfies Record<string, { icon: AppIcon; text: string }>;
@@ -292,10 +293,10 @@ export const HELP = {
   },
   references: {
     title: "References",
-    about: "The works this report cites, each by its DOI.",
-    note: "Every DOI the reference list prints is filled in. A reference without a DOI isn't listed.",
+    about: "The works this report cites, as its reference list writes them.",
+    note: "Paste the list, or upload it as a BibTeX, RIS or plain text file. Every DOI the PDF prints is filled in, and a reference with a DOI links to the work it cites.",
     filled: "pdf",
-    entry: "typed",
+    entry: "pasted",
     sources: [
       { mark: "web", name: "DOI", detail: "What a DOI is", href: "https://www.doi.org/" },
       { mark: "web", name: "Crossref references", detail: "How citations are counted from them", href: `${CROSSREF}/references/` },
