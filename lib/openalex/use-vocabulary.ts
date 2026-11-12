@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_TYPES } from "./vocabulary";
+import { REPORT_TYPES } from "@/lib/reports/report";
 
 /**
  * OpenAlex's terms in the reader's language. OpenAlex, its filters and the registries keep the English of
@@ -24,6 +25,8 @@ export function useVocabulary() {
     institutionType,
     sdgs: SDGS.map((goal) => ({ ...goal, name: `${goal.id}. ${sdg(goal.id, goal.name)}` })),
     workTypes: WORK_TYPES.map((type) => ({ ...type, name: workType(type.id) })),
+    /** What a report can be: the types of work and a presentation. */
+    reportTypes: REPORT_TYPES.map((type) => ({ ...type, name: workType(type.id) })),
     studyDesigns: STUDY_DESIGNS.map((design) => ({ ...design, name: studyDesign(design.id, design.name) })),
     institutionTypes: INSTITUTION_TYPES.map((type) => ({ ...type, name: named("institutionType", type.id, type.name) })),
   };

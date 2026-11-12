@@ -16,9 +16,9 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspac
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { PLACES } from "../../lib/constants";
-import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
+import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
@@ -66,7 +66,7 @@ const listed = (list: ReadonlyArray<{ id: string }>) => (id: string) => list.som
  * registrars and our index take nothing else, so a value from any other caller is refused before the checks.
  */
 const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[], known: (value: string) => boolean]> = [
-  ["a type of work", (metadata) => [metadata.type], listed(WORK_TYPES)],
+  ["a type of work", (metadata) => [metadata.type], listed(REPORT_TYPES)],
   // A report may leave its language out.
   ["a language", (metadata) => (metadata.language ? [metadata.language] : []), (code) => WORK_LANGUAGES.includes(code)],
   ["a goal", (metadata) => metadata.sdgs, listed(SDGS)],
