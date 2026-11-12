@@ -6539,7 +6539,7 @@
       "newReport": "تقرير جديد",
       "yourReports": "تقاريرك",
       "discarded": "تم تجاهل التقرير",
-      "discardFailed": "تعذّر تجاهل التقرير",
+      "discardFailed": "تعذّر تجاهل التقرير.",
       "closedTitle": "النشر مغلق الآن",
       "closedWithReports": "لا يمكن بدء تقارير جديدة الآن. تبقى تقاريرك الحالية كما هي.",
       "closedNoReports": "لا يمكن بدء تقارير جديدة الآن. عد لاحقًا.",
@@ -6549,8 +6549,8 @@
       "elsewhereTitle": "هذا التقرير في مساحة عمل أخرى",
       "missingTitle": "هذا التقرير غير موجود هنا",
       "offNotice": "النشر متوقف للتقارير الجديدة الآن. يمكنك متابعة العمل على هذا التقرير.",
-      "stepFailed": "تعذّر فتح تلك الخطوة",
-      "checksFailed": "تعذّر تشغيل الفحوصات",
+      "stepFailed": "تعذّر فتح تلك الخطوة.",
+      "checksFailed": "تعذّر تشغيل الفحوصات.",
       "saveFailed": "تعذّر حفظ تعديلاتك",
       "changesLive": "تعديلاتك منشورة",
       "changesWithReviewer": "تعديلاتك لدى مراجع",
@@ -6571,8 +6571,8 @@
         "workspace": "تتيح خطة مساحة العمل هذه بدء {count, plural, zero {# تقرير} one {تقرير واحد} two {تقريرين} few {# تقارير} many {# تقريرًا} other {# تقرير}} في اليوم. عُد غدًا، أو انتقل إلى خطة تتيح المزيد.",
         "workspaceClosed": "لا تتضمن خطة مساحة العمل هذه النشر. انتقل إلى خطة تتضمنه."
       },
-      "signFailed": "تعذّر توقيع الاتفاقية",
-      "sign": "وقّع واحجز DOI",
+      "signFailed": "تعذّر توقيع الاتفاقية.",
+      "sign": "التالي: التوقيع وحجز معرّف DOI",
       "signIn": "سجّل الدخول للنشر",
       "doiReserved": "تم حجز معرّف DOI الخاص بك",
       "doiReservedBody": "يبقى مع تقريرك، ويُنشر عند نشر التقرير.",
@@ -6582,17 +6582,17 @@
       "doiCopied": "تم نسخ DOI",
       "uploadPdf": "رفع ملف PDF",
       "textless": "لا يحتوي ملف PDF هذا على نص، كما في الملف الممسوح ضوئيًا. لا تستطيع الفحوصات العثور على سطر الإسناد فيه. صدّر التقرير بصيغة PDF تحتوي على نص وارفعه، أو املأ التفاصيل يدويًا.",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "هذا الملف لا يحتوي على نص، كما هو حال الصور الممسوحة ضوئيًا، لذا لا تستطيع الفحوصات قراءة تقريرك فيه. السطر موجود في الصفحة التي أضفناها. صدّر التقرير بصيغة PDF مع نصّه وارفعه، أو املأ التفاصيل يدويًا.",
       "unreadPdf": "تعذّر على Openscholar قراءة التفاصيل من ملف PDF هذا. املأها يدويًا.",
       "uploadAnother": "رفع ملف PDF آخر",
       "uploadLost": "لم يصل الرفع. حاول مرة أخرى.",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} ليس ملف PDF. احفظ تقريرك أو صدّره بصيغة PDF ثم اختر ذلك الملف.",
       "emptyFile": "هذا الملف فارغ. اختر ملف PDF مرة أخرى.",
-      "tooBig": "ملف PDF أكبر من {max} ميغابايت",
+      "tooBig": "حجم ملف PDF يتجاوز {max} ميغابايت. اختر ملفًا أصغر.",
       "offline": "تعذّر رفع ملف PDF. تحقق من اتصالك، ثم اختره مرة أخرى.",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "تعذّر إرسال ملف PDF إلينا.",
+      "uploadFailed": "وصلنا ملف PDF، لكن الخادم لم يضفه إلى تقريرك.",
+      "uploadIntro": "كل تقرير في هذه السلسلة يحمل هذا السطر في ملف PDF الخاص به، كنصّ. فحصنا يبحث عنه.",
       "copyByline": "نسخ سطر الإسناد",
       "bylineCopied": "تم نسخ سطر الإسناد",
       "uploading": "جارٍ رفع {name}",
@@ -6601,13 +6601,13 @@
       "drop": "أفلت ملف PDF هنا، أو اختره",
       "dropHint": "ملف PDF واحد، حتى {max} ميغابايت",
       "unopenedPdf": "تعذّر فتح {name} كملف PDF. إن كان محميًا بكلمة مرور فأزلها، ثم احفظه بصيغة PDF مرة أخرى وارفعه.",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} لا يحمل السطر أعلاه. أضف السطر وارفع ملف PDF من جديد، أو دعنا نضيفه.",
       "keptDetails": "هذه هي التفاصيل التي كانت لديك قبل أن تستبدل ملف PDF.",
       "readAgain": "اقرأها من هذا الملف بدلًا من ذلك",
       "readAgainTitle": "قراءة التفاصيل من هذا الملف؟",
       "readAgainBody": "تُستبدل التفاصيل المعروضة الآن بتفاصيل هذا الملف، مع كل ما كتبته فيها.",
       "readAgainKeep": "الإبقاء على هذه التفاصيل",
-      "readAgainFailed": "تعذّرت قراءة التفاصيل مجددًا",
+      "readAgainFailed": "تعذّرت قراءة التفاصيل مجددًا.",
       "stuck": "تستغرق قراءة {name} وقتًا أطول من اللازم. ارفعه مرة أخرى.",
       "replaces": "الرفع مرة أخرى يستبدل {name}",
       "check": {
@@ -6644,7 +6644,7 @@
           }
         }
       },
-      "activateFailed": "تعذّر تفعيله",
+      "activateFailed": "تعذّر تفعيله.",
       "running": "تشغيل الفحوصات",
       "ofTotal": "{done} من {total}",
       "runningHint": "يستغرق البحث عن نسخ سابقة بضع ثوانٍ. يمكنك مغادرة هذه الصفحة: تستمر الفحوصات.",
@@ -6687,7 +6687,7 @@
       "savingNote": "تُحفظ بطاقتك لتفعيل التقارير على Openscholar. لن يُخصم أي مبلغ الآن.",
       "registering": "الصفحة مفتوحة الآن ويمكن مشاركتها. يبدأ معرّف DOI بالعمل بعد تسجيله، وعادةً خلال دقائق قليلة.",
       "sentToReviewer": "أُرسل إلى مراجع",
-      "requestFailed": "تعذّر إرسال الطلب",
+      "requestFailed": "تعذّر إرسال الطلب.",
       "reviewIntro": "يقرأ مراجع تقريرك ونتائج الفحوصات. اطلب ذلك إذا كنت تعتقد أن فحصًا أخطأ.",
       "reviewQuestion": "ما الذي أخطأت فيه الفحوصات؟",
       "cancel": "إلغاء",
@@ -6712,7 +6712,7 @@
       "discardBody": "يظل تقريرك منشورًا كما هو الآن. تُتجاهل التعديلات التي أجريتها.",
       "keepThem": "إبقاؤها",
       "changesDiscarded": "تم تجاهل التعديلات",
-      "changesDiscardFailed": "تعذّر تجاهل التعديلات",
+      "changesDiscardFailed": "تعذّر تجاهل التعديلات.",
       "discard": "تجاهل",
       "pages": "{count, plural, zero {# صفحة} one {صفحة واحدة} two {صفحتان} few {# صفحات} many {# صفحة} other {# صفحة}}",
       "agreementVersion": "الاتفاقية الإصدار {version}",
@@ -6769,7 +6769,7 @@
           "confirm": "تأكيد الدفع",
           "change": "تغيير",
           "addButton": "إضافة وسيلة دفع",
-          "stripeFailed": "تعذّر فتح صفحة Stripe",
+          "stripeFailed": "تعذّر فتح صفحة Stripe.",
           "credit": "رصيد {amount}",
           "freeTitle": "تفعيل مجاني",
           "covered": "رمزك يغطي هذا التفعيل",
@@ -6784,36 +6784,36 @@
         "paused": "النشر متوقف مؤقتًا، لذا لا يمكن نشر أي شيء الآن. يحتفظ تقريرك بمكانه."
       },
       "back": "رجوع",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "ملف PDF الخاص بك يحمل هذا السطر",
+      "bylineFirstBody": "كل تقرير في هذه السلسلة يحمل هذا السطر في ملف PDF الخاص به، كنصّ. فحوصاتنا تبحث عنه بعد الرفع.",
       "nextUpload": "التالي: رفع ملف PDF",
       "nextDetails": "التالي: مراجعة التفاصيل",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "هذه الصفحة والخادم على نسختين مختلفتين. أعد تحميل الصفحة ثم حاول مجددًا.",
+        "retry": "حاول مجددًا. إن تكرر ذلك، <link>أبلغ عن مشكلة</link>.",
+        "retryQuote": "حاول مجددًا. إن تكرر ذلك، <link>أبلغ عن مشكلة</link> واذكر {reference}."
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "من يضيف السطر",
+        "choose": "اختر من يضيف السطر للمتابعة.",
+        "chooseFirst": "اختر أولًا من يضيف السطر",
+        "failed": "تعذّر علينا إضافة الصفحة إلى {name}. أضف السطر بنفسك وارفع ملف PDF من جديد.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "حجم {name} يتجاوز {max} ميغابايت، وهو أكبر من أن نضيف إليه صفحة. ضع السطر فيه بنفسك، أو ارفع ملف PDF أصغر.",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "سأضيفه بنفسي",
+          "body": "ضع السطر، حرفيًا، على غلاف ملف PDF أو على غلافه الداخلي قبل رفعه."
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "أضيفوه عني",
+          "body": "نضيف صفحة أخيرة تحمل هذا السطر وتفاصيل تقريرك. لملفات PDF حتى {max} ميغابايت."
         }
       },
       "overview": {
         "title": "نشر تقرير في {series}",
         "intro": "نحو عشر دقائق من البداية إلى النهاية. هذا ما تطلبه منك كل خطوة.",
         "introReviewed": "نحو عشر دقائق من وقتك. ثم يوافق مراجع على التقرير قبل أن يُنشر، وتصلك رسالة بريد إلكتروني.",
-        "start": "ابدأ",
+        "start": "التالي: توقيع الاتفاقية",
         "agreement": {
           "title": "وقّع اتفاقية النشر",
           "body": "تحتفظ بحقوق المؤلف وتنشر بموجب CC BY 4.0."
@@ -6824,7 +6824,7 @@
         },
         "pdf": {
           "title": "ارفع ملف PDF",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "مع سطر يذكر السلسلة ومعرّف DOI. أضفه بنفسك، أو نضيفه نحن في صفحة أخيرة."
         },
         "details": {
           "title": "راجع التفاصيل",
@@ -6832,7 +6832,7 @@
         },
         "checks": {
           "title": "فحوصات تلقائية",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "نحو دقيقة. تبحث عن ذلك السطر وعن أي شيء سبق نشره."
         },
         "activate": {
           "title": "تفعيل",
@@ -6936,7 +6936,7 @@
       "cancel": "إلغاء",
       "sendForReview": "فحص التعديلات وإرسالها للمراجعة",
       "checkAndPublish": "فحص التعديلات ونشرها",
-      "runChecks": "تشغيل الفحوصات",
+      "runChecks": "التالي: تشغيل الفحوصات",
       "tooEarly": "لا يمكن أن يكون تاريخ التقرير قبل عام 1400.",
       "back": "رجوع"
     }
