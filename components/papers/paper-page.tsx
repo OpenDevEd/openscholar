@@ -228,7 +228,7 @@ function DoiLine({ doi }: { doi: string }) {
       <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
       <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
         <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
-          try { await navigator.clipboard.writeText(doi); setCopied(true); toast.success(t("doiCopied")); }
+          try { await navigator.clipboard.writeText(`https://doi.org/${doi}`); setCopied(true); toast.success(t("doiCopied")); }
           catch { toast.error(t("doiCopyFailed")); }
         }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
       </TooltipHint>
