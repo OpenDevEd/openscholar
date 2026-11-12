@@ -6351,6 +6351,7 @@
         "humanReview": "La revisión humana está activada, así que los cambios esperan a un revisor."
       },
       "approving": "Aprobarlo permite que su autor lo active, y se publica cuando lo haga.",
+      "approvingOrg": "Al aprobarlo, un administrador de {organization} puede activarlo, y se publica cuando lo hace.",
       "standing": {
         "failedAsked": "Una comprobación falló. {approving}",
         "failed": "Una comprobación falló, así que el informe está en manos de su autor para corregirlo. Aun así puedes decidir. {approving}",

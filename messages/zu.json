@@ -6350,6 +6350,7 @@
         "humanReview": "Ukubuyekezwa ngumuntu kuvuliwe, ngakho izinguquko zilinde umbuyekezi."
       },
       "approving": "Ukuvuma kuvumela umbhali wawo ukuthi awenze usebenze, futhi ushicilelwa lapho ewenza usebenze.",
+      "approvingOrg": "Ukuvuma kuvumela umphathi we-{organization} ukuthi awenze usebenze, futhi ushicilelwa uma enza kanjalo.",
       "standing": {
         "failedAsked": "Ukuhlolwa kuhlulekile. {approving}",
         "failed": "Ukuhlolwa kuhlulekile, ngakho umbiko ubuyele kumbhali ukuze awulungise. Usengakwazi ukunquma. {approving}",

@@ -6351,6 +6351,7 @@
         "humanReview": "Menslike hersiening is aan, so wysigings wag vir 'n hersiener."
       },
       "approving": "Goedkeuring laat sy skrywer dit aktiveer, en dit word gepubliseer sodra hulle dit doen.",
+      "approvingOrg": "Goedkeuring laat ’n admin van {organization} dit aktiveer, en dit gaan regstreeks wanneer hulle dit doen.",
       "standing": {
         "failedAsked": "'n Kontrole het gefaal. {approving}",
         "failed": "'n Kontrole het gefaal, so die verslag is terug by die skrywer om reg te stel. Jy kan steeds besluit. {approving}",
