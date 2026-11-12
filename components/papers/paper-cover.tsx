@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowUpRight, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { FadeImage } from "@/components/ui/fade-image";
-import { coverFit, resizable, type CoverKind } from "@/lib/papers/cover";
+import { coverFit, isCoverShape, resizable, type CoverKind } from "@/lib/papers/cover";
 
 type CoverProps = { kind: CoverKind; ink: string; title: string; authors: string[]; source: string | null; year: number | null; type: string | null };
 
@@ -105,10 +105,15 @@ const useTakenOver = () => useSyncExternalStore(never, () => true, () => false);
  * shaped like a page fills the frame. One of another shape, such as a slide, is shown whole at its own shape inside it
  * (`coverFit`), anchored to the frame's top and start, wherever the cover is shown.
  */
-export function PaperCover({ href, pdf, image, className, ink, mark = true, sizes = "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px", ...page }: CoverProps & {
+export function PaperCover({ href, pdf, image, shape = null, className, ink, mark = true, sizes = "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px", ...page }: CoverProps & {
   href: string | null;
   pdf: boolean;
   image: string | null;
+  /**
+   * The picture's width over its height, when it is known before the picture loads (a report keeps its cover's). The
+   * frame then takes that shape from the first frame: a wide one is only as tall as the picture, never kept 3 by 4.
+   */
+  shape?: number | null;
   className?: string;
   /** The PDF chip or the open-elsewhere mark on the cover; a cover too small to carry one leaves it off. */
   mark?: boolean;
@@ -122,10 +127,14 @@ export function PaperCover({ href, pdf, image, className, ink, mark = true, size
   const [shaped, setShaped] = useState<{ image: string; shape: number; fades: boolean } | null>(null);
   const [broken, setBroken] = useState<string | null>(null);
   const picture = image && broken !== image ? image : null;
-  const known = picture && shaped?.image === picture ? shaped : null;
+  const given = picture && shape !== null && isCoverShape(shape) ? shape : null;
+  const known = picture && shaped?.image === picture ? shaped : given !== null ? { image: picture!, shape: given, fades: false } : null;
   const fit = coverFit(known?.shape ?? null);
+  // A wide picture whose shape was known from the start has a frame of its own shape; any other keeps the 3 by 4 one,
+  // which a picture learned only once loaded can't change without moving what is around it.
+  const own = given !== null && coverFit(given) === "wide";
   const sheet = (
-    <span className="relative flex aspect-[3/4] items-start justify-start">
+    <span className={cn("relative flex items-start justify-start", !own && "aspect-[3/4]")} style={own ? { aspectRatio: given } : undefined}>
       {picture && !known ? (
         // Loaded out of sight first, to learn its shape: the sheet is then made at that shape and never changes it.
         // One the browser already had is shown at once; one waited for fades in, as does one the server's page waited on.

@@ -44,7 +44,7 @@ async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof 
     ...((report.title ?? report.pdf?.name) && { title: report.title ?? report.pdf?.name }),
     withdrawn: report.withdrawnAt !== undefined,
     signer: report.signedBy.name,
-    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
+    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
     ...(report.pdf && { pdfAt: report.pdf.at }),
     ...(first?.name && { first: { name: first.name, ...(first.affiliations[0]?.country && { country: first.affiliations[0].country }) } }),
   };

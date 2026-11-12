@@ -1361,10 +1361,10 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
       const [file, cover] = await Promise.all([
         put(picked, "application/pdf"),
-        drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
+        drawCover(picked).then(async (drawn) => (drawn ? { id: await put(drawn.picture, "image/jpeg"), shape: drawn.shape } : undefined)).catch(() => undefined),
       ]);
       arrived = true;
-      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
+      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover: cover.id, coverShape: cover.shape }) });
       if (refused) return say(refused);
       onAttached();
     } catch (error) {
@@ -2468,6 +2468,7 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
         type="report"
         // The picture of the PDF's first page takes the title page's place once it's made.
         image={report?.coverUrl ?? null}
+        shape={report?.coverShape ?? null}
         href={report?.pdf?.url ?? null}
         pdf={!!report?.pdf?.url}
       />

@@ -57,7 +57,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** What a report published on Openscholar has beyond a paper's record: sections under the authors and in the sidebar, its PDF's cover, and what only its workspace does. */
-  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; actions?: ReactNode };
+  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; /** The report's cover's width over its height, when kept. */ coverShape?: number | null; actions?: ReactNode };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -113,6 +113,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             // A community's picture of its PDF's first page opens that PDF.
             // An Openscholar Report wears the cover Openscholar made of its own PDF.
             image={extra?.cover ?? communityCover?.cover ?? null}
+            shape={extra?.cover ? (extra.coverShape ?? null) : null}
             href={communityCover?.pdf ?? pdf ?? doi}
             pdf={!!communityCover?.pdf || !!pdf}
           />
