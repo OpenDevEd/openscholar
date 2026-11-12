@@ -50,6 +50,8 @@ export type Author = {
   affiliations: Affiliation[];
   corresponding: boolean;
   roles: string[];
+  /** mock: what the person is to the report (Crossref's roles: author, editor, translator). Held by the details form only; never saved or sent. */
+  kind?: string;
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };

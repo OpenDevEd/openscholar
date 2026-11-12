@@ -3,7 +3,7 @@
 // A report's details as the model read them from its PDF, for the author to correct (plans/publish-reports).
 // Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
@@ -25,24 +25,26 @@ import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useRelationName, useRoleName } from "@/components/reports/words";
+import { CONTRIBUTION_DETAIL, FieldHelp, FieldLabel, PERSON_KINDS, type HelpKey } from "@/components/reports/field-help";
 import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, LICENCE_URL, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 const REFS_PER_PAGE = 5;
 const REF_ROW = 41;
 const AUTHORS_PER_PAGE = 5;
-const AUTHOR_ROW = 205;
+const AUTHOR_ROW = 226;
 const ROWS_PER_PAGE = 5;
 const ROW = 53;
 const BLANK_AUTHOR: Author = { name: "", orcid: "", openalexId: null, affiliations: [], corresponding: false, roles: [] };
 
 /** A part of the details, and where it goes: Crossref as well as Openscholar, or Openscholar alone. */
-function Section({ title, crossref, aside, children }: { title: string; crossref: boolean; aside?: ReactNode; children: ReactNode }) {
+function Section({ title, crossref, aside, help, children }: { title: string; crossref: boolean; aside?: ReactNode; /** mock: the "?" beside the title, for a part that is one box. */ help?: HelpKey; children: ReactNode }) {
   const t = useTranslations("publishReports.details");
   return (
     <section className="space-y-3">
       <div className="flex min-h-7 flex-wrap items-center gap-2 border-b border-border-subtle pb-2">
         <h3 className="text-sm font-semibold">{title}</h3>
+        {help ? <FieldHelp field={help} className="-ms-1" /> : null}
         {aside}
         <span className={cn("ms-auto rounded-full px-2 py-0.5 text-2xs font-medium", crossref ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
           {t(crossref ? "crossrefAndOpenscholar" : "openscholar")}
@@ -53,15 +55,12 @@ function Section({ title, crossref, aside, children }: { title: string; crossref
   );
 }
 
-function Field({ label, children, className, counter }: { label: string; children: ReactNode; className?: string; /** How much of the box is used, for one with a limit. */ counter?: string }) {
+function Field({ label, help, id, children, className, counter }: { label: string; help: HelpKey; /** The id of the box inside, which the name is the label of. */ id: string; children: ReactNode; className?: string; /** How much of the box is used, for one with a limit. */ counter?: string }) {
   return (
-    <label className={cn("block min-w-0 space-y-1.5", className)}>
-      <span className="flex items-center justify-between gap-2 ps-1 text-xs font-medium text-muted-foreground">
-        {label}
-        {counter ? <span className="font-mono font-normal tabular-nums">{counter}</span> : null}
-      </span>
+    <div className={cn("min-w-0 space-y-1.5", className)}>
+      <FieldLabel label={label} help={help} htmlFor={id} counter={counter} />
       {children}
-    </label>
+    </div>
   );
 }
 /** How much of a box with a limit is used, in the reader's numerals. */
@@ -71,7 +70,7 @@ function useUsed() {
 }
 
 /** Words typed into a box that become chips: Enter or a comma adds one. */
-function ChipInput({ values, onChange, placeholder, label, mono = false, max = DETAIL_TEXT.keyword }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; mono?: boolean; /** The longest a chip's words may be. */ max?: number }) {
+function ChipInput({ values, onChange, placeholder, label, id, mono = false, max = DETAIL_TEXT.keyword }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; id?: string; mono?: boolean; /** The longest a chip's words may be. */ max?: number }) {
   const [text, setText] = useState("");
   const t = useTranslations("publishReports.details");
   const add = () => {
@@ -91,6 +90,7 @@ function ChipInput({ values, onChange, placeholder, label, mono = false, max = D
         </span>
       ))}
       <input
+        id={id}
         aria-label={label}
         value={text}
         maxLength={max}
@@ -133,32 +133,56 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
   const roleName = useRoleName();
   const [finding, setFinding] = useState(false);
   const who = author.name || t("author");
+  const id = useId();
   return (
     <li className="space-y-3 p-4">
       {/* The people found on ORCID open under the whole line: a name, its institutions and an iD don't fit under the
           iD's box. On a narrow screen the iD's box takes a line of its own under the name. */}
       <Popover modal open={finding} onOpenChange={setFinding}>
       <PopoverAnchor asChild>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-        <Input aria-label={t("name")} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
-        {/* The list's trigger, so focus comes back to it when the list closes; it opens under the whole line. */}
-        <PopoverTrigger asChild>
-          <OrcidButton orcid={author.orcid} open={finding} className="order-last w-full shrink-0 @xl:order-none @xl:w-56" />
-        </PopoverTrigger>
-        <span className="flex shrink-0">
+      {/* mock: each box on the line has its name and "?" over it; the number and the buttons sit level with the boxes. */}
+      <div className="relative flex flex-wrap items-end gap-2">
+        <span className="mb-1 flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
+        <div className="min-w-0 flex-1 basis-44 space-y-1.5">
+          <FieldLabel label={t("name")} help="name" htmlFor={`${id}-name`} />
+          <Input id={`${id}-name`} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="font-medium" />
+        </div>
+        {/* mock: what the person is to the report, from Crossref's own roles. Held on this page only: nothing new is saved. */}
+        <div className="w-full shrink-0 space-y-1.5 @md:w-44">
+          <FieldLabel label="Role" help="kind" htmlFor={`${id}-kind`} />
+          <Select value={author.kind ?? "author"} onValueChange={(kind) => onChange({ kind })}>
+            <SelectTrigger id={`${id}-kind`} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERSON_KINDS.map((kind) => (
+                <SelectItem key={kind.id} value={kind.id}>
+                  {kind.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="order-last w-full shrink-0 space-y-1.5 @xl:order-none @xl:w-56">
+          <FieldLabel label="ORCID iD" help="orcid" />
+          {/* The list's trigger, so focus comes back to it when the list closes; it opens under the whole line. */}
+          <PopoverTrigger asChild>
+            <OrcidButton orcid={author.orcid} open={finding} className="w-full" />
+          </PopoverTrigger>
+        </div>
+        <span className="absolute -top-1.5 end-0 flex">
           <TooltipHint label={t("moveUp")}>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveUpLabel", { name: who })} disabled={index === 0} className="text-muted-foreground" onClick={() => onMove(-1)}>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveUpLabel", { name: who })} disabled={index === 0} className="size-7 text-muted-foreground" onClick={() => onMove(-1)}>
               <ArrowUp />
             </Button>
           </TooltipHint>
           <TooltipHint label={t("moveDown")}>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveDownLabel", { name: who })} disabled={index === count - 1} className="text-muted-foreground" onClick={() => onMove(1)}>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveDownLabel", { name: who })} disabled={index === count - 1} className="size-7 text-muted-foreground" onClick={() => onMove(1)}>
               <ArrowDown />
             </Button>
           </TooltipHint>
           <TooltipHint label={t("removeAuthor")}>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("remove", { name: who })} disabled={count === 1} className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("remove", { name: who })} disabled={count === 1} className="size-7 text-muted-foreground hover:text-destructive" onClick={onRemove}>
               <Trash2 />
             </Button>
           </TooltipHint>
@@ -191,29 +215,33 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
       {/* min-w-0: a long institution's name is cut inside its column, and never widens the form past a phone's screen. */}
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
         <div className="min-w-0 space-y-1.5">
-          <span className="ps-1 text-xs font-medium text-muted-foreground">{t("affiliations")}</span>
+          <FieldLabel label={t("affiliations")} help="affiliations" />
           <AffiliationPicker value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
         <div className="min-w-0 space-y-1.5">
-          <span className="ps-1 text-xs font-medium text-muted-foreground">{t("roles")}</span>
+          {/* mock: "Contributor roles" read as a second kind of person. It is what the person did, each with CRediT's meaning. */}
+          <FieldLabel label="Contributions" help="contributions" />
           <OptionPicker
-          label={t("roles")}
-          placeholder={t("roles")}
-          selectedText={t("roleCount", { count: author.roles.length })}
-          searchPlaceholder={t("findRole")}
+          label="Contributions"
+          placeholder="What this person did"
+          selectedText={`${author.roles.length} ${author.roles.length === 1 ? "contribution" : "contributions"}`}
+          searchPlaceholder="Find a contribution"
           emptyText={t("noRole")}
           removeLabel={(name) => t("remove", { name })}
-          options={CREDIT_ROLES.map((role) => ({ id: role, name: roleName(role) }))}
+          options={CREDIT_ROLES.map((role) => ({ id: role, name: roleName(role), detail: CONTRIBUTION_DETAIL[role] }))}
           selected={author.roles}
           names={Object.fromEntries(CREDIT_ROLES.map((role) => [role, roleName(role)]))}
           onToggle={(role) => onChange({ roles: author.roles.includes(role) ? author.roles.filter((r) => r !== role) : [...author.roles, role] })}
           />
         </div>
       </div>
-      <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted-foreground @xl:ps-9">
-        <Switch checked={author.corresponding} onCheckedChange={(corresponding) => onChange({ corresponding })} />
-        {t("corresponding")}
-      </label>
+      <div className="flex w-fit items-center gap-0.5 @xl:ps-9">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <Switch checked={author.corresponding} onCheckedChange={(corresponding) => onChange({ corresponding })} />
+          {t("corresponding")}
+        </label>
+        <FieldHelp field="corresponding" />
+      </div>
     </li>
   );
 }
@@ -225,6 +253,8 @@ const localToday = () => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 };
 const SAVE_AFTER_MS = 250;
+/** mock: the details without each person's role, which the server has no place for yet. */
+const saved = <M extends Partial<Metadata>>(m: M): M => (m.authors ? { ...m, authors: m.authors.map(({ kind: _kind, ...author }) => author) } : m);
 
 export function DetailsStep({
   initial,
@@ -276,6 +306,7 @@ export function DetailsStep({
   const relationName = useRelationName();
   const languageName = new Intl.DisplayNames([locale], { type: "language" });
   const [opened] = useState(version);
+  const id = useId();
   const [touched, setTouched] = useState(false);
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
@@ -299,7 +330,7 @@ export function DetailsStep({
     held.current.own = own;
     setOwn(own);
     clearTimeout(held.current.timer);
-    held.current.send = onSave ? () => onSave(own, opened) : undefined;
+    held.current.send = onSave ? () => onSave(saved(own), opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
@@ -365,16 +396,16 @@ export function DetailsStep({
       </div>
       <div className="space-y-8">
         <Section title={t("work")} crossref>
-          <Field label={t("title")} counter={used(m.title, DETAIL_TEXT.title)}>
-            <Textarea value={m.title} maxLength={DETAIL_TEXT.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" />
+          <Field label={t("title")} help="title" id={`${id}-title`} counter={used(m.title, DETAIL_TEXT.title)}>
+            <Textarea id={`${id}-title`} value={m.title} maxLength={DETAIL_TEXT.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" />
           </Field>
-          <Field label={t("subtitle")} counter={m.subtitle ? used(m.subtitle, DETAIL_TEXT.subtitle) : undefined}>
-            <Input value={m.subtitle} maxLength={DETAIL_TEXT.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder={t("none")} />
+          <Field label={t("subtitle")} help="subtitle" id={`${id}-subtitle`} counter={m.subtitle ? used(m.subtitle, DETAIL_TEXT.subtitle) : undefined}>
+            <Input id={`${id}-subtitle`} value={m.subtitle} maxLength={DETAIL_TEXT.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder={t("none")} />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2 @3xl:grid-cols-4">
-            <Field label={t("type")}>
+            <Field label={t("type")} help="type" id={`${id}-type`}>
               <Select value={m.type} onValueChange={(type) => set("type", type)}>
-                <SelectTrigger className="w-full" aria-label={t("type")}>
+                <SelectTrigger id={`${id}-type`} className="w-full" aria-label={t("type")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -386,9 +417,9 @@ export function DetailsStep({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label={t("language")}>
+            <Field label={t("language")} help="language" id={`${id}-language`}>
               <Select value={m.language} onValueChange={(language) => set("language", language)}>
-                <SelectTrigger className="w-full" aria-label={t("language")}>
+                <SelectTrigger id={`${id}-language`} className="w-full" aria-label={t("language")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -400,13 +431,13 @@ export function DetailsStep({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label={t("date")}>
+            <Field label={t("date")} help="date" id={`${id}-date`}>
               {/* A report is published by today, as the author's own calendar has it. A date typed past it says so here, before the checks are asked for. */}
-              <Input type="date" value={m.date} min={EARLIEST_DATE} max={localToday()} aria-invalid={future || early || undefined} onChange={(e) => set("date", e.target.value)} />
+              <Input id={`${id}-date`} type="date" value={m.date} min={EARLIEST_DATE} max={localToday()} aria-invalid={future || early || undefined} onChange={(e) => set("date", e.target.value)} />
               {future || early ? <span className="block ps-1 text-xs text-destructive">{t(future ? "future" : "tooEarly")}</span> : null}
             </Field>
             <div className="space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("licence")}</span>
+              <FieldLabel label={t("licence")} help="licence" />
               <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
                 <a href={LICENCE_URL[m.licence]} target="_blank" rel="noreferrer license" className="inline-flex items-center gap-1.5 underline-offset-2 hover:underline">
                   {m.licence}
@@ -417,7 +448,7 @@ export function DetailsStep({
           </div>
         </Section>
 
-        <Section title={t("authors")} crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
+        <Section title={t("authors")} help="authors" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
           <Paged pager={authors.pager} rowHeight={AUTHOR_ROW} label={t("authorsPager")}>
           <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
             {authors.shown.map((a, at) => {
@@ -450,14 +481,14 @@ export function DetailsStep({
           </Button>
         </Section>
 
-        <Section title={t("abstract")} crossref aside={<span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>}>
+        <Section title={t("abstract")} help="abstract" crossref aside={<span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>}>
           <Textarea aria-label={t("abstract")} value={m.abstract} maxLength={DETAIL_TEXT.abstract} onChange={(e) => set("abstract", e.target.value)} rows={7} className="text-sm/6" />
         </Section>
 
         <Section title={t("subjects")} crossref={false}>
           <div className="grid gap-4 @3xl:grid-cols-2">
             <div className="min-w-0 space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("topics")}</span>
+              <FieldLabel label={t("topics")} help="topics" />
               <OptionPicker
                 label={t("topics")}
                 placeholder={t("addTopic")}
@@ -475,11 +506,11 @@ export function DetailsStep({
                 }
               />
             </div>
-            <Field label={t("keywords")}>
-              <ChipInput values={m.keywords} onChange={(keywords) => set("keywords", keywords)} placeholder={t("addKeywords")} label={t("addKeyword")} />
+            <Field label={t("keywords")} help="keywords" id={`${id}-keywords`}>
+              <ChipInput id={`${id}-keywords`} values={m.keywords} onChange={(keywords) => set("keywords", keywords)} placeholder={t("addKeywords")} label={t("addKeyword")} />
             </Field>
             <div className="min-w-0 space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("sdgs")}</span>
+              <FieldLabel label={t("sdgs")} help="sdgs" />
               <OptionPicker
                 label={t("sdgs")}
                 placeholder={t("addGoal")}
@@ -494,7 +525,7 @@ export function DetailsStep({
               />
             </div>
             <div className="min-w-0 space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("design")}</span>
+              <FieldLabel label={t("design")} help="design" />
               <OptionPicker
                 label={t("design")}
                 placeholder={t("addDesign")}
@@ -511,11 +542,11 @@ export function DetailsStep({
           </div>
         </Section>
 
-        <Section title={t("places")} crossref={false}>
+        <Section title={t("places")} help="places" crossref={false}>
           <CountrySelector label={t("places")} placeholder={t("addPlace")} selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
         </Section>
 
-        <Section title={t("funding")} crossref>
+        <Section title={t("funding")} help="funding" crossref>
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(f.funder.id ?? typedId(f.funder.name))))}
@@ -546,7 +577,7 @@ export function DetailsStep({
           ) : null}
         </Section>
 
-        <Section title={t("references")} crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
+        <Section title={t("references")} help="references" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
           {m.references.length ? (
             <Paged pager={refs} rowHeight={REF_ROW} label={t("referencesPager")}>
               <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
@@ -574,7 +605,7 @@ export function DetailsStep({
           {doiTrouble ? <p role="alert" className="ps-1 text-xs text-destructive">{doiTrouble}</p> : null}
         </Section>
 
-        <Section title={t("links")} crossref>
+        <Section title={t("links")} help="links" crossref>
           {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">{t("wrongLink")}</p> : null}
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label={t("linksPager")}>
@@ -653,7 +684,7 @@ export function DetailsStep({
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;
-          void onRun(m, opened);
+          void onRun(saved(m), opened);
         }}>
           <ShieldCheck /> {words ? words.action : t(onCancel ? (waits ? "sendForReview" : "checkAndPublish") : "runChecks")}
         </Button>
