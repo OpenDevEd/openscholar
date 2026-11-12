@@ -51,6 +51,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { keepMockLicence, mockAgreementText, mockByline, mockSeries, mockTerms, useMockLicence } from "@/components/reports/licence-mock";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
@@ -276,11 +277,15 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // Asked once for the minute the page opened in, so the count isn't read again on every draw; a report started
   // here changes the count by itself.
   const [now] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
-  const basics = useQuery(api.reports.settings.forAuthors, {});
+  const read = useQuery(api.reports.settings.forAuthors, {});
+  // mock: the agreement and byline as the real build words them (licence-mock.ts).
+  const basics = read && { ...read, series: mockSeries(read.series), agreement: { ...read.agreement, text: mockAgreementText(read.agreement.text) } };
   const { data: counts } = useProtectedQuery(api.reports.flow.counts, inWorkspace(workspaceId, {}));
   // Reports ready in the person's other workspaces, read with the page so their notice is there when it opens.
   const { data: waiting } = useProtectedQuery(api.reports.flow.waitingElsewhere, inWorkspace(workspaceId, {}));
-  const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
+  const { data: startsRead } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
+  // mock: dev's Autumn has no three-activation plan, so three cost three of one.
+  const starts = startsRead && { ...startsRead, priceOfThree: startsRead.priceOfThree ?? (startsRead.price === null ? null : startsRead.price * 3) };
   // With no report named the page opens the workspace's reports, and a new report only when it has none. Opened on
   // that new report, it stays on it while it is signed: its own first report must not turn the page into the list
   // before the address names it.
@@ -294,9 +299,16 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const entry = useSyncExternalStore(watchEntry, entryKey, () => "");
   const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (entry !== "" && used.split(" ").includes(entry));
   const shownKey = listed ? null : (asked ?? "new");
-  const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  const { data: foundRead } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
-  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  const { data: termsRead } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  // mock: the licence this browser signed the report with, over what dev's server sends (licence-mock.ts).
+  const licence = useMockLicence(shownKey);
+  const found =
+    foundRead && "report" in foundRead
+      ? { ...foundRead, report: { ...foundRead.report, byline: mockByline(foundRead.report.byline, licence), ...(foundRead.report.metadata && { metadata: { ...foundRead.report.metadata, licence } }) } }
+      : foundRead;
+  const terms = termsRead && mockTerms(termsRead, licence);
   // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
   // round trip later.
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed || bare ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
@@ -995,7 +1007,9 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
               start(async () => {
                 say(null);
                 try {
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version, licence: licence! });
+                  // mock: dev's server takes no licence yet; this browser keeps it (licence-mock.ts).
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version } as Parameters<typeof sign>[0]);
+                  keepMockLicence(key, licence!);
                   // Signed, the ticks have done their work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);

@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2 } from "@/components/icons";
 import { ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN } from "@/lib/billing/plans";
 import { DEFAULT_LICENCE } from "@/lib/reports/report";
+import { mockSeries } from "@/components/reports/licence-mock";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -88,7 +89,8 @@ export function AdminPublishingSettings() {
   const priceOf = (id: string) => catalog?.plans.find((plan) => plan.id === id)?.price?.amount ?? null;
   return (
     <Enter ready>
-      <SettingsView settings={settings} prices={{ one: priceOf(ACTIVATION_PLAN), three: priceOf(THREE_ACTIVATIONS_PLAN) }} autumn={links.autumn ?? null} />
+      {/* mock: dev's Autumn has no three-activation plan, and dev's saved byline has no {licence} yet (licence-mock.ts). */}
+      <SettingsView settings={{ ...settings, series: mockSeries(settings.series) }} prices={{ one: priceOf(ACTIVATION_PLAN), three: priceOf(THREE_ACTIVATIONS_PLAN) ?? (priceOf(ACTIVATION_PLAN) === null ? null : priceOf(ACTIVATION_PLAN)! * 3) }} autumn={links.autumn ?? null} />
     </Enter>
   );
 }

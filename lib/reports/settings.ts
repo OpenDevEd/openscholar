@@ -7,7 +7,7 @@ import { DEFAULT_AGREEMENT } from "./agreement-text";
 import type { Licence } from "./report";
 
 /** A licence as the byline names it: a Creative Commons one by its short name, an author's own with its address too, since its name alone says nothing of what it allows. */
-const licenceInByline = (licence: Licence) => (typeof licence === "string" ? licence : `${licence.name} (${licence.url})`);
+export const licenceInByline = (licence: Licence) => (typeof licence === "string" ? licence : `${licence.name} (${licence.url})`);
 
 /** GPT-6 Luna at medium read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
 export const DEFAULT_TEXT_MODEL = "openai/gpt-6-luna";
