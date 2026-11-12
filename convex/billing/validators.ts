@@ -1,9 +1,13 @@
 import { v, type Infer } from "convex/values";
+import { REFILL_INTERVALS } from "../../lib/billing/plans";
 import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS, capped } from "../lib/listCaps";
 
 /** A plan's limit on each of lib/billing/plans.ts PLAN_LIMITS it sets: a number, or null for unlimited. A limit left out isn't set. */
 const limitValue = v.optional(v.union(v.number(), v.null()));
 export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue, bulk_papers: limitValue, uploads_per_hour: limitValue, guests: limitValue, suggestions_per_day: limitValue, overviews_per_day: limitValue, reports_per_day: limitValue });
+
+/** How often a balance refills (lib/billing/plans.ts REFILL_INTERVALS). */
+export const refillValidator = v.union(...REFILL_INTERVALS.map((interval) => v.literal(interval)));
 
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
@@ -30,6 +34,8 @@ export const billingAccountSnapshotValidator = v.object({
   purchased: v.number(),
   /** Report activations left in the customer's balance (#1261); null for unlimited. Absent on a snapshot cached before the balance existed. */
   activations: v.optional(v.union(v.number(), v.null())),
+  /** The shortest interval any of those activations refill by; absent when none refills. */
+  activationsRefill: v.optional(refillValidator),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
   credit: v.optional(v.number()),

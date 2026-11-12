@@ -421,7 +421,16 @@
     "topUpDue": "Inadaiwa sasa",
     "topUpBalanceNow": "Salio",
     "topUpBalanceAfter": "Baada ya",
-    "seePlans": "Tazama mipango"
+    "seePlans": "Tazama mipango",
+    "activations": {
+      "title": "Miwasho ya ripoti",
+      "left": "{count, plural, one {Umebaki #} other {Imebaki #}}",
+      "leftRefills": "{count, plural, one {Umebaki #} other {Imebaki #}}, hujazwa upya {interval, select, hour {kila saa} day {kila siku} week {kila wiki} month {kila mwezi} quarter {kila miezi mitatu} semi_annual {kila miezi sita} other {kila mwaka}}",
+      "unlimited": "Bila kikomo",
+      "none": "Hakuna iliyobaki",
+      "hint": "Kila mmoja huweka ripoti hewani kwenye Openscholar Reports bila kulipa chochote.",
+      "publish": "Chapisha"
+    }
   },
   "errors": {
     "unexpectedIssue": "Kumetokea tatizo lisilotarajiwa. Tafadhali jaribu tena, au rudi kwenye ukurasa thabiti.",
@@ -6748,14 +6757,17 @@
           "left": "{count, plural, one {Umebaki #} other {Imebaki #}}",
           "unlimited": "Bila kikomo",
           "uses": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio lako. Hakuna kinachotozwa.",
-          "usesOrg": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio la {organization}. Hakuna kinachotozwa."
+          "usesOrg": "Kuwasha kunatumia mwasho mmoja kutoka kwenye salio la {organization}. Hakuna kinachotozwa.",
+          "leftRefills": "{count, plural, one {Umebaki #} other {Imebaki #}}, hujazwa upya {interval, select, hour {kila saa} day {kila siku} week {kila wiki} month {kila mwezi} quarter {kila miezi mitatu} semi_annual {kila miezi sita} other {kila mwaka}}"
         },
         "creditLine": "Salio la akaunti",
         "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena.",
         "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake.",
         "noneLeft": "Hakuna mwasho uliobaki kwenye salio. Iwashe tena ili ulipie mmoja.",
         "kept": "Mwasho uliolipiwa kwa ripoti hii umeingia kwenye salio lako. Ripoti inayofuata utakayoiwasha itautumia.",
-        "keptOrg": "Mwasho uliolipiwa kwa ripoti hii umeingia kwenye salio la {organization}. Ripoti inayofuata itakayowashwa huko itautumia."
+        "keptOrg": "Mwasho uliolipiwa kwa ripoti hii umeingia kwenye salio la {organization}. Ripoti inayofuata itakayowashwa huko itautumia.",
+        "keptNote": "Mkaguzi akikataa ripoti kabla malipo hayajakamilika, mwasho unabaki kwenye salio lako kwa ajili ya ripoti yako inayofuata.",
+        "keptNoteOrg": "Mkaguzi akikataa ripoti kabla malipo hayajakamilika, mwasho unabaki kwenye salio la {organization} kwa ajili ya ripoti inayofuata."
       },
       "back": "Rudi",
       "bylineFirst": "PDF yako ina mstari huu",
@@ -6813,7 +6825,8 @@
           "body": "Hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
           "bodyPriced": "{price} kwa kila ripoti, hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei hiyo au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
           "bodyBalance": "Hutumia mwasho mmoja kutoka kwenye salio, lenye {count, number} iliyobaki. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani.",
-          "bodyUnlimited": "Hutumia mwasho mmoja kutoka kwenye salio, lisilo na kikomo. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani."
+          "bodyUnlimited": "Hutumia mwasho mmoja kutoka kwenye salio, lisilo na kikomo. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani.",
+          "bodyBalanceRefills": "Hutumia mwasho mmoja kutoka kwenye salio, lenye {count, number} iliyobaki na linalojazwa upya {interval, select, hour {kila saa} day {kila siku} week {kila wiki} month {kila mwezi} quarter {kila miezi mitatu} semi_annual {kila miezi sita} other {kila mwaka}}. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani."
         }
       }
     },

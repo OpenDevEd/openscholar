@@ -246,6 +246,8 @@ const PLACE = {
   page: parseAsInteger.withDefault(1),
   /** Who adds the byline to the report shown, as chosen on the way to its upload. It is one report's choice: another report starts without one. */
   byline: parseAsStringLiteral(BYLINE_BY),
+  /** The voucher applied on the report shown, so a reload applies it again (app/publish/page.tsx quotes it). Another report starts without one. */
+  code: parseAsString,
 };
 
 export function PublishFlow({ carried = null }: { /** A code applied before the trip to Stripe's page, quoted again by the server for the report it was applied on. */ carried?: (Quote & { key: string }) | null }) {
@@ -262,9 +264,14 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // the browser puts the place back on the way back.
   // What went wrong with something done on this page, said on the screen it was done on, until the page moves on.
   const trouble = useProblem(`${view}:${asked ?? ""}`);
+  // The voucher applied on a report, kept here above its steps so Back and Forward between them don't drop it. A reload
+  // brings it back from the address, which the server quotes again (`carried`).
+  const [applied, setApplied] = useState(carried);
   const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => {
     trouble.say(null);
-    void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
+    // Opening a report again brings back the voucher applied on it, so a reload there still has it; anywhere else goes without.
+    const code = next.report && next.report === applied?.key ? applied.code : null;
+    void setPlace("report" in next ? { byline: null, code, ...next } : "view" in next ? { code: null, ...next } : next, { history: "push", scroll: true });
   };
   // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
   // Back afterwards never reopens it; what a link or a reload opened closes in place.
@@ -507,7 +514,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             workspaceId={workspaceId}
             fresh={fresh}
             setFresh={setFresh}
-            carried={carried}
+            carried={applied}
+            onApplied={setApplied}
             onSigned={(key) => {
               const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
@@ -559,7 +567,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ carried, onApplied, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** A code applied or removed on a report's checks. */ onApplied: (quote: (Quote & { key: string }) | null) => void; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
@@ -634,7 +642,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} price={starts?.price ?? null} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} refill={starts?.refill ?? null} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -745,6 +753,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
               report={report}
               carried={carried?.key === report.key ? carried : null}
+              onApplied={(quote) => onApplied(quote && { ...quote, key: report.key })}
               humanReview={basics.humanReview}
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
@@ -1155,7 +1164,7 @@ function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, activations, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, activations, refill, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What they refill by; null when none refills. */ refill: Terms["refill"]; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const flow = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1169,7 +1178,7 @@ function Overview({ series, reviewed, activations, price, onStart }: { series: s
     { id: "checks", icon: ShieldCheck },
     { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
-  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? t("activate.bodyBalance", { count: activations }) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
+  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? (refill ? t("activate.bodyBalanceRefills", { count: activations, interval: refill }) : t("activate.bodyBalance", { count: activations })) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1516,7 +1525,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, carried: quoted = null, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: from the balance, or by buying one once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; /** A code applied or removed here, for the page to keep while its steps come and go. */ onApplied?: (quote: Quote | null) => void; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: from the balance, or by buying one once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1542,7 +1551,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   const vouchers = !spendable && price !== null && !pending && !!onQuote;
   // What is typed in the bar's code field, kept here so every way of charging sees it. Back from saving a card on
   // Stripe's page, the code applied before leaving is in the address and starts typed in.
-  const [carried] = useQueryState("code", parseAsString);
+  const [carried, setCarried] = useQueryState("code", parseAsString);
   // Quoted again by the server on the way back, the code is applied already; one it couldn't quote stays typed.
   const [typed, setTyped] = useState(quoted ? "" : (carried ?? ""));
   // A code typed and not applied: nothing is charged past it, or the price without the code would be.
@@ -1559,6 +1568,9 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
     chosen.current = true;
     setChose(true);
     setCode(quote);
+    // Kept by the page while its steps come and go, and in the address for a reload, which the server quotes again.
+    onApplied?.(quote);
+    void setCarried(quote?.code ?? null, { history: "replace" });
   };
   // Typing a code is choosing one too: a requote that answers meanwhile must not put the old code over the field.
   const type = (value: string) => {
@@ -1682,6 +1694,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                   onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
                   activations={terms.activations}
+                  refill={terms.refill}
                   card={card}
                   credit={credit}
                   price={price}
@@ -1782,7 +1795,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
           open={paying}
           onOpenChange={setPaying}
           title={due === 0 ? t("activation.freeTitle", { key: report.key }) : t("activation.payTitle", { price: dollars(due), key: report.key })}
-          description={organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : undefined}
+          // Who pays, then what becomes of the activation bought if the report is declined while the payment goes through.
+          description={[organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : null, organization ? t("activation.keptNoteOrg", { organization }) : t("activation.keptNote")].filter(Boolean).join(" ")}
           confirmLabel={due === 0 ? t("activate") : t("activation.payConfirm")}
           totalLabel={t("activation.dueNow")}
           labels={{ from: t("activation.doiNow"), to: t("activation.after") }}
@@ -1959,7 +1973,7 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, activations, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, activations, refill, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; /** What they refill by; null when none refills. */ refill: Terms["refill"]; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1994,7 +2008,7 @@ function PaymentLine({ organization, activations, card, credit, price, pending, 
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
             {t("balance")}
             <StatusChip tone="success" icon={CircleCheck}>
-              {activations === null ? t("unlimited") : t("left", { count: activations })}
+              {activations === null ? t("unlimited") : refill ? t("leftRefills", { count: activations, interval: refill }) : t("left", { count: activations })}
             </StatusChip>
           </p>
         ) : card ? (

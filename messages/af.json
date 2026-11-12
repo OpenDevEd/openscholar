@@ -421,7 +421,16 @@
     "topUpDue": "Nou betaalbaar",
     "topUpBalanceNow": "Saldo",
     "topUpBalanceAfter": "Daarna",
-    "seePlans": "Sien planne"
+    "seePlans": "Sien planne",
+    "activations": {
+      "title": "Verslagaktiverings",
+      "left": "{count, number} oor",
+      "leftRefills": "{count, number} oor, word {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul",
+      "unlimited": "Geen limiet",
+      "none": "Niks oor nie",
+      "hint": "Elkeen bring 'n verslag regstreeks op Openscholar Reports sonder om iets te betaal.",
+      "publish": "Publiseer"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ons het ’n onverwagte probleem ondervind. Probeer weer, of gaan terug na ’n stabiele bladsy.",
@@ -6748,14 +6757,17 @@
           "left": "{count, number} oor",
           "unlimited": "Geen limiet",
           "uses": "Aktivering gebruik een uit jou saldo. Niks word gehef nie.",
-          "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie."
+          "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie.",
+          "leftRefills": "{count, number} oor, word {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul"
         },
         "creditLine": "Rekeningkrediet",
         "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek.",
         "noneLeft": "Daar is geen aktivering in die saldo oor nie. Aktiveer dit weer om vir een te betaal.",
         "kept": "Die aktivering wat vir hierdie verslag betaal is, is in jou saldo. Die volgende verslag wat jy aktiveer, gebruik dit.",
-        "keptOrg": "Die aktivering wat vir hierdie verslag betaal is, is in {organization} se saldo. Die volgende verslag wat daar geaktiveer word, gebruik dit."
+        "keptOrg": "Die aktivering wat vir hierdie verslag betaal is, is in {organization} se saldo. Die volgende verslag wat daar geaktiveer word, gebruik dit.",
+        "keptNote": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in jou saldo vir jou volgende verslag.",
+        "keptNoteOrg": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in {organization} se saldo vir die volgende verslag."
       },
       "back": "Terug",
       "bylineFirst": "Jou PDF dra hierdie reël",
@@ -6813,7 +6825,8 @@
           "body": "Betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
           "bodyPriced": "{price} vir elke verslag, betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
           "bodyBalance": "Gebruik een aktivering uit die saldo, wat {count, number} oor het. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
-          "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks."
+          "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
+          "bodyBalanceRefills": "Gebruik een aktivering uit die saldo, wat {count, number} oor het en {interval, select, hour {elke uur} day {elke dag} week {elke week} month {elke maand} quarter {elke drie maande} semi_annual {elke ses maande} other {elke jaar}} aangevul word. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks."
         }
       }
     },

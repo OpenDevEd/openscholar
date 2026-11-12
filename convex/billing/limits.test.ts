@@ -63,6 +63,18 @@ describe("plan limits", () => {
   });
 });
 
+describe("a workspace's activations", () => {
+  const grant = (interval: string, remaining: number) => ({ id: interval, plan_id: null, remaining, reset: { interval, resets_at: interval === "one_off" ? null : 1 } });
+  it("say how many are left and the shortest interval any of them refills by, one-off grants aside", () => {
+    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 5, breakdown: [grant("one_off", 2), grant("month", 2), grant("day", 1)] } }))).toMatchObject({ activations: 5, activationsRefill: "day" });
+    const once = snapshotFromCustomer(customer({ report_activations: { remaining: 2, breakdown: [grant("one_off", 2)] } }));
+    expect(once.activations).toBe(2);
+    expect(once.activationsRefill).toBeUndefined();
+    expect(snapshotFromCustomer(customer({ report_activations: { remaining: 0, unlimited: true } })).activations).toBeNull();
+    expect(snapshotFromCustomer(customer({})).activations).toBe(0);
+  });
+});
+
 describe("plan limits over time", () => {
   it("keep the newest snapshot's plan when an older refresh lands after it", async () => {
     const t = convexTest(schema);
