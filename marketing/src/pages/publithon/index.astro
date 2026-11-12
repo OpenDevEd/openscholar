@@ -3,7 +3,6 @@ import Base from "../../layouts/Base.astro";
 import Device from "../../components/Device.astro";
 import Art from "../../components/Art.astro";
 import Arrow from "../../components/Arrow.astro";
-import Icon from "../../components/Icon.astro";
 import Faq from "../../components/Faq.astro";
 import Close from "../../components/Close.astro";
 import { APP } from "../../data/site.mjs";
@@ -28,20 +27,20 @@ const parts = [
   { text: "/openscholar-reports.r100230", c: "#fbbf24", at: 24, side: "below", name: "Your report", note: "This work and no other, for good" },
 ];
 const gains = [
-  ["cite", "Cited in one paste", "Reference managers turn the DOI into a full citation."],
-  ["linkround", "A link that lasts", "If the report's page ever moves, the DOI follows it."],
-  ["search", "Easier to find", "Its title, authors and funders go out with the DOI, where research indexes can pick them up."],
-  ["graph", "Counted when cited", "Citations that use the DOI can be traced back to your work."],
+  ["Cited in one paste", "Reference managers turn the DOI into a full citation."],
+  ["A link that lasts", "If the report's page ever moves, the DOI follows it."],
+  ["Easier to find", "Its title, authors and funders go out with the DOI, where research indexes can pick them up."],
+  ["Counted when cited", "Citations that use the DOI can be traced back to your work."],
 ];
-// What Openscholar does in place of each job a DOI takes on your own. Every first line is something the publish
-// flow does today (publishReports, convex/reports).
+// What a DOI takes on your own, each beside what Openscholar does instead, row for row (laid out like Ploy's and
+// Zaro's before and after sections on Mobbin). Every right-hand row is something the publish flow does today.
 const chores = [
-  ["buildings", "Published in its own series", "Instead of finding a journal or repository that issues DOIs, or joining a registration agency"],
-  ["cite", "The details read from your PDF", "Instead of writing the title, authors, affiliations and funders in the agency's format"],
-  ["pen", "The DOI line added for you", "Instead of putting the DOI and the series line into your PDF"],
-  ["shield", "Checked against published work", "Instead of checking by hand that it hasn't come out before"],
-  ["refresh", "Registered and kept up to date", "Instead of registering the DOI and sending corrections when something changes"],
-  ["globe", "A page that keeps the PDF online", "Instead of finding somewhere the DOI can always lead"],
+  [["Find a publisher", "A journal or repository that issues DOIs, or join a registration agency yourself"], ["Openscholar Reports publishes it", "In its own series, under your name"]],
+  [["Write up the metadata", "Title, authors, affiliations and funders, in the agency's format"], ["Read from your PDF", "You check the details and change anything"]],
+  [["Stamp the PDF", "Put the DOI and the series line on it yourself"], ["Added for you", "On a last page, if your PDF doesn't have it"]],
+  [["Check for earlier versions", "Make sure it hasn't been published before"], ["Checked automatically", "Against published work, before it goes live"]],
+  [["Register and maintain it", "Deposit the DOI, and send corrections when something changes"], ["Registered for you", "When it goes live, with corrections sent on"]],
+  [["Host the file", "Keep the PDF online, so the DOI always leads somewhere"], ["Its own page", "With the PDF to read and cite"]],
 ];
 const faq = [
   ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
@@ -85,19 +84,23 @@ const faq = [
         {parts.map((pt, i) => <figcaption class:list={["tag", pt.side]} style={`--c:${pt.c};--at:${pt.at};--i:${i}`}><b>{pt.name}</b><span>{pt.note}</span></figcaption>)}
       </figure>
       <div class="lands">
-        <ul class="gains">{gains.map(([icon, t, d], i) => <li style={`--i:${i}`}><i><Icon name={icon} size={22} /></i><b>{t}</b><span>{d}</span></li>)}</ul>
+        <ul class="gains">{gains.map(([t, d], i) => <li style={`--i:${i}`}><b>{t}</b><span>{d}</span></li>)}</ul>
         <div class="d-shot" data-in><Device kind="laptop" name="r-page" theme="light" alt="The page a report's DOI opens, with its authors, topics, abstract and PDF" sizes="(max-width: 900px) 100vw, 720px" /></div>
       </div>
     </div>
   </section>
 
-  {/* The paperwork a DOI takes on your own: the pile beside one sealed page, and what's done for you in its place. */}
-  <section class="panel chores" id="done" aria-labelledby="ch-h">
-    <div class="ch-side">
-      <img class="ch-art" src="/img/art-pub-paperwork.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
-      <div class="ch-head"><h2 id="ch-h">We do the paperwork</h2><p class="lead">On your own, a DOI means going through a journal or repository, or joining a registration agency and doing the rest yourself. Here it's done for you.</p></div>
+  {/* The paperwork a DOI takes on your own, crossed off row by row beside what's done for you instead. The picture
+      over the two columns is the same story: the cold pile over "On your own", the sealed page over "With Openscholar". */}
+  <section class="chores" id="done" aria-labelledby="ch-h">
+    <div class="ch-head"><h2 id="ch-h">We do the paperwork</h2><p class="lead">On your own, a DOI means going through a journal or repository, or joining a registration agency and doing the rest yourself. Here it's done for you.</p></div>
+    <div class="panel ch-table" data-in>
+      <img class="ch-art" src="/img/art-pub-paperwork-wide.avif" srcset="/img/art-pub-paperwork-wide-960.avif 960w, /img/art-pub-paperwork-wide.avif 1672w" sizes="(max-width: 1280px) 100vw, 1280px" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+      <div class="ch-cols" role="table" aria-label="What a DOI takes on your own, and what Openscholar does instead">
+        <div class="ch-row ch-th" role="row"><span role="columnheader">On your own</span><i class="ch-arrow" aria-hidden="true"><Arrow /></i><span role="columnheader">With Openscholar</span></div>
+        {chores.map(([[wt, wd], [nt, nd]], i) => <div class="ch-row" role="row" style={`--i:${i}`}><span class="was" role="cell"><b>{wt}</b><span>{wd}</span></span><span class="now" role="cell"><b>{nt}</b><span>{nd}</span></span></div>)}
+      </div>
     </div>
-    <ul class="ch-list" data-in>{chores.map(([icon, now, was], i) => <li style={`--i:${i}`}><i><Icon name={icon} size={22} /></i><b>{now}</b><span>{was}</span></li>)}</ul>
   </section>
 
   {/* The six steps on one thread, each with its icon from the app as a glass emblem. The thread fills from the first
@@ -165,23 +168,28 @@ const faq = [
   :global(.js) .dia.in .pt::after { transform-origin: left; transition: transform .7s var(--ease) calc(.15s + var(--i) * .35s); } :global(.js) .dia.in .tag { transition: opacity .5s var(--ease) calc(.4s + var(--i) * .35s), translate .6s var(--ease) calc(.4s + var(--i) * .35s); }
   /* Under the DOI, what it opens: the report's page rising out of the panel, and what the DOI does for it beside. */
   .lands { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 3.4vw, 56px); align-items: end; }
-  .gains { display: grid; gap: 22px; margin: 0; padding: 0 0 var(--pad); list-style: none; align-self: center; }
-  .gains li { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 16px; row-gap: 2px; } .gains i { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgb(255 214 140 / .12); color: #ffd68c; } .gains i :global(svg) { width: 22px; height: 22px; }
+  .gains { display: grid; margin: 0; padding: 0 0 var(--pad); list-style: none; align-self: center; }
+  .gains li { display: grid; gap: 4px; padding-block: 16px; border-top: 1px solid rgb(255 255 255 / .1); } .gains li:first-child { border-top: 0; padding-top: 0; }
   .gains b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; } .gains span { color: rgb(255 255 255 / .62); font-size: 15px; line-height: 1.45; }
   .d-shot { margin-bottom: -7%; } .d-shot :global(.body) { padding: 0; border-radius: 14px 14px 0 0; background: none; box-shadow: 0 0 0 1px rgb(255 255 255 / .24), 0 -10px 70px -10px rgb(125 167 230 / .35), 0 40px 90px -30px #000; } .d-shot :global(.glass) { border-radius: 14px 14px 0 0; } .d-shot :global(.cam), .d-shot :global(.deck), .d-shot :global(.sheen) { display: none; }
 
-  /* The paperwork: the pile beside the one sealed page on the left with the heading over it, and on the right what's
-     done for you, each line over the job it replaces. */
-  .chores { --bg: #010c28; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); margin-top: clamp(48px, 6vw, 88px); }
-  .ch-side { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: var(--pad) var(--pad) 0; }
-  /* The picture runs to the panel's left and bottom edges and fades out at its top and into the list on the right. */
-  .ch-art { order: 2; align-self: end; width: calc(100% + var(--pad) * 2); height: 100%; min-height: 300px; margin-inline: calc(var(--pad) * -1); object-fit: cover; object-position: 50% 82%; -webkit-mask-image: linear-gradient(transparent, #000 32%), linear-gradient(90deg, #000 70%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(transparent, #000 32%), linear-gradient(90deg, #000 70%, transparent); mask-composite: intersect; }
-  .ch-head { display: grid; gap: 18px; } .ch-head h2 { font-size: clamp(40px, 4.6vw, 72px); line-height: 1; letter-spacing: -.035em; } .ch-head .lead { color: rgb(255 255 255 / .8); max-width: 26em; }
-  .ch-list { display: grid; align-content: center; margin: 0; padding: var(--pad) var(--pad) var(--pad) 0; list-style: none; }
-  .ch-list li { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 18px; row-gap: 3px; padding-block: 18px; border-top: 1px solid rgb(255 255 255 / .12); } .ch-list li:first-child { border-top: 0; }
-  .ch-list i { grid-row: span 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: rgb(255 214 140 / .12); color: #ffd68c; } .ch-list i :global(svg) { width: 22px; height: 22px; }
-  .ch-list b { font-weight: 500; font-size: clamp(18px, 1.6vw, 21px); letter-spacing: -.01em; } .ch-list span { color: rgb(255 255 255 / .58); font-size: 15px; line-height: 1.45; }
-  :global(.js) .ch-list[data-in] { opacity: 1; transform: none; } :global(.js) .ch-list:not(.in) li { opacity: 0; translate: 16px 0; } :global(.js) .ch-list.in li { transition: opacity .6s var(--ease) calc(.1s + var(--i) * .12s), translate .7s var(--ease) calc(.1s + var(--i) * .12s); }
+  /* The paperwork: one table, its left column muted and crossed off row by row, its right column lit. */
+  .chores { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
+  .ch-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; padding-inline: var(--pad); } .ch-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
+  .ch-table { --bg: #010c28; display: grid; }
+  .ch-art { display: block; width: 100%; aspect-ratio: 1672 / 640; object-fit: cover; object-position: 50% 70%; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  .ch-cols { display: grid; padding: 0 var(--pad) var(--pad); margin-top: clamp(-56px, -3vw, -24px); position: relative; }
+  .ch-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(32px, 5vw, 80px); border-top: 1px solid rgb(255 255 255 / .1); }
+  .ch-row > span { display: grid; gap: 4px; padding-block: 18px; } .ch-row b { font-weight: 500; font-size: clamp(17px, 1.5vw, 20px); letter-spacing: -.01em; width: fit-content; } .ch-row > span > span { font-size: 15px; line-height: 1.45; }
+  .ch-th { border-top: 0; align-items: center; } .ch-th > span { padding-block: 0 14px; font-size: 14px; font-weight: 500; letter-spacing: .01em; color: rgb(255 255 255 / .6); } .ch-th > span:last-child { color: #ffd68c; }
+  .ch-arrow { position: absolute; left: 50%; top: -6px; translate: -50% 0; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #fff; color: var(--ink); }
+  .was b { color: rgb(255 255 255 / .62); } .was > span { color: rgb(255 255 255 / .42); }
+  .now b { color: #fff; } .now > span { color: rgb(255 255 255 / .7); }
+  /* The strike is drawn across each job's title, one row after another, as the table arrives. */
+  .was b { background: linear-gradient(rgb(255 255 255 / .7), rgb(255 255 255 / .7)) no-repeat 0 55% / 100% 1.5px; }
+  :global(.js) .ch-table[data-in] { opacity: 1; transform: none; }
+  :global(.js) .ch-table:not(.in) .was b { background-size: 0 1.5px; } :global(.js) .ch-table.in .was b { transition: background-size .5s cubic-bezier(.65, 0, .35, 1) calc(.3s + var(--i) * .3s); }
+  :global(.js) .ch-table:not(.in) .now { opacity: 0; translate: -10px 0; } :global(.js) .ch-table.in .now { transition: opacity .5s var(--ease) calc(.5s + var(--i) * .3s), translate .6s var(--ease) calc(.5s + var(--i) * .3s); }
 
   /* The steps, on a thread that lights from the first to the last. */
   .path { background: var(--night); padding-block: clamp(72px, 8vw, 120px) clamp(56px, 6vw, 96px); margin-top: clamp(48px, 6vw, 88px); }
@@ -213,7 +221,8 @@ const faq = [
     .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
     .p-head, .d-head { grid-template-columns: minmax(0, 1fr); }
     .lands { grid-template-columns: minmax(0, 1fr); } .gains { padding-bottom: 0; } .d-shot { margin-bottom: -9%; }
-    .chores { grid-template-columns: minmax(0, 1fr); } .ch-art { height: 320px; } .ch-list { padding: 0 var(--pad) var(--pad); }
+    .ch-head { grid-template-columns: minmax(0, 1fr); } .ch-art { aspect-ratio: 1672 / 760; }
+    .ch-row { grid-template-columns: minmax(0, 1fr); } .ch-th { display: none; } .ch-row > .was { padding-bottom: 4px; } .ch-row > .now { padding-top: 4px; }
     .p-steps { --em: 72px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
     .thread { top: calc(var(--em) / 2); bottom: calc(var(--em) / 2); left: calc(var(--em) / 2 - 1px); right: auto; width: 2px; height: auto; } .thread i { background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); transform-origin: top; }
     :global(.js) .p-run:not(.in) .thread i { transform: scaleY(0); }
@@ -228,6 +237,6 @@ const faq = [
     .tag, .tag.above, .tag.below { position: relative; left: 0; top: auto; bottom: auto; margin-top: 16px; white-space: normal; } .tag.above::before, .tag.below::before { top: 2px; bottom: 2px; }
     .dia > figcaption:nth-of-type(1) { grid-row: 2; } .dia > figcaption:nth-of-type(2) { grid-row: 4; } .dia > figcaption:nth-of-type(3) { grid-row: 6; }
   }
-  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-list:not(.in) li, :global(.js) .dia:not(.in) .tag { opacity: 1; translate: none; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-table:not(.in) .now, :global(.js) .dia:not(.in) .tag { opacity: 1; translate: none; } :global(.js) .ch-table:not(.in) .was b { background-size: 100% 1.5px; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
   @media (prefers-reduced-motion: reduce) { :global(.js) .p-run:not(.in) .thread i { transform: none; } :global(.js) .p-run:not(.in) img, :global(.js) .p-run:not(.in) li > :not(img) { opacity: 1; filter: none; transform: none; translate: none; } }
 </style>
