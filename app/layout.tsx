@@ -31,6 +31,7 @@ import { PostHogIdentify } from "@/components/posthog-identify";
 import { ResearchStateProvider } from "@/lib/research/provider";
 import { SETUP_HEADER } from "@/lib/profile/setup";
 import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
+import { ADDRESS_HEADER } from "@/lib/workspaces/paths";
 import { AssistantPanel } from "@/components/assistant/panel";
 import { ItemHome, WorkspaceGone } from "@/components/workspaces/item-home";
 import { WorkspacesProvider } from "@/components/workspaces/parts";
@@ -85,6 +86,8 @@ export default async function RootLayout({
   const look = looks[lookKey(slug)];
   // Whether this page is a new account's profile setup instead, as the proxy decided before anything was rendered.
   const setupFirst = !!userId && requestHeaders.get(SETUP_HEADER) === "due";
+  // Signing out (app/sign-out) is the whole page too: the rail and everything else signed in would change under it as the session ends.
+  const signingOut = requestHeaders.get(ADDRESS_HEADER)?.split("?")[0] === "/sign-out";
   const setupUser = setupFirst ? await currentUser() : null;
   const setupPerson = setupUser ? { name: setupUser.fullName ?? "", imageUrl: setupUser.imageUrl } : null;
 
@@ -108,6 +111,7 @@ export default async function RootLayout({
                   <TooltipProvider>
                   {/* While a new account's profile setup is due, it is the whole page: nothing below it runs, not even the
                       app's own providers, analytics or research state. */}
+                  {signingOut ? children : (
                   <ProfileSetupGate due={setupFirst} person={setupPerson}>
                   <PostHogIdentify />
                   <ResearchStateProvider>
@@ -142,6 +146,7 @@ export default async function RootLayout({
                   </QuerySyncProvider>
                   </ResearchStateProvider>
                   </ProfileSetupGate>
+                  )}
                   </TooltipProvider>
                 </NuqsAdapter>
               </ConfigProvider>
