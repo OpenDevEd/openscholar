@@ -16,7 +16,7 @@ const steps = [
   ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
   ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
   ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before."],
-  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
+  ["live", "#fbbf24", "Activate", "The DOI is registered and the report goes live on its own page."],
 ];
 // What a DOI takes on your own, each beside what Openscholar does instead, row for row (laid out like Ploy's and
 // Zaro's before and after sections on Mobbin). Every right-hand row is something the publish flow does today.
@@ -32,7 +32,7 @@ const faq = [
   ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
   ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against work that's already published."],
   ["What does AI do here?", "It reads the title, authors, institutions and funders from your PDF, so you don't type them in. You check them and change anything before the report goes live."],
-  ["Does anyone review my report first?", "No. Automatic checks look for the series line with your DOI and for anything published before, and once they pass, your report goes live straight away."],
+  ["Does anyone review my report first?", "No. Automatic checks look for the series line with your DOI and for anything published before, and once they pass, you activate your report and it goes live straight away."],
   ["Can I run a publithon for my field?", "Yes. Tell us the topic and who you'd invite, and we'll plan it with you."],
 ];
 ---
@@ -45,7 +45,7 @@ const faq = [
       and a light keeps passing along the thread, each emblem answering as it goes by. */}
   <section class="bleed how" id="publish" aria-labelledby="how-h" data-how>
     <div class="inner how-in">
-      <div class="how-head" data-in><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About five minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
+      <div class="how-head" data-in><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About five minutes from start to finish. Once the automatic checks pass, you activate your report and it goes live straight away.</p></div>
       <ol class="road">
         <i class="thread" aria-hidden="true"><i></i><b></b></i>
         {steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><span class="em"><img src={`/img/step-${id}.avif`} width="400" height="400" loading="lazy" decoding="async" alt="" /></span><b>{t}</b><span class="d">{d}</span></li>)}
