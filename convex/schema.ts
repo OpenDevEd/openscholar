@@ -627,6 +627,8 @@ export default defineSchema({
     payUrl: v.optional(v.string()),
     /** The hold at Autumn the report went live by: that hold alone takes an activation from the balance. */
     hold: v.optional(v.string()),
+    /** When a paid charge waiting on the bank was claimed for settling, so the watch and the webhooks never settle it twice at once. */
+    settling: v.optional(v.number()),
     // From before activations were a balance: cleared by migrations/activationBalance, then dropped.
     free: v.optional(v.boolean()),
     unbilled: v.optional(v.boolean()),

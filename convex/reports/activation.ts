@@ -5,7 +5,7 @@
 // promotion code takes off, which adds one to the balance, spent on the spot. A charge the bank asks to confirm waits
 // as `pending`: the bank's page comes back to the report, which goes live once Stripe has the invoice paid (`settle`).
 // An activation bought for a report that can't go live any more stays in the balance for the next one.
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -275,13 +275,31 @@ const HOLD_MS = 5 * 60_000;
 /** The idempotency key of what a record buys, and the start of its holds' names at Autumn. */
 const nameOf = (activationId: Id<"reportActivations">) => `report-activation-${activationId}`;
 
-/** A record's workspace, and the hold its report went live by, if it did; null once the record is gone. */
+/** A record's workspace, the hold its report went live by if it did, and whether it is still under way; null once the record is gone. */
 export const held = internalQuery({
   args: { activationId: v.id("reportActivations") },
-  returns: v.union(v.object({ workspaceId: v.id("workspaces"), hold: v.union(v.string(), v.null()) }), v.null()),
+  returns: v.union(v.object({ workspaceId: v.id("workspaces"), hold: v.union(v.string(), v.null()), at: v.number(), charging: v.boolean() }), v.null()),
   handler: async (ctx, { activationId }) => {
     const activation = await ctx.db.get("reportActivations", activationId);
-    return activation ? { workspaceId: activation.workspaceId, hold: activation.state === "live" ? (activation.hold ?? null) : null } : null;
+    return activation ? { workspaceId: activation.workspaceId, hold: activation.state === "live" ? (activation.hold ?? null) : null, at: activation.at, charging: activation.state === "charging" } : null;
+  },
+});
+
+/** How long one settlement of a paid charge has the record to itself: far longer than a spend takes. */
+const SETTLE_LEASE_MS = 2 * 60_000;
+
+/**
+ * Lets one caller settle a paid charge waiting on the bank: the watch, the webhooks and the page all try, and two
+ * spending it at once would see each other's hold and keep it unspent. True for the caller that may go on.
+ */
+export const claimSettle = internalMutation({
+  args: { activationId: v.id("reportActivations") },
+  returns: v.boolean(),
+  handler: async (ctx, { activationId }) => {
+    const activation = await ctx.db.get("reportActivations", activationId);
+    if (activation?.state !== "pending" || (activation.settling !== undefined && Date.now() - activation.settling < SETTLE_LEASE_MS)) return false;
+    await ctx.db.patch("reportActivations", activationId, { settling: Date.now() });
+    return true;
   },
 });
 
@@ -463,11 +481,47 @@ export const activate = action({
         throw createError("CONFLICT", KEPT);
       });
     } catch (error) {
-      // Whatever stopped it, a record still under way came to nothing. An activation that was bought after all, its
-      // answer lost, is in the balance, whichever report spends it: the next try here finds it and charges nothing.
-      await ctx.runMutation(internal.reports.activation.forget, { activationId });
+      // A refusal bought nothing: the record goes. Anything else may have bought one, its answer lost: Autumn's
+      // invoices say what became of it.
+      if (boughtNothing(error)) await ctx.runMutation(internal.reports.activation.forget, { activationId });
+      else await reconcile(ctx, first.customerId, activationId).catch(() => ctx.scheduler.runAfter(WATCH_FIRST_MS, internal.reports.activation.reconcileLater, { customerId: first.customerId, activationId, attempt: 0 }));
       throw error;
     }
+  },
+});
+
+/** An error that means nothing was bought: our own refusals, a declined card, a code or a request Autumn refused. */
+const boughtNothing = (error: unknown) => error instanceof ConvexError || (error instanceof AutumnError && error.status >= 400 && error.status < 500);
+
+/**
+ * Finds what became of a record's purchase whose answer was lost, from the customer's invoices at Autumn: paid, its
+ * activation is spent on the report (or kept); open, it waits on the bank like any other; none, nothing was bought
+ * (or nothing was owed, and the one bought is in the balance) and the record goes. Throws when Autumn can't be read.
+ */
+async function reconcile(ctx: ActionCtx, customerId: string, activationId: Id<"reportActivations">) {
+  const record: { at: number; charging: boolean } | null = await ctx.runQuery(internal.reports.activation.held, { activationId });
+  if (!record?.charging) return;
+  // ponytail: the newest activation invoice since the record, allowing for the two servers' clocks. Purchases of a
+  // workspace run one at a time, so it is this record's; match on the idempotency key if Autumn ever returns it.
+  const invoice = (await autumn.customer(customerId, { invoices: true })).invoices?.find((candidate) => candidate.plan_ids?.includes(ACTIVATION_PLAN) && candidate.created_at >= record.at - 5_000 && candidate.stripe_id);
+  console.log(JSON.stringify({ event: "report-activation-reconciled", activationId, invoice: invoice?.stripe_id ?? null, status: invoice?.status ?? null }));
+  if (invoice?.status === "paid") await spend(ctx, customerId, activationId, { invoice: invoice.stripe_id!, total: invoice.total, currency: invoice.currency });
+  else if (invoice?.status === "open") await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: invoice.stripe_id!, url: invoice.hosted_invoice_url ?? null } });
+  else await ctx.runMutation(internal.reports.activation.forget, { activationId });
+}
+
+/** `reconcile` again later, when Autumn couldn't be read at the time, further apart each time. */
+export const reconcileLater = internalAction({
+  args: { customerId: v.string(), activationId: v.id("reportActivations"), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { customerId, activationId, attempt }): Promise<null> => {
+    try {
+      await reconcile(ctx, customerId, activationId);
+    } catch (error) {
+      console.error(JSON.stringify({ event: "report-activation-unreconciled", activationId, attempt, error: String(error).slice(0, 300) }));
+      if (attempt + 1 < FINISH_TRIES) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.reconcileLater, { customerId, activationId, attempt: attempt + 1 });
+    }
+    return null;
   },
 });
 
@@ -548,8 +602,11 @@ async function settleOne(ctx: ActionCtx, wait: Wait): Promise<"open" | "settled"
       return settleOne(ctx, wait);
     }
   }
-  if (charge.status === "paid") await spend(ctx, wait.customerId, activationId, { invoice, total: charge.total, currency: charge.currency });
-  else await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: charge.status === "open" ? "refused" : "none" } });
+  if (charge.status === "paid") {
+    // One settlement at a time: another under way finishes it, and this look counts as still open until then.
+    if (!(await ctx.runMutation(internal.reports.activation.claimSettle, { activationId }))) return "open";
+    await spend(ctx, wait.customerId, activationId, { invoice, total: charge.total, currency: charge.currency });
+  } else await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: charge.status === "open" ? "refused" : "none" } });
   return "settled";
 }
 
