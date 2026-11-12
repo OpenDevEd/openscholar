@@ -17,11 +17,12 @@ export type TopicPublicationReads = {
 };
 
 /**
- * A publication's PDF as the communities holding its copies last said: the first copy's that has one, null when every
- * copy says it has none, and undefined while a copy's community runs a version that doesn't say.
+ * A publication's PDF as the communities holding its copies last said: the first copy's that has a picture of its first
+ * page, else the first copy's that has one at all. Null when every copy says it has none, and undefined while a copy's
+ * community runs a version that doesn't say.
  */
 export function pdfAmong<Pdf extends {url: string; cover: string | null}>(said: readonly (Pdf | null | undefined)[]): Pdf | null | undefined {
-  return said.find(one => one) ?? (said.length > 0 && said.every(one => one === null) ? null : undefined);
+  return said.find(one => one?.cover) ?? said.find(one => one) ?? (said.length > 0 && said.every(one => one === null) ? null : undefined);
 }
 
 /** A page of a topic's publications, ten groups of copies at a time, searched by `query` in their titles, authors and abstracts. */
@@ -54,8 +55,8 @@ export async function readTopicPublicationsWith(reads: TopicPublicationReads, to
       const pdf = pdfAmong(available.map(({location}) => location.metadata.pdf));
       return {
         id: group.key, ...shown, library: location.library,
-        // The picture on the copy's card, else the one a copy's community sent with its PDF.
-        cover: shown.cover ?? pdf?.cover ?? undefined,
+        // The picture on any copy's card, else the one a copy's community sent with its PDF.
+        cover: available.map(({card}) => card.PDFCoverPageImage).find(Boolean) ?? pdf?.cover ?? undefined,
         ...(pdf !== undefined && {pdf: pdf && {url: pdf.url}}),
         locations: available.map(({location}) => ({name: location.library.name, url: new URL(`/lib/${location.itemKey}`, location.library.url).href})),
         metadataLocation: {libraryId: location.library.id, itemKey: location.itemKey},

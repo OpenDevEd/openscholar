@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowUpRight, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,10 @@ function TitlePage({ kind, title, authors, source, year, type }: Omit<CoverProps
   );
 }
 
+const never = () => () => {};
+/** False while the browser takes over the page the server sent, and true ever after: what was put on the page by the server has been waited for. */
+const useTakenOver = () => useSyncExternalStore(never, () => true, () => false);
+
 /**
  * A paper's cover: the real first page when a community or Openscholar made a picture of it, otherwise a title page.
  * It opens the PDF, or the publisher's page when there is none. A PDF says so in a frosted chip; a page elsewhere carries
@@ -114,41 +118,45 @@ export function PaperCover({ href, pdf, image, className, ink, center = false, m
   sizes?: string;
 }) {
   const t = useTranslations("paperPage");
-  // The picture's width over its height, once it has loaded, and the picture that couldn't be: each kept with the
-  // address it is of, so another paper's picture in the same place starts anew.
-  const [shaped, setShaped] = useState<{ image: string; shape: number } | null>(null);
+  const takenOver = useTakenOver();
+  // The picture's width over its height once it has loaded, and whether it then fades in; and the picture that couldn't
+  // be loaded. Each is kept with the address it is of, so another paper's picture in the same place starts anew.
+  const [shaped, setShaped] = useState<{ image: string; shape: number; fades: boolean } | null>(null);
   const [broken, setBroken] = useState<string | null>(null);
   const picture = image && broken !== image ? image : null;
-  const shape = picture && shaped?.image === picture ? shaped.shape : null;
-  const fit = coverFit(shape);
+  const known = picture && shaped?.image === picture ? shaped : null;
+  const fit = coverFit(known?.shape ?? null);
   const sheet = (
-    <span className={cn("flex aspect-[3/4]", center ? "items-center justify-center" : "items-start justify-start")}>
-      <span
-        style={{ "--ink": ink, ...(fit !== "fill" && { aspectRatio: shape! }) } as CSSProperties}
-        className={cn(
-          "@container relative block overflow-hidden rounded-md bg-[#fbf8f2] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_8px_24px_-6px_rgb(0_0_0/0.18)] ring-1 ring-black/[0.06] transition-[translate,box-shadow,opacity] duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_36px_-8px_rgb(0_0_0/0.24)] motion-reduce:transition-none dark:brightness-[0.94]",
-          fit === "fill" ? "size-full" : fit === "wide" ? "w-full" : "h-full",
-          // The sheet shows with its picture, at the picture's shape: an empty one would change shape as the picture arrives.
-          picture && shape === null && "opacity-0",
-        )}
-      >
-        {picture ? (
-          <FadeImage
-            src={picture}
-            sizes={resizable(picture) ? sizes : undefined}
-            className="size-full object-cover object-top"
-            onShape={(loaded) => setShaped((was) => (was?.image === picture && was.shape === loaded ? was : { image: picture, shape: loaded }))}
-            onFailed={() => setBroken(picture)}
-          />
-        ) : (
-          <TitlePage {...page} />
-        )}
-        {href && mark ? (
-          <span className="absolute bottom-2.5 end-2.5 inline-flex h-6 items-center gap-1 rounded-full bg-black/60 px-2 text-[11px] font-medium text-white backdrop-blur-md">
-            {pdf ? <><FileText aria-hidden className="size-3" />{t("pdf")}</> : <ArrowUpRight aria-hidden className="size-3.5" />}
+    <span className={cn("relative flex aspect-[3/4]", center ? "items-center justify-center" : "items-start justify-start")}>
+      {picture && !known ? (
+        // Loaded out of sight first, to learn its shape: the sheet is then made at that shape and never changes it.
+        // One the browser already had is shown at once; one waited for fades in, as does one the server's page waited on.
+        <FadeImage
+          src={picture}
+          sizes={resizable(picture) ? sizes : undefined}
+          className="absolute size-px"
+          shown="opacity-0"
+          onShape={(shape, waited) => setShaped({ image: picture, shape, fades: waited || !takenOver })}
+          onFailed={() => setBroken(picture)}
+        />
+      ) : (
+        <span
+          style={fit === "fill" ? undefined : { aspectRatio: known!.shape }}
+          className={cn("block", fit === "fill" ? "size-full" : fit === "wide" ? "w-full" : "h-full", known?.fades && "animate-in fade-in duration-300 motion-reduce:animate-none")}
+        >
+          <span
+            style={{ "--ink": ink } as CSSProperties}
+            className="@container relative block size-full overflow-hidden rounded-md bg-[#fbf8f2] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_8px_24px_-6px_rgb(0_0_0/0.18)] ring-1 ring-black/[0.06] transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_36px_-8px_rgb(0_0_0/0.24)] motion-reduce:transition-none dark:brightness-[0.94]"
+          >
+            {picture ? <FadeImage src={picture} sizes={resizable(picture) ? sizes : undefined} className="size-full object-cover object-top" onFailed={() => setBroken(picture)} /> : <TitlePage {...page} />}
+            {href && mark ? (
+              <span className="absolute bottom-2.5 end-2.5 inline-flex h-6 items-center gap-1 rounded-full bg-black/60 px-2 text-[11px] font-medium text-white backdrop-blur-md">
+                {pdf ? <><FileText aria-hidden className="size-3" />{t("pdf")}</> : <ArrowUpRight aria-hidden className="size-3.5" />}
+              </span>
+            ) : null}
           </span>
-        ) : null}
-      </span>
+        </span>
+      )}
     </span>
   );
   if (!href) return <span aria-hidden className={cn("block", className)}>{sheet}</span>;

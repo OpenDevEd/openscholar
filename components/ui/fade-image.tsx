@@ -15,15 +15,18 @@ export function FadeImage({ src: wanted, className, shown = "opacity-100", fallb
   shown?: string;
   fallback?: string;
   sizes?: string;
-  /** Told the picture's width over its height once it has loaded, for a frame that takes the picture's shape. */
-  onShape?: (shape: number) => void;
+  /**
+   * Told the picture's width over its height once it has loaded, for a frame that takes the picture's shape, and whether
+   * it was waited for: false when the browser already had it as the picture was put on the page.
+   */
+  onShape?: (shape: number, waited: boolean) => void;
   /** Told when the picture can't be loaded and has no `fallback`, for a caller that shows something else. */
   onFailed?: () => void;
 }) {
   const [loaded, setLoaded] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const src = failed === wanted && fallback ? fallback : wanted;
-  const shaped = (image: HTMLImageElement) => image.naturalHeight > 0 && onShape?.(image.naturalWidth / image.naturalHeight);
+  const shaped = (image: HTMLImageElement, waited: boolean) => image.naturalHeight > 0 && onShape?.(image.naturalWidth / image.naturalHeight, waited);
   const fail = () => {
     setFailed(wanted);
     if (!fallback) onFailed?.();
@@ -33,14 +36,14 @@ export function FadeImage({ src: wanted, className, shown = "opacity-100", fallb
     ref: (image: HTMLImageElement | null) => {
       if (image?.complete && image.naturalWidth > 0) {
         setLoaded(src);
-        shaped(image);
+        shaped(image, false);
       } else if (failed !== wanted && loaded !== src) noticeEarlyFailure(image, fail);
     },
     src,
     alt: "",
     onLoad: (event: SyntheticEvent<HTMLImageElement>) => {
       setLoaded(src);
-      shaped(event.currentTarget);
+      shaped(event.currentTarget, true);
     },
     onError: fail,
     className: cn(className, "transition-opacity duration-200 motion-reduce:transition-none", loaded === src ? shown : "opacity-0"),

@@ -5,9 +5,10 @@ import { pdfAmong } from "./publications";
 describe("a publication's PDF among its copies", () => {
   const held = { url: "https://library.example/lib/ABCD1234/download/EFGH5678", cover: "https://files.example/cover.jpg" };
   const linked = { url: "https://publisher.example/paper.pdf", cover: null };
-  it("is the first copy's that has one", () => {
-    expect(pdfAmong([null, linked, held])).toBe(linked);
-    expect(pdfAmong([undefined, held])).toBe(held);
+  it("is the first copy's with a picture of its first page, else the first copy's that has one", () => {
+    // A copy that only links to the PDF never hides the picture another community made.
+    expect(pdfAmong([null, linked, held])).toBe(held);
+    expect(pdfAmong([undefined, linked, null])).toBe(linked);
   });
   it("is none only when every copy says it has none", () => {
     expect(pdfAmong([null, null])).toBeNull();
