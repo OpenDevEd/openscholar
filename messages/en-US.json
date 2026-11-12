@@ -6674,7 +6674,7 @@
       "changeDetails": "Change the details",
       "uploadNew": "Upload a new PDF",
       "publishAnother": "Publish another",
-      "activate": "Pay",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "A reviewer has to approve it first",
       "untitled": "Untitled report",
       "startedBy": "{name} started this report. Only they and the workspace's admins can change it.",
@@ -6889,7 +6889,7 @@
         "title": "Payment",
         "sign": "Read and sign"
       },
-      "activateFree": "Activate"
+      "activateFree": "Activate the DOI"
     },
     "meta": {
       "publish": "Publish | Openscholar",

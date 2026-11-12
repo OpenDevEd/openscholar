@@ -6674,7 +6674,7 @@
       "changeDetails": "修改信息",
       "uploadNew": "上传新的 PDF",
       "publishAnother": "再发布一份",
-      "activate": "付款",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "需要先由审核人批准",
       "untitled": "无标题报告",
       "startedBy": "{name}开始了此报告。只有此人和工作区管理员可以修改它。",
@@ -6889,7 +6889,7 @@
         "title": "Payment",
         "sign": "Read and sign"
       },
-      "activateFree": "Activate"
+      "activateFree": "Activate the DOI"
     },
     "meta": {
       "publish": "发布 | Openscholar",

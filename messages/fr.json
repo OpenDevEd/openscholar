@@ -6674,7 +6674,7 @@
       "changeDetails": "Modifier les informations",
       "uploadNew": "Téléverser un nouveau PDF",
       "publishAnother": "En publier un autre",
-      "activate": "Payer",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "Un relecteur doit d'abord l'approuver",
       "untitled": "Rapport sans titre",
       "startedBy": "{name} a commencé ce rapport. Seuls cette personne et les administrateurs de l'espace de travail peuvent le modifier.",
@@ -6889,7 +6889,7 @@
         "title": "Payment",
         "sign": "Read and sign"
       },
-      "activateFree": "Activate"
+      "activateFree": "Activate the DOI"
     },
     "meta": {
       "publish": "Publier | Openscholar",

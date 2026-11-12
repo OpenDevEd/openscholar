@@ -6674,7 +6674,7 @@
       "changeDetails": "विवरण बदलें",
       "uploadNew": "नया PDF अपलोड करें",
       "publishAnother": "एक और प्रकाशित करें",
-      "activate": "भुगतान करें",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "पहले समीक्षक को इसे स्वीकार करना होगा",
       "untitled": "बिना शीर्षक की रिपोर्ट",
       "startedBy": "{name} ने यह रिपोर्ट शुरू की। केवल वे और कार्यक्षेत्र के व्यवस्थापक इसे बदल सकते हैं।",
@@ -6889,7 +6889,7 @@
         "title": "Payment",
         "sign": "Read and sign"
       },
-      "activateFree": "Activate"
+      "activateFree": "Activate the DOI"
     },
     "meta": {
       "publish": "प्रकाशित करें | Openscholar",

@@ -6674,7 +6674,7 @@
       "changeDetails": "詳細を変更",
       "uploadNew": "新しい PDF をアップロード",
       "publishAnother": "別のレポートを公開",
-      "activate": "支払う",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "先に審査者の承認が必要です",
       "untitled": "無題のレポート",
       "startedBy": "{name}がこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
@@ -6889,7 +6889,7 @@
         "title": "Payment",
         "sign": "Read and sign"
       },
-      "activateFree": "Activate"
+      "activateFree": "Activate the DOI"
     },
     "meta": {
       "publish": "公開 | Openscholar",

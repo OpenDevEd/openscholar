@@ -1900,7 +1900,7 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
                       unapplied ? (
                         <TooltipHint label={t("activation.promo.applyFirst")}>
                           <span tabIndex={0}>
-                            <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                            <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
                           </span>
                         </TooltipHint>
                       ) : (
@@ -1936,18 +1936,18 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
                     terms.paused || (!spendable && price === null) ? (
                       <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
                         <span tabIndex={0}>
-                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                          <ActivateButton label={t("activateFree")} amount={null} busy={false} disabled onClick={() => {}} />
                         </span>
                       </TooltipHint>
                     ) : unapplied ? (
                       <TooltipHint label={t("activation.promo.applyFirst")}>
                         <span tabIndex={0}>
-                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                          <ActivateButton label={t("activateFree")} amount={null} busy={false} disabled onClick={() => {}} />
                         </span>
                       </TooltipHint>
                     ) : (
                       <ActivateButton
-                        label={t("activate")}
+                        label={t("activateFree")}
                         amount={null}
                         busy={activating || quoting}
                         disabled={false}
@@ -1997,7 +1997,7 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
                       <TooltipHint label={t("activation.onlyAdmin")}>
                         <span tabIndex={0}>
                           <Button disabled>
-                            <BadgeCheck /> {t("activate")}
+                            <BadgeCheck /> {t("activateFree")}
                           </Button>
                         </span>
                       </TooltipHint>
@@ -2005,7 +2005,7 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
                       <TooltipHint label={t("needsApproval")}>
                         <span tabIndex={0}>
                           <Button disabled>
-                            <BadgeCheck /> {t("activate")}
+                            <BadgeCheck /> {t("activateFree")}
                           </Button>
                         </span>
                       </TooltipHint>
@@ -2026,7 +2026,7 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
           title={due === 0 ? t("activation.freeTitle", { key: report.key }) : t("activation.payTitle", { price: dollars(due), key: report.key })}
           // Who pays, then what becomes of the activation bought if the report is declined while the payment goes through.
           description={[organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : null, organization ? t("activation.keptNoteOrg", { organization }) : t("activation.keptNote")].filter(Boolean).join(" ")}
-          confirmLabel={due === 0 ? t("activate") : t("activation.payConfirm")}
+          confirmLabel={t(due === 0 ? "activateFree" : "activate")}
           totalLabel={t("activation.dueNow")}
           labels={{ from: t("activation.doiNow"), to: t("activation.after") }}
           isConfirming={false}

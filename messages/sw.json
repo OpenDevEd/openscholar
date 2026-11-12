@@ -6675,7 +6675,7 @@
       "changeDetails": "Badilisha maelezo",
       "uploadNew": "Pakia PDF mpya",
       "publishAnother": "Chapisha nyingine",
-      "activate": "Lipa",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "Mkaguzi lazima aiidhinishe kwanza",
       "untitled": "Ripoti isiyo na kichwa",
       "startedBy": "{name} alianzisha ripoti hii. Ni yeye tu na wasimamizi wa eneo la kazi wanaoweza kuibadilisha.",
@@ -6890,7 +6890,7 @@
         "title": "Payment",
         "sign": "Read and sign"
       },
-      "activateFree": "Activate"
+      "activateFree": "Activate the DOI"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",
