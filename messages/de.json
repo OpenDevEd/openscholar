@@ -6845,7 +6845,7 @@
         "payWith": "Bezahlen mit",
         "balance": "Publikationsguthaben",
         "card": "Karte",
-        "byCard": "Bezahlt per Karte",
+        "byCard": "Zahlung per Karte",
         "due": "Fällig bei Aktivierung",
         "later": "Nichts wird belastet, bis der Bericht aktiviert wird, und die Zahlungsart lässt sich noch ändern.",
         "code": "Code {code}",

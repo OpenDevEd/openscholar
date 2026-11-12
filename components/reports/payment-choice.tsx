@@ -53,9 +53,9 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
         label={t("payWith")}
         value={payWith}
         onChange={onPayWith}
-        // On a phone the two don't always fit side by side: the icons go, past that the card takes a second row, and
-        // with large text a segment's own words wrap, so nothing is ever cut off.
-        className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:py-1.5 max-sm:[&_button]:text-start max-sm:[&_button]:whitespace-normal max-sm:[&_svg]:hidden", className)}
+        // On a phone the two don't always fit side by side: the icons go, and past that the card takes a second row, never cut off.
+        // At large text a label wider than the phone wraps inside its segment instead of running off the screen.
+        className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
         options={[
           { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
           { id: "card", label: t("card"), icon: CreditCard },

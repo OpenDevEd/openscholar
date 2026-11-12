@@ -809,7 +809,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               terms={terms}
               onActivate={(payWith, code, price, expect) => {
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect }).then(
+                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect, locale, card: terms?.card?.last4 ?? null }).then(
                   (done) => {
                     // The payment is made on Stripe's page, or confirmed at the bank: both come back here.
                     if ("url" in done) {
@@ -2071,7 +2071,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
             ) : null}
           </form>
         ) : (
-          <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
+          <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground max-sm:h-auto max-sm:min-h-8 max-sm:max-w-full max-sm:whitespace-normal max-sm:text-start" onClick={() => setOpen(true)}>
             <Tag /> {t("add")}
           </Button>
         )}
