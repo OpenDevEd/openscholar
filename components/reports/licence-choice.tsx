@@ -27,18 +27,33 @@ const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].activations === 1
 const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].activations !== 1);
 const OWN = "own";
 
-/** What each choice costs in US dollars: the activation plan's price, and the three-activation one's; null while there is none. */
-export type LicenceCost = { price: number | null; priceOfThree: number | null };
+/** What a promotion code makes of a licence's price, in US dollars, as Autumn quotes it. */
+export type LicenceQuote = { price: number; total: number } | null;
+/**
+ * What each choice costs in US dollars: the activation plan's price, and the three-activation one's; null while there
+ * is none. With a code applied, what it comes to with the code.
+ */
+export type LicenceCost = { price: number | null; priceOfThree: number | null; quoted?: { one: LicenceQuote; three: LicenceQuote } | null };
 
 export function LicenceChoice({ value, onChange, cost, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; cost: LicenceCost; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
   const format = useFormatter();
   const id = useId();
   const other = typeof value !== "string" || !STANDARD.includes(value);
-  // Each licence by its price, whatever the balance holds: a balance pays it the same way a card does.
+  const dollars = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: amount % 1 ? 2 : 0 });
+  // Each licence by its price, whatever the balance holds: a balance pays it the same way a card does. A code applied
+  // shows what it comes to, after the price it takes it from.
   const costOf = (activations: number) => {
     const price = activations === 1 ? cost.price : cost.priceOfThree;
-    return price === null ? null : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 });
+    const quoted = activations === 1 ? cost.quoted?.one : cost.quoted?.three;
+    if (quoted && quoted.total < quoted.price)
+      return (
+        <>
+          <s className="me-1.5 text-muted-foreground/70">{dollars(quoted.price)}</s>
+          <span className="font-medium text-foreground">{dollars(quoted.total)}</span>
+        </>
+      );
+    return price === null ? null : dollars(price);
   };
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), activations: 1 })),

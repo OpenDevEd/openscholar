@@ -50,8 +50,8 @@ import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, C
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
-import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
-import { keepMockLicence, mockAgreementText, mockByline, mockSeries, mockTerms, useMockLicence } from "@/components/reports/licence-mock";
+import { LicenceChoice, type LicencePick, type LicenceQuote } from "@/components/reports/licence-choice";
+import { mockQuoteLicences, useMockVoucher, keepMockLicence, mockAgreementText, mockByline, mockSeries, mockTerms, useMockLicence } from "@/components/reports/licence-mock";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
@@ -304,9 +304,10 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const { data: termsRead } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // mock: the licence this browser signed the report with, over what dev's server sends (licence-mock.ts).
   const licence = useMockLicence(shownKey);
+  const mockVoucher = useMockVoucher(shownKey);
   const found =
     foundRead && "report" in foundRead
-      ? { ...foundRead, report: { ...foundRead.report, byline: mockByline(foundRead.report.byline, licence), ...(foundRead.report.metadata && { metadata: { ...foundRead.report.metadata, licence } }) } }
+      ? { ...foundRead, report: { ...foundRead.report, ...(mockVoucher && { voucher: mockVoucher }), byline: mockByline(foundRead.report.byline, licence), ...(foundRead.report.metadata && { metadata: { ...foundRead.report.metadata, licence } }) } }
       : foundRead;
   const terms = termsRead && mockTerms(termsRead, licence);
   // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
@@ -911,6 +912,12 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const { agreement } = basics;
   // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
   const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
+  // A promotion code, applied to the licences' prices here and kept with the report for its activation.
+  const [voucher, setVoucher] = useState<{ quote: Quote; licences: { one: LicenceQuote; three: LicenceQuote } } | null>(null);
+  const [typedCode, setTypedCode] = useState("");
+  // mock: dev's server has no quote before a report is started; licence-mock.ts quotes dev's two test codes. The real
+  // build calls useAction(api.reports.activation.quoteLicences) with the workspace, and sign takes `voucher`.
+  const quoteLicences = (code: string) => mockQuoteLicences(code, { one: starts?.price ?? null, three: starts?.priceOfThree ?? null });
   const choosing = choosesLicence(agreement.text);
   const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
   // An own licence still being typed reads in the agreement as far as it goes.
@@ -942,7 +949,28 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
       </StepHead>
       {choosing ? (
         <div className="mb-5">
-          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null }} />
+          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null, quoted: voucher?.licences ?? null }} />
+          {/* Only where a price is shown: a workspace whose activations have no price has nothing for a code to take off. */}
+          {starts?.price != null ? (
+            <div className="mt-3">
+              <PromoCode
+                applied={voucher?.quote ?? null}
+                // Applying is done in onQuote, which has both plans' quotes; this only hears a code removed.
+                onApply={(quote) => {
+                  if (!quote) setVoucher(null);
+                }}
+                onQuote={async (code) => {
+                  const licences = await quoteLicences(code);
+                  const base = licences.one ?? licences.three!;
+                  const quote = { code: code.trim(), price: base.price, discount: base.price - base.total, total: base.total };
+                  setVoucher({ quote, licences });
+                  return quote;
+                }}
+                typed={typedCode}
+                onTyped={setTypedCode}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
@@ -1009,7 +1037,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
                 try {
                   // mock: dev's server takes no licence yet; this browser keeps it (licence-mock.ts).
                   const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version } as Parameters<typeof sign>[0]);
-                  keepMockLicence(key, licence!);
+                  keepMockLicence(key, licence!, voucher?.quote.code);
                   // Signed, the ticks have done their work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);
@@ -1572,7 +1600,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   // Stripe's page, the code applied before leaving is in the address and starts typed in.
   const [carried] = useQueryState("code", parseAsString);
   // Quoted again by the server on the way back, the code is applied already; one it couldn't quote stays typed.
-  const [typed, setTyped] = useState(quoted ? "" : (carried ?? ""));
+  // A code applied when the report was signed starts typed in too.
+  const [typed, setTyped] = useState(quoted ? "" : (carried ?? report?.voucher ?? ""));
   // A code typed and not applied: nothing is charged past it, or the price without the code would be.
   const unapplied = vouchers && typed.trim() !== "";
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.

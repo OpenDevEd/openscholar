@@ -6,17 +6,21 @@
 // this on the server; this file and every `mock:` line go when it ships.
 
 import { useSyncExternalStore } from "react";
+import { ConvexError } from "convex/values";
 import { choosesLicence } from "@/lib/reports/agreement";
 import { DEFAULT_LICENCE, activationsFor, type Licence } from "@/lib/reports/report";
 import { licenceInByline, type Series } from "@/lib/reports/settings";
 
 const STORE = (key: string) => `mock:licence:${key}`;
+const VOUCHER = (key: string) => `mock:voucher:${key}`;
 const CHANGED = "mock-licence";
 
-/** Keeps the licence a report was signed with. */
-export function keepMockLicence(key: string, licence: Licence) {
+/** Keeps the licence a report was signed with, and the code applied to its price then. */
+export function keepMockLicence(key: string, licence: Licence, voucher?: string) {
   try {
     window.localStorage.setItem(STORE(key), JSON.stringify(licence));
+    if (voucher) window.localStorage.setItem(VOUCHER(key), voucher);
+    else window.localStorage.removeItem(VOUCHER(key));
   } catch {
     // Without storage the report reads as CC BY 4.0, as one signed on the real server today.
   }
@@ -33,20 +37,40 @@ function subscribe(heard: () => void) {
   };
 }
 
-/** The licence a report was signed with in this browser, as its JSON; CC BY 4.0 for any other. */
-export function useMockLicence(key: string | null | undefined): Licence {
-  const kept = useSyncExternalStore(
+/** What this browser keeps under one name, heard for changes. */
+function useKept(name: string | null) {
+  return useSyncExternalStore(
     subscribe,
     () => {
       try {
-        return key ? window.localStorage.getItem(STORE(key)) : null;
+        return name ? window.localStorage.getItem(name) : null;
       } catch {
         return null;
       }
     },
     () => null,
   );
+}
+
+/** The licence a report was signed with in this browser; CC BY 4.0 for any other. */
+export function useMockLicence(key: string | null | undefined): Licence {
+  const kept = useKept(key ? STORE(key) : null);
   return kept ? (JSON.parse(kept) as Licence) : DEFAULT_LICENCE;
+}
+
+/** The code applied when a report was signed in this browser, if any. */
+export const useMockVoucher = (key: string | null | undefined) => useKept(key ? VOUCHER(key) : null);
+
+/**
+ * What a code makes of each licence's price before a report is started, as the real `quoteLicences` answers: dev's
+ * two test codes, FREEDOI (all off) and HALFOFF (half off), on the prices the page shows.
+ */
+export async function mockQuoteLicences(typed: string, prices: { one: number | null; three: number | null }) {
+  const code = typed.trim();
+  const off = { FREEDOI: 1, HALFOFF: 0.5 }[code.toUpperCase()];
+  if (off === undefined) throw new ConvexError({ code: "VALIDATION_ERROR", reason: "unknownCode", message: `${code} isn't a code we know, or it has been used up.` });
+  const quote = (price: number | null) => (price === null ? null : { price, total: price * (1 - off) });
+  return { one: quote(prices.one), three: quote(prices.three) };
 }
 
 /** The agreement as the real build words it: dev's saved one names CC BY 4.0 where the real one has `[licence]`. */
