@@ -367,6 +367,16 @@ describe("a report's checks", () => {
     expect(await world.t.run((ctx) => ctx.db.query("reportDetails").take(5))).toHaveLength(0);
   });
 
+  it("returns a failed report to its checks with its review request, after its steps were opened with nothing changed", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline", false)]);
+    await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "The byline is on page 2." });
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "doi" });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "doi", reopened: true });
+    await world.author.mutation(api.reports.flow.backToChecks, { workspaceId: world.own, key });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "done", status: "failed", asked: true, reviewRequest: { comment: "The byline is on page 2." } });
+  });
+
   it("can't be asked about or discarded once it has passed", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
