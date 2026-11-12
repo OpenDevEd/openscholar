@@ -7,7 +7,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn, finePointer } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
-import { withToastsInside } from "@/components/ui/sonner"
+import { withOverlaysInside } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
 
 function Dialog({
@@ -84,7 +84,7 @@ function DialogContent({
   const opened = React.useCallback((node: HTMLDivElement | null) => {
     if (node) openedAt.current = performance.now()
   }, [])
-  const outside = withToastsInside(onInteractOutside)
+  const outside = withOverlaysInside(onInteractOutside)
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={overlayClassName} />

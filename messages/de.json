@@ -6320,7 +6320,6 @@
       },
       "which": "Welche Berichte",
       "pagerItems": "Berichte",
-      "approvedToast": "Genehmigt. Die Autorin oder der Autor kann ihn jetzt aktivieren.",
       "sentAgain": "Erneut gesendet",
       "noMatch": "Keine Berichte passen",
       "noReports": "Noch keine Berichte",
@@ -6337,7 +6336,7 @@
       "openPage": "Seite öffnen",
       "openPageLabel": "Seite von {key} öffnen",
       "done": {
-        "approve": "Genehmigt. Die Autorin oder der Autor kann ihn jetzt aktivieren.",
+        "approve": "Genehmigt. Er kann jetzt aktiviert werden.",
         "reinstate": "Wiederhergestellt. Er ist wieder online.",
         "withdraw": "Zurückgezogen",
         "decline": "Abgelehnt"

@@ -6320,7 +6320,6 @@
       },
       "which": "Qué informes",
       "pagerItems": "informes",
-      "approvedToast": "Aprobado. Su autor ya puede activarlo.",
       "sentAgain": "Enviado de nuevo",
       "noMatch": "Ningún informe coincide",
       "noReports": "Aún no hay informes",
@@ -6337,7 +6336,7 @@
       "openPage": "Abrir su página",
       "openPageLabel": "Abrir la página de {key}",
       "done": {
-        "approve": "Aprobado. Su autor ya puede activarlo.",
+        "approve": "Aprobado. Ya se puede activar.",
         "reinstate": "Restablecido. Vuelve a estar publicado.",
         "withdraw": "Retirado",
         "decline": "Rechazado"

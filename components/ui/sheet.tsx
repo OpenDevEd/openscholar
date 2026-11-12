@@ -7,7 +7,7 @@ import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
-import { withToastsInside } from "@/components/ui/sonner"
+import { withOverlaysInside } from "@/components/ui/sonner"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <TrackOpen {...props}>{(root) => <SheetPrimitive.Root data-slot="sheet" {...props} {...root} />}</TrackOpen>
@@ -78,7 +78,7 @@ function SheetContent({
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t",
           className
         )}
-        onInteractOutside={withToastsInside(onInteractOutside)}
+        onInteractOutside={withOverlaysInside(onInteractOutside)}
         {...props}
       >
         {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}

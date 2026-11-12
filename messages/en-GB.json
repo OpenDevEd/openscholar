@@ -6319,7 +6319,6 @@
       },
       "which": "Which reports",
       "pagerItems": "reports",
-      "approvedToast": "Approved. Its author can activate it now.",
       "sentAgain": "Sent again",
       "noMatch": "No reports match",
       "noReports": "No reports yet",
@@ -6336,7 +6335,7 @@
       "openPage": "Open its page",
       "openPageLabel": "Open the page of {key}",
       "done": {
-        "approve": "Approved. Its author can activate it now.",
+        "approve": "Approved. It can be activated now.",
         "reinstate": "Reinstated. It's live again.",
         "withdraw": "Withdrawn",
         "decline": "Declined"

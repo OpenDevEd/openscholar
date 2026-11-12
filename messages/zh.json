@@ -6319,7 +6319,6 @@
       },
       "which": "哪些报告",
       "pagerItems": "份报告",
-      "approvedToast": "已批准。作者现在可以激活它。",
       "sentAgain": "已重新发送",
       "noMatch": "没有匹配的报告",
       "noReports": "还没有报告",
@@ -6336,7 +6335,7 @@
       "openPage": "打开其页面",
       "openPageLabel": "打开 {key} 的页面",
       "done": {
-        "approve": "已批准。作者现在可以激活它。",
+        "approve": "已批准。现在可以激活了。",
         "reinstate": "已恢复，重新上线。",
         "withdraw": "已撤回",
         "decline": "已拒绝"

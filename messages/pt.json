@@ -6320,7 +6320,6 @@
       },
       "which": "Que relatórios",
       "pagerItems": "relatórios",
-      "approvedToast": "Aprovado. O autor já pode ativá-lo.",
       "sentAgain": "Enviado de novo",
       "noMatch": "Nenhum relatório corresponde",
       "noReports": "Ainda não há relatórios",
@@ -6337,7 +6336,7 @@
       "openPage": "Abrir a página",
       "openPageLabel": "Abrir a página de {key}",
       "done": {
-        "approve": "Aprovado. O autor já pode ativá-lo.",
+        "approve": "Aprovado. Já pode ser ativado.",
         "reinstate": "Reposto. Está publicado de novo.",
         "withdraw": "Retirado",
         "decline": "Recusado"
