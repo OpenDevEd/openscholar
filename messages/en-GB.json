@@ -5628,6 +5628,7 @@
     "keepInvitation": "Keep invitation",
     "declineInvitation2": "Decline invitation",
     "previewCover": "Preview {title} cover",
+    "noPdf": "No PDF",
     "preview": "Preview {title}",
     "declineBody": "You won’t receive access to {name}. Your other communities are unaffected.",
     "owner": "Owner",

@@ -5628,6 +5628,7 @@
     "keepInvitation": "Garder l’invitation",
     "declineInvitation2": "Refuser l’invitation",
     "previewCover": "Aperçu de la couverture de {title}",
+    "noPdf": "Pas de PDF",
     "preview": "Aperçu de {title}",
     "declineBody": "Vous n’aurez pas accès à {name}. Vos autres communautés ne sont pas touchées.",
     "owner": "Propriétaire",

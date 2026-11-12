@@ -5629,6 +5629,7 @@
     "keepInvitation": "Einladung behalten",
     "declineInvitation2": "Einladung ablehnen",
     "previewCover": "Vorschau des Titelbilds von {title}",
+    "noPdf": "Kein PDF",
     "preview": "Vorschau von {title}",
     "declineBody": "Sie erhalten keinen Zugriff auf {name}. Ihre anderen Communitys bleiben unberührt.",
     "owner": "Eigentümer",
