@@ -28,6 +28,8 @@ export const billingAccountSnapshotValidator = v.object({
   limits: v.optional(planLimitsValidator),
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
+  /** Report activations left in the customer's balance (#1261); null for unlimited. Absent on a snapshot cached before the balance existed. */
+  activations: v.optional(v.union(v.number(), v.null())),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
   credit: v.optional(v.number()),

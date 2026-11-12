@@ -81,16 +81,15 @@ export async function checked(world: World, results: ReturnType<typeof passed>[]
 }
 
 /**
- * Activates a report as the person signed in as `as`, the way Activate does once its charge went through (or, with
- * `free`, as one of the day's free activations): it goes live, or is refused with why.
+ * Activates a report as the person signed in as `as`, the way Activate does once an activation bought for it is held
+ * in the workspace's balance: it goes live, or is refused with why.
  */
-export async function activate(world: World, key: string, { as = "author", workspaceId = world.own, free = false }: { as?: string; workspaceId?: Id<"workspaces">; free?: boolean } = {}) {
+export async function activate(world: World, key: string, { as = "author", workspaceId = world.own }: { as?: string; workspaceId?: Id<"workspaces"> } = {}) {
   const actor = await world.t.run(async (ctx) => actorFor(ctx, (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", as)).unique())!, workspaceId));
-  // As the action does: what's in the way refuses before anything is charged, and a paid one is recorded first.
-  await world.t.query(internal.reports.activation.prepare, { actor, key, now: Date.now() });
-  if (free) return world.t.mutation(internal.reports.activation.goLiveFree, { actor, key });
-  const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor, key });
-  return world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice: `in_${key}`, total: 5, currency: "usd" } } });
+  // As the action does: what's in the way refuses before anything is charged, and the activation is recorded first.
+  await world.t.query(internal.reports.activation.prepare, { actor, key });
+  const activationId = await world.t.mutation(internal.reports.activation.begin, { actor, key });
+  return world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "held", hold: `hold_${key}`, charge: { invoice: `in_${key}`, total: 5, currency: "usd" } } });
 }
 
 /** A report live in the author's own workspace, every check passed. In the organisation, its admin activates it. */

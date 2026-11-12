@@ -1,15 +1,15 @@
 // What OpenScholar asks Stripe itself, outside Autumn, as plain requests so no caller loads Stripe's library: voiding
 // a declined charge's invoice, reading the credit on a customer's balance, and for a report's activation, the bank's
-// page that comes back to the report, how its invoice stands, and its refund.
+// page that comes back to the report, and how its invoice stands.
 
 type Stripe = Record<string, unknown>;
 
-async function stripe(path: string, init: { method?: "GET" | "POST"; form?: Record<string, string>; idempotencyKey?: string } = {}) {
+async function stripe(path: string, init: { method?: "GET" | "POST"; form?: Record<string, string> } = {}) {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY isn't set");
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: init.method ?? (init.form ? "POST" : "GET"),
-    headers: { Authorization: `Bearer ${key}`, ...(init.idempotencyKey && { "Idempotency-Key": init.idempotencyKey }) },
+    headers: { Authorization: `Bearer ${key}` },
     ...(init.form && { body: new URLSearchParams(init.form) }),
   });
   if (!response.ok) throw new Error(`Stripe answered ${response.status}: ${(await response.text()).slice(0, 300)}`);
@@ -71,10 +71,7 @@ async function invoiceOf(invoice: string) {
   const read = await stripe(`invoices/${encodeURIComponent(invoice)}?expand[]=payments.data.payment.payment_intent`);
   const payments = ((read.payments as { data?: Array<{ payment?: { payment_intent?: Stripe | string } }> } | undefined)?.data ?? []).map((payment) => payment.payment?.payment_intent);
   const intent = payments.find((candidate): candidate is Stripe => typeof candidate === "object" && candidate !== null);
-  // The part the account's credit paid: what the invoice took from a balance in the customer's favour (a negative one).
-  const starting = Number(read.starting_balance ?? 0);
-  const fromCredit = starting < 0 ? Math.min(Number(read.total ?? 0), Number(read.ending_balance ?? 0) - starting) : 0;
-  return { status: String(read.status), total: Number(read.total ?? 0), fromCredit, currency: String(read.currency ?? "usd"), intent };
+  return { status: String(read.status), total: Number(read.total ?? 0), currency: String(read.currency ?? "usd"), intent };
 }
 
 /**
@@ -105,21 +102,4 @@ export async function chargeOf(invoice: string): Promise<{ status: "paid"; total
   if (read.status === "paid") return { status: "paid", total: read.total / 100, currency: read.currency };
   if (read.status === "void" || read.status === "uncollectible") return { status: "void" };
   return { status: "open", refused: read.intent?.status === "requires_payment_method" };
-}
-
-/**
- * Gives back a paid invoice's own amount the way it was paid: the part the account's credit paid back to that credit,
- * the rest to the card. Debt from before that the invoice also collected stays collected. A credit note keyed by
- * `key`, so asking again gives the same one. In US dollars.
- */
-export async function refundInvoice(invoice: string, key: string): Promise<{ card: number; credit: number }> {
-  const read = await invoiceOf(invoice);
-  if (read.status !== "paid") throw new Error(`Invoice ${invoice} is ${read.status}, not paid`);
-  if (read.total === 0) return { card: 0, credit: 0 };
-  const card = read.total - read.fromCredit;
-  await stripe("credit_notes", {
-    idempotencyKey: key,
-    form: { invoice, amount: String(read.total), reason: "order_change", ...(card > 0 && { refund_amount: String(card) }), ...(read.fromCredit > 0 && { credit_amount: String(read.fromCredit) }) },
-  });
-  return { card: card / 100, credit: read.fromCredit / 100 };
 }

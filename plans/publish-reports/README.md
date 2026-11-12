@@ -37,6 +37,16 @@ included.
   workspace, 0 for an organisation's. Admins give a workspace its own number.
   A start counts for 24 hours and a discard doesn't give it back; raising a
   limit opens (new limit minus used) more the same day.
+- **Activating spends from a balance (2026-11-12).** Each workspace has a
+  balance of activations in Autumn (`report_activations`), filled by plan items
+  and by balances given in Autumn's dashboard, once or refilled every day,
+  week, month or year. Activating spends one, with no card and no code. With
+  none left it buys one (the `report_activation` plan, less a promotion code),
+  which goes to the balance and is spent at once. One bought for a report that
+  can't go live any more stays in the balance, and whoever paid is emailed.
+  This replaces the free activations a day that admins set on the Publishing
+  page (#1261) and the refund of a payment that came back late. Reason: the
+  user asked for one balance per person or organisation that Autumn refills.
 - **Checks are admin-defined yes-or-no questions**, each on a decision model or
   an LLM, with a threshold, a blocking switch and advice for the author. Already
   published is built in: it searches OpenAlex, Openscholar's index and the
@@ -112,7 +122,6 @@ is no migration.
   with its version.
 - `reportCheckVersions`, `reportAgreementVersions`: each version's text, kept
   because a report records which it was checked and signed under.
-- `reportLimits`: a workspace's own daily limit, by workspace.
 - `reportStarts`: one row per report started, by workspace and time. The count
   of a day's rows is read with a cap of the limit.
 - `reports`: one row per report, by key, by workspace and by DOI: what a list

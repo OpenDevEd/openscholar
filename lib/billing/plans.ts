@@ -20,8 +20,14 @@ export const SIGNUP_PLAN = "signup_credits";
 export const TOPUP_PLAN = "top_up";
 
 /**
- * One-off add-on bought for each report activated past the workspace's free activations (#1261). Its price is the plan's
- * in Autumn; a promotion code on an Autumn reward lowers it.
+ * The metered feature a report's activation spends one of (#1261): a workspace's balance of activations. Plans and
+ * balances given in Autumn's dashboard refill it by the day, week, month or year, or give an amount that stays.
+ */
+export const ACTIVATIONS_FEATURE = "report_activations";
+
+/**
+ * One-off add-on that adds one activation to the workspace's balance, bought when a report is activated with none
+ * left (#1261). Its price is the plan's in Autumn; a promotion code on an Autumn reward lowers it.
  */
 export const ACTIVATION_PLAN = "report_activation";
 

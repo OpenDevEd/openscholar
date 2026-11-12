@@ -295,7 +295,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
-  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
+  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
   // round trip later.
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed || bare ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
@@ -634,7 +634,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} price={starts?.price ?? null} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -1155,18 +1155,21 @@ function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, price, onStart }: { series: string; /** What activating costs, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, activations, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const flow = useTranslations("publishReports.flow");
   const dollars = useDollars();
+  /** The balance pays for the last step: no card comes into it. */
+  const spendable = activations === null || activations > 0;
   const items = [
     { id: "agreement", icon: PenLine },
     { id: "doi", icon: Hash },
     { id: "pdf", icon: FileText },
     { id: "details", icon: ListChecks },
     { id: "checks", icon: ShieldCheck },
-    { id: "activate", icon: CreditCard },
+    { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
+  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? t("activate.bodyBalance", { count: activations }) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1180,7 +1183,7 @@ function Overview({ series, reviewed, price, onStart }: { series: string; /** Wh
             </span>
             <span className="min-w-0 pt-1">
               <span className="block text-sm font-medium">{t(`${id}.title`)}</span>
-              <span className="block text-sm text-muted-foreground">{id === "activate" && price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t(`${id}.body`)}</span>
+              <span className="block text-sm text-muted-foreground">{id === "activate" ? activating : t(`${id}.body`)}</span>
             </span>
           </li>
         ))}
@@ -1513,26 +1516,28 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, carried: quoted = null, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ rows, report, carried: quoted = null, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: from the balance, or by buying one once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
-  // Only the workspace's admins activate (#1261). A code goes in the payment bar, before anything is asked for: one
-  // that covers the whole price activates with no card. A charge to the saved card is confirmed in a dialog first.
+  // Only the workspace's admins activate (#1261). An activation in the workspace's balance is spent first, with no
+  // card or code asked for. With none left, a code goes in the payment bar, before anything is asked for: one that
+  // covers the whole price activates with no card. A charge to the saved card is confirmed in a dialog first.
   const organization = terms?.organization ?? null;
   const admin = terms?.admin ?? true;
-  const free = (terms?.free.left ?? 0) > 0;
+  /** The balance has an activation to spend; null is a balance with no limit. */
+  const spendable = !!terms && (terms.activations === null || terms.activations > 0);
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
   const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
-  /** Where a code can be used: past the free activations, while there is a price and no payment waiting. */
-  const vouchers = !free && price !== null && !pending && !!onQuote;
+  /** Where a code can be used: with nothing in the balance, while there is a price and no payment waiting. */
+  const vouchers = !spendable && price !== null && !pending && !!onQuote;
   // What is typed in the bar's code field, kept here so every way of charging sees it. Back from saving a card on
   // Stripe's page, the code applied before leaving is in the address and starts typed in.
   const [carried] = useQueryState("code", parseAsString);
@@ -1599,7 +1604,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
       } catch (error) {
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
-        else if (refusalOf(error)?.reason === "noFreeLeft") say(t("activation.noFreeLeft"));
+        else if (refusalOf(error)?.reason === "noneLeft") say(t("activation.noneLeft"));
         else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
         else if (reason) say(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
         else failed(t("activateFailed"))(error);
@@ -1607,8 +1612,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
     });
   // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
   const requoting = !chose && !code && !!terms?.refused?.code;
-  /** What Activate takes from the card, beside the word; null when it's free, or a code or credit covers it. */
-  const amount = free || price === null || due === 0 || requoting ? null : dollars(due);
+  /** What Activate takes from the card, beside the word; null when the balance pays, or a code or credit covers it. */
+  const amount = spendable || price === null || due === 0 || requoting ? null : dollars(due);
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1649,10 +1654,10 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
       </AutoHeight>
       {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
-      {terms?.refund && stage !== "live" ? (
+      {terms?.kept && stage !== "live" ? (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <CreditCard className="size-4 shrink-0" />
-          {t(terms.refund.done ? "activation.refunded" : "activation.refunding", { amount: dollars(Math.round(terms.refund.amount * 100)) })}
+          <BadgeCheck className="size-4 shrink-0" />
+          {organization ? t("activation.keptOrg", { organization }) : t("activation.kept")}
         </p>
       ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
@@ -1668,12 +1673,12 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
               <Problem className="pb-3 ps-1">{problem}</Problem>
               {stage === "ready" && admin && terms ? (
-                // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
-                // while the bank confirms a charge, the bar offers that instead.
+                // An admin's Activate sits in the payment bar, beside what it's paid with: the balance, or the card. With
+                // neither, or while the bank confirms a charge, the bar offers that instead.
                 <PaymentLine
                   onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
-                  free={terms.free.left}
+                  activations={terms.activations}
                   card={card}
                   credit={credit}
                   price={price}
@@ -1683,7 +1688,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                   quoted={code && { code: code.code, total: subtotal }}
                   voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={type} /> : null}
                   action={
-                    terms.paused || (!free && price === null) ? (
+                    terms.paused || (!spendable && price === null) ? (
                       <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
                         <span tabIndex={0}>
                           <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
@@ -1701,8 +1706,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                         amount={amount}
                         busy={activating || quoting}
                         disabled={false}
-                        // A code that takes the whole price off charges nothing: no card, and no dialog to confirm a charge.
-                        onClick={free ? () => activateNow(false) : code && subtotal === 0 ? () => activateNow(true, code.code, 0) : openPay}
+                        // The balance, or a code that takes the whole price off, charges nothing: no card, and no dialog to confirm a charge.
+                        onClick={spendable ? () => activateNow(false) : code && subtotal === 0 ? () => activateNow(true, code.code, 0) : openPay}
                       />
                     )
                   }
@@ -1919,9 +1924,9 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
 }
 
 /**
- * What activating is paid with, above the Activate button: the workspace's saved card, and whether this activation is
- * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
- * asked to confirm says so, with the way back to its page.
+ * What activating is paid with, above the Activate button: the workspace's balance of activations while it has one,
+ * else its saved card. With neither, the way to add a card: Stripe's page for saving one, which comes back here. A
+ * charge the bank asked to confirm says so, with the way back to its page.
  */
 /** The return from Stripe's pages already brought into view: a page opens at its top, and on a phone the bar is below it. */
 let returnedTo: string | null = null;
@@ -1938,13 +1943,15 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, activations, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
   const costs = price === null ? null : quoted ? t("costsWith", { price: dollars(quoted.total), code: quoted.code }) : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
   /** The code takes the whole price off: nothing to pay, so no card is asked for. */
   const covered = quoted?.total === 0;
+  /** The balance pays: neither a card nor a code comes into it. */
+  const spendable = activations === null || activations > 0;
   // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
   const saveCard = () =>
     save(async () => {
@@ -1960,17 +1967,18 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
     <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
       {/* The icon sits beside the first lines, at the top: the bar grows downwards when a code is added under them. */}
       <span className="flex size-9 shrink-0 items-center justify-center self-start rounded-xl bg-background text-muted-foreground">
-        <CreditCard className="size-4" />
+        {/* The balance pays with no card: its mark is the activation's own. */}
+        {spendable && !pending ? <BadgeCheck className="size-4" /> : <CreditCard className="size-4" />}
       </span>
       {/* On a phone the words keep a readable width and the buttons go under them. */}
       <div className="min-w-0 flex-1 basis-48">
         {pending ? (
           <p className="text-sm font-medium">{t("bankAsked")}</p>
-        ) : !card && free > 0 ? (
+        ) : spendable ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-            {t("freeTitle")}
+            {t("balance")}
             <StatusChip tone="success" icon={CircleCheck}>
-              {t("free")}
+              {activations === null ? t("unlimited") : t("left", { count: activations })}
             </StatusChip>
           </p>
         ) : card ? (
@@ -1978,13 +1986,7 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             <span className="capitalize">{card.brand}</span>
             {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
             <span className="tabular-nums">&bull;&bull;&bull;&bull; {card.last4}</span>
-            {free > 0 ? (
-              <StatusChip tone="success" icon={CircleCheck}>
-                {t("free")}
-              </StatusChip>
-            ) : credit > 0 ? (
-              <StatusChip tone="neutral">{t("credit", { amount: dollars(credit) })}</StatusChip>
-            ) : null}
+            {credit > 0 ? <StatusChip tone="neutral">{t("credit", { amount: dollars(credit) })}</StatusChip> : null}
           </p>
         ) : (
           <p className="text-sm font-medium">{t(covered ? "covered" : "add")}</p>
@@ -1994,8 +1996,10 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             ? t("goesLive")
             : refused
               ? t("refused")
-              : free > 0
-                ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
+              : spendable
+                ? organization
+                  ? t("usesOrg", { organization })
+                  : t("uses")
                 : !card
                   ? covered
                     ? t("coveredHint")
@@ -2013,10 +2017,10 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
-      ) : pending ? null : card || free > 0 || covered ? (
-        // A free activation, or one a code covers, needs no card: Activate is there either way.
+      ) : pending ? null : card || spendable || covered ? (
+        // One from the balance, or one a code covers, needs no card: Activate is there either way.
         <div className="ms-auto flex shrink-0 items-center gap-2">
-          {card ? (
+          {card && !spendable ? (
             <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
               <Working busy={saving}>{t("change")}</Working>
             </Button>
