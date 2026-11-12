@@ -13,6 +13,11 @@ import { FunderName } from "@/components/papers/paper-entities";
 import { AffiliationPicker } from "@/components/people/affiliation-picker";
 import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AutoHeight } from "@/components/ui/auto-height";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
+import { writeAbstractMock } from "@/app/actions/abstract-mock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -246,6 +251,31 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
   );
 }
 
+/** mock: the button that has an abstract written from the PDF. Over one already there, it asks first. */
+function WriteAbstract({ filled, writing, onWrite }: { filled: boolean; writing: boolean; onWrite: () => void }) {
+  const button = (onClick?: () => void) => (
+    <Button type="button" variant="outline" size="xs" disabled={writing} onClick={onClick}>
+      {writing ? <Spinner className="size-3" /> : <AiIcon className="size-3" />} Write from the PDF
+    </Button>
+  );
+  if (!filled) return button(onWrite);
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{button()}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Replace the abstract?</AlertDialogTitle>
+          <AlertDialogDescription>A new one is written from the PDF and takes the place of the one in the box.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep it</AlertDialogCancel>
+          <AlertDialogAction onClick={onWrite}>Replace</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 /** How long after the last change the details are saved. */
 /** Today as the person's own calendar has it, as a date input takes it. */
 const localToday = () => {
@@ -268,7 +298,10 @@ export function DetailsStep({
   words,
   unread = false,
   version,
+  reportKey,
 }: {
+  /** mock: the report whose PDF an abstract is written from. Without it the form offers none. */
+  reportKey?: string;
   initial: Metadata;
   /** Given the details, and the `version` the form opened on. */
   onRun: (m: Metadata, version: number | undefined) => Promise<void>;
@@ -364,6 +397,22 @@ export function DetailsStep({
   const links = usePage(m.relations, ROWS_PER_PAGE);
   // Why the DOI typed wasn't added, said under its box until it is typed again.
   const [doiTrouble, setDoiTrouble] = useState<string | null>(null);
+  // mock: an abstract being written from the PDF, and whether the one in the box is a draft its author hasn't changed yet.
+  const [writing, setWriting] = useState(false);
+  const [drafted, setDrafted] = useState(false);
+  const writeAbstract = async () => {
+    setWriting(true);
+    try {
+      const answer = await writeAbstractMock(reportKey!, new Intl.DisplayNames(["en"], { type: "language" }).of(m.language) ?? "English");
+      if ("trouble" in answer) return void toast.error(answer.trouble);
+      set("abstract", answer.abstract);
+      setDrafted(true);
+    } catch {
+      toast.error("The abstract couldn't be written. Try again.");
+    } finally {
+      setWriting(false);
+    }
+  };
   const addDoi = () => {
     const bare = doiIn(doi);
     if (!bare) return setDoiTrouble(t("notDoi"));
@@ -481,8 +530,39 @@ export function DetailsStep({
           </Button>
         </Section>
 
-        <Section title={t("abstract")} help="abstract" crossref aside={<span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>}>
-          <Textarea aria-label={t("abstract")} value={m.abstract} maxLength={DETAIL_TEXT.abstract} onChange={(e) => set("abstract", e.target.value)} rows={7} className="text-sm/6" />
+        <Section
+          title={t("abstract")}
+          help="abstract"
+          crossref
+          aside={
+            <>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>
+              {/* mock: an abstract written from the PDF when its author asks, since the reading copies only one the PDF prints. */}
+              {reportKey ? <WriteAbstract filled={!!m.abstract.trim()} writing={writing} onWrite={() => void writeAbstract()} /> : null}
+              {drafted ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-2xs font-medium text-primary animate-in fade-in duration-300">
+                  <AiIcon className="size-3" /> AI draft
+                </span>
+              ) : null}
+            </>
+          }
+        >
+          {/* The box is as tall as its words, so a written abstract makes it taller: it slides to that height. */}
+          <AutoHeight>
+            <Textarea
+              aria-label={t("abstract")}
+              value={m.abstract}
+              maxLength={DETAIL_TEXT.abstract}
+              disabled={writing}
+              placeholder={reportKey ? "Your PDF prints no abstract. Type one, or have one written from the PDF." : undefined}
+              onChange={(e) => {
+                set("abstract", e.target.value);
+                setDrafted(false);
+              }}
+              rows={7}
+              className="text-sm/6"
+            />
+          </AutoHeight>
         </Section>
 
         <Section title={t("subjects")} crossref={false}>

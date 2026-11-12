@@ -634,6 +634,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
               {report.pdf.kept ? <KeptNotice onReadAgain={() => readAgain({ ...here, key: report.key })} /> : null}
               <DetailsStep
                 onBack={() => onStep("upload")}
+                reportKey={report.key}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -656,6 +657,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
+              reportKey={report.key}
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}

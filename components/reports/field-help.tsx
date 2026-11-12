@@ -221,7 +221,7 @@ export const HELP = {
   abstract: {
     title: "Abstract",
     about: "The abstract or summary your PDF prints, copied as it is.",
-    note: "Empty when the PDF prints neither. Nothing is written for you.",
+    note: "Empty when the PDF prints neither. Write from the PDF then drafts one for you to check.",
     filled: "pdf",
     entry: "typed",
     sources: [{ mark: "web", name: "Crossref abstracts", detail: "How Crossref keeps one", href: `${CROSSREF}/abstracts/` }],
