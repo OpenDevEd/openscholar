@@ -16,7 +16,8 @@ export function Problem({ children, className }: { children: ReactNode; /** Its 
       {children ? (
         <p role="alert" className={cn("flex items-start gap-2 text-sm text-destructive", className)}>
           <CircleX className="mt-0.5 size-4 shrink-0" />
-          <span className="min-w-0">{children}</span>
+          {/* A file's name can be one long word: it breaks anywhere, so a phone shows all of it. */}
+          <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
         </p>
       ) : null}
     </AutoHeight>

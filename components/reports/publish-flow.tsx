@@ -1279,7 +1279,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         <div role="alert" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 ps-1 text-sm text-destructive">
           <p className="flex min-w-0 flex-1 basis-72 items-start gap-2">
             <CircleX className="mt-0.5 size-4 shrink-0" />
-            {t(report.pdf.bylineBy === "added" ? "bylineBy.failed" : "lacksByline", { name: report.pdf.name })}
+            <span className="min-w-0 [overflow-wrap:anywhere]">{t(report.pdf.bylineBy === "added" ? "bylineBy.failed" : "lacksByline", { name: report.pdf.name })}</span>
           </p>
           {report.pdf.bylineBy === "added" ? null : (
             <Button
