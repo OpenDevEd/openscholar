@@ -406,6 +406,8 @@ describe("activating a report", () => {
     // The page and the watcher both look: the first voids the refused payment, the second finds the invoice void.
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "refused" } });
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "none" } });
+    // The balance read again after each look runs now, not after this test's environment is gone.
+    await world.t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await activations(world)).toMatchObject([{ state: "refused" }]);
     expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ refused: true });
   });
