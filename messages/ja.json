@@ -6850,7 +6850,7 @@
       "moveUpLabel": "{name}を上へ",
       "moveDownLabel": "{name}を下へ",
       "author": "著者",
-      "noRole": "その役割はありません",
+      "noContribution": "該当する貢献はありません。レポートの編集や翻訳は役割です。「役割」で選んでください。",
       "corresponding": "責任著者",
       "orcidFound": "名前と {institution} で ORCID から見つかりました",
       "correctTitle": "詳細を修正",

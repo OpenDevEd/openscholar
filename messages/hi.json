@@ -6850,7 +6850,7 @@
       "moveUpLabel": "{name} को ऊपर ले जाएँ",
       "moveDownLabel": "{name} को नीचे ले जाएँ",
       "author": "लेखक",
-      "noRole": "ऐसी कोई भूमिका नहीं",
+      "noContribution": "ऐसा कोई योगदान नहीं है। रिपोर्ट का संपादन या अनुवाद एक भूमिका है: इसे भूमिका में चुनें।",
       "corresponding": "संपर्क लेखक",
       "orcidFound": "ORCID पर उनके नाम और {institution} से मिला",
       "correctTitle": "विवरण सुधारें",

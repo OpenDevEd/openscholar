@@ -327,7 +327,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
           placeholder={t("contributionsPlaceholder")}
           selectedText={t("contributionCount", { count: author.roles.length })}
           searchPlaceholder={t("findContribution")}
-          emptyText={t("noRole")}
+          emptyText={t("noContribution")}
           removeLabel={(name) => t("remove", { name })}
           options={CREDIT_ROLES.map((role) => ({ id: role, name: roleName(role), detail: roleDetail(role) }))}
           selected={author.roles}

@@ -6851,7 +6851,7 @@
       "moveUpLabel": "Subir {name}",
       "moveDownLabel": "Descer {name}",
       "author": "autor",
-      "noRole": "Essa função não existe",
+      "noContribution": "Nenhuma contribuição assim. Editar ou traduzir o relatório é uma função: escolha-a em Função.",
       "corresponding": "Autor correspondente",
       "orcidFound": "Encontrado no ORCID pelo nome e por {institution}",
       "correctTitle": "Corrigir os dados",

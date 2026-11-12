@@ -6851,7 +6851,7 @@
       "moveUpLabel": "Subir a {name}",
       "moveDownLabel": "Bajar a {name}",
       "author": "autor",
-      "noRole": "No existe esa función",
+      "noContribution": "No hay ninguna contribución así. Editar o traducir el informe es una función: elígela en Función.",
       "corresponding": "Autor de correspondencia",
       "orcidFound": "Encontrado en ORCID por su nombre y {institution}",
       "correctTitle": "Corregir los datos",
@@ -7160,7 +7160,7 @@
         "kind": {
           "title": "Función",
           "about": "Lo que esta persona es para el informe. La mayoría son autores.",
-          "note": "Solo los autores aparecen en la cita del informe. Las demás personas figuran con su rol en Contribuciones, en la página del informe, y Crossref y Zenodo reciben el rol de cada una."
+          "note": "Solo los autores aparecen en la cita del informe. Las demás personas figuran con su función en Contribuciones, en la página del informe, y Crossref y Zenodo reciben la función de cada una."
         },
         "orcid": {
           "title": "Identificador ORCID",

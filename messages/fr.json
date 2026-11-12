@@ -6850,7 +6850,7 @@
       "moveUpLabel": "Monter {name}",
       "moveDownLabel": "Descendre {name}",
       "author": "auteur",
-      "noRole": "Aucun rôle de ce nom",
+      "noContribution": "Aucune contribution de ce nom. Éditer ou traduire le rapport est un rôle : choisissez-le sous Rôle.",
       "corresponding": "Auteur correspondant",
       "orcidFound": "Trouvé sur ORCID par son nom et {institution}",
       "correctTitle": "Corriger les informations",

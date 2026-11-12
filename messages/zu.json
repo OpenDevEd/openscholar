@@ -6850,7 +6850,7 @@
       "moveUpLabel": "Hambisa u-{name} phezulu",
       "moveDownLabel": "Hambisa u-{name} phansi",
       "author": "Umbhali",
-      "noRole": "Ayikho indima enjalo",
+      "noContribution": "Awukho umnikelo onjalo. Ukuhlela noma ukuhumusha umbiko kuyindima: yikhethe ngaphansi kwe-Indima.",
       "corresponding": "Umbhali wokuxhumana",
       "orcidFound": "Kutholwe ku-ORCID ngegama labo kanye ne-{institution}",
       "correctTitle": "Lungisa imininingwane",

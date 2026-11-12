@@ -6851,7 +6851,7 @@
       "moveUpLabel": "Sogeza {name} juu",
       "moveDownLabel": "Sogeza {name} chini",
       "author": "Mwandishi",
-      "noRole": "Hakuna jukumu kama hilo",
+      "noContribution": "Hakuna mchango kama huo. Kuhariri au kutafsiri ripoti ni jukumu: lichague chini ya Jukumu.",
       "corresponding": "Mwandishi wa mawasiliano",
       "orcidFound": "Imepatikana kwenye ORCID kwa jina lake na {institution}",
       "correctTitle": "Sahihisha maelezo",
@@ -7160,7 +7160,7 @@
         "kind": {
           "title": "Jukumu",
           "about": "Mtu huyu ni nani kwa ripoti hii. Watu wengi ni waandishi.",
-          "note": "Waandishi pekee ndio hutajwa katika nukuu ya ripoti. Wengine wote huorodheshwa pamoja na nafasi yao chini ya Michango kwenye ukurasa wa ripoti, na Crossref na Zenodo hupokea nafasi ya kila mtu."
+          "note": "Waandishi pekee ndio hutajwa katika nukuu ya ripoti. Wengine wote huorodheshwa pamoja na jukumu lao chini ya Michango kwenye ukurasa wa ripoti, na Crossref na Zenodo hupokea jukumu la kila mtu."
         },
         "orcid": {
           "title": "ORCID iD",

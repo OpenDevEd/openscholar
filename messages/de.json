@@ -6851,7 +6851,7 @@
       "moveUpLabel": "{name} nach oben",
       "moveDownLabel": "{name} nach unten",
       "author": "Autorin oder Autor",
-      "noRole": "Keine solche Rolle",
+      "noContribution": "Keinen solchen Beitrag gefunden. Den Bericht herauszugeben oder zu übersetzen ist eine Rolle: Wählen Sie sie unter Rolle.",
       "corresponding": "Korrespondierende Autorin oder korrespondierender Autor",
       "orcidFound": "Auf ORCID über den Namen und {institution} gefunden",
       "correctTitle": "Angaben korrigieren",

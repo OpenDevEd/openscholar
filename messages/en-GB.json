@@ -6850,7 +6850,7 @@
       "moveUpLabel": "Move {name} up",
       "moveDownLabel": "Move {name} down",
       "author": "author",
-      "noRole": "No such role",
+      "noContribution": "No such contribution. Editing or translating the report is a role: pick it under Role.",
       "corresponding": "Corresponding author",
       "orcidFound": "Found on ORCID by their name and {institution}",
       "correctTitle": "Correct the details",

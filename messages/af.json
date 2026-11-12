@@ -6851,7 +6851,7 @@
       "moveUpLabel": "Skuif {name} op",
       "moveDownLabel": "Skuif {name} af",
       "author": "Skrywer",
-      "noRole": "Geen sulke rol nie",
+      "noContribution": "Geen sulke bydrae nie. Om die verslag te redigeer of te vertaal is ’n rol: kies dit onder Rol.",
       "corresponding": "Korresponderende skrywer",
       "orcidFound": "Op ORCID gevind deur hul naam en {institution}",
       "correctTitle": "Korrigeer besonderhede",

@@ -6851,7 +6851,7 @@
       "moveUpLabel": "نقل {name} لأعلى",
       "moveDownLabel": "نقل {name} لأسفل",
       "author": "المؤلف",
-      "noRole": "لا يوجد دور كهذا",
+      "noContribution": "لا توجد مساهمة بهذا الاسم. تحرير التقرير أو ترجمته دور: اختره تحت الدور.",
       "corresponding": "المؤلف المراسل",
       "orcidFound": "وُجد على ORCID باسمه و{institution}",
       "correctTitle": "تصحيح التفاصيل",

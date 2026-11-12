@@ -6850,7 +6850,7 @@
       "moveUpLabel": "上移{name}",
       "moveDownLabel": "下移{name}",
       "author": "作者",
-      "noRole": "没有此角色",
+      "noContribution": "没有这样的贡献。编辑或翻译报告属于角色：请在“角色”中选择。",
       "corresponding": "通讯作者",
       "orcidFound": "通过姓名和 {institution} 在 ORCID 上找到",
       "correctTitle": "更正信息",
