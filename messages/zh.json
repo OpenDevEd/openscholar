@@ -6551,7 +6551,7 @@
         "workspaceClosed": "此工作区的方案不包含发布。请换一个包含发布的方案。"
       },
       "signFailed": "无法签署协议。",
-      "sign": "下一步：签署并预留 DOI",
+      "sign": "签署并预留 DOI",
       "signIn": "登录以发布",
       "doiReserved": "您的 DOI 已预留",
       "doiReservedBody": "它随您的报告保留，并在报告上线时一同上线。",
@@ -6769,10 +6769,11 @@
         "keptNoteOrg": "如果审稿人在付款完成前拒绝了报告，这次激活会留在 {organization} 的余额中，供下一份报告使用。"
       },
       "back": "返回",
+      "next": "下一步",
       "bylineFirst": "您的 PDF 带有这行署名",
       "bylineFirstBody": "本系列的每份报告都在 PDF 中以文字形式带有这行署名。您上传后，我们的检查会查找它。",
-      "nextUpload": "下一步：上传 PDF",
-      "nextDetails": "下一步：核对信息",
+      "nextUpload": "上传 PDF",
+      "nextDetails": "核对信息",
       "problem": {
         "outOfStep": "此页面与服务器的版本不一致。请刷新页面后重试。",
         "retry": "请重试。如果仍然出现，请<link>报告问题</link>。",
@@ -6797,7 +6798,7 @@
         "title": "通过 {series} 发布报告",
         "intro": "从开始到结束大约十分钟。以下是每一步需要您做的事。",
         "introReviewed": "大约占用您十分钟。之后由审核人批准，报告才能上线，我们会通过邮件通知您。",
-        "start": "下一步：签署协议",
+        "start": "签署协议",
         "agreement": {
           "title": "签署发布协议",
           "body": "您保留版权，并以 CC BY 4.0 发布。"

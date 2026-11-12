@@ -6551,7 +6551,7 @@
         "workspaceClosed": "This workspace's plan doesn't include publishing. Move to a plan that does."
       },
       "signFailed": "The agreement couldn't be signed.",
-      "sign": "Next: sign and reserve a DOI",
+      "sign": "Sign and reserve a DOI",
       "signIn": "Sign in to publish",
       "doiReserved": "Your DOI is reserved",
       "doiReservedBody": "It stays with your report, and goes live when the report does.",
@@ -6769,10 +6769,11 @@
         "keptNoteOrg": "If a reviewer declines the report before the payment goes through, the activation stays in {organization}'s balance for the next report."
       },
       "back": "Back",
+      "next": "Next",
       "bylineFirst": "Your PDF carries this line",
       "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "nextUpload": "Upload the PDF",
+      "nextDetails": "Check the details",
       "problem": {
         "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
         "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
@@ -6797,7 +6798,7 @@
         "title": "Publishing a report with {series}",
         "intro": "About ten minutes from start to finish. This is what each step asks of you.",
         "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Next: sign the agreement",
+        "start": "Sign the agreement",
         "agreement": {
           "title": "Sign the publishing agreement",
           "body": "You keep the copyright and publish under CC BY 4.0."

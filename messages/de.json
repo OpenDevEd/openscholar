@@ -6552,7 +6552,7 @@
         "workspaceClosed": "Der Plan dieses Arbeitsbereichs enthält kein Veröffentlichen. Wechseln Sie zu einem Plan, der es enthält."
       },
       "signFailed": "Die Vereinbarung konnte nicht unterzeichnet werden.",
-      "sign": "Weiter: unterzeichnen und DOI reservieren",
+      "sign": "Unterzeichnen und DOI reservieren",
       "signIn": "Zum Veröffentlichen anmelden",
       "doiReserved": "Ihr DOI ist reserviert",
       "doiReservedBody": "Er bleibt bei Ihrem Bericht und geht online, wenn der Bericht online geht.",
@@ -6770,10 +6770,11 @@
         "keptNoteOrg": "Lehnt eine Prüferin oder ein Prüfer den Bericht ab, bevor die Zahlung durch ist, bleibt die Aktivierung für den nächsten Bericht im Guthaben von {organization}."
       },
       "back": "Zurück",
+      "next": "Weiter",
       "bylineFirst": "Ihr PDF trägt diesen Vermerk",
       "bylineFirstBody": "Jeder Bericht dieser Reihe trägt diesen Vermerk in seinem PDF, als Text. Unsere Prüfungen suchen danach, sobald Sie hochladen.",
-      "nextUpload": "Weiter: PDF hochladen",
-      "nextDetails": "Weiter: Angaben prüfen",
+      "nextUpload": "PDF hochladen",
+      "nextDetails": "Angaben prüfen",
       "problem": {
         "outOfStep": "Diese Seite und der Server haben unterschiedliche Versionen. Laden Sie die Seite neu und versuchen Sie es dann erneut.",
         "retry": "Versuchen Sie es erneut. Wenn es weiter passiert, <link>melden Sie ein Problem</link>.",
@@ -6798,7 +6799,7 @@
         "title": "Einen Bericht bei {series} veröffentlichen",
         "intro": "Etwa zehn Minuten von Anfang bis Ende. Das verlangt jeder Schritt von Ihnen.",
         "introReviewed": "Etwa zehn Minuten Ihrer Zeit. Danach genehmigt ein Gutachter den Bericht, bevor er online gehen kann, und Sie erhalten eine E-Mail.",
-        "start": "Weiter: Vereinbarung unterzeichnen",
+        "start": "Vereinbarung unterzeichnen",
         "agreement": {
           "title": "Die Veröffentlichungsvereinbarung unterzeichnen",
           "body": "Sie behalten das Urheberrecht und veröffentlichen unter CC BY 4.0."
