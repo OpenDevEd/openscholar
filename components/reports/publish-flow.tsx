@@ -108,6 +108,27 @@ const said = (otherwise: string) => (error: unknown) => void toast.error(getErro
 const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
+/**
+ * The report's bill under its cover, from the moment it is signed until it is live: what its licence costs, and what
+ * that comes to with the way of paying and the code kept with it. Where the report is activated, the checks' own bar
+ * draws it with what is chosen there.
+ */
+function KeptBill({ report, terms, humanReview, beside }: { report: Report; terms: Terms; humanReview: boolean; beside: HTMLDivElement }) {
+  const t = useTranslations("publishReports.flow");
+  // mock: the balance, the way of paying and the licence this browser keeps (publication-mock.ts, licence-mock.ts);
+  // the real build reads them with the report and `terms`.
+  const parts = useMockBalance();
+  const signedWith = useMockPayWith(report.key);
+  const licence = useMockLicence(report.key);
+  const off = mockCodeOff(report.voucher);
+  const stage = stageOf(report, humanReview);
+  // The checks' bar has it, where the report is activated.
+  const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending && !terms.paused;
+  // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
+  if (terms.price === null || stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(licence)} price={terms.price} parts={parts} payWith={signedWith ?? "balance"} code={report.voucher && off !== undefined ? { code: report.voucher, off } : null} note={t("payment.later")} />, beside);
+}
+
 /** A section's name inside a step: the step's own heading is above them all. */
 const SECTION = "mb-3 flex items-center gap-1 text-sm font-semibold";
 /** The part of what is bought that a code takes off, 0 to 1. */
@@ -575,6 +596,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onCorrected={() => up("correct")}
           />
           <ReportCover basics={basics} report={report} slot={setBeside} />
+          {/* The report's bill stays under its cover from signing until it is live. */}
+          {report && terms && beside ? <KeptBill report={report} terms={terms} humanReview={basics.humanReview} beside={beside} /> : null}
         </div>
       )}
     </LibraryPageShell>
@@ -802,6 +825,7 @@ function Screens({ form, beside, carried, onApplied, preparing, onPrepared, onUn
             <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
           ) : (
             <Checks
+              beside={beside}
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
               report={report}
               carried={carried?.key === report.key ? carried : null}
@@ -1079,7 +1103,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
           <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} parts={parts} payWith={payWith} code={codeNow} note={t("payment.later")} />
-          {beside ? createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(named)} price={priceNow} parts={parts} payWith={payWith} code={codeNow} note={t("payment.later")} />, beside) : null}
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} parts={parts} payWith={payWith} code={codeNow} note={t("payment.later")} />, beside) : null}
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>
@@ -1677,7 +1701,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; /** A code applied or removed here, for the page to keep while its steps come and go. */ onApplied?: (quote: Quote | null) => void; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: from the balance, or by buying one once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ beside = null, rows, report, carried: quoted = null, onApplied, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; /** A code already quoted for this report, applied as the page opens. */ carried?: Quote | null; /** A code applied or removed here, for the page to keep while its steps come and go. */ onApplied?: (quote: Quote | null) => void; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: from the balance, or by buying one once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: (code?: string) => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1868,7 +1892,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                     code={code ? { code: code.code, off: codeOff(code) } : null}
                     disabled={activating}
                     voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={type} /> : null}
-                    action={
+                    action={(withAmount) =>
                       unapplied ? (
                         <TooltipHint label={t("activation.promo.applyFirst")}>
                           <span tabIndex={0}>
@@ -1876,12 +1900,15 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                           </span>
                         </TooltipHint>
                       ) : (
-                        // What is due is said in the bill above it, so the button carries no amount. Nothing due charges
-                        // nothing: no dialog to confirm a charge. mock: dev's server spends one of its activations either way.
-                        <ActivateButton label={t("activate")} amount={null} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
+                        // Under the bill, the button carries no amount: the total is right above it. Beside the bill, it
+                        // does. Nothing due charges nothing: no dialog to confirm a charge. mock: dev's server spends
+                        // one of its activations either way.
+                        <ActivateButton label={t("activate")} amount={withAmount && due > 0 && !requoting ? dollars(due) : null} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
                       )
                     }
                   />
+                  {/* The bill stays under the cover, where it has been since the report was signed: here with what is chosen now. */}
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(licence)} price={price / 100} parts={parts} payWith={payWith} code={code ? { code: code.code, off: codeOff(code) } : null} />, beside) : null}
                   {terms.refused ? <p className="mt-1.5 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
                 </div>
               ) : stage === "ready" && admin && terms ? (
@@ -2668,7 +2695,7 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
           )}
         </div>
         {/* Where a step shows what it is working out, on a wide page: the agreement's bill. */}
-        <div ref={slot} className="hidden @3xl:block" />
+        <div ref={slot} />
       </div>
     </aside>
   );

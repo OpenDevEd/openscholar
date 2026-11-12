@@ -90,7 +90,7 @@ export function PayWithSwitch({ parts, payWith, onPayWith, className }: { parts:
  * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
  * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
  */
-export function Bill({ licence, price, parts, payWith, code, action, note, boxed = false, className }: { /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; parts: BalancePart[]; payWith: PayWith; /** The code applied, with the part of what is bought it takes off. */ code: { code: string; off: number } | null; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+export function Bill({ licence, price, parts, payWith, code, action, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; parts: BalancePart[]; payWith: PayWith; /** The code applied, with the part of what is bought it takes off. */ code: { code: string; off: number } | null; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
   const balance = balanceOf(parts);
@@ -105,7 +105,7 @@ export function Bill({ licence, price, parts, payWith, code, action, note, boxed
         </dl>
       </AutoHeight>
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
-        <span className="font-medium">{t(action ? "dueNow" : "due")}</span>
+        <span className="font-medium">{t(now || action ? "dueNow" : "due")}</span>
         <bdi className="text-lg/6 font-semibold">
           <RollingMoney value={sum.due} />
         </bdi>
@@ -119,7 +119,11 @@ export function Bill({ licence, price, parts, payWith, code, action, note, boxed
 /** Whether a card pays anything, before any code: where a code has something to lower. */
 export const buysByCard = ({ price, parts, payWith }: { price: number; parts: BalancePart[]; payWith: PayWith }) => payment({ price, balance: balanceOf(parts), payWith: balanceOf(parts) > 0 ? payWith : "card", off: 0 }).bought > 0;
 
-/** The choices and the bill in one bar, where the report is activated: what pays and a code beside what that comes to, with the button that pays. */
+/**
+ * The choices in one bar, where the report is activated: what pays and a code, with the button that pays. On a wide
+ * page the bill is under the cover beside the steps, where it has been since the report was signed, so the button
+ * carries what is due; on a narrow one the bill is here, over the button.
+ */
 export function PaymentChoice({
   licence,
   price,
@@ -139,12 +143,13 @@ export function PaymentChoice({
   code: { code: string; off: number } | null;
   /** The field a code goes in, shown while a card pays something. */
   voucher?: ReactNode;
-  action?: ReactNode;
+  /** The button that pays, with what is due on it where the bill isn't beside it. */
+  action: (withAmount: boolean) => ReactNode;
   disabled?: boolean;
 }) {
   const t = useTranslations("publishReports.flow.payment");
   return (
-    <div inert={disabled || undefined} className={cn("grid gap-x-6 gap-y-3 rounded-2xl bg-inset/60 p-3 transition-opacity sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]", disabled && "opacity-60")}>
+    <div inert={disabled || undefined} className={cn("grid gap-x-6 gap-y-3 rounded-2xl bg-inset/60 p-3 transition-opacity @lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] @3xl:grid-cols-[minmax(0,1fr)_auto]", disabled && "opacity-60")}>
       <div className="min-w-0 space-y-2">
         {balanceOf(parts) > 0 ? <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p> : null}
         <PayWithSwitch parts={parts} payWith={payWith} onPayWith={onPayWith} className="bg-background" />
@@ -152,7 +157,8 @@ export function PaymentChoice({
             field is put away. A code applied is kept, and is back when a card pays again. */}
         <AutoHeight>{voucher && buysByCard({ price, parts, payWith }) ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
       </div>
-      <Bill boxed className="self-start" licence={licence} price={price} parts={parts} payWith={payWith} code={code} action={action} />
+      <Bill boxed className="self-start @3xl:hidden" licence={licence} price={price} parts={parts} payWith={payWith} code={code} action={action(false)} />
+      <div className="hidden items-end justify-end @3xl:flex">{action(true)}</div>
     </div>
   );
 }
