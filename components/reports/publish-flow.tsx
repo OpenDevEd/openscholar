@@ -1733,6 +1733,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
                 className="font-mono placeholder:font-sans"
               />
               <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+                {checking ? <Spinner /> : null}
                 {t("apply")}
               </Button>
               {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
@@ -1753,8 +1754,9 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
             </div>
             {wrong ? (
               <p className="text-xs text-destructive">{wrong}</p>
-            ) : typed.trim() ? (
+            ) : typed.trim() && !checking ? (
               // Said under the field, not only in Activate's tooltip: a touch screen shows no tooltip on a disabled button.
+              // Not while the code is being checked: Apply was just pressed, and being told to press it read as a failure.
               <p className="text-xs text-muted-foreground">{t("applyFirst")}</p>
             ) : null}
           </form>
