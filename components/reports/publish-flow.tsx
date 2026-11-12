@@ -1181,7 +1181,7 @@ function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string
       <BylineBox byline={byline} />
       <RadioGroup aria-label={t("label")} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
         {([["self", PenLine], ["added", FileCheck2]] as const).map(([value, Icon]) => (
-          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-primary/60 hover:bg-muted/50"))}>
+          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
             <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 text-sm font-medium">
