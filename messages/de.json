@@ -6539,10 +6539,10 @@
       "agreementIntro": "Sie behalten das Urheberrecht und veröffentlichen unter CC BY 4.0. Mit der Unterschrift reservieren Sie Ihren DOI.",
       "agreementShared": "Sie behalten das Urheberrecht und veröffentlichen unter CC BY 4.0. Mit der Unterschrift reservieren Sie Ihren DOI. Der Bericht gehört zu diesem Arbeitsbereich: Seine Mitglieder können ihn sehen, und Sie und seine Admins arbeiten daran.",
       "signedBy": "Unterzeichnet von",
-      "agree": "Ich stimme dieser Vereinbarung zu, für mich und alle Mitautorinnen und Mitautoren, die zugestimmt haben",
+      "agree": "Ich stimme dieser Vereinbarung zu, für mich und alle Mitautorinnen und Mitautoren, die alle zugestimmt haben",
       "untouched": "Sie haben bereits einen DOI für <mono>{key}</mono> reserviert und sein PDF noch nicht hochgeladen.",
       "continueWith": "Damit weitermachen",
-      "agreementChanged": "Die Vereinbarung hat sich geändert, während diese Seite offen war. Lesen Sie sie erneut und setzen Sie dann die Häkchen.",
+      "agreementChanged": "Die Vereinbarung hat sich geändert, während diese Seite offen war. Lesen Sie sie erneut und setzen Sie dann das Häkchen.",
       "agreementInEnglish": "Die Vereinbarung selbst ist auf Englisch verfasst.",
       "limit": {
         "personal": "Mit Ihrem Plan beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
