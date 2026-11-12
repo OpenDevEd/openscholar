@@ -212,6 +212,7 @@ function usePage<T>(list: T[], size: number) {
 
 function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
   const t = useTranslations("publishReports.details");
+  const tp = useTranslations("people");
   const roleName = useRoleName();
   const [finding, setFinding] = useState(false);
   const who = author.name || t("author");
@@ -247,7 +248,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
         </span>
       </div>
       </PopoverAnchor>
-      <PopoverContent align="end" className="w-[min(var(--radix-popover-trigger-width),28rem)] p-0">
+      <PopoverContent align="end" aria-label={tp("find")} className="w-[min(var(--radix-popover-trigger-width),28rem)] p-0">
         <OrcidSearch
           name={author.name}
           institutions={author.affiliations.map((a) => a.name)}

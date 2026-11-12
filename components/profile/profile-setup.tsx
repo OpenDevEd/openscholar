@@ -195,13 +195,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 /** The person's ORCID iD, found on ORCID by their name, those at their institutions first, or pasted. */
 function OrcidField({ orcid, name, affiliations, onChange }: { orcid: string; name: string; affiliations: Affiliation[]; onChange: (orcid: string) => void }) {
+  const t = useTranslations("people");
   const [finding, setFinding] = useState(false);
   return (
     <Popover modal open={finding} onOpenChange={setFinding}>
       <PopoverTrigger asChild>
         <OrcidButton orcid={orcid} open={finding} className="w-full" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
+      <PopoverContent align="start" aria-label={t("find")} className="w-(--radix-popover-trigger-width) p-0">
         <OrcidSearch
           name={name}
           institutions={affiliations.map((a) => a.name)}
