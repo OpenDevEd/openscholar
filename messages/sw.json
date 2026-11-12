@@ -6320,7 +6320,6 @@
       },
       "which": "Ripoti zipi",
       "pagerItems": "ripoti",
-      "approvedToast": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
       "sentAgain": "Imetumwa tena",
       "noMatch": "Hakuna ripoti inayolingana",
       "noReports": "Bado hakuna ripoti",
@@ -6337,7 +6336,7 @@
       "openPage": "Fungua ukurasa wake",
       "openPageLabel": "Fungua ukurasa wa {key}",
       "done": {
-        "approve": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
+        "approve": "Imeidhinishwa. Sasa inaweza kuwashwa.",
         "reinstate": "Imerejeshwa. Imechapishwa tena.",
         "withdraw": "Imeondolewa",
         "decline": "Imekataliwa"

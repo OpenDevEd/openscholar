@@ -6319,7 +6319,6 @@
       },
       "which": "Yimiphi imibiko",
       "pagerItems": "imibiko",
-      "approvedToast": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
       "sentAgain": "Kuthunyelwe futhi",
       "noMatch": "Ayikho imibiko efanayo",
       "noReports": "Ayikho imibiko okwamanje",
@@ -6336,7 +6335,7 @@
       "openPage": "Vula ikhasi lawo",
       "openPageLabel": "Vula ikhasi le-{key}",
       "done": {
-        "approve": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
+        "approve": "Kuvunyiwe. Manje ungenziwa usebenze.",
         "reinstate": "Kubuyiselwe. Kushicilelwe futhi.",
         "withdraw": "Kuhoxisiwe",
         "decline": "Kwenqatshiwe"

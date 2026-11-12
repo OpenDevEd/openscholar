@@ -796,3 +796,9 @@ html[data-question-stage] body > * {
     visibility: hidden;
   }
 }
+
+/* An open dialog or sheet turns pointer events off on the page. Clerk's sign-in, opened from inside one (Add to
+   library in a paper's reading view), is pressable above it, as toasts are. */
+.cl-modalBackdrop {
+  pointer-events: auto;
+}

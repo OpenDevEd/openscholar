@@ -6319,7 +6319,6 @@
       },
       "which": "Quels rapports",
       "pagerItems": "rapports",
-      "approvedToast": "Approuvé. Son auteur peut l'activer maintenant.",
       "sentAgain": "Renvoyé",
       "noMatch": "Aucun rapport ne correspond",
       "noReports": "Aucun rapport pour l'instant",
@@ -6336,7 +6335,7 @@
       "openPage": "Ouvrir sa page",
       "openPageLabel": "Ouvrir la page de {key}",
       "done": {
-        "approve": "Approuvé. Son auteur peut l'activer maintenant.",
+        "approve": "Approuvé. Il peut maintenant être activé.",
         "reinstate": "Rétabli. Il est de nouveau en ligne.",
         "withdraw": "Retiré",
         "decline": "Refusé"

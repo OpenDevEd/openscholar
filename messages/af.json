@@ -6320,7 +6320,6 @@
       },
       "which": "Watter verslae",
       "pagerItems": "verslae",
-      "approvedToast": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
       "sentAgain": "Weer gestuur",
       "noMatch": "Geen verslae pas nie",
       "noReports": "Nog geen verslae nie",
@@ -6337,7 +6336,7 @@
       "openPage": "Maak sy bladsy oop",
       "openPageLabel": "Maak {key} se bladsy oop",
       "done": {
-        "approve": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
+        "approve": "Goedgekeur. Dit kan nou geaktiveer word.",
         "reinstate": "Herstel. Dit is weer gepubliseer.",
         "withdraw": "Teruggetrek",
         "decline": "Afgekeur"
