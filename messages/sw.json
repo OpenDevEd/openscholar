@@ -1408,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Tunathamini faragha yako",
-    "bannerDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar inavyotumiwa na kuiboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi.",
-    "dialogDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar inavyotumiwa na kuiboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi. Unaweza kubadilisha chaguo lako wakati wowote.",
+    "bannerDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar na jumuiya zake zinavyotumiwa na kuziboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi.",
+    "dialogDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar na jumuiya zake zinavyotumiwa na kuziboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi. Unaweza kubadilisha chaguo lako wakati wowote.",
     "acceptAll": "Kubali yote",
     "rejectNonEssential": "Kataa visivyo vya lazima",
     "preferencesTitle": "Mapendeleo ya vidakuzi",
