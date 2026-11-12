@@ -3,25 +3,50 @@ import Base from "../../layouts/Base.astro";
 import Device from "../../components/Device.astro";
 import Art from "../../components/Art.astro";
 import Arrow from "../../components/Arrow.astro";
+import Icon from "../../components/Icon.astro";
 import Faq from "../../components/Faq.astro";
 import Close from "../../components/Close.astro";
 import { APP } from "../../data/site.mjs";
 // What a publithon is and how to take part, for anyone invited to one. No event of its own: dates, topic and sponsor
 // come later, when an event needs them. Sponsors write to us through the contact form's sponsor topic.
-// The steps are /publish's own (publishReports.flow.overview), in the order the app takes them.
+// The steps are /publish's own (publishReports.flow.overview), in the order the app takes them, each with a glass
+// emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck).
 const steps = [
-  ["Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
-  ["Get your DOI", "Reserved the moment you sign. It goes live with the report."],
-  ["Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
-  ["Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
-  ["Automatic checks", "They look for that line and for anything published before."],
-  ["Go live", "The DOI is registered and the report has its own page."],
+  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
+  ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report."],
+  ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
+  ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
+  ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before."],
+  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
+];
+// A real DOI taken apart. The prefix is shared dev's sandbox one (10.53832); production's goes here at launch.
+const parts = [
+  ["https://doi.org/", "#7da7e6", "The DOI link. Anyone who opens it is sent to wherever the work is kept now."],
+  ["10.", "#38bdf8", "Every DOI starts with 10."],
+  ["53832", "#34d399", "The publisher's prefix: here, Openscholar Reports."],
+  ["/openscholar-reports.r100230", "#fbbf24", "This report, and no other. It never changes."],
+];
+const gains = [
+  ["cite", "Cited in one paste", "Reference managers turn the DOI into a full citation."],
+  ["linkround", "A link that lasts", "If the report's page ever moves, the DOI follows it."],
+  ["search", "Easier to find", "Its title, authors and funders go out with the DOI, where research indexes can pick them up."],
+  ["graph", "Counted when cited", "Citations that use the DOI can be traced back to your work."],
+];
+// What getting a DOI takes on your own, each beside what Openscholar does instead. Every right-hand line is something
+// the publish flow does today (publishReports, convex/reports).
+const chores = [
+  ["Find a journal or repository that issues DOIs, or join a registration agency yourself", "Openscholar Reports publishes it, in its own series"],
+  ["Write the title, authors, affiliations and funders in the agency's format", "Read from your PDF, for you to check"],
+  ["Put the DOI and the series line into your PDF", "Added on a last page if it's missing"],
+  ["Check it hasn't been published before", "Checked against published work automatically"],
+  ["Register the DOI, and send corrections when something changes", "Registered when it goes live, and corrections sent on"],
+  ["Keep the PDF online, so the DOI always leads somewhere", "Its own page, with the PDF to read"],
 ];
 const faq = [
   ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
-  ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against published work, and a match goes to a reviewer before anything goes live."],
+  ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against work that's already published."],
   ["What does AI do here?", "It reads the title, authors, institutions and funders from your PDF, so you don't type them in. You check them and change anything before the report goes live."],
-  ["Who reviews my report?", "Automatic checks look for the series line with your DOI and for anything published before. A reviewer then approves the report before it can go live, and you hear by email."],
+  ["Does anyone review my report first?", "No. Automatic checks look for the series line with your DOI and for anything published before, and once they pass, your report goes live straight away."],
   ["Can I run a publithon for my field?", "Yes. Tell us the topic and who you'd invite, and we'll plan it with you."],
 ];
 ---
@@ -50,13 +75,29 @@ const faq = [
     </div>
   </section>
 
-  {/* One sheet's journey across the art, and the six steps under the sheets they belong to. The light runs along the
-      thread as the section arrives, and each step comes up as it passes. */}
+  {/* What a DOI is: a real one, one part lit at a time, and what it does for the work. */}
+  <section class="doi" id="doi" aria-labelledby="doi-h">
+    <div class="d-head"><h2 id="doi-h">What's a DOI?</h2><p class="lead">A DOI is a permanent ID for one piece of work. Its link always leads to that work, wherever it's kept, and it's what journals, libraries and reference managers use to cite it.</p></div>
+    <div class="anat" data-anat data-in>
+      <p class="dstr" role="group" aria-label="The parts of a DOI">{parts.map(([t, c], i) => <button type="button" class="pt" style={`--c:${c}`} aria-pressed={i === 0 ? "true" : "false"} data-pt={i}>{t}</button>)}</p>
+      <p class="cap" aria-live="polite">{parts.map(([t, c, d], i) => <span class:list={["c-one", { on: i === 0 }]} style={`--c:${c}`} data-cap={i}>{d}</span>)}</p>
+    </div>
+    <ul class="gains">{gains.map(([icon, t, d], i) => <li style={`--d:${i * .08}s`} data-in><i><Icon name={icon} size={22} /></i><b>{t}</b><span>{d}</span></li>)}</ul>
+  </section>
+
+  {/* The work a DOI usually takes, crossed off one line at a time, with what's done instead beside each. */}
+  <section class="panel chores" id="done" aria-labelledby="ch-h">
+    <i class="field f-steel" aria-hidden="true"></i>
+    <div class="ch-head"><h2 id="ch-h">We do the paperwork</h2><p class="lead">On your own, a DOI means going through a journal or repository, or joining a registration agency and doing the rest yourself. Here it's done for you.</p></div>
+    <ol class="ch-list" data-in>{chores.map(([a, b], i) => <li style={`--i:${i}`}><span class="was">{a}</span><span class="now"><Icon name="check" size={18} />{b}</span></li>)}</ol>
+  </section>
+
+  {/* The six steps on one thread, each with its icon from the app as a glass emblem. The thread fills from the first
+      step to the last as the section arrives, and each emblem lights as it reaches it. */}
   <section class="bleed path" id="publish" aria-labelledby="path-h">
-    <div class="inner p-head"><h2 id="path-h">From PDF to DOI</h2><p class="lead">The steps you take in Openscholar, start to finish. A reviewer approves each report before it goes live, and you hear by email.</p></div>
+    <div class="inner p-head"><h2 id="path-h">What's left: a few clicks</h2><p class="lead">About ten minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
     <div class="inner p-run" data-in>
-      <div class="p-art"><Art name="pub-path" pos="50% 45%" sizes="(max-width: 1280px) 100vw, 1280px" /></div>
-      <ol class="p-steps">{steps.map(([t, d], i) => <li style={`--i:${i}`}><b>{t}</b><span>{d}</span></li>)}</ol>
+      <ol class="p-steps"><i class="thread" aria-hidden="true"><i></i></i>{steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><img src={`/img/step-${id}.avif`} width="264" height="264" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></li>)}</ol>
     </div>
   </section>
 
@@ -79,6 +120,19 @@ const faq = [
   <Faq items={faq} title="Questions about publithons" />
   <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
 </Base>
+<script>
+  // The DOI's parts take turns, one lit with its meaning below, until someone points at or picks one themselves.
+  const anat = document.querySelector<HTMLElement>("[data-anat]");
+  if (anat) {
+    const pts = [...anat.querySelectorAll<HTMLButtonElement>("[data-pt]")], caps = [...anat.querySelectorAll<HTMLElement>("[data-cap]")];
+    let at = 0, timer = 0, held = false;
+    const show = (i: number) => { at = i; pts.forEach((b, j) => b.setAttribute("aria-pressed", String(j === i))); caps.forEach((c, j) => c.classList.toggle("on", j === i)); };
+    const hold = (i: number) => { held = true; clearInterval(timer); show(i); };
+    pts.forEach((b, i) => { b.addEventListener("click", () => hold(i)); b.addEventListener("pointerenter", () => hold(i)); b.addEventListener("focus", () => hold(i)); });
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    new IntersectionObserver(([e], io) => { if (!e.isIntersecting) return; io.disconnect(); if (!held && !still) timer = window.setInterval(() => show((at + 1) % pts.length), 2800); }, { rootMargin: "0px 0px -20% 0px" }).observe(anat);
+  }
+</script>
 <style>
   @keyframes up { from { opacity: 0; transform: translateY(20px); } }
 
@@ -105,22 +159,47 @@ const faq = [
   .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
   .go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .go :global(i) { transform: translateX(4px); }
 
-  /* One sheet's journey, lit along its thread as the section arrives. */
+  /* A DOI taken apart: the parts in one line of type, the one lit carrying its colour, its meaning underneath. */
+  .doi { display: grid; gap: clamp(28px, 3.4vw, 48px); padding: clamp(72px, 8vw, 120px) var(--pad) 0; }
+  .d-head, .ch-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .d-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
+  .anat { display: grid; gap: 18px; padding: clamp(28px, 3.6vw, 52px); border-radius: var(--r); background: var(--night); color: #fff; }
+  .dstr { display: flex; flex-wrap: wrap; margin: 0; font: 400 clamp(20px, 2.85vw, 40px)/1.15 var(--mono); letter-spacing: -.02em; overflow-wrap: anywhere; } @media (min-width: 901px) { .dstr { flex-wrap: nowrap; white-space: nowrap; } }
+  .pt { position: relative; padding: 4px 0 14px; color: rgb(255 255 255 / .38); cursor: pointer; transition: color .35s var(--ease); font: inherit; letter-spacing: inherit; text-align: left; }
+  .pt::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: 4px; height: 4px; border-radius: 4px; background: var(--c); opacity: .22; transition: opacity .35s var(--ease), box-shadow .35s var(--ease); }
+  .pt[aria-pressed="true"] { color: #fff; } .pt[aria-pressed="true"]::after { opacity: 1; box-shadow: 0 0 18px var(--c); }
+  .cap { display: grid; margin: 0; min-height: 2.9em; font-size: clamp(17px, 1.6vw, 21px); line-height: 1.4; } .c-one { grid-area: 1 / 1; opacity: 0; translate: 0 6px; transition: opacity .35s var(--ease), translate .45s var(--ease); } .c-one::before { content: ""; display: inline-block; width: 18px; height: 4px; margin: 0 10px 4px 0; border-radius: 4px; background: var(--c); vertical-align: middle; } .c-one.on { opacity: 1; translate: 0; }
+  .gains { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); margin: 0; padding: 0; list-style: none; }
+  .gains li { display: grid; align-content: start; gap: 6px; } .gains i { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 8px; border-radius: 13px; background: color-mix(in srgb, var(--brand) 14%, #fff); color: var(--brand-ink); } .gains i :global(svg) { width: 24px; height: 24px; } .gains b { font-weight: 500; font-size: 19px; letter-spacing: -.01em; } .gains span { color: var(--t2); font-size: 16px; line-height: 1.45; }
+
+  /* The paperwork, crossed off one line at a time; what's done instead slides in beside it. */
+  .chores { display: grid; gap: clamp(24px, 3vw, 40px); padding: var(--pad); margin-top: clamp(48px, 6vw, 88px); }
+  .ch-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; } .ch-head .lead { color: rgb(255 255 255 / .82); }
+  .ch-list { display: grid; margin: 0; padding: 0; list-style: none; }
+  .ch-list li { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 8px 40px; align-items: center; padding-block: 16px; border-top: 1px solid rgb(255 255 255 / .14); }
+  .was { position: relative; justify-self: start; color: rgb(255 255 255 / .9); font-size: clamp(16px, 1.4vw, 19px); line-height: 1.4; text-decoration: line-through; text-decoration-color: rgb(255 255 255 / .55); text-decoration-thickness: 1.5px; transition: color .5s var(--ease) calc(.2s + var(--i) * .32s); }
+  .now { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 500; font-size: clamp(16px, 1.4vw, 19px); } .now :global(svg) { flex: none; color: #86efac; }
+  :global(.js) .ch-list[data-in] { opacity: 1; transform: none; }
+  :global(.js) .ch-list:not(.in) .was { text-decoration-color: transparent; } :global(.js) .ch-list.in .was { color: rgb(255 255 255 / .5); transition: color .5s var(--ease) calc(.2s + var(--i) * .32s), text-decoration-color .5s var(--ease) calc(.2s + var(--i) * .32s); }
+  :global(.js) .ch-list:not(.in) .now { opacity: 0; translate: -12px 0; } :global(.js) .ch-list.in .now { transition: opacity .5s var(--ease) calc(.35s + var(--i) * .32s), translate .6s var(--ease) calc(.35s + var(--i) * .32s); }
+
+  /* The steps, on a thread that lights from the first to the last. */
   .path { background: var(--night); padding-block: clamp(72px, 8vw, 120px) clamp(56px, 6vw, 96px); margin-top: clamp(48px, 6vw, 88px); }
   .p-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .p-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; } .p-head .lead { color: rgb(255 255 255 / .78); }
-  .p-run { display: grid; margin-top: clamp(16px, 2vw, 32px); }
-  .p-art { position: relative; aspect-ratio: 1672 / 600; overflow: clip; } .p-art :global(.art) { position: absolute; inset: 0; } .p-art :global(.art img) { opacity: 1; object-fit: cover; }
-  /* The art fades into the night at every edge, so it has no box. */
-  .p-art :global(.art) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 16%, #000 84%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 16%, #000 84%, transparent); mask-composite: intersect; }
-  .p-art { -webkit-mask-image: linear-gradient(90deg, #000 var(--lit, 100%), transparent calc(var(--lit, 100%) + 12%)); mask-image: linear-gradient(90deg, #000 var(--lit, 100%), transparent calc(var(--lit, 100%) + 12%)); }
-  /* The art puts its six sheets 16.1% apart, the first centred at 9.8%: the columns match them. */
-  .p-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 96.6%; margin: -4px 0 0 1.75%; counter-reset: s; }
-  .p-steps li { display: grid; align-content: start; gap: 6px; padding-top: 16px; padding-inline: clamp(4px, .8vw, 12px); border-top: 1px solid rgb(255 214 140 / .28); text-align: center; }
-  .p-steps li::before { counter-increment: s; content: counter(s); justify-self: center; display: grid; place-items: center; width: 26px; height: 26px; margin-bottom: 4px; border-radius: 8px; background: rgb(255 214 140 / .14); color: #ffd68c; font-size: 13px; font-weight: 500; }
-  .p-steps b { font-weight: 500; font-size: 17px; letter-spacing: -.01em; } .p-steps span { color: rgb(255 255 255 / .66); font-size: 14px; line-height: 1.4; }
-  @property --lit { syntax: "<percentage>"; inherits: true; initial-value: 100%; }
-  :global(.js) .p-run[data-in] { opacity: 1; transform: none; } :global(.js) .p-run:not(.in) { --lit: -12%; } :global(.js) .p-run:not(.in) li { opacity: 0; translate: 0 12px; }
-  :global(.js) .p-run.in { transition: --lit 2.6s cubic-bezier(.45, 0, .2, 1); } :global(.js) .p-run.in li { transition: opacity .6s var(--ease) calc(.25s + var(--i) * .38s), translate .7s var(--ease) calc(.25s + var(--i) * .38s); }
+  .p-run { display: grid; margin-top: clamp(40px, 5vw, 72px); }
+  /* Six equal columns; the thread runs behind the emblems' middles, from the first column's centre to the last's. */
+  .p-steps { --em: clamp(96px, 9vw, 132px); position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 clamp(10px, 1.4vw, 20px); }
+  .thread { position: absolute; z-index: -1; top: calc(var(--em) / 2); left: calc(100% / 12); right: calc(100% / 12); height: 2px; border-radius: 2px; background: rgb(255 255 255 / .1); }
+  .thread i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .45); transform-origin: left; }
+  .p-steps li { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; }
+  .p-steps img { width: var(--em); height: var(--em); margin-bottom: 10px; object-fit: contain; filter: drop-shadow(0 0 22px color-mix(in srgb, var(--c) 40%, transparent)); }
+  .p-steps b { font-weight: 500; font-size: 17px; letter-spacing: -.01em; } .p-steps span { color: rgb(255 255 255 / .66); font-size: 14px; line-height: 1.4; max-width: 15em; }
+  /* Arriving: the thread fills over 2.4 s and each step lights as the fill reaches its column. */
+  :global(.js) .p-run[data-in] { opacity: 1; transform: none; }
+  :global(.js) .p-run:not(.in) .thread i { transform: scaleX(0); } :global(.js) .p-run:not(.in) img { opacity: .25; filter: grayscale(1); transform: translateY(10px) scale(.92); } :global(.js) .p-run:not(.in) li > :not(img) { opacity: 0; translate: 0 10px; }
+  :global(.js) .p-run.in .thread i { transition: transform 2.4s cubic-bezier(.45, 0, .2, 1) .2s; }
+  :global(.js) .p-run.in img { transition: opacity .5s var(--ease) calc(.2s + var(--i) * .44s), filter .6s var(--ease) calc(.2s + var(--i) * .44s), transform .8s cubic-bezier(.34, 1.56, .64, 1) calc(.2s + var(--i) * .44s); }
+  :global(.js) .p-run.in li > :not(img) { transition: opacity .6s var(--ease) calc(.35s + var(--i) * .44s), translate .7s var(--ease) calc(.35s + var(--i) * .44s); }
+  .p-steps li:hover img { transform: translateY(-4px) rotate(-4deg); transition: transform .5s cubic-bezier(.34, 1.56, .64, 1); }
 
   /* The live report, frameless, hanging off the bottom of its panel. */
   .result { display: grid; gap: clamp(24px, 3vw, 40px); padding: var(--pad) var(--pad) 0; margin-top: 16px; }
@@ -136,12 +215,16 @@ const faq = [
     .hero > :global(.h-art img), .sponsor > :global(.s-art img) { opacity: 1; }
     .hero { min-height: 0; padding-block: 120px 300px; } .hero::before { display: none; } .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent 46%, #000 72%); mask-image: linear-gradient(transparent 46%, #000 72%); } .sponsor::before { display: none; } .hero > :global(.h-art img) { object-position: 75% 100%; }
     .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
-    .p-head, .r-head { grid-template-columns: minmax(0, 1fr); }
-    .p-art { aspect-ratio: 1672 / 700; margin-inline: calc(var(--pad) * -1); }
-    .p-steps { width: 100%; margin: 8px 0 0; }
-    .p-steps { grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 8px; } .p-steps li { grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; padding-block: 14px; text-align: left; } .p-steps li::before { grid-row: span 2; margin: 0; } .p-steps b, .p-steps span { grid-column: 2; }
+    .p-head, .r-head, .d-head, .ch-head { grid-template-columns: minmax(0, 1fr); }
+    .gains { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .ch-list li { grid-template-columns: minmax(0, 1fr); }
+    .p-steps { --em: 72px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .thread { top: calc(var(--em) / 2); bottom: calc(var(--em) / 2); left: calc(var(--em) / 2 - 1px); right: auto; width: 2px; height: auto; } .thread i { background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); transform-origin: top; }
+    :global(.js) .p-run:not(.in) .thread i { transform: scaleY(0); }
+    .p-steps li { grid-template-columns: var(--em) minmax(0, 1fr); column-gap: 16px; justify-items: start; align-items: center; text-align: left; } .p-steps img { grid-row: span 2; margin: 0; } .p-steps b { align-self: end; } .p-steps span { align-self: start; max-width: none; }
     .r-shot { width: 100%; margin-bottom: -9%; }
     .sponsor { min-height: 0; padding-bottom: 280px; } .sponsor > :global(.s-art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 60%); mask-image: linear-gradient(transparent 30%, #000 60%); }
   }
-  @media (prefers-reduced-motion: reduce) { :global(.js) .p-run:not(.in) { --lit: 100%; } :global(.js) .p-run:not(.in) li { opacity: 1; translate: none; } }
+  @media (max-width: 560px) { .gains { grid-template-columns: minmax(0, 1fr); } }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-list:not(.in) .was { text-decoration-color: rgb(255 255 255 / .55); } :global(.js) .ch-list:not(.in) .now { opacity: 1; translate: none; } }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .p-run:not(.in) .thread i { transform: none; } :global(.js) .p-run:not(.in) img, :global(.js) .p-run:not(.in) li > :not(img) { opacity: 1; filter: none; transform: none; translate: none; } }
 </style>
