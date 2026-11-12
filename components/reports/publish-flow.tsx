@@ -28,6 +28,7 @@ import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { MarkdownContent } from "@/components/markdown-content";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { DetailsStep } from "@/components/reports/details-step";
+import { FieldHelp, type HelpKey } from "@/components/reports/field-help";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
 import { Problem, useProblem } from "@/components/reports/problem";
@@ -57,7 +58,7 @@ import { mockQuoteLicences, useMockVoucher, keepMockLicence, mockAgreementText, 
 import { Bill, PayWithSwitch, PaymentChoice, balanceOf, buysByCard, payment, type PayWith } from "@/components/reports/payment-choice";
 import { keepMockPayWith, mockCodeOff, spendMockBalance, useMockBalance, useMockPayWith } from "@/components/reports/publication-mock";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, activationsFor, changesOf, licenceName, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, activationsFor, changesOf, licenceName, ownLicence, stageOf, stepsOf, isAuthor, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -716,7 +717,8 @@ function Screens({ form, beside, carried, onApplied, preparing, onPrepared, onUn
                 onBack={() => onStep("upload")}
                 ref={form}
                 onReturn={report.reopened ? () => onStep("checks") : undefined}
-                reportKey={report.key}
+                writing={report.pdf?.trouble === "textless" ? undefined : { key: report.key, workspaceId: workspaceId! }}
+                registrars={report.registration}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -743,7 +745,8 @@ function Screens({ form, beside, carried, onApplied, preparing, onPrepared, onUn
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
-              reportKey={report.key}
+              writing={report.pdf?.trouble === "textless" ? undefined : { key: report.key, workspaceId: workspaceId! }}
+              registrars={report.registration}
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}
@@ -936,11 +939,14 @@ function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }
   );
 }
 
-function StepHead({ title, aside, children }: { title: string; aside?: ReactNode; children?: ReactNode }) {
+function StepHead({ title, aside, help, children }: { title: string; aside?: ReactNode; /** The "?" beside the title, for a step whose words people may not know. */ help?: HelpKey; children?: ReactNode }) {
   return (
     <div className="mb-5 space-y-1">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 className="flex items-center gap-1 text-lg font-semibold tracking-tight">
+          {title}
+          {help ? <FieldHelp field={help} /> : null}
+        </h2>
         {aside}
       </div>
       {children ? <p className="max-w-xl text-sm text-muted-foreground">{children}</p> : null}
@@ -1028,7 +1034,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
   return (
     <div>
-      <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
+      <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
         {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
@@ -1193,8 +1199,9 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           <Hash className="size-9" />
         </motion.span>
       </div>
-      <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
+      <motion.h2 className="mt-5 flex items-center gap-1 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
         {t("doiReserved")}
+        <FieldHelp field="doi" />
       </motion.h2>
       <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.4)}>
         {t("doiReservedBody")}
@@ -1231,7 +1238,7 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
       {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
           out as the upload's page is, which comes next. */}
       <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
-        <StepHead title={t("bylineFirst")}>{t("bylineFirstBody")}</StepHead>
+        <StepHead title={t("bylineFirst")} help="byline">{t("bylineFirstBody")}</StepHead>
         <BylineChoice byline={report.byline} by={by} onPick={(picked) => void setBy(picked)} />
         <StepNav
           hint={by ? undefined : t("bylineBy.choose")}
@@ -1466,10 +1473,10 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
       const [file, cover] = await Promise.all([
         put(picked, "application/pdf"),
-        drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
+        drawCover(picked).then(async (drawn) => (drawn ? { id: await put(drawn.picture, "image/jpeg"), shape: drawn.shape } : undefined)).catch(() => undefined),
       ]);
       arrived = true;
-      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
+      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover: cover.id, coverShape: cover.shape }) });
       if (refused) return say(refused);
       onAttached();
     } catch (error) {
@@ -1484,7 +1491,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   };
   return (
     <div>
-      <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
+      <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
       <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
       <button
         type="button"
@@ -1575,11 +1582,16 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
+/** What Already published said when it found nothing, before it searched Openscholar Reports too: said as it was. */
+const BEFORE_OWN_REPORTS = "Not in OpenAlex, Openscholar's index or our communities.";
+
 export function CheckRow({ name, result, advice = true, overruled = false }: { name: string; result?: CheckResult; /** Whether to say what the author can do about a failed check: only where they still can. */ advice?: boolean; /** A reviewer approved the report over this check's answer. */ overruled?: boolean }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   /** What a check says, in the page's language when it's one of the fixed things a check says. */
   const inWords = (words: string | undefined) => {
+    // A result saved before Openscholar Reports itself was searched (2026-11-12) says what was searched then.
+    if (words === BEFORE_OWN_REPORTS) return t("check.said.notPublishedElsewhere");
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };
@@ -1786,7 +1798,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   const requoting = !chose && !code && !!terms?.refused?.code;
 
   const head = !report ? (
-    <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
+    <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
     </StepHead>
   ) : stage === "ready" && !admin ? (
@@ -1794,11 +1806,11 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
       {t(report.approved ? "activation.waitingAdminApproved" : "activation.waitingAdminPassed", { organization: organization ?? "" })}
     </StepHead>
   ) : stage === "ready" ? (
-    <StepHead key="ready" title={t("ready")} aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
+    <StepHead key="ready" title={t("ready")} help="activation" aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
       {t(report.approved ? "readyApproved" : "readyPassed")}
     </StepHead>
   ) : stage === "review" ? (
-    <StepHead key="review" title={t("waiting")} aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
+    <StepHead key="review" title={t("waiting")} help="checks" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
       {t(rows.some((r) => r.result && !r.result.pass) ? "waitingFlagged" : "waitingPassed")} {t("reviewTakes")}
     </StepHead>
   ) : stage === "declined" ? (
@@ -1809,7 +1821,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   ) : (
     // Asked of a reviewer, it reads as waiting on them, with how long that takes: "A check failed" alone left people
     // unsure their request had gone anywhere.
-    <StepHead key="failed" title={t("notYet")} aside={report.asked ? <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip> : <StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
+    <StepHead key="failed" title={t("notYet")} help="checks" aside={report.asked ? <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip> : <StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
       {t(report.asked ? "failedAsked" : "failedFix")}
       {report.asked ? ` ${t("reviewTakes")}` : null}
     </StepHead>
@@ -2388,7 +2400,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
           <Button variant="outline" disabled={sending} onClick={close}>
             {t("cancel")}
           </Button>
-          <Button className="relative" disabled={sending} onClick={send}>
+          <Button className="relative max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal" disabled={sending} onClick={send}>
             <Working busy={sending}>
               <span className="flex items-center gap-2">
                 <ReviewQueueIcon /> {t("sendForReview")}
@@ -2616,12 +2628,13 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
         title={m?.title || t("yourTitle")}
-        authors={m?.authors.map((a) => a.name).filter(Boolean) ?? []}
+        authors={m?.authors.filter(isAuthor).map((a) => a.name).filter(Boolean) ?? []}
         source={basics.series.name}
         year={m?.date ? Number(m.date.slice(0, 4)) : null}
         type="report"
         // The picture of the PDF's first page takes the title page's place once it's made.
         image={report?.coverUrl ?? null}
+        shape={report?.coverShape ?? null}
         href={report?.pdf?.url ?? null}
         pdf={!!report?.pdf?.url}
       />
@@ -2629,7 +2642,10 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
         <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
           <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
         </TooltipHint>
-        <p className="mt-0.5 text-xs text-muted-foreground">{basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}</p>
+        <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
+          {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
+          <FieldHelp field="issn" />
+        </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {live ? (
             <StatusChip tone="success" icon={BadgeCheck} className="fade-enter">

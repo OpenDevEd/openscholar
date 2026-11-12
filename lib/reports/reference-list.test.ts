@@ -37,4 +37,8 @@ describe("the references in a pasted text or a file", () => {
   it("joins a reference a PDF wrapped over several lines, when blank lines part the references", () => {
     expect(referencesIn("Piper, B. (2018). Scaling up\nsuccessfully.\n\nBanerjee, A. (2011).\nPoor Economics.")).toEqual([{ text: "Piper, B. (2018). Scaling up successfully." }, { text: "Banerjee, A. (2011). Poor Economics." }]);
   });
+
+  it("keeps two DOIs apart in a list blank lines part", () => {
+    expect(referencesIn("10.1234/a\n10.1234/b\n\n10.1234/c")).toEqual([{ text: "", doi: "10.1234/a" }, { text: "", doi: "10.1234/b" }, { text: "", doi: "10.1234/c" }]);
+  });
 });

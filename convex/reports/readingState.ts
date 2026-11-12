@@ -3,7 +3,10 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { slugPick } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
-import { detailsOf, forget, keptDetails, touch } from "./flow";
+import { byKey, changing, detailsOf, forget, keptDetails, touch } from "./flow";
+import { requireAdmin } from "../admins/access";
+import { actorValidator } from "../workspaces/actor";
+import { createError } from "../lib/errors";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
@@ -23,6 +26,22 @@ export const begin = internalQuery({
     const held = (await detailsOf(ctx, reportId)).metadata;
     const kept = held !== undefined;
     return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, line: report.byline, added: report.pdf.bylineBy === "added", stamped: !!report.pdf.stamped, series: seriesOf(report, settings.series).name, ...(held && { held }), byline: settings.checks.some((check) => check.id === "byline" && check.enabled) ? report.byline : null, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }), kept };
+  },
+});
+
+/**
+ * What an abstract is written from (./abstract.ts): the text its PDF's reading kept, the model the admin page sets for
+ * reading, and the report's language. Its author, or a reviewer when no workspace is given.
+ */
+export const abstractSource = internalQuery({
+  args: { actor: v.optional(actorValidator), key: v.string() },
+  returns: v.object({ text: v.id("_storage"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) }),
+  handler: async (ctx, { actor, key }) => {
+    const report = actor ? await changing(ctx, actor, key) : (await requireAdmin(ctx), await byKey(ctx, key));
+    if (!report?.pdf?.text) throw createError("CONFLICT", "This report's PDF has no text to write an abstract from. Type one instead.");
+    const settings = await reportSettings(ctx);
+    const pick = await slugPick(ctx, settings.metadataModelId, settings.metadataEffort, "extraction");
+    return { text: report.pdf.text, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }) };
   },
 });
 

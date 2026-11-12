@@ -12,11 +12,14 @@ describe("contact messages", () => {
   it("takes a topic's message with what it needs", () => {
     expect(problems({ topic: "bug", ...sender, message: "The export button does nothing." })).toEqual([]);
     expect(problems({ topic: "southern", ...sender, country: "Kenya", project: "Early-grade reading in public schools." })).toEqual([]);
+    expect(problems({ topic: "sponsor", ...sender, project: "A publithon on girls' education in East Africa." })).toEqual([]);
   });
 
   it("refuses a topic's message without what it needs", () => {
     expect(problems({ topic: "community", ...sender, project: "Too short" })).toEqual(["project"]);
     expect(problems({ topic: "account", ...sender, project: "A project is not what this topic asks for." })).toEqual(["message"]);
+    // A sponsor says which publithon they would back: a message alone tells the team nothing to act on.
+    expect(problems({ topic: "sponsor", ...sender, message: "Please get in touch." })).toEqual(["project"]);
     expect(problems({ topic: "southern", ...sender, project: "Early-grade reading in public schools." })).toEqual(["country"]);
   });
 

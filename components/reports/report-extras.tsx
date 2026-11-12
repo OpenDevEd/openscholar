@@ -11,8 +11,10 @@ import { ExternalLink, PenLine } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
-import { useRelationName, useRoleName } from "@/components/reports/words";
-import { linkHref, type Metadata } from "@/lib/reports/report";
+import { useKindName, useRelationName, useRoleName } from "@/components/reports/words";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { isAuthor, linkHref, type Metadata } from "@/lib/reports/report";
+import { cn } from "@/lib/utils";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 
 const CHIP = "inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs text-muted-foreground";
@@ -31,15 +33,19 @@ export function ReportMain({ m }: { m: Metadata }) {
   const t = useTranslations("publishReports.page");
   const roleName = useRoleName();
   const relationName = useRelationName();
-  const credited = m.authors.filter((a) => a.roles.length);
+  const kindName = useKindName();
+  // Everyone the report credits for what they did, and everyone who isn't one of its authors, with their role.
+  const credited = m.authors.filter((a) => a.roles.length || !isAuthor(a));
   const links = m.relations.flatMap((r) => {
     const href = linkHref(r.target);
     return href ? [{ ...r, href }] : [];
   });
   // The page of references is in the address, and turning it is a step in the browser's history.
   const [page, setPage] = useQueryState("refs", parseAsInteger.withDefault(1).withOptions({ history: "push", scroll: false }));
-  const refs = pagerOf(m.references.length, REFS_PER_PAGE, page, (next) => void setPage(next));
-  const shownRefs = m.references.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
+  // The works it cites as their list writes them, where its author gave them so; else by their DOIs.
+  const cited = m.citations ?? m.references.map((doi) => ({ text: "", doi }));
+  const refs = pagerOf(cited.length, REFS_PER_PAGE, page, (next) => void setPage(next));
+  const shownRefs = cited.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
   return (
     <>
       {credited.length ? (
@@ -49,6 +55,7 @@ export function ReportMain({ m }: { m: Metadata }) {
               <li key={a.name} className="text-sm">
                 <p className="font-medium">{a.name}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {isAuthor(a) ? null : <span className={cn(CHIP, "font-medium text-foreground")}>{kindName(a.kind!)}</span>}
                   {a.roles.map((role) => (
                     <span key={role} className={CHIP}>
                       {roleName(role)}
@@ -75,15 +82,29 @@ export function ReportMain({ m }: { m: Metadata }) {
           </ul>
         </Section>
       ) : null}
-      {m.references.length ? (
-        <Section id="report-references" title={t("references")} count={m.references.length}>
+      {cited.length ? (
+        <Section id="report-references" title={t("references")} count={cited.length}>
           <Paged pager={refs} rowHeight={REF_ROW} label={t("referencesPager")}>
           <ul>
-            {shownRefs.map((doi) => (
-              <li key={doi} style={{ height: REF_ROW }} className="flex items-center">
-                <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
-                  {doi}
-                </a>
+            {shownRefs.map((c, at) => (
+              // One line a reference, so a page of them is always as tall; the rest of a long one shows on hover.
+              <li key={`${refs.page}-${at}`} style={{ height: REF_ROW }} className="flex min-w-0 items-center gap-1.5">
+                {c.text ? (
+                  <>
+                    <TooltipHint label={c.text} onlyWhenClipped>
+                      <span className="min-w-0 truncate text-xs text-muted-foreground">{c.text}</span>
+                    </TooltipHint>
+                    {c.doi ? (
+                      <a href={`https://doi.org/${c.doi}`} target="_blank" rel="noopener noreferrer" aria-label={t("openDoi", { doi: c.doi })} className="shrink-0 text-muted-foreground hover:text-primary">
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    ) : null}
+                  </>
+                ) : (
+                  <a href={`https://doi.org/${c.doi}`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
+                    {c.doi}
+                  </a>
+                )}
               </li>
             ))}
           </ul>

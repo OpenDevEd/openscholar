@@ -18,7 +18,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { writeAbstractMock } from "@/app/actions/abstract-mock";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +33,9 @@ import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
-import { useRelationName, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, dateParts, licenceName, licenceUrl, daysIn, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata, type Reference } from "@/lib/reports/report";
-import { CONTRIBUTION_DETAIL, FieldHelp, FieldLabel, PERSON_KINDS, type HelpKey } from "@/components/reports/field-help";
+import { useKindName, useRelationName, useRoleDetail, useRoleName } from "@/components/reports/words";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, dateParts, licenceName, licenceUrl, daysIn, RELATION_KINDS, doiIn, linkHref, PERSON_KINDS, type Author, type Metadata, type PersonKind, type Reference } from "@/lib/reports/report";
+import { FieldHelp, FieldLabel, RegistrarsProvider, type HelpKey } from "@/components/reports/field-help";
 import { ReferenceBox } from "@/components/reports/reference-box";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +47,7 @@ const ROWS_PER_PAGE = 5;
 const ROW = 53;
 const BLANK_AUTHOR: Author = { name: "", orcid: "", openalexId: null, affiliations: [], corresponding: false, roles: [] };
 
-function Section({ title, aside, help, children }: { title: string; aside?: ReactNode; /** mock: the "?" beside the title, for a part that is one box. */ help?: HelpKey; children: ReactNode }) {
+function Section({ title, aside, help, children }: { title: string; aside?: ReactNode; /** The "?" beside the title, for a part that is one box. */ help?: HelpKey; children: ReactNode }) {
   return (
     <section className="space-y-3">
       <div className="flex min-h-7 flex-wrap items-center gap-2 border-b border-border-subtle pb-2">
@@ -131,7 +133,7 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
         </Select>
         <Select value={parts?.day ? pad(parts.day) : ""} disabled={!year || !parts?.month || typed !== null} onValueChange={(day) => year && parts?.month && onDate(dateOf(year, parts.month, day === NONE ? undefined : Number(day)))}>
           {/* As wide as its word, in every language: "Day", "Jour", "Tag". */}
-          <SelectTrigger className="min-w-[4.25rem] shrink-0 max-sm:@max-[14.5rem]:w-full" aria-label={t("dateDay")}>
+          <SelectTrigger className="min-w-[4.25rem] shrink-0 max-sm:@max-[14.5rem]:w-full max-sm:@max-[14.5rem]:min-w-0" aria-label={t("dateDay")}>
             <SelectValue placeholder={t("dateDay")} />
           </SelectTrigger>
           <SelectContent>
@@ -228,6 +230,8 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
   const t = useTranslations("publishReports.details");
   const tp = useTranslations("people");
   const roleName = useRoleName();
+  const roleDetail = useRoleDetail();
+  const kindName = useKindName();
   const [finding, setFinding] = useState(false);
   const who = author.name || t("author");
   const id = useId();
@@ -237,31 +241,31 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
           iD's box. On a narrow screen the iD's box takes a line of its own under the name. */}
       <Popover modal open={finding} onOpenChange={setFinding}>
       <PopoverAnchor asChild>
-      {/* mock: each box on the line has its name and "?" over it; the number and the buttons sit level with the boxes. */}
+      {/* Each box on the line has its name and "?" over it; the number and the buttons sit level with the boxes. */}
       <div className="relative flex flex-wrap items-end gap-2">
         <span className="mb-1 flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
         <div className="min-w-0 flex-1 basis-44 space-y-1.5">
           <FieldLabel label={t("name")} help="name" htmlFor={`${id}-name`} />
           <Input id={`${id}-name`} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="font-medium" />
         </div>
-        {/* mock: what the person is to the report, from Crossref's own roles. Held on this page only: nothing new is saved. */}
+        {/* What the person is to the report, in Crossref's own roles: an author unless set. */}
         <div className="w-full shrink-0 space-y-1.5 @md:w-44">
-          <FieldLabel label="Role" help="kind" htmlFor={`${id}-kind`} />
-          <Select value={author.kind ?? "author"} onValueChange={(kind) => onChange({ kind })}>
+          <FieldLabel label={t("role")} help="kind" htmlFor={`${id}-kind`} />
+          <Select value={author.kind ?? "author"} onValueChange={(kind) => onChange({ kind: kind as PersonKind })}>
             <SelectTrigger id={`${id}-kind`} className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {PERSON_KINDS.map((kind) => (
-                <SelectItem key={kind.id} value={kind.id}>
-                  {kind.name}
+                <SelectItem key={kind} value={kind}>
+                  {kindName(kind)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="order-last w-full shrink-0 space-y-1.5 @xl:order-none @xl:w-56">
-          <FieldLabel label="ORCID iD" help="orcid" />
+          <FieldLabel label={t("orcidLabel")} help="orcid" />
           {/* The list's trigger, so focus comes back to it when the list closes; it opens under the whole line. */}
           <PopoverTrigger asChild>
             <OrcidButton orcid={author.orcid} open={finding} className="w-full" />
@@ -316,16 +320,16 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
           <AffiliationPicker value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
         <div className="min-w-0 space-y-1.5">
-          {/* mock: "Contributor roles" read as a second kind of person. It is what the person did, each with CRediT's meaning. */}
-          <FieldLabel label="Contributions" help="contributions" />
+          {/* What the person did, each with CRediT's meaning: "Contributor roles" read as a second kind of person. */}
+          <FieldLabel label={t("contributions")} help="contributions" />
           <OptionPicker
-          label="Contributions"
-          placeholder="What this person did"
-          selectedText={`${author.roles.length} ${author.roles.length === 1 ? "contribution" : "contributions"}`}
-          searchPlaceholder="Find a contribution"
-          emptyText={t("noRole")}
+          label={t("contributions")}
+          placeholder={t("contributionsPlaceholder")}
+          selectedText={t("contributionCount", { count: author.roles.length })}
+          searchPlaceholder={t("findContribution")}
+          emptyText={t("noContribution")}
           removeLabel={(name) => t("remove", { name })}
-          options={CREDIT_ROLES.map((role) => ({ id: role, name: roleName(role), detail: CONTRIBUTION_DETAIL[role] }))}
+          options={CREDIT_ROLES.map((role) => ({ id: role, name: roleName(role), detail: roleDetail(role) }))}
           selected={author.roles}
           names={Object.fromEntries(CREDIT_ROLES.map((role) => [role, roleName(role)]))}
           onToggle={(role) => onChange({ roles: author.roles.includes(role) ? author.roles.filter((r) => r !== role) : [...author.roles, role] })}
@@ -343,11 +347,12 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
   );
 }
 
-/** mock: the button that has an abstract written from the PDF. Over one already there, it asks first. */
+/** The button that has an abstract written from the PDF. Over one already there, it asks first. */
 function WriteAbstract({ filled, writing, onWrite }: { filled: boolean; writing: boolean; onWrite: () => void }) {
+  const t = useTranslations("publishReports.details");
   const button = (onClick?: () => void) => (
     <Button type="button" variant="outline" size="xs" disabled={writing} onClick={onClick}>
-      {writing ? <Spinner className="size-3" /> : <AiIcon className="size-3" />} Write from the PDF
+      {writing ? <Spinner className="size-3" /> : <AiIcon className="size-3" />} {t("writeAbstract")}
     </Button>
   );
   if (!filled) return button(onWrite);
@@ -356,12 +361,12 @@ function WriteAbstract({ filled, writing, onWrite }: { filled: boolean; writing:
       <AlertDialogTrigger asChild>{button()}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Replace the abstract?</AlertDialogTitle>
-          <AlertDialogDescription>A new one is written from the PDF and takes the place of the one in the box.</AlertDialogDescription>
+          <AlertDialogTitle>{t("replaceAbstractTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("replaceAbstractBody")}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep it</AlertDialogCancel>
-          <AlertDialogAction onClick={onWrite}>Replace</AlertDialogAction>
+          <AlertDialogCancel>{t("keepAbstract")}</AlertDialogCancel>
+          <AlertDialogAction onClick={onWrite}>{t("replaceAbstract")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -375,8 +380,6 @@ const localToday = () => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 };
 const SAVE_AFTER_MS = 250;
-/** mock: the details without each person's role and the references as written, which the server has no place for yet. */
-const saved = <M extends Partial<Metadata>>({ cited: _cited, ...m }: M): M => (m.authors ? { ...m, authors: m.authors.map(({ kind: _kind, ...author }) => author) } : m) as M;
 
 export function DetailsStep({
   initial,
@@ -392,13 +395,16 @@ export function DetailsStep({
   words,
   unread = false,
   version,
+  writing: writingFor,
+  registrars,
   shownLicence,
-  reportKey,
 }: {
+  /** The report an abstract is written from, and the workspace its author asks from; none for a reviewer. Without it the form offers none. */
+  writing?: { key: string; workspaceId?: Id<"workspaces"> };
+  /** The registrars the report is sent to, so each part's "?" leaves out one that isn't used. */
+  registrars?: { crossref: boolean; zenodo: boolean };
   /** mock: the licence to show, kept apart from the details so dev's server never gets a licence it doesn't take. */
   shownLicence?: Metadata["licence"];
-  /** mock: the report whose PDF an abstract is written from. Without it the form offers none. */
-  reportKey?: string;
   initial: Metadata;
   /** Given the details, and the `version` the form opened on. */
   onRun: (m: Metadata, version: number | undefined) => Promise<void>;
@@ -446,7 +452,7 @@ export function DetailsStep({
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
-  const held = useRef({ own: {} as Partial<Metadata>, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined });
+  const held = useRef({ own: {} as Partial<Metadata>, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined, /** Run or given up: nothing arriving later, such as an abstract, may change it. */ closed: false });
   const sendNow = () => {
     clearTimeout(held.current.timer);
     held.current.send?.();
@@ -469,7 +475,7 @@ export function DetailsStep({
     // A date in the future shows its warning and is kept back, as a year still being typed is: saving refuses it.
     const { date, ...rest } = own;
     const sendable = date !== undefined && date > localToday() ? rest : own;
-    held.current.send = onSave && Object.keys(sendable).length ? () => onSave(saved(sendable), opened) : undefined;
+    held.current.send = onSave && Object.keys(sendable).length ? () => onSave(sendable, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
@@ -495,45 +501,49 @@ export function DetailsStep({
   };
   const funderIds = m.funding.map((f) => funderChip(f.funder));
   const funderNames = { ...useFunderNames(funderIds.filter((id) => /^F\d/.test(id))), ...Object.fromEntries(m.funding.map((f) => [funderChip(f.funder), f.funder.name])) };
-  // mock: the works cited as their list writes them. Until the server keeps them, the ones with no DOI are held on this
-  // page only, and the saved list is still the DOIs among them.
-  const cited: Reference[] = m.cited ?? m.references.map((doi) => ({ text: "", doi }));
-  const setCited = (next: Reference[]) => change((was) => ({ ...was, cited: next, references: next.flatMap((reference) => reference.doi ?? []) }));
+  // The works cited as their list writes them; a report read before these were kept has its DOIs alone. `references`
+  // stays the DOIs among them, which the checks and registrars read.
+  const cited: Reference[] = m.citations ?? m.references.map((doi) => ({ text: "", doi }));
+  const setCited = (next: Reference[]) => change((was) => ({ ...was, citations: next, references: next.flatMap((reference) => reference.doi ?? []) }));
   const refs = pagerOf(cited.length, REFS_PER_PAGE, refPage, setRefPage);
   const refsFrom = (refs.page - 1) * REFS_PER_PAGE;
   const shownRefs = cited.slice(refsFrom, refsFrom + REFS_PER_PAGE);
   const authors = usePage(m.authors, AUTHORS_PER_PAGE);
   const funders = usePage(m.funding, ROWS_PER_PAGE);
   const links = usePage(m.relations, ROWS_PER_PAGE);
-  // mock: an abstract being written from the PDF.
+  // An abstract being written from the PDF, in the report's language.
   const [writing, setWriting] = useState(false);
+  const write = useAction(api.reports.abstract.write);
   const writeAbstract = async () => {
+    if (!writingFor) return;
     setWriting(true);
     try {
-      const answer = await writeAbstractMock(reportKey!, new Intl.DisplayNames(["en"], { type: "language" }).of(m.language) ?? "English");
-      if ("trouble" in answer) return void toast.error(answer.trouble);
-      set("abstract", answer.abstract);
+      const abstract = await write({ ...writingFor, language: m.language });
+      if (!held.current.closed) set("abstract", abstract);
     } catch {
-      toast.error("The abstract couldn't be written. Try again.");
+      toast.error(t("abstractFailed"));
     } finally {
       setWriting(false);
     }
   };
-  // mock: the references a pasted list or an uploaded file holds, added after the ones already listed. One listed already,
-  // by its DOI or its words, is left out.
+  // The references a pasted list or an uploaded file holds, added after the ones already listed. One listed already, by
+  // its DOI or its words, is left out, but a DOI listed alone (read from the PDF) takes the words the list gives it.
   const addReferences = async (text: string) => {
     const { referencesIn } = await import("@/lib/reports/reference-list");
     const found = referencesIn(text);
+    const worded = new Map(found.flatMap((reference) => (reference.doi && reference.text ? [[reference.doi, reference] as const] : [])));
+    const filled = cited.map((reference) => (reference.doi && !reference.text && worded.get(reference.doi)) || reference);
+    const enriched = filled.filter((reference, at) => reference !== cited[at]).length;
     const key = (reference: Reference) => reference.doi ?? reference.text.toLowerCase();
-    const listed = new Set(cited.map(key));
+    const listed = new Set(filled.map(key));
     const fresh = found.filter((reference) => !listed.has(key(reference)) && listed.add(key(reference)));
     const added = fresh.slice(0, DETAIL_CAPS.references - cited.length);
-    if (!found.length) return void toast.error("No references found in that.");
-    if (!fresh.length) return void toast("Every one of those is listed already.");
-    if (!added.length) return void toast.error(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
-    setCited([...cited, ...added]);
+    if (!found.length) return void toast.error(t("noReferencesFound"));
+    if (!fresh.length && !enriched) return void toast(t("referencesListed"));
+    if (fresh.length && !added.length && !enriched) return void toast.error(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
+    setCited([...filled, ...added]);
     setRefPage(Math.ceil((cited.length + added.length) / REFS_PER_PAGE));
-    toast(`${format.number(added.length)} ${added.length === 1 ? "reference" : "references"} added`, { id: "references-added", action: { label: "Undo", onClick: () => setCited(cited) } });
+    toast(t("referencesAdded", { count: added.length + enriched }), { id: "references-added", action: { label: t("undo"), onClick: () => setCited(cited) } });
   };
   // A year as it is typed, until it is a whole one: only a date that is one is ever saved.
   const [typedYear, setTypedYear] = useState<string | null>(null);
@@ -549,10 +559,12 @@ export function DetailsStep({
     // The run carries the details as they are, so a save still waiting has nothing left to send.
     clearTimeout(held.current.timer);
     held.current.send = undefined;
-    void onRun(saved(m), opened);
+    held.current.closed = true;
+    void onRun(m, opened);
   };
 
   return (
+    <RegistrarsProvider value={registrars ?? { crossref: true, zenodo: true }}>
     <div>
       <div className="mb-6 space-y-1">
         <div className="flex items-center gap-2">
@@ -620,7 +632,7 @@ export function DetailsStep({
               <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
                 <a href={licenceUrl(shownLicence ?? m.licence)} target="_blank" rel="noreferrer license" className="inline-flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline">
                   <span className="truncate">{licenceName(shownLicence ?? m.licence)}</span>
-                  <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
                 </a>
               </div>
             </div>
@@ -656,7 +668,7 @@ export function DetailsStep({
               authors.last(m.authors.length + 1);
             }}
           >
-            <Plus /> {t("addAuthor")}
+            <Plus /> {t("addPerson")}
           </Button>
         </Section>
 
@@ -666,8 +678,8 @@ export function DetailsStep({
           aside={
             <>
               <span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>
-              {/* mock: an abstract written from the PDF when its author asks, since the reading copies only one the PDF prints. */}
-              {reportKey ? <WriteAbstract filled={!!m.abstract.trim()} writing={writing} onWrite={() => void writeAbstract()} /> : null}
+              {/* An abstract written from the PDF when its author asks, since the reading copies only one the PDF prints. */}
+              {writingFor ? <WriteAbstract filled={!!m.abstract.trim()} writing={writing} onWrite={() => void writeAbstract()} /> : null}
             </>
           }
         >
@@ -678,7 +690,7 @@ export function DetailsStep({
               value={m.abstract}
               maxLength={DETAIL_TEXT.abstract}
               disabled={writing}
-              placeholder={reportKey ? "Your PDF prints no abstract. Type one, or have one written from the PDF." : undefined}
+              placeholder={writingFor ? t("noAbstract") : undefined}
               onChange={(e) => set("abstract", e.target.value)}
               rows={7}
               className="text-sm/6"
@@ -810,14 +822,12 @@ export function DetailsStep({
                           <span className="min-w-0 flex-1 truncate text-sm">{reference.text}</span>
                         </TooltipHint>
                       ) : (
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-xs underline-offset-4 hover:underline">
-                          {reference.doi}
-                        </a>
+                        <span className="min-w-0 flex-1 truncate font-mono text-xs">{reference.doi}</span>
                       )}
-                      {reference.text && href ? (
-                        <TooltipHint label="Open its DOI">
+                      {href ? (
+                        <TooltipHint label={t("openItsDoi")}>
                           <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
-                            <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open the DOI of reference ${i + 1}`}>
+                            <a href={href} target="_blank" rel="noopener noreferrer" aria-label={t("openReferenceDoi", { number: format.number(i + 1) })}>
                               <ExternalLink />
                             </a>
                           </Button>
@@ -911,6 +921,7 @@ export function DetailsStep({
             // What was typed is given up, so a save still waiting must never arrive after it.
             clearTimeout(held.current.timer);
             held.current.send = undefined;
+            held.current.closed = true;
             onCancel(opened);
           }}>
             {t("cancel")}
@@ -918,7 +929,8 @@ export function DetailsStep({
         ) : null}
         {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
         {words || onCancel ? (
-          <Button disabled={unready} onClick={run}>
+          // A long label ("Vérifier les modifications et les envoyer en relecture") wraps on a phone rather than leaving the screen.
+          <Button disabled={unready} onClick={run} className="max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal">
             <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
           </Button>
         ) : (
@@ -926,5 +938,6 @@ export function DetailsStep({
         )}
       </div>
     </div>
+    </RegistrarsProvider>
   );
 }

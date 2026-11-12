@@ -6204,7 +6204,8 @@
       "studyDesign": "Study design",
       "seeChanges": "See your changes",
       "correct": "Correct the details",
-      "takeDownTitle": "Taking it down"
+      "takeDownTitle": "Taking it down",
+      "openDoi": "Open the DOI {doi}"
     },
     "stages": {
       "draft": "Draft",
@@ -6616,7 +6617,8 @@
         "foundIn": "Found in {where}:",
         "foundAs": "Found as",
         "said": {
-          "notPublished": "Not in OpenAlex, Openscholar's index or our communities.",
+          "notPublished": "Not in Openscholar Reports, OpenAlex, Openscholar's index or our communities.",
+          "notPublishedElsewhere": "Not in OpenAlex, Openscholar's index or our communities.",
           "unfinished": "This check couldn't finish.",
           "bylineFound": "The PDF's text has the line word for word."
         },
@@ -6814,8 +6816,8 @@
       },
       "overview": {
         "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
+        "intro": "About five minutes from start to finish. This is what each step asks of you.",
+        "introReviewed": "About five minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
         "start": "Sign the agreement",
         "agreement": {
           "title": "Sign the publishing agreement",
@@ -6904,10 +6906,7 @@
       "moveUpLabel": "Move {name} up",
       "moveDownLabel": "Move {name} down",
       "author": "author",
-      "roles": "Contributor roles",
-      "roleCount": "{count, plural, one {# role} other {# roles}}",
-      "findRole": "Find a role",
-      "noRole": "No such role",
+      "noContribution": "No such contribution. Editing or translating the report is a role: pick it under Role.",
       "corresponding": "Corresponding author",
       "orcidFound": "Found on ORCID by their name and {institution}",
       "correctTitle": "Correct the details",
@@ -6933,7 +6932,7 @@
       "licence": "License",
       "authors": "Authors",
       "authorsPager": "authors",
-      "addAuthor": "Add an author",
+      "addPerson": "Add a person",
       "abstract": "Abstract",
       "subjects": "Subjects",
       "topics": "Topics",
@@ -6991,7 +6990,328 @@
       "runChecks": "Submit",
       "tooEarly": "A report can't be dated before 1400.",
       "back": "Back",
-      "backToChecks": "Back to the checks"
+      "backToChecks": "Back to the checks",
+      "role": "Role",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Contributions",
+      "contributionsPlaceholder": "What this person did",
+      "contributionCount": "{count, plural, one {# contribution} other {# contributions}}",
+      "findContribution": "Find a contribution",
+      "writeAbstract": "Write from the PDF",
+      "replaceAbstractTitle": "Replace the abstract?",
+      "replaceAbstractBody": "A new one is written from the PDF and takes the place of the one in the box.",
+      "keepAbstract": "Keep it",
+      "replaceAbstract": "Replace",
+      "noAbstract": "Your PDF prints no abstract. Type one, or have one written from the PDF.",
+      "abstractFailed": "The abstract couldn't be written. Try again.",
+      "addReferences": "Add references",
+      "referencesPlaceholder": "Paste references or DOIs, one on each line",
+      "uploadReferences": "Upload a file",
+      "uploadReferencesLabel": "Upload a file of references",
+      "referenceFormats": "BibTeX, RIS or plain text",
+      "noReferencesFound": "No references found in that.",
+      "referencesListed": "Every one of those is listed already.",
+      "referencesAdded": "{count, plural, one {# reference added} other {# references added}}",
+      "undo": "Undo",
+      "referencesTooBig": "That file is over 2 MB. A reference list is far smaller.",
+      "openItsDoi": "Open its DOI",
+      "openReferenceDoi": "Open the DOI of reference {number}"
+    },
+    "kinds": {
+      "author": "Author",
+      "editor": "Editor",
+      "chair": "Chair",
+      "translator": "Translator",
+      "reviewer": "Reviewer",
+      "review-assistant": "Review assistant",
+      "reviewer-external": "Reviewer (external)",
+      "stats-reviewer": "Reviewer (statistics)",
+      "reader": "Reader",
+      "other": "Other"
+    },
+    "roleDetails": {
+      "conceptualization": "Came up with the ideas, goals and aims",
+      "dataCuration": "Organized, cleaned and kept the data",
+      "formalAnalysis": "Ran the statistics or other formal analysis",
+      "fundingAcquisition": "Won the money for the project",
+      "investigation": "Did the research and collected the evidence",
+      "methodology": "Designed the methods or models",
+      "projectAdministration": "Managed and coordinated the project",
+      "resources": "Provided materials, samples, tools or computing",
+      "software": "Wrote or tested the code",
+      "supervision": "Led and mentored the team",
+      "validation": "Checked that the results can be reproduced",
+      "visualization": "Made the figures and data presentation",
+      "writingOriginalDraft": "Wrote the first draft",
+      "writingReviewEditing": "Reviewed and revised the text"
+    },
+    "help": {
+      "aboutLabel": "About {title}",
+      "sentTo": "Sent to",
+      "does": {
+        "crossref": "Registers the DOI",
+        "zenodo": "Archives a copy",
+        "openscholar": "Shows the report"
+      },
+      "sent": "{name}, sent this: {does}",
+      "notSent": "{name}, not sent this: {does}",
+      "filled": {
+        "pdf": "Read from your PDF",
+        "judged": "Judged from your PDF",
+        "matched": "Read from your PDF, then looked up",
+        "classified": "Suggested by OpenAlex",
+        "author": "Starts as Author",
+        "fixed": "Set by Openscholar",
+        "reserved": "Reserved when you sign"
+      },
+      "entry": {
+        "list": "Picked from a list",
+        "typed": "Typed freely",
+        "either": "From a list, or typed",
+        "pasted": "Pasted or uploaded",
+        "toggle": "On or off",
+        "chosen": "Your choice"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex work types",
+          "detail": "The list this picker shows"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo resource types",
+          "detail": "What each type becomes on Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Crossref reports",
+          "detail": "The record Crossref keeps"
+        },
+        "iso639": {
+          "name": "ISO 639 language codes",
+          "detail": "The codes OpenAlex uses"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Attribution 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Crossref contributors",
+          "detail": "How Crossref records people"
+        },
+        "crossrefRoles": {
+          "name": "Crossref contributor roles",
+          "detail": "The list this picker shows"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "What an iD is"
+        },
+        "orcidRegister": {
+          "name": "Get an iD",
+          "detail": "Free, and takes a minute"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex institutions",
+          "detail": "Searched first"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Searched for the ones OpenAlex lacks"
+        },
+        "rorAdd": {
+          "name": "Ask ROR to add an organization",
+          "detail": "For one that is on neither list"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO's Contributor Role Taxonomy"
+        },
+        "crossrefAbstracts": {
+          "name": "Crossref abstracts",
+          "detail": "How Crossref keeps one"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex topics",
+          "detail": "The list this picker searches"
+        },
+        "sdgs": {
+          "name": "The 17 goals",
+          "detail": "United Nations"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex study designs",
+          "detail": "The list this picker shows"
+        },
+        "iso3166": {
+          "name": "ISO 3166 country codes",
+          "detail": "The countries this picker lists"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex funders",
+          "detail": "Searched first"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Searched too, for governments and foundations"
+        },
+        "funderRegistry": {
+          "name": "Crossref Funder Registry",
+          "detail": "The IDs Crossref matches funders by"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "What a DOI is"
+        },
+        "crossrefReferences": {
+          "name": "Crossref references",
+          "detail": "How citations are counted from them"
+        },
+        "crossrefRelations": {
+          "name": "Crossref relationships",
+          "detail": "How Crossref links works together"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "What an ISSN is"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Title",
+          "about": "The report's title as its cover prints it."
+        },
+        "subtitle": {
+          "title": "Subtitle",
+          "about": "The line under the title, when the cover has one.",
+          "note": "Empty when the PDF prints none."
+        },
+        "type": {
+          "title": "Type",
+          "about": "The kind of work this is.",
+          "note": "Crossref files every Openscholar Report as a report. Zenodo and Openscholar use the type chosen here."
+        },
+        "language": {
+          "title": "Language",
+          "about": "The language the report is written in."
+        },
+        "date": {
+          "title": "Date published",
+          "about": "When the report was published: a year, a month or a day, as precisely as the PDF states it, and today at the latest.",
+          "note": "Crossref keeps it as precise as it is. Zenodo takes a whole date, so a year or a month goes there as its first day. A PDF that states no date gets today."
+        },
+        "licence": {
+          "title": "License",
+          "about": "Every Openscholar Report is published under CC BY 4.0, as the agreement you signed says."
+        },
+        "authors": {
+          "title": "Authors",
+          "about": "Everyone the report credits, in the order its citation lists them.",
+          "note": "The PDF's authors are filled in. Add editors, translators and others here, and set their role."
+        },
+        "name": {
+          "title": "Name",
+          "about": "The name as the report prints it. An organization's full name works too.",
+          "note": "A person's name reaches Crossref and Zenodo as family name, then given names: the last word is taken as the family name. An organization's name, one with a word such as Department, Ministry or University in it, is sent whole."
+        },
+        "kind": {
+          "title": "Role",
+          "about": "What this person is to the report. Most people are authors.",
+          "note": "Only authors are named in the report's citation. Everyone else is listed with their role under Contributions on the report's page, and Crossref and Zenodo get each person's role."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "A free number that tells researchers with the same name apart.",
+          "note": "When the PDF prints none, ORCID is searched for one person with exactly this name at one of these institutions."
+        },
+        "affiliations": {
+          "title": "Affiliations",
+          "about": "Where this person worked when the report was written.",
+          "note": "An institution with a ROR ID is sent with it, so Crossref and Zenodo know which one it is. One typed by hand goes as a name alone."
+        },
+        "contributions": {
+          "title": "Contributions",
+          "about": "What this person did for the work, in the 14 roles of CRediT.",
+          "note": "Filled in only when the PDF has a contributions statement. Leaving it empty is fine."
+        },
+        "corresponding": {
+          "title": "Corresponding author",
+          "about": "The person readers write to about the report.",
+          "note": "Switched on only when the PDF marks one."
+        },
+        "abstract": {
+          "title": "Abstract",
+          "about": "The abstract or summary your PDF prints, copied as it is.",
+          "note": "When the PDF prints neither, Write from the PDF drafts one for you to check and change."
+        },
+        "topics": {
+          "title": "Topics",
+          "about": "What the report is about, in OpenAlex's topics.",
+          "note": "OpenAlex's classifier reads the title and abstract. The bar on a topic shows how sure it was. Topics you add have none."
+        },
+        "keywords": {
+          "title": "Keywords",
+          "about": "Your own words for what the report is about.",
+          "note": "The PDF's keywords. When it lists none, up to five from OpenAlex's classifier."
+        },
+        "sdgs": {
+          "title": "Sustainable Development Goals",
+          "about": "The UN goals the report is substantially about.",
+          "note": "At most three are filled in. Add or remove any."
+        },
+        "design": {
+          "title": "Study design",
+          "about": "How the study was done.",
+          "note": "Filled in only when the PDF makes it clear. Zenodo shows it as a methods note."
+        },
+        "places": {
+          "title": "Places studied",
+          "about": "The countries and regions the report is about, not where its authors work."
+        },
+        "funding": {
+          "title": "Funding",
+          "about": "Who paid for the work, with the grant numbers as printed.",
+          "note": "Funders are looked up on OpenAlex and ROR. One found there goes with its ROR ID, and with its Funder Registry ID where it has one. One typed by hand goes as a name alone."
+        },
+        "references": {
+          "title": "References",
+          "about": "The works this report cites, as its reference list writes them.",
+          "note": "Paste the list, or upload it as a BibTeX, RIS or plain text file. Every DOI the PDF prints is filled in, and Crossref links each reference with a DOI to the work it cites."
+        },
+        "links": {
+          "title": "Data, code and versions",
+          "about": "Where the report's data, code, other versions and supplements live.",
+          "note": "Each is a web address or a DOI."
+        },
+        "agreement": {
+          "title": "The publishing agreement",
+          "about": "What you and Openscholar agree to before your report is published.",
+          "note": "You keep the copyright. Ticking the box agrees for you and every co-author, so check they have agreed first. A signed agreement can't be changed."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "A permanent link to your report that keeps working wherever its page moves.",
+          "note": "It's reserved when you sign, so you can print it in your PDF. It works once your report goes live."
+        },
+        "byline": {
+          "title": "The series line",
+          "about": "The line every report in this series prints, naming the series, its ISSN and the report's DOI.",
+          "note": "It has to be text in the PDF, not a picture, because the checks look for it. Choose Add it for me and Openscholar adds a last page with the line."
+        },
+        "checks": {
+          "title": "Checks",
+          "about": "What Openscholar checks before a report can go live, such as the series line in the PDF and whether the work is already published.",
+          "note": "Each check says what it looked for, and what to fix when it fails. If you're sure a check is wrong, ask for a person to review it."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "The number that identifies the series, as a journal's does.",
+          "note": "Pending until the series is registered. Your report's DOI works without it."
+        },
+        "activation": {
+          "title": "Activating",
+          "about": "Activating makes your report public: its page opens, its DOI starts working, and it's registered.",
+          "note": "An activation comes from your workspace's balance, or is paid for here. A voucher code takes money off its price."
+        }
+      }
     }
   },
   "people": {

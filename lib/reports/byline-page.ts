@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "@cantoo/pdf-lib";
-import { dateMoment, licenceName, licenceUrl, dateStyleOf, type Metadata } from "./report";
+import { dateMoment, licenceName, licenceUrl, dateStyleOf, isAuthor, type Metadata } from "./report";
 
 /** What the page Openscholar adds to a report's PDF says. Everything but the byline is left out when it isn't known yet. */
 export type BylinePage = {
@@ -7,7 +7,7 @@ export type BylinePage = {
   line: string;
   /** The series the report is published in. */
   series: string;
-  details?: Pick<Metadata, "title" | "subtitle" | "date" | "licence"> & { authors: Array<{ name: string }> };
+  details?: Pick<Metadata, "title" | "subtitle" | "date" | "licence"> & { authors: Array<Pick<Metadata["authors"][number], "name" | "kind">> };
 };
 
 const PUBLISHER = "Openscholar";
@@ -87,7 +87,7 @@ export async function withBylinePage(pdf: Uint8Array, { line, series, details }:
   // As the report states it: 2026, October 2026 or 11 October 2026, never a month or a day it doesn't give.
   const dated = details?.date ? dateMoment(details.date) : null;
   const when = dated ? new Intl.DateTimeFormat("en-GB", dateStyleOf(dated.parts)).format(dated.at) : details?.date;
-  const names = details?.authors.map((author) => author.name.trim()).filter(Boolean).join(", ");
+  const names = details?.authors.filter(isAuthor).map((author) => author.name.trim()).filter(Boolean).join(", ");
   const rows = [
     ...row(series, bold, 14, 0),
     ...row(details?.title, bold, 12, 22),
