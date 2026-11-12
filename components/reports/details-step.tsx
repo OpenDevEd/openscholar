@@ -381,7 +381,10 @@ export function DetailsStep({
     held.current.own = own;
     setOwn(own);
     clearTimeout(held.current.timer);
-    held.current.send = onSave ? () => onSave(own, opened) : undefined;
+    // A date in the future shows its warning and is kept back, as a year still being typed is: saving refuses it.
+    const { date, ...rest } = own;
+    const sendable = date !== undefined && date > localToday() ? rest : own;
+    held.current.send = onSave && Object.keys(sendable).length ? () => onSave(sendable, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
