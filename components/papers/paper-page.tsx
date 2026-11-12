@@ -451,11 +451,12 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
     <Section id="paper-copies" title={t("whereToRead")} count={copies.length} action={copies.length > COPIES_SHOWN ? (
       <Button variant="ghost" size="sm" className="-me-2 h-7 px-2 text-xs" aria-expanded={all} onClick={() => setAll((value) => !value)}>{all ? t("showFewer") : t("showAll", { count: copies.length })}</Button>
     ) : undefined}>
-      <AutoHeight>
+      {/* The rows reach past the column by their own padding: the frame does too, or it cuts off their hover and focus ring. */}
+      <AutoHeight className="-mx-2">
         <ul className="space-y-0.5">
           {copies.map((copy, index) => (
             <li key={copy.name} className={cn(!all && index >= COPIES_SHOWN && "hidden")}>
-              <a href={copy.url} target="_blank" rel="noopener noreferrer" className="group -mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+              <a href={copy.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
                 <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", copy.pdf ? "bg-success/15 ink-success" : "bg-inset text-muted-foreground")}>
                   {copy.pdf ? <FileText aria-hidden className="size-4" /> : copy.kind === "publisher" ? <BookOpen aria-hidden className="size-4" /> : <Library aria-hidden className="size-4" />}
                 </span>
