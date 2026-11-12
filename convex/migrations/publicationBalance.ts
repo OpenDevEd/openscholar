@@ -60,9 +60,9 @@ export const run = internalAction({
       }
     }
     const page: { accounts: Array<{ workspaceId: Id<"workspaces">; customerId: string; counted: boolean }>; next: string | null } = await ctx.runQuery(internal.migrations.publicationBalance.accounts, { cursor: cursor ?? null });
-    /** Whether Autumn has no such balance: one all spent, or one a purchase made, can't be removed. */
-    const missing = (error: unknown) => {
-      if (error instanceof AutumnError && error.status === 404) return true;
+    /** Autumn's answer that it has no such balance to change, which it gives for one all spent or one a purchase made: false, where a change that went through is true. */
+    const refused = (error: unknown) => {
+      if (error instanceof AutumnError && error.status === 404) return false;
       throw error;
     };
     for (const { workspaceId, customerId, counted } of page.accounts) {
@@ -82,9 +82,9 @@ export const run = internalAction({
             if (now && interval && grant.remaining < size) await autumn.setBalance({ customerId, feature: PUBLICATION_FEATURE, interval, left: grant.remaining * WORTH });
             console.log(JSON.stringify({ event: "publication-balance-moved", customerId, interval: interval ?? "once", dollars: grant.remaining * WORTH, of: amount, now }));
           }
-          const removed = await autumn.deleteBalance({ customerId, feature: ACTIVATIONS, balanceId: grant.id }).then(() => true, missing);
+          const removed = await autumn.deleteBalance({ customerId, feature: ACTIVATIONS, balanceId: grant.id }).then(() => true, refused);
           // One Autumn won't remove is emptied, so a later run finds nothing left in it to move a second time.
-          if (removed !== true && grant.remaining > 0) await given(autumn.takeFrom({ customerId, feature: ACTIVATIONS, balanceId: grant.id, amount: grant.remaining, idempotencyKey: `publication-emptied-${grant.id}` }).catch(missing));
+          if (!removed && grant.remaining > 0) await given(autumn.takeFrom({ customerId, feature: ACTIVATIONS, balanceId: grant.id, amount: grant.remaining, idempotencyKey: `publication-emptied-${grant.id}` }).catch(refused));
         }
         if (counted || old) await ctx.runMutation(internal.migrations.publicationBalance.moved, { workspaceId });
       } catch (error) {
