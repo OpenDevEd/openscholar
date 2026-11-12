@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { cloneElement, useRef, useState, type UIEvent } from "react";
+import { cloneElement, useRef, useState, useSyncExternalStore, type UIEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -97,6 +97,25 @@ function forgetRemoval(userId: string | null | undefined, paperId: string) {
 const NO_PENDING_COLLECTIONS: Record<string, Pending> = {};
 
 /** A paper as the library mutations take it: its metadata plus the full result for rich cards. */
+/** A Save pressed before signing in, by the paper's id, kept with the tab: after signing in its button asks to finish. */
+const SAVE_AFTER_SIGN_IN = "library:save-after-sign-in";
+const pendingSave = () => {
+  try {
+    return window.sessionStorage.getItem(SAVE_AFTER_SIGN_IN);
+  } catch {
+    return null;
+  }
+};
+const forgetPendingSave = () => {
+  try {
+    window.sessionStorage.removeItem(SAVE_AFTER_SIGN_IN);
+  } catch {
+    // Nothing kept.
+  }
+};
+/** Read as the page is drawn; written only by a press, which draws it again. */
+const unwatched = () => () => undefined;
+
 export function paperArgs(paper: WorkInput) {
   return { ...trimPaperData(paper), paperData: JSON.stringify(paper) };
 }
@@ -122,6 +141,9 @@ export function useSavePaper(paper: WorkInput | undefined) {
   const restore = useWorkspaceMutation(api.library.mutations.restoreLibraryItem);
 
   const isSaved = pendingSaved ?? Boolean(saved);
+  // Save was pressed before signing in, on this paper: now signed in, its button asks to finish it, and one press does.
+  const pending = useSyncExternalStore(unwatched, pendingSave, () => null);
+  const finishing = !!isSignedIn && ready && !!paper && saved !== undefined && !isSaved && pending === paper.id;
 
   /** Saves the paper, putting it back whole when `removal` took it away. */
   const saveBack = (paper: WorkInput, removal: Promise<Removal | null> | undefined) => {
@@ -154,9 +176,15 @@ export function useSavePaper(paper: WorkInput | undefined) {
 
   const toggle = () => {
     if (!isSignedIn) {
+      try {
+        if (paper) window.sessionStorage.setItem(SAVE_AFTER_SIGN_IN, paper.id);
+      } catch {
+        // Without the tab's storage, Save is simply pressed again after signing in.
+      }
       openSignIn();
       return;
     }
+    if (pending) forgetPendingSave();
     if (!ready || !paper) return;
     const key = `${userId}:${paper.id}`;
     if (!isSaved) {
@@ -195,7 +223,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
       .finally(() => settleSaved(paper.id, token));
   };
 
-  return { ready, isSignedIn, openSignIn, saved, isSaved, toggle };
+  return { ready, isSignedIn, openSignIn, saved, isSaved, finishing, toggle };
 }
 
 /** A named button of the group and its name: on a phone the three keep their icons, and their names stay for screen readers. */
@@ -220,7 +248,7 @@ export function SaveControl({
 }) {
   const t = useTranslations("saveToLibrary");
   const tAdded = useTranslations("addedPapers");
-  const { ready, isSignedIn, openSignIn, saved, isSaved, toggle } = useSavePaper(paper);
+  const { ready, isSignedIn, openSignIn, saved, isSaved, finishing, toggle } = useSavePaper(paper);
   const setIn = useSetInCollection(paper);
   const [picking, setPicking] = useState(false);
   const [making, setMaking] = useState(false);
@@ -256,13 +284,13 @@ export function SaveControl({
     >
       <TooltipHint label={compact ? label : undefined}>
         <Button
-          variant="outline"
+          variant={finishing ? "default" : "outline"}
           size="sm"
           aria-pressed={isSaved}
-          aria-label={label}
+          aria-label={finishing ? t("finishSaving") : label}
           onClick={toggle}
           className={cn(
-            "bg-transparent",
+            !finishing && "bg-transparent",
             compact && "px-2 has-[>svg]:px-2",
             named && NAMED,
             isSaved &&
@@ -272,11 +300,12 @@ export function SaveControl({
           {isSaved ? (
             <BookCheck />
           ) : (
-            <BookPlus className="text-muted-foreground" />
+            <BookPlus className={finishing ? undefined : "text-muted-foreground"} />
           )}
           {!compact && (
             <span className={cn("inline-grid [&>*]:col-start-1 [&>*]:row-start-1", named && NAME)}>
-              <span className={cn(isSaved && "invisible")}>{t("save")}</span>
+              <span className={cn((isSaved || finishing) && "invisible")}>{t("save")}</span>
+              {finishing ? <span>{t("finishSaving")}</span> : null}
               <span className={cn(!isSaved && "invisible")} aria-hidden>
                 {t("saved")}
               </span>

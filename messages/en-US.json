@@ -1250,7 +1250,8 @@
     "removeError": "Couldn't remove the paper",
     "restoreError": "Couldn't put the paper back",
     "collectionError": "Couldn't change the collection",
-    "newCollectionWithPaper": "New collection with this paper"
+    "newCollectionWithPaper": "New collection with this paper",
+    "finishSaving": "Finish saving"
   },
   "rating": {
     "noRating": "No rating",
@@ -6185,7 +6186,8 @@
       "places": "Places studied",
       "studyDesign": "Study design",
       "seeChanges": "See your changes",
-      "correct": "Correct the details"
+      "correct": "Correct the details",
+      "takeDownTitle": "Taking it down"
     },
     "stages": {
       "draft": "Draft",
@@ -6235,7 +6237,8 @@
         "open": "Open",
         "activate": "Activate it",
         "carryOn": "Carry on",
-        "seeFailed": "See what failed"
+        "seeFailed": "See what failed",
+        "manage": "Open in Publish"
       },
       "seeChanges": "See your changes",
       "correct": "Correct the details"
