@@ -4,6 +4,7 @@ import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { creativeCommons } from "@/lib/papers/licence";
 import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
+import { dateMoment, dateStyleOf } from "@/lib/reports/report";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -279,13 +280,14 @@ function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetai
   const t = useTranslations("paperPage");
   const format = useFormatter();
   const locale = useLocale();
-  const date = paper.publication_date ? new Date(`${paper.publication_date}T00:00:00Z`) : null;
+  // As precisely as the work states it: a report's PDF may give only a month or a year.
+  const dated = paper.publication_date ? dateMoment(paper.publication_date) : null;
   const license = detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
   const language = detail.language && detail.language !== locale.split("-")[0] ? new Intl.DisplayNames([locale], { type: "language" }).of(detail.language) : null;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {detail.retracted ? <span className={`${CHIP} bg-destructive/10 text-destructive`}><TriangleAlert aria-hidden className="size-3.5" />{t("retracted")}</span> : null}
-      {date || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{date ? format.dateTime(date, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : paper.publication_year}</span> : null}
+      {dated || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{dated ? format.dateTime(dated.at, dateStyleOf(dated.parts, "short")) : paper.publication_year}</span> : null}
       {paper.type ? <span className={CHIP}><FileText aria-hidden className="size-3.5" />{workType(paper.type)}</span> : null}
       {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
       {license?.url ? (

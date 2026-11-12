@@ -17,7 +17,7 @@ import { workspacesOf } from "../workspaces/personal";
 import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
@@ -78,6 +78,8 @@ const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[]
  * checks, and one left empty is dropped.
  */
 export function checkedDetails(metadata: Metadata) {
+  // A draft may be saved without one, but nothing is checked or published undated: Crossref takes no record without a year.
+  if (!metadata.date) throw createError("VALIDATION_ERROR", "Give the report's date: its year at least.");
   for (const [what, values, known] of FROM_A_LIST) {
     const stray = values(metadata).find((value) => !known(value));
     if (stray !== undefined) throw createError("VALIDATION_ERROR", `"${stray.slice(0, 80)}" isn't ${what} a report can have. Choose one from the list.`);
@@ -101,8 +103,11 @@ export function keptDetails(metadata: Metadata) {
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
   if (metadata.date > new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
-  // Crossref takes no year before 1400: a date it would refuse is refused here, before anything goes live.
-  if (metadata.date && metadata.date < EARLIEST_DATE) throw createError("VALIDATION_ERROR", "A report can't be dated before 1400.");
+  // A year, a month or a day, as the PDF states it (dateParts). Crossref takes no year before 1400: a date it would
+  // refuse is refused here, before anything goes live.
+  const dated = metadata.date ? dateParts(metadata.date) : undefined;
+  if (dated === null) throw createError("VALIDATION_ERROR", "Give the date as a year, a month or a whole date, such as 2026, 2026-10 or 2026-10-11.");
+  if (dated && dated.year < EARLIEST_YEAR) throw createError("VALIDATION_ERROR", "A report can't be dated before 1400.");
   if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
   return metadata;
 }

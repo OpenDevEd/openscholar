@@ -1,4 +1,4 @@
-import { PDFDocument } from "@cantoo/pdf-lib";
+import { PDFDocument, degrees } from "@cantoo/pdf-lib";
 import { expect, test } from "vitest";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "@/lib/extraction/pdfjs-text";
@@ -60,4 +60,26 @@ test("a name too long for one line is broken across lines and kept whole", async
   const added = await read(await withBylinePage(await doc.save(), { line: LINE, series }));
   expect(carries(added.text, series)).toBe(true);
   expect(carries(added.text, LINE)).toBe(true);
+});
+
+test("a page stored upright and turned to read landscape gets an added page that reads landscape too", async () => {
+  const doc = await PDFDocument.create();
+  doc.addPage([595, 842]).setRotation(degrees(90));
+  const added = (await PDFDocument.load(await withBylinePage(await doc.save(), { line: LINE, series: "Openscholar Reports" }))).getPage(1);
+  expect(added.getSize()).toEqual({ width: 842, height: 595 });
+  expect(added.getRotation().angle).toBe(0);
+  // A page cropped to landscape reads landscape, whatever size its sheet is.
+  const cropped = await PDFDocument.create();
+  cropped.addPage([595, 842]).setCropBox(0, 0, 595, 300);
+  const page = (await PDFDocument.load(await withBylinePage(await cropped.save(), { line: LINE, series: "Openscholar Reports" }))).getPage(1).getSize();
+  expect(page.width).toBeGreaterThan(page.height);
+});
+
+test("a date is written as precisely as the report states it", async () => {
+  const doc = await PDFDocument.create();
+  doc.addPage([595, 842]);
+  const text = async (date: string) => (await read(await withBylinePage(await doc.save(), { line: LINE, series: "Openscholar Reports", details: { ...details("A title"), date } }))).text;
+  expect(await text("2026-10")).toContain("October 2026");
+  expect(await text("2026-10")).not.toContain("1 October 2026");
+  expect(await text("2026-10-11")).toContain("11 October 2026");
 });

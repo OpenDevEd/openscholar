@@ -3,7 +3,7 @@
 // field of a report's details that either registrar takes (plans/registrar-metadata).
 import { CREDIT_ROLES, type CreditRole } from "@opendeved/doi-sync-core";
 import { SDGS, STUDY_DESIGNS } from "../openalex/vocabulary";
-import { doiIn, type Metadata, type RelationKind } from "./report";
+import { doiIn, type Metadata, type RelationKind, wholeDate } from "./report";
 import type { Series } from "./settings";
 
 /**
@@ -157,5 +157,6 @@ export function zenodoRecord<R extends ReturnType<typeof registrationRecord>>(re
   // publisher, which doi-sync-core falls back to). Without one, a dissertation stays a report.
   const university = m.authors[0]?.affiliations[0]?.name;
   const itemType = ZENODO_ITEM_TYPE[m.type] === "Thesis" && !university ? "Report" : (ZENODO_ITEM_TYPE[m.type] ?? "Report");
-  return { ...record, itemType, ...(itemType === "Thesis" && { institution: university }) };
+  // Zenodo takes only a whole date, where Crossref takes a year or a month as the report states it.
+  return { ...record, publicationDate: wholeDate(record.publicationDate), itemType, ...(itemType === "Thesis" && { institution: university }) };
 }
