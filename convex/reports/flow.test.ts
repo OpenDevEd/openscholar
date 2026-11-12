@@ -356,12 +356,60 @@ describe("a report's checks", () => {
     expect(await world.t.run((ctx) => ctx.db.query("reportDetails").take(5))).toHaveLength(0);
   });
 
-  it("can't be asked about, sent back or discarded once it has passed", async () => {
+  it("can't be asked about or discarded once it has passed", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
     await expect(world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "" })).rejects.toMatchObject(refused("CONFLICT"));
-    await expect(world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+
+  it("goes back from its checks until it is activated, and returns to them unchanged without running them again", async () => {
+    const world = await setup();
+    const { key, reportId, pdfAt } = await checked(world, [passed("byline")]);
+    const back = (step: "doi" | "upload" | "details") => world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step });
+    const toChecks = () => world.author.mutation(api.reports.flow.backToChecks, { workspaceId: world.own, key });
+
+    await back("doi");
+    await back("details");
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", status: "passed", reopened: true });
+    await toChecks();
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "done", status: "passed", reopened: false, results: [{ checkId: "byline" }] });
+    await expect(toChecks()).rejects.toMatchObject(refused("CONFLICT"));
+
+    // Sent to the checks again, it can't return to the old ones, even if that run never finishes.
+    await back("details");
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Shade trees, sent again"), runId: "run-2", from: { pdfAt } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", reopened: false });
+    await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-2", results: [passed("byline")], version: 1 });
+
+    // A change to its details runs the checks again.
+    await back("details");
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, changes: { title: "Shade trees and maize yields, revised" }, pdfAt });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", reopened: false });
+    await expect(toChecks()).rejects.toMatchObject(refused("CONFLICT"));
+
+    // While a payment for it is being charged or waits on the bank, it stays as it is. A charge left behind by an action
+    // that died long ago holds nothing.
+    const paying = await checked(world, [passed("byline")], world.author, world.lab);
+    const by = await world.t.run(async (ctx) => (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "author")).unique())!._id);
+    const charge = (state: "charging" | "pending", at: number) => world.t.run((ctx) => ctx.db.insert("reportActivations", { workspaceId: world.lab, reportId: paying.reportId, at, by, state }));
+    const toDetails = () => world.author.mutation(api.reports.flow.goTo, { workspaceId: world.lab, key: paying.key, step: "details" });
+    await charge("charging", Date.now() - 10 * 60_000);
+    for (const state of ["charging", "pending"] as const) {
+      const id = await charge(state, Date.now());
+      await expect(toDetails()).rejects.toMatchObject(refused("CONFLICT"));
+      expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key: paying.key })).toMatchObject({ paying: { until: state === "charging" ? expect.any(Number) : null } });
+      await world.t.run((ctx) => ctx.db.delete("reportActivations", id));
+    }
+    expect(await read(world.author, world.lab, paying.key)).toMatchObject({ step: "done", reopened: false });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key: paying.key })).toMatchObject({ paying: null });
+    await toDetails();
+    expect(await read(world.author, world.lab, paying.key)).toMatchObject({ step: "details", reopened: true });
+
+    // Live, it changes through its corrections instead.
+    const live = await checked(world, [passed("byline")], world.author, world.lab);
+    await activate(world, live.key, { as: "orgadmin", workspaceId: world.lab });
+    await expect(world.author.mutation(api.reports.flow.goTo, { workspaceId: world.lab, key: live.key, step: "details" })).rejects.toMatchObject(refused("CONFLICT"));
   });
 });
 

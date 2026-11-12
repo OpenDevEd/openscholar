@@ -3,7 +3,7 @@
 // A report's details as the model read them from its PDF, for the author to correct (plans/publish-reports).
 // Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
@@ -326,6 +326,8 @@ export function DetailsStep({
   onTouched,
   onCancel,
   onBack,
+  onReturn,
+  ref,
   resend = false,
   waits = false,
   words,
@@ -348,6 +350,10 @@ export function DetailsStep({
   onCancel?: (version: number | undefined) => void;
   /** Back to the PDF, while the report is still being made. */
   onBack?: () => void;
+  /** Back to the checks it was taken from, as they were. Offered until something in the form changes. */
+  onReturn?: () => void;
+  /** Sends an edit still waiting to be saved now: the page does before it moves the report to another step, which a save arriving after would be refused by. */
+  ref?: Ref<{ flush: () => void }>;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
@@ -380,6 +386,7 @@ export function DetailsStep({
     held.current.send?.();
     held.current.send = undefined;
   };
+  useImperativeHandle(ref, () => ({ flush: sendNow }));
   const change = (update: (was: Metadata) => Metadata) => {
     const was: Metadata = { ...initial, ...held.current.own };
     const next = update(was);
@@ -765,6 +772,11 @@ export function DetailsStep({
             onBack();
           }}>
             <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
+        {onReturn && !touched ? (
+          <Button variant="outline" onClick={onReturn}>
+            {t("backToChecks")}
           </Button>
         ) : null}
         {onCancel ? (

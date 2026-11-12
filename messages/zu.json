@@ -6512,7 +6512,12 @@
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
         "live": "Kushicilelwe",
-        "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe."
+        "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe.",
+        "paying": "Inkokhelo yayo isaqhubeka, ngakho izinyathelo zayo azikwazi ukuvulwa manje. Uma ibhange liyenqaba, ziyavuleka futhi.",
+        "liveNow": "Isiku-inthanethi. Shintsha imininingwane yayo nge-{action}.",
+        "closed": "Umbuyekezi uyikhiphile, ngakho ayikwazi ukushintshwa.",
+        "running": "Ukuhlola kwayo kuyaqhubeka. Izinyathelo zizovuleka futhi uma kuqedile.",
+        "notYours": "Umuntu oqale lo mbiko kuphela ongawushintsha."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",
@@ -6932,7 +6937,8 @@
       "checkAndPublish": "Hlola izinguquko bese ushicilela",
       "runChecks": "Thumela",
       "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400.",
-      "back": "Emuva"
+      "back": "Emuva",
+      "backToChecks": "Buyela ekuhloleni"
     }
   },
   "people": {

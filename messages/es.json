@@ -6513,7 +6513,12 @@
         "details": "Datos",
         "checks": "Comprobaciones",
         "live": "Publicado",
-        "sealed": "Bloqueado una vez firmado el acuerdo."
+        "sealed": "Bloqueado una vez firmado el acuerdo.",
+        "paying": "Su pago está en curso, así que sus pasos no se pueden abrir ahora. Si el banco lo rechaza, se abren de nuevo.",
+        "liveNow": "Está publicado. Cambia sus datos con {action}.",
+        "closed": "Un revisor lo retiró, así que no se puede cambiar.",
+        "running": "Sus comprobaciones están en curso. Los pasos se abren de nuevo cuando terminen.",
+        "notYours": "Solo la persona que empezó este informe puede cambiarlo."
       },
       "publish": "Publicar",
       "newReport": "Informe nuevo",
@@ -6933,7 +6938,8 @@
       "checkAndPublish": "Comprobar y publicar los cambios",
       "runChecks": "Enviar",
       "tooEarly": "Un informe no puede tener una fecha anterior a 1400.",
-      "back": "Atrás"
+      "back": "Atrás",
+      "backToChecks": "Volver a las comprobaciones"
     }
   },
   "people": {
