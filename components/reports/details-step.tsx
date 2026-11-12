@@ -552,11 +552,10 @@ export function DetailsStep({
   };
   // The references a pasted list or an uploaded file holds, added after the ones already listed. One listed already, by
   // its DOI or its words, is left out, but a DOI listed alone (read from the PDF) takes the words the list gives it.
-  // While a list is being read, the details aren't sent: what it adds would come after them and be lost.
+  // While a list is being read (ReferenceBox says so), the details aren't sent: what it adds would come after them and be lost.
   const [adding, setAdding] = useState(false);
   const addReferences = async (text: string) => {
-    setAdding(true);
-    const { referencesIn } = await import("@/lib/reports/reference-list").finally(() => setAdding(false));
+    const { referencesIn } = await import("@/lib/reports/reference-list");
     const found = referencesIn(text);
     const worded = new Map(found.flatMap((reference) => (reference.doi && reference.text ? [[reference.doi, reference] as const] : [])));
     const filled = cited.map((reference) => (reference.doi && !reference.text && worded.get(reference.doi)) || reference);
@@ -896,7 +895,7 @@ export function DetailsStep({
               </ul>
             </Paged>
           ) : null}
-          <ReferenceBox onAdd={addReferences} onTrouble={(words) => void toast.error(words)} />
+          <ReferenceBox onAdd={addReferences} onBusy={setAdding} onTrouble={(words) => void toast.error(words)} />
         </Section>
 
         <Section title={t("links")} help="links">
