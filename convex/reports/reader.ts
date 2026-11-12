@@ -11,9 +11,9 @@ import { countryOfPlace } from "../../lib/reports/places";
 import { autocompleteOptions, autocompleteParameters } from "../../lib/openalex/autocomplete";
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
-import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
+import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
 import { matchOrcid, matchRor } from "../../lib/people/identifiers";
-import { CREDIT_ROLES, DETAIL_TEXT, LIST_NUMBER, RELATION_KINDS, doiWithin, referenceFrom, isOrcid, type Affiliation, type Funding, type Metadata, type Topic, dateParts } from "../../lib/reports/report";
+import { CREDIT_ROLES, DETAIL_TEXT, LIST_NUMBER, REPORT_TYPES, RELATION_KINDS, doiWithin, referenceFrom, isOrcid, type Affiliation, type Funding, type Metadata, type Topic, dateParts } from "../../lib/reports/report";
 
 /** The model a reading runs on, as the server resolved it, and the effort it reads at. */
 export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
@@ -29,7 +29,7 @@ const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) =>
 const reading = z.object({
   title: z.string(),
   subtitle: z.string().describe("Empty when there is none"),
-  type: z.enum(ids(WORK_TYPES)),
+  type: z.enum(ids(REPORT_TYPES)).describe("The kind of work it is; presentation for slides made to be shown, such as a talk or a briefing deck"),
   language: z.string().describe("ISO 639-1 code of the text's language"),
   date: z.string().describe("The publication date as the PDF states it, as YYYY-MM-DD, YYYY-MM or YYYY; empty when it states none"),
   authors: z.array(

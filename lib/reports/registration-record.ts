@@ -152,7 +152,7 @@ export function registrationRecord(
 const ZENODO_ITEM_TYPE: Record<string, string> = {
   article: "JournalArticle", review: "JournalArticle", editorial: "JournalArticle", "book-review": "JournalArticle", "data-paper": "JournalArticle", "software-paper": "JournalArticle",
   dataset: "Dataset", "book-chapter": "BookSection", "reference-entry": "EncyclopediaArticle", "conference-paper": "ConferencePaper", "conference-abstract": "ConferencePaper",
-  dissertation: "Thesis", preprint: "Preprint", book: "Book", report: "Report", letter: "Letter", standard: "Standard", software: "ComputerProgram",
+  dissertation: "Thesis", preprint: "Preprint", book: "Book", report: "Report", presentation: "Presentation", letter: "Letter", standard: "Standard", software: "ComputerProgram",
   "peer-review": "Document", "supplementary-materials": "Document", erratum: "Document", retraction: "Document", libguides: "Document", paratext: "Document", other: "Document",
 };
 

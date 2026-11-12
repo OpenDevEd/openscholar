@@ -1,7 +1,13 @@
 // A report in Openscholar Reports (plans/publish-reports): the steps it goes through, where it stands, and the rules
 // its pages and its Convex functions share. Nothing here reads a database or the clock.
 
+import { WORK_TYPES } from "../openalex/vocabulary";
+
 export type Answer = "yes" | "no" | "unclear";
+
+/** What a report can be: OpenAlex's types of work, and a presentation (a slide deck), which Zenodo files as one and
+ * OpenAlex and Crossref know only as a report's kind of work. */
+export const REPORT_TYPES = WORK_TYPES.flatMap((type) => (type.id === "report" ? [type, { id: "presentation", name: "Presentation" }] : [type]));
 
 /** A check's answer. `confidence` is how sure the model is of yes; Already published has none, only what it found. */
 export type CheckResult = {

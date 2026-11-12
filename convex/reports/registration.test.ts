@@ -120,6 +120,7 @@ describe("a report's record for its registrars", () => {
     expect(zenodoType("article")).toEqual({ id: "publication-article" });
     expect(zenodoType("dataset")).toEqual({ id: "dataset" });
     expect(zenodoType("report")).toEqual({ id: "publication-report" });
+    expect(zenodoType("presentation")).toEqual({ id: "presentation" });
     expect(zenodoType("paratext")).toEqual({ id: "publication-other" });
     // A dissertation is awarded by its author's university, never by Openscholar, the publisher.
     const thesis = (authors: typeof m.authors) => {

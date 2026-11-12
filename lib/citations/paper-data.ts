@@ -36,6 +36,8 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   // printed the series twice ("In Openscholar Reports (Openscholar Reports)").
   if (source?.display_name && id.startsWith("R")) {
     Object.assign(data, { "collection-title": source.display_name, "collection-number": id, publisher: "Openscholar" });
+    // A presentation is cited as a report in the series, as Crossref registers it: its number stays in every format.
+    if ((paper.type as string | undefined) === "presentation") data.type = "report";
     // A thesis is cited with the university that awarded it, its first author's first institution, as Zenodo files it
     // (lib/reports/registration-record.ts). Without one, a dissertation is cited as a report.
     const university = paper.authorships?.[0]?.institutions?.[0]?.display_name;
