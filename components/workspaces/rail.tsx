@@ -797,10 +797,12 @@ function Preferences() {
   const { theme, setTheme } = useTheme();
   const highlight = useQueryHighlight();
   return (
-    <div className="space-y-2 border-t border-border/60 px-1 pb-1 pt-2">
+    <div className="@container/preferences space-y-2 border-t border-border/60 px-1 pb-1 pt-2">
+      {/* Under 16rem, which only a phone at large text makes it, each theme takes a row of its own, so its name shows whole. */}
       <Segmented
         label={t("theme")}
         fill
+        className="@max-[16rem]/preferences:grid-flow-row @max-[16rem]/preferences:rounded-3xl"
         value={(theme ?? "system") as "light" | "dark" | "system"}
         onChange={setTheme}
         options={[
