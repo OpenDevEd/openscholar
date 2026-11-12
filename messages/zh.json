@@ -1250,7 +1250,8 @@
     "removeError": "无法移除该论文",
     "restoreError": "无法恢复该论文",
     "collectionError": "无法更改合集",
-    "newCollectionWithPaper": "用这篇论文新建集合"
+    "newCollectionWithPaper": "用这篇论文新建集合",
+    "finishSaving": "完成保存"
   },
   "rating": {
     "noRating": "无评分",
@@ -6185,7 +6186,8 @@
       "places": "研究地点",
       "studyDesign": "研究设计",
       "seeChanges": "查看您的修改",
-      "correct": "更正信息"
+      "correct": "更正信息",
+      "takeDownTitle": "撤下报告"
     },
     "stages": {
       "draft": "草稿",
@@ -6235,7 +6237,8 @@
         "open": "打开",
         "activate": "激活",
         "carryOn": "继续",
-        "seeFailed": "查看失败原因"
+        "seeFailed": "查看失败原因",
+        "manage": "在“发布”中打开"
       },
       "seeChanges": "查看您的修改",
       "correct": "更正信息"

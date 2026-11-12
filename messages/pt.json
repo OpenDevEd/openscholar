@@ -1251,7 +1251,8 @@
     "removeError": "Não foi possível remover o artigo",
     "restoreError": "Não foi possível repor o artigo",
     "collectionError": "Não foi possível alterar a coleção",
-    "newCollectionWithPaper": "Nova coleção com este artigo"
+    "newCollectionWithPaper": "Nova coleção com este artigo",
+    "finishSaving": "Terminar de guardar"
   },
   "rating": {
     "noRating": "Sem avaliação",
@@ -6186,7 +6187,8 @@
       "places": "Locais estudados",
       "studyDesign": "Desenho do estudo",
       "seeChanges": "Ver as suas alterações",
-      "correct": "Corrigir os dados"
+      "correct": "Corrigir os dados",
+      "takeDownTitle": "Retirar o relatório"
     },
     "stages": {
       "draft": "Rascunho",
@@ -6236,7 +6238,8 @@
         "open": "Abrir",
         "activate": "Ativá-lo",
         "carryOn": "Continuar",
-        "seeFailed": "Ver o que falhou"
+        "seeFailed": "Ver o que falhou",
+        "manage": "Abrir em Publicar"
       },
       "seeChanges": "Ver as suas alterações",
       "correct": "Corrigir os dados"

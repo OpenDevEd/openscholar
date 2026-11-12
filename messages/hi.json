@@ -1250,7 +1250,8 @@
     "removeError": "पेपर हटाया नहीं जा सका",
     "restoreError": "पेपर वापस नहीं लाया जा सका",
     "collectionError": "संग्रह बदला नहीं जा सका",
-    "newCollectionWithPaper": "इस पेपर के साथ नया संग्रह"
+    "newCollectionWithPaper": "इस पेपर के साथ नया संग्रह",
+    "finishSaving": "सहेजना पूरा करें"
   },
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
@@ -6185,7 +6186,8 @@
       "places": "अध्ययन किए गए स्थान",
       "studyDesign": "अध्ययन डिज़ाइन",
       "seeChanges": "अपने बदलाव देखें",
-      "correct": "विवरण सुधारें"
+      "correct": "विवरण सुधारें",
+      "takeDownTitle": "रिपोर्ट हटवाना"
     },
     "stages": {
       "draft": "मसौदा",
@@ -6235,7 +6237,8 @@
         "open": "खोलें",
         "activate": "सक्रिय करें",
         "carryOn": "जारी रखें",
-        "seeFailed": "देखें क्या विफल हुआ"
+        "seeFailed": "देखें क्या विफल हुआ",
+        "manage": "‘प्रकाशित करें’ में खोलें"
       },
       "seeChanges": "अपने बदलाव देखें",
       "correct": "विवरण सुधारें"

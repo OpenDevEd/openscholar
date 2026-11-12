@@ -1251,7 +1251,8 @@
     "removeError": "Imeshindwa kuondoa makala",
     "restoreError": "Imeshindwa kurudisha makala",
     "collectionError": "Imeshindwa kubadilisha mkusanyiko",
-    "newCollectionWithPaper": "Mkusanyiko mpya wenye makala hii"
+    "newCollectionWithPaper": "Mkusanyiko mpya wenye makala hii",
+    "finishSaving": "Maliza kuhifadhi"
   },
   "rating": {
     "noRating": "Hakuna ukadiriaji",
@@ -6186,7 +6187,8 @@
       "places": "Maeneo yaliyochunguzwa",
       "studyDesign": "Muundo wa utafiti",
       "seeChanges": "Tazama mabadiliko yako",
-      "correct": "Sahihisha maelezo"
+      "correct": "Sahihisha maelezo",
+      "takeDownTitle": "Kuiondoa"
     },
     "stages": {
       "draft": "Rasimu",
@@ -6236,7 +6238,8 @@
         "open": "Fungua",
         "activate": "Washa",
         "carryOn": "Endelea",
-        "seeFailed": "Tazama kilichoshindwa"
+        "seeFailed": "Tazama kilichoshindwa",
+        "manage": "Fungua katika Chapisha"
       },
       "seeChanges": "Tazama mabadiliko yako",
       "correct": "Sahihisha maelezo"

@@ -1251,7 +1251,8 @@
     "removeError": "No se pudo quitar el artículo",
     "restoreError": "No se pudo devolver el artículo",
     "collectionError": "No se pudo cambiar la colección",
-    "newCollectionWithPaper": "Nueva colección con este artículo"
+    "newCollectionWithPaper": "Nueva colección con este artículo",
+    "finishSaving": "Terminar de guardar"
   },
   "rating": {
     "noRating": "Sin valoración",
@@ -6186,7 +6187,8 @@
       "places": "Lugares estudiados",
       "studyDesign": "Diseño del estudio",
       "seeChanges": "Ver tus cambios",
-      "correct": "Corregir los datos"
+      "correct": "Corregir los datos",
+      "takeDownTitle": "Retirar el informe"
     },
     "stages": {
       "draft": "Borrador",
@@ -6236,7 +6238,8 @@
         "open": "Abrir",
         "activate": "Activarlo",
         "carryOn": "Continuar",
-        "seeFailed": "Ver qué falló"
+        "seeFailed": "Ver qué falló",
+        "manage": "Abrir en Publicar"
       },
       "seeChanges": "Ver tus cambios",
       "correct": "Corregir los datos"
