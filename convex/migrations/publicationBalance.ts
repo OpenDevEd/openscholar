@@ -60,24 +60,36 @@ export const run = internalAction({
       }
     }
     const page: { accounts: Array<{ workspaceId: Id<"workspaces">; customerId: string; counted: boolean }>; next: string | null } = await ctx.runQuery(internal.migrations.publicationBalance.accounts, { cursor: cursor ?? null });
+    /** Whether Autumn has no such balance: one all spent, or one a purchase made, can't be removed. */
+    const missing = (error: unknown) => {
+      if (error instanceof AutumnError && error.status === 404) return true;
+      throw error;
+    };
     for (const { workspaceId, customerId, counted } of page.accounts) {
-      const old = (await autumn.customer(customerId)).balances[ACTIVATIONS];
-      if (old?.unlimited) await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, unlimited: true, idempotencyKey: `publication-from-${customerId}-unlimited` }));
-      for (const grant of old?.breakdown ?? []) {
-        const interval = grant.reset?.interval && grant.reset.interval !== "one_off" ? grant.reset.interval : undefined;
-        const size = (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
-        // What stays is worth what is left of it; what refills, its size, with what is left set after.
-        const amount = (interval ? size : grant.remaining) * WORTH;
-        if (amount > 0) {
-          const now = await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, amount, ...(interval && { interval }), idempotencyKey: `publication-from-${grant.id}` }));
-          // Only as it is given: set again by a later run, it would undo what was spent in between. A run that stops
-          // between the two leaves the refilling part full for its first period, in the workspace's favour.
-          if (now && interval && grant.remaining < size) await autumn.setBalance({ customerId, feature: PUBLICATION_FEATURE, interval, left: grant.remaining * WORTH });
-          console.log(JSON.stringify({ event: "publication-balance-moved", customerId, interval: interval ?? "once", dollars: grant.remaining * WORTH, of: amount, now }));
+      // Each account on its own: one that Autumn refuses is logged and left for the next run, and the rest go on.
+      try {
+        const old = (await autumn.customer(customerId)).balances[ACTIVATIONS];
+        if (old?.unlimited) await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, unlimited: true, idempotencyKey: `publication-from-${customerId}-unlimited` }));
+        for (const grant of old?.breakdown ?? []) {
+          const interval = grant.reset?.interval && grant.reset.interval !== "one_off" ? grant.reset.interval : undefined;
+          const size = (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
+          // What stays is worth what is left of it; what refills, its size, with what is left set after.
+          const amount = (interval ? size : grant.remaining) * WORTH;
+          if (amount > 0) {
+            const now = await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, amount, ...(interval && { interval }), idempotencyKey: `publication-from-${grant.id}` }));
+            // Only as it is given: set again by a later run, it would undo what was spent in between. A run that stops
+            // between the two leaves the refilling part full for its first period, in the workspace's favour.
+            if (now && interval && grant.remaining < size) await autumn.setBalance({ customerId, feature: PUBLICATION_FEATURE, interval, left: grant.remaining * WORTH });
+            console.log(JSON.stringify({ event: "publication-balance-moved", customerId, interval: interval ?? "once", dollars: grant.remaining * WORTH, of: amount, now }));
+          }
+          const removed = await autumn.deleteBalance({ customerId, feature: ACTIVATIONS, balanceId: grant.id }).then(() => true, missing);
+          // One Autumn won't remove is emptied, so a later run finds nothing left in it to move a second time.
+          if (removed !== true && grant.remaining > 0) await given(autumn.takeFrom({ customerId, feature: ACTIVATIONS, balanceId: grant.id, amount: grant.remaining, idempotencyKey: `publication-emptied-${grant.id}` }).catch(missing));
         }
-        await autumn.deleteBalance({ customerId, feature: ACTIVATIONS, balanceId: grant.id });
+        if (counted || old) await ctx.runMutation(internal.migrations.publicationBalance.moved, { workspaceId });
+      } catch (error) {
+        console.error(JSON.stringify({ event: "publication-balance-unmoved", customerId, error: String(error).slice(0, 300) }));
       }
-      if (counted || old) await ctx.runMutation(internal.migrations.publicationBalance.moved, { workspaceId });
     }
     if (page.next !== null) await ctx.scheduler.runAfter(0, internal.migrations.publicationBalance.run, { cursor: page.next });
     else {
