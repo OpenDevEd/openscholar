@@ -25,8 +25,8 @@ export function PublicationBalanceRow({ parts, unlimited = false }: { parts: Bal
   return (
     <div className="@container/publication space-y-1.5 border-t border-border-subtle pt-4">
       <div className="flex items-center gap-2">
-        <p className="truncate text-sm font-medium">{t("title")}</p>
-        <StatusChip tone={balance === 0 && !unlimited ? "neutral" : "success"}>{unlimited ? t("noLimit") : <bdi className="tabular-nums">{money(balance)}</bdi>}</StatusChip>
+        <p className="min-w-0 text-sm font-medium sm:truncate">{t("title")}</p>
+        <StatusChip tone={balance === 0 && !unlimited ? "neutral" : "success"}>{unlimited ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance)}</bdi>}</StatusChip>
         {/* Narrow, the way to Publish is its arrow, so the amount keeps its line. */}
         <Button asChild variant="ghost" size="sm" className="-me-2 ms-auto h-7 @max-[22rem]/publication:hidden">
           <Link href="/publish">
@@ -41,23 +41,24 @@ export function PublicationBalanceRow({ parts, unlimited = false }: { parts: Bal
           </Button>
         </TooltipHint>
       </div>
-      {/* Each part keeps its words together and wraps whole. What stays, alone, needs no line: the amount above is all of it. */}
+      {/* Each part keeps its words together and wraps whole; on a phone, where large text can outgrow the line, its
+          words wrap too. What stays, alone, needs no line: the amount above is all of it. */}
       {unlimited ? null : parts.length === 0 || refilling.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground [&>*]:whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:[&>*]:whitespace-nowrap">
           {parts.length === 0 ? <span className="!whitespace-normal">{t("hint")}</span> : null}
           {refilling.map((part) => (
             <span key={part.interval} className="contents">
-              <span className="inline-flex items-center gap-2 whitespace-nowrap">
+              <span className="inline-flex items-center gap-2 max-sm:flex-wrap sm:whitespace-nowrap">
                 <Repeat className="size-3.5 shrink-0" />
                 <span className="font-medium text-foreground">{t("every", { interval: part.interval })}</span>
                 <span className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
                   <span className="block h-full rounded-full bg-primary" style={{ width: `${part.size > 0 ? Math.min(100, (part.left / part.size) * 100) : 0}%` }} />
                 </span>
-                <bdi className="tabular-nums">
+                <bdi dir="ltr" className="tabular-nums">
                   {money(part.left)} / {money(part.size)}
                 </bdi>
               </span>
-              {part.resetsAt !== undefined ? <span className="whitespace-nowrap">{t("backTo", { amount: money(part.refillsTo ?? part.size), date: format.dateTime(part.resetsAt, { day: "numeric", month: "short" }) })}</span> : null}
+              {part.resetsAt !== undefined ? <span className="sm:whitespace-nowrap">{t("backTo", { amount: money(part.refillsTo ?? part.size), date: format.dateTime(part.resetsAt, { day: "numeric", month: "short" }) })}</span> : null}
             </span>
           ))}
           {kept ? (

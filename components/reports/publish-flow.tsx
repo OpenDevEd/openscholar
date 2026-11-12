@@ -1820,6 +1820,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 // Wherever the report stands: declined meanwhile, the payment still holds it and the workspace's others.
                 <PendingPayment
                   pending={pending}
+                  goesLive={stage === "ready"}
                   cancelling={cancelling}
                   onCancel={
                     onCancelPayment
@@ -1947,18 +1948,19 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
 /** Activate, in the payment bar: taller than the buttons around it, its badge in a ring, and what it takes from the card in a segment of its own. */
 function ActivateButton({ label, amount, busy, disabled, onClick }: { label: string; amount: string | null; busy: boolean; disabled: boolean; onClick: () => void }) {
   return (
-    <Button size="lg" disabled={disabled || busy} onClick={onClick} className="relative h-11 shrink-0 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0">
+    // On a phone it never outgrows what holds it: its words wrap, and it grows taller.
+    <Button size="lg" disabled={disabled || busy} onClick={onClick} className="relative h-11 shrink-0 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0 max-sm:h-auto max-sm:min-h-11 max-sm:max-w-full max-sm:shrink max-sm:whitespace-normal">
       <Working busy={busy}>
-        <span className="flex h-11 items-center">
-          <span className="flex items-center gap-2.5 ps-2 pe-4">
-            <span className="flex size-7 items-center justify-center rounded-full bg-white/25">
+        <span className="flex h-11 items-center max-sm:h-auto max-sm:min-h-11">
+          <span className="flex items-center gap-2.5 ps-2 pe-4 max-sm:py-1.5 max-sm:text-start">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/25">
               <BadgeCheck className="size-4" />
             </span>
             {label}
           </span>
           {amount === null ? null : (
-            <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">
-              <bdi>{amount}</bdi>
+            <span className="flex h-full items-center self-stretch border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">
+              <bdi dir="ltr">{amount}</bdi>
             </span>
           )}
         </span>
@@ -2095,24 +2097,26 @@ function inViewOnReturn(node: HTMLDivElement | null) {
 /**
  * A payment for the report that is still to be made: on Stripe's page, where a workspace with no saved card pays, or
  * at the bank, which asked to confirm it. The way back to that page, and the way out: giving the payment up opens the
- * report's steps and its other ways of paying again.
+ * report's steps and its other ways of paying again. A report that can't go live any more, declined while its payment
+ * waited, has only the way out: paying it now would publish nothing.
  */
-function PendingPayment({ pending, cancelling, onCancel }: { pending: NonNullable<Terms["pending"]>; cancelling: boolean; onCancel?: () => void }) {
+function PendingPayment({ pending, goesLive, cancelling, onCancel }: { pending: NonNullable<Terms["pending"]>; /** Whether making the payment still puts the report live. */ goesLive: boolean; cancelling: boolean; onCancel?: () => void }) {
   const t = useTranslations("publishReports.flow.activation.card");
   return (
     <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 p-3">
       <CreditCard className="size-4 shrink-0 self-start text-muted-foreground max-sm:hidden sm:mt-0.5" />
       <div className="min-w-0 flex-1 basis-48">
         <p className="text-sm font-medium">{t(pending.checkout ? "unfinished" : "bankAsked")}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t("goesLive")}</p>
+        {goesLive ? <p className="mt-0.5 text-xs text-muted-foreground">{t("goesLive")}</p> : null}
       </div>
-      <div className="ms-auto flex shrink-0 items-center gap-2">
+      {/* Side by side while they fit; on a narrow or enlarged phone they stack and their words wrap. */}
+      <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2 max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-8 max-sm:[&>*]:max-w-full max-sm:[&>*]:whitespace-normal max-sm:[&>*]:py-1.5">
         {onCancel ? (
           <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={cancelling} onClick={onCancel}>
             <Working busy={cancelling}>{t("cancel")}</Working>
           </Button>
         ) : null}
-        {pending.url ? (
+        {pending.url && goesLive ? (
           <Button variant="outline" asChild>
             <a href={pending.url}>
               {t(pending.checkout ? "toPayment" : "confirm")} <ArrowUpRight />
