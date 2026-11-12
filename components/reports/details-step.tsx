@@ -28,13 +28,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowDown, ArrowLeft, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowLeft, ArrowUp, BadgeCheck, CircleX, ExternalLink, Pencil, Plus, ShieldCheck, Trash2 } from "@/components/icons";
 import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useKindName, useRelationName, useRoleDetail, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, linkHref, PERSON_KINDS, type Author, type Metadata, type PersonKind, type Reference } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, linkHref, PERSON_KINDS, referenceFrom, type Author, type Metadata, type PersonKind, type Reference } from "@/lib/reports/report";
 import { FieldHelp, FieldLabel, RegistrarsProvider, type HelpKey } from "@/components/reports/field-help";
 import { ReferenceBox } from "@/components/reports/reference-box";
 import { cn } from "@/lib/utils";
@@ -502,6 +502,23 @@ export function DetailsStep({
   // stays the DOIs among them, which the checks and registrars read.
   const cited: Reference[] = m.citations ?? m.references.map((doi) => ({ text: "", doi }));
   const setCited = (next: Reference[]) => change((was) => ({ ...was, citations: next, references: next.flatMap((reference) => reference.doi ?? []) }));
+  // A reference open to be corrected in its row, as it is being typed. Enter or leaving the field keeps it; Escape, or
+  // emptying it, leaves the reference as it was.
+  const [editing, setEditing] = useState<{ at: number; text: string } | null>(null);
+  // Enter and Escape both leave the field, so leaving it is the one way an edit ends: Escape marks it to be dropped.
+  const dropEdit = useRef(false);
+  const openEdit = (at: number, reference: Reference) => {
+    dropEdit.current = false;
+    setEditing({ at, text: reference.text || reference.doi! });
+  };
+  const endEdit = () => {
+    if (!editing) return;
+    setEditing(null);
+    if (dropEdit.current) return;
+    const edited = referenceFrom(editing.text);
+    const was = cited[editing.at];
+    if (edited && was && (edited.text !== was.text || edited.doi !== was.doi)) setCited(cited.map((reference, at) => (at === editing.at ? edited : reference)));
+  };
   const refs = pagerOf(cited.length, REFS_PER_PAGE, refPage, setRefPage);
   const refsFrom = (refs.page - 1) * REFS_PER_PAGE;
   const shownRefs = cited.slice(refsFrom, refsFrom + REFS_PER_PAGE);
@@ -813,13 +830,37 @@ export function DetailsStep({
                   return (
                     <li key={i} style={{ height: REF_ROW - 1 }} className="flex items-center gap-2 px-3">
                       <span className="w-7 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{format.number(i + 1)}</span>
-                      {reference.text ? (
-                        // One line a reference, so a page of them is always as tall; the rest of a long one shows on hover.
-                        <TooltipHint label={reference.text} onlyWhenClipped>
-                          <span className="min-w-0 flex-1 truncate text-sm">{reference.text}</span>
-                        </TooltipHint>
+                      {editing?.at === i ? (
+                        <Input
+                          autoFocus
+                          aria-label={t("referenceLabel", { number: format.number(i + 1) })}
+                          maxLength={DETAIL_TEXT.citation}
+                          value={editing.text}
+                          onChange={(event) => setEditing({ at: i, text: event.target.value })}
+                          onBlur={endEdit}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== "Escape") return;
+                            event.preventDefault();
+                            dropEdit.current = event.key === "Escape";
+                            event.currentTarget.blur();
+                          }}
+                          className="h-8 min-w-0 flex-1 text-sm"
+                        />
                       ) : (
-                        <span className="min-w-0 flex-1 truncate font-mono text-xs">{reference.doi}</span>
+                        // One line a reference, so a page of them is always as tall; the rest of a long one shows on hover.
+                        // Clicking it opens it to be corrected, as the pencil does.
+                        <TooltipHint label={reference.text || reference.doi!} onlyWhenClipped>
+                          <button type="button" tabIndex={-1} onClick={() => openEdit(i, reference)} className={cn("min-w-0 flex-1 cursor-text truncate text-start", reference.text ? "text-sm" : "font-mono text-xs")}>
+                            {reference.text || reference.doi}
+                          </button>
+                        </TooltipHint>
+                      )}
+                      {editing?.at === i ? null : (
+                        <TooltipHint label={t("editReference")}>
+                          <Button type="button" variant="ghost" size="icon-xs" aria-label={t("editReferenceLabel", { number: format.number(i + 1) })} className="text-muted-foreground" onClick={() => openEdit(i, reference)}>
+                            <Pencil />
+                          </Button>
+                        </TooltipHint>
                       )}
                       {href ? (
                         <TooltipHint label={t("openItsDoi")}>

@@ -1781,6 +1781,13 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
               {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again. */}
               <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t("activatingNow")}</p> : null}</AutoHeight>
               <div className="flex flex-wrap justify-end gap-2">
+                {/* Back to the details, as every other step has a way back to the one before it: wherever the server
+                    lets a checked report change (flow.ts `goTo`). */}
+                {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
+                  <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating} onClick={onDetails}>
+                    <ArrowLeft /> {t("back")}
+                  </Button>
+                ) : null}
                 {stage === "failed" ? (
                   <>
                     {report.asked ? null : (
