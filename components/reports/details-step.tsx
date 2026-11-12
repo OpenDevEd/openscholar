@@ -34,7 +34,7 @@ import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useKindName, useRelationName, useRoleDetail, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, linkHref, PERSON_KINDS, referenceFrom, type Author, type Metadata, type PersonKind, type Reference } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, doiWithin, linkHref, PERSON_KINDS, referenceFrom, type Author, type Metadata, type PersonKind, type Reference } from "@/lib/reports/report";
 import { FieldHelp, FieldLabel, RegistrarsProvider, type HelpKey } from "@/components/reports/field-help";
 import { ReferenceBox } from "@/components/reports/reference-box";
 import { cn } from "@/lib/utils";
@@ -504,20 +504,30 @@ export function DetailsStep({
   const setCited = (next: Reference[]) => change((was) => ({ ...was, citations: next, references: next.flatMap((reference) => reference.doi ?? []) }));
   // A reference open to be corrected in its row, as it is being typed. Enter or leaving the field keeps it; Escape, or
   // emptying it, leaves the reference as it was.
-  const [editing, setEditing] = useState<{ at: number; text: string } | null>(null);
+  const [editing, setEditing] = useState<{ at: number; from: Reference; text: string } | null>(null);
   // Enter and Escape both leave the field, so leaving it is the one way an edit ends: Escape marks it to be dropped.
   const dropEdit = useRef(false);
   const openEdit = (at: number, reference: Reference) => {
     dropEdit.current = false;
-    setEditing({ at, text: reference.text || reference.doi! });
+    setEditing({ at, from: reference, text: reference.text || reference.doi! });
   };
+  // Found again by what it was: a reference removed meanwhile, here or in another tab, moves the rest up a row.
+  const sameAs = (from: Reference) => (reference: Reference) => reference.text === from.text && reference.doi === from.doi;
+  const editRow = !editing ? -1 : cited[editing.at] && sameAs(editing.from)(cited[editing.at]!) ? editing.at : cited.findIndex(sameAs(editing.from));
   const endEdit = () => {
     if (!editing) return;
     setEditing(null);
     if (dropEdit.current) return;
+    const row = editRow;
+    const was = cited[row];
     const edited = referenceFrom(editing.text);
-    const was = cited[editing.at];
-    if (edited && was && (edited.text !== was.text || edited.doi !== was.doi)) setCited(cited.map((reference, at) => (at === editing.at ? edited : reference)));
+    // Opened and left as it was, it stays exactly as it was.
+    if (!was || !edited || editing.text.trim() === (was.text || was.doi)) return;
+    // A DOI kept beside the words rather than in them, as a BibTeX record gives one, stays with the corrected words
+    // unless they now carry a DOI of their own.
+    const beside = !!was.text && !!was.doi && doiWithin(was.text) !== was.doi;
+    const kept = beside && !edited.doi ? { ...edited, doi: was.doi } : edited;
+    setCited(cited.map((reference, at) => (at === row ? kept : reference)));
   };
   const refs = pagerOf(cited.length, REFS_PER_PAGE, refPage, setRefPage);
   const refsFrom = (refs.page - 1) * REFS_PER_PAGE;
@@ -830,16 +840,17 @@ export function DetailsStep({
                   return (
                     <li key={i} style={{ height: REF_ROW - 1 }} className="flex items-center gap-2 px-3">
                       <span className="w-7 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{format.number(i + 1)}</span>
-                      {editing?.at === i ? (
+                      {editRow === i ? (
                         <Input
                           autoFocus
                           aria-label={t("referenceLabel", { number: format.number(i + 1) })}
                           maxLength={DETAIL_TEXT.citation}
-                          value={editing.text}
-                          onChange={(event) => setEditing({ at: i, text: event.target.value })}
+                          value={editing!.text}
+                          onChange={(event) => setEditing({ ...editing!, text: event.target.value })}
                           onBlur={endEdit}
                           onKeyDown={(event) => {
-                            if (event.key !== "Enter" && event.key !== "Escape") return;
+                            // Enter and Escape inside an input method's composition belong to the composition.
+                            if (event.nativeEvent.isComposing || (event.key !== "Enter" && event.key !== "Escape")) return;
                             event.preventDefault();
                             dropEdit.current = event.key === "Escape";
                             event.currentTarget.blur();
@@ -855,7 +866,7 @@ export function DetailsStep({
                           </button>
                         </TooltipHint>
                       )}
-                      {editing?.at === i ? null : (
+                      {editRow === i ? null : (
                         <TooltipHint label={t("editReference")}>
                           <Button type="button" variant="ghost" size="icon-xs" aria-label={t("editReferenceLabel", { number: format.number(i + 1) })} className="text-muted-foreground" onClick={() => openEdit(i, reference)}>
                             <Pencil />

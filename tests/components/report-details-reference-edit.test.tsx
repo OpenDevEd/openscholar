@@ -16,9 +16,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const opened = { ...blankDetails("report.pdf", "2026-11-11"), citations: [{ text: "Smith (2020). Old title." }, { text: "", doi: "10.1234/abc" }], references: ["10.1234/abc"] };
+const opened = { ...blankDetails("report.pdf", "2026-11-11"), citations: [{ text: "Smith (2020). Old title.", doi: "10.5555/smith" }, { text: "", doi: "10.1234/abc" }], references: ["10.5555/smith", "10.1234/abc"] };
 
-it("corrects a reference in its row with Enter, and Escape leaves it as it was", () => {
+it("corrects a reference in its row with Enter, and Escape or no change leaves it as it was", () => {
   vi.useFakeTimers();
   const onSave = vi.fn();
   render(
@@ -28,6 +28,10 @@ it("corrects a reference in its row with Enter, and Escape leaves it as it was",
       </TooltipProvider>
     </NextIntlClientProvider>,
   );
+
+  // Opened and left unchanged: its DOI, kept beside its words, is not lost.
+  fireEvent.click(screen.getByRole("button", { name: "Edit reference 1" }));
+  fireEvent.keyDown(screen.getByRole("textbox", { name: "Reference 1" }), { key: "Enter" });
 
   fireEvent.click(screen.getByRole("button", { name: "Edit reference 2" }));
   fireEvent.change(screen.getByRole("textbox", { name: "Reference 2" }), { target: { value: "Doe (2021). A study. https://doi.org/10.1234/ABC." } });
@@ -41,7 +45,17 @@ it("corrects a reference in its row with Enter, and Escape leaves it as it was",
   fireEvent.keyDown(screen.getByRole("textbox", { name: "Reference 2" }), { key: "Enter" });
   act(() => vi.runAllTimers());
   expect(onSave).toHaveBeenLastCalledWith(
-    { citations: [{ text: "Smith (2020). Old title." }, { text: "Doe (2021). A study. https://doi.org/10.1234/ABC.", doi: "10.1234/abc" }], references: ["10.1234/abc"] },
+    { citations: [{ text: "Smith (2020). Old title.", doi: "10.5555/smith" }, { text: "Doe (2021). A study. https://doi.org/10.1234/ABC.", doi: "10.1234/abc" }], references: ["10.5555/smith", "10.1234/abc"] },
+    undefined,
+  );
+
+  // Its words corrected, the DOI kept beside them stays.
+  fireEvent.click(screen.getByRole("button", { name: "Edit reference 1" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Reference 1" }), { target: { value: "Smith (2020). New title." } });
+  fireEvent.keyDown(screen.getByRole("textbox", { name: "Reference 1" }), { key: "Enter" });
+  act(() => vi.runAllTimers());
+  expect(onSave).toHaveBeenLastCalledWith(
+    { citations: [{ text: "Smith (2020). New title.", doi: "10.5555/smith" }, { text: "Doe (2021). A study. https://doi.org/10.1234/ABC.", doi: "10.1234/abc" }], references: ["10.5555/smith", "10.1234/abc"] },
     undefined,
   );
 });

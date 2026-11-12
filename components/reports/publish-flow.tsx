@@ -1592,6 +1592,9 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   const spendable = !!terms && (terms.activations === null || terms.activations > 0);
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
+  // A payment going through, started here or in another tab: the report can't change until it ends (flow.ts `goTo`).
+  const chargeOver = usePassed(terms?.paying?.until ?? undefined);
+  const charging = !!terms?.paying && !chargeOver;
   const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
@@ -1784,7 +1787,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                 {/* Back to the details, as every other step has a way back to the one before it: wherever the server
                     lets a checked report change (flow.ts `goTo`). */}
                 {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
-                  <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating} onClick={onDetails}>
+                  <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
                     <ArrowLeft /> {t("back")}
                   </Button>
                 ) : null}
