@@ -129,7 +129,7 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
         </Select>
         <Select value={parts?.day ? pad(parts.day) : ""} disabled={!year || !parts?.month || typed !== null} onValueChange={(day) => year && parts?.month && onDate(dateOf(year, parts.month, day === NONE ? undefined : Number(day)))}>
           {/* As wide as its word, in every language: "Day", "Jour", "Tag". */}
-          <SelectTrigger className="min-w-[4.25rem] shrink-0 max-sm:@max-[14.5rem]:w-full" aria-label={t("dateDay")}>
+          <SelectTrigger className="min-w-[4.25rem] shrink-0 max-sm:@max-[14.5rem]:w-full max-sm:@max-[14.5rem]:min-w-0" aria-label={t("dateDay")}>
             <SelectValue placeholder={t("dateDay")} />
           </SelectTrigger>
           <SelectContent>

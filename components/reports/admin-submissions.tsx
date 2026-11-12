@@ -487,7 +487,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                       <ReviewQueueIcon className="size-3.5 shrink-0" />
                       <span>{t.rich("decidedBy", { decision: t(`reviewed.${r.decision}`), name: r.by, b: (chunks) => <span className="font-medium text-foreground/80">{chunks}</span> })}</span>
                       <span className="tabular-nums">{format.dateTime(r.at, MOMENT)}</span>
-                      {r.decision === "edit" && r.note ? <span className="truncate">{r.note}</span> : null}
+                      {/* An edit names what it changed; a decision's note is what the author was told, read again when the report comes back. */}
+                      {r.note ? r.decision === "edit" ? <span className="truncate">{r.note}</span> : <span className="basis-full whitespace-pre-wrap break-words ps-5 text-foreground/80">{r.note}</span> : null}
                     </li>
                   ))}
                 </ul>
