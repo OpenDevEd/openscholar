@@ -153,6 +153,38 @@ describe("a report's PDF", () => {
     expect(again.pdf?.kept).toBeUndefined();
   });
 
+  it("has the byline's page added to a PDF that lacks the line, when its author asks, and moves on with the new file", async () => {
+    const world = await setup();
+    const { key, reportId } = await atDetails(world);
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line"])));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "no-line.pdf", bylineBy: "self" });
+    // Nothing to add while the PDF hasn't been found lacking.
+    await expect(world.author.mutation(api.reports.flow.addByline, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 4, lacksByline: true });
+    await world.author.mutation(api.reports.flow.addByline, { workspaceId: world.own, key });
+    const asked = (await row(world.t, key)).pdf!;
+    expect(asked).toMatchObject({ file, bylineBy: "added" });
+    expect((await world.t.query(internal.reports.readingState.begin, { reportId, at: asked.at }))?.added).toBe(true);
+    // The reading adds the page: the file with it replaces the upload, which is deleted.
+    const added = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and a page with it"])));
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: asked.at, pages: 5, withByline: { file: added, bytes: 36 } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", pdf: { pages: 5, bytes: 36, bylineBy: "added" }, metadata: { title: "Shade trees and maize yields" } });
+    expect((await row(world.t, key)).pdf!).toMatchObject({ file: added, stamped: true });
+    expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
+    // The checks write the page again with the details they read: that file takes the last one's place.
+    const again = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and the page again"])));
+    await world.t.run((ctx) => ctx.db.patch("reports", reportId, { run: { id: "run-1", at: Date.now() } }));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, runId: "run-1", at: asked.at, file: again, bytes: 37 });
+    expect((await row(world.t, key)).pdf!).toMatchObject({ file: again, bytes: 37, stamped: true });
+    expect(await world.t.run((ctx) => ctx.db.system.get(added))).toBeNull();
+    // One written by a run that is no longer the report's is given up.
+    const late = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 late"])));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, runId: "run-0", at: asked.at, file: late, bytes: 13 });
+    expect((await row(world.t, key)).pdf!.file).toBe(again);
+    expect(await world.t.run((ctx) => ctx.db.system.get(late))).toBeNull();
+  });
+
   it("stays at the upload, saying so, when its PDF's text doesn't carry the byline, with the way on to its details", async () => {
     const world = await setup();
     // A first PDF, read, then replaced by one without the line: the reading is what finds it missing.

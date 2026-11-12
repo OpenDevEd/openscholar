@@ -5,7 +5,7 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -29,6 +29,7 @@ import { PaperCover } from "@/components/papers/paper-cover";
 import { DetailsStep } from "@/components/reports/details-step";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
+import { Problem, useProblem } from "@/components/reports/problem";
 import { useChangeLabel, useCheckWords } from "@/components/reports/words";
 import { Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -38,18 +39,19 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { EASE } from "@/components/ui/opening";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -103,6 +105,10 @@ const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason ==
 function copy(text: string, copied: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(copied));
 }
+
+/** Who puts the line on the PDF: its author, on the cover, or Openscholar, on a last page it adds. */
+const BYLINE_BY = ["self", "added"] as const;
+type BylineBy = (typeof BYLINE_BY)[number];
 
 /** A report's steps as the address names them, in order: the DOI is the address with no step. */
 const TRAIL = ["doi", "upload", "details", "checks"] as const;
@@ -238,6 +244,8 @@ const PLACE = {
   step: parseAsStringLiteral(["agreement", "upload", "details", "checks"] as const),
   show: parseAsStringLiteral(SHOWS).withDefault("all"),
   page: parseAsInteger.withDefault(1),
+  /** Who adds the byline to the report shown, as chosen on the way to its upload. It is one report's choice: another report starts without one. */
+  byline: parseAsStringLiteral(BYLINE_BY),
 };
 
 export function PublishFlow({ carried = null }: { /** A code applied before the trip to Stripe's page, quoted again by the server for the report it was applied on. */ carried?: (Quote & { key: string }) | null }) {
@@ -252,7 +260,12 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
-  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push", scroll: true });
+  // What went wrong with something done on this page, said on the screen it was done on, until the page moves on.
+  const trouble = useProblem(`${view}:${asked ?? ""}`);
+  const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => {
+    trouble.say(null);
+    void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
+  };
   // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
   // Back afterwards never reopens it; what a link or a reload opened closes in place.
   const up = (...closed: Array<keyof typeof PLACE>) => {
@@ -299,7 +312,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     }
   });
   const saved = found && "report" in found ? found.report : null;
-  const send = (step: BackStep) => void (saved && workspaceId && goTo({ workspaceId, key: saved.key, step }).catch(said(t("stepFailed"))));
+  const send = (step: BackStep) => void (saved && workspaceId && goTo({ workspaceId, key: saved.key, step }).catch(trouble.failed(t("stepFailed"))));
   useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
@@ -411,6 +424,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
           <WaitingElsewhere waiting={waiting?.first ?? null} className="px-4 pt-4 sm:px-6" />
+          <Problem className="px-4 pt-4 sm:px-6">{trouble.problem}</Problem>
           <YourReports
             list={(list ?? lastList)!}
             humanReview={basics.humanReview}
@@ -421,7 +435,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onOpen={(key) => go({ view: null, report: key, correct: null })}
             // Changes already waiting open where they stand; otherwise the details open to be corrected.
             onCorrect={(key) => go({ view: null, report: key, correct: (list ?? lastList)?.rows.find((row) => row.key === key)?.changes ? null : true })}
-            onDiscard={(key) => discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), said(t("discardFailed")))}
+            onDiscard={(key) => (trouble.say(null), discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), trouble.failed(t("discardFailed"))))}
             onNew={basics?.open ? another : undefined}
           />
         </div>
@@ -498,12 +512,13 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
               const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
               if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) keepStartedFrom(behind.key);
-              void setPlace({ report: key, step: null });
+              void setPlace({ report: key, step: null, byline: null });
             }}
             onAnother={another}
             correcting={correct}
             onStep={toStep}
             onMoved={stepOn}
+            trouble={trouble}
             onCorrect={() => {
               setFresh(null);
               go({ correct: true });
@@ -544,7 +559,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected }: { /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
@@ -617,6 +632,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
+          <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
             <Overview series={basics.series.name} reviewed={basics.humanReview} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
@@ -643,7 +659,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
             <UploadStep report={report} workspaceId={workspaceId!} onAttached={() => onMoved("details")} onBack={() => onStep("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => onStep("details") : undefined} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
-              <PdfNotice trouble={report.pdf.trouble} onUpload={() => onStep("upload")} />
+              <PdfNotice trouble={report.pdf.trouble} lineAdded={report.pdf.bylineBy === "added" && !report.pdf.lacksByline} onUpload={() => onStep("upload")} />
               {report.pdf.kept ? <KeptNotice onReadAgain={() => readAgain({ ...here, key: report.key })} /> : null}
               <DetailsStep
                 onBack={() => onStep("upload")}
@@ -653,12 +669,14 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                 initial={report.metadata}
                 onRun={async (metadata: Metadata) => {
                   toTop();
+                  trouble.say(null);
                   setStarting(true);
                   try {
                     await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
                     onMoved("checks");
                   } catch (error) {
-                    said(t("checksFailed"))(error);
+                    // The form comes back at its top, which is where this is said.
+                    trouble.failed(t("checksFailed"))(error);
                   } finally {
                     setStarting(false);
                   }
@@ -685,6 +703,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                 toTop();
                 setAttempt({ metadata, since: since! });
                 setTyping(false);
+                trouble.say(null);
                 setStarting(true);
                 try {
                   const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
@@ -694,7 +713,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                   if (stands === "live") toast.success(t("changesLive"));
                   else if (stands === "review") toast.success(t("changesWithReviewer"));
                 } catch (error) {
-                  said(t("checksFailed"))(error);
+                  trouble.failed(t("checksFailed"))(error);
                 } finally {
                   setStarting(false);
                 }
@@ -867,6 +886,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
+  const { problem, say, failed } = useProblem();
   const sign = useMutation(api.reports.flow.sign);
   const locale = useLocale();
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
@@ -936,6 +956,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           {t("agreementChanged")}
         </p>
       ) : null}
+      <Problem className="pt-4">{problem}</Problem>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {onBack ? (
           <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
@@ -958,20 +979,21 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
             disabled={!agreed || !name.trim() || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
+                say(null);
                 try {
                   const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version });
                   // Signed, the ticks have done their work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);
                 } catch (error) {
-                  said(t("signFailed"))(error);
+                  failed(t("signFailed"))(error);
                 }
               })
             }
           >
             <Working busy={busy || !!signed}>
               <span className="flex items-center gap-2">
-                <PenLine /> {t("sign")}
+                {t("sign")} <ArrowRight />
               </span>
             </Working>
           </Button>
@@ -990,6 +1012,9 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
  * light across it. Plays only right after signing; opened any other way it is already settled.
  */
 function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; onNext: () => void }) {
+  // The choice made here, or the one a PDF already attached was uploaded with.
+  const [chosen, setBy] = useBylineBy();
+  const by = chosen ?? report.pdf?.bylineBy ?? null;
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const play = fresh && !reduce;
@@ -1053,10 +1078,11 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           out as the upload's page is, which comes next. */}
       <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
         <StepHead title={t("bylineFirst")}>{t("bylineFirstBody")}</StepHead>
-        <BylineBox byline={report.byline} />
+        <BylineChoice byline={report.byline} by={by} onPick={(picked) => void setBy(picked)} />
         <StepNav
+          hint={by ? undefined : t("bylineBy.choose")}
           next={
-            <Button onClick={onNext}>
+            <Button disabled={!by} onClick={onNext}>
               {t("nextUpload")} <ArrowRight />
             </Button>
           }
@@ -1082,16 +1108,48 @@ function BylineBox({ byline, className }: { byline: string; className?: string }
 }
 
 /** Back and on, at the foot of a step: back to the step before, and on to the next one where it is open. */
-function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
+// Held in the page's address from the DOI's page to the upload, where it is saved with the PDF.
+const useBylineBy = () => useQueryState("byline", PLACE.byline);
+
+/**
+ * The line, and the choice of who adds it. Neither is chosen for the author: the DOI's page and the upload's both
+ * wait for one, so nobody uploads a PDF before knowing the line has to be in it.
+ */
+function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string; by: BylineBy | null; onPick: (by: BylineBy) => void; disabled?: boolean }) {
+  const t = useTranslations("publishReports.flow.bylineBy");
+  const id = useId();
+  return (
+    <div className="mb-5">
+      <BylineBox byline={byline} />
+      <RadioGroup aria-label={t("label")} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
+        {([["self", PenLine], ["added", FileCheck2]] as const).map(([value, Icon]) => (
+          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-primary/60 hover:bg-muted/50"))}>
+            <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                {t(`${value}.title`)}
+                <Icon className="ms-auto size-4 shrink-0 text-muted-foreground" />
+              </span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">{t(`${value}.body`, { max: BYLINE_PAGE_MAX_MB })}</span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+    </div>
+  );
+}
+
+function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode; /** Why the way on is shut, said beside it. */ hint?: string }) {
   const t = useTranslations("publishReports.flow");
   return (
-    <div className="mt-6 flex items-center gap-2">
+    <div className="mt-6 flex items-center gap-3">
       {onBack ? (
         <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
           <ArrowLeft /> {t("back")}
         </Button>
       ) : null}
-      <div className="ms-auto">{next}</div>
+      {hint ? <p className="ms-auto text-sm text-muted-foreground">{hint}</p> : null}
+      <div className={hint ? undefined : "ms-auto"}>{next}</div>
     </div>
   );
 }
@@ -1145,8 +1203,10 @@ function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
   const [reading, read] = useTransition();
   // Asked first: the details shown go, with whatever was typed into them.
   const [asking, setAsking] = useState(false);
+  const { problem, say, failed } = useProblem();
   return (
-    <div role="status" className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
+    <div className="mb-5">
+    <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
       <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
         <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0">{t("keptDetails")}</span>
@@ -1166,16 +1226,18 @@ function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("readAgainKeep")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => read(() => onReadAgain().then(() => {}, said(t("readAgainFailed"))))}>{t("readAgain")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => (say(null), read(() => onReadAgain().then(() => {}, failed(t("readAgainFailed")))))}>{t("readAgain")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+    <Problem className="ps-1 pt-2">{problem}</Problem>
     </div>
   );
 }
 
 /** What a PDF's reading fell short of, said where the author fills in what it left. */
-function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; onUpload: () => void }) {
+function PdfNotice({ trouble, lineAdded, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; /** Openscholar added the byline's page, so a scan has the line all the same. */ lineAdded: boolean; onUpload: () => void }) {
   const t = useTranslations("publishReports.flow");
   if (trouble !== "textless" && trouble !== "unread") return null;
   return (
@@ -1183,7 +1245,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
       <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
         <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
         <span className="min-w-0">
-          {t(trouble === "textless" ? "textless" : "unreadPdf")}
+          {t(trouble === "textless" ? (lineAdded ? "textlessAdded" : "textless") : "unreadPdf")}
         </span>
       </p>
       {trouble === "textless" ? (
@@ -1209,7 +1271,19 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   const [over, setOver] = useState(false);
   // The file on its way up. Once it's the report's, the report itself says it is being read.
   const [sending, setSending] = useState<File | null>(null);
+  const addByline = useMutation(api.reports.flow.addByline);
+  // The choice made on the way here, or the one the PDF already attached was uploaded with.
+  const [chosen, setBy] = useBylineBy();
+  const by = chosen ?? report.pdf?.bylineBy ?? null;
   const here = { workspaceId, key: report.key };
+  // A PDF already here without the line gets its page as soon as its author asks for it, by the choice or the notice.
+  // What went wrong with the last file or choice, said under the drop area until the next one.
+  const { problem, say, failed } = useProblem();
+  const pick = (picked: BylineBy) => {
+    say(null);
+    void setBy(picked);
+    if (picked === "added" && report.pdf?.lacksByline && report.pdf.bylineBy !== "added") void addByline(here).catch(failed(t("bylineBy.addFailed")));
+  };
   const put = async (file: Blob, type: string) => {
     const response = await fetch(await startUpload(here), { method: "POST", headers: { "Content-Type": type }, body: file });
     if (!response.ok) throw new Error(t("uploadLost"));
@@ -1223,25 +1297,31 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   const reading = unread && !stuck;
   const busy = !!sending || reading;
   const send = async (picked: File | undefined) => {
-    if (!picked || busy) return;
-    if (!/\.pdf$/i.test(picked.name)) return void toast.error(t("choosePdf"));
-    if (picked.size === 0) return void toast.error(t("emptyFile"));
-    if (picked.size > MAX_PDF_BYTES) return void toast.error(t("tooBig", { max: MAX_PDF_MB }));
+    if (!picked || busy || !by) return;
+    say(null);
+    if (!/\.pdf$/i.test(picked.name)) return say(t("notPdf", { name: picked.name }));
+    if (picked.size === 0) return say(t("emptyFile"));
+    if (picked.size > MAX_PDF_BYTES) return say(t("tooBig", { max: MAX_PDF_MB }));
+    // Said before it goes up: a PDF this large can't have the page added, so its author picks the other way now.
+    if (by === "added" && picked.size > BYLINE_PAGE_MAX_BYTES) return say(t("bylineBy.tooBigToAdd", { name: picked.name, max: BYLINE_PAGE_MAX_MB }));
     setSending(picked);
+    // Whether the file got as far as Openscholar: a failure says which half went wrong.
+    let arrived = false;
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
       const [file, cover] = await Promise.all([
         put(picked, "application/pdf"),
         drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
       ]);
-      const refused = await attachPdf({ ...here, file, name: picked.name, ...(cover && { cover }) });
-      if (refused) return void toast.error(refused);
+      arrived = true;
+      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover }) });
+      if (refused) return say(refused);
       onAttached();
     } catch (error) {
       // A browser's own words for a request that never left ("Load failed") tell an author nothing: the file wasn't
       // kept, and the connection is what to look at.
-      if (error instanceof TypeError) toast.error(t("offline"));
-      else said(t("uploadFailed"))(error);
+      if (error instanceof TypeError) say(t("offline"));
+      else failed(t(arrived ? "uploadFailed" : "notSent"))(error);
     } finally {
       setSending(null);
       if (input.current) input.current.value = "";
@@ -1250,7 +1330,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      <BylineBox byline={report.byline} className="mb-5" />
+      <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -1264,8 +1344,8 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           setOver(false);
           void send(e.dataTransfer.files[0]);
         }}
-        disabled={busy}
-        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
+        disabled={busy || !by}
+        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", !by ? "border-border opacity-60" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
       >
         {sending ? (
           <>
@@ -1282,23 +1362,38 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         ) : (
           <>
             <FileUp className="size-6 text-primary" />
-            <span className="text-sm font-medium">{t("drop")}</span>
-            <span className="text-xs text-muted-foreground">{t("dropHint", { max: MAX_PDF_MB })}</span>
+            <span className="text-sm font-medium">{t(by ? "drop" : "bylineBy.chooseFirst")}</span>
+            {/* One limit said at a time: the smaller one while Openscholar is to add the page. */}
+            <span className="text-xs text-muted-foreground">{t("dropHint", { max: by === "added" ? BYLINE_PAGE_MAX_MB : MAX_PDF_MB })}</span>
           </>
         )}
       </button>
       <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => void send(e.target.files?.[0])} />
+      <Problem className="ps-1 pt-3">{problem}</Problem>
       {report.pdf?.trouble === "unopened" && !busy ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
           <CircleX className="mt-0.5 size-4 shrink-0" />
           {t("unopenedPdf", { name: report.pdf.name })}
         </p>
       ) : report.pdf?.lacksByline && !busy ? (
-        // Said here, where the PDF is replaced, not after the checks: the line is shown above, with its copy button.
-        <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
-          <CircleX className="mt-0.5 size-4 shrink-0" />
-          {t("lacksByline", { name: report.pdf.name })}
-        </p>
+        // Said here, where the PDF is replaced, not after the checks: the line is shown above, with its copy button,
+        // and so is the way out for an author who can't edit their PDF.
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 ps-1 text-sm text-destructive">
+          <p className="flex min-w-0 flex-1 basis-72 items-start gap-2">
+            <CircleX className="mt-0.5 size-4 shrink-0" />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{t(report.pdf.bylineBy === "added" ? "bylineBy.failed" : "lacksByline", { name: report.pdf.name })}</span>
+          </p>
+          {report.pdf.bylineBy === "added" ? null : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ms-auto text-foreground"
+              onClick={() => pick("added")}
+            >
+              <FileCheck2 /> {t("bylineBy.added.title")}
+            </Button>
+          )}
+        </div>
       ) : stuck ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-muted-foreground">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
@@ -1469,6 +1564,8 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
     setTyped(value);
   };
   const [quoting, setQuoting] = useState(false);
+  // What went wrong with activating or paying, said above the payment bar.
+  const { problem, say, failed } = useProblem();
   // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
   // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
   // quote that couldn't be had leaves it closed, so a code still good is never dropped from the charge.
@@ -1486,7 +1583,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
         },
         (error: unknown) => {
           if (chosen.current) return;
-          if (!promoReason(error)) return said(t("activateFailed"))(error);
+          if (!promoReason(error)) return failed(t("activateFailed"))(error);
           setCode(null);
           setPaying(true);
         },
@@ -1498,15 +1595,16 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   const due = subtotal - fromCredit;
   const activateNow = (pay: boolean, withCode?: string, expect?: number) =>
     start(async () => {
+      say(null);
       try {
         await onActivate?.(pay, withCode, expect);
       } catch (error) {
         const reason = promoReason(error);
-        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
-        else if (refusalOf(error)?.reason === "noFreeLeft") toast.error(t("activation.noFreeLeft"));
-        else if (refusalOf(error)?.reason === "paused") toast.error(t("activation.paused"));
-        else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
-        else said(t("activateFailed"))(error);
+        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
+        else if (refusalOf(error)?.reason === "noFreeLeft") say(t("activation.noFreeLeft"));
+        else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
+        else if (reason) say(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
+        else failed(t("activateFailed"))(error);
       }
     });
   // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
@@ -1571,10 +1669,12 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
+              <Problem className="pb-3 ps-1">{problem}</Problem>
               {stage === "ready" && admin && terms ? (
                 // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
                 // while the bank confirms a charge, the bar offers that instead.
                 <PaymentLine
+                  onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
                   free={terms.free.left}
                   card={card}
@@ -1854,7 +1954,7 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, quoted, voucher, action }: { /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1864,11 +1964,12 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
   // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
   const saveCard = () =>
     save(async () => {
+      onFailed(null);
       try {
         // The code applied goes with it, so the way back from Stripe opens the field with it typed in.
         await onAddCard?.(quoted?.code);
       } catch (error) {
-        said(t("stripeFailed"))(error);
+        onFailed(error);
       }
     });
   return (
@@ -2039,18 +2140,25 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
   const [comment, setComment] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
   const [sending, start] = useTransition();
+  const { problem, say, failed } = useProblem();
+  // Closed, it forgets what went wrong: opened again, it starts clean.
+  const close = () => {
+    say(null);
+    onClose();
+  };
   const send = () =>
     start(async () => {
+      say(null);
       try {
         await onSend(comment);
         toast.success(t("sentToReviewer"));
         onClose();
       } catch (error) {
-        said(t("requestFailed"))(error);
+        failed(t("requestFailed"))(error);
       }
     });
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !sending && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && !sending && close()}>
       <DialogContent
         className="sm:max-w-lg"
         // Typing starts in the box. The dialog puts the focus there itself, so closing it gives the focus back to the
@@ -2069,8 +2177,9 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         <Field label={t("reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea ref={box} id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} />}
         </Field>
+        <Problem>{problem}</Problem>
         <DialogFooter>
-          <Button variant="outline" disabled={sending} onClick={onClose}>
+          <Button variant="outline" disabled={sending} onClick={close}>
             {t("cancel")}
           </Button>
           <Button className="relative" disabled={sending} onClick={send}>
@@ -2199,6 +2308,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
  */
 function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview }: { report: Report; correction: NonNullable<Report["correction"]>; onEdit: () => void; onDiscard: () => Promise<void>; onRequestReview: (comment: string) => Promise<void> }) {
   const t = useTranslations("publishReports.flow");
+  const { problem, say, failed } = useProblem();
   const changeLabel = useChangeLabel();
   const stage = report.changes ?? "review";
   const [asking, setAsking] = useAsking();
@@ -2260,6 +2370,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           <PenLine /> {t("editChanges")}
         </Button>
       </div>
+      <Problem className="pt-3">{problem}</Problem>
       {/* Only where a review can be asked for: an address that still names the dialog opens nothing anywhere else. */}
       <ReviewRequestDialog open={asking && stage === "failed"} onClose={() => setAsking(false)} onSend={onRequestReview} />
       <AlertDialog open={discarding} onOpenChange={setDiscarding}>
@@ -2270,7 +2381,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("keepThem")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void onDiscard().then(() => toast.success(t("changesDiscarded")), said(t("changesDiscardFailed")))}>{t("discard")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => (say(null), void onDiscard().then(() => toast.success(t("changesDiscarded")), failed(t("changesDiscardFailed"))))}>{t("discard")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
