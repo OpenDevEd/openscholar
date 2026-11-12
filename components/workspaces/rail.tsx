@@ -441,8 +441,9 @@ function RailCard({ open, label, onClose, onClosed, head, children }: { open: bo
             transition={{ duration: 0.3, ease: EASE }}
           />
           {/* The frame never moves: the photo and the tile flying in land on fixed spots in it, while
-              the card's surface slides and scales into place underneath. */}
-          <div key="frame" className="pointer-events-none fixed bottom-2 start-2 z-[61] w-[19rem]">
+              the card's surface slides and scales into place underneath. It keeps inside the screen,
+              which only binds on a phone at large text, where 19rem is wider than the screen. */}
+          <div key="frame" className="pointer-events-none fixed bottom-2 start-2 z-[61] w-[19rem] max-w-[calc(100vw-1rem)]">
             <motion.div
               role="dialog"
               aria-label={label}
