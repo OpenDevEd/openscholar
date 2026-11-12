@@ -6801,8 +6801,8 @@
       },
       "overview": {
         "title": "Publicar un informe con {series}",
-        "intro": "Unos diez minutos de principio a fin. Esto es lo que te pide cada paso.",
-        "introReviewed": "Unos diez minutos de tu tiempo. Después un revisor aprueba el informe antes de que pueda publicarse, y te avisamos por correo.",
+        "intro": "Unos cinco minutos de principio a fin. Esto es lo que te pide cada paso.",
+        "introReviewed": "Unos cinco minutos de tu tiempo. Después un revisor aprueba el informe antes de que pueda publicarse, y te avisamos por correo.",
         "start": "Firmar el acuerdo",
         "agreement": {
           "title": "Firmar el acuerdo de publicación",
