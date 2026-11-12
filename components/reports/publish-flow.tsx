@@ -320,9 +320,11 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const goTo = useMutation(api.reports.flow.goTo).withOptimisticUpdate((store, { key, step }) => {
     for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
       if (!value || !("report" in value) || value.report.key !== key) continue;
-      // Ready to activate or waiting for a reviewer, it can go back to its checks as they were (convex/reports/flow.ts `goTo`).
+      // Ready to activate, waiting for a reviewer, or failed with its author asking for one, it can go back to its checks
+      // as they were (convex/reports/flow.ts `goTo`).
       const stage = value.report.step === "done" ? stageOf(value.report, basics?.humanReview ?? false) : null;
-      store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step, reopened: value.report.reopened || stage === "ready" || stage === "review" } });
+      const waiting = stage === "ready" || stage === "review" || (stage === "failed" && value.report.asked === true);
+      store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step, reopened: value.report.reopened || waiting } });
     }
   });
   const backToChecks = useMutation(api.reports.flow.backToChecks).withOptimisticUpdate((store, { key }) => {
@@ -1202,14 +1204,15 @@ function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string
 function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode; /** Why the way on is shut, said beside it. */ hint?: string }) {
   const t = useTranslations("publishReports.flow");
   return (
-    <div className="mt-6 flex items-center gap-3">
+    // A Next too wide to sit beside Back (a phone at large text) takes a line of its own.
+    <div className="mt-6 flex flex-wrap items-center gap-3">
       {onBack ? (
         <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
           <ArrowLeft /> {t("back")}
         </Button>
       ) : null}
       {hint ? <p className="ms-auto text-sm text-muted-foreground">{hint}</p> : null}
-      <div className={hint ? undefined : "ms-auto"}>{next}</div>
+      <div className={cn("min-w-0 max-w-full", !hint && "ms-auto")}>{next}</div>
     </div>
   );
 }
