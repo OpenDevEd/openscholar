@@ -281,7 +281,9 @@ export const settleCharge = internalMutation({
   returns: v.boolean(),
   handler: async (ctx, { activationId, outcome }) => {
     const activation = await ctx.db.get("reportActivations", activationId);
-    if (!activation || activation.state === "live" || activation.state === "unused") return activation?.state === "live";
+    // Settled already: live, kept, or refused by the bank (a second look then finds its invoice voided, and the record
+    // stays, so the report still says nothing was charged).
+    if (!activation || activation.state === "live" || activation.state === "unused" || activation.state === "refused") return activation?.state === "live";
     if (outcome.kind === "none" || outcome.kind === "refused") {
       if (outcome.kind === "none") await ctx.db.delete("reportActivations", activationId);
       else await ctx.db.patch("reportActivations", activationId, { state: "refused", payUrl: undefined });

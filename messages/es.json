@@ -676,6 +676,7 @@
     "uploadFailed": "La subida falló",
     "uploadFailedDescription": "No se pudo subir {format}. Inténtelo de nuevo.",
     "accountChanged": "Su cuenta cambió. Inténtelo de nuevo.",
+    "couldntCopy": "No se pudo copiar",
     "copyFailedDescription": "Tu navegador no nos dejó copiarlo. Selecciona el texto y cópialo tú.",
     "validationFailed": "La validación falló",
     "entityCreated": "Creado: {entity}",

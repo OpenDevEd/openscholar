@@ -675,6 +675,7 @@
     "uploadFailed": "上传失败",
     "uploadFailedDescription": "无法上传 {format}。请重试。",
     "accountChanged": "您的账户已更改。请重试。",
+    "couldntCopy": "无法复制",
     "copyFailedDescription": "你的浏览器不允许复制。请选中文字后自行复制。",
     "validationFailed": "验证失败",
     "entityCreated": "{entity} 已创建",

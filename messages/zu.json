@@ -675,6 +675,7 @@
     "uploadFailed": "Ukulayisha kehlulekile",
     "uploadFailedDescription": "Ayikwazanga ukulayisha i-{format}. Sicela uzame futhi.",
     "accountChanged": "I-akhawunti yakho ishintshile. Zama futhi.",
+    "couldntCopy": "Ayikwazanga ukukopisha",
     "copyFailedDescription": "Isiphequluli sakho asisivumelanga ukukopisha. Khetha umbhalo bese uwukopisha ngokwakho.",
     "validationFailed": "Ukuhlola kehlulekile",
     "entityCreated": "{entity} kudalwe",

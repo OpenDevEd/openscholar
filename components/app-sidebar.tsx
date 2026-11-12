@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebarStore } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
+import { focusContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { HamburgerMenu } from "@/components/icons";
 import { motion } from "motion/react";
@@ -48,7 +49,7 @@ export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace 
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setOpen}>
-        <SheetContent side="left" showCloseButton={false} className="w-20 gap-0 bg-sidebar p-0">
+        <SheetContent side="left" showCloseButton={false} onOpenAutoFocus={focusContent} className="w-20 gap-0 bg-sidebar p-0">
           <SheetTitle className="sr-only">{tLabels("navigation")}</SheetTitle>
           <Suspense fallback={null}>
             <SidebarContent firstWorkspace={firstWorkspace} onClose={() => setOpen(false)} />

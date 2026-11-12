@@ -676,6 +676,7 @@
     "uploadFailed": "Upakiaji umeshindwa",
     "uploadFailedDescription": "Haikuweza kupakia {format}. Tafadhali jaribu tena.",
     "accountChanged": "Akaunti yako imebadilika. Jaribu tena.",
+    "couldntCopy": "Haikuweza kunakiliwa",
     "copyFailedDescription": "Kivinjari chako hakikuturuhusu kunakili. Chagua maandishi na uyanakili mwenyewe.",
     "validationFailed": "Uthibitishaji umeshindwa",
     "entityCreated": "{entity} imeundwa",
