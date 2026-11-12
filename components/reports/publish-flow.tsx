@@ -56,7 +56,7 @@ import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick, type LicenceQuote } from "@/components/reports/licence-choice";
 import { mockQuoteLicences, useMockVoucher, keepMockLicence, mockAgreementText, mockByline, mockSeries, mockTerms, useMockLicence } from "@/components/reports/licence-mock";
 import { Bill, PayWithSwitch, PaymentChoice, balanceOf, buysByCard, payment, type PayWith } from "@/components/reports/payment-choice";
-import { keepMockPayWith, mockCodeOff, spendMockBalance, useMockBalance, useMockPayWith } from "@/components/reports/publication-mock";
+import { keepMockPayWith, mockCodeOff, spendMockBalance, useMockBalance, useMockPayWith, useMockPrices } from "@/components/reports/publication-mock";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, activationsFor, changesOf, licenceName, ownLicence, stageOf, stepsOf, isAuthor, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
@@ -322,7 +322,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const { data: waiting } = useProtectedQuery(api.reports.flow.waitingElsewhere, inWorkspace(workspaceId, {}));
   const { data: startsRead } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
   // mock: dev's Autumn has no three-activation plan, so three cost three of one.
-  const starts = startsRead && { ...startsRead, priceOfThree: startsRead.priceOfThree ?? (startsRead.price === null ? null : startsRead.price * 3) };
+  // mock: the two prices set on Admin > Publishing in this browser (publication-mock.ts), over dev's one plan price.
+  const mockPrices = useMockPrices();
+  const starts = startsRead && { ...startsRead, price: startsRead.price === null ? null : (mockPrices?.standard ?? startsRead.price), priceOfThree: startsRead.price === null ? null : (mockPrices?.other ?? startsRead.priceOfThree ?? startsRead.price * 3) };
   // With no report named the page opens the workspace's reports, and a new report only when it has none. Opened on
   // that new report, it stays on it while it is signed: its own first report must not turn the page into the list
   // before the address names it.
@@ -346,7 +348,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     foundRead && "report" in foundRead
       ? { ...foundRead, report: { ...foundRead.report, ...(mockVoucher && { voucher: mockVoucher }), byline: mockByline(foundRead.report.byline, licence) } }
       : foundRead;
-  const terms = termsRead && mockTerms(termsRead, licence);
+  const priced = termsRead && mockTerms(termsRead, licence);
+  // mock: the report costs its licence's price as set on Admin > Publishing in this browser, when one is.
+  const terms = priced && { ...priced, price: priced.price === null || !mockPrices ? priced.price : activationsFor(licence) === 1 ? mockPrices.standard : mockPrices.other };
   // A charge left under way by an action that died stops holding the report once its time is up.
   const chargeOver = usePassed(terms?.paying?.until ?? undefined);
   // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
@@ -1903,7 +1907,8 @@ function Checks({ beside = null, rows, report, carried: quoted = null, onApplied
                         // Under the bill, the button carries no amount: the total is right above it. Beside the bill, it
                         // does. Nothing due charges nothing: no dialog to confirm a charge. mock: dev's server spends
                         // one of its activations either way.
-                        <ActivateButton label={t("activate")} amount={withAmount && due > 0 && !requoting ? dollars(due) : null} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
+                        // With nothing due there is nothing to pay: the button activates. With something due, it pays.
+                        <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={withAmount && due > 0 && !requoting ? dollars(due) : null} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
                       )
                     }
                   />

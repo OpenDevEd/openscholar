@@ -6505,16 +6505,17 @@
       "saveVersion": "Save as version {version}",
       "price": "Price",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "What a workspace pays for one activation when its balance is empty. It is the Report activation plan's price in Autumn.",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "Autumn has no Report activation plan, so a workspace with an empty balance can't activate.",
       "notOnSale": "Not on sale",
       "activations": "Activations",
       "balances": "Balances",
-      "balancesHint": "Each workspace has a balance of activations in Autumn. Give a person or an organisation some there, once or refilled every day, week, month or year. An item on a plan gives them to every workspace on it.",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organisation some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Open Autumn",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND licence, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6887,7 +6888,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "Publish | Openscholar",

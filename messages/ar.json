@@ -6506,16 +6506,17 @@
       "saveVersion": "حفظ كالإصدار {version}",
       "price": "السعر",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "ما تدفعه مساحة العمل مقابل تفعيل واحد عندما يكون رصيدها فارغًا. وهو سعر خطة Report activation في Autumn.",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "لا توجد خطة Report activation في Autumn، لذا لا تستطيع مساحة عمل رصيدها فارغ أن تفعّل.",
       "notOnSale": "غير معروض للبيع",
       "activations": "التفعيلات",
       "balances": "الأرصدة",
-      "balancesHint": "لكل مساحة عمل رصيد من التفعيلات في Autumn. امنح شخصًا أو منظمة تفعيلات من هناك، مرة واحدة أو تتجدد كل يوم أو أسبوع أو شهر أو سنة. وبند في خطة يمنحها لكل مساحة عمل على تلك الخطة.",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "افتح Autumn",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6888,7 +6889,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "نشر | Openscholar",

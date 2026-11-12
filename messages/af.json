@@ -6506,16 +6506,17 @@
       "saveVersion": "Stoor as weergawe {version}",
       "price": "Prys",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "Wat 'n werkruimte vir een aktivering betaal wanneer sy saldo leeg is. Dit is die prys van die Report activation-plan in Autumn.",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "Autumn het geen Report activation-plan nie, so 'n werkruimte met 'n leë saldo kan nie aktiveer nie.",
       "notOnSale": "Nie te koop nie",
       "activations": "Aktiverings",
       "balances": "Saldo's",
-      "balancesHint": "Elke werkruimte het 'n saldo van aktiverings in Autumn. Gee daar aktiverings aan 'n persoon of 'n organisasie, een keer of elke dag, week, maand of jaar hervul. 'n Item op 'n plan gee dit aan elke werkruimte op daardie plan.",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Maak Autumn oop",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6888,7 +6889,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

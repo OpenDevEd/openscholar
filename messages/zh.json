@@ -6505,16 +6505,17 @@
       "saveVersion": "另存为第 {version} 版",
       "price": "价格",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "工作区余额为空时，每次激活需支付的费用。即 Autumn 中 Report activation 方案的价格。",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "Autumn 中没有 Report activation 方案，因此余额为空的工作区无法激活。",
       "notOnSale": "未开售",
       "activations": "激活次数",
       "balances": "余额",
-      "balancesHint": "每个工作区在 Autumn 中都有激活次数余额。可在那里为个人或组织发放次数，一次性发放，或按日、周、月、年补充。方案中的条目会发放给使用该方案的所有工作区。",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "打开 Autumn",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6887,7 +6888,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "发布 | Openscholar",

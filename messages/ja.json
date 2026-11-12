@@ -6505,16 +6505,17 @@
       "saveVersion": "バージョン {version} として保存",
       "price": "価格",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "残高が空のときに、ワークスペースが有効化1回に支払う料金です。AutumnのReport activationプランの価格です。",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "AutumnにReport activationプランがないため、残高が空のワークスペースは有効化できません。",
       "notOnSale": "販売していません",
       "activations": "有効化",
       "balances": "残高",
-      "balancesHint": "各ワークスペースはAutumnに有効化の残高を持ちます。個人や組織への付与はAutumnで行います。1回限りにも、毎日、毎週、毎月、毎年の補充にもできます。プランの項目に入れると、そのプランのすべてのワークスペースに付与されます。",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Autumnを開く",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6887,7 +6888,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "公開 | Openscholar",

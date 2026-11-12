@@ -6505,16 +6505,17 @@
       "saveVersion": "संस्करण {version} के रूप में सहेजें",
       "price": "कीमत",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "बैलेंस खाली होने पर कोई कार्यक्षेत्र एक सक्रियण के लिए जो चुकाता है। यह Autumn में Report activation प्लान की कीमत है।",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "Autumn में Report activation प्लान नहीं है, इसलिए खाली बैलेंस वाला कार्यक्षेत्र सक्रिय नहीं कर सकता।",
       "notOnSale": "बिक्री पर नहीं",
       "activations": "सक्रियण",
       "balances": "बैलेंस",
-      "balancesHint": "हर कार्यक्षेत्र का Autumn में सक्रियणों का एक बैलेंस होता है। वहाँ किसी व्यक्ति या संगठन को सक्रियण दें, एक बार या हर दिन, सप्ताह, महीने या साल फिर से भरने के लिए। किसी प्लान का आइटम उस प्लान के हर कार्यक्षेत्र को सक्रियण देता है।",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Autumn खोलें",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6887,7 +6888,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "प्रकाशित करें | Openscholar",

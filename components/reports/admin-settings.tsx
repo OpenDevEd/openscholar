@@ -4,6 +4,7 @@
 // limit, the series and its DOIs, the model that reads PDFs, the checks, and the agreement.
 
 import { useState, useTransition, type ComponentProps } from "react";
+import { keepMockPrices, useMockPrices } from "@/components/reports/publication-mock";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import type { FunctionReturnType } from "convex/server";
@@ -280,28 +281,28 @@ type Prices = { one: number | null; three: number | null };
 
 function Activations({ prices, autumn }: { prices: Prices; autumn: string | null }) {
   const t = useTranslations("publishReports.settings");
-  const format = useFormatter();
-  // The plan that buys one activation, for CC BY and CC BY-SA, and the one that buys three, for the other licences.
+  // mock: the prices are kept in this browser (publication-mock.ts) and start from dev's one plan price. The real
+  // build saves them with the publishing settings.
+  const kept = useMockPrices();
+  const now = { standard: kept?.standard ?? prices.one ?? 10, other: kept?.other ?? prices.three ?? 30 };
+  // A price is whole dollars, as the balance that pays it is bought: anything else is refused, and the box shows what is saved.
+  const save = (which: "standard" | "other") => async (typed: string) => {
+    const dollars = Number(typed.replace(/^\$/, ""));
+    if (!Number.isInteger(dollars) || dollars < 1 || dollars > 10_000) return false;
+    keepMockPrices({ ...now, [which]: dollars });
+    return true;
+  };
   return (
-    <Zone label={t("activations")}>
+    <Zone label={t("prices")}>
       <ul className={LIST}>
-        {(["one", "three"] as const).map((plan) => {
-          const price = prices[plan];
-          const cost = price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 });
-          return (
-            <Row key={plan} label={t(plan === "one" ? "priceOne" : "priceThree")} hint={t(`${plan === "one" ? "priceHint" : "priceThreeHint"}${price === null ? "None" : ""}`)}>
-              {autumn ? (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={autumn} target="_blank" rel="noopener noreferrer">
-                    {cost} <ArrowUpRight />
-                  </a>
-                </Button>
-              ) : (
-                <span className="text-sm font-medium tabular-nums">{cost}</span>
-              )}
-            </Row>
-          );
-        })}
+        {(["standard", "other"] as const).map((which) => (
+          <Row key={which} label={t(which === "standard" ? "priceOne" : "priceThree")} hint={t(which === "standard" ? "priceHint" : "priceThreeHint")}>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="text-sm text-muted-foreground">$</span>
+              <SavedInput value={String(now[which])} onSave={save(which)} ariaLabel={t(which === "standard" ? "priceOne" : "priceThree")} className="w-20 text-end tabular-nums" />
+            </span>
+          </Row>
+        ))}
         <Row label={t("balances")} hint={t("balancesHint")}>
           {autumn ? (
             <Button variant="outline" size="sm" asChild>

@@ -6505,16 +6505,17 @@
       "saveVersion": "Enregistrer en version {version}",
       "price": "Prix",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "Ce qu'un espace de travail paie pour une activation quand son solde est vide. C'est le prix de l'offre Report activation dans Autumn.",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "Autumn n'a pas d'offre Report activation, donc un espace de travail dont le solde est vide ne peut pas activer.",
       "notOnSale": "Pas en vente",
       "activations": "Activations",
       "balances": "Soldes",
-      "balancesHint": "Chaque espace de travail a un solde d'activations dans Autumn. Donnez-en là à une personne ou à une organisation, une seule fois ou renouvelées chaque jour, semaine, mois ou année. Un élément d'une offre en donne à tous les espaces de travail qui l'ont.",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Ouvrir Autumn",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6887,7 +6888,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "Publier | Openscholar",

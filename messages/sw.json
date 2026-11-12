@@ -6506,16 +6506,17 @@
       "saveVersion": "Hifadhi kama toleo {version}",
       "price": "Bei",
       "priceOne": "CC BY and CC BY-SA",
-      "priceHint": "Kiasi ambacho eneo la kazi hulipa kwa mwasho mmoja salio lake likiwa tupu. Ni bei ya mpango wa Report activation katika Autumn.",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
       "priceHintNone": "Autumn haina mpango wa Report activation, kwa hiyo eneo la kazi lenye salio tupu haliwezi kuwasha.",
       "notOnSale": "Haiuzwi",
       "activations": "Miwasho",
       "balances": "Salio",
-      "balancesHint": "Kila eneo la kazi lina salio la miwasho katika Autumn. Mpe mtu au shirika miwasho huko, mara moja au inayojazwa upya kila siku, wiki, mwezi au mwaka. Kipengee kwenye mpango huipa kila eneo la kazi lililo kwenye mpango huo.",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Fungua Autumn",
       "priceThree": "NC, ND and own licences",
-      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
@@ -6888,7 +6889,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign"
-      }
+      },
+      "activateFree": "Activate"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

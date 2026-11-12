@@ -88,3 +88,27 @@ export const useMockPayWith = (key: string | null | undefined) => useKept(key ? 
 
 /** The part of what is bought that one of dev's two test codes takes off; undefined for any other. */
 export const mockCodeOff = (code: string | null | undefined) => (code ? ({ FREEDOI: 1, HALFOFF: 0.5 } as Record<string, number>)[code.trim().toUpperCase()] : undefined);
+
+const PRICES = "mock:publication-prices";
+/** What a report costs, in whole dollars: under CC BY or CC BY-SA, and under any other licence. */
+export type MockPrices = { standard: number; other: number };
+
+/** The prices set on Admin > Publishing in this browser; null while none are, when dev's own price stands. */
+export function useMockPrices(): MockPrices | null {
+  const kept = useKept(PRICES);
+  try {
+    return kept ? (JSON.parse(kept) as MockPrices) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Keeps the prices set on Admin > Publishing. */
+export function keepMockPrices(prices: MockPrices) {
+  try {
+    window.localStorage.setItem(PRICES, JSON.stringify(prices));
+  } catch {
+    // Without storage dev's own price stands.
+  }
+  window.dispatchEvent(new Event(CHANGED));
+}
