@@ -20,16 +20,15 @@ const steps = [
   ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
 ];
 // A real DOI taken apart into the three parts people need: where it points from, whose it is, and which work.
-// The prefix is shared dev's sandbox one (10.53832); production's goes here at launch. Positions are in the mono
-// font's characters (Ubuntu Mono is half an em wide), so each label sits exactly at its part.
+// The prefix is shared dev's sandbox one (10.53832); production's goes here at launch.
 const parts = [
-  { text: "https://doi.org/", c: "#7da7e6", at: 0, side: "below", name: "The link", note: "Opens wherever the work is kept now" },
-  { text: "10.53832", c: "#34d399", at: 16, side: "above", name: "The prefix", note: "10 starts every DOI; 53832 is the publisher" },
-  { text: "/openscholar-reports.r100230", c: "#fbbf24", at: 24, side: "below", name: "Your report", note: "This work and no other, for good" },
+  { text: "https://doi.org/", c: "#7da7e6", name: "The link", note: "Opens wherever the work is kept now" },
+  { text: "10.53832", c: "#34d399", name: "The prefix", note: "Names its publisher" },
+  { text: "/openscholar-reports.r100230", c: "#fbbf24", name: "Your report", note: "This work and no other, for good" },
 ];
-// What a DOI does for the work, each beside something that shows it: the citation a reference manager makes of the
-// report on the right, its page moving while the DOI stays on it, the indexes that list DOIs like it (checked for this
-// publisher's Crossref prefix on 12 November 2026: Crossref itself, OpenAlex and Semantic Scholar), and citations arriving.
+// What a DOI does for the work, each under something that shows it: the marks of reference managers that take a DOI,
+// its page moving while the DOI stays on it, the indexes that list DOIs like it (checked for this publisher's Crossref
+// prefix on 12 November 2026: Crossref itself, OpenAlex and Semantic Scholar), and citations arriving.
 const gains = [
   ["cite", "Cited in one paste", "Reference managers turn the DOI into a full citation."],
   ["move", "A link that lasts", "If the report's page ever moves, the DOI follows it."],
@@ -72,27 +71,24 @@ const faq = [
     </div>
   </section>
 
-  {/* What a DOI is: a real one labelled part by part, and the page its link opens, with what the DOI does beside it. */}
+  {/* What a DOI is, in one card of three bands: a real DOI with each part named under it, the four things it does for
+      the work, and the page its link opens. */}
   <section class="doi" id="doi" aria-labelledby="doi-h">
     <div class="d-head"><h2 id="doi-h">What's a DOI?</h2><p class="lead">A DOI is a permanent ID for one piece of work. Its link always leads to that work, wherever it's kept, and it's what journals, libraries and reference managers use to cite it.</p></div>
     <div class="panel anat">
       <figure class="dia" data-in aria-label="The parts of a DOI">
-        <p class="dstr">{parts.map((pt, i) => <span class="pt" style={`--c:${pt.c};--i:${i}`}>{pt.text}</span>)}</p>
-        {parts.map((pt, i) => <figcaption class:list={["tag", pt.side]} style={`--c:${pt.c};--at:${pt.at};--i:${i}`}><b>{pt.name}</b><span>{pt.note}</span></figcaption>)}
+        {parts.map((pt, i) => <div class="part" style={`--c:${pt.c};--i:${i}`}><span class="pt">{pt.text}</span><figcaption><b>{pt.name}</b><span>{pt.note}</span></figcaption></div>)}
       </figure>
-      <div class="lands">
-        <ul class="gains" data-in>{gains.map(([k, t, d], i) => <li style={`--i:${i}`}>
-          <p class="g-txt"><b>{t}</b><span>{d}</span></p>
-          {k === "cite" && <div class="g-vis v-cite">
-            <p class="ref" aria-hidden="true">Benali, R. (2026). <i>Household rainwater storage in Morocco: a descriptive field study</i>. Openscholar Reports. <span>doi.org/10.53832/…r100230</span></p>
-            <p class="lgs">{["zotero", "mendeley"].map((id, n) => <span class="lg" style={`--n:${n}`}><svg viewBox={LOGOS[id].box} fill="currentColor" aria-hidden="true" set:html={LOGOS[id].body} />{LOGOS[id].name}</span>)}</p>
-          </div>}
-          {k === "move" && <div class="g-vis v-move" aria-hidden="true"><span class="g-doi">doi.org/10.53832/…r100230</span><span class="track"><i class="ln"></i><span class="run"><i class="pg"></i></span></span></div>}
-          {k === "find" && <p class="g-vis lgs">{["crossref", "openalex", "semanticscholar"].map((id, n) => <span class="lg" style={`--n:${n}`}>{LOGOS[id].mask ? <i class="mk" style={`--m:url(${LOGOS[id].mask});aspect-ratio:${LOGOS[id].ratio}`} aria-hidden="true"></i> : <svg viewBox={LOGOS[id].box} fill="currentColor" aria-hidden="true" set:html={LOGOS[id].body} />}{LOGOS[id].name}</span>)}</p>}
-          {k === "count" && <div class="g-vis v-count" aria-hidden="true"><span class="cites">{[0, 1, 2].map((n) => <i class="pg" style={`--n:${n}`}></i>)}</span><i class="ln"></i><span class="g-doi">10.53832/…r100230</span><b class="plus">+1</b></div>}
-        </li>)}</ul>
-        <div class="d-shot" data-in><Device kind="laptop" name="r-page" theme="light" alt="The page a report's DOI opens, with its authors, topics, abstract and PDF" sizes="(max-width: 900px) 100vw, 720px" /></div>
-      </div>
+      <ul class="gains" data-in>{gains.map(([k, t, d], i) => <li style={`--i:${i}`}>
+        <div class="g-vis">
+          {k === "cite" && <p class="lgs">{["zotero", "mendeley"].map((id, n) => <span class="lg" style={`--n:${n}`}><svg viewBox={LOGOS[id].box} fill="currentColor" aria-hidden="true" set:html={LOGOS[id].body} />{LOGOS[id].name}</span>)}</p>}
+          {k === "move" && <div class="mini v-move" aria-hidden="true"><span class="tok">…r100230</span><span class="track"><i class="ln"></i><span class="run"><i class="pg mine"></i></span></span></div>}
+          {k === "find" && <p class="lgs">{["crossref", "openalex", "semanticscholar"].map((id, n) => <span class="lg" style={`--n:${n}`}>{LOGOS[id].mask ? <i class="mk" style={`--m:url(${LOGOS[id].mask});aspect-ratio:${LOGOS[id].ratio}`} aria-hidden="true"></i> : <svg viewBox={LOGOS[id].box} fill="currentColor" aria-hidden="true" set:html={LOGOS[id].body} />}{LOGOS[id].name}</span>)}</p>}
+          {k === "count" && <div class="mini v-count" aria-hidden="true"><span class="cites">{[0, 1, 2].map((n) => <i class="pg" style={`--n:${n}`}></i>)}</span><i class="ln"></i><span class="tok">…r100230</span><b class="plus">+1</b></div>}
+        </div>
+        <b>{t}</b><span>{d}</span>
+      </li>)}</ul>
+      <div class="d-shot" data-in><Device kind="laptop" name="r-page" theme="light" alt="The page a report's DOI opens, with its authors, topics, abstract and PDF" sizes="(max-width: 900px) 100vw, 820px" /></div>
     </div>
   </section>
 
@@ -170,64 +166,61 @@ const faq = [
   .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.d-go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
   .d-go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .d-go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .d-go :global(i) { transform: translateX(4px); }
 
-  /* A DOI labelled like a diagram: each label at its own part, joined to it by a short line in the part's colour. */
+  /* What a DOI is: one card of three bands on one grid. The DOI, each part named under it; what it does, four across;
+     the page it opens. White and the report's gold below the DOI; the three part colours only on the DOI itself. */
   .doi { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
   .d-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; padding-inline: var(--pad); } .d-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
-  .anat { --bg: var(--night); display: grid; gap: clamp(28px, 3vw, 44px); padding: var(--pad) var(--pad) 0; }
-  .dia { --fs: clamp(18px, 2.85vw, 40px); --above: 64px; --below: 72px; position: relative; margin: 0; padding-block: var(--above) var(--below); font-size: var(--fs); }
-  .dstr { margin: 0; font: 400 1em/1.1 var(--mono); letter-spacing: 0; white-space: nowrap; }
-  .pt { position: relative; color: #fff; } .pt::after { content: ""; position: absolute; left: 1px; right: 1px; bottom: -10px; height: 4px; border-radius: 4px; background: var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 70%, transparent); }
-  .tag { position: absolute; left: calc(var(--at) * var(--fs) / 2); display: grid; gap: 2px; padding-left: 14px; font: 400 16px/1.35 var(--sans); white-space: nowrap; }
-  .tag::before { content: ""; position: absolute; left: 0; width: 2px; border-radius: 2px; background: var(--c); }
-  .tag b { font-weight: 500; font-size: 17px; color: var(--c); } .tag span { color: rgb(255 255 255 / .72); font-size: 15px; }
-  /* The DOI line is var(--fs) * 1.1 tall; labels below start under its colour bar, labels above end over the text. */
-  .tag.below { top: calc(var(--above) + var(--fs) * 1.1 + 20px); } .tag.below::before { top: -12px; bottom: 4px; }
-  .tag.above { bottom: calc(var(--below) + var(--fs) * 1.1 + 6px); } .tag.above::before { top: 4px; bottom: -6px; }
-  :global(.js) .dia[data-in] { opacity: 1; transform: none; } :global(.js) .dia:not(.in) .pt::after { transform: scaleX(0); } :global(.js) .dia:not(.in) .tag { opacity: 0; translate: 0 8px; }
-  :global(.js) .dia.in .pt::after { transform-origin: left; transition: transform .7s var(--ease) calc(.15s + var(--i) * .35s); } :global(.js) .dia.in .tag { transition: opacity .5s var(--ease) calc(.4s + var(--i) * .35s), translate .6s var(--ease) calc(.4s + var(--i) * .35s); }
-  /* Under the DOI, what it opens: the report's page rising out of the panel, and what the DOI does for it beside. */
-  /* The report's page is wider than its column and runs off the panel's right edge, so it stands as tall as the rows beside it. */
-  .lands { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(24px, 3.4vw, 56px); align-items: end; }
-  @media (min-width: 901px) { .d-shot { width: 152%; } }
-  /* Each thing a DOI does, beside something that shows it. No boxes: text on the left, the picture on the right, a hairline between rows. */
-  .gains { display: grid; margin: 0; padding: 0 0 var(--pad); list-style: none; align-self: center; }
-  .gains li { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: clamp(20px, 2.4vw, 32px); align-items: center; min-height: 104px; padding-block: 16px; border-top: 1px solid rgb(255 255 255 / .1); } .gains li:first-child { border-top: 0; }
-  .g-txt { display: grid; gap: 4px; margin: 0; } .g-txt b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; } .g-txt span { color: rgb(255 255 255 / .62); font-size: 15px; line-height: 1.45; }
-  .g-vis { margin: 0; min-width: 0; }
-  /* The marks of the services named, all in one colour, each with its name. */
-  .lgs { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 0; } .lg { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; color: rgb(255 255 255 / .92); white-space: nowrap; }
-  .lg svg, .mk { flex: none; height: 20px; width: auto; } .lg svg { aspect-ratio: 1; } .lg svg[viewBox="0 0 46.6 67.9"] { aspect-ratio: 46.6 / 67.9; height: 23px; } .mk { background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
-  /* The citation a reference manager makes of the report shown beside it. */
-  .v-cite { display: grid; gap: 8px; } .ref { margin: 0; padding-left: 10px; border-left: 2px solid #fbbf24; font-size: 13px; line-height: 1.45; color: rgb(255 255 255 / .86); } .ref i { font-style: italic; } .ref span { font-family: var(--mono); font-size: 12px; color: #ffd68c; white-space: nowrap; }
-  .g-doi { flex: none; font: 400 13.5px/1 var(--mono); color: #cfe0fb; white-space: nowrap; }
-  /* The page moves; the line from the DOI stretches to stay on it. */
-  .v-move { display: flex; align-items: center; gap: 10px; } .track { position: relative; flex: 1; min-width: 60px; height: 34px; }
-  .ln { display: block; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #7da7e6, #fbbf24); } .track .ln { position: absolute; inset: 16px 0 auto; transform-origin: left; transform: scaleX(.34); }
-  .run { position: absolute; inset: 0; transform: translateX(-66%); }
-  .pg { display: block; width: 22px; height: 29px; border-radius: 3px; background: linear-gradient(#fbbf24 0 30%, #fff8ec 30%); box-shadow: 0 0 14px rgb(251 191 36 / .45); } .run .pg { position: absolute; right: 0; top: 3px; }
-  /* Citing pages arrive one after another, each sending its line to the DOI, which counts it. */
-  .v-count { display: flex; align-items: center; gap: 10px; } .cites { display: flex; gap: 6px; } .cites .pg { width: 17px; height: 23px; background: linear-gradient(#7da7e6 0 30%, #eaf1ff 30%); box-shadow: none; } .v-count .ln { position: relative; flex: 1; min-width: 24px; max-width: 76px; background: linear-gradient(90deg, #7da7e6, #cfe0fb); transform-origin: left; }
-  /* A light that runs along the line to the DOI each time a citation comes in. */
-  .v-count .ln::after { content: ""; position: absolute; left: 0; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px #cfe0fb; opacity: 0; }
-  .plus { margin-left: -2px; font-weight: 500; font-size: 14px; color: #fbbf24; opacity: 0; }
+  .anat { --bg: var(--night); display: grid; gap: clamp(40px, 4.4vw, 60px); padding: clamp(40px, 5vw, 72px) var(--pad) 0; }
+  /* The DOI fills the card's width: 52 characters of a typeface whose characters are half an em wide. Each part is a
+     column the width of its own characters, with its name under it. */
+  .dia { container-type: inline-size; display: flex; margin: 0; }
+  .part { flex: none; display: grid; gap: 18px; min-width: 0; }
+  .pt { position: relative; font: 400 clamp(18px, 2.85vw, 40px)/1.1 var(--mono); font-size: calc(100cqw / 26); white-space: nowrap; color: #fff; padding-bottom: 14px; }
+  .pt::after { content: ""; position: absolute; left: 1px; right: 1px; bottom: 0; height: 4px; border-radius: 4px; background: var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 70%, transparent); transform-origin: left; }
+  /* A name never widens its part's column: it takes the column's width and wraps inside it. */
+  .part figcaption { display: grid; gap: 2px; width: 0; min-width: 100%; padding-right: 12px; } .part figcaption b { font-weight: 500; font-size: 16px; color: var(--c); } .part figcaption span { color: rgb(255 255 255 / .7); font-size: 14px; line-height: 1.4; }
+  :global(.js) .dia[data-in] { opacity: 1; transform: none; } :global(.js) .dia:not(.in) .pt::after { transform: scaleX(0); } :global(.js) .dia:not(.in) figcaption { opacity: 0; translate: 0 8px; }
+  :global(.js) .dia.in .pt::after { transition: transform .7s var(--ease) calc(.15s + var(--i) * .3s); } :global(.js) .dia.in figcaption { transition: opacity .5s var(--ease) calc(.4s + var(--i) * .3s), translate .6s var(--ease) calc(.4s + var(--i) * .3s); }
 
-  /* Arriving: the rows come up in turn, and each picture plays as its row lands. Afterwards the page keeps moving
-     every few seconds and the marks take turns to brighten. */
+  /* What it does: four columns of the same shape. A picture of one line (two where the marks need it) stands on a
+     shared baseline over each title. */
+  .gains { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px clamp(24px, 3vw, 44px); margin: 0; padding: clamp(28px, 2.8vw, 36px) 0 0; list-style: none; border-top: 1px solid rgb(255 255 255 / .1); }
+  .gains li { display: grid; align-content: start; gap: 6px; } .gains li > b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; } .gains li > span { color: rgb(255 255 255 / .62); font-size: 15px; line-height: 1.45; }
+  .g-vis { display: flex; align-items: end; height: 54px; margin-bottom: 14px; }
+  /* The marks of the services named, all in one colour, each with its name. */
+  .lgs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 0; } .lg { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; line-height: 24px; color: rgb(255 255 255 / .92); white-space: nowrap; }
+  .lg svg, .mk { flex: none; height: 20px; width: auto; } .lg svg { aspect-ratio: 1; } .lg svg[viewBox="0 0 46.6 67.9"] { aspect-ratio: 46.6 / 67.9; height: 23px; } .mk { background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
+  /* The two small diagrams share their parts: the report's DOI as the gold part of the DOI above, a page, and the line between them. */
+  .mini { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 236px; height: 30px; }
+  /* The underline hangs below the word, so the word is pushed down by its depth to sit on the line beside it. */
+  .tok { flex: none; margin-top: 7px; padding-bottom: 5px; border-bottom: 2px solid #fbbf24; font: 400 14px/1 var(--mono); color: #ffd68c; white-space: nowrap; }
+  .ln { display: block; height: 1.5px; border-radius: 2px; background: rgb(255 255 255 / .34); }
+  .pg { display: block; flex: none; width: 20px; height: 26px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .5); background: linear-gradient(rgb(255 255 255 / .5) 0 28%, rgb(255 255 255 / .07) 28%); }
+  .pg.mine { box-shadow: 0 0 14px rgb(251 191 36 / .4); background: linear-gradient(#fbbf24 0 28%, #fff8ec 28%); }
+  /* The page moves; the line from its DOI stretches to stay on it. */
+  .track { position: relative; flex: 1; min-width: 60px; height: 30px; } .track .ln { position: absolute; inset: 14.25px 0 auto; transform-origin: left; transform: scaleX(.4); }
+  .run { position: absolute; inset: 0; transform: translateX(-60%); } .run .pg { position: absolute; right: 0; top: 2px; }
+  /* Citing pages arrive one after another; a light runs along the line to the DOI, which counts each. */
+  .cites { display: flex; gap: 5px; } .v-count .ln { position: relative; flex: 1; min-width: 20px; transform-origin: left; }
+  .v-count .ln::after { content: ""; position: absolute; left: 0; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px #ffd68c; opacity: 0; }
+  .plus { margin-left: -4px; font-weight: 500; font-size: 14px; color: #fbbf24; opacity: 0; }
+  /* The page its link opens, standing in the middle of the card and off its foot. */
+  .d-shot { width: min(100%, 820px); margin: 0 auto -6%; } .d-shot :global(.body) { padding: 0; border-radius: 14px 14px 0 0; background: none; box-shadow: 0 0 0 1px rgb(255 255 255 / .24), 0 -10px 70px -10px rgb(125 167 230 / .35), 0 40px 90px -30px #000; } .d-shot :global(.glass) { border-radius: 14px 14px 0 0; } .d-shot :global(.cam), .d-shot :global(.deck), .d-shot :global(.sheen) { display: none; }
+
+  /* Arriving: the four come up in turn and each picture plays as it lands. Afterwards the page moves every few seconds,
+     a citation comes in every five, and the marks take turns to warm. */
   :global(.js) .gains[data-in] { opacity: 1; transform: none; }
-  :global(.js) .gains:not(.in) li { opacity: 0; translate: 0 14px; } :global(.js) .gains.in li { transition: opacity .6s var(--ease) calc(var(--i) * .14s), translate .7s var(--ease) calc(var(--i) * .14s); }
-  :global(.js) .gains:not(.in) .lg { opacity: 0; translate: 0 6px; } :global(.js) .gains.in .lg { transition: opacity .5s var(--ease) calc(.5s + var(--i) * .14s + var(--n) * .16s), translate .6s var(--ease) calc(.5s + var(--i) * .14s + var(--n) * .16s); animation: g-glint 7s ease-in-out calc(3.4s + var(--n) * .5s) infinite; }
-  @keyframes g-glint { 0%, 14%, 100% { color: rgb(255 255 255 / .92); } 6% { color: #ffe2c2; } }
-  /* The citation is written out from its first word. */
-  .ref { -webkit-mask: linear-gradient(100deg, #000 45%, transparent 55%) 0 0 / 240% 100%; mask: linear-gradient(100deg, #000 45%, transparent 55%) 0 0 / 240% 100%; } :global(.js) .gains:not(.in) .ref { -webkit-mask-position: 100% 0; mask-position: 100% 0; } :global(.js) .gains.in .ref { transition: mask-position 1.5s cubic-bezier(.4, 0, .3, 1) .35s, -webkit-mask-position 1.5s cubic-bezier(.4, 0, .3, 1) .35s; }
+  :global(.js) .gains:not(.in) li { opacity: 0; translate: 0 14px; } :global(.js) .gains.in li { transition: opacity .6s var(--ease) calc(var(--i) * .12s), translate .7s var(--ease) calc(var(--i) * .12s); }
+  :global(.js) .gains:not(.in) .lg { opacity: 0; translate: 0 6px; } :global(.js) .gains.in .lg { transition: opacity .5s var(--ease) calc(.4s + var(--i) * .12s + var(--n) * .16s), translate .6s var(--ease) calc(.4s + var(--i) * .12s + var(--n) * .16s); animation: g-glint 7s ease-in-out calc(3.4s + var(--i) * .4s + var(--n) * .5s) infinite; }
+  @keyframes g-glint { 0%, 14%, 100% { color: rgb(255 255 255 / .92); } 6% { color: #ffe9c9; } }
   :global(.js) .gains.in .run { animation: g-move 7s cubic-bezier(.6, 0, .3, 1) 1.2s infinite; } :global(.js) .gains.in .track .ln { animation: g-reach 7s cubic-bezier(.6, 0, .3, 1) 1.2s infinite; }
-  @keyframes g-move { 0%, 8% { transform: translateX(-66%); } 22%, 58% { transform: translateX(0); } 72%, 100% { transform: translateX(-66%); } } @keyframes g-reach { 0%, 8% { transform: scaleX(.34); } 22%, 58% { transform: scaleX(1); } 72%, 100% { transform: scaleX(.34); } }
+  @keyframes g-move { 0%, 8% { transform: translateX(-60%); } 22%, 58% { transform: translateX(0); } 72%, 100% { transform: translateX(-60%); } } @keyframes g-reach { 0%, 8% { transform: scaleX(.4); } 22%, 58% { transform: scaleX(1); } 72%, 100% { transform: scaleX(.4); } }
   :global(.js) .gains:not(.in) .cites .pg { opacity: 0; transform: translateX(-10px); } :global(.js) .gains.in .cites .pg { transition: opacity .4s var(--ease) calc(1.1s + var(--n) * .7s), transform .5s var(--ease) calc(1.1s + var(--n) * .7s); }
   :global(.js) .gains:not(.in) .v-count .ln { transform: scaleX(0); } :global(.js) .gains.in .v-count .ln { transition: transform .5s var(--ease) 1.3s; }
   /* One comes in with each of the three pages, then another every five seconds. */
   :global(.js) .gains.in .v-count .ln::after { animation: g-run .7s linear 1.15s 3, g-run-on 5s linear 4.6s infinite; } :global(.js) .gains.in .plus { animation: g-plus .7s var(--ease) 1.7s 3, g-plus-on 5s var(--ease) 5.2s infinite; }
   @keyframes g-run { 0% { left: 0; opacity: 0; } 15%, 85% { opacity: 1; } 100% { left: calc(100% - 6px); opacity: 0; } } @keyframes g-run-on { 0% { left: 0; opacity: 0; } 2%, 12% { opacity: 1; } 14%, 100% { left: calc(100% - 6px); opacity: 0; } }
   @keyframes g-plus { 0% { opacity: 0; transform: translateY(6px); } 30%, 60% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } } @keyframes g-plus-on { 0% { opacity: 0; transform: translateY(6px); } 4%, 9% { opacity: 1; transform: none; } 14%, 100% { opacity: 0; transform: translateY(-6px); } }
-  .d-shot { margin-bottom: -7%; } .d-shot :global(.body) { padding: 0; border-radius: 14px 14px 0 0; background: none; box-shadow: 0 0 0 1px rgb(255 255 255 / .24), 0 -10px 70px -10px rgb(125 167 230 / .35), 0 40px 90px -30px #000; } .d-shot :global(.glass) { border-radius: 14px 14px 0 0; } .d-shot :global(.cam), .d-shot :global(.deck), .d-shot :global(.sheen) { display: none; }
 
   /* The paperwork: one table, its left column muted and crossed off row by row, its right column lit. */
   .chores { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
@@ -330,21 +323,18 @@ const faq = [
     .sponsor::before { display: none; }
     .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
     .d-head { grid-template-columns: minmax(0, 1fr); }
-    .lands { grid-template-columns: minmax(0, 1fr); } .gains { padding-bottom: 0; } .d-shot { margin-bottom: -9%; }
-    .gains li { grid-template-columns: minmax(0, 1fr); row-gap: 14px; min-height: 0; }
+    .gains { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .d-shot { margin-bottom: -9%; }
     .ch-head { grid-template-columns: minmax(0, 1fr); } .ch-art { aspect-ratio: 1672 / 760; }
     .ch-row { grid-template-columns: minmax(0, 1fr); } .ch-th { display: none; } .ch-row > .was { padding-bottom: 4px; } .ch-row > .now { padding-top: 4px; }
     .sponsor { min-height: 0; padding-bottom: 330px; } .s-world { height: 340px; right: -8%; -webkit-mask-image: linear-gradient(transparent, #000 12%); mask-image: linear-gradient(transparent, #000 12%); }
   }
   
-  /* Phones: each part of the DOI on its own line, its label right under it. */
+  /* Phones: each part of the DOI on its own line with its name under it, and what it does one to a row. */
   @media (max-width: 700px) {
-    .dia { --fs: 22px; display: grid; justify-items: start; padding: 0; } .dstr { display: contents; }
-    .pt { white-space: normal; overflow-wrap: anywhere; margin-top: 18px; } .pt:nth-child(1) { grid-row: 1; } .pt:nth-child(2) { grid-row: 3; } .pt:nth-child(3) { grid-row: 5; }
-    .tag, .tag.above, .tag.below { position: relative; left: 0; top: auto; bottom: auto; margin-top: 16px; white-space: normal; } .tag.above::before, .tag.below::before { top: 2px; bottom: 2px; }
-    .dia > figcaption:nth-of-type(1) { grid-row: 2; } .dia > figcaption:nth-of-type(2) { grid-row: 4; } .dia > figcaption:nth-of-type(3) { grid-row: 6; }
+    .dia { flex-direction: column; gap: 22px; } .pt { font-size: 22px; white-space: normal; overflow-wrap: anywhere; justify-self: start; } .part figcaption { width: auto; min-width: 0; padding-right: 0; }
+    .gains { grid-template-columns: minmax(0, 1fr); gap: 28px; } .g-vis { height: auto; min-height: 30px; }
   }
-  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-table:not(.in) .now, :global(.js) .dia:not(.in) .tag { opacity: 1; translate: none; } :global(.js) .ch-table:not(.in) .was b { background-size: 100% 1.5px; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-table:not(.in) .now, :global(.js) .dia:not(.in) figcaption { opacity: 1; translate: none; } :global(.js) .ch-table:not(.in) .was b { background-size: 100% 1.5px; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
   /* Narrow screens: the thread runs down the left through the emblems, and the light runs down it. */
   @media (max-width: 900px) {
     .how { padding-block: 96px 64px; } .how-head { justify-items: start; text-align: left; }
