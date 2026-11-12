@@ -30,17 +30,15 @@ const factsValidator = v.object({
   archive: v.string(),
   edited: v.optional(v.string()),
   admins: v.optional(v.object({ emails: v.array(v.string()), organization: v.string(), prefix: v.string() })),
-  refund: v.optional(v.object({ card: v.number(), credit: v.number() })),
 });
 export const mailArgs = { reportId: v.id("reports"), event: mailEventValidator, report: factsValidator };
 
 /**
  * Writes to the team's inbox or the report's author about what just happened to it. The email says what the report
  * was at that moment, read here and handed to the action that sends it: a note discarded or a correction replaced a
- * second later is never what it quotes. `edited` is what a reviewer changed, for the email that says so, and `refund`
- * what an activation's refund gave back.
+ * second later is never what it quotes. `edited` is what a reviewer changed, for the email that says so.
  */
-export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: MailEvent, { edited, refund }: { edited?: string; refund?: { card: number; credit: number } } = {}) {
+export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: MailEvent, { edited }: { edited?: string } = {}) {
   const report = await ctx.db.get("reports", reportId);
   if (!report) return;
   const details = await detailsOf(ctx, reportId);
@@ -72,8 +70,7 @@ export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: M
       deposit: report.deposit,
       archive: report.archive,
       ...(edited && { edited }),
-      ...(refund && { refund }),
-      ...((event === "waiting-for-admin" || event === "refunded-admins") && { admins: await adminsOf(ctx, report.workspaceId) }),
+      ...((event === "waiting-for-admin" || event === "kept-admins") && { admins: await adminsOf(ctx, report.workspaceId) }),
     },
   });
 }

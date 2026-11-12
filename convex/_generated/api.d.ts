@@ -337,6 +337,7 @@ import type * as library_queries from "../library/queries.js";
 import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
+import type * as migrations_activationBalance from "../migrations/activationBalance.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_authorMakers from "../migrations/authorMakers.js";
 import type * as migrations_authorRecordLinks from "../migrations/authorRecordLinks.js";
@@ -849,6 +850,7 @@ declare const fullApi: ApiFromModules<{
   "library/sortName": typeof library_sortName;
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
+  "migrations/activationBalance": typeof migrations_activationBalance;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
   "migrations/authorMakers": typeof migrations_authorMakers;
   "migrations/authorRecordLinks": typeof migrations_authorRecordLinks;

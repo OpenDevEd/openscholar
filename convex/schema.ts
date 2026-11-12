@@ -603,35 +603,35 @@ export default defineSchema({
   // Each version of the checks and of the agreement, kept because a report records which it was checked and signed under.
   reportCheckVersions: defineTable({ version: v.number(), checks: checksValidator }).index("by_version", ["version"]),
   reportAgreementVersions: defineTable({ version: v.number(), text: v.string() }).index("by_version", ["version"]),
-  // A workspace's own number of free activations a day, where an admin gave it one.
+  // Emptied by migrations/activationBalance, which moves each number to the workspace's balance in Autumn; then dropped.
   reportLimits: defineTable({ workspaceId: v.id("workspaces"), perDay: v.number(), updatedAt: v.number(), updatedBy: v.id("users") }).index("by_workspaceId", ["workspaceId"]),
   // One row per report started, which is what a workspace's day is counted against its plan's: a discarded report keeps its row.
   reportStarts: defineTable({ workspaceId: v.id("workspaces"), at: v.number() }).index("by_workspaceId_and_at", ["workspaceId", "at"]),
-  // One row per activation (#1261): a free one counts against the workspace's free activations for the day, a paid one
-  // keeps its invoice, and its id is the charge's idempotency key at Autumn. `pending` is a charge the bank asked to
-  // confirm, which goes live once its invoice is paid.
+  // One row per activation (#1261), each spending one from the workspace's balance of activations in Autumn. Its id
+  // is the idempotency key of the one it buys when the balance is empty, whose invoice it keeps. `pending` is a charge the bank asked to confirm, which goes live once its invoice is paid.
   reportActivations: defineTable({
     workspaceId: v.id("workspaces"),
     reportId: v.id("reports"),
     at: v.number(),
     by: v.id("users"),
-    free: v.boolean(),
-    // `charging`: written before Autumn is asked to charge, so a retry after a lost answer reuses its idempotency key.
-    // `unused`: paid for, but the report had moved on (declined, say) when the charge came back: refunded.
+    // `charging`: under way, from before Autumn is asked anything. One that comes to nothing goes.
+    // `unused`: bought, but the report had moved on (declined, say) when the charge came back: the activation stays
+    // in the balance.
     // `refused`: the bank didn't confirm the payment, or the card refused it, after it waited on the bank: nothing was
     // charged, and the report says so until it's activated again.
     state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused"), v.literal("refused")),
-    /** The promotion code the charge was asked with. */
+    /** The promotion code it was asked with. */
     code: v.optional(v.string()),
-    /** Asked of Autumn with no card, for a code that takes the whole price off: asked again, it is asked the same way. */
-    unbilled: v.optional(v.boolean()),
     charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
     /** Stripe's page for confirming a pending charge. */
     payUrl: v.optional(v.string()),
-    /** An `unused` charge's refund, in US dollars: what went back to the card, and to the account's credit. */
+    /** The hold at Autumn the report went live by: that hold alone takes an activation from the balance. */
+    hold: v.optional(v.string()),
+    // From before activations were a balance: cleared by migrations/activationBalance, then dropped.
+    free: v.optional(v.boolean()),
+    unbilled: v.optional(v.boolean()),
     refund: v.optional(v.object({ card: v.number(), credit: v.number(), at: v.number() })),
   })
-    .index("by_workspaceId_and_free_and_at", ["workspaceId", "free", "at"])
     .index("by_workspaceId_and_state", ["workspaceId", "state"])
     .index("by_reportId", ["reportId"]),
 

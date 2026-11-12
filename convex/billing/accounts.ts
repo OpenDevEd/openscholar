@@ -22,7 +22,7 @@ import {
   billingAccountSnapshotValidator,
   type BillingAccountSnapshot,
 } from "./validators";
-import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { ACTIVATIONS_FEATURE, EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
 import { defaultToSavedCard, stripeCredit } from "./stripeRest";
 
@@ -87,6 +87,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
+    activations: customer.balances[ACTIVATIONS_FEATURE]?.unlimited ? null : (customer.balances[ACTIVATIONS_FEATURE]?.remaining ?? 0),
     card: customer.payment_method?.card
       ? { brand: customer.payment_method.card.brand, last4: customer.payment_method.card.last4 }
       : undefined,

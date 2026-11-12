@@ -30,8 +30,6 @@ export type MailFacts = {
   edited?: string;
   /** For the organisation's admins: their addresses, its name, and where its pages are (`/o/<slug>`). */
   admins?: { emails: string[]; organization: string; prefix: string };
-  /** An activation's refund, in US dollars: what went back to the card, and to the account's credit. */
-  refund?: { card: number; credit: number };
 };
 
 type Row = readonly [string, string];
@@ -56,19 +54,10 @@ const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/
 const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's note", note]] : []);
 /** Replies to an author's email reach the team's inbox. */
 const QUESTIONS: Row = ["Questions", "Reply to this email."];
-const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-/** What an activation's refund says: where the money went back to, and why. */
-const refundRows = (r: MailFacts, origin: string): Row[] => [
-  [
-    "Refunded",
-    [
-      r.refund?.card ? `${usd(r.refund.card)} to the card it was paid with. Banks take 5 to 10 days to show it.` : "",
-      r.refund?.credit ? `${usd(r.refund.credit)} back to the account's credit, which the next payment uses first.` : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  ],
-  ["Why", "The report changed while the bank confirmed the payment, so it didn't go live and nothing was bought."],
+/** What an activation bought for a report that then couldn't go live says: where it is now, and why. */
+const keptRows = (r: MailFacts, origin: string): Row[] => [
+  ["Why", "The report changed while its payment went through, so it didn't go live."],
+  ["The activation", `It stays in ${r.admins ? `${r.admins.organization}'s` : "your"} balance. The next report activated uses it, and nothing more is charged.`],
   ["The report", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
   QUESTIONS,
 ];
@@ -136,9 +125,9 @@ const EVENTS = {
       ["Activate it", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
     ],
   },
-  "refunded-admins": { to: "admins", label: "Activation refunded", heading: "An activation was refunded", rows: refundRows },
+  "kept-admins": { to: "admins", label: "Activation kept", heading: "An activation you paid for is kept for the next report", rows: keptRows },
   // To the report's author.
-  refunded: { to: "author", label: "Activation refunded", heading: "Your activation was refunded", rows: refundRows },
+  kept: { to: "author", label: "Activation kept", heading: "The activation you paid for is kept for your next report", rows: keptRows },
   approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink("Activate it to make its DOI live", r, origin)] },
   released: {
     to: "author",

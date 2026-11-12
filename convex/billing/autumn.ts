@@ -206,12 +206,14 @@ export const autumn = {
   },
 
   /**
-   * Holds `credits` until the lock is finalized. `allowed: false` holds nothing. With
-   * `entityId`, a member's entity (#652): its monthly usage limit, the member's cap, counts too.
+   * Holds `credits` until the lock is finalized, of `feature` when it isn't credits. `allowed: false` holds nothing.
+   * With `entityId`, a member's entity (#652): its monthly usage limit, the member's cap, counts too. This server
+   * never lets go of a lock at `expiresAt` by itself: whoever holds one finalizes it.
    */
   lock(args: {
     customerId: string;
     entityId?: string;
+    feature?: string;
     credits: number;
     lockId: string;
     expiresAt: number;
@@ -221,7 +223,7 @@ export const autumn = {
       {
         customer_id: args.customerId,
         ...(args.entityId ? { entity_id: args.entityId } : {}),
-        feature_id: "credits",
+        feature_id: args.feature ?? "credits",
         required_balance: args.credits,
         lock: { enabled: true, lock_id: args.lockId, expires_at: args.expiresAt },
       },
@@ -256,6 +258,11 @@ export const autumn = {
       },
       args.idempotencyKey,
     );
+  },
+
+  /** Gives the customer a balance of `feature` that refills to `amount` every `interval`. */
+  createBalance(args: { customerId: string; feature: string; amount: number; interval: "day" | "week" | "month" | "year"; idempotencyKey: string }) {
+    return call<{ success: boolean }>("balances.create", { customer_id: args.customerId, feature_id: args.feature, included_grant: args.amount, reset: { interval: args.interval } }, args.idempotencyKey);
   },
 
   /** Removes `credits` from one balance, stopping at zero. For refunds. */

@@ -1,5 +1,5 @@
 // Openscholar Reports' settings as Convex keeps them and its pages read them (plans/publish-reports): what the
-// series starts with, how a workspace's daily limit is worked out, and the words each rule is told to a person in.
+// series starts with, and the words each rule is told to a person in.
 import type { PublicationSettings } from "../../convex/evidenceLibraries/publicationValidators";
 import type { Effort } from "../ai/core/call-options";
 import { JEV_MODEL } from "../ai/decisions";
@@ -40,9 +40,8 @@ export const CHECK_NAME_MAX = 80;
 export const CHECK_TEXT_MAX = 1000;
 export const SERIES_TEXT_MAX = 200;
 export const AGREEMENT_MAX = 100_000;
-/** A daily limit is a whole number from 0, which stops a workspace starting any, to 1,000. */
+/** The most new reports a day that are counted against a workspace's plan. */
 export const MAX_DAILY_LIMIT = 1000;
-export const dailyLimit = (n: number) => Math.min(MAX_DAILY_LIMIT, Math.max(0, Math.round(Number.isFinite(n) ? n : 0)));
 
 export const DEFAULT_CHECKS: Check[] = [
   {
@@ -104,9 +103,6 @@ export const REPORT_DEFAULTS = {
   humanReview: true,
   series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}" } satisfies Series,
   publication: NO_PUBLICATION,
-  // Free activations a day (#1261): none, so every activation is paid for, until an admin gives a workspace some.
-  perDay: 0,
-  orgPerDay: 0,
   metadataModelId: DEFAULT_TEXT_MODEL,
   metadataEffort: DEFAULT_TEXT_EFFORT as Effort | undefined,
   checks: DEFAULT_CHECKS,
@@ -115,10 +111,7 @@ export const REPORT_DEFAULTS = {
 };
 
 export type WorkspaceKind = "personal" | "organization";
-/** The activations a workspace makes free in a day: the number it was given, else the one for its kind. A person's
- * number is their own workspace's and nothing to do with the organisations they are in. */
-export const freeFor = (defaults: { perDay: number; orgPerDay: number }, kind: WorkspaceKind, own: number | null | undefined) => own ?? (kind === "personal" ? defaults.perDay : defaults.orgPerDay);
-/** How long a start or an activation counts against its workspace's day. */
+/** How long a start counts against its workspace's day. */
 export const DAY_MS = 24 * 60 * 60 * 1000;
 /** What a workspace whose plan's new reports for the day are used up, or that has none, is told. */
 export const startWords = (perDay: number, kind: WorkspaceKind) => {

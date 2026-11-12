@@ -170,7 +170,7 @@ export const startsAction = defineUserQuery({
   path: "reports/flow:starts",
   description:
     "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
-    "`price` is what activating one costs in US dollars past the free activations, or null. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
+    "`price` is what activating one costs in US dollars when the workspace has none left in its balance, or null. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
   returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()), /** What activating a report costs past the free ones, in US dollars, said before a report is started; null while there is no price. */ price: v.union(v.number(), v.null()) }),
   run: async (ctx, { userId, workspaceId }, { now }) => {

@@ -43,8 +43,9 @@ export const reportSettingsFields = {
   customAccounts: v.optional(keptCustomValidator),
   encryptedCustomCredentials: v.optional(v.string()),
   publicationSavedAt: v.optional(v.number()),
-  perDay: v.number(),
-  orgPerDay: v.number(),
+  // Free activations a day, from before activations were a balance in Autumn: cleared by migrations/activationBalance, then dropped.
+  perDay: v.optional(v.number()),
+  orgPerDay: v.optional(v.number()),
   metadataModelId: v.string(),
   metadataEffort: v.optional(effortValidator),
   checks: checksValidator,
