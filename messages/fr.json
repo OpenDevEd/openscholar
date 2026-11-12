@@ -6350,6 +6350,7 @@
         "humanReview": "La relecture humaine est activée, les modifications attendent donc un relecteur."
       },
       "approving": "L'approuver permet à son auteur de l'activer, et il est mis en ligne quand l'auteur le fait.",
+      "approvingOrg": "L’approbation permet à un administrateur de {organization} de l’activer ; il est mis en ligne à ce moment-là.",
       "standing": {
         "failedAsked": "Une vérification a échoué. {approving}",
         "failed": "Une vérification a échoué, le rapport est donc chez son auteur pour correction. Vous pouvez quand même décider. {approving}",

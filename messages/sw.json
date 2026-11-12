@@ -6351,6 +6351,7 @@
         "humanReview": "Ukaguzi wa binadamu umewashwa, kwa hiyo mabadiliko yanasubiri mkaguzi."
       },
       "approving": "Kuidhinisha kunamruhusu mwandishi wake kuiwasha, na inachapishwa mara tu anapoiwasha.",
+      "approvingOrg": "Kuidhinisha humruhusu msimamizi wa {organization} kuiwasha, na huchapishwa anapofanya hivyo.",
       "standing": {
         "failedAsked": "Ukaguzi ulishindwa. {approving}",
         "failed": "Ukaguzi ulishindwa, kwa hiyo ripoti iko kwa mwandishi ili airekebishe. Bado unaweza kuamua. {approving}",

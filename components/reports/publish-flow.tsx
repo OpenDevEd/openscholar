@@ -115,7 +115,9 @@ function stepIn(url: URL, key: string) {
 
 /** Whether a report can be sent to a step from where it stands, as the server decides (convex/reports/flow.ts `goTo`). */
 function opens(report: Report, step: BackStep, humanReview: boolean) {
-  if (!report.mine || report.run || (report.step === "done" && stageOf(report, humanReview) !== "failed")) return false;
+  // A report whose author asked for a human review waits on that: stepping back to its details would take the
+  // request back with it, which the browser's Back must never do. Its own buttons still can.
+  if (!report.mine || report.run || (report.step === "done" && (stageOf(report, humanReview) !== "failed" || report.asked))) return false;
   return step !== "details" || (!!report.metadata && report.pdf?.pages !== undefined);
 }
 
@@ -347,8 +349,13 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     // The upload is the address's alone. The steps after it are the report's, and Back between them needs the
     // browser to say where a step came from: without that the upload's step is taken back as the report moves on,
     // so Back never lands on a step that shows the same screen again.
-    if (step === "upload" || hearsHistory()) go({ step });
-    else if (from !== "doi") up("step");
+    if (step === "upload" || hearsHistory()) {
+      // The entry being left is first named for the screen it showed, so Back from the next step returns to that
+      // screen: a report opened from the list at its upload has an address that names no step.
+      const shown = report ? (report.step === "done" ? "checks" : report.step) : from;
+      const named = shown !== from && shown !== step && hearsHistory() ? setPlace({ step: shown === "doi" ? null : shown }) : Promise.resolve();
+      void named.then(() => go({ step }));
+    } else if (from !== "doi") up("step");
   };
   // To a step the trail or a screen's own button names. Back is the browser's own step back when the entry behind
   // is that step, and the history then sends the report there; a step opened by a link or a reload moves in place.
@@ -360,7 +367,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
       return stepOn(step as "upload" | "details");
     }
     // A step back the address alone makes, or one the history then sends the report to (useStepHistory).
-    if ((saved.step === step || hearsHistory()) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
+    // Only where the history will send the report there itself (it won't for one a review was asked for, which Back
+    // must leave alone): otherwise this button's own press sends it, in place.
+    if ((saved.step === step || (hearsHistory() && opens(saved, step, basics.humanReview))) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
     if (saved.step !== step) send(step);
     void setPlace({ step: step === "doi" ? null : step });
   };
@@ -1524,8 +1533,11 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
       {t(report.withdrawn ? "withdrawnBody" : "declinedBody")}
     </StepHead>
   ) : (
-    <StepHead key="failed" title={t("notYet")} aside={<StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
+    // Asked of a reviewer, it reads as waiting on them, with how long that takes: "A check failed" alone left people
+    // unsure their request had gone anywhere.
+    <StepHead key="failed" title={t("notYet")} aside={report.asked ? <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip> : <StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
       {t(report.asked ? "failedAsked" : "failedFix")}
+      {report.asked ? ` ${t("reviewTakes")}` : null}
     </StepHead>
   );
   return (
@@ -2132,7 +2144,8 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
           ) : null}
         </div>
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
-        {stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="mt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}
+        {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
+        <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
       </motion.div>
       {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>

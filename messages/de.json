@@ -6351,6 +6351,7 @@
         "humanReview": "Die menschliche Prüfung ist aktiv, daher warten Änderungen auf eine Prüferin oder einen Prüfer."
       },
       "approving": "Mit der Genehmigung kann die Autorin oder der Autor ihn aktivieren, und er geht online, sobald das geschieht.",
+      "approvingOrg": "Mit der Freigabe kann ein Admin von {organization} ihn aktivieren; live geht er, sobald das geschieht.",
       "standing": {
         "failedAsked": "Eine Prüfung ist fehlgeschlagen. {approving}",
         "failed": "Eine Prüfung ist fehlgeschlagen, daher liegt der Bericht zur Korrektur bei der Autorin oder dem Autor. Sie können trotzdem entscheiden. {approving}",

@@ -6350,6 +6350,7 @@
         "humanReview": "人工审核已开启，因此修改需等待审核人。"
       },
       "approving": "批准后，作者即可激活它，激活时即上线。",
+      "approvingOrg": "批准后，{organization} 的管理员即可激活它，激活后即上线。",
       "standing": {
         "failedAsked": "有一项检查未通过。{approving}",
         "failed": "有一项检查未通过，因此报告已退回作者修正。您仍然可以作出决定。{approving}",

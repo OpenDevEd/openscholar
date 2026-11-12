@@ -6350,6 +6350,7 @@
         "humanReview": "Human review is on, so changes wait for a reviewer."
       },
       "approving": "Approving lets its author activate it, and it goes live when they do.",
+      "approvingOrg": "Approving lets an admin of {organization} activate it, and it goes live when they do.",
       "standing": {
         "failedAsked": "A check failed. {approving}",
         "failed": "A check failed, so the report is with its author to fix. You can still decide. {approving}",

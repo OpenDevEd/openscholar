@@ -6351,6 +6351,7 @@
         "humanReview": "A revisão humana está ativa, por isso as alterações esperam por um revisor."
       },
       "approving": "Aprová-lo permite ao autor ativá-lo, e fica publicado quando o fizer.",
+      "approvingOrg": "A aprovação permite que um administrador de {organization} o ative, e ele vai ao ar quando isso acontece.",
       "standing": {
         "failedAsked": "Uma verificação falhou. {approving}",
         "failed": "Uma verificação falhou, por isso o relatório está com o autor para ser corrigido. Ainda assim pode decidir. {approving}",
