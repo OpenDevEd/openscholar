@@ -291,7 +291,10 @@ export const goTo = workspaceMutation({
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     const checked = report.step === "done";
-    if (checked && stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
+    // One that failed its checks goes back to be fixed, and so does one a reviewer declined before it ever went
+    // live: their note is a reason to change it, not the end of it. One taken down after going live stays down.
+    const stage = checked ? stageOf(report, (await reportSettings(ctx)).humanReview) : null;
+    if (checked && stage !== "failed" && !(stage === "declined" && report.activatedAt === undefined)) throw createError("CONFLICT", MOVED_ON);
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
     // Its details wait for its PDF to be read: the checks read that PDF's text.
     if (step === "details" && (!details?.metadata || report.pdf?.pages === undefined)) throw createError("CONFLICT", "That step isn't open for this report yet.");
