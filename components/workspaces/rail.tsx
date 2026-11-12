@@ -167,7 +167,11 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const publishes = livePublishes ?? cached.look?.publish === true;
   // Reports ready to go live, which only the workspace's admins activate: the count sits on Publish, so an admin
   // whose member has got one ready hears of it here and not only by email.
-  const toActivate = useProtectedQuery(api.reports.flow.counts, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.toActivate;
+  // Reports that wait on the person to activate: this workspace's, and those in their other workspaces, which the
+  // Publish page then names (each workspace's Publish lists only its own).
+  const waitingHere = useProtectedQuery(api.reports.flow.counts, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.toActivate;
+  const waitingElsewhere = useProtectedQuery(api.reports.flow.waitingElsewhere, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.ready;
+  const toActivate = (waitingHere ?? 0) + (waitingElsewhere ?? 0);
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -517,7 +521,8 @@ function RailItem({
       href={href}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      aria-label={running ? t("runningLabel", { label, what: running.what, done: running.done, total: running.total }) : label}
+      // The count is part of the link's name: a screen reader hears "Publish (2)", as the eye sees the 2.
+      aria-label={running ? t("runningLabel", { label, what: running.what, done: running.done, total: running.total }) : badge ? `${label} (${badge})` : label}
       className="group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
     >
       <span className={cn("relative flex size-10 items-center justify-center rounded-xl transition-colors", active ? "text-foreground" : "text-muted-foreground group-hover:bg-foreground/[0.06] group-hover:text-foreground")}>

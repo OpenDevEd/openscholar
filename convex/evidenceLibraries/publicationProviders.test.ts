@@ -29,6 +29,9 @@ function providerResponses(crossrefValid = true) {
         authenticated: crossrefValid,
         authorised: crossrefValid,
       });
+    // Crossref's public record of who a prefix is registered to: it has 10.12345 and no other.
+    if (url.pathname.startsWith("/prefixes/"))
+      return url.pathname.endsWith("/10.12345") ? Response.json({ message: { name: "Open Development and Education Limited" } }) : new Response("Resource not found.", { status: 404 });
     if (init?.method === "DELETE") return new Response(null, { status: 204 });
     if (url.pathname.endsWith("/actions/edit"))
       return Response.json(
@@ -241,13 +244,18 @@ test("keeps the own accounts through a spell on the sandbox, so switching back n
     settings.crossref = { ...settings.crossref, mode, ...crossref };
     await fixture.admin.action(api.evidenceLibraries.publicationProviderActions.verifyAndSave, { libraryId, settings, credentials, expectedUpdatedAt: updatedAt });
   };
-  const own = { prefix: "10.12345", registrant: "OpenDevEd", depositorName: "OpenDevEd Ltd", email: "doi@opendeved.net" };
+  // The registrant is Crossref's word for the prefix, whatever a caller sends.
+  const typed = { prefix: "10.12345", registrant: "typed by hand", depositorName: "OpenDevEd Ltd", email: "doi@opendeved.net" };
+  const own = { ...typed, registrant: "Open Development and Education Limited" };
   const active = async () => {
     const stored = await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId));
     return { settings: stored!.publicationSettings!, credentials: JSON.parse(decrypt(stored!.encryptedValue, key)) };
   };
 
-  await save("custom", own, { zenodoToken: "own-token", crossrefLoginId: "own@example.org/role", crossrefPassword: "own-password" });
+  const login = { zenodoToken: "own-token", crossrefLoginId: "own@example.org/role", crossrefPassword: "own-password" };
+  // A prefix Crossref doesn't have is refused on saving, not when the first deposit fails.
+  await expect(save("custom", { ...typed, prefix: "10.99999" }, login)).rejects.toThrow(/no DOI prefix 10\.99999/);
+  await save("custom", typed, login);
   await save("sandbox", {}, {});
   // On the sandbox, only the sandbox's accounts are in use: the runtime never carries the own ones.
   const sandbox = await active();

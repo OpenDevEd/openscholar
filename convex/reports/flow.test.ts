@@ -6,6 +6,7 @@ import { startsLeft } from "./limits";
 import { activate, atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
 import { sameTitle } from "./published";
 import { purgeWorkspace } from "../workspaces/purge";
+import { ensureWorkspace } from "../workspaces/create";
 
 describe("starting a report", () => {
   it("reserves a key and a DOI, and counts against the workspace's day", async () => {
@@ -39,6 +40,35 @@ describe("starting a report", () => {
     await world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key });
     expect(await world.author.query(api.reports.flow.get, { workspaceId: world.own, key })).toBeNull();
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FORBIDDEN"));
+  });
+});
+
+describe("reports that wait in a person's other workspaces", () => {
+  it("tells an admin of the lab, from their own workspace, and tells a member nothing", async () => {
+    const world = await setup();
+    await checked(world, [passed("byline"), passed("harm")], world.member, world.lab);
+    const ownOf = (clerkId: string) => world.t.run(async (ctx) => ensureWorkspace(ctx, { kind: "personal", userId: (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId)).unique())!._id }));
+    expect(await world.orgAdmin.query(api.reports.flow.waitingElsewhere, { workspaceId: await ownOf("orgadmin") })).toEqual({ ready: 1, first: { name: "Learning Lab", slug: "lab", ready: 1 } });
+    // In the lab itself its own Publish says so, and a member activates nothing.
+    expect(await world.orgAdmin.query(api.reports.flow.waitingElsewhere, { workspaceId: world.lab })).toEqual({ ready: 0, first: null });
+    expect(await world.member.query(api.reports.flow.waitingElsewhere, { workspaceId: await ownOf("member") })).toEqual({ ready: 0, first: null });
+    // A person's own ready report is said in the lab, where they are only a member.
+    await checked(world, [passed("byline"), passed("harm")]);
+    expect(await world.author.query(api.reports.flow.waitingElsewhere, { workspaceId: world.lab })).toEqual({ ready: 1, first: { name: "", slug: null, ready: 1 } });
+  });
+});
+
+describe("a PDF read while its author went back", () => {
+  it("leaves the report at its DOI, with the details read, and the upload a step away", async () => {
+    const world = await setup();
+    const key = await sign(world.author, world.own);
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a report"], { type: "application/pdf" })));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "report.pdf" });
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "doi" });
+    const { _id: reportId, pdf } = await row(world.t, key);
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdf!.at, pages: 12, metadata: details() });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "doi", pdf: { pages: 12 }, metadata: { title: details().title } });
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
   });
 });
 
@@ -121,6 +151,38 @@ describe("a report's PDF", () => {
     const again = await read(world.author, world.own, first.key);
     expect(again).toMatchObject({ step: "details", metadata: { title: "The right file's title" } });
     expect(again.pdf?.kept).toBeUndefined();
+  });
+
+  it("has the byline's page added to a PDF that lacks the line, when its author asks, and moves on with the new file", async () => {
+    const world = await setup();
+    const { key, reportId } = await atDetails(world);
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line"])));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "no-line.pdf", bylineBy: "self" });
+    // Nothing to add while the PDF hasn't been found lacking.
+    await expect(world.author.mutation(api.reports.flow.addByline, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 4, lacksByline: true });
+    await world.author.mutation(api.reports.flow.addByline, { workspaceId: world.own, key });
+    const asked = (await row(world.t, key)).pdf!;
+    expect(asked).toMatchObject({ file, bylineBy: "added" });
+    expect((await world.t.query(internal.reports.readingState.begin, { reportId, at: asked.at }))?.added).toBe(true);
+    // The reading adds the page: the file with it replaces the upload, which is deleted.
+    const added = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and a page with it"])));
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: asked.at, pages: 5, withByline: { file: added, bytes: 36 } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", pdf: { pages: 5, bytes: 36, bylineBy: "added" }, metadata: { title: "Shade trees and maize yields" } });
+    expect((await row(world.t, key)).pdf!).toMatchObject({ file: added, stamped: true });
+    expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
+    // The checks write the page again with the details they read: that file takes the last one's place.
+    const again = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 no line, and the page again"])));
+    await world.t.run((ctx) => ctx.db.patch("reports", reportId, { run: { id: "run-1", at: Date.now() } }));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, runId: "run-1", at: asked.at, file: again, bytes: 37 });
+    expect((await row(world.t, key)).pdf!).toMatchObject({ file: again, bytes: 37, stamped: true });
+    expect(await world.t.run((ctx) => ctx.db.system.get(added))).toBeNull();
+    // One written by a run that is no longer the report's is given up.
+    const late = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 late"])));
+    await world.t.mutation(internal.reports.readingState.restamped, { reportId, runId: "run-0", at: asked.at, file: late, bytes: 13 });
+    expect((await row(world.t, key)).pdf!.file).toBe(again);
+    expect(await world.t.run((ctx) => ctx.db.system.get(late))).toBeNull();
   });
 
   it("stays at the upload, saying so, when its PDF's text doesn't carry the byline, with the way on to its details", async () => {
@@ -339,6 +401,9 @@ describe("a report's links and words", () => {
     await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, changes: withLinks("javascript:alert(1)"), pdfAt });
     await expect(run(withLinks("javascript:alert(1)"), "bad-link")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await expect(run(withLinks("https://?"), "no-host")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    // A value that has a list is one of the list's, whoever sends it: the registrars take no other.
+    for (const stray of [{ language: "English" }, { type: "essay" }, { sdgs: ["18"] }, { studyDesigns: ["survey"] }, { countries: ["Atlantis"] }, { countries: ["world"] }])
+      await expect(run({ ...details(), ...stray }, "off-list")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     // A DOI and its doi.org address are the same link: the first is kept.
     await run(withLinks("https://example.org/data", "  ", "10.5281/zenodo.1234567", "https://doi.org/10.5281/ZENODO.1234567"), "good-links");
     expect((await read(world.author, world.own, key)).metadata!.relations.map((relation) => relation.target)).toEqual(["https://example.org/data", "10.5281/zenodo.1234567"]);

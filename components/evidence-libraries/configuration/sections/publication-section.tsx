@@ -388,20 +388,34 @@ export function PublicationForm({
                       ["depositorName", t("depositorName")],
                       ["email", t("email")],
                     ] as const
-                  ).map(([key, label]) => (
-                    <Field key={key} label={label}>
-                      {(id) => (
-                        <Input
-                          id={id}
-                          type={key === "email" ? "email" : "text"}
-                          value={settings.crossref[key]}
-                          onChange={(e) =>
-                            updateCrossref({ [key]: e.target.value })
-                          }
-                        />
-                      )}
-                    </Field>
-                  ))}
+                  ).map(([key, label]) =>
+                    key === "registrant" ? (
+                      // Crossref's own name for the prefix, read when the form is saved: a prefix typed since has none yet.
+                      <Field key={key} label={label} hint={t("registrantHint")}>
+                        {(id) => (
+                          <Input
+                            id={id}
+                            readOnly
+                            className="bg-muted/50 text-muted-foreground"
+                            value={settings.crossref.registrant}
+                          />
+                        )}
+                      </Field>
+                    ) : (
+                      <Field key={key} label={label}>
+                        {(id) => (
+                          <Input
+                            id={id}
+                            type={key === "email" ? "email" : "text"}
+                            value={settings.crossref[key]}
+                            onChange={(e) =>
+                              updateCrossref(key === "prefix" ? { prefix: e.target.value, registrant: "" } : { [key]: e.target.value })
+                            }
+                          />
+                        )}
+                      </Field>
+                    ),
+                  )}
                 </div>
               </CredentialMode>
               <Field label={t("namespace")} hint={words?.namespaceHint ?? t("namespaceHint")}>

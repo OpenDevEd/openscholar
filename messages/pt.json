@@ -335,6 +335,7 @@
     "password": "Palavra-passe do Crossref",
     "prefix": "Prefixo DOI",
     "registrant": "Registante",
+    "registrantHint": "A Crossref preenche isto a partir do prefixo ao guardar.",
     "depositorName": "Nome do depositante",
     "email": "Email do depositante",
     "namespace": "Espaço de nomes DOI",
@@ -6350,6 +6351,7 @@
         "humanReview": "A revisão humana está ativa, por isso as alterações esperam por um revisor."
       },
       "approving": "Aprová-lo permite ao autor ativá-lo, e fica publicado quando o fizer.",
+      "approvingOrg": "A aprovação permite que um administrador de {organization} o ative, e ele vai ao ar quando isso acontece.",
       "standing": {
         "failedAsked": "Uma verificação falhou. {approving}",
         "failed": "Uma verificação falhou, por isso o relatório está com o autor para ser corrigido. Ainda assim pode decidir. {approving}",
@@ -6562,6 +6564,7 @@
       "untouched": "Já reservou um DOI para <mono>{key}</mono> e ainda não carregou o PDF.",
       "continueWith": "Continuar com ele",
       "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale as caixas.",
+      "agreementInEnglish": "O acordo em si está redigido em inglês.",
       "limit": {
         "personal": "O seu plano permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",
         "personalClosed": "O seu plano não inclui publicação. Mude para um plano que inclua.",
@@ -6579,15 +6582,17 @@
       "doiCopied": "DOI copiado",
       "uploadPdf": "Carregar o PDF",
       "textless": "Este PDF não contém texto, como acontece com uma digitalização. As verificações não conseguem encontrar a menção. Exporte o relatório como PDF com texto e carregue-o, ou preencha os dados à mão.",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "O Openscholar não conseguiu ler os dados deste PDF. Preencha-os à mão.",
       "uploadAnother": "Carregar outro PDF",
       "uploadLost": "O carregamento não chegou. Tente de novo.",
-      "choosePdf": "Escolha um PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Esse ficheiro está vazio. Escolha o PDF de novo.",
       "tooBig": "O PDF tem mais de {max} MB",
       "offline": "Não foi possível carregar o PDF. Verifique a ligação e escolha-o de novo.",
-      "uploadFailed": "Não foi possível carregar o PDF. Tente de novo.",
-      "uploadIntro": "Coloque o texto a seguir, exatamente assim, na capa ou na segunda capa antes de enviar. Nossa verificação procura esta linha.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copiar a menção",
       "bylineCopied": "Menção copiada",
       "uploading": "A carregar {name}",
@@ -6596,7 +6601,7 @@
       "drop": "Largue o PDF aqui, ou escolha-o",
       "dropHint": "Um PDF, até {max} MB",
       "unopenedPdf": "Não foi possível abrir {name} como PDF. Se tiver senha, remova-a; depois guarde-o de novo como PDF e carregue-o.",
-      "lacksByline": "{name} não tem a menção acima na capa. Acrescente-a e carregue o PDF de novo, ou a verificação da menção falhará.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "Estes são os dados que tinha antes de substituir o PDF.",
       "readAgain": "Lê-los antes deste PDF",
       "readAgainTitle": "Ler os dados deste PDF?",
@@ -6675,7 +6680,12 @@
       "startedBy": "{name} começou este relatório. Só essa pessoa e os administradores do espaço de trabalho o podem alterar.",
       "startedBySomeone": "Alguém deste espaço de trabalho começou este relatório. Só essa pessoa e os administradores do espaço de trabalho o podem alterar.",
       "openPage": "Abrir a página",
-      "takeDown": "Para retirar um relatório, escreva para <mail>{email}</mail>.",
+      "takeDown": "Para retirar um relatório, escreva para <mail>{email}</mail> indicando a sua chave, {key}. Respondemos em até três dias úteis. A página e o DOI permanecem e indicam que o relatório foi retirado.",
+      "waitingIn": "{count, plural, one {# relatório de {name} está pronto para você ativar.} other {# relatórios de {name} estão prontos para você ativar.}}",
+      "waitingOwn": "{count, plural, one {# relatório do seu próprio espaço está pronto para você ativar.} other {# relatórios do seu próprio espaço estão prontos para você ativar.}}",
+      "waitingOpen": "{count, plural, one {Abrir} other {Abrir}}",
+      "savingNote": "O seu cartão fica guardado para ativar relatórios no Openscholar. Nada é cobrado agora.",
+      "registering": "A página já está aberta e pode ser compartilhada. O DOI começa a funcionar quando é registrado, geralmente em alguns minutos.",
       "sentToReviewer": "Enviado a um revisor",
       "requestFailed": "Não foi possível enviar o pedido",
       "reviewIntro": "Um revisor lê o seu relatório e o que as verificações disseram. Peça quando achar que uma verificação se enganou.",
@@ -6774,10 +6784,31 @@
         "paused": "A publicação está em pausa por agora, por isso nada pode ser publicado. O seu relatório mantém o seu lugar."
       },
       "back": "Voltar",
-      "bylineFirst": "Ponha esta menção na capa do seu PDF",
-      "bylineFirstBody": "A Openscholar copublica o seu relatório, por isso a capa ou o verso da capa leva esta menção, como texto. As nossas verificações procuram-na depois de carregar o PDF.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Seguinte: carregar o PDF",
       "nextDetails": "Seguinte: verificar os dados",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+        }
+      },
       "overview": {
         "title": "Publicar um relatório com {series}",
         "intro": "Cerca de dez minutos do início ao fim. Isto é o que cada passo lhe pede.",
@@ -6793,7 +6824,7 @@
         },
         "pdf": {
           "title": "Carregar o seu PDF",
-          "body": "Com uma menção na capa que nomeia a série e o DOI. Recebe a menção depois de assinar."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Verificar os dados",
@@ -6801,7 +6832,7 @@
         },
         "checks": {
           "title": "Verificações automáticas",
-          "body": "Cerca de um minuto. Procuram a menção na capa e qualquer publicação anterior."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Ativar",

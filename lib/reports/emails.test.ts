@@ -17,6 +17,13 @@ describe("a report's emails", () => {
     expect(author.text).not.toContain("ada@example.org");
   });
 
+  it("name the organisation whose admins activate a member's approved report, and still go to the member alone", () => {
+    const email = reportEmail("approved", { ...report, admins: { emails: ["head@example.org"], organization: "Learning Lab", prefix: "/o/lab" } }, origin)!;
+    expect(email).toMatchObject({ audience: "author", to: ["ada@example.org"] });
+    expect(email.text).toContain("Learning Lab");
+    expect(email.text).not.toContain("head@example.org");
+  });
+
   it("are not written to an author with no address, and the team's then reply to the team", () => {
     const nobody = { ...report, authorEmail: null };
     expect(reportEmail("declined", nobody, origin)).toBeNull();

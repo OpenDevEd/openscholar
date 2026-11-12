@@ -99,7 +99,17 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
         side={isCollapsed ? "right" : "top"}
         sideOffset={isCollapsed ? 8 : 4}
       >
-        <div className="space-y-0.5">
+        <div
+          className="space-y-0.5"
+          // The arrow keys move through the languages, as they do through any list of choices.
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+            event.preventDefault();
+            const choices = [...event.currentTarget.querySelectorAll("button")];
+            const at = choices.indexOf(document.activeElement as HTMLButtonElement);
+            choices[(at + (event.key === "ArrowDown" ? 1 : -1) + choices.length) % choices.length]?.focus();
+          }}
+        >
           {locales.map((locale) => (
             <motion.button
               key={locale}

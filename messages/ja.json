@@ -335,6 +335,7 @@
     "password": "Crossref パスワード",
     "prefix": "DOI プレフィックス",
     "registrant": "登録機関",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "登録者名",
     "email": "登録者のメールアドレス",
     "namespace": "DOI 名前空間",
@@ -6349,6 +6350,7 @@
         "humanReview": "人による審査が有効なため、変更は審査者を待っています。"
       },
       "approving": "承認すると著者が有効化でき、有効化した時点で公開されます。",
+      "approvingOrg": "承認すると {organization} の管理者が有効化できるようになり、有効化された時点で公開されます。",
       "standing": {
         "failedAsked": "チェックに不合格となりました。{approving}",
         "failed": "チェックに不合格となったため、レポートは修正のため著者に戻されています。あなたが判断することもできます。{approving}",
@@ -6561,6 +6563,7 @@
       "untouched": "<mono>{key}</mono> の DOI をすでに予約していますが、PDF はまだアップロードしていません。",
       "continueWith": "これで続ける",
       "agreementChanged": "このページを開いている間に契約が変更されました。読み直してからチェックを入れてください。",
+      "agreementInEnglish": "契約書そのものは英語で書かれています。",
       "limit": {
         "personal": "ご利用のプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
         "personalClosed": "ご利用のプランには公開が含まれていません。公開を含むプランに変更してください。",
@@ -6578,15 +6581,17 @@
       "doiCopied": "DOI をコピーしました",
       "uploadPdf": "PDF をアップロード",
       "textless": "この PDF にはスキャン画像のように文字が含まれていません。チェックは表記を見つけられません。文字を含む PDF として書き出してアップロードするか、詳細を手入力してください。",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "Openscholar はこの PDF から詳細を読み取れませんでした。手入力してください。",
       "uploadAnother": "別の PDF をアップロード",
       "uploadLost": "アップロードが届きませんでした。もう一度お試しください。",
-      "choosePdf": "PDF を選んでください",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "そのファイルは空です。PDF を選び直してください。",
       "tooBig": "PDF が {max} MB を超えています",
       "offline": "PDF をアップロードできませんでした。接続を確認して、もう一度選んでください。",
-      "uploadFailed": "PDF をアップロードできませんでした。もう一度お試しください。",
-      "uploadIntro": "アップロードする前に、次のテキストをそのまま表紙または表紙の裏に入れてください。チェックはこの行を探します。",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "表記をコピー",
       "bylineCopied": "表記をコピーしました",
       "uploading": "{name} をアップロード中",
@@ -6595,7 +6600,7 @@
       "drop": "ここに PDF をドロップするか、選んでください",
       "dropHint": "PDF 1 つ、{max} MB まで",
       "unopenedPdf": "{name} を PDF として開けませんでした。パスワードがかかっている場合は外してから、PDF として保存し直してアップロードしてください。",
-      "lacksByline": "{name} の表紙に上の表記がありません。表記を追加して PDF をもう一度アップロードしてください。そうしないと表記のチェックに合格しません。",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "これは PDF を差し替える前の詳細です。",
       "readAgain": "この PDF から読み込む",
       "readAgainTitle": "この PDF から詳細を読み込みますか？",
@@ -6674,7 +6679,12 @@
       "startedBy": "{name}がこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
       "startedBySomeone": "このワークスペースの誰かがこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
       "openPage": "ページを開く",
-      "takeDown": "レポートを取り下げるには、<mail>{email}</mail> までご連絡ください。",
+      "takeDown": "レポートを取り下げるには、キー {key} を添えて <mail>{email}</mail> までご連絡ください。3営業日以内に返信します。ページと DOI は残り、レポートが取り下げられたことを示します。",
+      "waitingIn": "{name} に、有効化を待っているレポートが {count} 件あります。",
+      "waitingOwn": "ご自身のワークスペースに、有効化を待っているレポートが {count} 件あります。",
+      "waitingOpen": "開く",
+      "savingNote": "カードは Openscholar でレポートを有効化するために保存されます。今は請求されません。",
+      "registering": "ページはすでに公開されており、共有できます。DOI は登録が済むと使えるようになります。通常は数分以内です。",
       "sentToReviewer": "審査者に送信しました",
       "requestFailed": "依頼を送信できませんでした",
       "reviewIntro": "審査者があなたのレポートとチェックの結果を読みます。チェックが誤っていると思うときに依頼してください。",
@@ -6773,10 +6783,31 @@
         "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。"
       },
       "back": "戻る",
-      "bylineFirst": "この表記を PDF の表紙に入れてください",
-      "bylineFirstBody": "Openscholar はあなたのレポートを共同で公開するため、表紙または表紙の裏にこの表記をテキストとして入れます。アップロード後、チェックがこの表記を探します。",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "次へ：PDF をアップロード",
       "nextDetails": "次へ：詳細を確認",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+        }
+      },
       "overview": {
         "title": "{series} でレポートを公開する",
         "intro": "最初から最後まで約 10 分です。各ステップで必要なことは次のとおりです。",
@@ -6792,7 +6823,7 @@
         },
         "pdf": {
           "title": "PDF をアップロードする",
-          "body": "表紙に、シリーズ名と DOI を示す表記を 1 行入れます。表記は署名後に受け取れます。"
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "詳細を確認する",
@@ -6800,7 +6831,7 @@
         },
         "checks": {
           "title": "自動チェック",
-          "body": "約 1 分です。表紙の表記と、過去に公開されたものがないかを確認します。"
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "有効化",

@@ -335,6 +335,7 @@
     "password": "Iphasiwedi ye-Crossref",
     "prefix": "Isiqalo se-DOI",
     "registrant": "Umbhalisi",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Igama lomfaki",
     "email": "Imeyili yomfaki",
     "namespace": "Isikhala segama le-DOI",
@@ -6349,6 +6350,7 @@
         "humanReview": "Ukubuyekezwa ngumuntu kuvuliwe, ngakho izinguquko zilinde umbuyekezi."
       },
       "approving": "Ukuvuma kuvumela umbhali wawo ukuthi awenze usebenze, futhi ushicilelwa lapho ewenza usebenze.",
+      "approvingOrg": "Ukuvuma kuvumela umphathi we-{organization} ukuthi awenze usebenze, futhi ushicilelwa uma enza kanjalo.",
       "standing": {
         "failedAsked": "Ukuhlolwa kuhlulekile. {approving}",
         "failed": "Ukuhlolwa kuhlulekile, ngakho umbiko ubuyele kumbhali ukuze awulungise. Usengakwazi ukunquma. {approving}",
@@ -6561,6 +6563,7 @@
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
       "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza amabhokisi.",
+      "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
         "personalClosed": "Uhlelo lwakho alukufaki ukushicilela. Thuthela ohlelweni olukufakayo.",
@@ -6578,15 +6581,17 @@
       "doiCopied": "I-DOI ikopishiwe",
       "uploadPdf": "Layisha i-PDF",
       "textless": "Le PDF ayinawo umbhalo, njengesithombe esiskeniwe. Ukuhlolwa akukwazi ukuthola umugqa womnikazi kuyo. Khipha umbiko njenge-PDF enombhalo bese uyilayisha, noma ugcwalise imininingwane ngesandla.",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "I-Openscholar ayikwazanga ukufunda imininingwane kule PDF. Yigcwalise ngesandla.",
       "uploadAnother": "Layisha enye i-PDF",
       "uploadLost": "Okulayishwayo akufikanga. Zama futhi.",
-      "choosePdf": "Khetha i-PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Lelo fayela alinalutho. Khetha i-PDF futhi.",
       "tooBig": "I-PDF inkulu kuno-{max} MB",
       "offline": "I-PDF ayikwazanga ukulayishwa. Hlola ukuxhumana kwakho, bese uyikhetha futhi.",
-      "uploadFailed": "I-PDF ayikwazanga ukulayishwa. Zama futhi.",
-      "uploadIntro": "Beka lo mbhalo olandelayo, njengoba unjalo, esembozweni noma esembozweni sangaphakathi ngaphambi kokulayisha. Ukuhlolwa kwethu kufuna lo mugqa.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Kopisha umugqa womnikazi",
       "bylineCopied": "Umugqa womnikazi ukopishiwe",
       "uploading": "Kulayishwa i-{name}",
@@ -6595,7 +6600,7 @@
       "drop": "Faka i-PDF lapha, noma uyikhethe",
       "dropHint": "I-PDF eyodwa, kuze kufike ku-{max} MB",
       "unopenedPdf": "I-{name} ayikwazanga ukuvulwa njenge-PDF. Uma inephasiwedi, yisuse, bese uyilondoloza futhi njenge-PDF bese uyilayisha.",
-      "lacksByline": "I-{name} ayinawo umugqa ongenhla ekhasini layo langaphandle. Engeza umugqa bese ulayisha i-PDF futhi, kungenjalo ukuhlolwa komugqa womnikazi kuzohluleka.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "Lena imininingwane obunayo ngaphambi kokuthi ushintshe i-PDF.",
       "readAgain": "Kunalokho yifunde kule PDF",
       "readAgainTitle": "Funda imininingwane kule PDF?",
@@ -6674,7 +6679,12 @@
       "startedBy": "U-{name} uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
       "startedBySomeone": "Othile kule ndawo yokusebenza uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
       "openPage": "Vula ikhasi lawo",
-      "takeDown": "Ukuze ususe umbiko, sibhalele ku-<mail>{email}</mail>.",
+      "takeDown": "Ukuze umbiko ususwe, sibhalele ku-<mail>{email}</mail> usho ukhiye wawo, {key}. Siphendula zingakapheli izinsuku ezintathu zomsebenzi. Ikhasi lawo ne-DOI yawo kuyahlala, futhi kusho ukuthi umbiko uhoxisiwe.",
+      "waitingIn": "{count, plural, one {Umbiko ongu-# ku-{name} ulungele ukuthi uwenze usebenze.} other {Imibiko engu-# ku-{name} ilungele ukuthi uyenze isebenze.}}",
+      "waitingOwn": "{count, plural, one {Umbiko ongu-# endaweni yakho yokusebenza ulungele ukuthi uwenze usebenze.} other {Imibiko engu-# endaweni yakho yokusebenza ilungele ukuthi uyenze isebenze.}}",
+      "waitingOpen": "{count, plural, one {Wuvule} other {Yivule}}",
+      "savingNote": "Ikhadi lakho ligcinwa ukuze kwenziwe imibiko isebenze ku-Openscholar. Akukho okukhokhiswayo manje.",
+      "registering": "Ikhasi selivuliwe manje futhi lingabelwa. I-DOI iqala ukusebenza uma isibhalisiwe, ngokuvamile emizuzwini embalwa.",
       "sentToReviewer": "Kuthunyelwe kumbuyekezi",
       "requestFailed": "Isicelo asikwazanga ukuthunyelwa",
       "reviewIntro": "Umbuyekezi ufunda umbiko wakho nemiphumela yokuhlolwa. Cela uma ucabanga ukuthi ukuhlolwa kwenze iphutha.",
@@ -6773,10 +6783,31 @@
         "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo."
       },
       "back": "Emuva",
-      "bylineFirst": "Beka lo mugqa ekhasini langaphandle le-PDF yakho",
-      "bylineFirstBody": "I-Openscholar ishicilela umbiko wakho kanye nawe, ngakho ikhasi lawo langaphandle noma elingaphakathi linalo mugqa njengombhalo. Ukuhlola kwethu kuyawufuna uma usulayishile.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Okulandelayo: layisha i-PDF",
       "nextDetails": "Okulandelayo: hlola imininingwane",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+        }
+      },
       "overview": {
         "title": "Ukushicilela umbiko nge-{series}",
         "intro": "Cishe imizuzu eyishumi kusukela ekuqaleni kuya ekugcineni. Yilokhu okucelwa yisinyathelo ngasinye kuwe.",
@@ -6792,7 +6823,7 @@
         },
         "pdf": {
           "title": "Layisha i-PDF yakho",
-          "body": "Inomugqa owodwa ekhasini layo langaphandle osho uchungechunge ne-DOI. Uthola umugqa ngemva kokusayina."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Hlola imininingwane",
@@ -6800,7 +6831,7 @@
         },
         "checks": {
           "title": "Ukuhlolwa okuzenzakalelayo",
-          "body": "Cishe umzuzu. Kufuna umugqa ekhasini langaphandle nanoma yini eshicilelwe ngaphambilini."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Yenza kusebenze",

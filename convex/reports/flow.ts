@@ -9,9 +9,12 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
+import { PLACES } from "../../lib/constants";
+import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
@@ -20,7 +23,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
+import { authorRowValidator, bylineByValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -53,11 +56,31 @@ const RECENT = 20;
 const untouchedOf = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
   (await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(RECENT)).find((report) => report.ownerId === userId && report.step === "doi" && !report.pdf && report.status === "draft");
 
+const listed = (list: ReadonlyArray<{ id: string }>) => (id: string) => list.some((entry) => entry.id === id);
+
 /**
- * A report's details as they may be checked and published: kept, with every link a web address or a DOI. A link
- * still being typed is saved as it is; one that leads nowhere holds the checks, and one left empty is dropped.
+ * The details whose values come from a list, with what each list holds. The form offers only these, and the
+ * registrars and our index take nothing else, so a value from any other caller is refused before the checks.
+ */
+const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[], known: (value: string) => boolean]> = [
+  ["a type of work", (metadata) => [metadata.type], listed(WORK_TYPES)],
+  // A report may leave its language out.
+  ["a language", (metadata) => (metadata.language ? [metadata.language] : []), (code) => WORK_LANGUAGES.includes(code)],
+  ["a goal", (metadata) => metadata.sdgs, listed(SDGS)],
+  ["a study design", (metadata) => metadata.studyDesigns, listed(STUDY_DESIGNS)],
+  ["a place", (metadata) => metadata.countries, listed(PLACES)],
+];
+
+/**
+ * A report's details as they may be checked and published: kept, with every link a web address or a DOI and every
+ * value that has a list taken from it. A link still being typed is saved as it is; one that leads nowhere holds the
+ * checks, and one left empty is dropped.
  */
 export function checkedDetails(metadata: Metadata) {
+  for (const [what, values, known] of FROM_A_LIST) {
+    const stray = values(metadata).find((value) => !known(value));
+    if (stray !== undefined) throw createError("VALIDATION_ERROR", `"${stray.slice(0, 80)}" isn't ${what} a report can have. Choose one from the list.`);
+  }
   // One of each: the same link given twice is the same link, as a DOI and as its doi.org address too.
   const address = (target: string) => doiIn(target) ?? target.trim();
   const relations = metadata.relations.filter((relation, i, all) => relation.target.trim() !== "" && all.findIndex((other) => other.kind === relation.kind && address(other.target) === address(relation.target)) === i);
@@ -292,9 +315,30 @@ export const readAgain = workspaceMutation({
     // Back to a PDF just attached, its reading to come: the reading stores its text afresh. It counts as attached now,
     // so a Details form left open in another tab on the kept details is refused when it saves or asks for the checks.
     await forget(ctx, report.pdf.text);
+    const { file, name, bytes, bylineBy, stamped } = report.pdf;
+    const at = Math.max(Date.now(), report.pdf.at + 1);
+    await touch(ctx, report, { pdf: { file, name, bytes, at, ...(bylineBy && { bylineBy }), ...(stamped && { stamped }) }, step: "upload" });
+    await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
+    return null;
+  },
+});
+
+/**
+ * The author has Openscholar add the byline to the PDF already uploaded, which lacks it: the PDF is read again, and
+ * that reading adds the page (./reading.ts). The report's details stay as they are.
+ */
+export const addByline = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    // Asked from the upload, which an author who went back to the DOI's page reaches again without the report moving.
+    if ((report.step !== "upload" && report.step !== "doi") || !report.pdf?.lacksByline) throw createError("CONFLICT", MOVED_ON);
+    await forget(ctx, report.pdf.text);
     const { file, name, bytes } = report.pdf;
     const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at }, step: "upload" });
+    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" }, step: "upload" });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -319,9 +363,9 @@ export const startUpload = workspaceMutation({
  * anew, for the checks. A file that can't be this report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")) },
+  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")), /** Who adds the byline, as the author chose at the upload. A page still open from before the choice sends none. */ bylineBy: v.optional(bylineByValidator) },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, actor, { key, file, name, cover }) => {
+  handler: async (ctx, actor, { key, file, name, cover, bylineBy }) => {
     await refuseApps(ctx);
     const stored = await uploaded(ctx, file);
     const picture = cover ? await uploaded(ctx, cover) : null;
@@ -341,7 +385,8 @@ export const attachPdf = workspaceMutation({
       return refused;
     }
     await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
-    const at = Date.now();
+    // Later than the PDF it replaces, even within one millisecond: a reading of that one must never be taken for this one's.
+    const at = Math.max(Date.now(), (report.pdf?.at ?? 0) + 1);
     // The picture of its first page, drawn by the browser that uploaded it. One that is too big or no picture is
     // dropped, and the report keeps its title page.
     const pictured = !!picture && picture.size <= COVER_MAX_BYTES && (picture.contentType === undefined || picture.contentType.startsWith("image/"));
@@ -349,7 +394,7 @@ export const attachPdf = workspaceMutation({
     await ctx.db.insert("reportFiles", { file, reportId: report._id });
     if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at, ...(bylineBy && { bylineBy }) }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -508,6 +553,51 @@ export const countsAction = defineUserQuery({
 export const counts = userQuery(countsAction);
 export const countsForAssistant = assistantQuery(countsAction);
 
+/** How many of the person's other workspaces are asked about, and how many unfinished reports are read in each. */
+const ELSEWHERE_WORKSPACES = 20;
+const ELSEWHERE_REPORTS = 200;
+
+/**
+ * The reports that wait on the person in the workspaces they aren't looking at: their own, and each organization
+ * they are an admin of. Someone in their own workspace is told there that their lab's report is ready, and the other
+ * way round, since each workspace's Publish page lists only its own.
+ */
+export const waitingElsewhereAction = defineUserQuery({
+  path: "reports/flow:waitingElsewhere",
+  description:
+    "The person's other workspaces that hold reports ready for them to activate on Openscholar Reports: their own workspace and each organization they are an admin of, " +
+    "leaving out the workspace asked from. It says how many are ready in all (`ready`) and names the first workspace that holds some (`first`): its name, " +
+    "its address (`slug`, none for their own) and how many are ready there. `first` is null when nothing waits.",
+  args: {},
+  returns: v.object({ ready: v.number(), first: v.union(v.null(), v.object({ name: v.string(), slug: v.union(v.string(), v.null()), ready: v.number() })) }),
+  run: async (ctx, { userId, workspaceId }) => {
+    const user = await ctx.db.get("users", userId);
+    if (!user) return { ready: 0, first: null };
+    const { humanReview } = await reportSettings(ctx);
+    // Only reports that never went live can be ready, and a workspace holds few of those: its newest are looked at,
+    // since a ready report was worked on lately and old drafts weren't.
+    const readyIn = async (id: Id<"workspaces">) =>
+      (await ctx.db.query("reports").withIndex("by_workspaceId_and_activatedAt", (q) => q.eq("workspaceId", id).eq("activatedAt", undefined)).order("desc").take(ELSEWHERE_REPORTS)).filter((report) => stageOf(report, humanReview) === "ready").length;
+    const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+    // ponytail: the first organizations a person is an admin of are asked about; an admin of more than these opens the rest to see.
+    const memberships = (await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(MAX_ORGANIZATIONS_PER_PERSON))
+      .filter((membership) => membership.role === "org:admin")
+      .slice(0, ELSEWHERE_WORKSPACES);
+    const organizations = await Promise.all(
+      memberships.map(async (membership) => {
+        const organization = await ctx.db.get("organizations", membership.organizationId);
+        const workspace = organization?.state === "active" ? await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique() : null;
+        return organization && workspace && workspace._id !== workspaceId ? [{ name: organization.name, slug: organization.slug as string | null, ready: await readyIn(workspace._id) }] : [];
+      }),
+    );
+    const mine = own && own._id !== workspaceId ? [{ name: "", slug: null, ready: await readyIn(own._id) }] : [];
+    const waiting = [...mine, ...organizations.flat()].filter((workspace) => workspace.ready > 0);
+    return { ready: waiting.reduce((sum, workspace) => sum + workspace.ready, 0), first: waiting[0] ?? null };
+  },
+});
+export const waitingElsewhere = userQuery(waitingElsewhereAction, { signedOut: { ready: 0, first: null } });
+export const waitingElsewhereForAssistant = assistantQuery(waitingElsewhereAction);
+
 const reportValidator = v.object({
   ...rowValidator.fields,
   doi: v.string(),
@@ -520,7 +610,7 @@ const reportValidator = v.object({
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), bylineBy: v.optional(bylineByValidator), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: optionalPlainResults,
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
@@ -568,7 +658,7 @@ export const getAction = defineUserQuery({
         agreementVersion: report.agreementVersion,
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),
