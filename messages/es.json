@@ -6507,7 +6507,7 @@
       "newReport": "Informe nuevo",
       "yourReports": "Tus informes",
       "discarded": "Informe descartado",
-      "discardFailed": "No se pudo descartar el informe",
+      "discardFailed": "No se pudo descartar el informe.",
       "closedTitle": "La publicación está cerrada por ahora",
       "closedWithReports": "Por ahora no se puede empezar ningún informe nuevo. Los informes que ya tienes siguen como están.",
       "closedNoReports": "Por ahora no se puede empezar ningún informe nuevo. Vuelve más tarde.",
@@ -6517,8 +6517,8 @@
       "elsewhereTitle": "Este informe está en otro espacio de trabajo",
       "missingTitle": "Este informe no está aquí",
       "offNotice": "La publicación está cerrada a informes nuevos por ahora. Puedes seguir trabajando en este.",
-      "stepFailed": "No se pudo abrir ese paso",
-      "checksFailed": "No se pudieron ejecutar las comprobaciones",
+      "stepFailed": "No se pudo abrir ese paso.",
+      "checksFailed": "No se pudieron ejecutar las comprobaciones.",
       "saveFailed": "No se pudieron guardar tus cambios",
       "changesLive": "Tus cambios ya están publicados",
       "changesWithReviewer": "Tus cambios están con un revisor",
@@ -6539,8 +6539,8 @@
         "workspace": "El plan de este espacio permite empezar {count, plural, one {# informe} other {# informes}} al día. Vuelve mañana o cámbiate a un plan con más.",
         "workspaceClosed": "El plan de este espacio no incluye publicar. Cámbiate a un plan que lo incluya."
       },
-      "signFailed": "No se pudo firmar el acuerdo",
-      "sign": "Firmar y reservar un DOI",
+      "signFailed": "No se pudo firmar el acuerdo.",
+      "sign": "Siguiente: firmar y reservar un DOI",
       "signIn": "Iniciar sesión para publicar",
       "doiReserved": "Tu DOI está reservado",
       "doiReservedBody": "Se queda con tu informe y se publica cuando lo hace el informe.",
@@ -6550,17 +6550,17 @@
       "doiCopied": "DOI copiado",
       "uploadPdf": "Subir el PDF",
       "textless": "Este PDF no contiene texto, como pasa con un escaneo. Las comprobaciones no pueden encontrar la mención en él. Exporta el informe como PDF con su texto y súbelo, o rellena los datos a mano.",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "Este PDF no contiene texto, como ocurre con un escaneo, así que las comprobaciones no pueden leer tu informe en él. La mención está en la página que añadimos. Exporta el informe como PDF con su texto y súbelo, o rellena los datos a mano.",
       "unreadPdf": "Openscholar no pudo leer los datos de este PDF. Rellénalos a mano.",
       "uploadAnother": "Subir otro PDF",
       "uploadLost": "La subida no llegó. Inténtalo de nuevo.",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} no es un PDF. Guarda o exporta tu informe como PDF y elige ese archivo.",
       "emptyFile": "Ese archivo está vacío. Elige el PDF de nuevo.",
-      "tooBig": "El PDF supera los {max} MB",
+      "tooBig": "El PDF supera los {max} MB. Elige uno más pequeño.",
       "offline": "No se pudo subir el PDF. Revisa tu conexión y vuelve a elegirlo.",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "No se pudo enviarnos el PDF.",
+      "uploadFailed": "El PDF nos llegó, pero el servidor no lo añadió a tu informe.",
+      "uploadIntro": "Todos los informes de esta serie llevan esta mención en su PDF, como texto. Nuestra comprobación la busca.",
       "copyByline": "Copiar la mención",
       "bylineCopied": "Mención copiada",
       "uploading": "Subiendo {name}",
@@ -6569,13 +6569,13 @@
       "drop": "Suelta el PDF aquí o elígelo",
       "dropHint": "Un PDF, de hasta {max} MB",
       "unopenedPdf": "No se pudo abrir {name} como PDF. Si tiene contraseña, quítasela; después guárdalo de nuevo como PDF y súbelo.",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} no lleva la mención de arriba. Añádela y vuelve a subir el PDF, o deja que la añadamos nosotros.",
       "keptDetails": "Estos son los datos que tenías antes de sustituir el PDF.",
       "readAgain": "Leerlos de este PDF",
       "readAgainTitle": "¿Leer los datos de este PDF?",
       "readAgainBody": "Los datos que se muestran ahora se sustituyen por los de este PDF, con todo lo que hayas escrito en ellos.",
       "readAgainKeep": "Conservar estos datos",
-      "readAgainFailed": "No se pudieron leer los datos de nuevo",
+      "readAgainFailed": "No se pudieron leer los datos de nuevo.",
       "stuck": "La lectura de {name} está tardando más de lo normal. Súbelo de nuevo.",
       "replaces": "Una nueva subida sustituye a {name}",
       "check": {
@@ -6612,7 +6612,7 @@
           }
         }
       },
-      "activateFailed": "No se pudo activar",
+      "activateFailed": "No se pudo activar.",
       "running": "Ejecutando las comprobaciones",
       "ofTotal": "{done} de {total}",
       "runningHint": "Buscar copias anteriores lleva unos segundos. Puedes salir de esta página: las comprobaciones siguen en marcha.",
@@ -6631,6 +6631,8 @@
       "declined": "Rechazado",
       "withdrawnBody": "Un revisor retiró este informe. Su página ahora lo indica.",
       "declinedBody": "Un revisor rechazó este informe.",
+      "declinedFix": "Puede cambiar los datos o subir un nuevo PDF y volver a ejecutar las comprobaciones.",
+      "activatingNow": "Activando su informe. Tarda unos segundos.",
       "notYet": "Aún no publicado",
       "aCheckFailed": "Una comprobación falló",
       "failedAsked": "Pediste una revisión humana. También puedes cambiar los datos o subir un PDF nuevo y volver a ejecutar las comprobaciones.",
@@ -6655,7 +6657,7 @@
       "savingNote": "Su tarjeta se guarda para activar informes en Openscholar. No se cobra nada ahora.",
       "registering": "La página ya está abierta y puede compartirse. El DOI empieza a funcionar cuando queda registrado, normalmente en unos minutos.",
       "sentToReviewer": "Enviado a un revisor",
-      "requestFailed": "No se pudo enviar la solicitud",
+      "requestFailed": "No se pudo enviar la solicitud.",
       "reviewIntro": "Un revisor lee tu informe y lo que dijeron las comprobaciones. Pídelo cuando creas que una comprobación se equivocó.",
       "reviewQuestion": "¿En qué se equivocaron las comprobaciones?",
       "cancel": "Cancelar",
@@ -6680,7 +6682,7 @@
       "discardBody": "Tu informe sigue publicado como está ahora. Los cambios que hiciste se pierden.",
       "keepThem": "Conservarlos",
       "changesDiscarded": "Cambios descartados",
-      "changesDiscardFailed": "No se pudieron descartar los cambios",
+      "changesDiscardFailed": "No se pudieron descartar los cambios.",
       "discard": "Descartar",
       "pages": "{count, plural, one {# página} other {# páginas}}",
       "agreementVersion": "Acuerdo v{version}",
@@ -6734,7 +6736,7 @@
           "confirm": "Confirmar el pago",
           "change": "Cambiar",
           "addButton": "Añadir método de pago",
-          "stripeFailed": "No se pudo abrir la página de Stripe",
+          "stripeFailed": "No se pudo abrir la página de Stripe.",
           "credit": "{amount} a favor",
           "covered": "Tu código cubre esta activación",
           "coveredHint": "No hay nada que pagar, así que no hace falta tarjeta.",
@@ -6753,36 +6755,36 @@
         "keptOrg": "La activación pagada para este informe pasó al saldo de {organization}. El próximo informe que se active allí la usará."
       },
       "back": "Atrás",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "Tu PDF lleva esta mención",
+      "bylineFirstBody": "Todos los informes de esta serie llevan esta mención en su PDF, como texto. Nuestras comprobaciones la buscan en cuanto lo subes.",
       "nextUpload": "Siguiente: subir el PDF",
       "nextDetails": "Siguiente: revisar los datos",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "Esta página y el servidor tienen versiones distintas. Recarga la página y vuelve a intentarlo.",
+        "retry": "Vuelve a intentarlo. Si sigue ocurriendo, <link>informa de un problema</link>.",
+        "retryQuote": "Vuelve a intentarlo. Si sigue ocurriendo, <link>informa de un problema</link> y cita {reference}."
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "Quién añade la mención",
+        "choose": "Elige quién añade la mención para continuar.",
+        "chooseFirst": "Elige primero quién añade la mención",
+        "failed": "No pudimos añadir la página a {name}. Añade la mención tú mismo y vuelve a subir el PDF.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} supera los {max} MB, demasiado para que le añadamos una página. Pon la mención tú mismo o sube un PDF más pequeño.",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "La añado yo",
+          "body": "Pon la mención, tal cual, en la portada o en la contraportada interior de tu PDF antes de subirlo."
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "Añadidla por mí",
+          "body": "Añadimos una última página con esta mención y los datos de tu informe. Para PDF de hasta {max} MB."
         }
       },
       "overview": {
         "title": "Publicar un informe con {series}",
         "intro": "Unos diez minutos de principio a fin. Esto es lo que te pide cada paso.",
         "introReviewed": "Unos diez minutos de tu tiempo. Después un revisor aprueba el informe antes de que pueda publicarse, y te avisamos por correo.",
-        "start": "Empezar",
+        "start": "Siguiente: firmar el acuerdo",
         "agreement": {
           "title": "Firmar el acuerdo de publicación",
           "body": "Conservas los derechos de autor y publicas bajo CC BY 4.0."
@@ -6793,7 +6795,7 @@
         },
         "pdf": {
           "title": "Subir tu PDF",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "Con una mención que nombra la serie y el DOI. Añádela tú, o la añadimos nosotros en una última página."
         },
         "details": {
           "title": "Revisar los datos",
@@ -6801,7 +6803,7 @@
         },
         "checks": {
           "title": "Comprobaciones automáticas",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "Alrededor de un minuto. Buscan esa mención y cualquier cosa ya publicada."
         },
         "activate": {
           "title": "Activar",
@@ -6913,7 +6915,7 @@
       "cancel": "Cancelar",
       "sendForReview": "Comprobar los cambios y enviarlos a revisión",
       "checkAndPublish": "Comprobar y publicar los cambios",
-      "runChecks": "Ejecutar las comprobaciones",
+      "runChecks": "Siguiente: ejecutar las comprobaciones",
       "tooEarly": "Un informe no puede tener una fecha anterior a 1400.",
       "back": "Atrás"
     }

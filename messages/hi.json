@@ -6506,7 +6506,7 @@
       "newReport": "नई रिपोर्ट",
       "yourReports": "आपकी रिपोर्टें",
       "discarded": "रिपोर्ट छोड़ दी गई",
-      "discardFailed": "रिपोर्ट छोड़ी नहीं जा सकी",
+      "discardFailed": "रिपोर्ट छोड़ी नहीं जा सकी।",
       "closedTitle": "प्रकाशन अभी बंद है",
       "closedWithReports": "अभी कोई नई रिपोर्ट शुरू नहीं की जा सकती। आपकी मौजूदा रिपोर्टें जैसी हैं वैसी रहेंगी।",
       "closedNoReports": "अभी कोई नई रिपोर्ट शुरू नहीं की जा सकती। बाद में आएँ।",
@@ -6516,8 +6516,8 @@
       "elsewhereTitle": "यह रिपोर्ट किसी दूसरे कार्यक्षेत्र में है",
       "missingTitle": "यह रिपोर्ट यहाँ नहीं है",
       "offNotice": "नई रिपोर्टों के लिए प्रकाशन अभी बंद है। आप इस पर काम जारी रख सकते हैं।",
-      "stepFailed": "वह चरण खोला नहीं जा सका",
-      "checksFailed": "जाँचें चल नहीं सकीं",
+      "stepFailed": "वह चरण खोला नहीं जा सका।",
+      "checksFailed": "जाँचें चल नहीं सकीं।",
       "saveFailed": "आपके बदलाव सहेजे नहीं जा सके",
       "changesLive": "आपके बदलाव प्रकाशित हैं",
       "changesWithReviewer": "आपके बदलाव समीक्षक के पास हैं",
@@ -6538,8 +6538,8 @@
         "workspace": "इस वर्कस्पेस के प्लान में हर दिन {count, plural, one {# रिपोर्ट} other {# रिपोर्टें}} शुरू की जा सकती हैं। कल फिर आएँ, या ज़्यादा वाले प्लान पर जाएँ।",
         "workspaceClosed": "इस वर्कस्पेस के प्लान में प्रकाशन शामिल नहीं है। ऐसे प्लान पर जाएँ जिसमें यह शामिल हो।"
       },
-      "signFailed": "समझौते पर हस्ताक्षर नहीं हो सके",
-      "sign": "हस्ताक्षर करें और DOI आरक्षित करें",
+      "signFailed": "समझौते पर हस्ताक्षर नहीं हो सके।",
+      "sign": "आगे: हस्ताक्षर करें और DOI आरक्षित करें",
       "signIn": "प्रकाशित करने के लिए साइन इन करें",
       "doiReserved": "आपका DOI आरक्षित है",
       "doiReservedBody": "यह आपकी रिपोर्ट के साथ रहता है, और रिपोर्ट के प्रकाशित होने पर प्रकाशित होता है।",
@@ -6549,17 +6549,17 @@
       "doiCopied": "DOI कॉपी हो गया",
       "uploadPdf": "PDF अपलोड करें",
       "textless": "इस PDF में कोई पाठ नहीं है, जैसे स्कैन में नहीं होता। जाँचें इसमें उल्लेख नहीं ढूँढ सकतीं। रिपोर्ट को पाठ सहित PDF के रूप में निर्यात करके अपलोड करें, या विवरण हाथ से भरें।",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "इस PDF में कोई टेक्स्ट नहीं है, जैसा स्कैन में होता है, इसलिए जाँचें इसमें आपकी रिपोर्ट नहीं पढ़ सकतीं। पंक्ति हमारे जोड़े गए पृष्ठ पर है। रिपोर्ट को टेक्स्ट सहित PDF के रूप में निर्यात करके अपलोड करें, या विवरण हाथ से भरें।",
       "unreadPdf": "Openscholar इस PDF से विवरण नहीं पढ़ सका। इन्हें हाथ से भरें।",
       "uploadAnother": "दूसरा PDF अपलोड करें",
       "uploadLost": "अपलोड नहीं पहुँचा। फिर से कोशिश करें।",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} PDF नहीं है। अपनी रिपोर्ट को PDF के रूप में सहेजें या निर्यात करें, फिर वह फ़ाइल चुनें।",
       "emptyFile": "वह फ़ाइल खाली है। PDF फिर से चुनें।",
-      "tooBig": "PDF {max} MB से बड़ा है",
+      "tooBig": "PDF {max} MB से बड़ा है। छोटा चुनें।",
       "offline": "PDF अपलोड नहीं हो सका। अपना कनेक्शन जाँचें, फिर इसे फिर से चुनें।",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "PDF हमें भेजा नहीं जा सका।",
+      "uploadFailed": "PDF हम तक पहुँच गया, पर सर्वर ने उसे आपकी रिपोर्ट में नहीं जोड़ा।",
+      "uploadIntro": "इस शृंखला की हर रिपोर्ट के PDF में यह पंक्ति टेक्स्ट के रूप में होती है। हमारी जाँच इसे खोजती है।",
       "copyByline": "उल्लेख कॉपी करें",
       "bylineCopied": "उल्लेख कॉपी हो गया",
       "uploading": "{name} अपलोड हो रहा है",
@@ -6568,13 +6568,13 @@
       "drop": "PDF यहाँ छोड़ें, या चुनें",
       "dropHint": "एक PDF, {max} MB तक",
       "unopenedPdf": "{name} को PDF के रूप में खोला नहीं जा सका। अगर इस पर पासवर्ड है तो उसे हटाएँ, फिर इसे दोबारा PDF के रूप में सहेजें और अपलोड करें।",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} में ऊपर की पंक्ति नहीं है। पंक्ति जोड़ें और PDF दोबारा अपलोड करें, या इसे हमें जोड़ने दें।",
       "keptDetails": "ये वे विवरण हैं जो PDF बदलने से पहले आपके पास थे।",
       "readAgain": "इन्हें इस PDF से पढ़ें",
       "readAgainTitle": "विवरण इस PDF से पढ़ें?",
       "readAgainBody": "अभी दिख रहे विवरण इस PDF के विवरणों से बदल जाएँगे, उनमें आपका लिखा सब कुछ भी।",
       "readAgainKeep": "ये विवरण रखें",
-      "readAgainFailed": "विवरण दोबारा नहीं पढ़े जा सके",
+      "readAgainFailed": "विवरण दोबारा नहीं पढ़े जा सके।",
       "stuck": "{name} पढ़ने में ज़रूरत से ज़्यादा समय लग रहा है। इसे फिर से अपलोड करें।",
       "replaces": "फिर से अपलोड करने पर {name} बदल जाता है",
       "check": {
@@ -6611,7 +6611,7 @@
           }
         }
       },
-      "activateFailed": "इसे सक्रिय नहीं किया जा सका",
+      "activateFailed": "इसे सक्रिय नहीं किया जा सका।",
       "running": "जाँचें चल रही हैं",
       "ofTotal": "{total} में से {done}",
       "runningHint": "पुरानी प्रतियाँ खोजने में कुछ सेकंड लगते हैं। आप यह पेज छोड़ सकते हैं: जाँचें चलती रहेंगी।",
@@ -6630,6 +6630,8 @@
       "declined": "अस्वीकृत",
       "withdrawnBody": "एक समीक्षक ने यह रिपोर्ट वापस ले ली। इसके पेज पर अब यह लिखा है।",
       "declinedBody": "एक समीक्षक ने यह रिपोर्ट अस्वीकार की।",
+      "declinedFix": "आप विवरण बदल सकते हैं या नया PDF अपलोड कर सकते हैं, और जाँचें दोबारा चला सकते हैं।",
+      "activatingNow": "आपकी रिपोर्ट सक्रिय की जा रही है। इसमें कुछ सेकंड लगते हैं।",
       "notYet": "अभी प्रकाशित नहीं",
       "aCheckFailed": "एक जाँच विफल हुई",
       "failedAsked": "आपने मानव समीक्षा माँगी है। आप विवरण बदल सकते हैं या नया PDF अपलोड करके जाँचें फिर से चला सकते हैं।",
@@ -6654,7 +6656,7 @@
       "savingNote": "आपका कार्ड Openscholar पर रिपोर्टें सक्रिय करने के लिए सहेजा जाता है। अभी कोई शुल्क नहीं लिया जाता।",
       "registering": "पृष्ठ अब खुला है और साझा किया जा सकता है। DOI दर्ज होते ही काम करने लगता है, आम तौर पर कुछ मिनटों में।",
       "sentToReviewer": "समीक्षक को भेजा गया",
-      "requestFailed": "अनुरोध भेजा नहीं जा सका",
+      "requestFailed": "अनुरोध भेजा नहीं जा सका।",
       "reviewIntro": "एक समीक्षक आपकी रिपोर्ट और जाँचों के परिणाम पढ़ते हैं। अगर आपको लगता है कि किसी जाँच ने गलती की, तो माँगें।",
       "reviewQuestion": "जाँचों ने क्या गलत किया?",
       "cancel": "रद्द करें",
@@ -6679,7 +6681,7 @@
       "discardBody": "आपकी रिपोर्ट अभी जैसी है वैसी प्रकाशित रहती है। आपके किए बदलाव छोड़ दिए जाते हैं।",
       "keepThem": "रखें",
       "changesDiscarded": "बदलाव छोड़ दिए गए",
-      "changesDiscardFailed": "बदलाव छोड़े नहीं जा सके",
+      "changesDiscardFailed": "बदलाव छोड़े नहीं जा सके।",
       "discard": "छोड़ें",
       "pages": "{count, plural, one {# पेज} other {# पेज}}",
       "agreementVersion": "समझौता v{version}",
@@ -6733,7 +6735,7 @@
           "confirm": "भुगतान की पुष्टि करें",
           "change": "बदलें",
           "addButton": "भुगतान का तरीका जोड़ें",
-          "stripeFailed": "Stripe का पेज नहीं खुल सका",
+          "stripeFailed": "Stripe का पेज नहीं खुल सका।",
           "credit": "{amount} क्रेडिट",
           "covered": "आपका कोड इस सक्रियण को कवर करता है",
           "coveredHint": "कुछ चुकाना नहीं है, इसलिए कार्ड की ज़रूरत नहीं।",
@@ -6752,36 +6754,36 @@
         "keptOrg": "इस रिपोर्ट के लिए चुकाया गया सक्रियण {organization} के बैलेंस में चला गया। वहाँ सक्रिय होने वाली अगली रिपोर्ट में यह लगेगा।"
       },
       "back": "वापस",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "आपके PDF में यह पंक्ति होती है",
+      "bylineFirstBody": "इस शृंखला की हर रिपोर्ट के PDF में यह पंक्ति टेक्स्ट के रूप में होती है। अपलोड करते ही हमारी जाँचें इसे खोजती हैं।",
       "nextUpload": "आगे: PDF अपलोड करें",
       "nextDetails": "आगे: विवरण जाँचें",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "यह पृष्ठ और सर्वर अलग-अलग संस्करणों पर हैं। पृष्ठ फिर से लोड करें, फिर दोबारा कोशिश करें।",
+        "retry": "दोबारा कोशिश करें। अगर ऐसा होता रहे, तो <link>समस्या की सूचना दें</link>।",
+        "retryQuote": "दोबारा कोशिश करें। अगर ऐसा होता रहे, तो <link>समस्या की सूचना दें</link> और {reference} का उल्लेख करें।"
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "पंक्ति कौन जोड़ेगा",
+        "choose": "आगे बढ़ने के लिए चुनें कि पंक्ति कौन जोड़ेगा।",
+        "chooseFirst": "पहले चुनें कि पंक्ति कौन जोड़ेगा",
+        "failed": "हम {name} में पृष्ठ नहीं जोड़ सके। पंक्ति स्वयं जोड़ें और PDF दोबारा अपलोड करें।",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} {max} MB से बड़ा है, जो हमारे लिए पृष्ठ जोड़ने के लिहाज़ से बहुत बड़ा है। पंक्ति स्वयं डालें, या छोटा PDF अपलोड करें।",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "मैं स्वयं जोड़ूँगा",
+          "body": "अपलोड करने से पहले पंक्ति को शब्दशः अपने PDF के कवर या भीतरी कवर पर रखें।"
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "मेरे लिए जोड़ दें",
+          "body": "हम इस पंक्ति और आपकी रिपोर्ट के विवरण वाला एक अंतिम पृष्ठ जोड़ते हैं। {max} MB तक के PDF के लिए।"
         }
       },
       "overview": {
         "title": "{series} के साथ रिपोर्ट प्रकाशित करना",
         "intro": "शुरू से अंत तक लगभग दस मिनट। हर चरण आपसे यह माँगता है।",
         "introReviewed": "आपके लगभग दस मिनट। फिर रिपोर्ट के प्रकाशित होने से पहले एक समीक्षक उसे स्वीकार करता है, और आपको ईमेल से सूचना मिलती है।",
-        "start": "शुरू करें",
+        "start": "आगे: समझौते पर हस्ताक्षर करें",
         "agreement": {
           "title": "प्रकाशन समझौते पर हस्ताक्षर करें",
           "body": "कॉपीराइट आपके पास रहता है और आप CC BY 4.0 के तहत प्रकाशित करते हैं।"
@@ -6792,7 +6794,7 @@
         },
         "pdf": {
           "title": "अपना PDF अपलोड करें",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "एक पंक्ति के साथ, जो शृंखला और DOI का नाम देती है। इसे स्वयं जोड़ें, या हम इसे अंतिम पृष्ठ पर जोड़ते हैं।"
         },
         "details": {
           "title": "विवरण जाँचें",
@@ -6800,7 +6802,7 @@
         },
         "checks": {
           "title": "स्वचालित जाँचें",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "लगभग एक मिनट। वे उस पंक्ति को और पहले प्रकाशित किसी भी चीज़ को खोजती हैं।"
         },
         "activate": {
           "title": "सक्रिय करें",
@@ -6912,7 +6914,7 @@
       "cancel": "रद्द करें",
       "sendForReview": "बदलाव जाँचें और समीक्षा के लिए भेजें",
       "checkAndPublish": "बदलाव जाँचें और प्रकाशित करें",
-      "runChecks": "जाँचें चलाएँ",
+      "runChecks": "आगे: जाँचें चलाएँ",
       "tooEarly": "रिपोर्ट की तारीख 1400 से पहले की नहीं हो सकती।",
       "back": "वापस"
     }

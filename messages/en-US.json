@@ -6630,6 +6630,8 @@
       "declined": "Declined",
       "withdrawnBody": "A reviewer withdrew this report. Its page now says so.",
       "declinedBody": "A reviewer declined this report.",
+      "declinedFix": "You can change the details or upload a new PDF, and run the checks again.",
+      "activatingNow": "Activating your report. This takes a few seconds.",
       "notYet": "Not published yet",
       "aCheckFailed": "A check failed",
       "failedAsked": "You asked for a human review. You can also change the details or upload a new PDF, and run the checks again.",

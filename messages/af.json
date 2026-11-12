@@ -6507,7 +6507,7 @@
       "newReport": "Nuwe verslag",
       "yourReports": "Jou verslae",
       "discarded": "Verslag weggegooi",
-      "discardFailed": "Die verslag kon nie weggegooi word nie",
+      "discardFailed": "Die verslag kon nie weggegooi word nie.",
       "closedTitle": "Publikasie is nou gesluit",
       "closedWithReports": "Nuwe verslae kan nou nie begin word nie. Jou bestaande verslae bly soos hulle is.",
       "closedNoReports": "Nuwe verslae kan nou nie begin word nie. Kom later terug.",
@@ -6517,8 +6517,8 @@
       "elsewhereTitle": "Hierdie verslag is in 'n ander werkruimte",
       "missingTitle": "Hierdie verslag is nie hier nie",
       "offNotice": "Publikasie is nou af vir nuwe verslae. Jy kan aan hierdie een voortwerk.",
-      "stepFailed": "Daardie stap kon nie oopgemaak word nie",
-      "checksFailed": "Die kontroles kon nie loop nie",
+      "stepFailed": "Daardie stap kon nie oopgemaak word nie.",
+      "checksFailed": "Die kontroles kon nie loop nie.",
       "saveFailed": "Jou wysigings kon nie gestoor word nie",
       "changesLive": "Jou wysigings is gepubliseer",
       "changesWithReviewer": "Jou wysigings is by 'n hersiener",
@@ -6539,8 +6539,8 @@
         "workspace": "Hierdie werkruimte se plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
         "workspaceClosed": "Hierdie werkruimte se plan sluit publikasie nie in nie. Skuif na 'n plan wat dit insluit."
       },
-      "signFailed": "Die ooreenkoms kon nie onderteken word nie",
-      "sign": "Onderteken en reserveer DOI",
+      "signFailed": "Die ooreenkoms kon nie onderteken word nie.",
+      "sign": "Volgende: teken en reserveer ’n DOI",
       "signIn": "Teken in om te publiseer",
       "doiReserved": "Jou DOI is gereserveer",
       "doiReservedBody": "Dit bly by jou verslag en word gepubliseer wanneer die verslag gepubliseer word.",
@@ -6550,17 +6550,17 @@
       "doiCopied": "DOI gekopieer",
       "uploadPdf": "Laai die PDF op",
       "textless": "Hierdie PDF het geen teks nie, soos 'n skandering. Die kontroles kan nie die eienaarsreël daarin vind nie. Voer die verslag uit as 'n PDF met teks en laai dit op, of vul die besonderhede met die hand in.",
-      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "Hierdie PDF bevat geen teks nie, soos ’n skandering, dus kan die kontroles nie jou verslag daarin lees nie. Die reël is op die bladsy wat ons bygevoeg het. Voer die verslag uit as ’n PDF met sy teks en laai dit op, of vul die besonderhede met die hand in.",
       "unreadPdf": "Openscholar kon nie die besonderhede uit hierdie PDF lees nie. Vul hulle met die hand in.",
       "uploadAnother": "Laai 'n ander PDF op",
       "uploadLost": "Die oplaai het nie aangekom nie. Probeer weer.",
-      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
+      "notPdf": "{name} is nie ’n PDF nie. Stoor of voer jou verslag uit as ’n PDF, en kies dan daardie lêer.",
       "emptyFile": "Daardie lêer is leeg. Kies die PDF weer.",
-      "tooBig": "Die PDF is groter as {max} MB",
+      "tooBig": "Die PDF is groter as {max} MB. Kies ’n kleiner een.",
       "offline": "Die PDF kon nie opgelaai word nie. Kontroleer jou verbinding en kies dit dan weer.",
-      "notSent": "The PDF couldn't be sent to us.",
-      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
-      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
+      "notSent": "Die PDF kon nie na ons gestuur word nie.",
+      "uploadFailed": "Die PDF het ons bereik, maar die bediener het dit nie by jou verslag gevoeg nie.",
+      "uploadIntro": "Elke verslag in hierdie reeks dra hierdie reël in sy PDF, as teks. Ons kontrole soek daarna.",
       "copyByline": "Kopieer eienaarsreël",
       "bylineCopied": "Eienaarsreël gekopieer",
       "uploading": "Laai {name} op",
@@ -6569,13 +6569,13 @@
       "drop": "Los die PDF hier, of kies dit",
       "dropHint": "Een PDF, tot {max} MB",
       "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. As dit 'n wagwoord het, verwyder dit; stoor dit dan weer as PDF en laai dit op.",
-      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "lacksByline": "{name} dra nie die reël hierbo nie. Voeg die reël by en laai die PDF weer op, of laat ons dit byvoeg.",
       "keptDetails": "Dit is die besonderhede wat jy gehad het voordat jy die PDF vervang het.",
       "readAgain": "Lees dit eerder uit hierdie PDF",
       "readAgainTitle": "Lees die besonderhede uit hierdie PDF?",
       "readAgainBody": "Die besonderhede wat nou wys, word deur hierdie PDF s'n vervang, saam met alles wat jy daarin getik het.",
       "readAgainKeep": "Hou hierdie besonderhede",
-      "readAgainFailed": "Die besonderhede kon nie weer gelees word nie",
+      "readAgainFailed": "Die besonderhede kon nie weer gelees word nie.",
       "stuck": "Om {name} te lees neem langer as wat dit behoort. Laai dit weer op.",
       "replaces": "Weer oplaai vervang {name}",
       "check": {
@@ -6612,7 +6612,7 @@
           }
         }
       },
-      "activateFailed": "Dit kon nie geaktiveer word nie",
+      "activateFailed": "Dit kon nie geaktiveer word nie.",
       "running": "Kontroles loop",
       "ofTotal": "{done} van {total}",
       "runningHint": "Om na vroeëre kopieë te soek neem 'n paar sekondes. Jy kan hierdie bladsy verlaat: die kontroles gaan voort.",
@@ -6631,6 +6631,8 @@
       "declined": "Afgekeur",
       "withdrawnBody": "'n Hersiener het hierdie verslag teruggetrek. Sy bladsy sê dit nou.",
       "declinedBody": "'n Hersiener het hierdie verslag afgekeur.",
+      "declinedFix": "Jy kan die besonderhede verander of ’n nuwe PDF oplaai, en die kontroles weer laat loop.",
+      "activatingNow": "Jou verslag word geaktiveer. Dit neem ’n paar sekondes.",
       "notYet": "Nog nie gepubliseer nie",
       "aCheckFailed": "'n Kontrole het gefaal",
       "failedAsked": "Jy het 'n menslike hersiening gevra. Jy kan die besonderhede verander of 'n nuwe PDF oplaai om die kontroles weer te laat loop.",
@@ -6655,7 +6657,7 @@
       "savingNote": "Jou kaart word gestoor om verslae op Openscholar te aktiveer. Niks word nou gehef nie.",
       "registering": "Die bladsy is nou oop en kan gedeel word. Die DOI begin werk sodra dit geregistreer is, gewoonlik binne ’n paar minute.",
       "sentToReviewer": "Na 'n hersiener gestuur",
-      "requestFailed": "Die versoek kon nie gestuur word nie",
+      "requestFailed": "Die versoek kon nie gestuur word nie.",
       "reviewIntro": "'n Hersiener lees jou verslag en die kontroles se resultate. Vra as jy dink 'n kontrole het 'n fout gemaak.",
       "reviewQuestion": "Wat het die kontroles verkeerd gehad?",
       "cancel": "Kanselleer",
@@ -6680,7 +6682,7 @@
       "discardBody": "Jou verslag bly gepubliseer soos dit nou is. Die wysigings wat jy gemaak het, word weggegooi.",
       "keepThem": "Hou hulle",
       "changesDiscarded": "Wysigings weggegooi",
-      "changesDiscardFailed": "Die wysigings kon nie weggegooi word nie",
+      "changesDiscardFailed": "Die wysigings kon nie weggegooi word nie.",
       "discard": "Gooi weg",
       "pages": "{count, plural, one {# bladsy} other {# bladsye}}",
       "agreementVersion": "Ooreenkoms weergawe {version}",
@@ -6734,7 +6736,7 @@
           "confirm": "Bevestig betaling",
           "change": "Verander",
           "addButton": "Voeg betaalmetode by",
-          "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
+          "stripeFailed": "Stripe se bladsy kon nie oopmaak nie.",
           "credit": "{amount} krediet",
           "covered": "Jou kode dek hierdie aktivering",
           "coveredHint": "Niks om te betaal nie, dus is geen kaart nodig nie.",
@@ -6753,36 +6755,36 @@
         "keptOrg": "Die aktivering wat vir hierdie verslag betaal is, is in {organization} se saldo. Die volgende verslag wat daar geaktiveer word, gebruik dit."
       },
       "back": "Terug",
-      "bylineFirst": "Your PDF carries this line",
-      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "bylineFirst": "Jou PDF dra hierdie reël",
+      "bylineFirstBody": "Elke verslag in hierdie reeks dra hierdie reël in sy PDF, as teks. Ons kontroles soek daarna sodra jy oplaai.",
       "nextUpload": "Volgende: laai die PDF op",
       "nextDetails": "Volgende: gaan die besonderhede na",
       "problem": {
-        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
-        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
-        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+        "outOfStep": "Hierdie bladsy en die bediener is op verskillende weergawes. Herlaai die bladsy en probeer dan weer.",
+        "retry": "Probeer weer. As dit aanhou gebeur, <link>rapporteer ’n probleem</link>.",
+        "retryQuote": "Probeer weer. As dit aanhou gebeur, <link>rapporteer ’n probleem</link> en noem {reference}."
       },
       "bylineBy": {
-        "label": "Who adds the line",
-        "choose": "Choose who adds the line to continue.",
-        "chooseFirst": "Choose who adds the line first",
-        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "label": "Wie die reël byvoeg",
+        "choose": "Kies wie die reël byvoeg om voort te gaan.",
+        "chooseFirst": "Kies eers wie die reël byvoeg",
+        "failed": "Ons kon nie die bladsy by {name} voeg nie. Voeg self die reël by en laai die PDF weer op.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "tooBigToAdd": "{name} is groter as {max} MB, wat te groot is vir ons om ’n bladsy by te voeg. Sit self die reël daarop, of laai ’n kleiner PDF op.",
         "self": {
-          "title": "I'll add it myself",
-          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+          "title": "Ek voeg dit self by",
+          "body": "Sit die reël, woord vir woord, op die voorblad of binneblad van jou PDF voordat jy dit oplaai."
         },
         "added": {
-          "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "title": "Voeg dit vir my by",
+          "body": "Ons voeg ’n laaste bladsy by met hierdie reël en jou verslag se besonderhede. Vir PDF’s tot {max} MB."
         }
       },
       "overview": {
         "title": "Publiseer 'n verslag by {series}",
         "intro": "Omtrent tien minute van begin tot einde. Dit is wat elke stap van jou vra.",
         "introReviewed": "Omtrent tien minute van jou tyd. Daarna keur 'n hersiener die verslag goed voordat dit kan verskyn, en jy kry 'n e-pos.",
-        "start": "Begin",
+        "start": "Volgende: teken die ooreenkoms",
         "agreement": {
           "title": "Onderteken die publikasie-ooreenkoms",
           "body": "Jy behou die kopiereg en publiseer onder CC BY 4.0."
@@ -6793,7 +6795,7 @@
         },
         "pdf": {
           "title": "Laai jou PDF op",
-          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+          "body": "Met een reël wat die reeks en die DOI noem. Voeg dit self by, of ons voeg dit op ’n laaste bladsy by."
         },
         "details": {
           "title": "Gaan die besonderhede na",
@@ -6801,7 +6803,7 @@
         },
         "checks": {
           "title": "Outomatiese kontroles",
-          "body": "About a minute. They look for that line and anything published before."
+          "body": "Omtrent ’n minuut. Hulle soek daardie reël en enigiets wat reeds gepubliseer is."
         },
         "activate": {
           "title": "Aktiveer",
@@ -6913,7 +6915,7 @@
       "cancel": "Kanselleer",
       "sendForReview": "Kontroleer wysigings en stuur vir hersiening",
       "checkAndPublish": "Kontroleer wysigings en publiseer",
-      "runChecks": "Laat kontroles loop",
+      "runChecks": "Volgende: laat die kontroles loop",
       "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
       "back": "Terug"
     }
