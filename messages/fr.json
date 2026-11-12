@@ -5628,6 +5628,7 @@
     "keepInvitation": "Garder l’invitation",
     "declineInvitation2": "Refuser l’invitation",
     "previewCover": "Aperçu de la couverture de {title}",
+    "noPdf": "Pas de PDF",
     "preview": "Aperçu de {title}",
     "declineBody": "Vous n’aurez pas accès à {name}. Vos autres communautés ne sont pas touchées.",
     "owner": "Propriétaire",
@@ -6350,6 +6351,7 @@
         "humanReview": "La relecture humaine est activée, les modifications attendent donc un relecteur."
       },
       "approving": "L'approuver permet à son auteur de l'activer, et il est mis en ligne quand l'auteur le fait.",
+      "approvingOrg": "L’approbation permet à un administrateur de {organization} de l’activer ; il est mis en ligne à ce moment-là.",
       "standing": {
         "failedAsked": "Une vérification a échoué. {approving}",
         "failed": "Une vérification a échoué, le rapport est donc chez son auteur pour correction. Vous pouvez quand même décider. {approving}",
@@ -6558,15 +6560,17 @@
       "doiCopied": "DOI copié",
       "uploadPdf": "Téléverser le PDF",
       "textless": "Ce PDF ne contient pas de texte, comme une numérisation. Les vérifications ne peuvent pas y trouver la mention. Exportez le rapport en PDF avec son texte et téléversez-le, ou remplissez les informations à la main.",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "Openscholar n'a pas pu lire les informations de ce PDF. Remplissez-les à la main.",
       "uploadAnother": "Téléverser un autre PDF",
       "uploadLost": "Le téléversement n'est pas arrivé. Réessayez.",
-      "choosePdf": "Choisissez un PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "Ce fichier est vide. Choisissez de nouveau le PDF.",
       "tooBig": "Le PDF dépasse {max} Mo",
       "offline": "Le PDF n'a pas pu être téléversé. Vérifiez votre connexion, puis choisissez-le de nouveau.",
-      "uploadFailed": "Le PDF n'a pas pu être téléversé. Réessayez.",
-      "uploadIntro": "Placez le texte suivant, mot pour mot, sur la couverture ou la deuxième de couverture avant de téléverser. Notre vérification cherche cette ligne.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copier la mention",
       "bylineCopied": "Mention copiée",
       "uploading": "Téléversement de {name}",
@@ -6575,7 +6579,7 @@
       "drop": "Déposez le PDF ici, ou choisissez-le",
       "dropHint": "Un PDF, jusqu'à {max} Mo",
       "unopenedPdf": "{name} n'a pas pu être ouvert comme PDF. S'il est protégé par un mot de passe, retirez-le, puis enregistrez-le de nouveau en PDF et téléversez-le.",
-      "lacksByline": "{name} ne porte pas la mention ci-dessus sur sa couverture. Ajoutez-la et téléversez de nouveau le PDF, sinon la vérification de la mention échouera.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
       "keptDetails": "Ce sont les informations que vous aviez avant de remplacer le PDF.",
       "readAgain": "Les lire plutôt dans ce PDF",
       "readAgainTitle": "Lire les informations dans ce PDF ?",
@@ -6759,10 +6763,31 @@
         "keptOrg": "L'activation payée pour ce rapport a rejoint le solde de {organization}. Le prochain rapport activé là l'utilisera."
       },
       "back": "Retour",
-      "bylineFirst": "Placez cette mention sur la couverture de votre PDF",
-      "bylineFirstBody": "Openscholar copublie votre rapport : sa couverture ou sa deuxième de couverture porte donc cette mention, sous forme de texte. Nos vérifications la recherchent une fois le PDF téléversé.",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
       "nextUpload": "Suivant : téléverser le PDF",
       "nextDetails": "Suivant : vérifier les informations",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+        }
+      },
       "overview": {
         "title": "Publier un rapport avec {series}",
         "intro": "Environ dix minutes du début à la fin. Voici ce que chaque étape vous demande.",
@@ -6778,7 +6803,7 @@
         },
         "pdf": {
           "title": "Téléverser votre PDF",
-          "body": "Avec une mention sur sa couverture qui nomme la collection et le DOI. Vous recevez la mention après la signature."
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
         },
         "details": {
           "title": "Vérifier les informations",
@@ -6786,7 +6811,7 @@
         },
         "checks": {
           "title": "Vérifications automatiques",
-          "body": "Environ une minute. Elles recherchent la mention sur la couverture et toute publication antérieure."
+          "body": "About a minute. They look for that line and anything published before."
         },
         "activate": {
           "title": "Activer",

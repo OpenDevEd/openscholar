@@ -319,7 +319,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
   // Why the report itself stands where it does, and what approving it does: a reviewer who arrives from an email reads
   // it before the buttons. Changes waiting say their own, above.
   const flagged = (s?.results ?? []).some((r) => !r.pass);
-  const approving = t("approving");
+  // In an organisation it's one of its admins who activates it, not its author (#1261).
+  const approving = s?.workspace ? t("approvingOrg", { organization: s.workspace }) : t("approving");
   const standing =
     !s || changes
       ? ""

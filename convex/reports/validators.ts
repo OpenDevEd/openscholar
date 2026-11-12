@@ -110,6 +110,8 @@ export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
 export const pdfTroubleValidator = v.union(v.literal("unopened"), v.literal("textless"), v.literal("unread"));
+/** Who puts the byline on a report's PDF: its author, on the cover, or Openscholar, on a last page it adds. */
+export const bylineByValidator = v.union(v.literal("self"), v.literal("added"));
 export const pdfValidator = v.object({
   file: v.id("_storage"),
   name: v.string(),
@@ -124,6 +126,10 @@ export const pdfValidator = v.object({
   trouble: v.optional(pdfTroubleValidator),
   /** Its text doesn't carry the report's byline word for word, which the byline check looks for: said at the upload, before the checks. */
   lacksByline: v.optional(v.boolean()),
+  /** Who its author said adds the byline, chosen at the upload. "added" with `lacksByline` is a page that couldn't be added. A PDF from before the choice has none. */
+  bylineBy: v.optional(bylineByValidator),
+  /** Its last page is the one Openscholar added, which says the report's details: written again when the checks read them. */
+  stamped: v.optional(v.boolean()),
   /** Its details are the ones the report had before this PDF replaced another: the author may have them read from this one instead. */
   kept: v.optional(v.boolean()),
 });

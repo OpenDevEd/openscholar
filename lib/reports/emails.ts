@@ -50,6 +50,8 @@ const failedIn = (results: CheckResult[] | undefined, none: string, told: boolea
 // on Publish where its next step is, or its own page once it's live.
 const reviewLink = (r: MailFacts, origin: string): Row => ["Open it", `${origin}/settings/admin/publishing?report=${r.key}`];
 const publishLink = (label: string, r: MailFacts, origin: string): Row => [label, `${origin}/publish?report=${r.key}`];
+/** Who makes the report's DOI live: in an organisation one of its admins, not necessarily the author being written to. */
+const activating = (r: MailFacts) => (r.admins ? `An admin of ${r.admins.organization} activates it to make its DOI live` : "Activate it to make its DOI live");
 const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/papers/${r.key}`];
 const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's note", note]] : []);
 /** Replies to an author's email reach the team's inbox. */
@@ -128,12 +130,12 @@ const EVENTS = {
   "kept-admins": { to: "admins", label: "Activation kept", heading: "An activation you paid for is kept for the next report", rows: keptRows },
   // To the report's author.
   kept: { to: "author", label: "Activation kept", heading: "The activation you paid for is kept for your next report", rows: keptRows },
-  approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink("Activate it to make its DOI live", r, origin)] },
+  approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink(activating(r), r, origin)] },
   released: {
     to: "author",
     label: "Ready to activate",
     heading: "Your report can be activated now",
-    rows: (r, origin) => [["What changed", "Reports no longer wait for a reviewer, and yours passed its checks."], publishLink("Activate it to make its DOI live", r, origin)],
+    rows: (r, origin) => [["What changed", "Reports no longer wait for a reviewer, and yours passed its checks."], publishLink(activating(r), r, origin)],
   },
   declined: { to: "author", label: "Declined", heading: "A reviewer declined your report", rows: (r, origin) => [...noteOf(r.note), publishLink("Your report and what its checks said", r, origin), QUESTIONS] },
   withdrawn: {
