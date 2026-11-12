@@ -206,7 +206,7 @@ void main(){
         // drawing the sky and moving the page at the same time makes the scrolling stutter. Nothing in the scene follows the
         // scroll there, so the two canvases move with the page as pictures do.
         let moving = false, settle = 0;
-        if (!pointer) addEventListener("scroll", () => { moving = true; clearTimeout(settle); settle = window.setTimeout(() => { moving = false; run(); }, 140); }, { passive: true });
+        if (!pointer) addEventListener("scroll", () => { moving = true; cancelAnimationFrame(frame); frame = 0; clearTimeout(settle); settle = window.setTimeout(() => { moving = false; run(); }, 140); }, { passive: true });
 
         // The scene keeps its own clock, which runs only while it draws, so it picks up where it stopped after a pause
         // (scrolling on a touch screen, the hero off screen, the tab hidden) with nothing jumping ahead.
