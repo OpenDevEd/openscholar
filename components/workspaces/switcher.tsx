@@ -9,7 +9,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
-import { Loader2, Share2, Users, X } from "@/components/icons";
+import { Loader2, Plus, Share2, Users, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -103,7 +103,7 @@ export function useAnswerInvitation() {
  * the rail, which is always there, so the list is in the card as it opens. `onSwitch` goes to a
  * workspace: the rail does it, so one picked here is the rail's while its pages load.
  */
-export function WorkspaceMenu({ all, shared, onSwitch }: { all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void }) {
+export function WorkspaceMenu({ all, shared, onSwitch, onCreate }: { all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const current = useCurrentWorkspace();
@@ -115,8 +115,8 @@ export function WorkspaceMenu({ all, shared, onSwitch }: { all: ReturnType<typeo
   // A list that is in the card as it opens is simply there; one read after opens its place.
   const [listed] = useState(others.length > 0);
   return (
-    // No wrapper: a part that opens is the card's own child, so nothing empty grows around it.
     <>
+      {/* The workspaces: the others to switch to, then making one. No wrapper around the list: a part that opens is the card's own child. */}
       {/* Its own presence, so the card closing doesn't fold the list as it goes. */}
       <AnimatePresence>
         {others.length ? (
@@ -175,6 +175,15 @@ export function WorkspaceMenu({ all, shared, onSwitch }: { all: ReturnType<typeo
           </Opening>
         ) : null}
       </AnimatePresence>
+      {/* The last row of the list, drawn as one of its rows: a new organization is one more workspace. With no list above it, the line that parts the group is its own. */}
+      <div className={cn("border-t pb-1 pt-1", others.length ? "border-transparent" : "border-border/60")}>
+        <button type="button" onClick={onCreate} className={cn(ROW, "h-11")}>
+          <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-foreground/20 text-muted-foreground">
+            <Plus className="size-4" />
+          </span>
+          <span className="text-[13px] font-medium">{t("newOrganization")}</span>
+        </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {(invitations?.page ?? []).map((invitation) => (

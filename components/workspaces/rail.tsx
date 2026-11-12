@@ -15,9 +15,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AiIcon,
-  BillingIcon,
   BookmarksIcon,
-  BuildingsIcon,
+  ChevronRight,
   EvidenceLibrariesIcon,
   ExploreIcon,
   ExtractionIcon,
@@ -29,7 +28,6 @@ import {
   LogOut,
   Monitor,
   Moon,
-  Plus,
   Search,
   SettingsIcon,
   Share2,
@@ -702,7 +700,9 @@ function AccountCard({
             <Link href={billing} onClick={onNavigate} className="block rounded-2xl bg-foreground/[0.04] px-3 py-2.5 transition-colors hover:bg-foreground/[0.07]">
               <span className="flex items-baseline gap-1.5">
                 <span className="text-xl font-semibold tabular-nums leading-none tracking-tight">{format.number(credits)}</span>
-                <span className="text-xs text-muted-foreground">{tb("credits")}</span>
+                <span className="flex-1 text-xs text-muted-foreground">{tb("credits")}</span>
+                {/* Says the block opens something: the plan and its credits. */}
+                <ChevronRight aria-hidden className="size-3.5 self-center text-muted-foreground" />
               </span>
               {/* Against the month's credits, on a plan that grants them each month. The bar is laid out at its
                   width and slides in from the track's start, which a right-to-left page mirrors. */}
@@ -726,26 +726,13 @@ function AccountCard({
           </Opening>
         ) : null}
       </AnimatePresence>
-      <WorkspaceMenu all={workspaces} shared={shared} onSwitch={onSwitch} />
-      <div className="mt-1 space-y-px border-t border-border/60 pt-1">
-        <button type="button" onClick={onCreate} className={MENU_ROW}>
-          <Plus className="size-4 text-muted-foreground" /> {t("newOrganization")}
-        </button>
-        {/* Your own workspace's settings are your account's. */}
-        {workspace?.kind === "organization" ? (
-          <MenuLink href={settingsHref(workspace)} icon={BuildingsIcon} onClick={onNavigate}>
-            {t("workspaceSettings")}
-          </MenuLink>
-        ) : null}
+      <WorkspaceMenu all={workspaces} shared={shared} onSwitch={onSwitch} onCreate={onCreate} />
+      <Preferences />
+      {/* One Settings: its page lists your account's and, in an organization, the organization's. The plan is the credits above. */}
+      <div className="space-y-px border-t border-border/60 pt-1">
         <MenuLink href="/settings" icon={SettingsIcon} onClick={onNavigate}>
           {tc("settings")}
         </MenuLink>
-        <MenuLink href={billing} icon={BillingIcon} onClick={onNavigate}>
-          {t("planAndCredits")}
-        </MenuLink>
-      </div>
-      <Preferences />
-      <div className="border-t border-border/60 pt-1">
         <button type="button" onClick={onSignOut} className={cn(MENU_ROW, "text-muted-foreground hover:text-foreground")}>
           <LogOut className="size-4" /> {t("signOut")}
         </button>
