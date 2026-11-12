@@ -45,6 +45,10 @@ describe("starting a report", () => {
 
 describe("how a report is paid for", () => {
   it("is chosen with its licence, stays with the report, and can change until it is live without moving the report", async () => {
+    // On fake timers: what these steps schedule (the PDF's reading, registering, emails) never runs. This file
+    // otherwise runs on real ones, where such work can fire after the file has ended and break the tests after it.
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
     const world = await setup();
     const key = await world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0", payWith: "card", voucher: { code: " HALFOFF ", off: 0.5 } });
     expect(await read(world.author, world.own, key)).toMatchObject({ payWith: "card", voucher: { code: "HALFOFF", off: 0.5 } });
@@ -65,6 +69,10 @@ describe("how a report is paid for", () => {
 
 describe("an author's own licence", () => {
   it("is kept by name and address, and only with a name the page added to a PDF can print", async () => {
+    // On fake timers: what these steps schedule (the PDF's reading, registering, emails) never runs. This file
+    // otherwise runs on real ones, where such work can fire after the file has ended and break the tests after it.
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
     const world = await setup();
     const own = (name: string) => world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: { name, url: "https://example.org/licence" } });
     // The byline carries the licence's name, and the added page writes the byline in Latin letters only.
@@ -77,6 +85,10 @@ describe("an author's own licence", () => {
 
 describe("a report's details sent under another licence", () => {
   it("are checked, kept and printed under the licence it was signed with", async () => {
+    // On fake timers: what these steps schedule (the PDF's reading, registering, emails) never runs. This file
+    // otherwise runs on real ones, where such work can fire after the file has ended and break the tests after it.
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
     const world = await setup();
     const report = await atDetails(world);
     await world.t.run((ctx) => ctx.db.patch("reports", report.reportId, { licence: "CC BY-NC 4.0" }));

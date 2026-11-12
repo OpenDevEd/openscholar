@@ -147,7 +147,7 @@ export function UpgradeConfirmationDialog({
                       {item.description}
                     </span>
                     {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
-                    <bdi className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
+                    <bdi dir="ltr" className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
                       {format.number(item.amountCents / 100, {
                         style: "currency",
                         currency: item.currency,
@@ -162,7 +162,7 @@ export function UpgradeConfirmationDialog({
               <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
                 {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
               </span>
-              <bdi data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</bdi>
+              <bdi dir="ltr" data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</bdi>
             </div>
           </div>
           </AutoHeight>

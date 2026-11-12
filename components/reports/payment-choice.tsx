@@ -57,7 +57,7 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
         // At large text a label wider than the phone wraps inside its segment instead of running off the screen.
         className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
         options={[
-          { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi className="tabular-nums">{money(balance.balance)}</bdi> },
+          { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
           { id: "card", label: t("card"), icon: CreditCard },
         ]}
       />
@@ -92,7 +92,7 @@ export function Bill({ licence, price, balance, payWith, code, credit = 0, actio
       </AutoHeight>
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
         <span className="font-medium">{t(now || action ? "dueNow" : "due")}</span>
-        <bdi className="text-lg/6 font-semibold">
+        <bdi dir="ltr" className="text-lg/6 font-semibold">
           <RollingMoney value={Math.round((sum.due - fromCredit) * 100) / 100} />
         </bdi>
       </div>
@@ -157,9 +157,10 @@ function Line({ label, amount, off = false }: { label: string; amount: string; o
   return (
     <div className="flex items-center justify-between gap-3">
       <dt className="min-w-0 truncate text-muted-foreground">{label}</dt>
-      {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
+      {/* Isolated and left to right, so a right-to-left page keeps an amount, its sign and its currency in their own
+          order: Arabic's own format, left to the page's direction, splits "US$" around the number. */}
       <dd className={cn("shrink-0 tabular-nums", off && "ink-success")}>
-        <bdi>{amount}</bdi>
+        <bdi dir="ltr">{amount}</bdi>
       </dd>
     </div>
   );

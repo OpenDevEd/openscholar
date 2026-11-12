@@ -94,6 +94,8 @@ export function Segmented<T extends string>({
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
+    // A row that wraps moves a segment without resizing it: the row's own size says when.
+    if (el.parentElement) observer.observe(el.parentElement);
     return () => observer.disconnect();
   }, [value]);
   return (
