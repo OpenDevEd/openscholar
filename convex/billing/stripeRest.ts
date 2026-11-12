@@ -1,6 +1,6 @@
 // What OpenScholar asks Stripe itself, outside Autumn, as plain requests so no caller loads Stripe's library: voiding
 // a declined charge's invoice, reading the credit on a customer's balance, and for a report's activation, the bank's
-// page that comes back to the report, and how its invoice stands.
+// page that comes back to the report, how its invoice stands, and how its Checkout session does.
 
 type Stripe = Record<string, unknown>;
 
@@ -48,22 +48,24 @@ export async function stripeCredit(customer: string): Promise<number | undefined
   }
 }
 
+/** The id of a Stripe Checkout session, from its page's address; null when the address isn't one. */
+export const checkoutId = (url: string | null | undefined) => url?.match(/\/(cs_(?:test|live)_[A-Za-z0-9]+)/)?.[1] ?? null;
+
 /**
- * Makes the card saved on Stripe's page for saving a card (Checkout `session`) the one the customer is charged. Autumn
- * makes such a card the default only when there was none, so a card saved to replace another would never be charged.
- * Only a session of this customer's counts, and only for the card saved last: the way back from an older session,
- * opened again, never brings back a card since replaced. A failure is logged and leaves the cards as they were.
+ * How a Checkout session stands: paid, with the invoice Stripe made for it (none for a moment after the payment),
+ * still open, or shut with nothing paid. Throws when Stripe can't be read.
  */
-export async function defaultToSavedCard(customer: string, session: string) {
-  try {
-    const [read, cards] = await Promise.all([stripe(`checkout/sessions/${encodeURIComponent(session)}?expand[]=setup_intent`), stripe(`customers/${encodeURIComponent(customer)}/payment_methods?type=card&limit=1`)]);
-    const intent = read.setup_intent as { status?: string; payment_method?: string | null } | null;
-    const newest = (cards.data as Array<{ id: string }> | undefined)?.[0]?.id;
-    if (read.customer !== customer || read.mode !== "setup" || intent?.status !== "succeeded" || !intent.payment_method || intent.payment_method !== newest) return;
-    await stripe(`customers/${encodeURIComponent(customer)}`, { form: { "invoice_settings[default_payment_method]": intent.payment_method } });
-  } catch (error) {
-    console.error(JSON.stringify({ event: "saved-card-not-default", customer, session, error: String(error).slice(0, 400) }));
-  }
+export async function checkoutOf(session: string): Promise<{ status: "paid"; invoice: string | null } | { status: "open" } | { status: "expired" }> {
+  const read = await stripe(`checkout/sessions/${encodeURIComponent(session)}`);
+  if (read.status === "expired") return { status: "expired" };
+  // Complete and unpaid is a payment still on its way (a bank debit): it waits like an open one.
+  if (read.status !== "complete" || read.payment_status === "unpaid") return { status: "open" };
+  return { status: "paid", invoice: typeof read.invoice === "string" ? read.invoice : null };
+}
+
+/** Shuts an open Checkout session, so it can't be paid any more. Throws when it isn't open, or Stripe can't be reached. */
+export async function expireCheckout(session: string) {
+  await stripe(`checkout/sessions/${encodeURIComponent(session)}/expire`, { method: "POST" });
 }
 
 /** An invoice with the payment Stripe tried for it: amounts in cents. */

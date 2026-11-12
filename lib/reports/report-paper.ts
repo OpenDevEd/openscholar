@@ -2,7 +2,7 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { catalogAncestors } from "@/lib/topics/search";
-import { isAuthor, type Metadata } from "./report";
+import { LICENCES, isAuthor, type Metadata } from "./report";
 import type { Series } from "./settings";
 
 type Topic = Metadata["topics"][number];
@@ -22,7 +22,8 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     landing_page_url: `https://doi.org/${report.doi}`,
     // Its own lasting address, which leads to the file while the report is live (app/papers/[id]/report.pdf).
     pdf_url: report.pdfUrl ? `/papers/${report.key}/report.pdf` : null,
-    license: "cc-by-4.0",
+    // As OpenAlex writes a licence: the author's own has no such code, and the report's page names it (`extra.licence`).
+    license: typeof m.licence === "string" ? LICENCES[m.licence].zenodo : null,
     source: { id: null, display_name: series.name, type: "repository", issn_l: series.issn || null, host_organization_name: "Openscholar" },
   };
   const year = Number(m.date.slice(0, 4));

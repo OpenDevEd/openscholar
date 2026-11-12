@@ -151,9 +151,9 @@ describe("changes to a live report", () => {
     const world = await setup();
     const report = await live(world);
     const signed = (await row(world.t, report.key)).byline;
-    expect(signed).toBe(`Published in Openscholar Reports (ISSN {pending}), https://doi.org/${(await row(world.t, report.key)).doi}`);
+    expect(signed).toBe(`Published in Openscholar Reports (ISSN {pending}), https://doi.org/${(await row(world.t, report.key)).doi}, under CC BY 4.0`);
     // Since then the series got its ISSN and a new wording, and a check was dropped.
-    await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630", byline: "An Openscholar Report, ISSN {issn}: {doi}" } });
+    await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630", byline: "An Openscholar Report, ISSN {issn}: {doi} ({licence})" } });
     await world.reviewer.mutation(api.reports.settings.removeCheck, { id: "harm" });
     const started = await change(world, report.key, "A corrected title");
     if ("unchanged" in started) throw new Error("the changes were taken for none");
@@ -163,7 +163,7 @@ describe("changes to a live report", () => {
     // A report signed now carries the new line, and its first checks are today's.
     // In the organisation's workspace: the author's own has started its one report today.
     const next = await atDetails(world, world.author, world.lab);
-    expect((await row(world.t, next.key)).byline).toBe(`An Openscholar Report, ISSN 2049-3630: https://doi.org/${(await row(world.t, next.key)).doi}`);
+    expect((await row(world.t, next.key)).byline).toBe(`An Openscholar Report, ISSN 2049-3630: https://doi.org/${(await row(world.t, next.key)).doi} (CC BY 4.0)`);
     const first = await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.lab, key: next.key, metadata: details(), runId: "run-next", from: { pdfAt: next.pdfAt } });
     if ("unchanged" in first) throw new Error("a first run is never unchanged");
     expect(first.checks.map((check) => check.id)).not.toContain("harm");

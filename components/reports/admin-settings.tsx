@@ -26,7 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2 } from "@/components/icons";
-import { ACTIVATION_PLAN } from "@/lib/billing/plans";
+import { DEFAULT_LICENCE, isPrice, type Prices } from "@/lib/reports/report";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -80,19 +80,16 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
 
 export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
-  // What an activation costs is the activation plan's price in Autumn, as the synced catalog has it.
-  const catalog = useQuery(api.billing.catalog.get, {});
   const links = useQuery(api.admins.queries.links, {});
-  if (!settings || catalog === undefined || links === undefined) return <Enter ready={false}>{null}</Enter>;
-  const price = catalog?.plans.find((plan) => plan.id === ACTIVATION_PLAN)?.price?.amount ?? null;
+  if (!settings || links === undefined) return <Enter ready={false}>{null}</Enter>;
   return (
     <Enter ready>
-      <SettingsView settings={settings} price={price} autumn={links.autumn ?? null} />
+      <SettingsView settings={settings} autumn={links.autumn ?? null} />
     </Enter>
   );
 }
 
-function SettingsView({ settings, price, autumn }: { settings: Settings; /** An activation's price in US dollars; null while Autumn sells none. */ price: number | null; /** Autumn's dashboard. */ autumn: string | null }) {
+function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's dashboard. */ autumn: string | null }) {
   const [nav, setNav] = useQueryStates(NAV);
   const t = useTranslations("publishReports.settings");
   const format = useFormatter();
@@ -126,6 +123,7 @@ function SettingsView({ settings, price, autumn }: { settings: Settings; /** An 
     name !== undefined && !name.trim() ? t("enterSeriesName")
     : byline !== undefined && !byline.trim() ? t("enterByline")
     : byline !== undefined && !byline.includes("{doi}") ? t("bylineNeedsDoi", { doi: "{doi}" })
+    : byline !== undefined && !byline.includes("{licence}") ? t("bylineNeedsLicence", { licence: "{licence}" })
     : issn?.trim() && !isIssn(issn.trim().toUpperCase()) ? t("notIssn")
     : null;
   const series = (part: Partial<Settings["series"]>, saved: string) => {
@@ -164,7 +162,7 @@ function SettingsView({ settings, price, autumn }: { settings: Settings; /** An 
         </ul>
       </Zone>
 
-      <Activations price={price} autumn={autumn} />
+      <PriceSettings prices={settings.prices} autumn={autumn} />
 
       <Zone label={t("series")}>
         <ul className={LIST}>
@@ -174,11 +172,11 @@ function SettingsView({ settings, price, autumn }: { settings: Settings; /** An 
           <Row label={t("issn")} hint={t("issnHint", { pending: "{pending}" })}>
             <SavedInput value={settings.series.issn} placeholder={t("issnPending")} onSave={(issn) => series({ issn }, t("issnSaved"))} className="w-40 font-mono" ariaLabel={t("issn")} />
           </Row>
-          <Row label={t("byline")} hint={t("bylineHint", { series: "{series}", issn: "{issn}", doi: "{doi}" })} wide>
+          <Row label={t("byline")} hint={t("bylineHint", { series: "{series}", issn: "{issn}", doi: "{doi}", licence: "{licence}" })} wide>
             <SavedInput value={settings.series.byline} onSave={(byline) => series({ byline }, t("bylineSaved"))} className="w-full" ariaLabel={t("byline")} />
             <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-muted-foreground">
               <FileText className="mt-px size-3.5 shrink-0" />
-              <span className="min-w-0 break-words">{bylineOf(settings.series, sampleDoi ?? "…")}</span>
+              <span className="min-w-0 break-words">{bylineOf(settings.series, sampleDoi ?? "…", DEFAULT_LICENCE)}</span>
             </p>
           </Row>
         </ul>
@@ -271,25 +269,29 @@ function SettingsView({ settings, price, autumn }: { settings: Settings; /** An 
   );
 }
 
-/** What buying an activation costs, and where activations are given: the price and each workspace's balance are Autumn's. */
-function Activations({ price, autumn }: { price: number | null; autumn: string | null }) {
+/**
+ * What publishing a report costs, by its licence, and where the balances that pay it are given: the two prices are
+ * saved here, and each workspace's publication balance is Autumn's.
+ */
+function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string | null }) {
   const t = useTranslations("publishReports.settings");
-  const format = useFormatter();
-  const cost = price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 });
+  const update = useMutation(api.reports.settings.update);
+  // A price is whole dollars, as the balance that pays it is bought: anything else is refused, and the box shows what is saved.
+  const save = (which: keyof Prices) => (typed: string) => {
+    const dollars = Number(typed.replace(/^\$/, ""));
+    return isPrice(dollars) ? update({ prices: { [which]: dollars } }).then(() => true, () => false) : Promise.resolve(false);
+  };
   return (
-    <Zone label={t("activations")}>
+    <Zone label={t("prices")}>
       <ul className={LIST}>
-        <Row label={t("price")} hint={t(price === null ? "priceHintNone" : "priceHint")}>
-          {autumn ? (
-            <Button variant="outline" size="sm" asChild>
-              <a href={autumn} target="_blank" rel="noopener noreferrer">
-                {cost} <ArrowUpRight />
-              </a>
-            </Button>
-          ) : (
-            <span className="text-sm font-medium tabular-nums">{cost}</span>
-          )}
-        </Row>
+        {(["standard", "other"] as const).map((which) => (
+          <Row key={which} label={t(which === "standard" ? "priceOne" : "priceThree")} hint={t(which === "standard" ? "priceHint" : "priceThreeHint")}>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="text-sm text-muted-foreground">$</span>
+              <SavedInput value={String(now[which])} onSave={save(which)} ariaLabel={t(which === "standard" ? "priceOne" : "priceThree")} className="w-20 text-end tabular-nums" />
+            </span>
+          </Row>
+        ))}
         <Row label={t("balances")} hint={t("balancesHint")}>
           {autumn ? (
             <Button variant="outline" size="sm" asChild>
@@ -509,7 +511,7 @@ function AgreementDialog({ open, agreement, series, onClose }: { open: boolean; 
           {preview ? (
             <div className="h-full overflow-y-auto rounded-xl border border-border-subtle px-5 py-4">
               {/* Filled the way the sign step fills it, with the admin as the signer. */}
-              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "…") })} />
+              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "…", DEFAULT_LICENCE), licence: DEFAULT_LICENCE })} />
             </div>
           ) : (
             <Textarea value={text} maxLength={AGREEMENT_MAX} aria-label={t("agreementLabel")} onChange={(e) => setText(e.target.value)} className="h-full resize-none font-mono text-xs/5" />

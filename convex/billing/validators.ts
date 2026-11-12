@@ -9,6 +9,17 @@ export const planLimitsValidator = v.object({ collections: limitValue, concurren
 /** How often a balance refills (lib/billing/plans.ts REFILL_INTERVALS). */
 export const refillValidator = v.union(...REFILL_INTERVALS.map((interval) => v.literal(interval)));
 
+/**
+ * One part of a workspace's publication balance, in US dollars: what refills by `interval`, back to `refillsTo` on
+ * `resetsAt` (`size` once every grant of it has refilled), or with `once` what stays until used (given once, or
+ * bought). `left` is what remains of it now.
+ */
+export const balancePartValidator = v.object({ interval: v.union(refillValidator, v.literal("once")), left: v.number(), size: v.number(), resetsAt: v.optional(v.number()), refillsTo: v.optional(v.number()) });
+export type BalancePart = Infer<typeof balancePartValidator>;
+/** At most one part of each kind: every interval, and `once`. */
+export const PUBLICATION_PARTS_MAX = REFILL_INTERVALS.length + 1;
+export const balancePartsValidator = capped(v.array(balancePartValidator), PUBLICATION_PARTS_MAX);
+
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
   plan: v.optional(v.string()),
@@ -32,10 +43,13 @@ export const billingAccountSnapshotValidator = v.object({
   limits: v.optional(planLimitsValidator),
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
-  /** Report activations left in the customer's balance (#1261); null for unlimited. Absent on a snapshot cached before the balance existed. */
-  activations: v.optional(v.union(v.number(), v.null())),
-  /** The shortest interval any of those activations refill by; absent when none refills. */
-  activationsRefill: v.optional(refillValidator),
+  /**
+   * The customer's publication balance by part, refilling ones first, shortest interval first, as Autumn spends them;
+   * absent with nothing in it. Wrapped whole, as `v.optional` copies the validator it's given.
+   */
+  publication: capped(v.optional(v.array(balancePartValidator)), PUBLICATION_PARTS_MAX),
+  /** The publication balance has no limit: every report is paid from it. */
+  publicationUnlimited: v.optional(v.boolean()),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
   credit: v.optional(v.number()),
@@ -52,6 +66,9 @@ export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidato
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
+  // From before the publication balance, when a report's activation was counted: cleared by migrations/publicationBalance, then dropped.
+  activations: v.optional(v.union(v.number(), v.null())),
+  activationsRefill: v.optional(refillValidator),
   /** The workspace whose Autumn customer it caches (#650). */
   workspaceId: v.id("workspaces"),
   /** When it was first seen paying, so a return after cancelling isn't a first payment again. */

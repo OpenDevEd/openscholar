@@ -34,7 +34,7 @@ import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { DAYS_TO_PAY } from "@/lib/billing/plans";
-import { ActivationsRow } from "@/components/billing/activations-row";
+import { PublicationBalanceRow } from "@/components/billing/publication-balance-row";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -191,7 +191,7 @@ export default function BillingPage() {
                   </div>
                 </div>
               ) : null}
-              {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
+              {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} /> : null}
             </div>
             {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>

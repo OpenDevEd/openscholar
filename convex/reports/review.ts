@@ -10,7 +10,7 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, isAuthor, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, isAuthor, licenceOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { becameReady, notify } from "./mail";
@@ -263,7 +263,7 @@ export const editDetails = mutation({
     // is never overwritten by it.
     if (report.run) throw createError("CONFLICT", "This report's checks are running on a change right now. Try again in a moment.");
     if (report.updatedAt !== seenAt) throw createError("CONFLICT", "This report changed since you opened it. Open it again to edit it as it stands.");
-    const kept = checkedDetails(metadata);
+    const kept = checkedDetails(metadata, licenceOf(report));
     if (JSON.stringify(details.metadata) === JSON.stringify(kept)) throw createError("VALIDATION_ERROR", "Nothing was changed.");
     const changed = changesOf(details.metadata, kept).map((change) => change.label).join(", ");
     if (report.status === "live") await applyChanges(ctx, report, details, { metadata: kept, results: details.results ?? [], checksVersion: report.checksVersion ?? (await reportSettings(ctx)).checksVersion });

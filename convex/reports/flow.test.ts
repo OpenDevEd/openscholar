@@ -25,8 +25,8 @@ describe("starting a report", () => {
 
   it("is refused while publishing is off, for an agreement that changed, and without a name", async () => {
     const world = await setup();
-    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada", onBehalfOfAll: false, version: 7 })).rejects.toMatchObject(refused("CONFLICT"));
-    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "   ", onBehalfOfAll: false, version: 1 })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada", onBehalfOfAll: false, version: 7, licence: "CC BY 4.0" })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "   ", onBehalfOfAll: false, version: 1, licence: "CC BY 4.0" })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await world.t.run(async (ctx) => ctx.db.patch("reportSettings", (await ctx.db.query("reportSettings").first())!._id, { enabled: false }));
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FEATURE_DISABLED"));
     // Nothing a refused signing asked for was kept or counted.
@@ -40,6 +40,52 @@ describe("starting a report", () => {
     await world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key });
     expect(await world.author.query(api.reports.flow.get, { workspaceId: world.own, key })).toBeNull();
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FORBIDDEN"));
+  });
+});
+
+describe("how a report is paid for", () => {
+  it("is chosen with its licence, stays with the report, and can change until it is live without moving the report", async () => {
+    const world = await setup();
+    const key = await world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0", payWith: "card", voucher: { code: " HALFOFF ", off: 0.5 } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ payWith: "card", voucher: { code: "HALFOFF", off: 0.5 } });
+    // A form opened on the report tells it from a changed one by when it last changed: choosing leaves that alone.
+    const { updatedAt } = await row(world.t, key);
+    await world.author.mutation(api.reports.flow.choosePayment, { workspaceId: world.own, key, payWith: "balance", voucher: null });
+    const chosen = await read(world.author, world.own, key);
+    expect(chosen).toMatchObject({ payWith: "balance" });
+    expect(chosen.voucher).toBeUndefined();
+    expect((await row(world.t, key)).updatedAt).toBe(updatedAt);
+    // Someone outside the workspace changes nothing, and neither does anyone once it is live.
+    await expect(world.stranger.mutation(api.reports.flow.choosePayment, { workspaceId: world.own, key, payWith: "card" })).rejects.toThrow();
+    const live = await checked(world, [passed("byline")], world.orgAdmin, world.lab);
+    await activate(world, live.key, { as: "orgadmin", workspaceId: world.lab });
+    await expect(world.orgAdmin.mutation(api.reports.flow.choosePayment, { workspaceId: world.lab, key: live.key, payWith: "card" })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+});
+
+describe("an author's own licence", () => {
+  it("is kept by name and address, and only with a name the page added to a PDF can print", async () => {
+    const world = await setup();
+    const own = (name: string) => world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: { name, url: "https://example.org/licence" } });
+    // The byline carries the licence's name, and the added page writes the byline in Latin letters only.
+    await expect(own("许可证")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    const key = await own("Licence Ouverte – Etalab 2.0");
+    expect(await read(world.author, world.own, key)).toMatchObject({ licence: { name: "Licence Ouverte – Etalab 2.0", url: "https://example.org/licence" } });
+    expect((await row(world.t, key)).byline).toContain("Licence Ouverte – Etalab 2.0");
+  });
+});
+
+describe("a report's details sent under another licence", () => {
+  it("are checked, kept and printed under the licence it was signed with", async () => {
+    const world = await setup();
+    const report = await atDetails(world);
+    await world.t.run((ctx) => ctx.db.patch("reports", report.reportId, { licence: "CC BY-NC 4.0" }));
+    // A form that says CC BY, as a changed or older page could send: the signed licence is the report's.
+    const started = await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key: report.key, metadata: { ...details(), licence: "CC BY 4.0" }, runId: "run-licence", from: { pdfAt: report.pdfAt } });
+    // What the run hands on is what the page added to the PDF is written with.
+    expect(started).toMatchObject({ licence: "CC BY-NC 4.0" });
+    const kept = await world.t.run(async (ctx) => (await ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", report.reportId)).unique())!.metadata);
+    expect(kept?.licence).toBe("CC BY-NC 4.0");
   });
 });
 

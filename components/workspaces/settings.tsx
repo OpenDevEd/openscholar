@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ActivationsRow } from "@/components/billing/activations-row";
+import { PublicationBalanceRow } from "@/components/billing/publication-balance-row";
 import { SeatStepper } from "@/components/billing/seat-stepper";
 import { PaymentReceived, TopUpBundles, useTopUps } from "@/components/billing/top-up-bundles";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
@@ -784,7 +784,7 @@ export function WorkspaceBilling() {
                 </div>
               </div>
             ) : null}
-            {publishing ? <ActivationsRow left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
+            {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} /> : null}
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">

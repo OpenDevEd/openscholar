@@ -236,3 +236,4 @@ export const ChevronLeft = mirrored(AltArrowLeftBase);
 export const ChevronLeftIcon = ChevronLeft;
 export const ArrowRight = mirrored(ArrowRightBase);
 export const ArrowLeft = mirrored(ArrowLeftBase);
+export { WalletIcon as Wallet } from "@solar-icons/react/bold-duotone/wallet";

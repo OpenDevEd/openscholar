@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "@cantoo/pdf-lib";
-import { LICENCE_URL, dateMoment, dateStyleOf, isAuthor, type Metadata } from "./report";
+import { dateMoment, licenceName, licenceUrl, dateStyleOf, isAuthor, type Metadata } from "./report";
 
 /** What the page Openscholar adds to a report's PDF says. Everything but the byline is left out when it isn't known yet. */
 export type BylinePage = {
@@ -94,7 +94,7 @@ export async function withBylinePage(pdf: Uint8Array, { line, series, details }:
     ...row(details?.subtitle, plain, 11, 4),
     ...row(names, plain, 11, 10),
     ...row(when, plain, 10, 4, MUTED),
-    ...(details ? row(`${details.licence}, ${LICENCE_URL[details.licence]}`, plain, 10, 18, MUTED) : []),
+    ...(details ? row(`${licenceName(details.licence)}, ${licenceUrl(details.licence)}`, plain, 10, 18, MUTED) : []),
     ...row(`Published by ${PUBLISHER}`, plain, 10, 4, MUTED),
     ...row(line, plain, 11, 22),
   ].map((r) => ({ ...r, lines: wrap(r.text, r.font, r.size, room) }));
