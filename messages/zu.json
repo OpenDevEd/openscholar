@@ -6784,14 +6784,13 @@
         "chooseFirst": "Khetha kuqala ukuthi ubani owengeza umugqa",
         "failed": "Asikwazanga ukwengeza ikhasi ku-{name}. Zengezele umugqa bese ulayisha i-PDF futhi.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "I-{name} ingaphezu kuka-{max} MB, okukhulu kakhulu ukuthi singengeza ikhasi kuyo. Zifakele umugqa, noma ulayishe i-PDF encane.",
         "self": {
           "title": "Ngizowengeza mina",
           "body": "Beka umugqa, igama ngegama, ekhasini langaphandle noma elingaphakathi le-PDF yakho ngaphambi kokuyilayisha."
         },
         "added": {
           "title": "Ngengezeleni wona",
-          "body": "Sengeza ikhasi lokugcina elinalo mugqa nemininingwane yombiko wakho. Kuma-PDF afika ku-{max} MB."
+          "body": "Sengeza ikhasi lokugcina elinalo mugqa nemininingwane yombiko wakho."
         }
       },
       "overview": {

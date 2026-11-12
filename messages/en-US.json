@@ -6784,14 +6784,13 @@
         "chooseFirst": "Choose who adds the line first",
         "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
         "addFailed": "The page couldn't be added.",
-        "tooBigToAdd": "{name} is over {max} MB, which is too large for us to add a page to. Put the line on it yourself, or upload a smaller PDF.",
         "self": {
           "title": "I'll add it myself",
           "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
         },
         "added": {
           "title": "Add it for me",
-          "body": "We add a last page with this line and your report's details. For PDFs up to {max} MB."
+          "body": "We add a last page with this line and your report's details."
         }
       },
       "overview": {

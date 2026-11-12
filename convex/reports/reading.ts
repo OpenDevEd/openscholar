@@ -9,7 +9,8 @@ import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
-import { BYLINE_PAGE_MAX_BYTES, blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
+import { blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
+import { storedBytes } from "./pdfBytes";
 import { FILE_LIMIT, readDetails } from "./reader";
 
 /** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them,
@@ -36,11 +37,7 @@ function capped(metadata: Metadata): Metadata {
   };
 }
 
-/**
- * The code that adds Openscholar's page, loaded only by a reading that needs it. It brings a PDF library with it, and
- * a reading of a PDF near the upload limit has no memory to spare: on 2026-11-11 a 99 MB PDF that dev read ran out of
- * the action's 512 MB with that library loaded beside it.
- */
+/** The code that adds Openscholar's page, loaded only by a reading that needs it: it brings a PDF library with it. */
 const bylinePage = () => import("../../lib/reports/byline-page");
 
 export const read = internalAction({
@@ -49,14 +46,15 @@ export const read = internalAction({
   handler: async (ctx, { reportId, at }) => {
     const job = await ctx.runQuery(internal.reports.readingState.begin, { reportId, at });
     if (!job) return null;
-    const blob = await ctx.storage.get(job.file);
-    if (!blob) return null;
-    // The file is held once more than the blob only while something reads it. pdf.js takes over the buffer it is
-    // given, so it gets its own; the reader of a small PDF and the page that is added each ask for the bytes when
-    // they need them. Held three times over, as it was, a PDF near the upload limit left a 512 MB action no room.
-    const bytes = async () => new Uint8Array(await blob.arrayBuffer());
-    const opened = await extractPdfJsTextPages(await blob.arrayBuffer()).catch((error: unknown) => {
-      console.error(JSON.stringify({ event: "report-pdf-unopened", reportId, name: job.name, bytes: blob.size, error: String(error).slice(0, 300) }));
+    // The PDF is held once at a time. pdf.js takes the buffer it is given for its own, so whatever needs the bytes
+    // after it (the reader of a small PDF, the page that is added) reads them again from storage. Held five times
+    // over, as it was, a 100 MB PDF took 563 MB beside the action's own (measured 2026-11-12), past Convex cloud's 512.
+    const handed = (await storedBytes(ctx, job.file).catch(() => null))?.buffer as ArrayBuffer | undefined;
+    if (!handed) return null;
+    const size = handed.byteLength;
+    const bytes = () => storedBytes(ctx, job.file);
+    const opened = await extractPdfJsTextPages(handed).catch((error: unknown) => {
+      console.error(JSON.stringify({ event: "report-pdf-unopened", reportId, name: job.name, bytes: size, error: String(error).slice(0, 300) }));
       return null;
     });
     if (!opened) {
@@ -77,7 +75,7 @@ export const read = internalAction({
         const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
         // The page Openscholar added says details read before: the reader is given the report's own pages.
         // A PDF too large to send is read from its text, so its bytes are never asked for.
-        const own = job.stamped ? await (await bylinePage()).withoutLastPage(await bytes()) : blob.size > FILE_LIMIT && !scanned ? null : await bytes();
+        const own = job.stamped ? await (await bylinePage()).withoutLastPage(await bytes()) : size > FILE_LIMIT && !scanned ? null : await bytes();
         const found = capped(await readDetails({ pdf: own, text: read, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
         // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
         if (!found.title.trim() && !found.abstract.trim()) throw new Error("The reading found no title and no abstract.");
@@ -92,12 +90,11 @@ export const read = internalAction({
       if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     }
     // An author who has Openscholar add the byline gets it on a last page, with the report's details as they stand,
-    // unless the PDF carries the line already. A page that can't be added, or a PDF too large to add one to, leaves
-    // the PDF as it was, without the line, which the upload then says.
+    // unless the PDF carries the line already. A page that can't be added leaves the PDF as it was, without the line, which the upload then says.
     let text = job.stamped ? `${read}\n${job.line}` : read;
     let pages = opened.totalPages;
     let withByline: { file: Id<"_storage">; bytes: number } | undefined;
-    if (job.added && !carries(text, job.line) && blob.size <= BYLINE_PAGE_MAX_BYTES) {
+    if (job.added && !carries(text, job.line)) {
       try {
         // Details a reading couldn't find are a file name and today's date: the page waits for the author's own.
         const known = job.held ?? metadata ?? undefined;
@@ -106,7 +103,7 @@ export const read = internalAction({
         text = `${text}\n${job.line}`;
         pages += 1;
       } catch (error) {
-        console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, name: job.name, bytes: blob.size, error: String(error).slice(0, 300) }));
+        console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, name: job.name, bytes: size, error: String(error).slice(0, 300) }));
       }
     }
     const textFile = await ctx.storage.store(new Blob([text], { type: "text/plain" }));

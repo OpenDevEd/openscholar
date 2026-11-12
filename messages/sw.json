@@ -6785,14 +6785,13 @@
         "chooseFirst": "Chagua kwanza nani anaongeza mstari",
         "failed": "Hatukuweza kuongeza ukurasa kwenye {name}. Ongeza mstari mwenyewe na upakie PDF tena.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} inazidi MB {max}, ni kubwa mno kwetu kuiongezea ukurasa. Weka mstari mwenyewe, au pakia PDF ndogo zaidi.",
         "self": {
           "title": "Nitauongeza mwenyewe",
           "body": "Weka mstari, neno kwa neno, kwenye jalada au jalada la ndani la PDF yako kabla ya kuipakia."
         },
         "added": {
           "title": "Niongezeeni",
-          "body": "Tunaongeza ukurasa wa mwisho wenye mstari huu na maelezo ya ripoti yako. Kwa PDF hadi MB {max}."
+          "body": "Tunaongeza ukurasa wa mwisho wenye mstari huu na maelezo ya ripoti yako."
         }
       },
       "overview": {

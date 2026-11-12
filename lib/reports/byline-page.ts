@@ -51,9 +51,10 @@ export async function withoutLastPage(pdf: Uint8Array): Promise<Uint8Array> {
  * Throws for a PDF pdf-lib can't open. The byline is always written; a title or a name Helvetica can't write
  * (anything outside Latin script) is left out.
  */
-// ponytail: pdf-lib holds the whole PDF in memory to add one page, so callers keep to BYLINE_PAGE_MAX_BYTES
-// (lib/reports/report.ts). Write the page as an incremental update to the file to lift that. Embed a Unicode font
-// when reports in other scripts need their title on this page.
+// ponytail: pdf-lib parses the whole PDF and writes it again to add one page, about twice the file in memory (a
+// 100 MB PDF fits Convex cloud's 512 MB, measured 2026-11-12). Append the page as an incremental update without
+// parsing the file if larger uploads are allowed. Embed a Unicode font when reports in other scripts need their
+// title on this page.
 export async function withBylinePage(pdf: Uint8Array, { line, series, details }: BylinePage, { replaceLast = false } = {}): Promise<Uint8Array> {
   const doc = await PDFDocument.load(pdf, { updateMetadata: false });
   if (replaceLast && doc.getPageCount() > 1) doc.removePage(doc.getPageCount() - 1);

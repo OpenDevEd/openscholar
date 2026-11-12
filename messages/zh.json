@@ -6784,14 +6784,13 @@
         "chooseFirst": "请先选择由谁添加署名",
         "failed": "我们无法在 {name} 中添加该页。请自行添加署名并重新上传 PDF。",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} 超过 {max} MB，太大了，我们无法为它添加页面。请自行加入署名，或上传较小的 PDF。",
         "self": {
           "title": "我自己添加",
           "body": "上传前，请将这行署名原样放在 PDF 的封面或封二上。"
         },
         "added": {
           "title": "请替我添加",
-          "body": "我们会添加最后一页，写上这行署名和您报告的详情。适用于不超过 {max} MB 的 PDF。"
+          "body": "我们会添加最后一页，写上这行署名和您报告的详情。"
         }
       },
       "overview": {

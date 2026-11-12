@@ -6784,14 +6784,13 @@
         "chooseFirst": "Choisissez d’abord qui ajoute la mention",
         "failed": "Nous n’avons pas pu ajouter la page à {name}. Ajoutez la mention vous-même et téléversez de nouveau le PDF.",
         "addFailed": "The page couldn't be added. Try again.",
-        "tooBigToAdd": "{name} dépasse {max} Mo, ce qui est trop volumineux pour que nous y ajoutions une page. Mettez-y la mention vous-même, ou téléversez un PDF plus léger.",
         "self": {
           "title": "Je l’ajoute moi-même",
           "body": "Placez la mention, mot pour mot, sur la couverture ou la deuxième de couverture de votre PDF avant de le téléverser."
         },
         "added": {
           "title": "Ajoutez-la pour moi",
-          "body": "Nous ajoutons une dernière page avec cette mention et les informations de votre rapport. Pour les PDF jusqu’à {max} Mo."
+          "body": "Nous ajoutons une dernière page avec cette mention et les informations de votre rapport."
         }
       },
       "overview": {

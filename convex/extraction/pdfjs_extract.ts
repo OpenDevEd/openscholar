@@ -6,6 +6,7 @@ type PdfJsModule = {
         getTextContent: (options: Record<string, unknown>) => Promise<{
           items: Array<{ str?: string; hasEOL?: boolean }>;
         }>;
+        cleanup: () => boolean;
       }>;
       destroy?: () => Promise<void> | void;
     }>;
@@ -70,6 +71,8 @@ export async function extractPdfJsTextPages(
         text: pageText,
         items: pageTextItems,
       });
+      // What pdf.js kept to draw the page goes once its text is out, so a long PDF doesn't hold every page's at once.
+      page.cleanup();
     }
   } finally {
     await pdf.destroy?.();
