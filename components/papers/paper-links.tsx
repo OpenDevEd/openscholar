@@ -71,7 +71,16 @@ export function usePaperShare(paper: Paper | undefined, href?: string): (() => P
       await navigator.clipboard.writeText(url);
       toast.success(t("linkCopied"));
     } catch {
-      toast.error(tTopics("copyFailed"), { description: tToast("copyFailedDescription") });
+      // It says to select the link and copy it: the link is here to select, and stays long enough to.
+      toast.error(tTopics("copyFailed"), {
+        description: (
+          <>
+            {tToast("copyFailedDescription")}
+            <span className="mt-1 block select-all break-all font-mono text-xs">{url}</span>
+          </>
+        ),
+        duration: 20_000,
+      });
     }
   };
 }
