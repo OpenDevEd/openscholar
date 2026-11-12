@@ -155,6 +155,8 @@ export const reportFields = {
   /** The licence its author chose when signing, which the agreement and byline name: it never changes after. A report
    * signed before authors chose has none, and is CC BY 4.0 (`licenceOf`). */
   licence: v.optional(licenceValidator),
+  /** The promotion code its author applied when choosing the licence, offered again when it is activated. */
+  voucher: v.optional(v.string()),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */

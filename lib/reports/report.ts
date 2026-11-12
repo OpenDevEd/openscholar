@@ -149,6 +149,9 @@ export const LICENCE_NAME_MAX = 200;
 /** What activating a report under an author's own licence takes, as one of the dearer Creative Commons ones does. */
 const OWN_ACTIVATIONS = 3;
 
+/** The longest promotion code taken: Stripe's are at most 500 characters, people's a few words. */
+export const CODE_MAX = 100;
+
 /** The licence a report is published under, a report signed before authors chose included. */
 export const licenceOf = (report: { licence?: Licence | undefined }): Licence => report.licence ?? DEFAULT_LICENCE;
 export const licenceName = (licence: Licence) => (typeof licence === "string" ? licence : licence.name);

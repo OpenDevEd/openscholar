@@ -18,7 +18,7 @@ import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { choosesLicence } from "../../lib/reports/agreement";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
@@ -201,9 +201,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(v.string()) },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: typed }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -213,6 +213,7 @@ export const sign = workspaceMutation({
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
     const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url);
     if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name and the web address of its text.");
+    const voucher = typed?.trim() ? typed.trim().slice(0, CODE_MAX) : undefined;
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
     const { crossref, zenodo } = settings.publication;
@@ -220,7 +221,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, voucher });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -244,6 +245,7 @@ export const sign = workspaceMutation({
       byline: bylineOf(settings.series, doi, licence),
       seriesName: settings.series.name,
       licence,
+      ...(voucher && { voucher }),
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
       status: "draft",
@@ -628,6 +630,8 @@ const reportValidator = v.object({
   signedAt: v.number(),
   onBehalfOfAll: v.boolean(),
   agreementVersion: v.number(),
+  /** The promotion code applied when it was signed, which the activation offers. */
+  voucher: v.optional(v.string()),
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
@@ -677,6 +681,7 @@ export const getAction = defineUserQuery({
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
         agreementVersion: report.agreementVersion,
+        ...(report.voucher && { voucher: report.voucher }),
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
         ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),

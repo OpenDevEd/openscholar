@@ -291,6 +291,7 @@
     "reports/activation:activate": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:addCard": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:quote": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
+    "reports/activation:quoteLicences": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:settle": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:terms": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/review:page": "Site administration, for Openscholar's own admins on the admin pages.",

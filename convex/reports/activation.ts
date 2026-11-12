@@ -24,7 +24,7 @@ import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { ACTIVATIONS_FEATURE, ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN, activationPlanFor } from "../../lib/billing/plans";
-import { activationsFor, licenceOf, stageOf } from "../../lib/reports/report";
+import { CODE_MAX, activationsFor, licenceOf, stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { MOVED_ON, byKey, changing, touch } from "./flow";
@@ -32,8 +32,6 @@ import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
 
-/** The longest promotion code taken: Stripe's are at most 500 characters, people's a few words. */
-const CODE_MAX = 100;
 
 /** Where a workspace's report is on Publish: an organisation's pages are under its slug. */
 async function placeOf(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
@@ -550,6 +548,43 @@ export const reconcileLater = internalAction({
       if (attempt + 1 < FINISH_TRIES) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.reconcileLater, { customerId, activationId, attempt: attempt + 1 });
     }
     return null;
+  },
+});
+
+const licenceQuoteValidator = v.union(v.object({ price: v.number(), total: v.number() }), v.null());
+
+/** The workspace's customer in Autumn, and which activation plans Autumn sells, for a quote made before a report is started. */
+export const customerFor = internalQuery({
+  args: { actor: actorValidator },
+  returns: v.object({ customerId: v.string(), selling: v.array(v.string()) }),
+  handler: async (ctx, { actor }) => {
+    const plans = (await readCatalog(ctx))?.plans ?? [];
+    return { customerId: await customerOf(ctx, actor.workspaceId), selling: [ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN].filter((id) => plans.some((plan) => plan.id === id)) };
+  },
+});
+
+/**
+ * What `code` takes off each licence's price before a report is started, as Autumn quotes it in US dollars, so the
+ * agreement step prices its licences with it: the one-activation plan's (CC BY, CC BY-SA) and the three-activation
+ * one's (NC, ND or the author's own). A plan Autumn doesn't sell is null.
+ */
+export const quoteLicences = action({
+  args: { workspaceId: v.id("workspaces"), code: v.string() },
+  returns: v.object({ one: licenceQuoteValidator, three: licenceQuoteValidator }),
+  handler: async (ctx, { workspaceId, code: typed }): Promise<{ one: Infer<typeof licenceQuoteValidator>; three: Infer<typeof licenceQuoteValidator> }> => {
+    await refuseApps(ctx);
+    const actor = await actorIn(ctx, workspaceId);
+    const code = codeOf(typed);
+    if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
+    const { customerId, selling }: { customerId: string; selling: string[] } = await ctx.runQuery(internal.reports.activation.customerFor, { actor });
+    const quoteOf = async (plan: string) => {
+      if (!selling.includes(plan)) return null;
+      const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, plan, false), autumn.previewAttach(customerId, plan, false, undefined, code).catch(refusedCode<never>(code))]);
+      return { price: linesOf(plain), total: linesOf(discounted) };
+    };
+    const [one, three] = await Promise.all([quoteOf(ACTIVATION_PLAN), quoteOf(THREE_ACTIVATIONS_PLAN)]);
+    if (![one, three].some((quote) => quote && quote.total < quote.price)) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off activating a report.`, { reason: "nothingOff", code });
+    return { one, three };
   },
 });
 
