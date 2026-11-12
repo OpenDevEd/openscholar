@@ -5,7 +5,7 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -303,6 +303,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
   const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  // A charge left under way by an action that died stops holding the report once its time is up.
+  const chargeOver = usePassed(terms?.paying?.until ?? undefined);
   // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
   // round trip later.
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed || bare ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
@@ -327,7 +329,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     }
   });
   const saved = found && "report" in found ? found.report : null;
-  const send = (step: BackStep | "checks") => void (saved && workspaceId && (step === "checks" ? backToChecks({ workspaceId, key: saved.key }) : goTo({ workspaceId, key: saved.key, step })).catch(trouble.failed(t("stepFailed"))));
+  // The details form open now: an edit it still holds is saved before the report moves, so the move never leaves it behind.
+  const form = useRef<{ flush: () => void }>(null);
+  const send = (step: BackStep | "checks") => void (saved && workspaceId && (form.current?.flush(), step === "checks" ? backToChecks({ workspaceId, key: saved.key }) : goTo({ workspaceId, key: saved.key, step })).catch(trouble.failed(t("stepFailed"))));
   useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
@@ -435,7 +439,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
           </Button>
         ) : undefined
       }
-      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} paying={!!terms?.paying} onStep={toStep} /> : undefined}
+      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} paying={!!terms?.paying && !chargeOver} onStep={toStep} /> : undefined}
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
@@ -535,6 +539,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             correcting={correct}
             onStep={toStep}
             onMoved={stepOn}
+            form={form}
             trouble={trouble}
             onCorrect={() => {
               setFresh(null);
@@ -576,7 +581,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ carried, onApplied, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** A code applied or removed on a report's checks. */ onApplied: (quote: (Quote & { key: string }) | null) => void; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ form, carried, onApplied, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** A code applied or removed on a report's checks. */ onApplied: (quote: (Quote & { key: string }) | null) => void; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
@@ -680,6 +685,7 @@ function Screens({ carried, onApplied, preparing, onPrepared, onUnprepare, basic
               {report.pdf.kept ? <KeptNotice onReadAgain={() => readAgain({ ...here, key: report.key })} /> : null}
               <DetailsStep
                 onBack={() => onStep("upload")}
+                ref={form}
                 onReturn={report.reopened ? () => onStep("checks") : undefined}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.

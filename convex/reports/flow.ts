@@ -308,7 +308,7 @@ export const goTo = workspaceMutation({
     const stage = checked ? stageOf(report, (await reportSettings(ctx)).humanReview) : null;
     if (checked && !(stage === "failed" || stage === "ready" || stage === "review" || (stage === "declined" && report.activatedAt === undefined))) throw createError("CONFLICT", MOVED_ON);
     // A payment under way is for the report as it stands.
-    if (checked && (await payingFor(ctx, report._id))) throw createError("CONFLICT", PAYING);
+    if (checked && (await paymentOf(ctx, report._id))) throw createError("CONFLICT", PAYING);
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
     // Its details wait for its PDF to be read: the checks read that PDF's text.
     if (step === "details" && (!details?.metadata || report.pdf?.pages === undefined)) throw createError("CONFLICT", "That step isn't open for this report yet.");
@@ -320,13 +320,18 @@ export const goTo = workspaceMutation({
 const PAYING = "Its payment is going through, so it can't change now. If the bank refuses it, the report opens again.";
 /** How long a charge stays under way: its hold at Autumn lasts as long (activation.ts `HOLD_MS`). One older was left by an action that died. */
 const CHARGING_MS = 5 * 60_000;
-/** Its payment is going through: an activation of the report waits on the bank, or is being charged now. */
-export const payingFor = async (ctx: QueryCtx, reportId: Id<"reports">) =>
-  (await ctx.db
+/**
+ * Its payment going through: an activation of the report waits on the bank (`until` null), or is being charged now,
+ * until `until` at the latest. A query's answer isn't drawn again as time passes, so the page itself waits for `until`.
+ */
+export const paymentOf = async (ctx: QueryCtx, reportId: Id<"reports">) => {
+  const paying = await ctx.db
     .query("reportActivations")
     .withIndex("by_reportId", (q) => q.eq("reportId", reportId))
     .filter((q) => q.or(q.eq(q.field("state"), "pending"), q.and(q.eq(q.field("state"), "charging"), q.gt(q.field("at"), Date.now() - CHARGING_MS))))
-    .first()) !== null;
+    .first();
+  return paying ? { until: paying.state === "charging" ? paying.at + CHARGING_MS : null } : null;
+};
 
 /** Back to the checks a report left with nothing changed (`reopened`): as they were, approval and all, without running them again. */
 export const backToChecks = workspaceMutation({

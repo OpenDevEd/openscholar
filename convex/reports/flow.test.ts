@@ -398,11 +398,11 @@ describe("a report's checks", () => {
     for (const state of ["charging", "pending"] as const) {
       const id = await charge(state, Date.now());
       await expect(toDetails()).rejects.toMatchObject(refused("CONFLICT"));
-      expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key: paying.key })).toMatchObject({ paying: true });
+      expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key: paying.key })).toMatchObject({ paying: { until: state === "charging" ? expect.any(Number) : null } });
       await world.t.run((ctx) => ctx.db.delete("reportActivations", id));
     }
     expect(await read(world.author, world.lab, paying.key)).toMatchObject({ step: "done", reopened: false });
-    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key: paying.key })).toMatchObject({ paying: false });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key: paying.key })).toMatchObject({ paying: null });
     await toDetails();
     expect(await read(world.author, world.lab, paying.key)).toMatchObject({ step: "details", reopened: true });
 
