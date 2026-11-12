@@ -77,6 +77,16 @@ describe("a report's record for its registrars", () => {
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { series: { title: "Openscholar Reports", issns: ["2049-3630"] }, freeToRead: true } });
   });
 
+  it("names each person by their role, and sends each reference by its DOI or, without one, as written", () => {
+    const people = { ...m, authors: [m.authors[0]!, { ...m.authors[1]!, name: "Ada Okafor", kind: "editor" as const }] };
+    const record = registrationRecord(report, { ...people, citations: [{ text: "Poor Economics (2011)." }, { text: "Scaling up successfully (2018).", doi: "10.1007/s10833-018-9325-4" }], references: ["10.1007/s10833-018-9325-4"] }, series, "https://openscholar.ai");
+    expect(record.creators.map((creator) => creator.creatorType)).toEqual(["author", "editor"]);
+    expect(record.references).toEqual(["Poor Economics (2011).", "10.1007/s10833-018-9325-4"]);
+    expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true });
+    // A report whose references were never written out keeps sending its DOIs.
+    expect(registrationRecord(report, { ...m, references: ["10.1038/nature12373"] }, series, "https://openscholar.ai").references).toEqual(["10.1038/nature12373"]);
+  });
+
   it("sends a funder only ROR knows by its ROR ID, with the Funder Registry DOI ROR lists for it where it lists one", () => {
     const funding = [
       { funder: { id: null, name: "The LEGO Foundation", ror: "https://ror.org/020yc1y85" }, awards: ["G-1"] },

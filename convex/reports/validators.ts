@@ -99,7 +99,7 @@ export const metadataValidator = v.object({
   countries: capped(v.array(v.string()), DETAIL_CAPS.countries),
   funding: capped(v.array(v.object({ funder: v.object({ id: v.union(v.string(), v.null()), name: v.string(), ror: v.optional(v.string()) }), awards: capped(v.array(v.string()), DETAIL_CAPS.awards) })), DETAIL_CAPS.funding),
   references: capped(v.array(v.string()), DETAIL_CAPS.references),
-  citations: v.optional(capped(v.array(v.object({ text: v.string(), doi: v.optional(v.string()) })), DETAIL_CAPS.references)),
+  citations: capped(v.optional(v.array(v.object({ text: v.string(), doi: v.optional(v.string()) }))), DETAIL_CAPS.references),
   relations: capped(v.array(v.object({ kind: literals(RELATION_KINDS.map((kind) => kind.id)), target: v.string() })), DETAIL_CAPS.relations),
 });
 
