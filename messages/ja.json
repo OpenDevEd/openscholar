@@ -6854,7 +6854,15 @@
         "noLimit": "無制限",
         "credit": "アカウントのクレジット"
       },
-      "activateFree": "DOI を有効化"
+      "activateFree": "DOI を有効化",
+      "paid": {
+        "balance": "残高から {amount} を支払い",
+        "balanceLeft": "残高から {amount} を支払い、残り {left}",
+        "card": "カードで {amount} を支払い",
+        "cardCode": "カードで {amount} を支払い（{code} 使用）",
+        "code": "{code} で全額をまかないました",
+        "codeRest": "{code} で残りをまかないました"
+      }
     },
     "meta": {
       "publish": "公開 | Openscholar",
@@ -7279,7 +7287,7 @@
         "activation": {
           "title": "有効化",
           "about": "有効化すると報告書が公開されます。ページが開き、DOI が機能し、登録されます。",
-          "note": "有効化はワークスペースの残高から使うか、ここで支払います。クーポンコードで価格が下がります。"
+          "note": "まず支払いが行われます。ワークスペースの出版残高、カード、またはその両方から支払います。クーポンコードはカードで支払う金額を減らします。"
         }
       }
     }

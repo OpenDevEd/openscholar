@@ -29,7 +29,7 @@ import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/
 import { CODE_MAX, PRICE_MAX, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
-import { MOVED_ON, byKey, changing, paymentOf, touch, voucherValidator } from "./flow";
+import { MOVED_ON, byKey, changing, mayChange, paymentOf, touch, voucherValidator } from "./flow";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
@@ -87,6 +87,23 @@ async function activatable(ctx: QueryCtx, actor: Actor, key: string) {
 const cardValidator = v.object({ brand: v.string(), last4: v.string() });
 
 /**
+ * What a live record's report was paid with: the dollars its balance paid, what a card paid for the rest after any
+ * code, and that code. `left` is what the balance holds now, once it was read after this record's price was taken
+ * from it; null before then, and for a balance with no limit. Null for a record from before these were kept.
+ */
+function paidWith(record: Doc<"reportActivations">, account: Awaited<ReturnType<typeof readAccount>>) {
+  if (record.payWith === undefined || record.price === undefined) return null;
+  const bought = record.bought ?? 0;
+  const settled = record.finishedAt !== undefined && (account?.fetchedAt ?? 0) >= record.finishedAt;
+  return {
+    fromBalance: record.payWith === "card" ? 0 : record.price - bought,
+    byCard: record.charge?.total ?? 0,
+    code: bought > 0 ? (record.code ?? null) : null,
+    left: settled && !account?.publicationUnlimited ? publicationOf(account).balance : null,
+  };
+}
+
+/**
  * What activating the report takes, for the page that shows its bill: whether the person may pay (an admin of its
  * workspace), what the report costs, the workspace's publication balance, the way of paying and the code kept with the
  * report, and the saved card a charge would go to, if there is one.
@@ -122,6 +139,12 @@ export const terms = workspaceQuery({
       refused: v.boolean(),
       /** What a card bought for the report went to the balance: it had moved on by then. */
       kept: v.boolean(),
+      /**
+       * What putting the report live came to, for whoever may pay for it (its owner and the workspace's admins): what
+       * the balance paid and what a card paid, in US dollars, with the code the card's part was paid with, and what
+       * the balance holds since. Null until it is live, for anyone else, and for a report made live before this was kept.
+       */
+      paid: v.union(v.object({ fromBalance: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), left: v.union(v.number(), v.null()) }), v.null()),
       /** Publishing is switched off where this report's DOI is registered: it can't go live for now. */
       paused: v.boolean(),
     }),
@@ -151,6 +174,7 @@ export const terms = workspaceQuery({
       paying: await paymentOf(ctx, report._id),
       refused: last?.state === "refused",
       kept: last?.state === "unused",
+      paid: last?.state === "live" && mayChange(actor, report) ? paidWith(last, account) : null,
       paused: paused(report, settings.publication),
     };
   },

@@ -6855,7 +6855,15 @@
         "noLimit": "Sem limite",
         "credit": "Crédito da conta"
       },
-      "activateFree": "Ativar o DOI"
+      "activateFree": "Ativar o DOI",
+      "paid": {
+        "balance": "{amount} pagos com o saldo",
+        "balanceLeft": "{amount} pagos com o saldo, restam {left}",
+        "card": "{amount} pagos com cartão",
+        "cardCode": "{amount} pagos com cartão com {code}",
+        "code": "{code} cobriu o preço",
+        "codeRest": "{code} cobriu o resto"
+      }
     },
     "meta": {
       "publish": "Publicar | Openscholar",
@@ -7280,7 +7288,7 @@
         "activation": {
           "title": "Ativação",
           "about": "Ativar torna o seu relatório público: a página abre, o DOI começa a funcionar e fica registado.",
-          "note": "Uma ativação sai do saldo do seu espaço de trabalho, ou é paga aqui. Um código promocional reduz o preço."
+          "note": "O que é devido é pago primeiro: com o saldo de publicação do seu espaço de trabalho, com cartão, ou ambos. Um código promocional reduz o que o cartão paga."
         }
       }
     }

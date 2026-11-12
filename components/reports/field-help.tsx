@@ -148,7 +148,7 @@ function Taker({ takes, name, does, href, children }: { takes: boolean; name: st
 }
 
 /** The "?" beside a part of a report's details or a publish step. */
-export function FieldHelp({ field, className }: { field: HelpKey; className?: string }) {
+export function FieldHelp({ field, className, side }: { field: HelpKey; className?: string; /** Where it opens, for a "?" whose usual side would cover what it explains. */ side?: "top" }) {
   const t = useTranslations("publishReports.help");
   // Beside its "?" where the screen is wide, where the whole window's height is free: above or below a field low on a
   // laptop's screen, the longest help ran past the window and hid where the field is sent.
@@ -166,7 +166,7 @@ export function FieldHelp({ field, className }: { field: HelpKey; className?: st
           <CircleHelp className="size-3.5" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent side={beside ? "right" : "bottom"} align="start" aria-label={t("aboutLabel", { title })} className="w-80 p-0 font-normal text-foreground">
+      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={t("aboutLabel", { title })} className="w-80 p-0 font-normal text-foreground">
         <div className="space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-semibold">{title}</p>

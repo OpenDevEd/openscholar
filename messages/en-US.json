@@ -6854,7 +6854,15 @@
         "noLimit": "No limit",
         "credit": "Account credit"
       },
-      "activateFree": "Activate the DOI"
+      "activateFree": "Activate the DOI",
+      "paid": {
+        "balance": "Paid {amount} from the balance",
+        "balanceLeft": "Paid {amount} from the balance, {left} left",
+        "card": "Paid {amount} by card",
+        "cardCode": "Paid {amount} by card with {code}",
+        "code": "{code} covered the price",
+        "codeRest": "{code} covered the rest"
+      }
     },
     "meta": {
       "publish": "Publish | Openscholar",
@@ -7279,7 +7287,7 @@
         "activation": {
           "title": "Activating",
           "about": "Activating makes your report public: its page opens, its DOI starts working, and it's registered.",
-          "note": "An activation comes from your workspace's balance, or is paid for here. A voucher code takes money off its price."
+          "note": "What's due is paid first: from your workspace's publication balance, by card, or both. A voucher code lowers what the card pays."
         }
       }
     }

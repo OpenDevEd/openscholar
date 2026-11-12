@@ -6,7 +6,7 @@
 
 import { useId, type ReactNode } from "react";
 import { preload } from "react-dom";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { FadeImage } from "@/components/ui/fade-image";
@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CircleHelp, ExternalLink } from "@/components/icons";
 import { LogoMark } from "@/components/logo";
+import { useMoney } from "@/lib/hooks/use-money";
 import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, type LicenceName, type Prices } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +30,10 @@ const OWN = "own";
 
 export function LicenceChoice({ value, onChange, prices, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
-  const format = useFormatter();
   const id = useId();
   const other = typeof value !== "string" || !STANDARD.includes(value);
   // Each licence by its price, whatever pays it: what picking one leaves to pay is the bill's to say.
-  const dollars = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: amount % 1 ? 2 : 0 });
+  const dollars = useMoney();
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), price: prices.standard })),
     { id: "other", title: t("other"), body: t("otherBody"), price: prices.other },

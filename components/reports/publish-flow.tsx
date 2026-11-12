@@ -50,12 +50,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
-import { Bill, PayWithSwitch, PaymentChoice, useMoney } from "@/components/reports/payment-choice";
+import { Bill, PayWithSwitch, PaymentChoice } from "@/components/reports/payment-choice";
+import { useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
@@ -797,7 +798,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
+            <LiveReport report={report} paid={terms?.paid ?? null} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
           ) : (
             <Checks
               beside={beside}
@@ -1732,7 +1733,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
       {t(report.approved ? "activation.waitingAdminApproved" : "activation.waitingAdminPassed", { organization: organization ?? "" })}
     </StepHead>
   ) : stage === "ready" ? (
-    <StepHead key="ready" title={t("ready")} help="activation" aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
+    <StepHead key="ready" title={t("ready")} aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
       {t(report.approved ? "readyApproved" : "readyPassed")}
     </StepHead>
   ) : stage === "review" ? (
@@ -1795,21 +1796,26 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     credit={terms.credit}
                     disabled={activating}
                     voucher={vouchers ? <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} /> : null}
-                    action={(withAmount) =>
-                      shut ? (
-                        // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
-                        <TooltipHint label={shut}>
-                          <span tabIndex={0}>
-                            <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                          </span>
-                        </TooltipHint>
-                      ) : (
-                        // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
-                        // something due, it pays. Under the bill it carries no amount, the total being right above
-                        // it; beside the bill, it does.
-                        <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={withAmount && due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? activateNow : () => setPaying(true)} />
-                      )
-                    }
+                    action={(withAmount) => (
+                      // What pressing it does, in a "?" beside it: people asked what Activate would do before they pressed.
+                      // It opens above, where it leaves the button in sight.
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <FieldHelp field="activation" side="top" />
+                        {shut ? (
+                          // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
+                          <TooltipHint label={shut}>
+                            <span tabIndex={0}>
+                              <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                            </span>
+                          </TooltipHint>
+                        ) : (
+                          // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
+                          // something due, it pays. Under the bill it carries no amount, the total being right above
+                          // it; beside the bill, it does.
+                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={withAmount && due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? activateNow : () => setPaying(true)} />
+                        )}
+                      </span>
+                    )}
                   />
                   {/* The bill stays under the cover, where it has been since the report was signed: here with what is chosen now. */}
                   {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
@@ -2297,8 +2303,37 @@ function Seal({ play }: { play: boolean }) {
   );
 }
 
+/**
+ * What a live report was paid with, under its other facts: what the balance paid, with what it holds since, what a
+ * card paid, with its code, or the code that covered what a card would have. People looked for this here once their
+ * report was live.
+ */
+function PaidChips({ paid }: { paid: Terms["paid"] }) {
+  const t = useTranslations("publishReports.flow");
+  const money = useMoney();
+  if (!paid) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 pt-2">
+      {paid.fromBalance > 0 ? (
+        <StatusChip tone="neutral" icon={Wallet}>
+          {paid.left === null ? t("paid.balance", { amount: money(paid.fromBalance) }) : t("paid.balanceLeft", { amount: money(paid.fromBalance), left: money(paid.left) })}
+        </StatusChip>
+      ) : null}
+      {paid.byCard > 0 ? (
+        <StatusChip tone="neutral" icon={CreditCard}>
+          {paid.code ? t("paid.cardCode", { amount: money(paid.byCard), code: paid.code }) : t("paid.card", { amount: money(paid.byCard) })}
+        </StatusChip>
+      ) : paid.code ? (
+        <StatusChip tone="neutral" icon={Tag}>
+          {t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
+        </StatusChip>
+      ) : null}
+    </div>
+  );
+}
+
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; fresh: boolean; /** None while publishing is off. */ onAnother?: () => void; onCorrect: () => void }) {
+function LiveReport({ report, paid, fresh, onAnother, onCorrect }: { report: Report; /** What it was paid with, for whoever may pay for it. */ paid: Terms["paid"]; fresh: boolean; /** None while publishing is off. */ onAnother?: () => void; onCorrect: () => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const tToast = useTranslations("toast");
@@ -2345,6 +2380,10 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
             </StatusChip>
           ) : null}
         </div>
+        {/* What it came to, on a line of its own: it arrives with the payment's terms, and what the balance holds since a moment later, so its line opens instead of pushing the buttons below. */}
+        <AutoHeight>
+          <PaidChips paid={paid} />
+        </AutoHeight>
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
         <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>

@@ -3,7 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowRight, Layers, Repeat } from "@/components/icons";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
-import { useMoney } from "@/components/reports/payment-choice";
+import { useMoney } from "@/lib/hooks/use-money";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";

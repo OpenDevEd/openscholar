@@ -143,6 +143,9 @@ describe("activating a report", () => {
     await activate(world, key, { as: "orgadmin", workspaceId: world.lab });
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect(await activations(world)).toMatchObject([{ state: "live", charge: { invoice: `in_${key}` } }]);
+    // What it came to is for whoever may pay for it: its starter and the admins, not the organisation's other members.
+    const paid = async (who: World["author"]) => (await who.query(api.reports.activation.terms, { workspaceId: world.lab, key }))?.paid;
+    expect([await paid(world.orgAdmin), await paid(world.author), await paid(world.member)]).toEqual([expect.objectContaining({ fromBalance: 10 }), expect.objectContaining({ fromBalance: 10 }), null]);
   });
 
   it("pays from the balance, its refilling part first, with no card and nothing bought", async () => {
@@ -162,6 +165,7 @@ describe("activating a report", () => {
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect(activation).toMatchObject({ state: "live", hold: autumn.asked[0]!.lock_id, payWith: "balance", price: 10 });
     expect(activation!.charge).toBeUndefined();
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 10, byCard: 0, code: null } });
   });
 
   it("costs what its licence does: an NC licence takes the other price from the balance", async () => {
@@ -204,6 +208,7 @@ describe("activating a report", () => {
     // $4.50 and the $6 bought, less the $10 the report costs.
     expect(Object.values(autumn.holds()).reduce((sum, held) => sum + held, 0)).toBe(0.5);
     expect(await activations(world)).toMatchObject([{ state: "live", payWith: "balance", price: 10, bought: 6, charge: { invoice: "in_bought", total: 6 } }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 4, byCard: 6, code: null } });
   });
 
   it("by card, buys the whole price and leaves the balance as it was", async () => {
@@ -217,6 +222,7 @@ describe("activating a report", () => {
     expect(autumn.holds()).toEqual({ monthly: 12, given: 3, "bought-2": 0 });
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect(await activations(world)).toMatchObject([{ state: "live", payWith: "card", price: 10, charge: { total: 10 } }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 0, byCard: 10, code: null } });
   });
 
   it("refuses a charge above what the page showed, buying nothing and leaving no record", async () => {
@@ -355,6 +361,8 @@ describe("activating a report", () => {
     const { key } = await checked(world, [passed("byline")]);
     const read = (left: number, fetchedAt: number) => world.t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId: world.own, withCard: false, fetchedAt, snapshot: { pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, publication: [{ interval: "month", left, size: 20 }] } });
     const shown = async () => (await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key }))?.balance;
+    /** What the live report's screen says the balance holds since: nothing until a read made after its hold was finished. */
+    const leftSince = async () => (await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key }))?.paid?.left;
     const later = () => vi.advanceTimersByTime(1_000);
     await read(4, Date.now());
     // A card buys the $6 the balance is short of: Autumn has $10 until the report's price is held.
@@ -373,9 +381,11 @@ describe("activating a report", () => {
     // A read begun before the hold was finished, arriving after it.
     await read(10, early + 1);
     expect(await shown()).toBe(4);
+    expect(await leftSince()).toBeNull();
     later();
     await read(0, Date.now());
     expect(await shown()).toBe(0);
+    expect(await leftSince()).toBe(0);
   });
 
   it("refuses a report that is already live before anything is charged", async () => {
@@ -525,6 +535,7 @@ describe("activating a report", () => {
     expect(autumn.asked.filter((call) => call.email)).toHaveLength(1);
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect(await activations(world)).toMatchObject([{ state: "live", code: "FREEDOI", charge: { total: 0 } }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 0, byCard: 0, code: "FREEDOI" } });
   });
 
   it("keeps a charge whose payment the bank refused to confirm as refused, voiding its invoice, so Activate starts afresh", async () => {

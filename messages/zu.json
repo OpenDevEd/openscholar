@@ -6854,7 +6854,15 @@
         "noLimit": "Akukho mkhawulo",
         "credit": "Isikweletu se-akhawunti"
       },
-      "activateFree": "Vula i-DOI"
+      "activateFree": "Vula i-DOI",
+      "paid": {
+        "balance": "Kukhokhwe {amount} ngebhalansi",
+        "balanceLeft": "Kukhokhwe {amount} ngebhalansi, kusele {left}",
+        "card": "Kukhokhwe {amount} ngekhadi",
+        "cardCode": "Kukhokhwe {amount} ngekhadi nge-{code}",
+        "code": "I-{code} ikhokhele inani",
+        "codeRest": "I-{code} ikhokhele okusele"
+      }
     },
     "meta": {
       "publish": "Shicilela | Openscholar",
@@ -7279,7 +7287,7 @@
         "activation": {
           "title": "Ukwenza kusebenze",
           "about": "Ukwenza kusebenze kwenza umbiko wakho ube sobala: ikhasi lawo liyavuleka, i-DOI yawo iqala ukusebenza, futhi uyabhaliswa.",
-          "note": "Ukwenza kusebenze kuvela ebhalansini yendawo yakho yokusebenza, noma kukhokhelwa lapha. Ikhodi yevawusha yehlisa intengo."
+          "note": "Okukweletwayo kukhokhwa kuqala: ngebhalansi yokushicilela yendawo yakho yokusebenza, ngekhadi, noma ngakho kokubili. Ikhodi yevawusha yehlisa lokho okukhokhwa yikhadi."
         }
       }
     }
