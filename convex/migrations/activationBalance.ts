@@ -8,7 +8,8 @@ import { ACTIVATIONS_FEATURE } from "../../lib/billing/plans";
 
 /**
  * Moves free activations to the balance Autumn keeps (#1261). A workspace an admin gave free activations a day gets
- * that many in its balance in Autumn, refilled every day, and its `reportLimits` row goes. What the old count left
+ * that many in its balance in Autumn, refilled every month as a plan's credits are, so a subscription can grant the
+ * same later, and its `reportLimits` row goes. What the old count left
  * behind is cleared: `free`, `unbilled` and `refund` on `reportActivations`, `perDay` and `orgPerDay` on
  * `reportSettings`. The two default numbers were for every workspace of a kind: one that isn't 0 is logged, to be set
  * as an item on that kind's plan in Autumn's dashboard. Run once per deployment, then drop the table and the fields:
@@ -28,7 +29,7 @@ export const run = internalAction({
           await autumn.customer(customerId);
           // Keyed by the row, so a run that stops between giving the balance and dropping the row never gives it twice:
           // asked again, Autumn refuses the key it has seen, and the row only has to go.
-          await autumn.createBalance({ customerId, feature: ACTIVATIONS_FEATURE, amount: perDay, interval: "day", idempotencyKey: `activation-limit-${limitId}` }).catch((error: unknown) => {
+          await autumn.createBalance({ customerId, feature: ACTIVATIONS_FEATURE, amount: perDay, interval: "month", idempotencyKey: `activation-limit-${limitId}` }).catch((error: unknown) => {
             if (!(error instanceof AutumnError && error.code === "duplicate_idempotency_key")) throw error;
           });
           console.log(JSON.stringify({ event: "activation-limit-moved", customerId, perDay }));
