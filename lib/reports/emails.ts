@@ -28,8 +28,10 @@ export type MailFacts = {
   archive: string;
   /** What changed, for the email that says a reviewer edited the details or that the author's changes are live. */
   edited?: string;
-  /** For the organisation's admins: their addresses, its name, and where its pages are (`/o/<slug>`). */
-  admins?: { emails: string[]; organization: string; prefix: string };
+  /** Where the report's workspace's pages are: `/o/<slug>` for an organisation's, empty for a person's own. */
+  prefix: string;
+  /** For the organisation's admins: their addresses and its name. */
+  admins?: { emails: string[]; organization: string };
 };
 
 type Row = readonly [string, string];
@@ -49,7 +51,8 @@ const failedIn = (results: CheckResult[] | undefined, none: string, told: boolea
 // Every link opens the thing its email is about: the report's dialog for a reviewer, and for its author the report
 // on Publish where its next step is, or its own page once it's live.
 const reviewLink = (r: MailFacts, origin: string): Row => ["Open it", `${origin}/settings/admin/publishing?report=${r.key}`];
-const publishLink = (label: string, r: MailFacts, origin: string): Row => [label, `${origin}/publish?report=${r.key}`];
+// Under the report's workspace, so an organisation's report opens there, not one step away in the person's own.
+const publishLink = (label: string, r: MailFacts, origin: string): Row => [label, `${origin}${r.prefix}/publish?report=${r.key}`];
 /** Who makes the report's DOI live: in an organisation one of its admins, not necessarily the author being written to. */
 const activating = (r: MailFacts) => (r.admins ? `An admin of ${r.admins.organization} activates it to make its DOI live` : "Activate it to make its DOI live");
 const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/papers/${r.key}`];
@@ -60,7 +63,7 @@ const QUESTIONS: Row = ["Questions", "Reply to this email."];
 const keptRows = (r: MailFacts, origin: string): Row[] => [
   ["Why", "The report changed while its payment went through, so it didn't go live."],
   ["The activation", `It stays in ${r.admins ? `${r.admins.organization}'s` : "your"} balance. The next report activated uses it, and nothing more is charged.`],
-  ["The report", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
+  publishLink("The report", r, origin),
   QUESTIONS,
 ];
 const changesRows = (told: boolean) => (r: MailFacts, origin: string): Row[] => [
@@ -124,7 +127,7 @@ const EVENTS = {
     rows: (r, origin) => [
       ["Started by", `${r.signer}${r.authorEmail ? ` <${r.authorEmail}>` : ""}`],
       ["What happens next", `It passed its checks. An admin of ${r.admins?.organization ?? "the organisation"} activates it to make its DOI live.`],
-      ["Activate it", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
+      publishLink("Activate it", r, origin),
     ],
   },
   "kept-admins": { to: "admins", label: "Activation kept", heading: "An activation you paid for is kept for the next report", rows: keptRows },

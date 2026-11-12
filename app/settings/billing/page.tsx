@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "@/components/workspace-link";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useQueryState } from "nuqs";
 import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import {
   AlertCircle,
   ArrowRight,
+  BadgeCheck,
   CalendarClock,
   Coins,
   CreditCard,
@@ -28,12 +29,13 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { PaymentReceived, TopUpBundles, useTopUps } from "@/components/billing/top-up-bundles";
 import { Button } from "@/components/ui/button";
+import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { useAppToast } from "@/lib/toast";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap } from "@/lib/billing/catalog";
-import { DAYS_TO_PAY } from "@/lib/billing/plans";
+import { DAYS_TO_PAY, type RefillInterval } from "@/lib/billing/plans";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -88,7 +90,10 @@ export default function BillingPage() {
   const [chargeCount, setChargeCount] = useState(counted);
   if (counted !== undefined && counted !== chargeCount) setChargeCount(counted);
 
-  const ready = Boolean(account && catalog) && spending !== undefined && !charges.isLoading && chargeCount !== undefined;
+  // Whether reports can be published, so the workspace's activations for them are worth a row.
+  const publishing = useQuery(api.reports.settings.open, {});
+
+  const ready = Boolean(account && catalog) && spending !== undefined && !charges.isLoading && chargeCount !== undefined && publishing !== undefined;
   if (!account || !catalog) return <Enter ready={false}>{null}</Enter>;
 
   const plan = state.resolvedPlan ?? "";
@@ -187,6 +192,7 @@ export default function BillingPage() {
                   </div>
                 </div>
               ) : null}
+              {publishing ? <Activations left={account.activations === undefined ? 0 : account.activations} refill={account.activationsRefill ?? null} /> : null}
             </div>
             {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>
@@ -402,5 +408,35 @@ export default function BillingPage() {
         ) : null}
       </div>
     </Enter>
+  );
+}
+
+/**
+ * The workspace's activations for Openscholar Reports, beside its credits: how many are left and what they refill by.
+ * Each makes a report live with nothing to pay; past them, activating one buys it.
+ */
+function Activations({ left, refill }: { /** Null for no limit. */ left: number | null; refill: RefillInterval | null }) {
+  const t = useTranslations("billingPage.activations");
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle pt-4">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset text-muted-foreground">
+        <BadgeCheck className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1 basis-48">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+          {t("title")}
+          <StatusChip tone={left === 0 ? "neutral" : "success"}>
+            {/* A balance that refills says so even when it's empty: more are on the way. */}
+            {left === null ? t("unlimited") : refill ? t("leftRefills", { count: left, interval: refill }) : left === 0 ? t("none") : t("left", { count: left })}
+          </StatusChip>
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("hint")}</p>
+      </div>
+      <Button asChild variant="ghost" size="sm" className="h-7">
+        <Link href="/publish">
+          {t("publish")} <ArrowRight />
+        </Link>
+      </Button>
+    </div>
   );
 }

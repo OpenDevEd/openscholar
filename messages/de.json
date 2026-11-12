@@ -421,7 +421,16 @@
     "topUpDue": "Jetzt fällig",
     "topUpBalanceNow": "Guthaben",
     "topUpBalanceAfter": "Danach",
-    "seePlans": "Pläne ansehen"
+    "seePlans": "Pläne ansehen",
+    "activations": {
+      "title": "Aktivierungen für Berichte",
+      "left": "{count, number} übrig",
+      "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt",
+      "unlimited": "Ohne Limit",
+      "none": "Keine übrig",
+      "hint": "Jede bringt einen Bericht auf Openscholar Reports online, ohne dass etwas zu zahlen ist.",
+      "publish": "Veröffentlichen"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ein unerwartetes Problem ist aufgetreten. Versuchen Sie es erneut oder kehren Sie zu einer stabilen Seite zurück.",
@@ -6748,14 +6757,17 @@
           "left": "{count, number} übrig",
           "unlimited": "Ohne Limit",
           "uses": "Das Aktivieren verbraucht eine aus Ihrem Guthaben. Es wird nichts abgebucht.",
-          "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht."
+          "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht.",
+          "leftRefills": "{count, number} übrig, {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt"
         },
         "creditLine": "Guthaben des Kontos",
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
         "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz.",
         "noneLeft": "Im Guthaben ist keine Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um eine zu bezahlen.",
         "kept": "Die für diesen Bericht bezahlte Aktivierung ist in Ihr Guthaben gegangen. Der nächste Bericht, den Sie aktivieren, verbraucht sie.",
-        "keptOrg": "Die für diesen Bericht bezahlte Aktivierung ist in das Guthaben von {organization} gegangen. Der nächste dort aktivierte Bericht verbraucht sie."
+        "keptOrg": "Die für diesen Bericht bezahlte Aktivierung ist in das Guthaben von {organization} gegangen. Der nächste dort aktivierte Bericht verbraucht sie.",
+        "keptNote": "Lehnt eine Prüferin oder ein Prüfer den Bericht ab, bevor die Zahlung durch ist, bleibt die Aktivierung für Ihren nächsten Bericht in Ihrem Guthaben.",
+        "keptNoteOrg": "Lehnt eine Prüferin oder ein Prüfer den Bericht ab, bevor die Zahlung durch ist, bleibt die Aktivierung für den nächsten Bericht im Guthaben von {organization}."
       },
       "back": "Zurück",
       "bylineFirst": "Ihr PDF trägt diesen Vermerk",
@@ -6813,7 +6825,8 @@
           "body": "Bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
-          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
+          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
+          "bodyBalanceRefills": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind und das {interval, select, hour {stündlich} day {täglich} week {wöchentlich} month {monatlich} quarter {vierteljährlich} semi_annual {halbjährlich} other {jährlich}} aufgefüllt wird. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
         }
       }
     },

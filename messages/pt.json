@@ -421,7 +421,16 @@
     "topUpDue": "A pagar agora",
     "topUpBalanceNow": "Saldo",
     "topUpBalanceAfter": "Depois",
-    "seePlans": "Ver planos"
+    "seePlans": "Ver planos",
+    "activations": {
+      "title": "Ativações de relatórios",
+      "left": "{count, plural, one {Resta #} other {Restam #}}",
+      "leftRefills": "{count, plural, one {Resta #} other {Restam #}}, renova-se {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}",
+      "unlimited": "Sem limite",
+      "none": "Nenhuma restante",
+      "hint": "Cada uma publica um relatório no Openscholar Reports sem nada a pagar.",
+      "publish": "Publicar"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ocorreu um problema inesperado. Tente novamente ou volte a uma página estável.",
@@ -6748,14 +6757,17 @@
           "left": "{count, plural, one {Resta #} other {Restam #}}",
           "unlimited": "Sem limite",
           "uses": "Ativar usa uma do seu saldo. Nada é cobrado.",
-          "usesOrg": "Ativar usa uma do saldo de {organization}. Nada é cobrado."
+          "usesOrg": "Ativar usa uma do saldo de {organization}. Nada é cobrado.",
+          "leftRefills": "{count, plural, one {Resta #} other {Restam #}}, renova-se {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}"
         },
         "creditLine": "Crédito da conta",
         "declined": "O seu cartão foi recusado. Nada foi cobrado. Mude de cartão e tente novamente.",
         "paused": "A publicação está em pausa por agora, por isso nada pode ser publicado. O seu relatório mantém o seu lugar.",
         "noneLeft": "Já não resta nenhuma ativação no saldo. Ative-o novamente para pagar uma.",
         "kept": "A ativação paga para este relatório passou para o seu saldo. O próximo relatório que ativar usa-a.",
-        "keptOrg": "A ativação paga para este relatório passou para o saldo de {organization}. O próximo relatório ativado lá usa-a."
+        "keptOrg": "A ativação paga para este relatório passou para o saldo de {organization}. O próximo relatório ativado lá usa-a.",
+        "keptNote": "Se um revisor recusar o relatório antes de o pagamento ser concluído, a ativação fica no seu saldo para o próximo relatório.",
+        "keptNoteOrg": "Se um revisor recusar o relatório antes de o pagamento ser concluído, a ativação fica no saldo de {organization} para o próximo relatório."
       },
       "back": "Voltar",
       "bylineFirst": "O seu PDF tem esta menção",
@@ -6813,7 +6825,8 @@
           "body": "Pago com cartão. Um código promocional pode baixar o preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyPriced": "{price} por relatório, pagos com cartão. Um código promocional pode baixar esse preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyBalance": "Usa uma ativação do saldo, que tem {count, number}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
-          "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado."
+          "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado.",
+          "bodyBalanceRefills": "Usa uma ativação do saldo, que tem {count, number} e se renova {interval, select, hour {a cada hora} day {todos os dias} week {todas as semanas} month {todos os meses} quarter {a cada três meses} semi_annual {a cada seis meses} other {todos os anos}}. Nada a pagar. O DOI é registado e o relatório fica publicado."
         }
       }
     },
