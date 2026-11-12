@@ -872,8 +872,11 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-/** The agreement's confirmation as last ticked in this tab, for the agreement as it then read. */
-const TICKS = "publish:agreement-ticks";
+/**
+ * The agreement's confirmation as last ticked in this tab, for the agreement as it then read. Its own key: a tick
+ * saved under the old one agreed for the signer alone, and must never count for their co-authors.
+ */
+const TICKS = "publish:agreement-tick";
 type Ticks = { version: number; agreed: boolean };
 function keptTicks(version: number): Ticks | null {
   try {
