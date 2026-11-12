@@ -6792,7 +6792,9 @@
         "activate": {
           "title": "Aktivieren",
           "body": "Bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
-          "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online."
+          "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
+          "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
+          "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
         }
       }
     },

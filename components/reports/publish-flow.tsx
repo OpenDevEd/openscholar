@@ -609,7 +609,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} price={starts?.price ?? null} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} price={starts?.price ?? null} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -1088,18 +1088,21 @@ function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, price, onStart }: { series: string; /** What activating costs, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, activations, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const flow = useTranslations("publishReports.flow");
   const dollars = useDollars();
+  /** The balance pays for the last step: no card comes into it. */
+  const spendable = activations === null || activations > 0;
   const items = [
     { id: "agreement", icon: PenLine },
     { id: "doi", icon: Hash },
     { id: "pdf", icon: FileText },
     { id: "details", icon: ListChecks },
     { id: "checks", icon: ShieldCheck },
-    { id: "activate", icon: CreditCard },
+    { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
+  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? t("activate.bodyBalance", { count: activations }) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1113,7 +1116,7 @@ function Overview({ series, reviewed, price, onStart }: { series: string; /** Wh
             </span>
             <span className="min-w-0 pt-1">
               <span className="block text-sm font-medium">{t(`${id}.title`)}</span>
-              <span className="block text-sm text-muted-foreground">{id === "activate" && price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t(`${id}.body`)}</span>
+              <span className="block text-sm text-muted-foreground">{id === "activate" ? activating : t(`${id}.body`)}</span>
             </span>
           </li>
         ))}

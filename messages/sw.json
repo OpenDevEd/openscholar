@@ -6792,7 +6792,9 @@
         "activate": {
           "title": "Washa",
           "body": "Hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
-          "bodyPriced": "{price} kwa kila ripoti, hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei hiyo au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa."
+          "bodyPriced": "{price} kwa kila ripoti, hulipwa kwa kadi. Msimbo wa punguzo unaweza kupunguza bei hiyo au kuigharamia yote. DOI husajiliwa na ripoti huchapishwa.",
+          "bodyBalance": "Hutumia mwasho mmoja kutoka kwenye salio, lenye {count} iliyobaki. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani.",
+          "bodyUnlimited": "Hutumia mwasho mmoja kutoka kwenye salio, lisilo na kikomo. Hakuna cha kulipa. DOI inasajiliwa na ripoti inakwenda hewani."
         }
       }
     },

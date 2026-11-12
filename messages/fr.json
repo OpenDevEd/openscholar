@@ -6791,7 +6791,9 @@
         "activate": {
           "title": "Activer",
           "body": "Payé par carte. Un code promo peut réduire le prix ou le couvrir. Le DOI est enregistré et le rapport est mis en ligne.",
-          "bodyPriced": "{price} par rapport, payés par carte. Un code promo peut réduire ce prix ou le couvrir. Le DOI est enregistré et le rapport est mis en ligne."
+          "bodyPriced": "{price} par rapport, payés par carte. Un code promo peut réduire ce prix ou le couvrir. Le DOI est enregistré et le rapport est mis en ligne.",
+          "bodyBalance": "Utilise une activation du solde, qui en compte {count}. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne.",
+          "bodyUnlimited": "Utilise une activation du solde, qui est sans limite. Rien à payer. Le DOI est enregistré et le rapport est mis en ligne."
         }
       }
     },
