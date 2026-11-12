@@ -6604,7 +6604,8 @@
         "foundIn": "Imepatikana katika {where}:",
         "foundAs": "Imepatikana kama",
         "said": {
-          "notPublished": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
+          "notPublished": "Haipo katika Openscholar Reports, OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
+          "notPublishedElsewhere": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "unfinished": "Ukaguzi huu haukuweza kukamilika.",
           "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
         },

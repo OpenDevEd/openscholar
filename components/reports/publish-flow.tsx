@@ -1470,11 +1470,16 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
+/** What Already published said when it found nothing, before it searched Openscholar Reports too: said as it was. */
+const BEFORE_OWN_REPORTS = "Not in OpenAlex, Openscholar's index or our communities.";
+
 export function CheckRow({ name, result, advice = true, overruled = false }: { name: string; result?: CheckResult; /** Whether to say what the author can do about a failed check: only where they still can. */ advice?: boolean; /** A reviewer approved the report over this check's answer. */ overruled?: boolean }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   /** What a check says, in the page's language when it's one of the fixed things a check says. */
   const inWords = (words: string | undefined) => {
+    // A result saved before Openscholar Reports itself was searched (2026-11-12) says what was searched then.
+    if (words === BEFORE_OWN_REPORTS) return t("check.said.notPublishedElsewhere");
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };

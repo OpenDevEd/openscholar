@@ -6603,7 +6603,8 @@
         "foundIn": "Trouvé dans {where} :",
         "foundAs": "Trouvé sous",
         "said": {
-          "notPublished": "Absent d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
+          "notPublished": "Absent d’Openscholar Reports, d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
+          "notPublishedElsewhere": "Absent d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
           "unfinished": "Cette vérification n’a pas pu aboutir.",
           "bylineFound": "Le texte du PDF contient la ligne mot pour mot."
         },
