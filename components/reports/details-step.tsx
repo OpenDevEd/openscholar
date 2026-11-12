@@ -33,7 +33,7 @@ import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
-import { useFailed, useKindName, useRelationName, useRoleDetail, useRoleName } from "@/components/reports/words";
+import { useKindName, useRelationName, useRoleDetail, useRoleName } from "@/components/reports/words";
 import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, linkHref, PERSON_KINDS, type Author, type Metadata, type PersonKind, type Reference } from "@/lib/reports/report";
 import { FieldHelp, FieldLabel, RegistrarsProvider, type HelpKey } from "@/components/reports/field-help";
 import { ReferenceBox } from "@/components/reports/reference-box";
@@ -511,33 +511,35 @@ export function DetailsStep({
   // An abstract being written from the PDF, in the report's language.
   const [writing, setWriting] = useState(false);
   const write = useAction(api.reports.abstract.write);
-  const failed = useFailed();
   const writeAbstract = async () => {
     if (!writingFor) return;
     setWriting(true);
     try {
       set("abstract", await write({ ...writingFor, language: m.language }));
-    } catch (error) {
-      failed(error);
+    } catch {
+      toast.error(t("abstractFailed"));
     } finally {
       setWriting(false);
     }
   };
   // The references a pasted list or an uploaded file holds, added after the ones already listed. One listed already, by
-  // its DOI or its words, is left out.
+  // its DOI or its words, is left out, but a DOI listed alone (read from the PDF) takes the words the list gives it.
   const addReferences = async (text: string) => {
     const { referencesIn } = await import("@/lib/reports/reference-list");
     const found = referencesIn(text);
+    const worded = new Map(found.flatMap((reference) => (reference.doi && reference.text ? [[reference.doi, reference] as const] : [])));
+    const filled = cited.map((reference) => (reference.doi && !reference.text && worded.get(reference.doi)) || reference);
+    const enriched = filled.filter((reference, at) => reference !== cited[at]).length;
     const key = (reference: Reference) => reference.doi ?? reference.text.toLowerCase();
-    const listed = new Set(cited.map(key));
+    const listed = new Set(filled.map(key));
     const fresh = found.filter((reference) => !listed.has(key(reference)) && listed.add(key(reference)));
     const added = fresh.slice(0, DETAIL_CAPS.references - cited.length);
     if (!found.length) return void toast.error(t("noReferencesFound"));
-    if (!fresh.length) return void toast(t("referencesListed"));
-    if (!added.length) return void toast.error(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
-    setCited([...cited, ...added]);
+    if (!fresh.length && !enriched) return void toast(t("referencesListed"));
+    if (fresh.length && !added.length && !enriched) return void toast.error(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
+    setCited([...filled, ...added]);
     setRefPage(Math.ceil((cited.length + added.length) / REFS_PER_PAGE));
-    toast(t("referencesAdded", { count: added.length }), { id: "references-added", action: { label: t("undo"), onClick: () => setCited(cited) } });
+    toast(t("referencesAdded", { count: added.length + enriched }), { id: "references-added", action: { label: t("undo"), onClick: () => setCited(cited) } });
   };
   // A year as it is typed, until it is a whole one: only a date that is one is ever saved.
   const [typedYear, setTypedYear] = useState<string | null>(null);

@@ -267,6 +267,7 @@ describe("a report's PDF", () => {
     await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: { authors, citations, references: ["10.1007/s10833-018-9325-4"] }, pdfAt: first.pdfAt });
     expect((await read(world.author, world.own, first.key)).metadata).toMatchObject({ authors: [{ name: "Chikondi Banda" }, { name: "Ada Okafor", kind: "editor" }], citations, references: ["10.1007/s10833-018-9325-4"] });
     await expect(world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: { citations: [{ text: " " }] }, pdfAt: first.pdfAt })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await expect(world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: { citations: [{ text: "A reference", doi: " " }] }, pdfAt: first.pdfAt })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
   });
 
   it("wears the picture drawn of it, and drops one that is too big to be a cover", async () => {

@@ -53,7 +53,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, isAuthor, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -2472,7 +2472,7 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
         title={m?.title || t("yourTitle")}
-        authors={m?.authors.map((a) => a.name).filter(Boolean) ?? []}
+        authors={m?.authors.filter(isAuthor).map((a) => a.name).filter(Boolean) ?? []}
         source={basics.series.name}
         year={m?.date ? Number(m.date.slice(0, 4)) : null}
         type="report"

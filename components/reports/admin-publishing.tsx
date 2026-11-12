@@ -80,6 +80,7 @@ export function AdminPublishing() {
             <DetailsStep
               key={editable.key}
               writing={{ key: editable.key }}
+              registrars={editable.registration}
               initial={editable.metadata!}
               version={editable.updatedAt}
               onTouched={() => setTyped({ key: editable.key, lost: false })}

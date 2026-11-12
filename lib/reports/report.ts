@@ -248,7 +248,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Type", (m) => m.type],
   ["Language", (m) => m.language],
   ["Date", (m) => m.date],
-  ["Authors", (m) => m.authors.map((a) => [a.name, a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
+  ["Authors", (m) => m.authors.map((a) => [a.name, a.kind && a.kind !== "author" ? a.kind : "", a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
   ["Abstract", (m) => m.abstract],
   ["Topics", (m) => m.topics.map((t) => t.name).join(", ")],
   ["Keywords", (m) => m.keywords.join(", ")],
@@ -256,7 +256,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Study designs", (m) => m.studyDesigns.join(", ")],
   ["Places", (m) => m.countries.join(", ")],
   ["Funding", (m) => m.funding.map((f) => [f.funder.name, ...f.awards].join(", ")).join("\n")],
-  ["References", (m) => (m.citations ?? m.references.map((doi) => ({ text: "", doi }))).map((c) => c.text || c.doi).join("\n")],
+  ["References", (m) => (m.citations ?? m.references.map((doi) => ({ text: "", doi }))).map((c) => [c.text, c.doi].filter(Boolean).join(", ")).join("\n")],
   ["Links", (m) => m.relations.map((r) => `${r.kind}: ${r.target}`).join("\n")],
 ];
 /** What a correction changes, field by field, as text: what it was and what it would be. */

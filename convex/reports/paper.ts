@@ -10,7 +10,7 @@ import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
 import { liveReportValidator, metadataValidator, withdrawnReportValidator } from "./validators";
-import { REPORTS_PER_READ } from "../../lib/reports/report";
+import { REPORTS_PER_READ, isAuthor } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 
@@ -28,7 +28,7 @@ export const get = query({
     if (!metadata) return null;
     const { series } = await reportSettings(ctx);
     if (report.status !== "live") {
-      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: seriesOf(report, series).name, withdrawnAt: report.withdrawnAt! };
+      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.filter(isAuthor).map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: seriesOf(report, series).name, withdrawnAt: report.withdrawnAt! };
     }
     return {
       state: "live" as const,
@@ -89,7 +89,7 @@ export const record = internalQuery({
     const { metadata } = await detailsOf(ctx, report._id);
     if (!metadata) return null;
     const { series } = await reportSettings(ctx);
-    const authors = metadata.authors.filter((author) => author.name.trim());
+    const authors = metadata.authors.filter((author) => isAuthor(author) && author.name.trim());
     return {
       id: `https://openscholar.ai/${key}`,
       title: metadata.subtitle.trim() ? `${metadata.title}: ${metadata.subtitle.trim()}` : metadata.title,
@@ -176,7 +176,7 @@ export const forCommunity = internalQuery({
           date: metadata.date,
           licence: metadata.licence,
           abstract: metadata.abstract,
-          authors: metadata.authors.filter((author) => author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null, affiliations: author.affiliations })),
+          authors: metadata.authors.filter((author) => isAuthor(author) && author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null, affiliations: author.affiliations })),
           keywords: metadata.keywords,
           topics: metadata.topics,
           sdgs: metadata.sdgs,
