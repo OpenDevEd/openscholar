@@ -6680,6 +6680,7 @@
       "waitingOwn": "{count, plural, one {# rapport de votre espace personnel est prêt à être activé par vous.} other {# rapports de votre espace personnel sont prêts à être activés par vous.}}",
       "waitingOpen": "{count, plural, one {L’ouvrir} other {Les ouvrir}}",
       "savingNote": "Votre carte est enregistrée pour activer des rapports sur Openscholar. Rien n’est débité maintenant.",
+      "registering": "La page est ouverte dès maintenant et peut être partagée. Le DOI fonctionne une fois enregistré, en général en quelques minutes.",
       "sentToReviewer": "Envoyé à un relecteur",
       "requestFailed": "La demande n'a pas pu être envoyée",
       "reviewIntro": "Un relecteur lit votre rapport et ce qu'ont dit les vérifications. Demandez-le si vous pensez qu'une vérification s'est trompée.",

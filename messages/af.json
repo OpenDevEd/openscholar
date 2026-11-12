@@ -6681,6 +6681,7 @@
       "waitingOwn": "{count, plural, one {# verslag in jou eie werkruimte is gereed vir jou om te aktiveer.} other {# verslae in jou eie werkruimte is gereed vir jou om te aktiveer.}}",
       "waitingOpen": "{count, plural, one {Maak dit oop} other {Maak hulle oop}}",
       "savingNote": "Jou kaart word gestoor om verslae op Openscholar te aktiveer. Niks word nou gehef nie.",
+      "registering": "Die bladsy is nou oop en kan gedeel word. Die DOI begin werk sodra dit geregistreer is, gewoonlik binne ’n paar minute.",
       "sentToReviewer": "Na 'n hersiener gestuur",
       "requestFailed": "Die versoek kon nie gestuur word nie",
       "reviewIntro": "'n Hersiener lees jou verslag en die kontroles se resultate. Vra as jy dink 'n kontrole het 'n fout gemaak.",

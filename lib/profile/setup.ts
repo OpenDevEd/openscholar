@@ -16,9 +16,9 @@ export const NO_EMAILS: Record<EmailKind, boolean> = { updates: false, news: fal
 
 /**
  * Pages in the middle of a flow, which the setup never stands in front of: signing in or up, an app asking someone to
- * sign in, an invitation, a community's hand-off. It comes on the next page.
+ * sign in, an invitation, a community's hand-off, signing out. It comes on the next page.
  */
-const FLOW_PATHS = ["/sign-in", "/sign-up", "/connect", "/join", "/from-library"];
+const FLOW_PATHS = ["/sign-in", "/sign-up", "/sign-out", "/connect", "/join", "/from-library"];
 /**
  * Whether a request is for a page the setup can stand in for: not a file a route serves (a report's PDF, a citation
  * file, an image), nor a route that only redirects or answers for the page (a DOI's paper, the question stage's parts).

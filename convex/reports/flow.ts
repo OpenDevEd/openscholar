@@ -9,6 +9,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
@@ -551,12 +552,15 @@ export const waitingElsewhereAction = defineUserQuery({
     const user = await ctx.db.get("users", userId);
     if (!user) return { ready: 0, first: null };
     const { humanReview } = await reportSettings(ctx);
-    // Only reports that never went live can be ready, and a workspace holds few of those.
+    // Only reports that never went live can be ready, and a workspace holds few of those: its newest are looked at,
+    // since a ready report was worked on lately and old drafts weren't.
     const readyIn = async (id: Id<"workspaces">) =>
-      (await ctx.db.query("reports").withIndex("by_workspaceId_and_activatedAt", (q) => q.eq("workspaceId", id).eq("activatedAt", undefined)).take(ELSEWHERE_REPORTS)).filter((report) => stageOf(report, humanReview) === "ready").length;
+      (await ctx.db.query("reports").withIndex("by_workspaceId_and_activatedAt", (q) => q.eq("workspaceId", id).eq("activatedAt", undefined)).order("desc").take(ELSEWHERE_REPORTS)).filter((report) => stageOf(report, humanReview) === "ready").length;
     const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-    // ponytail: the first organizations a person is in are asked about; someone an admin of more than these opens the rest to see.
-    const memberships = (await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(ELSEWHERE_WORKSPACES)).filter((membership) => membership.role === "org:admin");
+    // ponytail: the first organizations a person is an admin of are asked about; an admin of more than these opens the rest to see.
+    const memberships = (await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(MAX_ORGANIZATIONS_PER_PERSON))
+      .filter((membership) => membership.role === "org:admin")
+      .slice(0, ELSEWHERE_WORKSPACES);
     const organizations = await Promise.all(
       memberships.map(async (membership) => {
         const organization = await ctx.db.get("organizations", membership.organizationId);

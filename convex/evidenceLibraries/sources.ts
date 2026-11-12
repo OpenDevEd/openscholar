@@ -10,7 +10,7 @@ import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
 import type { librarySourceValidator } from "./validators";
-import { internalQuery } from "../lib/functions";
+import { internalQuery, query } from "../lib/functions";
 import { readLibraryRuntimeTarget } from "./runtimeTarget";
 import { createError } from "../lib/errors";
 
@@ -79,6 +79,16 @@ export const at = internalQuery({
   args: { origin: v.string() },
   returns: v.union(v.null(), v.id("evidenceLibraries")),
   handler: async (ctx, { origin }) => await libraryAt(ctx, origin),
+});
+
+/**
+ * Whether a community answers at an address. For the sign-out page (app/sign-out), which a community sends its reader
+ * through and which sends them back: it goes back only to a community's own address, never to wherever a link says.
+ */
+export const isCommunity = query({
+  args: { origin: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { origin }) => (await libraryAt(ctx, origin)) !== null,
 });
 
 /** Who a person is to a library: their Clerk user ID, which the library knows them by. */

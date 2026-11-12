@@ -429,15 +429,17 @@ const NOTE_MAX = 300;
 
 /** Stripe's page for saving a card on the workspace's billing account, which comes back to the report. Its admins only. */
 export const addCard = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), /** The code applied in the payment bar, which the way back carries so it needn't be typed again. */ code: v.optional(v.string()), /** What Stripe's page says above Save, in the person's language: that saving a card charges nothing. Theirs alone to read. */ note: v.optional(v.string()) },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), /** The code applied in the payment bar, which the way back carries so it needn't be typed again. */ code: v.optional(v.string()), /** What Stripe's page says above Save, in the person's language: that saving a card charges nothing. Theirs alone to read. */ note: v.optional(v.string()), /** The language the person reads the site in, for Stripe's page where Stripe has it. */ locale: v.optional(v.string()) },
   returns: v.string(),
-  handler: async (ctx, { workspaceId, key, code: typed, note }): Promise<string> => {
+  handler: async (ctx, { workspaceId, key, code: typed, note, locale }): Promise<string> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
     // Stripe writes the session's id into the way back, which names the card saved in it.
     const code = codeOf(typed);
-    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${code ? `&code=${encodeURIComponent(code)}` : ""}`, note?.trim().slice(0, NOTE_MAX) || undefined)).url;
+    // The code applied goes both ways back: saving a card, and leaving Stripe's page without saving one.
+    const carried = code ? `&code=${encodeURIComponent(code)}` : "";
+    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${carried}`, { note: note?.trim().slice(0, NOTE_MAX) || undefined, locale, cancelUrl: `${requireAppUrl()}${prefix}/publish?report=${encodeURIComponent(key)}${carried}` })).url;
   },
 });
 

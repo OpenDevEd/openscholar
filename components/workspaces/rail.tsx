@@ -566,7 +566,8 @@ function RailItem({
       href={href}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      aria-label={running ? t("runningLabel", { label, what: running.what, done: running.done, total: running.total }) : label}
+      // The count is part of the link's name: a screen reader hears "Publish (2)", as the eye sees the 2.
+      aria-label={running ? t("runningLabel", { label, what: running.what, done: running.done, total: running.total }) : badge ? `${label} (${badge})` : label}
       className="group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
     >
       <span className={cn("relative flex size-10 items-center justify-center rounded-xl transition-colors", active ? "text-foreground" : "text-muted-foreground group-hover:bg-foreground/[0.06] group-hover:text-foreground")}>

@@ -6681,6 +6681,7 @@
       "waitingOwn": "{count, plural, one {# Bericht in Ihrem eigenen Arbeitsbereich wartet darauf, von Ihnen aktiviert zu werden.} other {# Berichte in Ihrem eigenen Arbeitsbereich warten darauf, von Ihnen aktiviert zu werden.}}",
       "waitingOpen": "{count, plural, one {Öffnen} other {Öffnen}}",
       "savingNote": "Ihre Karte wird gespeichert, um Berichte auf Openscholar zu aktivieren. Jetzt wird nichts abgebucht.",
+      "registering": "Die Seite ist jetzt offen und kann geteilt werden. Der DOI funktioniert, sobald er registriert ist, meist innerhalb weniger Minuten.",
       "sentToReviewer": "An eine Prüfung gesendet",
       "requestFailed": "Die Anfrage konnte nicht gesendet werden",
       "reviewIntro": "Jemand liest Ihren Bericht und was die Prüfungen gesagt haben. Fragen Sie an, wenn Sie meinen, dass eine Prüfung sich geirrt hat.",

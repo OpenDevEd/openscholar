@@ -11,7 +11,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
@@ -51,7 +51,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, changesOf, CHECK_SAID, type CheckResult, type Metadata, REVIEW_TEXT_MAX, RUN_STUCK_MS, SIGNER_NAME_MAX, stageOf } from "@/lib/reports/report";
+import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -126,7 +126,7 @@ function opens(report: Report, step: BackStep, humanReview: boolean) {
 }
 
 type HistoryEntry = { index: number; key: string; url: string | null };
-type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[] };
+type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[]; /** How this load of the page was come to. */ activation?: { navigationType: string | null; from: HistoryEntry | null; entry: HistoryEntry } | null };
 /** The browser's history, where it can be asked what its entries are (the Navigation API). */
 const historyOf = () => (window as { navigation?: Navigation }).navigation;
 
@@ -136,8 +136,16 @@ const historyOf = () => (window as { navigation?: Navigation }).navigation;
  * own first step, or the app's own upkeep of the entry it is on, is enough.
  */
 let heard = false;
-if (typeof window !== "undefined") historyOf()?.addEventListener("currententrychange", () => void (heard = true));
-const hearsHistory = () => heard;
+// What counts is hearing an entry the page itself made or replaced (the app does so soon after every load). One
+// engine reports the person's Back and Forward but never those, so its list of entries is wrong and a step pushed
+// there would have nothing to tell Back where it came from.
+if (typeof window !== "undefined") {
+  historyOf()?.addEventListener("currententrychange", (event) => {
+    const type = (event as EntryChange).navigationType;
+    if (type === "push" || type === "replace") heard = true;
+  });
+}
+const hearsHistory = () => heard && historyOf()?.currentEntry?.url === window.location.href;
 
 /** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
 const watchEntry = (wake: () => void) => {
@@ -146,6 +154,25 @@ const watchEntry = (wake: () => void) => {
   return () => navigation?.removeEventListener("currententrychange", wake);
 };
 const entryKey = () => historyOf()?.currentEntry?.key ?? "";
+
+/** The history entries a signed report was started from, by the browser's key, kept with the tab: a reload doesn't forget them. */
+const STARTED_FROM = "publish:started-from";
+const startedFrom = () => {
+  try {
+    return window.sessionStorage.getItem(STARTED_FROM) ?? "";
+  } catch {
+    return "";
+  }
+};
+const keepStartedFrom = (key: string) => {
+  try {
+    window.sessionStorage.setItem(STARTED_FROM, `${startedFrom()} ${key}`.trim());
+  } catch {
+    // Without the tab's storage the entry is forgotten on a reload, and shows Prepare again.
+  }
+};
+/** Read as the page is drawn, and written only by a signing, which draws it again. */
+const unwatched = () => () => undefined;
 type EntryChange = Event & { navigationType: string | null; from: HistoryEntry };
 
 /**
@@ -153,15 +180,19 @@ type EntryChange = Event & { navigationType: string | null; from: HistoryEntry }
  * a report stands is the report's own, so a step the browser goes to is one the report is sent to: Back from the
  * details is the details' own Back button. An entry for a step the report can't open again (it passed its checks),
  * or for the one it already shows, is gone past the way the person was going, so no press leaves the screen as it was.
+ * After a reload the entries behind belong to the page's earlier load, and Back to one loads the page again: that
+ * arrival is settled the same way, once, when the report is in.
  */
+let arrived = false;
 function useStepHistory(report: Report | null, humanReview: boolean, send: (step: BackStep) => void) {
   // The browser's history is the outside system: it says where a step came from only through the Navigation API.
   useEffect(() => {
     const navigation = historyOf();
     if (!report || !navigation) return;
-    const onChange = (event: Event) => {
-      const { navigationType, from } = event as EntryChange;
-      if (navigationType !== "traverse" || !from.url || !navigation.currentEntry) return;
+    /** The browser came from the entry `from` to the one it is at. */
+    const land = (from: HistoryEntry) => {
+      const at = navigation.currentEntry;
+      if (!from.url || !at) return;
       const was = stepIn(new URL(from.url), report.key);
       const to = stepIn(new URL(window.location.href), report.key);
       // Another report, another page, or the same step with something else opened over it: not a step between steps.
@@ -169,9 +200,31 @@ function useStepHistory(report: Report | null, humanReview: boolean, send: (step
       // The step on the screen as the browser left it. Before its PDF is the report's, the DOI and the upload are two
       // screens of one state, which the address picks.
       const shown = report.step === "done" ? "checks" : report.step === "doi" && was !== "doi" ? "upload" : report.step;
-      if (to !== shown && report.step === "doi" && (to === "doi" || to === "upload")) return;
-      if (to !== shown && to !== "checks" && opens(report, to, humanReview)) send(to);
-      else window.history.go(Math.sign(navigation.currentEntry.index - from.index));
+      // What an entry's step comes to: shown by the address alone, one the report is sent to, or neither.
+      const reach = (step: (typeof TRAIL)[number]) => (step === shown ? null : report.step === "doi" && (step === "doi" || step === "upload") ? "shown" : step !== "checks" && opens(report, step, humanReview) ? "sent" : null);
+      const here = reach(to);
+      if (here === "shown") return;
+      if (here === "sent") return send(to as BackStep);
+      // On past it, the way the person was going, to the first entry that is another screen: in one step, since
+      // each entry of an earlier load of the page would load it again.
+      const direction = Math.sign(at.index - from.index);
+      if (!direction) return;
+      const entries = navigation.entries();
+      let next = at.index + direction;
+      for (let url = entries[next]?.url; url; url = entries[next]?.url) {
+        const step = stepIn(new URL(url), report.key);
+        if (!step || reach(step)) break;
+        next += direction;
+      }
+      window.history.go(next - at.index);
+    };
+    // This load of the page was itself a step of Back or Forward, and the page is still on the entry it loaded at.
+    const arrival = navigation.activation;
+    if (!arrived && arrival?.navigationType === "traverse" && arrival.from && arrival.entry.key === navigation.currentEntry?.key) land(arrival.from);
+    arrived = true;
+    const onChange = (event: Event) => {
+      const { navigationType, from } = event as EntryChange;
+      if (navigationType === "traverse") land(from);
     };
     navigation.addEventListener("currententrychange", onChange);
     return () => navigation.removeEventListener("currententrychange", onChange);
@@ -234,9 +287,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // A report signed here took its agreement's place in the history, and the Prepare it was started from is still
   // the entry behind it. Back from its DOI lands there, on a report already started: that entry shows the list
   // from then on, never a second new report nobody asked for. Entries are told apart by the browser's own key.
-  const [used, setUsed] = useState<string[]>([]);
+  const used = useSyncExternalStore(unwatched, startedFrom, () => "");
   const entry = useSyncExternalStore(watchEntry, entryKey, () => "");
-  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || used.includes(entry);
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (entry !== "" && used.split(" ").includes(entry));
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
@@ -291,10 +344,10 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   }
 
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
-  // address's: opening the upload is a step forward, and Back from it returns to the DOI. An address further on
-  // is one the report is on its way to (useStepHistory), and the upload stays up meanwhile.
+  // address's: opening the upload is a step forward, and Back from it returns to the DOI. Any other step an
+  // address names is only a name: the report shows where it stands.
   // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
-  const report = saved?.step === "doi" && at && at !== "agreement" ? { ...saved, step: "upload" as const } : saved;
+  const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
   // Every new report starts on Prepare, what publishing asks for, then the agreement: a step forward in the
   // browser's history, so Back from the agreement is Prepare. A signing on its way stays on the agreement.
   const preparing = !report && at !== "agreement" && !arriving;
@@ -449,7 +502,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             onSigned={(key) => {
               const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
-              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) setUsed((keys) => [...keys, behind.key]);
+              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) keepStartedFrom(behind.key);
               void setPlace({ report: key, step: null, byline: null });
             }}
             onAnother={another}
@@ -499,6 +552,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 /** The one report's screen, chosen from where the report stands. */
 function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
+  const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -698,7 +752,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                   },
                 );
               }}
-              onAddCard={(code) => addCard({ ...here, key: report.key, note: t("savingNote"), ...(code && { code }) }).then((url) => window.location.assign(url))}
+              onAddCard={(code) => addCard({ ...here, key: report.key, note: t("savingNote"), locale, ...(code && { code }) }).then((url) => window.location.assign(url))}
               onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
               onFix={() => onStep("upload")}
               onDetails={() => onStep("details")}
@@ -1951,15 +2005,37 @@ function ReportSeen({ report, humanReview }: { report: Report; humanReview: bool
         </ul>
       ) : null}
       {report.status === "live" ? (
-        <div className="mt-6 flex justify-end">
-          <Button asChild>
-            <Link href={`/papers/${report.key}`}>
-              {t("openPage")} <ArrowUpRight />
-            </Link>
-          </Button>
-        </div>
+        <>
+          <div className="mt-6 flex justify-end">
+            <Button asChild>
+              <Link href={`/papers/${report.key}`}>
+                {t("openPage")} <ArrowUpRight />
+              </Link>
+            </Button>
+          </div>
+          {/* A member who can't change the report is still told how one comes down. */}
+          <TakeDown reportKey={report.key} className="mt-4 text-end" />
+        </>
       ) : null}
     </div>
+  );
+}
+
+/** A live report is its author's to correct, not to remove: taking one down is asked of us, and this says how. */
+function TakeDown({ reportKey, className }: { reportKey: string; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    <p className={cn("text-xs text-muted-foreground", className)}>
+      {t.rich("takeDown", {
+        email: CONTACT_EMAIL,
+        key: reportKey,
+        mail: (chunks) => (
+          <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(reportKey)}`} className="underline underline-offset-2 hover:text-foreground">
+            {chunks}
+          </a>
+        ),
+      })}
+    </p>
   );
 }
 
@@ -2123,6 +2199,8 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
             </StatusChip>
           ) : null}
         </div>
+        {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
+        {stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="mt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}
       </motion.div>
       {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
@@ -2149,18 +2227,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
           </Link>
         </Button>
       </motion.div>
-      {/* A live report is its author's to correct, not to remove: taking one down is asked of us, and this says how. */}
-      <p className="mt-6 text-center text-xs text-muted-foreground">
-        {t.rich("takeDown", {
-          email: CONTACT_EMAIL,
-          key: report.key,
-          mail: (chunks) => (
-            <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(report.key)}`} className="underline underline-offset-2 hover:text-foreground">
-              {chunks}
-            </a>
-          ),
-        })}
-      </p>
+      <TakeDown reportKey={report.key} className="mt-6 text-center" />
     </div>
   );
 }

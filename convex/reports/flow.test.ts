@@ -58,6 +58,20 @@ describe("reports that wait in a person's other workspaces", () => {
   });
 });
 
+describe("a PDF read while its author went back", () => {
+  it("leaves the report at its DOI, with the details read, and the upload a step away", async () => {
+    const world = await setup();
+    const key = await sign(world.author, world.own);
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a report"], { type: "application/pdf" })));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "report.pdf" });
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "doi" });
+    const { _id: reportId, pdf } = await row(world.t, key);
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdf!.at, pages: 12, metadata: details() });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "doi", pdf: { pages: 12 }, metadata: { title: details().title } });
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
+  });
+});
+
 describe("who works on a workspace's report", () => {
   it("lets every member see it, and only its owner and the workspace's admins change it", async () => {
     const world = await setup();

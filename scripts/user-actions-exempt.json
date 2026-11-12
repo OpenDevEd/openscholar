@@ -36,6 +36,7 @@
     "evidenceLibraries/queries:getSetupDraft": "The new-library page's own state while the person fills it in.",
     "evidenceLibraries/queries:getSetupDraftSelection": "The new-library page's own state while the person fills it in.",
     "evidenceLibraries/queries:isOrganizationPerson": "The team section's check of an address before it invites it.",
+    "evidenceLibraries/sources:isCommunity": "The sign-out page's check that the address it goes back to is a community's.",
     "evidenceLibraries/queries:listOrganizationPeople": "The team section's people picker.",
     "evidenceLibraries/teardown:getDevelopmentTeardownStatus": "The progress of a deletion the person started on the library's page.",
     "evidenceLibraries/updates:check": "The configuration page's check for newer library software when it opens.",
