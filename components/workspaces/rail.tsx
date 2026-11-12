@@ -202,6 +202,11 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const [card, setCard] = useState(false);
   // Up from the click that opens the card until it has finished closing: a tile that reaches the rail meanwhile flew there.
   const [cardUp, setCardUp] = useState(false);
+  // Whether the card is an organization's, whose tile is then its head and not your photo. Followed only while
+  // the card is open, so a closing card stays what it was, whatever was picked in it.
+  const [organizationCard, setOrganizationCard] = useState(false);
+  const inOrganization = signedIn && current?.kind === "organization";
+  if (card && organizationCard !== inOrganization) setOrganizationCard(inOrganization);
   const { signOut } = useClerk();
   // Signing out waits for the account card to close: open, it would sit there as Clerk empties it. Once asked for,
   // the card doesn't open again, so nothing cancels its closing, and signing out starts once.
@@ -294,7 +299,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
             me={signedIn ? me : undefined}
             workspace={signedIn ? current : undefined}
             open={card}
-            landing={cardUp}
+            organizationCard={organizationCard}
+            landing={cardUp && organizationCard}
             onOpen={() => {
               if (signOutStep !== null) return;
               setCard(true);
@@ -320,19 +326,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
             showStyledToast("error", t("signOutFailed"));
           });
         }}
-        head={
-          <>
-            <motion.span layoutId="rail-account-avatar" layoutDependency={card} transition={CARD_SPRING} className="flex rounded-full">
-              <IdentityAvatar name={signedIn ? (me?.name ?? "") : ""} imageUrl={signedIn ? me?.imageUrl : undefined} className="size-10" />
-            </motion.span>
-            {/* The workspace's tile, on its place in the card's workspace row. */}
-            {signedIn ? (
-              <span className="absolute start-[7px] top-[63px] flex">
-                <CardTile open={card} />
-              </span>
-            ) : null}
-          </>
-        }
+        head={<CardIdentity me={signedIn ? me : undefined} organization={organizationCard} open={card} />}
       >
         {signedIn ? (
           <AccountCard
@@ -377,23 +371,34 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
 const ShownWorkspace = React.createContext<WorkspaceLook | undefined>(undefined);
 
 /**
- * The workspace's tile in the account card. A closing card keeps what it last rendered, but this
- * reads the rail's workspace as it changes, so the tile that flies back from a card closed by a
- * pick is the picked workspace's, and the one the rail shows from then on. An organization's flies
- * in from your photo's corner in the rail; your own workspace has no mark there, so its tile fades
- * in and out with the card.
+ * Whose card it is, at its head: yours in your own workspace, the organization's in one of its.
+ * It's what flies in from the account button: your photo, or the tile on its corner. A closing card
+ * keeps what it last rendered, but the tile reads the rail's workspace as it changes, so the one
+ * that flies back from a card closed by a pick is the picked organization's. A pick of your own
+ * workspace leaves it no place in the rail, and it fades.
  */
-function CardTile({ open }: { open: boolean }) {
+function CardIdentity({ me, organization, open }: { me: CachedMe | undefined; organization: boolean; open: boolean }) {
   const workspace = React.useContext(ShownWorkspace);
-  // Whether a tile was in the rail to fly from, as the card opened.
-  const [flies] = useState(workspace?.kind === "organization");
-  return workspace ? (
-    <motion.span layoutId="rail-workspace-tile" layoutDependency={open} initial={flies ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={CARD_SPRING} className="flex">
-      <Framed>
-        <WorkspaceTile workspace={workspace} size="md" home />
-      </Framed>
-    </motion.span>
-  ) : null;
+  // Whether a tile was in the rail to fly from, as the card opened: one read after fades in.
+  const [flies] = useState(organization);
+  if (!organization) {
+    return (
+      <motion.span layoutId="rail-account-avatar" layoutDependency={open} transition={CARD_SPRING} className="flex rounded-full">
+        <IdentityAvatar name={me?.name ?? ""} imageUrl={me?.imageUrl} className="size-10" />
+      </motion.span>
+    );
+  }
+  return (
+    <AnimatePresence>
+      {workspace?.kind === "organization" ? (
+        <motion.span key="tile" layoutId="rail-workspace-tile" layoutDependency={open} initial={flies ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={CARD_SPRING} className="flex">
+          <Framed className="rounded-xl">
+            <WorkspaceTile workspace={workspace} size="lg" />
+          </Framed>
+        </motion.span>
+      ) : null}
+    </AnimatePresence>
+  );
 }
 
 /**
@@ -554,7 +559,19 @@ function RailItem({
  * and invitations waiting for an answer are counted above it. `me` and `workspace` hold from the
  * first frame, as the server knew them, until Clerk loads.
  */
-const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undefined; workspace: WorkspaceLook | undefined; open: boolean; /** The card is up or closing, so a tile that arrives flew from it. */ landing: boolean; onOpen: () => void }>(function AccountButton({ me, workspace, open, landing, onOpen }, ref) {
+const AccountButton = React.forwardRef<
+  HTMLButtonElement,
+  {
+    me: CachedMe | undefined;
+    workspace: WorkspaceLook | undefined;
+    open: boolean;
+    /** The card is an organization's: its tile flies to the card's head, and your photo stays here. */
+    organizationCard: boolean;
+    /** An organization's card is up or closing, so a tile that arrives flew from it. */
+    landing: boolean;
+    onOpen: () => void;
+  }
+>(function AccountButton({ me, workspace, open, organizationCard, landing, onOpen }, ref) {
   const t = useTranslations("workspaces");
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(useWorkspace(), { paginationOpts: { cursor: null, numItems: 10 } }));
   const waiting = invitations?.page.length ?? 0;
@@ -571,7 +588,7 @@ const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undef
           onClick={onOpen}
           className="relative mt-2 flex size-11 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]"
         >
-          {open ? null : (
+          {open && !organizationCard ? null : (
             <motion.span layoutId="rail-account-avatar" layoutDependency={open} transition={CARD_SPRING} className="flex rounded-full">
               <IdentityAvatar name={name} imageUrl={me?.imageUrl} className="size-8" />
             </motion.span>
@@ -599,8 +616,8 @@ const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undef
 });
 
 /**
- * The account card: you, the workspace you're in with its credits, the others to switch to, settings,
- * theme, language and sign out. It can be opened while the page is still loading: it then has your
+ * The account card: the workspace you're in at its head (you in your own, the organization in one of
+ * its) with its plan and credits, the others to switch to, settings, theme, language and sign out. It can be opened while the page is still loading: it then has your
  * name and the workspace's as the rail knows them (`me`, `shown`), and what is read after fades in
  * or opens its place.
  */
@@ -647,71 +664,68 @@ function AccountCard({
   const [creditsFromStart] = useState(hasCredits);
   const [upgradeFromStart] = useState(hasCredits && canUpgrade);
   const here = workspace ?? shown;
+  // The card is the workspace you're in: yourself in your own, the organization in one of its.
+  const title = here?.kind === "organization" ? here.name : me?.name;
   return (
     <>
       <div className="flex items-center gap-3 px-2.5 pb-2.5 pt-2.5">
-        <span aria-hidden className="size-10 shrink-0 rounded-full" />
+        {/* The place of your photo, or of the organization's tile: it flies in from the rail. */}
+        <span aria-hidden className="size-10 shrink-0" />
         <span className="min-w-0 flex-1">
           {/* On a first visit the rail has no name until Clerk loads: the line is there, and the name fades in. */}
-          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{me?.name ? <span className="animate-in fade-in-0 duration-200">{me.name}</span> : "\u00a0"}</span>
-          {/* The line keeps its height while Clerk loads, and the address fades in. */}
-          <span className="mt-0.5 block h-4 truncate text-xs text-muted-foreground">{email ? <span className="animate-in fade-in-0 duration-200">{email}</span> : null}</span>
-        </span>
-      </div>
-      {/* The workspace you're in, and what it has to spend: both lead to its plan and credits. */}
-      <div className="mx-1 mb-1">
-        <Link href={billing} onClick={onNavigate} className="block rounded-2xl bg-foreground/[0.04] px-3 py-2.5 transition-colors hover:bg-foreground/[0.07]">
-          <span className="flex h-9 items-center gap-2.5">
-            {/* The tile's place: it flies in from the rail, or fades in with the card. */}
-            <span aria-hidden className="size-8 shrink-0 rounded-lg" />
-            <span className="min-w-0 flex-1">
-              {/* Your own workspace is named for what it is: your name is the line above. */}
-              <span className="block truncate text-[13px] font-semibold leading-tight">{here ? (here.kind === "personal" ? t("personal") : here.name) : "\u00a0"}</span>
-              {/* The line keeps its height while the members and the role are read, and they fade in. */}
-              {here?.kind === "organization" ? (
-                <span className="mt-0.5 flex h-4 items-center gap-2 text-[11px] text-muted-foreground">
-                  {workspace?.kind === "organization" ? (
-                    <span className="flex items-center gap-2 animate-in fade-in-0 duration-200">
-                      <span className="tabular-nums">{t("members", { count: workspace.members ?? 0 })}</span>
-                      <RoleOf workspace={workspace} />
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-            </span>
+          <span className="flex h-5 items-center gap-2">
+            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight tracking-tight">{title ? <span className="animate-in fade-in-0 duration-200">{title}</span> : "\u00a0"}</span>
+            {/* The plan sits on the name's line, so the line below keeps the card's width. */}
             {workspace ? <PlanChip workspace={workspace} className="animate-in fade-in-0 duration-200" /> : null}
           </span>
-          {/* Its own presence, so the card closing doesn't fold it: what flies back lands on the rail only if the card keeps its height. */}
-          <AnimatePresence>
-            {hasCredits ? (
-              <Opening key="credits" instant={creditsFromStart}>
-                <span className="flex items-baseline gap-1.5 pt-2.5">
-                  <span className="text-xl font-semibold tabular-nums leading-none tracking-tight">{format.number(credits)}</span>
-                  <span className="text-xs text-muted-foreground">{tb("credits")}</span>
+          {/* The line keeps its height while your address, or the organization's members and your role in it, are read: they fade in. */}
+          <span className="mt-0.5 flex h-4 items-center text-xs text-muted-foreground">
+            {here?.kind === "organization" ? (
+              workspace?.kind === "organization" ? (
+                <span className="flex min-w-0 items-center gap-2 animate-in fade-in-0 duration-200">
+                  <span className="tabular-nums">{t("members", { count: workspace.members ?? 0 })}</span>
+                  <RoleOf workspace={workspace} />
                 </span>
-                {/* Against the month's credits, on a plan that grants them each month. The bar is laid out at its
-                    width and slides in from the track's start, which a right-to-left page mirrors. */}
-                {share !== null ? (
-                  <span className="mt-2 block h-1 overflow-hidden rounded-full bg-foreground/[0.08] rtl:-scale-x-100">
-                    <motion.span className="block h-full rounded-full bg-primary" style={{ width: `${share * 100}%` }} initial={{ x: "-100%" }} animate={{ x: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
-                  </span>
-                ) : null}
-              </Opening>
+              ) : null
+            ) : email ? (
+              <span className="min-w-0 truncate animate-in fade-in-0 duration-200">{email}</span>
             ) : null}
-          </AnimatePresence>
-        </Link>
-        <AnimatePresence>
-          {hasCredits && canUpgrade ? (
-            <Opening key="upgrade" instant={upgradeFromStart}>
-              <Button asChild size="sm" className="mt-1 w-full">
-                <Link href="/pricing" onClick={onNavigate}>
-                  <UpgradeIcon /> {tc("upgrade")}
-                </Link>
-              </Button>
-            </Opening>
-          ) : null}
-        </AnimatePresence>
+          </span>
+        </span>
       </div>
+      {/* What the workspace has to spend, which leads to its plan and credits. Each part is the card's own child
+          with its own presence: no empty wrapper grows around it, and the card closing doesn't fold it, so what
+          flies back lands on the rail. */}
+      <AnimatePresence>
+        {hasCredits ? (
+          <Opening key="credits" instant={creditsFromStart} className="px-1 pb-1">
+            <Link href={billing} onClick={onNavigate} className="block rounded-2xl bg-foreground/[0.04] px-3 py-2.5 transition-colors hover:bg-foreground/[0.07]">
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-xl font-semibold tabular-nums leading-none tracking-tight">{format.number(credits)}</span>
+                <span className="text-xs text-muted-foreground">{tb("credits")}</span>
+              </span>
+              {/* Against the month's credits, on a plan that grants them each month. The bar is laid out at its
+                  width and slides in from the track's start, which a right-to-left page mirrors. */}
+              {share !== null ? (
+                <span className="mt-2 block h-1 overflow-hidden rounded-full bg-foreground/[0.08] rtl:-scale-x-100">
+                  <motion.span className="block h-full rounded-full bg-primary" style={{ width: `${share * 100}%` }} initial={{ x: "-100%" }} animate={{ x: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+                </span>
+              ) : null}
+            </Link>
+          </Opening>
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {hasCredits && canUpgrade ? (
+          <Opening key="upgrade" instant={upgradeFromStart} className="px-1 pb-1">
+            <Button asChild size="sm" className="w-full">
+              <Link href="/pricing" onClick={onNavigate}>
+                <UpgradeIcon /> {tc("upgrade")}
+              </Link>
+            </Button>
+          </Opening>
+        ) : null}
+      </AnimatePresence>
       <WorkspaceMenu all={workspaces} shared={shared} onSwitch={onSwitch} />
       <div className="mt-1 space-y-px border-t border-border/60 pt-1">
         <button type="button" onClick={onCreate} className={MENU_ROW}>

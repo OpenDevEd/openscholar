@@ -9,7 +9,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
-import { Home, Loader2, Share2, Users, X } from "@/components/icons";
+import { Loader2, Share2, Users, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -31,17 +31,9 @@ import { useSeatBilling } from "@/lib/feature-flags/hook";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-start transition-colors hover:bg-foreground/[0.045]";
 
-/** What you are in a workspace, as an icon and a word, so it reads apart from the plan beside it. */
+/** What you are in an organization, as an icon and a word, so it reads apart from the plan beside it. */
 export function RoleOf({ workspace }: { workspace: WorkspaceRow }) {
   const t = useTranslations("workspaces");
-  if (workspace.kind === "personal") {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <Home className="size-3.5" />
-        {t("personal")}
-      </span>
-    );
-  }
   return (
     <RoleLabel role={workspace.role === "admin" ? "admin" : "member"} className="text-inherit">
       {workspace.role === "admin" ? t("admin") : t("member")}
@@ -117,7 +109,9 @@ export function WorkspaceMenu({ all, shared, onSwitch }: { all: ReturnType<typeo
   const current = useCurrentWorkspace();
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
-  const others = (all.list ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
+  const email = useUser().user?.primaryEmailAddress?.emailAddress;
+  // Listed once the workspace you're in is read: before that it would be among the others, and its row would leave.
+  const others = current ? (all.list ?? []).filter((workspace) => workspace.workspaceId !== current.workspaceId) : [];
   // A list that is in the card as it opens is simply there; one read after opens its place.
   const [listed] = useState(others.length > 0);
   return (
@@ -136,17 +130,26 @@ export function WorkspaceMenu({ all, shared, onSwitch }: { all: ReturnType<typeo
                     onClick={() => onSwitch(workspace.slug, workspace)}
                     className={cn(ROW, "h-11")}
                   >
-                    <Framed>
-                      <WorkspaceTile workspace={workspace} size="md" home />
-                    </Framed>
+                    {/* Your own workspace is you: your photo, your name and your address, which the card's head shows while you're in it. */}
+                    {workspace.kind === "personal" ? (
+                      <WorkspaceTile workspace={workspace} size="md" />
+                    ) : (
+                      <Framed>
+                        <WorkspaceTile workspace={workspace} size="md" />
+                      </Framed>
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
-                      <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="font-medium">
-                          <PlanName workspace={workspace} />
+                      {workspace.kind === "personal" ? (
+                        <span className="mt-0.5 block h-4 truncate text-[11px] text-muted-foreground">{email}</span>
+                      ) : (
+                        <span className="mt-0.5 flex h-4 items-center gap-2 text-[11px] text-muted-foreground">
+                          <span className="font-medium">
+                            <PlanName workspace={workspace} />
+                          </span>
+                          <RoleOf workspace={workspace} />
                         </span>
-                        <RoleOf workspace={workspace} />
-                      </span>
+                      )}
                     </span>
                     {workspace.kind === "personal" && shared ? (
                       <TooltipHint label={t("sharedWithYou", { count: shared })}>
