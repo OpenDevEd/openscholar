@@ -72,7 +72,9 @@ const dateOf = (year: number, month?: number, day?: number) => `${year}${month ?
 /**
  * A report's date as its PDF states it: a year, then a month and a day where it gives them. The form saves as it is
  * typed and saving refuses what isn't a date, so a year is saved only once it is a whole one; until then it is held
- * here, and the form says so. A day the month doesn't have goes when the month changes.
+ * here, and the form says so, which keeps the month and day while a year is typed over. Leaving the year box empty
+ * clears the date; leaving it unfinished puts the saved year back, so the box never shows what isn't saved. A day the
+ * month doesn't have goes when the month changes.
  */
 function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: string; /** A year being typed that isn't one yet. */ typed: string | null; onTyped: (typed: string | null) => void; onDate: (date: string) => void; invalid: boolean; children?: ReactNode }) {
   const t = useTranslations("publishReports.details");
@@ -102,6 +104,11 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
           value={typed ?? (year ? String(year) : "")}
           aria-invalid={typed !== null || !parts || invalid || undefined}
           onChange={(e) => typeYear(e.target.value)}
+          onBlur={() => {
+            if (typed === null) return;
+            onTyped(null);
+            if (typed === "") onDate("");
+          }}
           className="w-[4.25rem] shrink-0 tabular-nums"
         />
         <Select value={parts?.month ? pad(parts.month) : ""} disabled={!year || typed !== null} onValueChange={(month) => year && onDate(month === NONE ? dateOf(year) : dateOf(year, Number(month), dayIn(year, Number(month))))}>
@@ -118,7 +125,8 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
           </SelectContent>
         </Select>
         <Select value={parts?.day ? pad(parts.day) : ""} disabled={!year || !parts?.month || typed !== null} onValueChange={(day) => year && parts?.month && onDate(dateOf(year, parts.month, day === NONE ? undefined : Number(day)))}>
-          <SelectTrigger className="w-[4.25rem] shrink-0" aria-label={t("dateDay")}>
+          {/* As wide as its word, in every language: "Day", "Jour", "Tag". */}
+          <SelectTrigger className="min-w-[4.25rem] shrink-0" aria-label={t("dateDay")}>
             <SelectValue placeholder={t("dateDay")} />
           </SelectTrigger>
           <SelectContent>
