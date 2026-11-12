@@ -6543,11 +6543,10 @@
       "agreementIntro": "Mantém os direitos de autor e publica com a licença CC BY 4.0. Ao assinar, reserva o seu DOI.",
       "agreementShared": "Mantém os direitos de autor e publica com a licença CC BY 4.0. Ao assinar, reserva o seu DOI. O relatório pertence a este espaço de trabalho: os membros podem vê-lo, e o utilizador e os administradores trabalham nele.",
       "signedBy": "Assinado por",
-      "signForAll": "Assino em nome de todos os autores, que concordaram",
-      "agree": "Aceito este acordo",
+      "agree": "Aceito este acordo, por mim e por eventuais coautores, que concordaram",
       "untouched": "Já reservou um DOI para <mono>{key}</mono> e ainda não carregou o PDF.",
       "continueWith": "Continuar com ele",
-      "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale as caixas.",
+      "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale a caixa.",
       "agreementInEnglish": "O acordo em si está redigido em inglês.",
       "limit": {
         "personal": "O seu plano permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",

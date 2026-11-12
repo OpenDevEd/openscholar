@@ -6543,11 +6543,10 @@
       "agreementIntro": "Jy behou die kopiereg en publiseer onder CC BY 4.0. Ondertekening reserveer jou DOI.",
       "agreementShared": "Jy behou die kopiereg en publiseer onder CC BY 4.0. Ondertekening reserveer jou DOI. Hierdie verslag behoort aan hierdie werkruimte: sy lede kan dit sien, en jy en sy administrateurs werk daaraan.",
       "signedBy": "Onderteken deur",
-      "signForAll": "Ek onderteken namens al die skrywers wat ingestem het",
-      "agree": "Ek stem in tot hierdie ooreenkoms",
+      "agree": "Ek stem in tot hierdie ooreenkoms, vir myself en enige medeskrywers, wat ingestem het",
       "untouched": "Jy het reeds 'n DOI vir <mono>{key}</mono> gereserveer en nog nie sy PDF opgelaai nie.",
       "continueWith": "Gaan daarmee voort",
-      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkies.",
+      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkie.",
       "agreementInEnglish": "Die ooreenkoms self is in Engels geskryf.",
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",

@@ -6542,11 +6542,10 @@
       "agreementIntro": "You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI.",
       "agreementShared": "You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI. The report is this workspace's: its members can see it, and you and its admins work on it.",
       "signedBy": "Signed by",
-      "signForAll": "I sign for all the authors, who have agreed",
-      "agree": "I agree to this agreement",
+      "agree": "I agree to this agreement, for myself and any co-authors, who have agreed",
       "untouched": "You already reserved a DOI for <mono>{key}</mono> and haven't uploaded its PDF.",
       "continueWith": "Continue with it",
-      "agreementChanged": "The agreement changed while this page was open. Read it again, then tick the boxes.",
+      "agreementChanged": "The agreement changed while this page was open. Read it again, then check the box.",
       "agreementInEnglish": "The agreement itself is written in English.",
       "limit": {
         "personal": "Your plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",

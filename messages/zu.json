@@ -6542,11 +6542,10 @@
       "agreementIntro": "Ugcina i-copyright futhi ushicilela ngaphansi kwe-CC BY 4.0. Ukusayina kugodla i-DOI yakho.",
       "agreementShared": "Ugcina i-copyright futhi ushicilela ngaphansi kwe-CC BY 4.0. Ukusayina kugodla i-DOI yakho. Lo mbiko ungowale ndawo yokusebenza: amalungu ayo angawubona, futhi wena nabaphathi bayo niyawusebenza.",
       "signedBy": "Kusayinwa ngu-",
-      "signForAll": "Ngisayina egameni labo bonke ababhali abavumile",
-      "agree": "Ngiyavumelana nalesi sivumelwano",
+      "agree": "Ngiyavumelana nalesi sivumelwano, egameni lami nelabo bonke ababhali engibhala nabo, bonke abavumile",
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
-      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza amabhokisi.",
+      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza ibhokisi.",
       "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",

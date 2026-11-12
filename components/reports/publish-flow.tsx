@@ -916,13 +916,16 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-/** The agreement's two confirmations as last ticked in this tab, for the agreement as it then read. */
-const TICKS = "publish:agreement-ticks";
-type Ticks = { version: number; all: boolean; agreed: boolean };
+/**
+ * The agreement's confirmation as last ticked in this tab, for the agreement as it then read. Its own key: a tick
+ * saved under the old one agreed for the signer alone, and must never count for their co-authors.
+ */
+const TICKS = "publish:agreement-tick";
+type Ticks = { version: number; agreed: boolean };
 function keptTicks(version: number): Ticks | null {
   try {
     const kept = JSON.parse(window.sessionStorage.getItem(TICKS) ?? "null") as Ticks | null;
-    return kept && kept.version === version && typeof kept.all === "boolean" && typeof kept.agreed === "boolean" ? { version, all: kept.all, agreed: kept.agreed } : null;
+    return kept && kept.version === version && typeof kept.agreed === "boolean" ? { version, agreed: kept.agreed } : null;
   } catch {
     return null;
   }
@@ -950,17 +953,19 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const name = typed ?? user?.fullName ?? "";
   const [busy, start] = useTransition();
   const { agreement } = basics;
-  // Each tick is for the agreement as it read when it was made. One changed since, while the page was open, is
-  // read and ticked again before it can be signed.
-  // Kept with the tab until the report is signed: someone who ticks them signed out, then signs up, finds them as
-  // they left them and not cleared without a word. The step is drawn only in the browser, once the page has its data.
-  const [ticks, setTicks] = useState(() => keptTicks(agreement.version) ?? { version: agreement.version, all: false, agreed: false });
-  const changed = ticks.version !== agreement.version && (ticks.all || ticks.agreed);
-  const { all, agreed } = ticks.version === agreement.version ? ticks : { all: false, agreed: false };
-  const tick = (next: { all?: boolean; agreed?: boolean }) => {
-    const now = { version: agreement.version, all, agreed, ...next };
-    setTicks(now);
-    keepTicks(now);
+  // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
+  // aren't known until the PDF is read, so a tick only some signers needed let reports with several go unconfirmed.
+  // It is for the agreement as it read when it was made. One changed since, while the page was open, is read and
+  // ticked again before it can be signed.
+  // Kept with the tab until the report is signed: someone who ticks it signed out, then signs up, finds it as they
+  // left it and not cleared without a word. The step is drawn only in the browser, once the page has its data.
+  const [ticks, setTicks] = useState(() => keptTicks(agreement.version) ?? { version: agreement.version, agreed: false });
+  const changed = ticks.version !== agreement.version && ticks.agreed;
+  const agreed = ticks.version === agreement.version && ticks.agreed;
+  const tick = (now: boolean) => {
+    const next = { version: agreement.version, agreed: now };
+    setTicks(next);
+    keepTicks(next);
   };
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
@@ -984,12 +989,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           <Input value={name} maxLength={SIGNER_NAME_MAX} onChange={(e) => setTyped(e.target.value)} autoComplete="name" />
         </label>
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={all} onCheckedChange={(v) => tick({ all: v === true })} className="mt-0.5" />
-          <span>{t("signForAll")}</span>
-        </label>
-        <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
-          <span>{t("agree")}</span>
+          <Checkbox checked={agreed} onCheckedChange={(v) => tick(v === true)} className="mt-0.5" />
+          <span className="text-pretty">{t("agree")}</span>
         </label>
       </div>
       {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
@@ -1035,8 +1036,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
               start(async () => {
                 say(null);
                 try {
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version });
-                  // Signed, the ticks have done their work: the next report's agreement starts unticked.
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version });
+                  // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);
                 } catch (error) {

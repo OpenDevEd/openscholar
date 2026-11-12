@@ -6543,11 +6543,10 @@
       "agreementIntro": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0. Kusaini kunahifadhi DOI yako.",
       "agreementShared": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0. Kusaini kunahifadhi DOI yako. Ripoti hii ni ya eneo hili la kazi: wanachama wake wanaweza kuiona, na wewe na wasimamizi wake mnaifanyia kazi.",
       "signedBy": "Inasainiwa na",
-      "signForAll": "Ninasaini kwa niaba ya waandishi wote waliokubali",
-      "agree": "Ninakubali makubaliano haya",
+      "agree": "Ninakubali makubaliano haya, kwa niaba yangu na ya waandishi wenza wote, ambao wote wamekubali",
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
-      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye visanduku.",
+      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye kisanduku.",
       "agreementInEnglish": "Makubaliano yenyewe yameandikwa kwa Kiingereza.",
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",

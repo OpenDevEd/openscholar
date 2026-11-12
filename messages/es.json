@@ -6543,11 +6543,10 @@
       "agreementIntro": "Conservas los derechos de autor y publicas con licencia CC BY 4.0. Al firmar reservas tu DOI.",
       "agreementShared": "Conservas los derechos de autor y publicas con licencia CC BY 4.0. Al firmar reservas tu DOI. El informe pertenece a este espacio de trabajo: sus miembros pueden verlo, y tú y sus administradores trabajáis en él.",
       "signedBy": "Firmado por",
-      "signForAll": "Firmo en nombre de todos los autores, que están de acuerdo",
-      "agree": "Acepto este acuerdo",
+      "agree": "Acepto este acuerdo, en mi nombre y en el de los coautores, que están de acuerdo",
       "untouched": "Ya reservaste un DOI para <mono>{key}</mono> y no has subido su PDF.",
       "continueWith": "Continuar con él",
-      "agreementChanged": "El acuerdo cambió mientras esta página estaba abierta. Léelo de nuevo y marca las casillas.",
+      "agreementChanged": "El acuerdo cambió mientras esta página estaba abierta. Léelo de nuevo y marca la casilla.",
       "agreementInEnglish": "El acuerdo en sí está redactado en inglés.",
       "limit": {
         "personal": "Tu plan permite empezar {count, plural, one {# informe} other {# informes}} al día. Vuelve mañana o cámbiate a un plan con más.",
