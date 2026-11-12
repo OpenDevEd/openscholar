@@ -59,10 +59,10 @@ const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/
 const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's note", note]] : []);
 /** Replies to an author's email reach the team's inbox. */
 const QUESTIONS: Row = ["Questions", "Reply to this email."];
-/** What an activation bought for a report that then couldn't go live says: where it is now, and why. */
+/** What a payment for a report that then couldn't go live says: where what it bought is now, and why. */
 const keptRows = (r: MailFacts, origin: string): Row[] => [
   ["Why", "The report changed while its payment went through, so it didn't go live."],
-  ["The activation", `It stays in ${r.admins ? `${r.admins.organization}'s` : "your"} balance. The next report activated uses it, and nothing more is charged.`],
+  ["What you paid", `It is in ${r.admins ? `${r.admins.organization}'s` : "your"} publication balance. The next report activated is paid from it.`],
   publishLink("The report", r, origin),
   QUESTIONS,
 ];
@@ -130,9 +130,9 @@ const EVENTS = {
       publishLink("Activate it", r, origin),
     ],
   },
-  "kept-admins": { to: "admins", label: "Activation kept", heading: "An activation you paid for is kept for the next report", rows: keptRows },
+  "kept-admins": { to: "admins", label: "Payment kept", heading: "What you paid for a report is kept for the next one", rows: keptRows },
   // To the report's author.
-  kept: { to: "author", label: "Activation kept", heading: "The activation you paid for is kept for your next report", rows: keptRows },
+  kept: { to: "author", label: "Payment kept", heading: "What you paid for a report is kept for your next one", rows: keptRows },
   approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink(activating(r), r, origin)] },
   released: {
     to: "author",

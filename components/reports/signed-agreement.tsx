@@ -12,7 +12,6 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { FileText } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { fillAgreement } from "@/lib/reports/agreement";
-import { mockAgreementText, mockByline, useMockLicence } from "@/components/reports/licence-mock";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export function SignedAgreement({ reportKey }: { reportKey: string }) {
@@ -23,8 +22,6 @@ export function SignedAgreement({ reportKey }: { reportKey: string }) {
   const { data: admin } = useProtectedQuery(api.admins.queries.amI, {});
   const { data: reviewed } = useProtectedQuery(api.reports.review.agreement, admin ? { key: reportKey } : "skip");
   const signed = mine ?? reviewed;
-  // mock: the licence this browser signed the report with (licence-mock.ts).
-  const licence = useMockLicence(reportKey);
   if (!isAnonymous && (mine === undefined || admin === undefined || (admin && reviewed === undefined))) return <PageFrameLoading label={t("loading")} />;
   if (!signed) {
     return (
@@ -39,7 +36,7 @@ export function SignedAgreement({ reportKey }: { reportKey: string }) {
     <PageWrapper>
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <div lang="en" dir="ltr">
-          <MarkdownContent content={fillAgreement(mockAgreementText(signed.text), { name: signed.signer, date: new Date(signed.signedAt), byline: mockByline(signed.byline, licence), licence, doi: signed.doi, title: signed.title, authors: signed.authors, pages: signed.pages })} className="text-sm [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:leading-snug [&_h2]:text-base" />
+          <MarkdownContent content={fillAgreement(signed.text, { name: signed.signer, date: new Date(signed.signedAt), byline: signed.byline, licence: signed.licence, doi: signed.doi, title: signed.title, authors: signed.authors, pages: signed.pages })} className="text-sm [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:leading-snug [&_h2]:text-base" />
         </div>
         <dl className="mt-10 grid grid-cols-1 gap-x-8 gap-y-3 rounded-2xl border border-border-subtle bg-inset/60 p-5 text-sm sm:grid-cols-2">
           <div>

@@ -220,7 +220,7 @@ export const writeSnapshot = internalMutation({
     // A report being paid for buys into the publication balance and spends it in two steps at Autumn. A read between
     // them would show the balance up, then back down: while one is under way the balance stays as it was last read,
     // and the activation reads it again when it is done.
-    const paying = existing !== null && (await payingForReport(ctx, workspaceId));
+    const paying = existing !== null && (await payingForReport(ctx, workspaceId, fetchedAt));
     const row = {
       ...snapshot,
       ...(paying && { publication: existing.publication, publicationUnlimited: existing.publicationUnlimited }),
@@ -241,11 +241,21 @@ export const writeSnapshot = internalMutation({
 /** How long a report's charge can be under way: its hold at Autumn lasts as long (reports/activation.ts `HOLD_MS`). One older was left by an action that died. */
 const CHARGING_MS = 5 * 60_000;
 
-/** Whether a report of the workspace is being paid for now: its charge is under way, or waits on the bank or on Stripe's page. */
-async function payingForReport(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
-  const state = (state: "charging" | "pending") => ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", state)).order("desc").first();
-  const charging = await state("charging");
-  return (charging !== null && charging.at > Date.now() - CHARGING_MS) || (await state("pending")) !== null;
+/**
+ * Whether a snapshot read at `fetchedAt` could show a report's payment half made: a charge of the workspace's is under
+ * way, or waits on the bank or on Stripe's page, or its newest live report's price wasn't yet taken at Autumn when the
+ * snapshot was read.
+ */
+async function payingForReport(ctx: QueryCtx, workspaceId: Id<"workspaces">, fetchedAt: number) {
+  const last = (state: "charging" | "pending" | "live") => ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", state)).order("desc").first();
+  const charging = await last("charging");
+  if ((charging !== null && charging.at > Date.now() - CHARGING_MS) || (await last("pending")) !== null) return true;
+  const live = await last("live");
+  // One from before holds were finished on record says nothing.
+  if (!live?.hold) return false;
+  if (live.finishedAt !== undefined) return live.finishedAt > fetchedAt;
+  // Live, and its hold still to be finished: unless that has taken longer than a hold lasts.
+  return Math.max(live.at, live.settling ?? 0) > Date.now() - CHARGING_MS;
 }
 
 /**

@@ -4,7 +4,6 @@
 // limit, the series and its DOIs, the model that reads PDFs, the checks, and the agreement.
 
 import { useState, useTransition, type ComponentProps } from "react";
-import { keepMockPrices, useMockPrices } from "@/components/reports/publication-mock";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import type { FunctionReturnType } from "convex/server";
@@ -27,9 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2 } from "@/components/icons";
-import { ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN } from "@/lib/billing/plans";
-import { DEFAULT_LICENCE } from "@/lib/reports/report";
-import { mockSeries } from "@/components/reports/licence-mock";
+import { DEFAULT_LICENCE, isPrice, type Prices } from "@/lib/reports/report";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -83,20 +80,16 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
 
 export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
-  // What an activation costs is the activation plan's price in Autumn, as the synced catalog has it.
-  const catalog = useQuery(api.billing.catalog.get, {});
   const links = useQuery(api.admins.queries.links, {});
-  if (!settings || catalog === undefined || links === undefined) return <Enter ready={false}>{null}</Enter>;
-  const priceOf = (id: string) => catalog?.plans.find((plan) => plan.id === id)?.price?.amount ?? null;
+  if (!settings || links === undefined) return <Enter ready={false}>{null}</Enter>;
   return (
     <Enter ready>
-      {/* mock: dev's Autumn has no three-activation plan, and dev's saved byline has no {licence} yet (licence-mock.ts). */}
-      <SettingsView settings={{ ...settings, series: mockSeries(settings.series) }} prices={{ one: priceOf(ACTIVATION_PLAN), three: priceOf(THREE_ACTIVATIONS_PLAN) ?? (priceOf(ACTIVATION_PLAN) === null ? null : priceOf(ACTIVATION_PLAN)! * 3) }} autumn={links.autumn ?? null} />
+      <SettingsView settings={settings} autumn={links.autumn ?? null} />
     </Enter>
   );
 }
 
-function SettingsView({ settings, prices, autumn }: { settings: Settings; /** What one activation, and three, cost in US dollars; null while Autumn sells none. */ prices: Prices; /** Autumn's dashboard. */ autumn: string | null }) {
+function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's dashboard. */ autumn: string | null }) {
   const [nav, setNav] = useQueryStates(NAV);
   const t = useTranslations("publishReports.settings");
   const format = useFormatter();
@@ -169,7 +162,7 @@ function SettingsView({ settings, prices, autumn }: { settings: Settings; /** Wh
         </ul>
       </Zone>
 
-      <Activations prices={prices} autumn={autumn} />
+      <PriceSettings prices={settings.prices} autumn={autumn} />
 
       <Zone label={t("series")}>
         <ul className={LIST}>
@@ -276,21 +269,17 @@ function SettingsView({ settings, prices, autumn }: { settings: Settings; /** Wh
   );
 }
 
-/** What buying an activation costs, and where activations are given: the price and each workspace's balance are Autumn's. */
-type Prices = { one: number | null; three: number | null };
-
-function Activations({ prices, autumn }: { prices: Prices; autumn: string | null }) {
+/**
+ * What publishing a report costs, by its licence, and where the balances that pay it are given: the two prices are
+ * saved here, and each workspace's publication balance is Autumn's.
+ */
+function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string | null }) {
   const t = useTranslations("publishReports.settings");
-  // mock: the prices are kept in this browser (publication-mock.ts) and start from dev's one plan price. The real
-  // build saves them with the publishing settings.
-  const kept = useMockPrices();
-  const now = { standard: kept?.standard ?? prices.one ?? 10, other: kept?.other ?? prices.three ?? 30 };
+  const update = useMutation(api.reports.settings.update);
   // A price is whole dollars, as the balance that pays it is bought: anything else is refused, and the box shows what is saved.
-  const save = (which: "standard" | "other") => async (typed: string) => {
+  const save = (which: keyof Prices) => (typed: string) => {
     const dollars = Number(typed.replace(/^\$/, ""));
-    if (!Number.isInteger(dollars) || dollars < 1 || dollars > 10_000) return false;
-    keepMockPrices({ ...now, [which]: dollars });
-    return true;
+    return isPrice(dollars) ? update({ prices: { [which]: dollars } }).then(() => true, () => false) : Promise.resolve(false);
   };
   return (
     <Zone label={t("prices")}>

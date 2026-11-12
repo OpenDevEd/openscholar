@@ -35,7 +35,6 @@ import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { DAYS_TO_PAY } from "@/lib/billing/plans";
 import { PublicationBalanceRow } from "@/components/billing/publication-balance-row";
-import { useMockBalance } from "@/components/reports/publication-mock";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -92,7 +91,6 @@ export default function BillingPage() {
 
   // Whether reports can be published, so the workspace's activations for them are worth a row.
   const publishing = useQuery(api.reports.settings.open, {});
-  const publicationParts = useMockBalance();
 
   const ready = Boolean(account && catalog) && spending !== undefined && !charges.isLoading && chargeCount !== undefined && publishing !== undefined;
   if (!account || !catalog) return <Enter ready={false}>{null}</Enter>;
@@ -193,8 +191,7 @@ export default function BillingPage() {
                   </div>
                 </div>
               ) : null}
-              {/* mock: the publication balance this browser keeps (publication-mock.ts); the real build reads it with the account. */}
-              {publishing ? <PublicationBalanceRow parts={publicationParts} /> : null}
+              {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} /> : null}
             </div>
             {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>

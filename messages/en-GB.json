@@ -421,22 +421,14 @@
     "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
     "fixPayment": "Fix payment",
     "seePlans": "See plans",
-    "activations": {
-      "title": "Report activations",
-      "left": "{count, number} left",
-      "leftRefills": "{count, number} left, refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}",
-      "unlimited": "No limit",
-      "none": "None left",
-      "hint": "Each one makes a report live on Openscholar Reports with nothing to pay.",
-      "publish": "Publish"
-    },
     "publication": {
       "title": "Publication balance",
       "hint": "Pays for the reports you publish on Openscholar Reports.",
       "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
       "backTo": "Back to {amount} on {date}",
       "kept": "{amount} kept until used",
-      "publish": "Publish"
+      "publish": "Publish",
+      "noLimit": "No limit"
     }
   },
   "errors": {
@@ -6503,18 +6495,13 @@
       "agreementLabel": "The agreement, as Markdown",
       "agreementSaved": "Agreement version {version}",
       "saveVersion": "Save as version {version}",
-      "price": "Price",
       "priceOne": "CC BY and CC BY-SA",
       "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
-      "priceHintNone": "Autumn has no Report activation plan, so a workspace with an empty balance can't activate.",
-      "notOnSale": "Not on sale",
-      "activations": "Activations",
       "balances": "Balances",
       "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organisation some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Open Autumn",
       "priceThree": "NC, ND and own licences",
       "priceThreeHint": "What publishing a report under an NC or ND licence, or the author's own, costs, in US dollars.",
-      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance.",
       "prices": "Prices"
     },
     "flow": {
@@ -6684,7 +6671,6 @@
       "waitingIn": "{count, plural, one {# report in {name} is ready for you to activate.} other {# reports in {name} are ready for you to activate.}}",
       "waitingOwn": "{count, plural, one {# report in your own workspace is ready for you to activate.} other {# reports in your own workspace are ready for you to activate.}}",
       "waitingOpen": "{count, plural, one {Open it} other {Open them}}",
-      "savingNote": "Your card is saved to activate reports on Openscholar. Nothing is charged now.",
       "registering": "The page is open now and can be shared. The DOI starts working once it is registered, usually within a few minutes.",
       "sentToReviewer": "Sent to a reviewer",
       "requestFailed": "The request couldn't be sent.",
@@ -6730,16 +6716,12 @@
         "onlyAdmin": "Only an admin can activate it",
         "notForSale": "Activating can't be paid for right now",
         "payTitle": "Pay {price} to activate {key}",
-        "freeTitle": "Activate {key}",
         "orgCardCharged": "{organization}'s card is charged.",
-        "orgCardNothing": "Nothing is charged to {organization}'s card.",
-        "payConfirm": "Pay and activate",
         "dueNow": "Due now",
         "doiNow": "Its DOI now",
         "after": "After",
         "reserved": "Reserved",
         "live": "Live",
-        "activationLine": "Activation",
         "codeLine": "Code {code}",
         "promo": {
           "add": "Add a voucher code",
@@ -6749,45 +6731,31 @@
           "off": "{percent}% off",
           "failed": "That code couldn't be checked. Try again.",
           "unknownCode": "{code} isn't a code we know, or it has been used up.",
-          "nothingOff": "{code} doesn't take anything off activating this report.",
+          "nothingOff": "{code} doesn't take anything off publishing a report.",
           "codeTooLong": "That code is too long to be one of ours.",
           "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",
-          "goesLive": "It goes live as soon as the payment is confirmed.",
+          "goesLive": "It goes live as soon as the payment is made.",
           "refused": "Your bank didn't confirm the last payment, so nothing was charged.",
-          "add": "Activate with a card or a voucher code",
-          "costs": "Activating this report costs {price}.",
-          "costsOrg": "Activating this report costs {price}, charged to {organization}.",
-          "needed": "A saved card is needed to activate.",
-          "orgCard": "{organization}'s card",
-          "yourCard": "Your card",
           "confirm": "Confirm payment",
-          "change": "Change",
-          "addButton": "Add payment method",
-          "stripeFailed": "Stripe's page couldn't be opened.",
-          "credit": "{amount} credit",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}.",
-          "balance": "Activations",
-          "left": "{count, number} left",
-          "unlimited": "No limit",
-          "uses": "Activating uses your balance. Nothing is charged.",
-          "usesOrg": "Activating uses {organization}'s balance. Nothing is charged.",
-          "leftRefills": "{count, number} left, refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}"
+          "toPayment": "Continue to payment",
+          "unfinished": "The payment isn't finished",
+          "cancel": "Cancel payment",
+          "cancelFailed": "The payment couldn't be cancelled. Try again."
         },
         "creditLine": "Account credit",
-        "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
+        "declined": "Your card was declined. Nothing was charged. Try again, or pay another way.",
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
-        "noneLeft": "There aren't enough activations left in the balance. Activate again to pay for them.",
         "kept": "What was paid for this report went to your publication balance. The next report you activate uses it.",
         "keptOrg": "What was paid for this report went to {organization}'s publication balance. The next report activated there uses it.",
         "keptNote": "If a reviewer declines the report before the payment goes through, what you paid goes to your publication balance.",
         "keptNoteOrg": "If a reviewer declines the report before the payment goes through, what was paid goes to {organization}'s publication balance.",
         "balanceLine": "Publication balance",
-        "onStripe": "Stripe's page opens for the payment, then comes back here."
+        "onStripe": "Stripe's page opens for the payment, then comes back here.",
+        "changed": "What is due changed since this page read it. Check it, then activate again.",
+        "toStripe": "Continue to payment"
       },
       "back": "Back",
       "next": "Next",
@@ -6842,13 +6810,8 @@
         },
         "activate": {
           "title": "Activate",
-          "body": "Paid with a card. A voucher code can lower the price or cover it. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
-          "bodyBalance": "Paid from the balance, which has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyUnlimited": "Paid from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyBalanceRefills": "Paid from the balance, which has {count, number} left and refills {interval, select, hour {every hour} day {every day} week {every week} month {every month} quarter {every three months} semi_annual {every six months} other {every year}}. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
-          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another licence. Paid from your publication balance or by card. The DOI is registered and the report goes live."
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another licence. Paid from your publication balance or by card. The DOI is registered and the report goes live.",
+          "bodyCard": "{price} under CC BY or CC BY-SA, {priceOfThree} under another licence, paid by card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6887,7 +6850,8 @@
         "code": "Code {code}",
         "dueNow": "Due now",
         "title": "Payment",
-        "sign": "Read and sign"
+        "sign": "Read and sign",
+        "noLimit": "No limit"
       },
       "activateFree": "Activate the DOI"
     },

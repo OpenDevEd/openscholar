@@ -43,6 +43,26 @@ describe("starting a report", () => {
   });
 });
 
+describe("how a report is paid for", () => {
+  it("is chosen with its licence, stays with the report, and can change until it is live without moving the report", async () => {
+    const world = await setup();
+    const key = await world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0", payWith: "card", voucher: { code: " HALFOFF ", off: 0.5 } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ payWith: "card", voucher: { code: "HALFOFF", off: 0.5 } });
+    // A form opened on the report tells it from a changed one by when it last changed: choosing leaves that alone.
+    const { updatedAt } = await row(world.t, key);
+    await world.author.mutation(api.reports.flow.choosePayment, { workspaceId: world.own, key, payWith: "balance", voucher: null });
+    const chosen = await read(world.author, world.own, key);
+    expect(chosen).toMatchObject({ payWith: "balance" });
+    expect(chosen.voucher).toBeUndefined();
+    expect((await row(world.t, key)).updatedAt).toBe(updatedAt);
+    // Someone outside the workspace changes nothing, and neither does anyone once it is live.
+    await expect(world.stranger.mutation(api.reports.flow.choosePayment, { workspaceId: world.own, key, payWith: "card" })).rejects.toThrow();
+    const live = await checked(world, [passed("byline")], world.orgAdmin, world.lab);
+    await activate(world, live.key, { as: "orgadmin", workspaceId: world.lab });
+    await expect(world.orgAdmin.mutation(api.reports.flow.choosePayment, { workspaceId: world.lab, key: live.key, payWith: "card" })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+});
+
 describe("reports that wait in a person's other workspaces", () => {
   it("tells an admin of the lab, from their own workspace, and tells a member nothing", async () => {
     const world = await setup();

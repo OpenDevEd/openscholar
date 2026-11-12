@@ -29,7 +29,7 @@ import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/
 import { CODE_MAX, PRICE_MAX, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
-import { MOVED_ON, byKey, changing, paymentOf, touch } from "./flow";
+import { MOVED_ON, byKey, changing, paymentOf, touch, voucherValidator } from "./flow";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
@@ -110,8 +110,8 @@ export const terms = workspaceQuery({
       parts: balancePartsValidator,
       /** What pays, as last chosen; null before anyone chose, when the balance does while it holds something. */
       payWith: v.union(payWithValidator, v.null()),
-      /** The promotion code kept with the report, for what a card pays. */
-      voucher: v.union(v.string(), v.null()),
+      /** The promotion code kept with the report, for what a card pays, with the share it took off when last quoted. */
+      voucher: v.union(voucherValidator, v.null()),
       /** Whether Autumn sells the balance at all: without it, what a card would pay can't be paid. */
       sells: v.boolean(),
       /** A payment still to be made: its page, and whether that is Stripe's checkout (true) or the bank's confirmation. */
@@ -144,7 +144,7 @@ export const terms = workspaceQuery({
       price: priceOf(licenceOf(report), settings.prices),
       ...publicationOf(account),
       payWith: report.payWith ?? null,
-      voucher: report.voucher ?? null,
+      voucher: report.voucher ? { code: report.voucher, off: report.voucherOff ?? 0 } : null,
       sells: ((await readCatalog(ctx))?.plans ?? []).some((plan) => plan.id === PUBLICATION_TOP_UP_PLAN),
       // The page to pay on is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
       pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null, checkout: !pending.charge?.invoice } : null,
@@ -259,7 +259,7 @@ const outcomeValidator = v.union(
 /**
  * Records what became of an activation, and answers whether its report is live by it. Held: the report goes live, as
  * its admin asked. A report that moved on meanwhile is refused, or when the activation was bought for it, the record is
- * kept `unused` and whoever pays is told the activation stays in the balance. Waiting on the bank: `pending`, with the
+ * kept `unused` and whoever pays is told what they paid stays in the balance. Still to be paid: `pending`, with the
  * bank's page. Nothing charged (declined, a refused code, a voided invoice): the record goes, or after waiting on the
  * bank, stays `refused`, so the report can say why it isn't live.
  * A record already settled is left as it is, so the webhooks and the page settling the same charge change nothing.
@@ -374,7 +374,7 @@ async function takeKept(customerId: string, price: number, key: string) {
  * Finishes one hold: the report's price is taken when the record's report went live by this very hold, and given
  * back otherwise, so a second hold on a record already settled never takes a second price. A hold on the balance is
  * finished at Autumn; one whose price a card bought (`BOUGHT`) takes that price from what stays in the balance. A
- * hold already finished changes nothing. The workspace's balance is read again after.
+ * hold already finished changes nothing. The workspace's balance is read again after (`finished`).
  */
 async function finish(ctx: ActionCtx, activationId: Id<"reportActivations">, hold: string) {
   const record: { workspaceId: Id<"workspaces">; customerId: string; hold: string | null; price: number } | null = await ctx.runQuery(internal.reports.activation.held, { activationId });
@@ -387,8 +387,24 @@ async function finish(ctx: ActionCtx, activationId: Id<"reportActivations">, hol
       if (!isLockNotFound(error)) throw error;
     }
   }
-  if (record) await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: record.workspaceId, card: true });
+  await ctx.runMutation(internal.reports.activation.finished, { activationId });
 }
+
+/**
+ * Says a record's hold is finished at Autumn, and has the workspace's account read again: only a balance read after
+ * this is shown, so the page never sees a report live and its price not yet taken (billing/accounts.ts `payingForReport`).
+ */
+export const finished = internalMutation({
+  args: { activationId: v.id("reportActivations") },
+  returns: v.null(),
+  handler: async (ctx, { activationId }) => {
+    const activation = await ctx.db.get("reportActivations", activationId);
+    if (!activation) return null;
+    await ctx.db.patch("reportActivations", activationId, { finishedAt: Date.now() });
+    await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: activation.workspaceId, card: true });
+    return null;
+  },
+});
 
 /** How many times a hold left standing is finished again, further apart each time, before it's left to a person. */
 const FINISH_TRIES = 10;

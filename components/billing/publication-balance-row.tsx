@@ -3,10 +3,11 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowRight, Layers, Repeat } from "@/components/icons";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
-import { balanceOf, useMoney, type BalancePart } from "@/components/reports/payment-choice";
+import { useMoney } from "@/components/reports/payment-choice";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
+import type { BalancePart } from "@/convex/billing/validators";
 
 /**
  * The workspace's publication balance, beside its credits, in two lines: what it holds, in dollars, then what that is.
@@ -14,20 +15,18 @@ import Link from "@/components/workspace-link";
  * stays until used, and alone it needs no second line. It pays for reports on Openscholar Reports; a card pays what
  * it can't.
  */
-export function PublicationBalanceRow({ parts }: { parts: BalancePart[] }) {
+export function PublicationBalanceRow({ parts, unlimited = false }: { parts: BalancePart[]; /** A balance with no limit: every report is paid from it. */ unlimited?: boolean }) {
   const t = useTranslations("billingPage.publication");
   const format = useFormatter();
   const money = useMoney();
-  const balance = balanceOf(parts);
+  const balance = parts.reduce((sum, part) => sum + part.left, 0);
   const refilling = parts.filter((part) => part.interval !== "once");
   const kept = parts.find((part) => part.interval === "once");
   return (
     <div className="@container/publication space-y-1.5 border-t border-border-subtle pt-4">
       <div className="flex items-center gap-2">
         <p className="truncate text-sm font-medium">{t("title")}</p>
-        <StatusChip tone={balance === 0 ? "neutral" : "success"}>
-          <bdi className="tabular-nums">{money(balance)}</bdi>
-        </StatusChip>
+        <StatusChip tone={balance === 0 && !unlimited ? "neutral" : "success"}>{unlimited ? t("noLimit") : <bdi className="tabular-nums">{money(balance)}</bdi>}</StatusChip>
         {/* Narrow, the way to Publish is its arrow, so the amount keeps its line. */}
         <Button asChild variant="ghost" size="sm" className="-me-2 ms-auto h-7 @max-[22rem]/publication:hidden">
           <Link href="/publish">
@@ -43,7 +42,7 @@ export function PublicationBalanceRow({ parts }: { parts: BalancePart[] }) {
         </TooltipHint>
       </div>
       {/* Each part keeps its words together and wraps whole. What stays, alone, needs no line: the amount above is all of it. */}
-      {parts.length === 0 || refilling.length > 0 ? (
+      {unlimited ? null : parts.length === 0 || refilling.length > 0 ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground [&>*]:whitespace-nowrap">
           {parts.length === 0 ? <span className="!whitespace-normal">{t("hint")}</span> : null}
           {refilling.map((part) => (

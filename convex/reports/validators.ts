@@ -164,6 +164,8 @@ export const reportFields = {
   licence: v.optional(licenceValidator),
   /** The promotion code applied to what a card pays for it: chosen with the licence, and open to change until it is activated. */
   voucher: v.optional(v.string()),
+  /** The share of what a card pays that the code took off when it was last quoted, 0 to 1: for showing the bill. The charge is always Autumn's own sum. */
+  voucherOff: v.optional(v.number()),
   /** What pays for it, chosen with the licence and open to change until it is activated. None is the balance while it holds something. */
   payWith: v.optional(payWithValidator),
   step: stepValidator,

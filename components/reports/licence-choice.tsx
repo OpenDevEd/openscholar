@@ -1,7 +1,7 @@
 "use client";
 
-// The licence a report is published under, chosen on the agreement it fills in (#1354): CC BY or CC BY-SA at one
-// activation, the licences that hold back reuse or the author's own at three. A "?" says what each part of a Creative
+// The licence a report is published under, chosen on the agreement it fills in (#1354): CC BY or CC BY-SA at the
+// standard price, the licences that hold back reuse or the author's own at the other. A "?" says what each part of a Creative
 // Commons licence means and what every one of them allows.
 
 import { useId, type ReactNode } from "react";
@@ -16,50 +16,27 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CircleHelp, ExternalLink } from "@/components/icons";
 import { LogoMark } from "@/components/logo";
-import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, activationsFor, type LicenceName } from "@/lib/reports/report";
+import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, type LicenceName, type Prices } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 /** What the author has picked: a Creative Commons licence by name, or their own, as typed so far. */
 export type LicencePick = LicenceName | { name: string; url: string };
 
-/** The licences at one activation, offered on their own; the rest are behind "Another licence". */
-const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].activations === 1);
-const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].activations !== 1);
+/** The licences at the standard price, offered on their own; the rest are behind "Another licence". */
+const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].tier === "standard");
+const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].tier !== "standard");
 const OWN = "own";
 
-/** What a promotion code makes of a licence's price, in US dollars, as Autumn quotes it. */
-export type LicenceQuote = { price: number; total: number } | null;
-/**
- * What each choice costs in US dollars: the activation plan's price, and the three-activation one's; null while there
- * is none. With a code applied, what it comes to with the code.
- */
-export type LicenceCost = { price: number | null; priceOfThree: number | null; quoted?: { one: LicenceQuote; three: LicenceQuote } | null; /** What is due for a licence of `price` dollars, with the way of paying and the code chosen: shown after its price where it is less. */ due?: (price: number) => number };
-
-export function LicenceChoice({ value, onChange, cost, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; cost: LicenceCost; disabled?: boolean }) {
+export function LicenceChoice({ value, onChange, prices, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
   const format = useFormatter();
   const id = useId();
   const other = typeof value !== "string" || !STANDARD.includes(value);
+  // Each licence by its price, whatever pays it: what picking one leaves to pay is the bill's to say.
   const dollars = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: amount % 1 ? 2 : 0 });
-  // Each licence by its price, whatever the balance holds: a balance pays it the same way a card does. A code applied
-  // shows what it comes to, after the price it takes it from.
-  const costOf = (activations: number) => {
-    const price = activations === 1 ? cost.price : cost.priceOfThree;
-    if (price === null) return null;
-    // What picking it would leave to pay, after its price: the balance and a code each take some off.
-    const due = cost.due ? cost.due(price) : price;
-    if (due < price)
-      return (
-        <>
-          <s className="me-1.5 text-muted-foreground/70">{dollars(price)}</s>
-          <span className="font-medium text-foreground">{dollars(due)}</span>
-        </>
-      );
-    return dollars(price);
-  };
   const cards = [
-    ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), activations: 1 })),
-    { id: "other", title: t("other"), body: t("otherBody"), activations: activationsFor(OTHERS[0]!) },
+    ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), price: prices.standard })),
+    { id: "other", title: t("other"), body: t("otherBody"), price: prices.other },
   ];
   return (
     <div className="space-y-3">
@@ -84,7 +61,7 @@ export function LicenceChoice({ value, onChange, cost, disabled = false }: { val
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2 text-sm font-medium">
                   <span className="min-w-0">{card.title}</span>
-                  <span className="ms-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">{costOf(card.activations)}</span>
+                  <span className="ms-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">{dollars(card.price)}</span>
                 </span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">{card.body}</span>
               </span>

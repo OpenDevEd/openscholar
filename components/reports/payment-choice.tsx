@@ -11,28 +11,12 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { CreditCard, Wallet } from "@/components/icons";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
-import type { RefillInterval } from "@/lib/billing/plans";
+import type { BalancePart } from "@/convex/billing/validators";
+import { payment, type PayWith } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
-export type PayWith = "balance" | "card";
-
-/**
- * One part of a publication balance, in dollars: what refills by `interval`, back to `refillsTo` on `resetsAt`, or with
- * `once` what stays until used (given once, or bought). `left` is what remains of it now.
- */
-export type BalancePart = { interval: RefillInterval | "once"; left: number; size: number; resetsAt?: number; refillsTo?: number };
-
-export const balanceOf = (parts: BalancePart[]) => parts.reduce((sum, part) => sum + part.left, 0);
-
-/**
- * What a price comes to, in dollars: what the balance pays, what is bought by card, what a code takes off that, and
- * what is due. What is bought is whole dollars, so a balance with cents in it keeps them.
- */
-export function payment({ price, balance, payWith, off }: { price: number; balance: number; payWith: PayWith; /** The part of what is bought that a code takes off, 0 to 1. */ off: number }) {
-  const bought = payWith === "balance" ? Math.ceil(price - Math.min(balance, price)) : price;
-  const discount = bought * off;
-  return { fromBalance: price - bought, bought, discount, due: bought - discount };
-}
+/** A workspace's publication balance: what it holds in US dollars (null for no limit), and its parts. */
+export type Balance = { balance: number | null; parts: BalancePart[] };
 
 /** Dollars in the reader's own format, without cents when there are none: $5, $2.50. */
 export function useMoney() {
@@ -59,20 +43,20 @@ function RollingMoney({ value }: { value: number }) {
 }
 
 /** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
-export function PayWithSwitch({ parts, payWith, onPayWith, className }: { parts: BalancePart[]; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
+export function PayWithSwitch({ balance, payWith, onPayWith, className }: { balance: Balance; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
-  const balance = balanceOf(parts);
-  if (balance > 0)
+  if (balance.balance !== 0)
     return (
       <Segmented
         size="md"
         label={t("payWith")}
         value={payWith}
         onChange={onPayWith}
-        className={className}
+        // On a phone the two don't always fit side by side: the icons go, and past that the card takes a second row, never cut off.
+        className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_svg]:hidden", className)}
         options={[
-          { id: "balance", label: t("balance"), icon: Wallet, detail: <bdi className="tabular-nums">{money(balance)}</bdi> },
+          { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi className="tabular-nums">{money(balance.balance)}</bdi> },
           { id: "card", label: t("card"), icon: CreditCard },
         ]}
       />
@@ -90,11 +74,10 @@ export function PayWithSwitch({ parts, payWith, onPayWith, className }: { parts:
  * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
  * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
  */
-export function Bill({ licence, price, parts, payWith, code, action, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; parts: BalancePart[]; payWith: PayWith; /** The code applied, with the part of what is bought it takes off. */ code: { code: string; off: number } | null; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+export function Bill({ licence, price, balance, payWith, code, action, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; balance: Balance; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
-  const balance = balanceOf(parts);
-  const sum = payment({ price, balance, payWith: balance > 0 ? payWith : "card", off: code?.off ?? 0 });
+  const sum = payment({ price, balance: balance.balance, payWith: balance.balance === 0 ? "card" : payWith, off: code?.off ?? 0 });
   return (
     <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
       <AutoHeight>
@@ -117,7 +100,7 @@ export function Bill({ licence, price, parts, payWith, code, action, note, now =
 }
 
 /** Whether a card pays anything, before any code: where a code has something to lower. */
-export const buysByCard = ({ price, parts, payWith }: { price: number; parts: BalancePart[]; payWith: PayWith }) => payment({ price, balance: balanceOf(parts), payWith: balanceOf(parts) > 0 ? payWith : "card", off: 0 }).bought > 0;
+export const buysByCard = ({ price, balance, payWith }: { price: number; balance: Balance; payWith: PayWith }) => payment({ price, balance: balance.balance, payWith: balance.balance === 0 ? "card" : payWith, off: 0 }).bought > 0;
 
 /**
  * The choices in one bar, where the report is activated: what pays and a code, with the button that pays. On a wide
@@ -127,7 +110,7 @@ export const buysByCard = ({ price, parts, payWith }: { price: number; parts: Ba
 export function PaymentChoice({
   licence,
   price,
-  parts,
+  balance,
   payWith,
   onPayWith,
   code,
@@ -137,7 +120,7 @@ export function PaymentChoice({
 }: {
   licence: string;
   price: number;
-  parts: BalancePart[];
+  balance: Balance;
   payWith: PayWith;
   onPayWith: (payWith: PayWith) => void;
   code: { code: string; off: number } | null;
@@ -151,13 +134,13 @@ export function PaymentChoice({
   return (
     <div inert={disabled || undefined} className={cn("grid gap-x-6 gap-y-3 rounded-2xl bg-inset/60 p-3 transition-opacity @lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] @3xl:grid-cols-[minmax(0,1fr)_auto]", disabled && "opacity-60")}>
       <div className="min-w-0 space-y-2">
-        {balanceOf(parts) > 0 ? <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p> : null}
-        <PayWithSwitch parts={parts} payWith={payWith} onPayWith={onPayWith} className="bg-background" />
+        {balance.balance !== 0 ? <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p> : null}
+        <PayWithSwitch balance={balance} payWith={payWith} onPayWith={onPayWith} className="bg-background" />
         {/* A code lowers what the card pays: with nothing for a card to pay, there is nothing for one to do, so its
             field is put away. A code applied is kept, and is back when a card pays again. */}
-        <AutoHeight>{voucher && buysByCard({ price, parts, payWith }) ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
+        <AutoHeight>{voucher && buysByCard({ price, balance, payWith }) ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
       </div>
-      <Bill boxed className="self-start @3xl:hidden" licence={licence} price={price} parts={parts} payWith={payWith} code={code} action={action(false)} />
+      <Bill boxed className="self-start @3xl:hidden" licence={licence} price={price} balance={balance} payWith={payWith} code={code} action={action(false)} />
       <div className="hidden items-end justify-end @3xl:flex">{action(true)}</div>
     </div>
   );

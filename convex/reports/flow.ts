@@ -48,6 +48,14 @@ export async function changing(ctx: QueryCtx, actor: Actor, key: string) {
   return report;
 }
 
+/** A promotion code applied on a page, with the share of what a card pays that Autumn quoted it takes off, 0 to 1. */
+export const voucherValidator = v.object({ code: v.string(), off: v.number() });
+/** A code as a report keeps it: trimmed and cut to length, its share between nothing and all; none clears both. */
+const keptVoucher = (applied: { code: string; off: number } | null | undefined) => {
+  const code = applied?.code.trim().slice(0, CODE_MAX);
+  return code ? { voucher: code, voucherOff: Math.min(Math.max(applied!.off, 0), 1) } : { voucher: undefined, voucherOff: undefined };
+};
+
 /** When a report changes now: always later than its last change, since a form is told from the report it was opened on by this. */
 export const changedAt = (report: Pick<Doc<"reports">, "updatedAt">) => Math.max(Date.now(), report.updatedAt + 1);
 export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: changedAt(report) });
@@ -213,9 +221,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(v.string()), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator) },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator) },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: typed, payWith }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -225,7 +233,7 @@ export const sign = workspaceMutation({
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
     const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url);
     if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name and the web address of its text.");
-    const voucher = typed?.trim() ? typed.trim().slice(0, CODE_MAX) : undefined;
+    const { voucher, voucherOff } = keptVoucher(applied);
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
     const { crossref, zenodo } = settings.publication;
@@ -233,7 +241,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, voucher, payWith });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, voucher, voucherOff, payWith });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -257,7 +265,7 @@ export const sign = workspaceMutation({
       byline: bylineOf(settings.series, doi, licence),
       seriesName: settings.series.name,
       licence,
-      ...(voucher && { voucher }),
+      ...(voucher && { voucher, voucherOff }),
       ...(payWith && { payWith }),
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
@@ -362,17 +370,18 @@ export const paymentOf = async (ctx: QueryCtx, reportId: Id<"reports">) => {
 
 /**
  * How the report is paid for, until it is live: from the balance or by card, and with which promotion code. Chosen
- * with the licence when it is signed, and open to change wherever its bill shows. `voucher` null takes the code off.
+ * with the licence when it is signed, and open to change wherever its bill shows. `voucher` null takes the code off;
+ * its `off` is the share Autumn quoted for it (`activation.quoteCode`), kept to show the bill, never to charge by.
  * Not a change to the report itself: its place in the list and its forms are left as they are.
  */
 export const choosePayment = workspaceMutation({
-  args: { key: v.string(), payWith: v.optional(payWithValidator), voucher: v.optional(v.union(v.string(), v.null())) },
+  args: { key: v.string(), payWith: v.optional(payWithValidator), voucher: v.optional(v.union(voucherValidator, v.null())) },
   returns: v.null(),
   handler: async (ctx, actor, { key, payWith, voucher }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     if (report.status === "live") throw createError("CONFLICT", MOVED_ON);
-    await ctx.db.patch("reports", report._id, { ...(payWith && { payWith }), ...(voucher !== undefined && { voucher: voucher?.trim() ? voucher.trim().slice(0, CODE_MAX) : undefined }) });
+    await ctx.db.patch("reports", report._id, { ...(payWith && { payWith }), ...(voucher !== undefined && keptVoucher(voucher)) });
     return null;
   },
 });
@@ -700,7 +709,10 @@ const reportValidator = v.object({
   onBehalfOfAll: v.boolean(),
   agreementVersion: v.number(),
   /** The promotion code applied when it was signed, which the activation offers. */
-  voucher: v.optional(v.string()),
+  /** The licence it is published under, chosen when it was signed. */
+  licence: licenceValidator,
+  /** The promotion code kept with it, with the share of what a card pays that it took off when last quoted. */
+  voucher: v.optional(voucherValidator),
   /** What pays for it, as last chosen; none is the balance while it holds something. */
   payWith: v.optional(payWithValidator),
   checksVersion: v.optional(v.number()),
@@ -753,7 +765,8 @@ export const getAction = defineUserQuery({
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
         agreementVersion: report.agreementVersion,
-        ...(report.voucher && { voucher: report.voucher }),
+        licence: licenceOf(report),
+        ...(report.voucher && { voucher: { code: report.voucher, off: report.voucherOff ?? 0 } }),
         ...(report.payWith && { payWith: report.payWith }),
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),

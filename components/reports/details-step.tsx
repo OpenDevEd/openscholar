@@ -397,14 +397,11 @@ export function DetailsStep({
   version,
   writing: writingFor,
   registrars,
-  shownLicence,
 }: {
   /** The report an abstract is written from, and the workspace its author asks from; none for a reviewer. Without it the form offers none. */
   writing?: { key: string; workspaceId?: Id<"workspaces"> };
   /** The registrars the report is sent to, so each part's "?" leaves out one that isn't used. */
   registrars?: { crossref: boolean; zenodo: boolean };
-  /** mock: the licence to show, kept apart from the details so dev's server never gets a licence it doesn't take. */
-  shownLicence?: Metadata["licence"];
   initial: Metadata;
   /** Given the details, and the `version` the form opened on. */
   onRun: (m: Metadata, version: number | undefined) => Promise<void>;
@@ -657,8 +654,8 @@ export function DetailsStep({
             <div className="space-y-1.5">
               <FieldLabel label={t("licence")} help="licence" />
               <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
-                <a href={licenceUrl(shownLicence ?? m.licence)} target="_blank" rel="noreferrer license" className="inline-flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline">
-                  <span className="truncate">{licenceName(shownLicence ?? m.licence)}</span>
+                <a href={licenceUrl(m.licence)} target="_blank" rel="noreferrer license" className="inline-flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline">
+                  <span className="truncate">{licenceName(m.licence)}</span>
                   <ExternalLink className="size-3.5 text-muted-foreground" />
                 </a>
               </div>

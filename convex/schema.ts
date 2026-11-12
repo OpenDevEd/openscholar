@@ -633,6 +633,8 @@ export default defineSchema({
     payUrl: v.optional(v.string()),
     /** The hold at Autumn the report went live by: that hold alone takes its price from the balance. */
     hold: v.optional(v.string()),
+    /** When that hold was last finished at Autumn: the balance read before then may show the price not yet taken (billing/accounts.ts `payingForReport`). */
+    finishedAt: v.optional(v.number()),
     /** When a paid charge waiting on the bank was claimed for settling, so the watch and the webhooks never settle it twice at once. */
     settling: v.optional(v.number()),
     // From before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
