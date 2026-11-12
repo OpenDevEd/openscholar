@@ -620,8 +620,8 @@ export const activate = action({
           if (expect !== undefined && quoted.total > expect + 0.005) return await changed(`Activating it now takes ${usd(quoted.total)}, not ${usd(expect)}. Check it and activate again.`);
           const cardless = !customer.payment_method?.card;
           // A card saved or removed since the page read the account: the person was told another way of paying (Stripe's
-          // page, or that card), and is never charged by one they weren't shown.
-          if (card !== undefined && linesOf(quoted) > 0.005 && (customer.payment_method?.card?.last4 ?? null) !== card) return await changed(CARD_CHANGED);
+          // page, or that card), and is never charged by one they weren't shown. What the account's credit covers charges no card.
+          if (card !== undefined && quoted.total > 0.005 && (customer.payment_method?.card?.last4 ?? null) !== card) return await changed(CARD_CHANGED);
           // Nothing for a card to pay, before any credit: a code took it all off. Autumn is told so (`unbilled`), or it
           // would send a customer with no card to Stripe's page for $0.
           const free = linesOf(quoted) <= 0.005;

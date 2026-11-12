@@ -41,7 +41,7 @@ const OFF: Record<string, number> = { HALFOFF: 0.5, FREEDOI: 1 };
  * answer never arrives, and the customer's invoices then hold `lost`. Stripe has every invoice paid, at `stripeTotal`
  * cents. `asked` is the calls made to Autumn, in order.
  */
-function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = false, lost, racy = false, stripeTotal = 1000 }: { monthly?: number; kept?: number; card?: boolean; dropFirstQuote?: boolean; lost?: { status: string; stripe_id: string }; /** Holds read the balance and take from it a moment apart, as two at once were seen to on our Autumn. */ racy?: boolean; stripeTotal?: number }) {
+function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = false, lost, racy = false, stripeTotal = 1000, credit = 0 }: { monthly?: number; kept?: number; card?: boolean; dropFirstQuote?: boolean; lost?: { status: string; stripe_id: string }; /** Holds read the balance and take from it a moment apart, as two at once were seen to on our Autumn. */ racy?: boolean; stripeTotal?: number; /** Credit on the account at Stripe, in dollars, which a charge is paid from before the card. */ credit?: number }) {
   vi.stubEnv("AUTUMN_URL", "https://autumn.test");
   vi.stubEnv("AUTUMN_SECRET_KEY", "am_sk_test_fake");
   const asked: Array<Record<string, unknown> & { path: string }> = [];
@@ -74,7 +74,7 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
         dropped = true;
         throw new TypeError("fetch failed");
       }
-      return Response.json({ total: due, line_items: [{ total: due }] });
+      return Response.json({ total: Math.max(0, due - credit), line_items: [{ total: due }] });
     }
     if (path === "balances.check") {
       asked.push({ path, feature_id: body.feature_id, required_balance: body.required_balance, lock_id: body.lock?.lock_id });
@@ -241,6 +241,15 @@ describe("activating a report", () => {
     expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
     expect(await row(world.t, key)).toMatchObject({ status: "passed" });
     await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+  });
+
+  it("charges no card to a payment the account's credit covers, whatever card was saved since", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ card: true, credit: 10 });
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 0, card: null })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).toContain("billing.attach");
   });
 
   it("with no saved card, pays on Stripe's page with its code, and goes live on what was bought once that is paid", async () => {
