@@ -6881,9 +6881,9 @@
         "card": "Card",
         "byCard": "Paid by card",
         "due": "Due at activation",
-        "nothing": "Nothing",
-        "fromBalance": "Balance",
-        "later": "Nothing is charged until the report is activated. How you pay can change until then."
+        "later": "Nothing is charged until the report is activated. How you pay can change until then.",
+        "code": "Code {code}",
+        "dueNow": "Due now"
       }
     },
     "meta": {

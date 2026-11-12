@@ -8,8 +8,7 @@
 import { useEffect, type ReactNode } from "react";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
-import { CreditCard, Tag, Wallet } from "@/components/icons";
+import { CreditCard, Wallet } from "@/components/icons";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import type { RefillInterval } from "@/lib/billing/plans";
@@ -79,9 +78,9 @@ export function PaymentChoice({
   onPayWith: (payWith: PayWith) => void;
   /** The code applied, with the part of what is bought it takes off. */
   code: { code: string; off: number } | null;
-  /** The field a code goes in. */
+  /** The field a code goes in, shown while a card pays something. */
   voucher?: ReactNode;
-  /** The button that pays, where the report is activated: it carries what is due. Without one, what is due is said. */
+  /** The button that pays, where the report is activated, under what is due. */
   action?: ReactNode;
   disabled?: boolean;
 }) {
@@ -90,20 +89,24 @@ export function PaymentChoice({
   const balance = balanceOf(parts);
   const sum = payment({ price, balance, payWith: balance > 0 ? payWith : "card", off: code?.off ?? 0 });
   return (
-    <div inert={disabled || undefined} className={cn("rounded-2xl bg-inset/60 p-3 transition-opacity", disabled && "opacity-60")}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+    <div inert={disabled || undefined} className={cn("grid gap-x-6 gap-y-3 rounded-2xl bg-inset/60 p-3 transition-opacity sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]", disabled && "opacity-60")}>
+      {/* The choices: what pays, and a code. */}
+      <div className="min-w-0 space-y-2">
         {balance > 0 ? (
-          <Segmented
-            size="md"
-            label={t("payWith")}
-            value={payWith}
-            onChange={onPayWith}
-            className="bg-background"
-            options={[
-              { id: "balance", label: t("balance"), icon: Wallet, detail: <bdi className="tabular-nums">{money(balance)}</bdi> },
-              { id: "card", label: t("card"), icon: CreditCard },
-            ]}
-          />
+          <>
+            <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p>
+            <Segmented
+              size="md"
+              label={t("payWith")}
+              value={payWith}
+              onChange={onPayWith}
+              className="bg-background"
+              options={[
+                { id: "balance", label: t("balance"), icon: Wallet, detail: <bdi className="tabular-nums">{money(balance)}</bdi> },
+                { id: "card", label: t("card"), icon: CreditCard },
+              ]}
+            />
+          </>
         ) : (
           // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
           <p className="flex h-9 items-center gap-2 ps-1 text-sm font-medium">
@@ -111,37 +114,40 @@ export function PaymentChoice({
             {t("byCard")}
           </p>
         )}
-        <div className="ms-auto flex items-center gap-3">
-          {action ?? (
-            <p className="text-end">
-              <span className="block text-xs text-muted-foreground">{t("due")}</span>
-              <span className="block text-lg/6 font-semibold">{sum.due > 0 ? <RollingMoney value={sum.due} /> : t("nothing")}</span>
-            </p>
-          )}
-        </div>
+        {/* A code lowers what the card pays: with nothing for a card to pay, there is nothing for one to do, so its
+            field is put away. A code applied is kept, and is back when a card pays again. */}
+        <AutoHeight>{voucher && sum.bought > 0 ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
       </div>
-      {/* What the amount is made of, each part with its own sign: the chips come and go as the choices change. */}
-      <AutoHeight className="mt-2.5">
-        <div className="flex flex-wrap items-center gap-1.5 ps-1">
-          <StatusChip tone="neutral">
-            {licence}
-            <bdi className="tabular-nums text-foreground">{money(price)}</bdi>
-          </StatusChip>
-          {sum.fromBalance > 0 ? (
-            <StatusChip tone="neutral" icon={Wallet}>
-              {t("fromBalance")}
-              <bdi className="tabular-nums text-foreground">−{money(sum.fromBalance)}</bdi>
-            </StatusChip>
-          ) : null}
-          {code && sum.discount > 0 ? (
-            <StatusChip tone="success" icon={Tag}>
-              <span className="font-mono">{code.code}</span>
-              <bdi className="tabular-nums">−{money(sum.discount)}</bdi>
-            </StatusChip>
-          ) : null}
+      {/* What that comes to, as a bill reads: the price, what is taken off it, and what is left to pay. */}
+      <div className="min-w-0 self-start rounded-xl border border-border-subtle bg-background text-sm">
+        <AutoHeight>
+          <dl className="space-y-2 px-3.5 pt-3">
+            <Line label={licence} amount={money(price)} />
+            {sum.fromBalance > 0 ? <Line label={t("balance")} amount={`−${money(sum.fromBalance)}`} off /> : null}
+            {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} amount={`−${money(sum.discount)}`} off /> : null}
+          </dl>
+        </AutoHeight>
+        <div className="mx-3.5 mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle py-2.5">
+          <span className="font-medium">{t(action ? "dueNow" : "due")}</span>
+          <bdi className="text-lg/6 font-semibold">
+            <RollingMoney value={sum.due} />
+          </bdi>
         </div>
-      </AutoHeight>
-      {voucher ? <div className="mt-2 ps-1">{voucher}</div> : null}
+        {action ? <div className="flex justify-end px-3.5 pb-3">{action}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+/** One line of the bill: what it is, and its amount at the end. What is taken off the price is marked as a saving. */
+function Line({ label, amount, off = false }: { label: string; amount: string; off?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="min-w-0 text-muted-foreground">{label}</dt>
+      {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
+      <dd className={cn("shrink-0 tabular-nums", off && "ink-success")}>
+        <bdi>{amount}</bdi>
+      </dd>
     </div>
   );
 }

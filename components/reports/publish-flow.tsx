@@ -1684,8 +1684,8 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
   // Everything but the licence can still change here: the balance or the card, and the code.
   const [picked, setPicked] = useState<PayWith | null>(null);
   const payWith: PayWith = balanceOf(parts) > 0 ? (picked ?? signedWith ?? "balance") : "card";
-  /** Where a code can be used: while there is a price and no payment waiting. It lowers what the card pays. */
-  const vouchers = price !== null && !pending && !!onQuote;
+  /** Where a code can be used: while a card pays something and no payment is waiting. It lowers what the card pays. */
+  const vouchers = price !== null && payment({ price: price / 100, balance: balanceOf(parts), payWith, off: 0 }).bought > 0 && !pending && !!onQuote;
   // What is typed in the bar's code field, kept here so every way of charging sees it. Back from saving a card on
   // Stripe's page, the code applied before leaving is in the address and starts typed in.
   const [carried, setCarried] = useQueryState("code", parseAsString);
@@ -1772,8 +1772,6 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
     });
   // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
   const requoting = !chose && !code && !!terms?.refused?.code;
-  /** What Activate takes from the card, beside the word; null when the balance, a code or credit covers it all. */
-  const amount = price === null || due === 0 || requoting ? null : dollars(due);
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1854,8 +1852,9 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                           </span>
                         </TooltipHint>
                       ) : (
-                        // Nothing due charges nothing: no dialog to confirm a charge. mock: dev's server spends one of its activations either way.
-                        <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
+                        // What is due is said in the bill above it, so the button carries no amount. Nothing due charges
+                        // nothing: no dialog to confirm a charge. mock: dev's server spends one of its activations either way.
+                        <ActivateButton label={t("activate")} amount={null} busy={activating || quoting} disabled={false} onClick={due === 0 ? () => activateNow(false) : openPay} />
                       )
                     }
                   />
@@ -1893,7 +1892,7 @@ function Checks({ rows, report, carried: quoted = null, onApplied, humanReview, 
                     ) : (
                       <ActivateButton
                         label={t("activate")}
-                        amount={amount}
+                        amount={null}
                         busy={activating || quoting}
                         disabled={false}
                         // The balance, or a code that takes the whole price off, charges nothing: no card, and no dialog to confirm a charge.
