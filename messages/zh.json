@@ -6604,6 +6604,7 @@
         "foundAs": "找到为",
         "said": {
           "notPublished": "不在 Openscholar Reports、OpenAlex、Openscholar 索引或我们的社区中。",
+          "notPublishedElsewhere": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
           "unfinished": "此项检查未能完成。",
           "bylineFound": "PDF 文本中逐字包含这一行。"
         },

@@ -6604,6 +6604,7 @@
         "foundAs": "इस रूप में मिला",
         "said": {
           "notPublished": "Openscholar Reports, OpenAlex, Openscholar के इंडेक्स या हमारे समुदायों में नहीं है।",
+          "notPublishedElsewhere": "OpenAlex, Openscholar के इंडेक्स या हमारे समुदायों में नहीं है।",
           "unfinished": "यह जाँच पूरी नहीं हो सकी।",
           "bylineFound": "PDF के टेक्स्ट में यह पंक्ति शब्दशः है।"
         },

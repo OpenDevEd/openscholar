@@ -7,6 +7,8 @@ import { reportSettings } from "./settings";
 
 /** The most live reports a title search gives the check to compare. */
 const ALIKE = 5;
+/** The most words a Convex text search takes (docs.convex.dev/search/text-search#limits): a longer title is searched by its first. */
+const SEARCH_TERMS = 16;
 
 /** Live reports whose titles are closest to `title`, never the report being checked, with what each says of itself. */
 export const alike = internalQuery({
@@ -15,8 +17,12 @@ export const alike = internalQuery({
   handler: async (ctx, { reportId, title }) => {
     if (!title.trim()) return [];
     const { series } = await reportSettings(ctx);
-    const found = await ctx.db.query("reports").withSearchIndex("search_title", (q) => q.search("title", title.slice(0, 500)).eq("status", "live")).take(ALIKE + 1);
-    const others = found.filter((report) => report._id !== reportId).slice(0, ALIKE);
+    // The very same title first, which a search can miss: a title written without spaces, as in Chinese or Japanese, is
+    // one word too long for the search to keep.
+    const same = await ctx.db.query("reports").withIndex("by_status_and_title", (q) => q.eq("status", "live").eq("title", title.trim())).take(ALIKE + 1);
+    const words = title.split(/\s+/).filter(Boolean).slice(0, SEARCH_TERMS).join(" ");
+    const found = await ctx.db.query("reports").withSearchIndex("search_title", (q) => q.search("title", words).eq("status", "live")).take(ALIKE + 1);
+    const others = [...same, ...found].filter((report, i, all) => report._id !== reportId && all.findIndex((other) => other._id === report._id) === i).slice(0, ALIKE);
     return await Promise.all(
       others.map(async (report) => {
         const { metadata } = await detailsOf(ctx, report._id);

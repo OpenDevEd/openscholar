@@ -6605,6 +6605,7 @@
         "foundAs": "Gefunden als",
         "said": {
           "notPublished": "Nicht in Openscholar Reports, in OpenAlex, im Index von Openscholar oder in unseren Communities.",
+          "notPublishedElsewhere": "Nicht in OpenAlex, im Index von Openscholar oder in unseren Communities.",
           "unfinished": "Diese Prüfung konnte nicht abgeschlossen werden.",
           "bylineFound": "Der Text des PDFs enthält die Zeile wörtlich."
         },

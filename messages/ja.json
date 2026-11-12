@@ -6604,6 +6604,7 @@
         "foundAs": "見つかった作品",
         "said": {
           "notPublished": "Openscholar Reports、OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "notPublishedElsewhere": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
           "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
         },

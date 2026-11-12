@@ -18,4 +18,15 @@ describe("the live reports Already published compares a report with", () => {
     const fromItself = await world.t.query(internal.reports.ownReports.alike, { reportId: published.reportId, title: "Shade trees and maize yields" });
     expect(fromItself).toEqual([]);
   });
+
+  it("are found for a title longer than a search takes, and for one written without spaces", async () => {
+    const world = await setup();
+    const published = await live(world);
+    const checking = await atDetails(world, world.author, world.lab);
+    for (const title of ["Shade trees and maize yields on smallholder farms in the western highlands of Kenya, a study over three seasons with farmers", "人工智能与人类智能的价值快速学习放慢行动"]) {
+      await world.t.run((ctx) => ctx.db.patch("reports", published.reportId, { title }));
+      const alike = await world.t.query(internal.reports.ownReports.alike, { reportId: checking.reportId, title });
+      expect(alike.map((report) => report.url)).toEqual([`/papers/${published.key}`]);
+    }
+  });
 });

@@ -42,7 +42,7 @@ const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? co
 type Result = CheckResult & { model: string };
 
 /** One check's answer. A question goes to its model; Already published searches, then has its model compare. */
-async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string }, text: string, metadata: Metadata, communities: Community[], ours: Candidate[]): Promise<Result> {
+async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string }, text: string, metadata: Metadata, communities: Community[], ours: Candidate[] | null): Promise<Result> {
   const fill = (words: string) => words.replaceAll("{byline}", report.byline).replaceAll("{doi}", `https://doi.org/${report.doi}`);
   const base = { checkId: check.id, name: check.name, model: on.name, blocking: check.blocking };
   // What to do about it, for the author, when it fails.
@@ -129,13 +129,17 @@ export const run = action({
       : [];
     // Live reports of our own with a title like this one's, each with what it says of itself: its abstract, or with
     // none, the opening of its PDF's text, as the report itself is compared.
-    const ours: Candidate[] = started.checks.some((check) => check.builtIn)
+    // Null when they couldn't be read: the check then can't call the report new, and holds it for a reviewer.
+    const ours: Candidate[] | null = started.checks.some((check) => check.builtIn)
       ? await Promise.all(
           (await ctx.runQuery(internal.reports.ownReports.alike, { reportId, title: metadata.title })).map(async ({ text: file, ...report }) => ({
             ...report,
             abstract: report.abstract.trim() || (file ? reportSays({ abstract: "", text: (await (await ctx.storage.get(file))?.text()) ?? "" }) : ""),
           })),
-        )
+        ).catch((error: unknown) => {
+          console.error(JSON.stringify({ event: "report-own-reports-search-failed", reportId, error: String(error).slice(0, 300) }));
+          return null;
+        })
       : [];
     const results = await Promise.all(
       started.checks.map(async ({ model: modelId, ...check }) => {

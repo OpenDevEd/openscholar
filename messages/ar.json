@@ -6605,6 +6605,7 @@
         "foundAs": "وُجد بصيغة",
         "said": {
           "notPublished": "غير موجود في Openscholar Reports أو OpenAlex أو فهرس Openscholar أو مجتمعاتنا.",
+          "notPublishedElsewhere": "غير موجود في OpenAlex أو فهرس Openscholar أو مجتمعاتنا.",
           "unfinished": "تعذّر إكمال هذا الفحص.",
           "bylineFound": "يحتوي نص ملف PDF على السطر حرفيًا."
         },

@@ -187,12 +187,14 @@ async function sameWork(m: Report, c: Candidate, { model, effort }: CheckModel):
  * couldn't be searched, or a candidate couldn't be judged, and nothing was found, it throws: the report is held for a
  * reviewer rather than called new.
  */
-export async function alreadyPublished(m: Report, ownDoi: string, judge: CheckModel, communities: Community[], ours: Candidate[] = []): Promise<Found | null> {
+export async function alreadyPublished(m: Report, ownDoi: string, judge: CheckModel, communities: Community[], ours: Candidate[] | null = []): Promise<Found | null> {
   const missed: Missed = [];
+  // Our own reports couldn't be read: nothing found elsewhere makes the report new.
+  if (ours === null) missed.push("Openscholar Reports");
   const exact = await onOpenAlex(m, ownDoi, missed);
   if (exact) return exact;
   // Openscholar Reports' own live reports first (`ours`, reports/ownReports.ts): one published here is in no other place for days.
-  const candidates = [...ours, ...(await inOurIndex(m, ownDoi, missed)), ...(await inOurCommunities(m, ownDoi, communities, missed))].filter((c) => c.abstract || c.title);
+  const candidates = [...(ours ?? []), ...(await inOurIndex(m, ownDoi, missed)), ...(await inOurCommunities(m, ownDoi, communities, missed))].filter((c) => c.abstract || c.title);
   // The very same title from the same year is the work: no model needed. Both years must be known. The judge decides the
   // near matches, where on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
   const year = m.date.slice(0, 4);

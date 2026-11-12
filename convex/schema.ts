@@ -647,7 +647,9 @@ export default defineSchema({
     .index("by_changes", ["changes"])
     // A workspace's reports that never went live, which go with it when it is deleted (workspaces/purge.ts).
     .index("by_workspaceId_and_activatedAt", ["workspaceId", "activatedAt"])
-    // Live reports by their titles, which Already published searches before anywhere else (reports/ownReports.ts).
+    // Live reports by their titles, which Already published searches before anywhere else (reports/ownReports.ts): the
+    // very same title, in any script, and titles that share its words.
+    .index("by_status_and_title", ["status", "title"])
     .searchIndex("search_title", { searchField: "title", filterFields: ["status"] }),
   reportDetails: defineTable(reportDetailFields).index("by_reportId", ["reportId"]),
   reportReviews: defineTable(reportReviewFields).index("by_reportId", ["reportId"]),
