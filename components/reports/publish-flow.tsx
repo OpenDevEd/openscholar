@@ -315,7 +315,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const mockVoucher = useMockVoucher(shownKey);
   const found =
     foundRead && "report" in foundRead
-      ? { ...foundRead, report: { ...foundRead.report, ...(mockVoucher && { voucher: mockVoucher }), byline: mockByline(foundRead.report.byline, licence), ...(foundRead.report.metadata && { metadata: { ...foundRead.report.metadata, licence } }) } }
+      ? { ...foundRead, report: { ...foundRead.report, ...(mockVoucher && { voucher: mockVoucher }), byline: mockByline(foundRead.report.byline, licence) } }
       : foundRead;
   const terms = termsRead && mockTerms(termsRead, licence);
   // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
@@ -587,6 +587,8 @@ function Screens({ carried, onApplied, preparing, onPrepared, onUnprepare, basic
   const locale = useLocale();
   const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
+  // mock: the licence this browser signed the shown report with, for the details step to show (licence-mock.ts).
+  const mockLicence = useMockLicence(report?.key);
   const requestReview = useMutation(api.reports.flow.requestReview);
   const activate = useAction(api.reports.activation.activate);
   const addCard = useAction(api.reports.activation.addCard);
@@ -690,6 +692,8 @@ function Screens({ carried, onApplied, preparing, onPrepared, onUnprepare, basic
                 // The details of another PDF are another form.
                 key={report.pdf.at}
                 initial={report.metadata}
+                // mock: the licence this browser signed with, shown only: the details sent stay as dev's server keeps them (licence-mock.ts).
+                shownLicence={mockLicence}
                 onRun={async (metadata: Metadata) => {
                   toTop();
                   trouble.say(null);
