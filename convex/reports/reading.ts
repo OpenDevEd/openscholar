@@ -10,7 +10,7 @@ import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { BYLINE_PAGE_MAX_BYTES, blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
-import { readDetails } from "./reader";
+import { FILE_LIMIT, readDetails } from "./reader";
 
 /** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them,
  * a title, keyword or grant number longer than a report holds is cut to fit, and a date still to come is today,
@@ -51,10 +51,12 @@ export const read = internalAction({
     if (!job) return null;
     const blob = await ctx.storage.get(job.file);
     if (!blob) return null;
-    const bytes = await blob.arrayBuffer();
-    // pdf.js takes its buffer over, so it reads a copy and the model gets the original.
-    const opened = await extractPdfJsTextPages(bytes.slice(0)).catch((error: unknown) => {
-      console.error(JSON.stringify({ event: "report-pdf-unopened", reportId, name: job.name, bytes: bytes.byteLength, error: String(error).slice(0, 300) }));
+    // The file is held once more than the blob only while something reads it. pdf.js takes over the buffer it is
+    // given, so it gets its own; the reader of a small PDF and the page that is added each ask for the bytes when
+    // they need them. Held three times over, as it was, a PDF near the upload limit left a 512 MB action no room.
+    const bytes = async () => new Uint8Array(await blob.arrayBuffer());
+    const opened = await extractPdfJsTextPages(await blob.arrayBuffer()).catch((error: unknown) => {
+      console.error(JSON.stringify({ event: "report-pdf-unopened", reportId, name: job.name, bytes: blob.size, error: String(error).slice(0, 300) }));
       return null;
     });
     if (!opened) {
@@ -74,7 +76,8 @@ export const read = internalAction({
         if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");
         const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
         // The page Openscholar added says details read before: the reader is given the report's own pages.
-        const own = job.stamped ? await (await bylinePage()).withoutLastPage(new Uint8Array(bytes)) : new Uint8Array(bytes);
+        // A PDF too large to send is read from its text, so its bytes are never asked for.
+        const own = job.stamped ? await (await bylinePage()).withoutLastPage(await bytes()) : blob.size > FILE_LIMIT && !scanned ? null : await bytes();
         const found = capped(await readDetails({ pdf: own, text: read, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
         // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
         if (!found.title.trim() && !found.abstract.trim()) throw new Error("The reading found no title and no abstract.");
@@ -94,16 +97,16 @@ export const read = internalAction({
     let text = job.stamped ? `${read}\n${job.line}` : read;
     let pages = opened.totalPages;
     let withByline: { file: Id<"_storage">; bytes: number } | undefined;
-    if (job.added && !carries(text, job.line) && bytes.byteLength <= BYLINE_PAGE_MAX_BYTES) {
+    if (job.added && !carries(text, job.line) && blob.size <= BYLINE_PAGE_MAX_BYTES) {
       try {
         // Details a reading couldn't find are a file name and today's date: the page waits for the author's own.
         const known = job.held ?? metadata ?? undefined;
-        const added = await (await bylinePage()).withBylinePage(new Uint8Array(bytes), { line: job.line, series: job.series, ...(known && { details: known }) });
+        const added = await (await bylinePage()).withBylinePage(await bytes(), { line: job.line, series: job.series, ...(known && { details: known }) });
         withByline = { file: await ctx.storage.store(new Blob([added as Uint8Array<ArrayBuffer>], { type: "application/pdf" })), bytes: added.byteLength };
         text = `${text}\n${job.line}`;
         pages += 1;
       } catch (error) {
-        console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, name: job.name, bytes: bytes.byteLength, error: String(error).slice(0, 300) }));
+        console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, name: job.name, bytes: blob.size, error: String(error).slice(0, 300) }));
       }
     }
     const textFile = await ctx.storage.store(new Blob([text], { type: "text/plain" }));

@@ -74,12 +74,12 @@ const TEXT_LIMIT = 400_000;
  * The largest PDF sent to the model as a file. A larger one is read from its text: as a file it would go out as one
  * request of a third more bytes again, which providers refuse and a Convex action has no memory to build.
  */
-const FILE_LIMIT = 20 * 1024 * 1024;
+export const FILE_LIMIT = 20 * 1024 * 1024;
 /** How long one reading may take. Two of them, as a file and then as text, end before the page gives up on the PDF (STUCK_MS). */
 const READ_MS = 100_000;
 
 /** The model's reading of the PDF. It is sent the file; when that fails, such as for a file the provider won't take, its text. */
-async function catalogue(pdf: Uint8Array, text: string, fileName: string, { model, slug, effort }: Reader): Promise<Reading> {
+async function catalogue(pdf: Uint8Array | null, text: string, fileName: string, { model, slug, effort }: Reader): Promise<Reading> {
   const ask = async (as: "file" | "text") => {
     const started = Date.now();
     const result = await generateText({
@@ -92,7 +92,7 @@ async function catalogue(pdf: Uint8Array, text: string, fileName: string, { mode
           role: "user",
           content:
             as === "file"
-              ? [{ type: "text", text: "Catalogue this PDF." }, { type: "file", data: pdf, mediaType: "application/pdf", filename: fileName }]
+              ? [{ type: "text", text: "Catalogue this PDF." }, { type: "file", data: pdf!, mediaType: "application/pdf", filename: fileName }]
               : [{ type: "text", text: `Catalogue this PDF, given here as its text.\n\n${text.slice(0, TEXT_LIMIT)}` }],
         },
       ],
@@ -103,7 +103,8 @@ async function catalogue(pdf: Uint8Array, text: string, fileName: string, { mode
     console.info(JSON.stringify({ event: "report-pdf-read", model: slug, effort: effort ?? null, as, seconds: Math.round((Date.now() - started) / 1000), costUsd: usage?.cost ?? null, tokens: result.usage }));
     return result.output;
   };
-  if (pdf.length > FILE_LIMIT && text.trim()) return ask("text");
+  // No file is given when it is too large to send and its text is there to read.
+  if (!pdf || (pdf.length > FILE_LIMIT && text.trim())) return ask("text");
   try {
     return await ask("file");
   } catch (error) {
@@ -171,7 +172,7 @@ const orcidOf = (printed: string) => (isOrcid(printed.trim().toUpperCase()) ? pr
 const dateOf = (stated: string) => (/^\d{4}-\d{2}-\d{2}$/.test(stated) ? stated : /^\d{4}-\d{2}$/.test(stated) ? `${stated}-01` : /^\d{4}$/.test(stated) ? `${stated}-01-01` : new Date().toISOString().slice(0, 10));
 
 /** The report's details, ready for its author to correct. Throws when the model can't read the PDF at all. */
-export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { pdf: Uint8Array; text: string; fileName: string; ownDoi: string; reader: Reader }): Promise<Metadata> {
+export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { /** The PDF's bytes; null for one too large to send whose text is given, so its reading never holds the file. */ pdf: Uint8Array | null; text: string; fileName: string; ownDoi: string; reader: Reader }): Promise<Metadata> {
   const read = await catalogue(pdf, text, fileName, reader);
   const [classified, institutions, funders] = await Promise.all([
     classify(read.title, read.abstract),
