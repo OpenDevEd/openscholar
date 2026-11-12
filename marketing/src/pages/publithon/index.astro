@@ -1,0 +1,252 @@
+---
+import Base from "../../layouts/Base.astro";
+import PublithonHero from "../../components/PublithonHero.astro";
+import DoiCard from "../../components/DoiCard.astro";
+import Arrow from "../../components/Arrow.astro";
+import Faq from "../../components/Faq.astro";
+import Close from "../../components/Close.astro";
+import { APP } from "../../data/site.mjs";
+// What a publithon is and how to take part, for anyone invited to one. No event of its own: dates, topic and sponsor
+// come later, when an event needs them. Sponsors write to us through the contact form's sponsor topic.
+// The steps are /publish's own (publishReports.flow.overview), in the order the app takes them. Each has a glass
+// emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck).
+const steps = [
+  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
+  ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report."],
+  ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
+  ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
+  ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before."],
+  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
+];
+// What a DOI takes on your own, each beside what Openscholar does instead, row for row (laid out like Ploy's and
+// Zaro's before and after sections on Mobbin). Every right-hand row is something the publish flow does today.
+const chores = [
+  [["Find a publisher", "A journal or repository that issues DOIs, or join a registration agency yourself"], ["Openscholar Reports publishes it", "In its own series, under your name"]],
+  [["Write up the metadata", "Title, authors, affiliations and funders, in the agency's format"], ["Read from your PDF", "You check the details and change anything"]],
+  [["Stamp the PDF", "Put the DOI and the series line on it yourself"], ["Added for you", "On a last page, if your PDF doesn't have it"]],
+  [["Check for earlier versions", "Make sure it hasn't been published before"], ["Checked automatically", "Against published work, before it goes live"]],
+  [["Register and maintain it", "Deposit the DOI, and send corrections when something changes"], ["Registered for you", "When it goes live, with corrections sent on"]],
+  [["Host the file", "Keep the PDF online, so the DOI always leads somewhere"], ["Its own page", "With the PDF to read and cite"]],
+];
+const faq = [
+  ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
+  ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against work that's already published."],
+  ["What does AI do here?", "It reads the title, authors, institutions and funders from your PDF, so you don't type them in. You check them and change anything before the report goes live."],
+  ["Does anyone review my report first?", "No. Automatic checks look for the series line with your DOI and for anything published before, and once they pass, your report goes live straight away."],
+  ["Can I run a publithon for my field?", "Yes. Tell us the topic and who you'd invite, and we'll plan it with you."],
+];
+---
+<Base og="/og-publithon.jpg" top="#070b1a" title="Publish your research with a DOI at a publithon: Openscholar" description="Publish a finished report or paper at a publithon. It goes live under your name with its own DOI: a permanent link that can be cited, counted and found.">
+  <PublithonHero />
+
+  {/* The steps, right under the hero and on the same night sky, one full screen. The icons are the picture: six
+      emblems on one thread (after Giga's lit progress line, Mobbin). As the row comes on screen a light runs along
+      it, each emblem pops alight as it passes, and the run ends on the DOI, typed out. After that the emblems drift,
+      and a light keeps passing along the thread, each emblem answering as it goes by. */}
+  <section class="bleed how" id="publish" aria-labelledby="how-h" data-how>
+    <div class="inner how-in">
+      <div class="how-head" data-in><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About five minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
+      <ol class="road">
+        <i class="thread" aria-hidden="true"><i></i><b></b></i>
+        {steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><span class="em"><img src={`/img/step-${id}.avif`} width="400" height="400" loading="lazy" decoding="async" alt="" /></span><b>{t}</b><span class="d">{d}</span></li>)}
+      </ol>
+      <p class="arrive"><span class="a-doi">https://doi.org/10.53832/openscholar-reports.r100230</span></p>
+    </div>
+  </section>
+
+  <DoiCard />
+
+  {/* The paperwork a DOI takes on your own, crossed off row by row beside what's done for you instead. The picture
+      over the two columns is the same story: the cold pile over "On your own", the sealed page over "With Openscholar". */}
+  <section class="chores" id="done" aria-labelledby="ch-h">
+    <div class="ch-head"><h2 id="ch-h">We do the paperwork</h2><p class="lead">On your own, a DOI means going through a journal or repository, or joining a registration agency and doing the rest yourself. Here it's done for you.</p></div>
+    <div class="panel ch-table" data-in>
+      <img class="ch-art" src="/img/art-pub-paperwork-wide.avif" srcset="/img/art-pub-paperwork-wide-960.avif 960w, /img/art-pub-paperwork-wide.avif 1672w" sizes="(max-width: 1280px) 100vw, 1280px" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+      <div class="ch-cols" role="table" aria-label="What a DOI takes on your own, and what Openscholar does instead">
+        <div class="ch-row ch-th" role="row"><span role="columnheader">On your own</span><i class="ch-arrow" aria-hidden="true"><Arrow /></i><span role="columnheader">With Openscholar</span></div>
+        {chores.map(([[wt, wd], [nt, nd]], i) => <div class="ch-row" role="row" style={`--i:${i}`}><span class="was" role="cell"><b>{wt}</b><span>{wd}</span></span><span class="now" role="cell"><b>{nt}</b><span>{nd}</span></span></div>)}
+      </div>
+    </div>
+  </section>
+
+  {/* Two doors: new work is published, work that's already out is suggested to a community. */}
+  <section class="ways" id="ways" aria-labelledby="ways-h">
+    <h2 id="ways-h">Two ways to take part</h2>
+    <div class="doors">
+      <a class="panel door d-new" href={`${APP}/publish`} data-in>
+        <img class="d-art" src="/img/art-pub-new.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+        <span class="d-copy"><b>Your own new work</b><span>A report, paper or study you wrote, published with its own DOI.</span><span class="d-go">Publish it<Arrow /></span></span>
+      </a>
+      <a class="panel door d-gap" href={`${APP}/communities`} data-in>
+        <img class="d-art" src="/img/art-pub-gap.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+        <span class="d-copy"><b>Work that's already out</b><span>A community on your topic is missing a paper? Suggest it, and its editors add it.</span><span class="d-go">Find a community<Arrow /></span></span>
+      </a>
+    </div>
+  </section>
+
+  {/* Sponsors: the world lights up from the medallion as the section arrives, then stays alive. The one picture is
+      laid over itself in layers: unlit, lit, a ring of light that runs up the threads to the medallion, and two
+      sets of places that glow and dim. */}
+  <section class="bleed sponsor" id="sponsor" aria-labelledby="sp-h" data-sponsor>
+    <div class="s-world" aria-hidden="true">
+      {["dark", "lit", "pulse", "spark sa", "spark sb"].map((k) => <div class={`w w-${k}`}><img src="/img/art-pub-world.avif" srcset="/img/art-pub-world-960.avif 960w, /img/art-pub-world.avif 1672w" sizes="(max-width: 900px) 160vw, 1440px" width="1672" height="941" loading="lazy" decoding="async" alt="" /></div>)}
+      <i class="w-sun"></i>
+    </div>
+    <div class="inner s-copy">
+      <h2 id="sp-h" data-in>Sponsor a publithon</h2>
+      <p class="lead" data-in style="--d:.1s">Back a publithon on a topic or a region you care about. Tell us what you have in mind, and we plan it with you.</p>
+      <div data-in style="--d:.2s"><a class="btn" href="/contact/?topic=sponsor">Talk to us about sponsoring<Arrow /></a></div>
+    </div>
+  </section>
+
+  <Faq items={faq} title="Questions about publithons" />
+  <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
+</Base>
+<script>
+  // The steps play once, when half the row of emblems is on screen. What keeps moving afterwards rests while the
+  // section is off screen.
+  const how = document.querySelector<HTMLElement>("[data-how]");
+  if (how) {
+    new IntersectionObserver(([e], io) => { if (!e.isIntersecting) return; io.disconnect(); how.classList.add("play"); }, { threshold: .5 }).observe(how.querySelector(".road")!);
+    new IntersectionObserver(([e]) => how.classList.toggle("away", !e.isIntersecting)).observe(how);
+  }
+  // The sponsors' world lights once a third of it is on screen, and rests off screen too.
+  const sponsor = document.querySelector<HTMLElement>("[data-sponsor]");
+  if (sponsor) {
+    new IntersectionObserver(([e], io) => { if (!e.isIntersecting) return; io.disconnect(); sponsor.classList.add("play"); }, { threshold: .35 }).observe(sponsor);
+    new IntersectionObserver(([e]) => sponsor.classList.toggle("away", !e.isIntersecting)).observe(sponsor);
+  }
+</script>
+<style>
+  /* Two tall doors side by side, the art filling each and the words at its foot. */
+  /* Dark blocks take the strip's full width, as the panels do; headings and text keep the margin. */
+  .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding-top: clamp(72px, 8vw, 120px); } .ways h2 { padding-inline: var(--pad); }
+  .ways h2 { font-size: clamp(30px, 3.2vw, 44px); }
+  .doors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  .door { display: grid; align-content: end; min-height: clamp(520px, 46vw, 660px); padding: clamp(24px, 3vw, 40px); color: #fff; }
+  .d-new { --bg: #02261d; } .d-gap { --bg: #2a0410; }
+  .d-art { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; transition: transform 1.2s var(--ease), filter .6s var(--ease); -webkit-mask-image: linear-gradient(#000 52%, transparent 92%); mask-image: linear-gradient(#000 52%, transparent 92%); filter: brightness(.86); }
+  .door:hover .d-art { transform: scale(1.04); filter: none; }
+  .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.d-go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
+  .d-go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .d-go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .d-go :global(i) { transform: translateX(4px); }
+
+  /* The paperwork: one table, its left column muted and crossed off row by row, its right column lit. */
+  .chores { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
+  .ch-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; padding-inline: var(--pad); } .ch-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
+  .ch-table { --bg: #010c28; display: grid; }
+  .ch-art { display: block; width: 100%; aspect-ratio: 1672 / 640; object-fit: cover; object-position: 50% 70%; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  .ch-cols { display: grid; padding: 0 var(--pad) var(--pad); margin-top: clamp(-56px, -3vw, -24px); position: relative; }
+  .ch-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(32px, 5vw, 80px); border-top: 1px solid rgb(255 255 255 / .1); }
+  .ch-row > span { display: grid; gap: 4px; padding-block: 18px; } .ch-row b { font-weight: 500; font-size: clamp(17px, 1.5vw, 20px); letter-spacing: -.01em; width: fit-content; } .ch-row > span > span { font-size: 15px; line-height: 1.45; }
+  .ch-th { border-top: 0; align-items: center; } .ch-th > span { padding-block: 0 14px; font-size: 14px; font-weight: 500; letter-spacing: .01em; color: rgb(255 255 255 / .6); } .ch-th > span:last-child { color: #ffd68c; }
+  .ch-arrow { position: absolute; left: 50%; top: -6px; translate: -50% 0; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #fff; color: var(--ink); }
+  .was b { color: rgb(255 255 255 / .62); } .was > span { color: rgb(255 255 255 / .42); }
+  .now b { color: #fff; } .now > span { color: rgb(255 255 255 / .7); }
+  /* The strike is drawn across each job's title, one row after another, as the table arrives. */
+  .was b { background: linear-gradient(rgb(255 255 255 / .7), rgb(255 255 255 / .7)) no-repeat 0 55% / 100% 1.5px; }
+  :global(.js) .ch-table[data-in] { opacity: 1; transform: none; }
+  :global(.js) .ch-table:not(.in) .was b { background-size: 0 1.5px; } :global(.js) .ch-table.in .was b { transition: background-size .5s cubic-bezier(.65, 0, .35, 1) calc(.3s + var(--i) * .3s); }
+  :global(.js) .ch-table:not(.in) .now { opacity: 0; translate: -10px 0; } :global(.js) .ch-table.in .now { transition: opacity .5s var(--ease) calc(.5s + var(--i) * .3s), translate .6s var(--ease) calc(.5s + var(--i) * .3s); }
+
+  /* The steps: one full screen under the hero, flush with it so the two are one sky. A step lights every --dt, from --t0. */
+  .how { --t0: .1s; --dt: .36s; background: var(--night); margin-top: calc(var(--gap) * -1); min-height: 100vh; min-height: 100svh; display: grid; align-items: center; padding-block: 112px 72px; }
+  .how-in { display: grid; gap: clamp(40px, 4.6vw, 64px); }
+  .how-head { display: grid; justify-items: center; gap: 14px; text-align: center; } .how-head h2 { font-size: clamp(32px, 3.6vw, 52px); line-height: 1.05; letter-spacing: -.03em; } .how-head .lead { max-width: 34em; color: rgb(255 255 255 / .76); }
+  .road { --em: clamp(104px, 10.4vw, 150px); position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 clamp(8px, 1.2vw, 16px); margin: 0; padding: 0; list-style: none; }
+  .thread { position: absolute; z-index: -1; top: calc(var(--em) / 2 - 1px); left: calc(100% / 12); right: calc(100% / 12); height: 2px; border-radius: 2px; background: rgb(255 255 255 / .1); }
+  .thread > i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .45); transform-origin: left; }
+  /* The light that runs along the thread. */
+  .thread > b { position: absolute; top: 50%; left: 100%; width: 150px; height: 8px; translate: -100% -50%; border-radius: 8px; background: linear-gradient(90deg, transparent, #fff); filter: blur(2px); opacity: 0; }
+  .road li { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; }
+  .em { position: relative; display: grid; place-items: center; width: var(--em); height: var(--em); margin-bottom: 14px; transition: scale .45s cubic-bezier(.34, 1.56, .64, 1), rotate .45s cubic-bezier(.34, 1.56, .64, 1); }
+  .road li:hover .em { scale: 1.1; rotate: -6deg; }
+  .em::before { content: ""; position: absolute; inset: -20%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 44%, transparent), transparent); opacity: .8; }
+  /* What an emblem throws off as it lights: a ring in its colour, and for the last a burst of rays. */
+  .em::after { content: ""; position: absolute; inset: 8%; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--c); opacity: 0; pointer-events: none; }
+  .road li:last-child .em::after { inset: -34%; box-shadow: none; background: repeating-conic-gradient(rgb(251 191 36 / .85) 0 3deg, transparent 3deg 15deg); -webkit-mask-image: radial-gradient(closest-side, transparent 44%, #000 50%, transparent 100%); mask-image: radial-gradient(closest-side, transparent 44%, #000 50%, transparent 100%); }
+  .em img { width: 100%; height: 100%; object-fit: contain; }
+  .road li > b { font-weight: 500; font-size: clamp(16px, 1.3vw, 18px); letter-spacing: -.01em; white-space: nowrap; } .road .d { color: rgb(255 255 255 / .66); font-size: 15px; line-height: 1.4; max-width: 15em; }
+  .arrive { margin: 0; text-align: center; } .a-doi { position: relative; display: inline-block; padding-bottom: 12px; font: 400 clamp(17px, 2.5vw, 34px)/1.2 var(--mono); color: #fff; overflow-wrap: anywhere; }
+  .a-doi::after { content: ""; position: absolute; inset: auto 0 0; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 16px rgb(255 214 140 / .5); transform-origin: left; }
+
+  /* Before the run: the thread unlit, the emblems grey and turned away, their words and the DOI not there yet. */
+  :global(.js) .how:not(.play) .thread > i { transform: scaleX(0); }
+  :global(.js) .how:not(.play) .em img { opacity: .3; filter: grayscale(1); transform: scale(.7) rotate(-16deg); } :global(.js) .how:not(.play) .em::before { opacity: 0; transform: scale(.3); }
+  :global(.js) .how:not(.play) .road li > b, :global(.js) .how:not(.play) .road .d { opacity: 0; translate: 0 14px; filter: blur(6px); }
+  :global(.js) .how:not(.play) .a-doi { clip-path: inset(0 100% 0 0); } :global(.js) .how:not(.play) .a-doi::after { transform: scaleX(0); }
+  /* The run. The light crosses the thread; as it reaches an emblem, that one pops alight, throws its ring and its
+     words rise. Then the DOI is typed, a character at a time, and underlined. */
+  :global(.js) .how.play .thread > i { transition: transform calc(var(--dt) * 5) linear var(--t0); }
+  :global(.js) .how.play .em img { animation: pub-pop .8s cubic-bezier(.3, .7, .3, 1) calc(var(--t0) + var(--i) * var(--dt)) both; }
+  @keyframes pub-pop { 0% { opacity: .3; filter: grayscale(1) brightness(1); transform: scale(.7) rotate(-16deg); } 45% { opacity: 1; filter: grayscale(0) brightness(1.7); transform: scale(1.16) rotate(5deg); } 72% { opacity: 1; filter: grayscale(0) brightness(1.1); transform: scale(.97) rotate(-1.5deg); } 100% { opacity: 1; filter: grayscale(0) brightness(1); transform: none; } }
+  :global(.js) .how.play .em::after { animation: pub-ring .9s cubic-bezier(.2, .6, .3, 1) calc(var(--t0) + var(--i) * var(--dt) + .08s) forwards; } @keyframes pub-ring { 0% { opacity: .9; transform: scale(.45); } 100% { opacity: 0; transform: scale(1.6); } }
+  :global(.js) .how.play .road li:last-child .em::after { animation: pub-rays 1.3s var(--ease) calc(var(--t0) + var(--dt) * 5 + .08s) forwards; } @keyframes pub-rays { 0% { opacity: .95; transform: scale(.45) rotate(-24deg); } 100% { opacity: 0; transform: scale(1.35) rotate(14deg); } }
+  :global(.js) .how.play .road li > b, :global(.js) .how.play .road .d { transition: opacity .45s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .1s), translate .55s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .1s), filter .45s var(--ease) calc(var(--t0) + var(--i) * var(--dt) + .1s); }
+  :global(.js) .how.play .road .d { transition-delay: calc(var(--t0) + var(--i) * var(--dt) + .2s); }
+  :global(.js) .how.play .a-doi { clip-path: inset(0 0 0 0); transition: clip-path .7s steps(52, end) calc(var(--t0) + var(--dt) * 5 + .15s); }
+  :global(.js) .how.play .a-doi::after { transition: transform .55s cubic-bezier(.65, 0, .35, 1) calc(var(--t0) + var(--dt) * 5 + .85s); }
+  /* Afterwards it stays alive: the emblems drift, each at its own pace, and every few seconds a light passes along
+     the thread, each emblem's glow answering as it goes by (the light takes 1.98 s to cross, .396 s a step). */
+  :global(.js) .how.play .em { animation: pub-float calc(4.4s + var(--i) * .37s) ease-in-out calc(var(--t0) + var(--i) * var(--dt) + .9s) infinite; } @keyframes pub-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -7px; } }
+  :global(.js) .how.play .thread > b { animation: pub-head calc(var(--dt) * 5) linear var(--t0) both, pub-flow 5.5s linear calc(var(--t0) + var(--dt) * 5 + 2.4s) infinite; }
+  @keyframes pub-head { 0% { left: 0; opacity: 0; } 4% { opacity: 1; } 94% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+  @keyframes pub-flow { 0% { left: 0; opacity: 0; } 3% { opacity: .9; } 33% { opacity: .9; } 36%, 100% { left: 100%; opacity: 0; } }
+  :global(.js) .how.play .em::before { animation: pub-bloom .9s var(--ease) calc(var(--t0) + var(--i) * var(--dt)) both, pub-glint 5.5s linear calc(var(--t0) + var(--dt) * 5 + 2.4s + var(--i) * .396s) infinite; }
+  @keyframes pub-bloom { 0% { opacity: 0; transform: scale(.3); } 40% { opacity: 1; transform: scale(1.4); } 100% { opacity: .8; transform: scale(1); } }
+  @keyframes pub-glint { 0%, 16%, 100% { opacity: .8; transform: scale(1); } 5% { opacity: 1; transform: scale(1.28); } }
+  .how.away .em, .how.away .em::before, .how.away .thread > b { animation-play-state: paused; }
+
+  /* Sponsors. The picture keeps its own shape, anchored to the section's right and foot, so the medallion its threads
+     fan from (--fx, --fy) is in the same place at every width, and the layers and their light line up with it. */
+  @property --pub-wave { syntax: "<percentage>"; inherits: true; initial-value: 120%; }
+  @property --pub-ring { syntax: "<percentage>"; inherits: true; initial-value: 110%; }
+  .sponsor { background: var(--night); min-height: clamp(560px, 50vw, 720px); padding-block: clamp(72px, 8vw, 120px); margin-top: 16px; display: grid; align-items: start; }
+  .s-world { --fx: 82.7%; --fy: 18.5%; position: absolute; z-index: -2; right: 0; bottom: 0; height: 112.5%; aspect-ratio: 1672 / 941; -webkit-mask-image: linear-gradient(90deg, transparent, rgb(0 0 0 / .35) 16%, #000 48%); mask-image: linear-gradient(90deg, transparent, rgb(0 0 0 / .35) 16%, #000 48%); }
+  .w { position: absolute; inset: 0; } .w img { display: block; width: 100%; height: 100%; max-width: none; transform-origin: var(--fx) var(--fy); }
+  .w-dark img { filter: brightness(.32) saturate(.3); }
+  /* Lit: uncovered in a circle that grows from the medallion. */
+  .w-lit { -webkit-mask-image: radial-gradient(circle at var(--fx) var(--fy), #000 calc(var(--pub-wave) - 16%), transparent var(--pub-wave)); mask-image: radial-gradient(circle at var(--fx) var(--fy), #000 calc(var(--pub-wave) - 16%), transparent var(--pub-wave)); }
+  .w-pulse, .w-spark { mix-blend-mode: screen; opacity: 0; } /* Contrast first, so the dark sea stays dark and only what is already lit gets brighter. */ .w-pulse img, .w-spark img { filter: contrast(1.7) brightness(1.6) saturate(1.15); }
+  /* A ring of the brighter picture, closing on the medallion: light running up every thread at once. */
+  .w-pulse { -webkit-mask-image: radial-gradient(circle at var(--fx) var(--fy), transparent calc(var(--pub-ring) - 4%), #000 var(--pub-ring), #000 calc(var(--pub-ring) + 2%), transparent calc(var(--pub-ring) + 13%)); mask-image: radial-gradient(circle at var(--fx) var(--fy), transparent calc(var(--pub-ring) - 4%), #000 var(--pub-ring), #000 calc(var(--pub-ring) + 2%), transparent calc(var(--pub-ring) + 13%)); }
+  /* Places that glow and dim: South Asia, East Africa and Australia in one set; East Asia, the Middle East and Indonesia in the other. */
+  .sa { -webkit-mask-image: radial-gradient(11% 17% at 70.8% 61.7%, #000, transparent), radial-gradient(9% 13% at 48.6% 77.8%, #000, transparent), radial-gradient(8% 12% at 93% 87.7%, #000, transparent); mask-image: radial-gradient(11% 17% at 70.8% 61.7%, #000, transparent), radial-gradient(9% 13% at 48.6% 77.8%, #000, transparent), radial-gradient(8% 12% at 93% 87.7%, #000, transparent); }
+  .sb { -webkit-mask-image: radial-gradient(10% 15% at 85.4% 55.6%, #000, transparent), radial-gradient(9% 14% at 55.6% 50.6%, #000, transparent), radial-gradient(8% 12% at 82% 74%, #000, transparent); mask-image: radial-gradient(10% 15% at 85.4% 55.6%, #000, transparent), radial-gradient(9% 14% at 55.6% 50.6%, #000, transparent), radial-gradient(8% 12% at 82% 74%, #000, transparent); }
+  .w-sun { position: absolute; left: 83.2%; top: 14%; width: 32%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 196 84 / .55), transparent); mix-blend-mode: screen; opacity: .5; }
+  :global(.js) .sponsor:not(.play) .s-world { --pub-wave: 0%; } :global(.js) .sponsor:not(.play) .w-sun { opacity: 0; }
+  /* Arriving: the medallion comes on and its light spreads over the world in 2.6 s. Then, every 5.2 s, a ring of
+     light closes on the medallion, which flares as it lands, while the places glow at their own paces and the
+     whole picture swells slowly about the medallion. */
+  :global(.js) .sponsor.play .s-world { transition: --pub-wave 2.6s cubic-bezier(.5, .1, .45, 1) .15s; }
+  :global(.js) .sponsor.play .w img { animation: pub-drift 26s ease-in-out 2.4s infinite alternate; } @keyframes pub-drift { to { transform: scale(1.06); } }
+  :global(.js) .sponsor.play .w-pulse { animation: pub-inflow 5.2s linear 2.9s infinite; } @keyframes pub-inflow { 0% { --pub-ring: 104%; opacity: 0; } 6% { opacity: .95; } 58% { --pub-ring: 0%; opacity: .95; } 63%, 100% { --pub-ring: 0%; opacity: 0; } }
+  :global(.js) .sponsor.play .w-sun { animation: pub-sun-in .9s var(--ease) .15s both, pub-sun 5.2s ease-in-out 2.9s infinite; } @keyframes pub-sun-in { from { opacity: 0; scale: .5; } to { opacity: .5; scale: 1; } } @keyframes pub-sun { 0%, 50%, 82%, 100% { opacity: .5; scale: 1; } 61% { opacity: 1; scale: 1.3; } }
+  :global(.js) .sponsor.play .sa { animation: pub-shimmer 3.6s ease-in-out 2.6s infinite alternate; } :global(.js) .sponsor.play .sb { animation: pub-shimmer 4.9s ease-in-out 3.1s infinite alternate; } @keyframes pub-shimmer { from { opacity: 0; } to { opacity: .85; } }
+  .sponsor.away .w img, .sponsor.away .w-pulse, .sponsor.away .w-spark, .sponsor.away .w-sun { animation-play-state: paused; }
+  /* The words keep a calm night behind them where the picture runs under them. */
+  .sponsor::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgb(7 11 26 / .88), rgb(7 11 26 / .62) 36%, transparent 60%); }
+  .s-copy { position: relative; display: grid; gap: 20px; justify-items: start; } .s-copy h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; max-width: 6.5em; } .s-copy .lead { max-width: 30em; color: rgb(255 255 255 / .84); }
+
+  @media (max-width: 900px) {
+    .sponsor::before { display: none; }
+    .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
+    .ch-head { grid-template-columns: minmax(0, 1fr); } .ch-art { aspect-ratio: 1672 / 760; }
+    .ch-row { grid-template-columns: minmax(0, 1fr); } .ch-th { display: none; } .ch-row > .was { padding-bottom: 4px; } .ch-row > .now { padding-top: 4px; }
+    .sponsor { min-height: 0; padding-bottom: 330px; } .s-world { height: 340px; right: -8%; -webkit-mask-image: linear-gradient(transparent, #000 12%); mask-image: linear-gradient(transparent, #000 12%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-table:not(.in) .now { opacity: 1; translate: none; } :global(.js) .ch-table:not(.in) .was b { background-size: 100% 1.5px; } }
+  /* Narrow screens: the thread runs down the left through the emblems, and the light runs down it. */
+  @media (max-width: 900px) {
+    .how { padding-block: 96px 64px; } .how-head { justify-items: start; text-align: left; }
+    .road { --em: 64px; grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(92px, auto); }
+    .road li > b { white-space: normal; }
+    .road li { grid-template-columns: var(--em) minmax(0, 1fr); column-gap: 16px; justify-items: start; align-content: center; text-align: left; } .em { grid-row: span 2; margin: 0; align-self: center; } .road li > b { align-self: end; } .road .d { align-self: start; max-width: none; }
+    .thread { top: 46px; bottom: 46px; left: calc(var(--em) / 2 - 1px); right: auto; width: 2px; height: auto; } .thread > i { background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); transform-origin: top; }
+    :global(.js) .how:not(.play) .thread > i { transform: scaleY(0); }
+    .thread > b { left: 50%; top: 100%; width: 8px; height: 110px; translate: -50% -100%; background: linear-gradient(transparent, #fff); } :global(.js) .how.play .thread > b { animation-name: pub-head-v, pub-flow-v; }
+    @keyframes pub-head-v { 0% { top: 0; opacity: 0; } 4% { opacity: 1; } 94% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+    @keyframes pub-flow-v { 0% { top: 0; opacity: 0; } 3% { opacity: .9; } 33% { opacity: .9; } 36%, 100% { top: 100%; opacity: 0; } }
+    .arrive { text-align: left; } :global(.js) .how:not(.play) .a-doi { clip-path: none; opacity: 0; translate: 0 10px; } :global(.js) .how.play .a-doi { clip-path: none; transition: opacity .6s var(--ease) calc(var(--t0) + var(--dt) * 5 + .15s), translate .7s var(--ease) calc(var(--t0) + var(--dt) * 5 + .15s); }
+  }
+</style>
