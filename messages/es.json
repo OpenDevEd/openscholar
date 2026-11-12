@@ -6746,7 +6746,6 @@
           "cancel": "Cancelar el pago",
           "cancelFailed": "No se pudo cancelar el pago. Inténtalo de nuevo."
         },
-        "creditLine": "Saldo a favor de la cuenta",
         "declined": "Tu tarjeta fue rechazada. No se cobró nada. Inténtalo de nuevo o paga de otra forma.",
         "paused": "La publicación está en pausa por ahora, así que nada puede publicarse. Tu informe conserva su lugar.",
         "kept": "Lo que se pagó por este informe fue a tu saldo de publicación. El próximo informe que actives lo usa.",
@@ -6852,7 +6851,8 @@
         "dueNow": "A pagar ahora",
         "title": "Pago",
         "sign": "Leer y firmar",
-        "noLimit": "Sin límite"
+        "noLimit": "Sin límite",
+        "credit": "Saldo a favor de la cuenta"
       },
       "activateFree": "Activar el DOI"
     },

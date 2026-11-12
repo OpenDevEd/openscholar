@@ -6746,7 +6746,6 @@
           "cancel": "Cancelar o pagamento",
           "cancelFailed": "Não foi possível cancelar o pagamento. Tente de novo."
         },
-        "creditLine": "Crédito da conta",
         "declined": "Seu cartão foi recusado. Nada foi cobrado. Tente de novo ou pague de outra forma.",
         "paused": "A publicação está em pausa por agora, por isso nada pode ser publicado. O seu relatório mantém o seu lugar.",
         "kept": "O que foi pago por este relatório foi para o seu saldo de publicação. O próximo relatório que você ativar o usa.",
@@ -6852,7 +6851,8 @@
         "dueNow": "A pagar agora",
         "title": "Pagamento",
         "sign": "Ler e assinar",
-        "noLimit": "Sem limite"
+        "noLimit": "Sem limite",
+        "credit": "Crédito da conta"
       },
       "activateFree": "Ativar o DOI"
     },

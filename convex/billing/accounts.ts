@@ -25,7 +25,7 @@ import {
 } from "./validators";
 import { PUBLICATION_FEATURE, EVIDENCE_LIBRARIES_FEATURE, REFILL_INTERVALS, type RefillInterval, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
-import { defaultToSavedCard, stripeCredit } from "./stripeRest";
+import { stripeCredit } from "./stripeRest";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
@@ -243,19 +243,22 @@ const CHARGING_MS = 5 * 60_000;
 
 /**
  * Whether a snapshot read at `fetchedAt` could show a report's payment half made: a charge of the workspace's is under
- * way, or waits on the bank or on Stripe's page, or its newest live report's price wasn't yet taken at Autumn when the
- * snapshot was read.
+ * way, or waits on the bank or on Stripe's page, or the price of one that just went live wasn't yet taken at Autumn
+ * when the snapshot was read.
  */
 async function payingForReport(ctx: QueryCtx, workspaceId: Id<"workspaces">, fetchedAt: number) {
-  const last = (state: "charging" | "pending" | "live") => ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", state)).order("desc").first();
+  const last = (state: "charging" | "pending") => ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", state)).order("desc").first();
   const charging = await last("charging");
   if ((charging !== null && charging.at > Date.now() - CHARGING_MS) || (await last("pending")) !== null) return true;
-  const live = await last("live");
-  // One from before holds were finished on record says nothing.
-  if (!live?.hold) return false;
-  if (live.finishedAt !== undefined) return live.finishedAt > fetchedAt;
-  // Live, and its hold still to be finished: unless that has taken longer than a hold lasts.
-  return Math.max(live.at, live.settling ?? 0) > Date.now() - CHARGING_MS;
+  // The newest few that went live: one whose price is still to be taken can have another go live after it.
+  const live = await ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", "live")).order("desc").take(5);
+  return live.some((row) => {
+    // One from before holds were finished on record says nothing.
+    if (!row.hold) return false;
+    if (row.finishedAt !== undefined) return row.finishedAt > fetchedAt;
+    // Live, and its hold still to be finished: unless that has taken longer than a hold lasts.
+    return Math.max(row.at, row.settling ?? 0) > Date.now() - CHARGING_MS;
+  });
 }
 
 /**
@@ -308,16 +311,11 @@ async function captureBillingChanges(
 export async function refreshAccount(
   ctx: ActionCtx,
   workspaceId: Id<"workspaces">,
-  options: { email?: string; name?: string; card?: boolean; savedIn?: string } = {},
+  options: { email?: string; name?: string; card?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   let customer = await autumn.customer(customerId, options);
-  // Back from saving a card on Stripe's page (its Checkout session, `savedIn`): that card is the one charged from now on.
-  if (options.savedIn && customer.stripe_id) {
-    await defaultToSavedCard(customer.stripe_id, options.savedIn);
-    customer = await autumn.customer(customerId, options);
-  }
   // A failed payment's invoice is read only while one is due, which is rare.
   if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
   // The card's read also reads the credit on the Stripe balance, which a purchase is paid from first.

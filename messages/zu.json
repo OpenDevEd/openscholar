@@ -6745,7 +6745,6 @@
           "cancel": "Khansela inkokhelo",
           "cancelFailed": "Inkokhelo ayikwazanga ukukhanselwa. Zama futhi."
         },
-        "creditLine": "Isikweletu se-akhawunti",
         "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Zama futhi, noma ukhokhe ngenye indlela.",
         "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo.",
         "kept": "Okukhokhelwe lo mbiko kuye ebhalansini yakho yokushicilela. Umbiko olandelayo owuvulayo uzokusebenzisa.",
@@ -6851,7 +6850,8 @@
         "dueNow": "Okukweletwayo manje",
         "title": "Inkokhelo",
         "sign": "Funda bese usayina",
-        "noLimit": "Akukho mkhawulo"
+        "noLimit": "Akukho mkhawulo",
+        "credit": "Isikweletu se-akhawunti"
       },
       "activateFree": "Vula i-DOI"
     },

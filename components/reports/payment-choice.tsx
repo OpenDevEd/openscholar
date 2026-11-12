@@ -74,10 +74,11 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
  * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
  * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
  */
-export function Bill({ licence, price, balance, payWith, code, action, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; balance: Balance; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+export function Bill({ licence, price, balance, payWith, code, credit = 0, action, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; balance: Balance; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Credit on the account at Stripe, in dollars, which a charge is paid from before the card. */ credit?: number; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
   const sum = payment({ price, balance: balance.balance, payWith: balance.balance === 0 ? "card" : payWith, off: code?.off ?? 0 });
+  const fromCredit = Math.min(credit, sum.due);
   return (
     <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
       <AutoHeight>
@@ -85,12 +86,13 @@ export function Bill({ licence, price, balance, payWith, code, action, note, now
           <Line label={licence} amount={money(price)} />
           {sum.fromBalance > 0 ? <Line label={t("balance")} amount={`−${money(sum.fromBalance)}`} off /> : null}
           {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} amount={`−${money(sum.discount)}`} off /> : null}
+          {fromCredit > 0 ? <Line label={t("credit")} amount={`−${money(fromCredit)}`} off /> : null}
         </dl>
       </AutoHeight>
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
         <span className="font-medium">{t(now || action ? "dueNow" : "due")}</span>
         <bdi className="text-lg/6 font-semibold">
-          <RollingMoney value={sum.due} />
+          <RollingMoney value={Math.round((sum.due - fromCredit) * 100) / 100} />
         </bdi>
       </div>
       {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
@@ -114,6 +116,7 @@ export function PaymentChoice({
   payWith,
   onPayWith,
   code,
+  credit,
   voucher,
   action,
   disabled = false,
@@ -124,6 +127,8 @@ export function PaymentChoice({
   payWith: PayWith;
   onPayWith: (payWith: PayWith) => void;
   code: { code: string; off: number } | null;
+  /** Credit on the account at Stripe, in dollars. */
+  credit?: number;
   /** The field a code goes in, shown while a card pays something. */
   voucher?: ReactNode;
   /** The button that pays, with what is due on it where the bill isn't beside it. */
@@ -140,7 +145,7 @@ export function PaymentChoice({
             field is put away. A code applied is kept, and is back when a card pays again. */}
         <AutoHeight>{voucher && buysByCard({ price, balance, payWith }) ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
       </div>
-      <Bill boxed className="self-start @3xl:hidden" licence={licence} price={price} balance={balance} payWith={payWith} code={code} action={action(false)} />
+      <Bill boxed className="self-start @3xl:hidden" licence={licence} price={price} balance={balance} payWith={payWith} code={code} credit={credit} action={action(false)} />
       <div className="hidden items-end justify-end @3xl:flex">{action(true)}</div>
     </div>
   );

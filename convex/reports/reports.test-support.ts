@@ -88,7 +88,7 @@ export async function activate(world: World, key: string, { as = "author", works
   const actor = await world.t.run(async (ctx) => actorFor(ctx, (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", as)).unique())!, workspaceId));
   // As the action does: what's in the way refuses before anything is charged, and the activation is recorded first.
   await world.t.query(internal.reports.activation.prepare, { actor, key });
-  const activationId = await world.t.mutation(internal.reports.activation.begin, { actor, key, payWith: "balance" });
+  const activationId = await world.t.mutation(internal.reports.activation.begin, { actor, key, payWith: "balance", price: 10 });
   return world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "held", hold: `hold_${key}`, charge: { invoice: `in_${key}`, total: 5, currency: "usd" } } });
 }
 

@@ -6745,7 +6745,6 @@
           "cancel": "Cancel payment",
           "cancelFailed": "The payment couldn't be cancelled. Try again."
         },
-        "creditLine": "Account credit",
         "declined": "Your card was declined. Nothing was charged. Try again, or pay another way.",
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
         "kept": "What was paid for this report went to your publication balance. The next report you activate uses it.",
@@ -6851,7 +6850,8 @@
         "dueNow": "Due now",
         "title": "Payment",
         "sign": "Read and sign",
-        "noLimit": "No limit"
+        "noLimit": "No limit",
+        "credit": "Account credit"
       },
       "activateFree": "Activate the DOI"
     },

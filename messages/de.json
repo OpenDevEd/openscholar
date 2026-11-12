@@ -6746,7 +6746,6 @@
           "cancel": "Zahlung abbrechen",
           "cancelFailed": "Die Zahlung konnte nicht abgebrochen werden. Versuchen Sie es erneut."
         },
-        "creditLine": "Guthaben des Kontos",
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts belastet. Versuchen Sie es erneut oder zahlen Sie auf anderem Weg.",
         "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz.",
         "kept": "Was für diesen Bericht bezahlt wurde, ging in Ihr Publikationsguthaben. Der nächste Bericht, den Sie aktivieren, nutzt es.",
@@ -6852,7 +6851,8 @@
         "dueNow": "Jetzt fällig",
         "title": "Zahlung",
         "sign": "Lesen und unterschreiben",
-        "noLimit": "Ohne Limit"
+        "noLimit": "Ohne Limit",
+        "credit": "Guthaben des Kontos"
       },
       "activateFree": "DOI aktivieren"
     },

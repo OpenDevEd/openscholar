@@ -22,61 +22,68 @@ const WORTH = DEFAULT_PRICES.standard;
  *   credits refill, and its row goes.
  * - A workspace's balance of counted activations in Autumn becomes dollars, each activation at the standard price:
  *   what refills keeps its interval and what is left of it, what stays keeps what is left, and one with no limit
- *   stays without one. The old balance goes.
+ *   stays without one. The old balance goes. Every cached account is asked of Autumn, a page at a time, each page
+ *   booking the next: an account refreshed since the deploy no longer says it held any.
  * - The saved agreement and byline name the licence chosen (`[licence]`, `{licence}`) where they named CC BY 4.0.
  * - What the old count left behind is cleared: `free`, `unbilled` and `refund` on `reportActivations`, `perDay` and
  *   `orgPerDay` on `reportSettings`, `activations` and `activationsRefill` on `billingAccounts`.
- * Safe to run again: each balance is given under a key of its own, and what was moved is gone.
+ * Safe to run again: each balance is given under a key of its own, and what was moved is gone. Its log says what moved.
  */
 export const run = internalAction({
-  args: {},
-  returns: v.object({ limits: v.number(), balances: v.number() }),
-  handler: async (ctx): Promise<{ limits: number; balances: number }> => {
-    const once = (error: unknown) => {
-      if (!(error instanceof AutumnError && error.code === "duplicate_idempotency_key")) throw error;
-    };
-    let limits = 0;
-    for (;;) {
-      const rows: Array<{ limitId: Id<"reportLimits">; customerId: string; perDay: number }> = await ctx.runQuery(internal.migrations.publicationBalance.limits, {});
-      if (rows.length === 0) break;
-      for (const { limitId, customerId, perDay } of rows) {
-        if (perDay > 0) {
-          await autumn.customer(customerId);
-          // Keyed by the row, so a run that stops between giving the balance and dropping the row never gives it twice.
-          await autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, amount: perDay * WORTH, interval: "month", idempotencyKey: `publication-limit-${limitId}` }).catch(once);
-          console.log(JSON.stringify({ event: "publication-limit-moved", customerId, dollars: perDay * WORTH }));
-          limits++;
-        }
-        await ctx.runMutation(internal.migrations.publicationBalance.dropLimit, { limitId });
-      }
-    }
-    let balances = 0;
-    for (let cursor: string | null = null; ; ) {
-      const page: { accounts: Array<{ workspaceId: Id<"workspaces">; customerId: string }>; next: string | null } = await ctx.runQuery(internal.migrations.publicationBalance.counted, { cursor });
-      for (const { workspaceId, customerId } of page.accounts) {
-        const old = (await autumn.customer(customerId)).balances[ACTIVATIONS];
-        if (old?.unlimited) await autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, unlimited: true, idempotencyKey: `publication-from-${customerId}-unlimited` }).catch(once);
-        for (const grant of old?.breakdown ?? []) {
-          const interval = grant.reset?.interval && grant.reset.interval !== "one_off" ? grant.reset.interval : undefined;
-          const size = (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
-          // What stays is worth what is left of it; what refills, its size, with what is left set after.
-          const amount = (interval ? size : grant.remaining) * WORTH;
-          if (amount > 0) {
-            await autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, amount, ...(interval && { interval }), idempotencyKey: `publication-from-${grant.id}` }).catch(once);
-            if (interval && grant.remaining < size) await autumn.setBalance({ customerId, feature: PUBLICATION_FEATURE, interval, left: grant.remaining * WORTH });
-            console.log(JSON.stringify({ event: "publication-balance-moved", customerId, interval: interval ?? "once", dollars: grant.remaining * WORTH, of: amount }));
-            balances++;
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, { cursor }): Promise<null> => {
+    /** Whether Autumn gave the balance now: false when an earlier run already had, under the same key. */
+    const given = (asked: Promise<unknown>) =>
+      asked.then(
+        () => true,
+        (error: unknown) => {
+          if (error instanceof AutumnError && error.code === "duplicate_idempotency_key") return false;
+          throw error;
+        },
+      );
+    if (cursor === undefined) {
+      for (;;) {
+        const rows: Array<{ limitId: Id<"reportLimits">; customerId: string; perDay: number }> = await ctx.runQuery(internal.migrations.publicationBalance.limits, {});
+        if (rows.length === 0) break;
+        for (const { limitId, customerId, perDay } of rows) {
+          if (perDay > 0) {
+            await autumn.customer(customerId);
+            // Keyed by the row, so a run that stops between giving the balance and dropping the row never gives it twice.
+            await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, amount: perDay * WORTH, interval: "month", idempotencyKey: `publication-limit-${limitId}` }));
+            console.log(JSON.stringify({ event: "publication-limit-moved", customerId, dollars: perDay * WORTH }));
           }
-          await autumn.deleteBalance({ customerId, feature: ACTIVATIONS, balanceId: grant.id });
+          await ctx.runMutation(internal.migrations.publicationBalance.dropLimit, { limitId });
         }
-        await ctx.runMutation(internal.migrations.publicationBalance.moved, { workspaceId });
       }
-      if (page.next === null) break;
-      cursor = page.next;
     }
-    await ctx.runMutation(internal.migrations.publicationBalance.words, {});
-    await ctx.runMutation(internal.migrations.publicationBalance.clear, {});
-    return { limits, balances };
+    const page: { accounts: Array<{ workspaceId: Id<"workspaces">; customerId: string; counted: boolean }>; next: string | null } = await ctx.runQuery(internal.migrations.publicationBalance.accounts, { cursor: cursor ?? null });
+    for (const { workspaceId, customerId, counted } of page.accounts) {
+      const old = (await autumn.customer(customerId)).balances[ACTIVATIONS];
+      if (old?.unlimited) await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, unlimited: true, idempotencyKey: `publication-from-${customerId}-unlimited` }));
+      for (const grant of old?.breakdown ?? []) {
+        const interval = grant.reset?.interval && grant.reset.interval !== "one_off" ? grant.reset.interval : undefined;
+        const size = (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
+        // What stays is worth what is left of it; what refills, its size, with what is left set after.
+        const amount = (interval ? size : grant.remaining) * WORTH;
+        if (amount > 0) {
+          const now = await given(autumn.createBalance({ customerId, feature: PUBLICATION_FEATURE, amount, ...(interval && { interval }), idempotencyKey: `publication-from-${grant.id}` }));
+          // Only as it is given: set again by a later run, it would undo what was spent in between. A run that stops
+          // between the two leaves the refilling part full for its first period, in the workspace's favour.
+          if (now && interval && grant.remaining < size) await autumn.setBalance({ customerId, feature: PUBLICATION_FEATURE, interval, left: grant.remaining * WORTH });
+          console.log(JSON.stringify({ event: "publication-balance-moved", customerId, interval: interval ?? "once", dollars: grant.remaining * WORTH, of: amount, now }));
+        }
+        await autumn.deleteBalance({ customerId, feature: ACTIVATIONS, balanceId: grant.id });
+      }
+      if (counted || old) await ctx.runMutation(internal.migrations.publicationBalance.moved, { workspaceId });
+    }
+    if (page.next !== null) await ctx.scheduler.runAfter(0, internal.migrations.publicationBalance.run, { cursor: page.next });
+    else {
+      await ctx.runMutation(internal.migrations.publicationBalance.words, {});
+      await ctx.runMutation(internal.migrations.publicationBalance.clear, {});
+      console.log(JSON.stringify({ event: "publication-balance-migrated" }));
+    }
+    return null;
   },
 });
 
@@ -98,14 +105,16 @@ export const dropLimit = internalMutation({
   },
 });
 
-/** A page of the accounts cached with counted activations, each with its customer in Autumn. */
-export const counted = internalQuery({
+/** A page of the cached accounts, each with its customer in Autumn and whether its cache still holds the old count. */
+export const accounts = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
-  returns: v.object({ accounts: v.array(v.object({ workspaceId: v.id("workspaces"), customerId: v.string() })), next: v.union(v.string(), v.null()) }),
+  returns: v.object({ accounts: v.array(v.object({ workspaceId: v.id("workspaces"), customerId: v.string(), counted: v.boolean() })), next: v.union(v.string(), v.null()) }),
   handler: async (ctx, { cursor }) => {
-    const page = await ctx.db.query("billingAccounts").paginate({ numItems: 100, cursor });
-    const held = page.page.filter((account) => account.activations !== undefined || account.activationsRefill !== undefined);
-    return { accounts: await Promise.all(held.map(async (account) => ({ workspaceId: account.workspaceId, customerId: await customerOf(ctx, account.workspaceId) }))), next: page.isDone ? null : page.continueCursor };
+    const page = await ctx.db.query("billingAccounts").paginate({ numItems: 50, cursor });
+    return {
+      accounts: await Promise.all(page.page.map(async (account) => ({ workspaceId: account.workspaceId, customerId: await customerOf(ctx, account.workspaceId), counted: account.activations !== undefined || account.activationsRefill !== undefined }))),
+      next: page.isDone ? null : page.continueCursor,
+    };
   },
 });
 

@@ -119,7 +119,7 @@ function KeptBill({ report, terms, humanReview, beside }: { report: Report; term
   const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
   // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
   if (stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
-  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} balance={terms} payWith={payWithOf(terms)} code={terms.voucher} note={t("payment.later")} />, beside);
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} balance={terms} payWith={payWithOf(terms)} code={terms.voucher} credit={terms.credit} note={t("payment.later")} />, beside);
 }
 
 /** What pays for a report: as kept with it, else the balance while it holds something, else a card. */
@@ -809,9 +809,9 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
               terms={terms}
-              onActivate={(payWith, code, expect) => {
+              onActivate={(payWith, code, price, expect) => {
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key, payWith, ...(code && { code }), expect }).then(
+                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect }).then(
                   (done) => {
                     // The payment is made on Stripe's page, or confirmed at the bank: both come back here.
                     if ("url" in done) {
@@ -1650,7 +1650,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ beside = null, rows, report, humanReview, terms, onActivate, onChoose, onQuote, onCancelPayment, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What the report costs and what pays for it; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, paid as chosen, with the code applied to a card's part and what was shown as due in US dollars. */ onActivate?: (payWith: PayWith, code: string | undefined, expect: number) => Promise<void>; /** Keeps with the report what pays, or the code applied (null takes it off). */ onChoose?: (choice: { payWith?: PayWith; voucher?: Quote | null }) => void; /** The share a code takes off `amount` dollars a card would buy. */ onQuote?: (code: string, amount: number) => Promise<Quote>; /** Gives up a payment still to be made. */ onCancelPayment?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ beside = null, rows, report, humanReview, terms, onActivate, onChoose, onQuote, onCancelPayment, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What the report costs and what pays for it; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, paid as chosen, with the code applied to a card's part, and the price and what is due as they were shown, in US dollars. */ onActivate?: (payWith: PayWith, code: string | undefined, price: number, expect: number) => Promise<void>; /** Keeps with the report what pays, or the code applied (null takes it off). */ onChoose?: (choice: { payWith?: PayWith; voucher?: Quote | null }) => void; /** The share a code takes off `amount` dollars a card would buy. */ onQuote?: (code: string, amount: number) => Promise<Quote>; /** Gives up a payment still to be made. */ onCancelPayment?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1700,7 +1700,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
       say(null);
       try {
         // The code goes with it only where a card buys something for it to lower.
-        await onActivate?.(payWith, sum.bought > 0 ? code?.code : undefined, due / 100);
+        await onActivate?.(payWith, sum.bought > 0 ? code?.code : undefined, price, due / 100);
       } catch (error) {
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
@@ -1783,6 +1783,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     payWith={payWith}
                     onPayWith={(next) => onChoose?.({ payWith: next })}
                     code={code}
+                    credit={terms.credit}
                     disabled={activating}
                     voucher={vouchers ? <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} /> : null}
                     action={(withAmount) =>
@@ -1802,11 +1803,12 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     }
                   />
                   {/* The bill stays under the cover, where it has been since the report was signed: here with what is chosen now. */}
-                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} />, beside) : null}
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
                   {terms.refused ? <p className="mt-1.5 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
                 </div>
-              ) : stage === "ready" && admin && pending ? (
+              ) : admin && pending && stage !== "live" ? (
                 // A payment still to be made, on Stripe's page or at the bank: the way back to it, and the way out of it.
+                // Wherever the report stands: declined meanwhile, the payment still holds it and the workspace's others.
                 <PendingPayment
                   pending={pending}
                   cancelling={cancelling}
@@ -1922,7 +1924,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     { description: licenceName(report.licence), amountCents: Math.round(price * 100), currency: "USD" },
                     ...(sum.fromBalance > 0 ? [{ description: t("activation.balanceLine"), amountCents: -Math.round(sum.fromBalance * 100), currency: "USD" }] : []),
                     ...(code && sum.discount > 0 ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(sum.discount * 100), currency: "USD" }] : []),
-                    ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
+                    ...(fromCredit > 0 ? [{ description: t("payment.credit"), amountCents: -fromCredit, currency: "USD" }] : []),
                   ]
                 : [],
           }}

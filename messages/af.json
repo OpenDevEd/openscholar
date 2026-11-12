@@ -6746,7 +6746,6 @@
           "cancel": "Kanselleer betaling",
           "cancelFailed": "Die betaling kon nie gekanselleer word nie. Probeer weer."
         },
-        "creditLine": "Rekeningkrediet",
         "declined": "Jou kaart is geweier. Niks is gehef nie. Probeer weer, of betaal op ’n ander manier.",
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek.",
         "kept": "Wat vir hierdie verslag betaal is, het na jou publikasiebalans gegaan. Die volgende verslag wat jy aktiveer, gebruik dit.",
@@ -6852,7 +6851,8 @@
         "dueNow": "Nou verskuldig",
         "title": "Betaling",
         "sign": "Lees en teken",
-        "noLimit": "Geen limiet"
+        "noLimit": "Geen limiet",
+        "credit": "Rekeningkrediet"
       },
       "activateFree": "Aktiveer die DOI"
     },

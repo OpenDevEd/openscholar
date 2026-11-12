@@ -6746,7 +6746,6 @@
           "cancel": "Ghairi malipo",
           "cancelFailed": "Malipo hayakuweza kughairiwa. Jaribu tena."
         },
-        "creditLine": "Salio la akaunti",
         "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Jaribu tena, au lipa kwa njia nyingine.",
         "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake.",
         "kept": "Kilicholipwa kwa ripoti hii kimeenda kwenye salio lako la uchapishaji. Ripoti ijayo utakayowasha itakitumia.",
@@ -6852,7 +6851,8 @@
         "dueNow": "Kinachodaiwa sasa",
         "title": "Malipo",
         "sign": "Soma na utie saini",
-        "noLimit": "Bila kikomo"
+        "noLimit": "Bila kikomo",
+        "credit": "Salio la akaunti"
       },
       "activateFree": "Washa DOI"
     },
