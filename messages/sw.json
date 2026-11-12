@@ -1248,20 +1248,20 @@
     "reviewed": "Imekaguliwa"
   },
   "saveToLibrary": {
-    "save": "Hifadhi",
-    "saved": "Imehifadhiwa",
-    "saveToLibrary": "Hifadhi kwenye maktaba",
+    "save": "Ongeza kwenye maktaba",
+    "saved": "Iko kwenye maktaba",
+    "saveToLibrary": "Ongeza kwenye maktaba",
     "removeFromLibrary": "Ondoa kwenye maktaba",
     "addToCollection": "Ongeza kwenye mkusanyiko",
     "newCollection": "Mkusanyiko mpya",
     "removed": "Imeondolewa kwenye maktaba",
     "undo": "Tendua",
-    "saveError": "Imeshindwa kuhifadhi makala",
+    "saveError": "Imeshindwa kuongeza makala kwenye maktaba",
     "removeError": "Imeshindwa kuondoa makala",
     "restoreError": "Imeshindwa kurudisha makala",
     "collectionError": "Imeshindwa kubadilisha mkusanyiko",
     "newCollectionWithPaper": "Mkusanyiko mpya wenye makala hii",
-    "finishSaving": "Maliza kuhifadhi"
+    "finishSaving": "Maliza kuongeza"
   },
   "rating": {
     "noRating": "Hakuna ukadiriaji",
@@ -1461,7 +1461,7 @@
     "ratingFilter": "Ukadiriaji",
     "loadMore": "Pakia zaidi",
     "emptyLibraryTitle": "Maktaba hii ni tupu",
-    "emptyLibraryDescription": "Hifadhi makala kutoka kwa matokeo ya utafutaji ili kujenga maktaba hii.",
+    "emptyLibraryDescription": "Ongeza makala kutoka kwa matokeo ya utafutaji ili kujenga maktaba hii.",
     "emptyLibraryCta": "Tafuta makala",
     "noResultsTitle": "Hakuna makala zinazolingana na utafutaji au vichujio vyako",
     "clearFilters": "Futa vichujio",
@@ -6245,7 +6245,7 @@
       "action": {
         "openPage": "Fungua ukurasa wake",
         "open": "Fungua",
-        "activate": "Washa",
+        "activate": "Lipa",
         "carryOn": "Endelea",
         "seeFailed": "Tazama kilichoshindwa",
         "manage": "Fungua katika Chapisha"
@@ -6656,7 +6656,7 @@
       "changeDetails": "Badilisha maelezo",
       "uploadNew": "Pakia PDF mpya",
       "publishAnother": "Chapisha nyingine",
-      "activate": "Washa",
+      "activate": "Lipa",
       "needsApproval": "Mkaguzi lazima aiidhinishe kwanza",
       "untitled": "Ripoti isiyo na kichwa",
       "startedBy": "{name} alianzisha ripoti hii. Ni yeye tu na wasimamizi wa eneo la kazi wanaoweza kuibadilisha.",

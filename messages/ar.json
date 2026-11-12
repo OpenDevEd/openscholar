@@ -1248,20 +1248,20 @@
     "reviewed": "تمت مراجعته"
   },
   "saveToLibrary": {
-    "save": "حفظ",
-    "saved": "محفوظ",
-    "saveToLibrary": "حفظ في المكتبة",
+    "save": "أضف إلى المكتبة",
+    "saved": "في المكتبة",
+    "saveToLibrary": "أضف إلى المكتبة",
     "removeFromLibrary": "إزالة من المكتبة",
     "addToCollection": "إضافة إلى مجموعة",
     "newCollection": "مجموعة جديدة",
     "removed": "تمت الإزالة من المكتبة",
     "undo": "تراجع",
-    "saveError": "تعذّر حفظ الورقة",
+    "saveError": "تعذّرت إضافة الورقة إلى المكتبة",
     "removeError": "تعذّرت إزالة الورقة",
     "restoreError": "تعذّرت إعادة الورقة",
     "collectionError": "تعذّر تغيير المجموعة",
     "newCollectionWithPaper": "مجموعة جديدة تضم هذه الورقة",
-    "finishSaving": "إكمال الحفظ"
+    "finishSaving": "إكمال الإضافة"
   },
   "rating": {
     "noRating": "بلا تقييم",
@@ -1461,7 +1461,7 @@
     "ratingFilter": "التقييم",
     "loadMore": "تحميل المزيد",
     "emptyLibraryTitle": "هذه المكتبة فارغة",
-    "emptyLibraryDescription": "احفظ الأوراق من نتائج البحث لبناء هذه المكتبة.",
+    "emptyLibraryDescription": "أضف أوراقًا من نتائج البحث لبناء هذه المكتبة.",
     "emptyLibraryCta": "ابحث في الأوراق",
     "noResultsTitle": "لا توجد أوراق تطابق بحثك أو عوامل التصفية",
     "clearFilters": "مسح عوامل التصفية",
@@ -6245,7 +6245,7 @@
       "action": {
         "openPage": "فتح صفحته",
         "open": "فتح",
-        "activate": "تفعيل",
+        "activate": "ادفع",
         "carryOn": "متابعة",
         "seeFailed": "عرض ما أخفق",
         "manage": "فتح في النشر"
@@ -6656,7 +6656,7 @@
       "changeDetails": "تغيير التفاصيل",
       "uploadNew": "رفع ملف PDF جديد",
       "publishAnother": "نشر تقرير آخر",
-      "activate": "تفعيل",
+      "activate": "ادفع",
       "needsApproval": "يجب أن يوافق عليه مراجع أولًا",
       "untitled": "تقرير بلا عنوان",
       "startedBy": "بدأ {name} هذا التقرير. لا يمكن تغييره إلا له ولمشرفي مساحة العمل.",

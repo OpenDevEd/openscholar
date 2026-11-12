@@ -1248,20 +1248,20 @@
     "reviewed": "Geprüft"
   },
   "saveToLibrary": {
-    "save": "Speichern",
-    "saved": "Gespeichert",
-    "saveToLibrary": "In Bibliothek speichern",
+    "save": "Zur Bibliothek hinzufügen",
+    "saved": "In der Bibliothek",
+    "saveToLibrary": "Zur Bibliothek hinzufügen",
     "removeFromLibrary": "Aus Bibliothek entfernen",
     "addToCollection": "Zu Sammlung hinzufügen",
     "newCollection": "Neue Sammlung",
     "removed": "Aus der Bibliothek entfernt",
     "undo": "Rückgängig",
-    "saveError": "Der Artikel konnte nicht gespeichert werden",
+    "saveError": "Der Artikel konnte nicht zur Bibliothek hinzugefügt werden",
     "removeError": "Der Artikel konnte nicht entfernt werden",
     "restoreError": "Der Artikel konnte nicht wiederhergestellt werden",
     "collectionError": "Die Sammlung konnte nicht geändert werden",
     "newCollectionWithPaper": "Neue Sammlung mit diesem Artikel",
-    "finishSaving": "Speichern abschließen"
+    "finishSaving": "Hinzufügen abschließen"
   },
   "rating": {
     "noRating": "Keine Bewertung",
@@ -1461,7 +1461,7 @@
     "ratingFilter": "Bewertung",
     "loadMore": "Mehr laden",
     "emptyLibraryTitle": "Diese Bibliothek ist leer",
-    "emptyLibraryDescription": "Speichern Sie Artikel aus den Suchergebnissen, um diese Bibliothek aufzubauen.",
+    "emptyLibraryDescription": "Fügen Sie Artikel aus den Suchergebnissen hinzu, um diese Bibliothek aufzubauen.",
     "emptyLibraryCta": "Artikel suchen",
     "noResultsTitle": "Keine Artikel passen zu Ihrer Suche oder Ihren Filtern",
     "clearFilters": "Filter löschen",
@@ -6245,7 +6245,7 @@
       "action": {
         "openPage": "Seite öffnen",
         "open": "Öffnen",
-        "activate": "Aktivieren",
+        "activate": "Bezahlen",
         "carryOn": "Weitermachen",
         "seeFailed": "Ansehen, was fehlschlug",
         "manage": "In Publizieren öffnen"
@@ -6656,7 +6656,7 @@
       "changeDetails": "Angaben ändern",
       "uploadNew": "Ein neues PDF hochladen",
       "publishAnother": "Noch einen veröffentlichen",
-      "activate": "Aktivieren",
+      "activate": "Bezahlen",
       "needsApproval": "Er muss zuerst genehmigt werden",
       "untitled": "Bericht ohne Titel",
       "startedBy": "{name} hat diesen Bericht begonnen. Nur diese Person und die Admins des Arbeitsbereichs können ihn ändern.",

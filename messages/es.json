@@ -1248,20 +1248,20 @@
     "reviewed": "Revisado"
   },
   "saveToLibrary": {
-    "save": "Guardar",
-    "saved": "Guardado",
-    "saveToLibrary": "Guardar en la biblioteca",
+    "save": "Añadir a la biblioteca",
+    "saved": "En la biblioteca",
+    "saveToLibrary": "Añadir a la biblioteca",
     "removeFromLibrary": "Quitar de la biblioteca",
     "addToCollection": "Añadir a colección",
     "newCollection": "Nueva colección",
     "removed": "Quitado de la biblioteca",
     "undo": "Deshacer",
-    "saveError": "No se pudo guardar el artículo",
+    "saveError": "No se pudo añadir el artículo a la biblioteca",
     "removeError": "No se pudo quitar el artículo",
     "restoreError": "No se pudo devolver el artículo",
     "collectionError": "No se pudo cambiar la colección",
     "newCollectionWithPaper": "Nueva colección con este artículo",
-    "finishSaving": "Terminar de guardar"
+    "finishSaving": "Terminar de añadir"
   },
   "rating": {
     "noRating": "Sin valoración",
@@ -1461,7 +1461,7 @@
     "ratingFilter": "Valoración",
     "loadMore": "Cargar más",
     "emptyLibraryTitle": "Esta biblioteca está vacía",
-    "emptyLibraryDescription": "Guarda artículos de los resultados de búsqueda para llenar esta biblioteca.",
+    "emptyLibraryDescription": "Añade artículos de los resultados de búsqueda para llenar esta biblioteca.",
     "emptyLibraryCta": "Buscar artículos",
     "noResultsTitle": "Ningún artículo coincide con su búsqueda o filtros",
     "clearFilters": "Quitar filtros",
@@ -6245,7 +6245,7 @@
       "action": {
         "openPage": "Abrir su página",
         "open": "Abrir",
-        "activate": "Activarlo",
+        "activate": "Pagar",
         "carryOn": "Continuar",
         "seeFailed": "Ver qué falló",
         "manage": "Abrir en Publicar"
@@ -6656,7 +6656,7 @@
       "changeDetails": "Cambiar los datos",
       "uploadNew": "Subir un PDF nuevo",
       "publishAnother": "Publicar otro",
-      "activate": "Activar",
+      "activate": "Pagar",
       "needsApproval": "Primero tiene que aprobarlo un revisor",
       "untitled": "Informe sin título",
       "startedBy": "{name} empezó este informe. Solo esa persona y los administradores del espacio de trabajo pueden cambiarlo.",

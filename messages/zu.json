@@ -1247,20 +1247,20 @@
     "reviewed": "Kubuyekeziwe"
   },
   "saveToLibrary": {
-    "save": "Gcina",
-    "saved": "Kugciniwe",
-    "saveToLibrary": "Gcina emtapweni wolwazi",
+    "save": "Engeza emtapweni wolwazi",
+    "saved": "Lisemtapweni wolwazi",
+    "saveToLibrary": "Engeza emtapweni wolwazi",
     "removeFromLibrary": "Susa emtapweni wolwazi",
     "addToCollection": "Engeza eqoqweni",
     "newCollection": "Iqoqo elisha",
     "removed": "Kususwe emtapweni wolwazi",
     "undo": "Hlehlisa",
-    "saveError": "Ayikwazanga ukugcina iphepha",
+    "saveError": "Ayikwazanga ukwengeza iphepha emtapweni wolwazi",
     "removeError": "Ayikwazanga ukususa iphepha",
     "restoreError": "Ayikwazanga ukubuyisela iphepha",
     "collectionError": "Ayikwazanga ukushintsha iqoqo",
     "newCollectionWithPaper": "Iqoqo elisha nalelu phepha",
-    "finishSaving": "Qedela ukugcina"
+    "finishSaving": "Qedela ukwengeza"
   },
   "rating": {
     "noRating": "Akukho isilinganiso",
@@ -1460,7 +1460,7 @@
     "ratingFilter": "Isilinganiso",
     "loadMore": "Layisha okwengeziwe",
     "emptyLibraryTitle": "Lo mtapo wolwazi awunalutho",
-    "emptyLibraryDescription": "Londoloza amaphepha emiphumeleni yosesho ukuze wakhe lo mtapo wolwazi.",
+    "emptyLibraryDescription": "Engeza amaphepha emiphumeleni yosesho ukuze wakhe lo mtapo wolwazi.",
     "emptyLibraryCta": "Sesha amaphepha",
     "noResultsTitle": "Akukho maphepha ahambisana nokusesha kwakho noma nezihlungi",
     "clearFilters": "Sula izihlungi",
@@ -6244,7 +6244,7 @@
       "action": {
         "openPage": "Vula ikhasi lawo",
         "open": "Vula",
-        "activate": "Yenza kusebenze",
+        "activate": "Khokha",
         "carryOn": "Qhubeka",
         "seeFailed": "Bona okuhlulekile",
         "manage": "Vula ku-Shicilela"
@@ -6655,7 +6655,7 @@
       "changeDetails": "Shintsha imininingwane",
       "uploadNew": "Layisha i-PDF entsha",
       "publishAnother": "Shicilela omunye",
-      "activate": "Yenza kusebenze",
+      "activate": "Khokha",
       "needsApproval": "Umbuyekezi kufanele awuvume kuqala",
       "untitled": "Umbiko ongenasihloko",
       "startedBy": "U-{name} uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
