@@ -172,7 +172,7 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
   return (
     <Entry viewMode="list-detail" className="items-center">
       {/* The cover its page wears: the PDF's first page once there is one, the series' title page until then. */}
-      <PaperCover className="w-9 shrink-0" {...REPORT_COVER} title={title} authors={[]} source={series} year={null} type="report" image={r.coverUrl} href={null} pdf={false} />
+      <PaperCover className="w-9 shrink-0 self-start" {...REPORT_COVER} title={title} authors={[]} source={series} year={null} type="report" image={r.coverUrl} href={null} pdf={false} />
       <div className="min-w-0 flex-1 space-y-1">
         <button type="button" onClick={onOpen} className={cn(ENTRY_OPEN, "block w-full")}>
           <span className="block truncate">{title}</span>

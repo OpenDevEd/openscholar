@@ -517,7 +517,7 @@ export default function AuthorPage({
                           })
                         }
                       />
-                      <PublicationCover publication={paper} className="w-10 shrink-0" />
+                      <PublicationCover publication={paper} className="w-10 shrink-0 self-start" />
                       <span className="min-w-0">
                         <span className="block text-sm font-medium">
                           {paper.title}
