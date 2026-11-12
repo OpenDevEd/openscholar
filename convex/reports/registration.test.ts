@@ -110,6 +110,20 @@ describe("a report's record for its registrars", () => {
     expect(buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.publication_date).toBe("2026-10-01");
   });
 
+  it("carries its licence to both registrars: one of Creative Commons' by its name there, and an author's own by its name and address", () => {
+    const sent = (licence: typeof m.licence) => {
+      const record = registrationRecord(report, { ...m, licence }, series, "https://openscholar.ai");
+      const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, licence });
+      const crossref = mapCrossrefRecord(record, doi);
+      return { crossref: crossref.ok ? crossref.record.licenseUrl : crossref, zenodo: buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.rights };
+    };
+    expect(sent("CC BY-NC 4.0")).toEqual({ crossref: "https://creativecommons.org/licenses/by-nc/4.0/legalcode", zenodo: [{ id: "cc-by-nc-4.0" }] });
+    expect(sent({ name: "Licence Ouverte 2.0", url: "https://www.etalab.gouv.fr/licence-ouverte-open-licence" })).toEqual({
+      crossref: "https://www.etalab.gouv.fr/licence-ouverte-open-licence",
+      zenodo: [{ title: { en: "Licence Ouverte 2.0" }, link: "https://www.etalab.gouv.fr/licence-ouverte-open-licence" }],
+    });
+  });
+
   it("goes to Zenodo as the kind of work its author chose, while Crossref still takes it as a report in the series", () => {
     const zenodoType = (type: string) => {
       const record = registrationRecord(report, { ...m, type }, series, "https://openscholar.ai");
