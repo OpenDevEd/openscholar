@@ -152,6 +152,8 @@ export function isOrcid(id: string) {
 export const doiIn = (text: string) => text.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:\s*/, "").match(/^10\.\d{4,9}\/\S+$/)?.[0] ?? null;
 /** The first DOI written in a reference, without the punctuation that ends a sentence after it. */
 export const doiWithin = (text: string) => text.match(/10\.\d{4,9}\/[^\s"<>]+/)?.[0].replace(/[.,;)\]]+$/, "").toLowerCase();
+/** A reference list's own numbering at the start of a reference: "[12]", "(12)", "12." or "12)", then a space. */
+export const LIST_NUMBER = /^\s*(?:\[\d+\]|\(\d+\)|\d+[.)])\s+/;
 /** One reference as written on a line: its DOI found in it, or a line that is only a DOI kept as the DOI alone. */
 export function referenceFrom(written: string): Reference | null {
   const line = written.replace(/\s+/g, " ").trim();

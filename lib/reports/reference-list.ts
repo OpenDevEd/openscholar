@@ -7,10 +7,7 @@ import "@citation-js/plugin-bibtex";
 import "@citation-js/plugin-ris";
 import { formatCitation } from "@/lib/citations/formatter";
 import type { CitationData } from "@/lib/citations/formats";
-import { doiWithin, referenceFrom, type Reference } from "./report";
-
-/** A list's own numbering, which the box numbers again: "[12]", "12." or "12)". */
-const NUMBER = /^\s*(?:\[\d+\]|\d+[.)])\s+/;
+import { doiWithin, LIST_NUMBER as NUMBER, referenceFrom, type Reference } from "./report";
 
 function fromRecords(text: string): Reference[] | null {
   if (!/^\s*@\w+\s*\{/m.test(text) && !/^TY {2}- /m.test(text)) return null;

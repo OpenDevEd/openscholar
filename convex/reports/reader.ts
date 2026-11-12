@@ -13,7 +13,7 @@ import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { matchOrcid, matchRor } from "../../lib/people/identifiers";
-import { CREDIT_ROLES, DETAIL_TEXT, RELATION_KINDS, isOrcid, type Affiliation, type Funding, type Metadata, type Topic, dateParts } from "../../lib/reports/report";
+import { CREDIT_ROLES, DETAIL_TEXT, LIST_NUMBER, RELATION_KINDS, doiWithin, referenceFrom, isOrcid, type Affiliation, type Funding, type Metadata, type Topic, dateParts } from "../../lib/reports/report";
 
 /** The model a reading runs on, as the server resolved it, and the effort it reads at. */
 export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
@@ -176,7 +176,6 @@ const funder = async (name: string): Promise<Funding["funder"] | null> => {
   return onRor ? { id: null, name: onRor.name, ror: onRor.ror } : null;
 };
 
-const DOI = /10\.\d{4,9}\/\S+/;
 /** The ORCID iD the PDF prints, or none: a mistyped one is never kept. */
 const orcidOf = (printed: string) => (isOrcid(printed.trim().toUpperCase()) ? printed.trim().toUpperCase() : "");
 /** The date as precisely as the PDF states it: a year, a month or a day, never one it doesn't give. None is today. */
@@ -190,12 +189,14 @@ export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { /**
     matched(read.authors.flatMap((a) => a.affiliations), institution),
     matched(read.funding.map((f) => f.name), funder),
   ]);
-  // Each reference as its list writes it, without the list's own number, with its DOI (from the DOI given, or else from its text); never the report's own.
-  const doiOf = (text: string) => text.toLowerCase().match(DOI)?.[0].replace(/[.,;)\]]+$/, "");
-  const citations = read.references
-    .map((r) => ({ text: r.text.replace(/\s+/g, " ").trim().replace(/^(?:\[\d+\]|\d+[.)])\s*/, "").slice(0, DETAIL_TEXT.citation), doi: doiOf(r.doi) ?? doiOf(r.text) }))
-    .filter((r) => (r.text || r.doi) && r.doi !== ownDoi.toLowerCase())
-    .map(({ text, doi }) => ({ text, ...(doi && { doi }) }));
+  // Each reference as its list writes it, without the list's own number (as the References box reads one), with the
+  // DOI it was given or finds in its text; never the report's own.
+  const own = ownDoi.toLowerCase();
+  const citations = read.references.flatMap((r) => {
+    const found = referenceFrom(r.text.replace(LIST_NUMBER, ""));
+    const doi = doiWithin(r.doi) ?? found?.doi;
+    return found && doi !== own ? [{ text: found.text.slice(0, DETAIL_TEXT.citation), ...(doi && { doi }) }] : [];
+  });
   return {
     title: read.title.trim().slice(0, DETAIL_TEXT.title),
     subtitle: read.subtitle.trim().slice(0, DETAIL_TEXT.subtitle),
