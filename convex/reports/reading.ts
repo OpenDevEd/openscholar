@@ -9,7 +9,6 @@ import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
-import { withBylinePage, withoutLastPage } from "../../lib/reports/byline-page";
 import { BYLINE_PAGE_MAX_BYTES, blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
@@ -36,6 +35,13 @@ function capped(metadata: Metadata): Metadata {
     relations: cut(metadata.relations, DETAIL_CAPS.relations),
   };
 }
+
+/**
+ * The code that adds Openscholar's page, loaded only by a reading that needs it. It brings a PDF library with it, and
+ * a reading of a PDF near the upload limit has no memory to spare: on 2026-11-11 a 99 MB PDF that dev read ran out of
+ * the action's 512 MB with that library loaded beside it.
+ */
+const bylinePage = () => import("../../lib/reports/byline-page");
 
 export const read = internalAction({
   args: { reportId: v.id("reports"), at: v.number() },
@@ -68,7 +74,7 @@ export const read = internalAction({
         if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");
         const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
         // The page Openscholar added says details read before: the reader is given the report's own pages.
-        const own = job.stamped ? await withoutLastPage(new Uint8Array(bytes)) : new Uint8Array(bytes);
+        const own = job.stamped ? await (await bylinePage()).withoutLastPage(new Uint8Array(bytes)) : new Uint8Array(bytes);
         const found = capped(await readDetails({ pdf: own, text: read, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
         // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
         if (!found.title.trim() && !found.abstract.trim()) throw new Error("The reading found no title and no abstract.");
@@ -92,7 +98,7 @@ export const read = internalAction({
       try {
         // Details a reading couldn't find are a file name and today's date: the page waits for the author's own.
         const known = job.held ?? metadata ?? undefined;
-        const added = await withBylinePage(new Uint8Array(bytes), { line: job.line, series: job.series, ...(known && { details: known }) });
+        const added = await (await bylinePage()).withBylinePage(new Uint8Array(bytes), { line: job.line, series: job.series, ...(known && { details: known }) });
         withByline = { file: await ctx.storage.store(new Blob([added as Uint8Array<ArrayBuffer>], { type: "application/pdf" })), bytes: added.byteLength };
         text = `${text}\n${job.line}`;
         pages += 1;

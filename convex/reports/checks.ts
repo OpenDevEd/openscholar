@@ -16,7 +16,6 @@ import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
 import { CHECK_SAID, carries, doiIn, linkHref } from "../../lib/reports/report";
-import { withBylinePage } from "../../lib/reports/byline-page";
 import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
@@ -95,6 +94,8 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
 async function restamp(ctx: ActionCtx, reportId: Id<"reports">, runId: string, page: { file: Id<"_storage">; at: number; line: string; series: string }, details: Metadata) {
   const blob = await ctx.storage.get(page.file);
   if (!blob) throw new Error("The report's PDF is gone.");
+  // Loaded here, by the runs that write a page: the checks of every other report never load the PDF library.
+  const { withBylinePage } = await import("../../lib/reports/byline-page");
   const next = await withBylinePage(new Uint8Array(await blob.arrayBuffer()), { line: page.line, series: page.series, details }, { replaceLast: true });
   const file = await ctx.storage.store(new Blob([next as Uint8Array<ArrayBuffer>], { type: "application/pdf" }));
   await ctx.runMutation(internal.reports.readingState.restamped, { reportId, runId, at: page.at, file, bytes: next.byteLength });
