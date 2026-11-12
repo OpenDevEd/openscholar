@@ -530,10 +530,10 @@ function Details({ detail }: { detail: PaperDetail }) {
         {rows.map((row) => (
           <Fragment key={row.label}>
             <dt className="text-muted-foreground">{row.label}</dt>
-            <dd className="min-w-0 truncate">
+            <dd className="min-w-0">
               {row.href
-                ? <a href={row.href} target="_blank" rel="noopener noreferrer" dir="ltr" className="inline-flex max-w-full items-center gap-1.5 font-mono text-xs hover:text-primary hover:underline">{row.icon}<span className="truncate">{row.value}</span></a>
-                : <span dir="ltr" className="font-mono text-xs">{row.value}</span>}
+                ? <a href={row.href} target="_blank" rel="noopener noreferrer" dir="ltr" className="inline-flex max-w-full items-center gap-1.5 rounded-sm font-mono text-xs hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">{row.icon}<span className="truncate">{row.value}</span></a>
+                : <span dir="ltr" className="block truncate font-mono text-xs">{row.value}</span>}
             </dd>
           </Fragment>
         ))}
