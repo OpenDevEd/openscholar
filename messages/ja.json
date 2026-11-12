@@ -6930,7 +6930,7 @@
       "cancel": "キャンセル",
       "sendForReview": "変更をチェックして審査に送る",
       "checkAndPublish": "変更をチェックして公開",
-      "runChecks": "次へ：チェックを実行",
+      "runChecks": "送信",
       "tooEarly": "レポートの日付を1400年より前にすることはできません。",
       "back": "戻る"
     }

@@ -6931,7 +6931,7 @@
       "cancel": "Cancelar",
       "sendForReview": "Comprobar los cambios y enviarlos a revisión",
       "checkAndPublish": "Comprobar y publicar los cambios",
-      "runChecks": "Siguiente: ejecutar las comprobaciones",
+      "runChecks": "Enviar",
       "tooEarly": "Un informe no puede tener una fecha anterior a 1400.",
       "back": "Atrás"
     }

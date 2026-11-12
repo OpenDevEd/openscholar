@@ -6930,7 +6930,7 @@
       "cancel": "Annuler",
       "sendForReview": "Vérifier les modifications et les envoyer en relecture",
       "checkAndPublish": "Vérifier et publier les modifications",
-      "runChecks": "Suivant : lancer les vérifications",
+      "runChecks": "Soumettre",
       "tooEarly": "Un rapport ne peut pas être daté d’avant 1400.",
       "back": "Retour"
     }
