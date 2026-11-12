@@ -252,3 +252,8 @@ Shared style for all six, which form one matching set of icon emblems: a physica
 4. step-details: a thin flat glass page with its top right corner folded over and four fine horizontal lines etched across it, like lines of text. Edge colour: emerald (#34d399).
 5. step-checks: a glass shield with a bold check mark cut into its face. Edge colour: lime green (#a3e635).
 6. step-live: a round glass seal with a scalloped edge, like a rosette badge without ribbons, with a bold check mark cut into its centre, glowing brightest of the set. Edge colour: warm gold (#fbbf24).
+Use your built-in image_gen tool. Generate the image below in tall portrait format (2:3, highest resolution and quality). Do not edit files or do anything else. Then print its name and absolute saved path as "- name: `path`".
+
+Style: a physically based 3D render, as a studio photograph of real glass and light. Crisp, razor-sharp fine detail, real refraction and caustics. Rich saturated colour. Restrained and elegant, lots of calm dark space. No text, no letters, no numbers, no logos, no UI, no people, no sparkles, no lens flare, no film grain. Never any purple, violet or magenta.
+
+pub-paperwork: Flat very deep navy background (#0b1a45). On a dark polished glass floor, at the left, a tall untidy leaning stack of many thin clear glass paper forms, slightly askew, dim and cold grey-blue, a few loose sheets slid off around its base. At the right, standing apart, one single upright thin glass page lit warm gold from within, with a round thick glass seal pressed onto its lower corner, glowing amber, casting a warm pool of light on the floor. The upper third of the frame stays calm, dark and empty.

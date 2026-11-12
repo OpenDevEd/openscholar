@@ -19,12 +19,13 @@ const steps = [
   ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before."],
   ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
 ];
-// A real DOI taken apart. The prefix is shared dev's sandbox one (10.53832); production's goes here at launch.
+// A real DOI taken apart into the three parts people need: where it points from, whose it is, and which work.
+// The prefix is shared dev's sandbox one (10.53832); production's goes here at launch. Positions are in the mono
+// font's characters (Ubuntu Mono is half an em wide), so each label sits exactly at its part.
 const parts = [
-  ["https://doi.org/", "#7da7e6", "The DOI link. Anyone who opens it is sent to wherever the work is kept now."],
-  ["10.", "#38bdf8", "Every DOI starts with 10."],
-  ["53832", "#34d399", "The publisher's prefix: here, Openscholar Reports."],
-  ["/openscholar-reports.r100230", "#fbbf24", "This report, and no other. It never changes."],
+  { text: "https://doi.org/", c: "#7da7e6", at: 0, side: "below", name: "The link", note: "Opens wherever the work is kept now" },
+  { text: "10.53832", c: "#34d399", at: 16, side: "above", name: "The prefix", note: "10 starts every DOI; 53832 is the publisher" },
+  { text: "/openscholar-reports.r100230", c: "#fbbf24", at: 24, side: "below", name: "Your report", note: "This work and no other, for good" },
 ];
 const gains = [
   ["cite", "Cited in one paste", "Reference managers turn the DOI into a full citation."],
@@ -32,15 +33,15 @@ const gains = [
   ["search", "Easier to find", "Its title, authors and funders go out with the DOI, where research indexes can pick them up."],
   ["graph", "Counted when cited", "Citations that use the DOI can be traced back to your work."],
 ];
-// What getting a DOI takes on your own, each beside what Openscholar does instead. Every right-hand line is something
-// the publish flow does today (publishReports, convex/reports).
+// What Openscholar does in place of each job a DOI takes on your own. Every first line is something the publish
+// flow does today (publishReports, convex/reports).
 const chores = [
-  ["Find a journal or repository that issues DOIs, or join a registration agency yourself", "Openscholar Reports publishes it, in its own series"],
-  ["Write the title, authors, affiliations and funders in the agency's format", "Read from your PDF, for you to check"],
-  ["Put the DOI and the series line into your PDF", "Added on a last page if it's missing"],
-  ["Check it hasn't been published before", "Checked against published work automatically"],
-  ["Register the DOI, and send corrections when something changes", "Registered when it goes live, and corrections sent on"],
-  ["Keep the PDF online, so the DOI always leads somewhere", "Its own page, with the PDF to read"],
+  ["buildings", "Published in its own series", "Instead of finding a journal or repository that issues DOIs, or joining a registration agency"],
+  ["cite", "The details read from your PDF", "Instead of writing the title, authors, affiliations and funders in the agency's format"],
+  ["pen", "The DOI line added for you", "Instead of putting the DOI and the series line into your PDF"],
+  ["shield", "Checked against published work", "Instead of checking by hand that it hasn't come out before"],
+  ["refresh", "Registered and kept up to date", "Instead of registering the DOI and sending corrections when something changes"],
+  ["globe", "A page that keeps the PDF online", "Instead of finding somewhere the DOI can always lead"],
 ];
 const faq = [
   ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
@@ -75,21 +76,28 @@ const faq = [
     </div>
   </section>
 
-  {/* What a DOI is: a real one, one part lit at a time, and what it does for the work. */}
+  {/* What a DOI is: a real one labelled part by part, and the page its link opens, with what the DOI does beside it. */}
   <section class="doi" id="doi" aria-labelledby="doi-h">
     <div class="d-head"><h2 id="doi-h">What's a DOI?</h2><p class="lead">A DOI is a permanent ID for one piece of work. Its link always leads to that work, wherever it's kept, and it's what journals, libraries and reference managers use to cite it.</p></div>
-    <div class="anat" data-anat data-in>
-      <p class="dstr" role="group" aria-label="The parts of a DOI">{parts.map(([t, c], i) => <button type="button" class="pt" style={`--c:${c}`} aria-pressed={i === 0 ? "true" : "false"} data-pt={i}>{t}</button>)}</p>
-      <p class="cap" aria-live="polite">{parts.map(([t, c, d], i) => <span class:list={["c-one", { on: i === 0 }]} style={`--c:${c}`} data-cap={i}>{d}</span>)}</p>
+    <div class="panel anat">
+      <figure class="dia" data-in aria-label="The parts of a DOI">
+        <p class="dstr">{parts.map((pt, i) => <span class="pt" style={`--c:${pt.c};--i:${i}`}>{pt.text}</span>)}</p>
+        {parts.map((pt, i) => <figcaption class:list={["tag", pt.side]} style={`--c:${pt.c};--at:${pt.at};--i:${i}`}><b>{pt.name}</b><span>{pt.note}</span></figcaption>)}
+      </figure>
+      <div class="lands">
+        <ul class="gains">{gains.map(([icon, t, d], i) => <li style={`--i:${i}`}><i><Icon name={icon} size={22} /></i><b>{t}</b><span>{d}</span></li>)}</ul>
+        <div class="d-shot" data-in><Device kind="laptop" name="r-page" theme="light" alt="The page a report's DOI opens, with its authors, topics, abstract and PDF" sizes="(max-width: 900px) 100vw, 720px" /></div>
+      </div>
     </div>
-    <ul class="gains">{gains.map(([icon, t, d], i) => <li style={`--d:${i * .08}s`} data-in><i><Icon name={icon} size={22} /></i><b>{t}</b><span>{d}</span></li>)}</ul>
   </section>
 
-  {/* The work a DOI usually takes, crossed off one line at a time, with what's done instead beside each. */}
+  {/* The paperwork a DOI takes on your own: the pile beside one sealed page, and what's done for you in its place. */}
   <section class="panel chores" id="done" aria-labelledby="ch-h">
-    <i class="field f-steel" aria-hidden="true"></i>
-    <div class="ch-head"><h2 id="ch-h">We do the paperwork</h2><p class="lead">On your own, a DOI means going through a journal or repository, or joining a registration agency and doing the rest yourself. Here it's done for you.</p></div>
-    <ol class="ch-list" data-in>{chores.map(([a, b], i) => <li style={`--i:${i}`}><span class="was">{a}</span><span class="now"><Icon name="check" size={18} />{b}</span></li>)}</ol>
+    <div class="ch-side">
+      <img class="ch-art" src="/img/art-pub-paperwork.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+      <div class="ch-head"><h2 id="ch-h">We do the paperwork</h2><p class="lead">On your own, a DOI means going through a journal or repository, or joining a registration agency and doing the rest yourself. Here it's done for you.</p></div>
+    </div>
+    <ul class="ch-list" data-in>{chores.map(([icon, now, was], i) => <li style={`--i:${i}`}><i><Icon name={icon} size={22} /></i><b>{now}</b><span>{was}</span></li>)}</ul>
   </section>
 
   {/* The six steps on one thread, each with its icon from the app as a glass emblem. The thread fills from the first
@@ -99,13 +107,6 @@ const faq = [
     <div class="inner p-run" data-in>
       <ol class="p-steps"><i class="thread" aria-hidden="true"><i></i></i>{steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><img src={`/img/step-${id}.avif`} width="264" height="264" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></li>)}</ol>
     </div>
-  </section>
-
-  {/* What you leave with: the real page of a live report, hanging off the bottom of its panel. */}
-  <section class="panel result" id="result" aria-labelledby="res-h">
-    <i class="field f-emerald" aria-hidden="true"></i>
-    <div class="r-head"><h2 id="res-h">A page of its own, ready to cite</h2><p class="lead">Your report gets a page with its authors, topics, abstract and PDF, and a DOI that points to it.</p></div>
-    <div class="r-shot" data-in><Device kind="laptop" name="r-page" theme="light" alt="A published report's page with its DOI, author, topics and abstract" sizes="(max-width: 900px) 100vw, 980px" /></div>
   </section>
 
   <section class="bleed sponsor" id="sponsor" aria-labelledby="sp-h">
@@ -120,19 +121,6 @@ const faq = [
   <Faq items={faq} title="Questions about publithons" />
   <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
 </Base>
-<script>
-  // The DOI's parts take turns, one lit with its meaning below, until someone points at or picks one themselves.
-  const anat = document.querySelector<HTMLElement>("[data-anat]");
-  if (anat) {
-    const pts = [...anat.querySelectorAll<HTMLButtonElement>("[data-pt]")], caps = [...anat.querySelectorAll<HTMLElement>("[data-cap]")];
-    let at = 0, timer = 0, held = false;
-    const show = (i: number) => { at = i; pts.forEach((b, j) => b.setAttribute("aria-pressed", String(j === i))); caps.forEach((c, j) => c.classList.toggle("on", j === i)); };
-    const hold = (i: number) => { held = true; clearInterval(timer); show(i); };
-    pts.forEach((b, i) => { b.addEventListener("click", () => hold(i)); b.addEventListener("pointerenter", () => hold(i)); b.addEventListener("focus", () => hold(i)); });
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    new IntersectionObserver(([e], io) => { if (!e.isIntersecting) return; io.disconnect(); if (!held && !still) timer = window.setInterval(() => show((at + 1) % pts.length), 2800); }, { rootMargin: "0px 0px -20% 0px" }).observe(anat);
-  }
-</script>
 <style>
   @keyframes up { from { opacity: 0; transform: translateY(20px); } }
 
@@ -149,7 +137,8 @@ const faq = [
   .acts { display: flex; flex-wrap: wrap; gap: 10px; }
 
   /* Two tall doors side by side, the art filling each and the words at its foot. */
-  .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding: clamp(48px, 6vw, 88px) var(--pad) 0; }
+  /* Dark blocks take the strip's full width, as the panels do; headings and text keep the margin. */
+  .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding-top: clamp(48px, 6vw, 88px); } .ways h2 { padding-inline: var(--pad); }
   .ways h2 { font-size: clamp(30px, 3.2vw, 44px); }
   .doors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
   .door { display: grid; align-content: end; min-height: clamp(520px, 46vw, 660px); padding: clamp(24px, 3vw, 40px); color: #fff; }
@@ -159,28 +148,40 @@ const faq = [
   .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
   .go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .go :global(i) { transform: translateX(4px); }
 
-  /* A DOI taken apart: the parts in one line of type, the one lit carrying its colour, its meaning underneath. */
-  .doi { display: grid; gap: clamp(28px, 3.4vw, 48px); padding: clamp(72px, 8vw, 120px) var(--pad) 0; }
-  .d-head, .ch-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .d-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
-  .anat { display: grid; gap: 18px; padding: clamp(28px, 3.6vw, 52px); border-radius: var(--r); background: var(--night); color: #fff; }
-  .dstr { display: flex; flex-wrap: wrap; margin: 0; font: 400 clamp(20px, 2.85vw, 40px)/1.15 var(--mono); letter-spacing: -.02em; overflow-wrap: anywhere; } @media (min-width: 901px) { .dstr { flex-wrap: nowrap; white-space: nowrap; } }
-  .pt { position: relative; padding: 4px 0 14px; color: rgb(255 255 255 / .38); cursor: pointer; transition: color .35s var(--ease); font: inherit; letter-spacing: inherit; text-align: left; }
-  .pt::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: 4px; height: 4px; border-radius: 4px; background: var(--c); opacity: .22; transition: opacity .35s var(--ease), box-shadow .35s var(--ease); }
-  .pt[aria-pressed="true"] { color: #fff; } .pt[aria-pressed="true"]::after { opacity: 1; box-shadow: 0 0 18px var(--c); }
-  .cap { display: grid; margin: 0; min-height: 2.9em; font-size: clamp(17px, 1.6vw, 21px); line-height: 1.4; } .c-one { grid-area: 1 / 1; opacity: 0; translate: 0 6px; transition: opacity .35s var(--ease), translate .45s var(--ease); } .c-one::before { content: ""; display: inline-block; width: 18px; height: 4px; margin: 0 10px 4px 0; border-radius: 4px; background: var(--c); vertical-align: middle; } .c-one.on { opacity: 1; translate: 0; }
-  .gains { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); margin: 0; padding: 0; list-style: none; }
-  .gains li { display: grid; align-content: start; gap: 6px; } .gains i { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 8px; border-radius: 13px; background: color-mix(in srgb, var(--brand) 14%, #fff); color: var(--brand-ink); } .gains i :global(svg) { width: 24px; height: 24px; } .gains b { font-weight: 500; font-size: 19px; letter-spacing: -.01em; } .gains span { color: var(--t2); font-size: 16px; line-height: 1.45; }
+  /* A DOI labelled like a diagram: each label at its own part, joined to it by a short line in the part's colour. */
+  .doi { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
+  .d-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; padding-inline: var(--pad); } .d-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
+  .anat { --bg: var(--night); display: grid; gap: clamp(28px, 3vw, 44px); padding: var(--pad) var(--pad) 0; }
+  .dia { --fs: clamp(18px, 2.85vw, 40px); --above: 64px; --below: 72px; position: relative; margin: 0; padding-block: var(--above) var(--below); font-size: var(--fs); }
+  .dstr { margin: 0; font: 400 1em/1.1 var(--mono); letter-spacing: 0; white-space: nowrap; }
+  .pt { position: relative; color: #fff; } .pt::after { content: ""; position: absolute; left: 1px; right: 1px; bottom: -10px; height: 4px; border-radius: 4px; background: var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 70%, transparent); }
+  .tag { position: absolute; left: calc(var(--at) * var(--fs) / 2); display: grid; gap: 2px; padding-left: 14px; font: 400 16px/1.35 var(--sans); white-space: nowrap; }
+  .tag::before { content: ""; position: absolute; left: 0; width: 2px; border-radius: 2px; background: var(--c); }
+  .tag b { font-weight: 500; font-size: 17px; color: var(--c); } .tag span { color: rgb(255 255 255 / .72); font-size: 15px; }
+  /* The DOI line is var(--fs) * 1.1 tall; labels below start under its colour bar, labels above end over the text. */
+  .tag.below { top: calc(var(--above) + var(--fs) * 1.1 + 20px); } .tag.below::before { top: -12px; bottom: 4px; }
+  .tag.above { bottom: calc(var(--below) + var(--fs) * 1.1 + 6px); } .tag.above::before { top: 4px; bottom: -6px; }
+  :global(.js) .dia[data-in] { opacity: 1; transform: none; } :global(.js) .dia:not(.in) .pt::after { transform: scaleX(0); } :global(.js) .dia:not(.in) .tag { opacity: 0; translate: 0 8px; }
+  :global(.js) .dia.in .pt::after { transform-origin: left; transition: transform .7s var(--ease) calc(.15s + var(--i) * .35s); } :global(.js) .dia.in .tag { transition: opacity .5s var(--ease) calc(.4s + var(--i) * .35s), translate .6s var(--ease) calc(.4s + var(--i) * .35s); }
+  /* Under the DOI, what it opens: the report's page rising out of the panel, and what the DOI does for it beside. */
+  .lands { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 3.4vw, 56px); align-items: end; }
+  .gains { display: grid; gap: 22px; margin: 0; padding: 0 0 var(--pad); list-style: none; align-self: center; }
+  .gains li { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 16px; row-gap: 2px; } .gains i { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgb(255 214 140 / .12); color: #ffd68c; } .gains i :global(svg) { width: 22px; height: 22px; }
+  .gains b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; } .gains span { color: rgb(255 255 255 / .62); font-size: 15px; line-height: 1.45; }
+  .d-shot { margin-bottom: -7%; } .d-shot :global(.body) { padding: 0; border-radius: 14px 14px 0 0; background: none; box-shadow: 0 0 0 1px rgb(255 255 255 / .24), 0 -10px 70px -10px rgb(125 167 230 / .35), 0 40px 90px -30px #000; } .d-shot :global(.glass) { border-radius: 14px 14px 0 0; } .d-shot :global(.cam), .d-shot :global(.deck), .d-shot :global(.sheen) { display: none; }
 
-  /* The paperwork, crossed off one line at a time; what's done instead slides in beside it. */
-  .chores { display: grid; gap: clamp(24px, 3vw, 40px); padding: var(--pad); margin-top: clamp(48px, 6vw, 88px); }
-  .ch-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; } .ch-head .lead { color: rgb(255 255 255 / .82); }
-  .ch-list { display: grid; margin: 0; padding: 0; list-style: none; }
-  .ch-list li { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 8px 40px; align-items: center; padding-block: 16px; border-top: 1px solid rgb(255 255 255 / .14); }
-  .was { position: relative; justify-self: start; color: rgb(255 255 255 / .9); font-size: clamp(16px, 1.4vw, 19px); line-height: 1.4; text-decoration: line-through; text-decoration-color: rgb(255 255 255 / .55); text-decoration-thickness: 1.5px; transition: color .5s var(--ease) calc(.2s + var(--i) * .32s); }
-  .now { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 500; font-size: clamp(16px, 1.4vw, 19px); } .now :global(svg) { flex: none; color: #86efac; }
-  :global(.js) .ch-list[data-in] { opacity: 1; transform: none; }
-  :global(.js) .ch-list:not(.in) .was { text-decoration-color: transparent; } :global(.js) .ch-list.in .was { color: rgb(255 255 255 / .5); transition: color .5s var(--ease) calc(.2s + var(--i) * .32s), text-decoration-color .5s var(--ease) calc(.2s + var(--i) * .32s); }
-  :global(.js) .ch-list:not(.in) .now { opacity: 0; translate: -12px 0; } :global(.js) .ch-list.in .now { transition: opacity .5s var(--ease) calc(.35s + var(--i) * .32s), translate .6s var(--ease) calc(.35s + var(--i) * .32s); }
+  /* The paperwork: the pile beside the one sealed page on the left with the heading over it, and on the right what's
+     done for you, each line over the job it replaces. */
+  .chores { --bg: #010c28; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); margin-top: clamp(48px, 6vw, 88px); }
+  .ch-side { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: var(--pad) var(--pad) 0; }
+  /* The picture runs to the panel's left and bottom edges and fades out at its top and into the list on the right. */
+  .ch-art { order: 2; align-self: end; width: calc(100% + var(--pad) * 2); height: 100%; min-height: 300px; margin-inline: calc(var(--pad) * -1); object-fit: cover; object-position: 50% 82%; -webkit-mask-image: linear-gradient(transparent, #000 32%), linear-gradient(90deg, #000 70%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(transparent, #000 32%), linear-gradient(90deg, #000 70%, transparent); mask-composite: intersect; }
+  .ch-head { display: grid; gap: 18px; } .ch-head h2 { font-size: clamp(40px, 4.6vw, 72px); line-height: 1; letter-spacing: -.035em; } .ch-head .lead { color: rgb(255 255 255 / .8); max-width: 26em; }
+  .ch-list { display: grid; align-content: center; margin: 0; padding: var(--pad) var(--pad) var(--pad) 0; list-style: none; }
+  .ch-list li { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 18px; row-gap: 3px; padding-block: 18px; border-top: 1px solid rgb(255 255 255 / .12); } .ch-list li:first-child { border-top: 0; }
+  .ch-list i { grid-row: span 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: rgb(255 214 140 / .12); color: #ffd68c; } .ch-list i :global(svg) { width: 22px; height: 22px; }
+  .ch-list b { font-weight: 500; font-size: clamp(18px, 1.6vw, 21px); letter-spacing: -.01em; } .ch-list span { color: rgb(255 255 255 / .58); font-size: 15px; line-height: 1.45; }
+  :global(.js) .ch-list[data-in] { opacity: 1; transform: none; } :global(.js) .ch-list:not(.in) li { opacity: 0; translate: 16px 0; } :global(.js) .ch-list.in li { transition: opacity .6s var(--ease) calc(.1s + var(--i) * .12s), translate .7s var(--ease) calc(.1s + var(--i) * .12s); }
 
   /* The steps, on a thread that lights from the first to the last. */
   .path { background: var(--night); padding-block: clamp(72px, 8vw, 120px) clamp(56px, 6vw, 96px); margin-top: clamp(48px, 6vw, 88px); }
@@ -201,11 +202,6 @@ const faq = [
   :global(.js) .p-run.in li > :not(img) { transition: opacity .6s var(--ease) calc(.35s + var(--i) * .44s), translate .7s var(--ease) calc(.35s + var(--i) * .44s); }
   .p-steps li:hover img { transform: translateY(-4px) rotate(-4deg); transition: transform .5s cubic-bezier(.34, 1.56, .64, 1); }
 
-  /* The live report, frameless, hanging off the bottom of its panel. */
-  .result { display: grid; gap: clamp(24px, 3vw, 40px); padding: var(--pad) var(--pad) 0; margin-top: 16px; }
-  .r-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .r-head .lead { color: rgb(255 255 255 / .82); }
-  .r-shot { width: min(80%, 980px); margin-inline: auto; margin-bottom: -8%; } .r-shot :global(.body) { padding: 0; border-radius: 16px 16px 0 0; background: none; box-shadow: 0 0 0 1px rgb(255 255 255 / .28), 0 -10px 70px -10px rgb(255 214 140 / .3), 0 40px 90px -30px #000; } .r-shot :global(.glass) { border-radius: 16px 16px 0 0; } .r-shot :global(.cam), .r-shot :global(.deck), .r-shot :global(.sheen) { display: none; }
-
   /* Sponsors: the world lights up where the work comes from, and every thread leads to one medallion. */
   .sponsor { background: var(--night); min-height: clamp(560px, 50vw, 720px); padding-block: clamp(72px, 8vw, 120px); margin-top: 16px; display: grid; align-items: start; }
   .sponsor > :global(.s-art) { -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / .35), #000 45%); mask-image: linear-gradient(90deg, rgb(0 0 0 / .35), #000 45%); }
@@ -215,16 +211,23 @@ const faq = [
     .hero > :global(.h-art img), .sponsor > :global(.s-art img) { opacity: 1; }
     .hero { min-height: 0; padding-block: 120px 300px; } .hero::before { display: none; } .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent 46%, #000 72%); mask-image: linear-gradient(transparent 46%, #000 72%); } .sponsor::before { display: none; } .hero > :global(.h-art img) { object-position: 75% 100%; }
     .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
-    .p-head, .r-head, .d-head, .ch-head { grid-template-columns: minmax(0, 1fr); }
-    .gains { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .ch-list li { grid-template-columns: minmax(0, 1fr); }
+    .p-head, .d-head { grid-template-columns: minmax(0, 1fr); }
+    .lands { grid-template-columns: minmax(0, 1fr); } .gains { padding-bottom: 0; } .d-shot { margin-bottom: -9%; }
+    .chores { grid-template-columns: minmax(0, 1fr); } .ch-art { height: 320px; } .ch-list { padding: 0 var(--pad) var(--pad); }
     .p-steps { --em: 72px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
     .thread { top: calc(var(--em) / 2); bottom: calc(var(--em) / 2); left: calc(var(--em) / 2 - 1px); right: auto; width: 2px; height: auto; } .thread i { background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); transform-origin: top; }
     :global(.js) .p-run:not(.in) .thread i { transform: scaleY(0); }
     .p-steps li { grid-template-columns: var(--em) minmax(0, 1fr); column-gap: 16px; justify-items: start; align-items: center; text-align: left; } .p-steps img { grid-row: span 2; margin: 0; } .p-steps b { align-self: end; } .p-steps span { align-self: start; max-width: none; }
-    .r-shot { width: 100%; margin-bottom: -9%; }
     .sponsor { min-height: 0; padding-bottom: 280px; } .sponsor > :global(.s-art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 60%); mask-image: linear-gradient(transparent 30%, #000 60%); }
   }
-  @media (max-width: 560px) { .gains { grid-template-columns: minmax(0, 1fr); } }
-  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-list:not(.in) .was { text-decoration-color: rgb(255 255 255 / .55); } :global(.js) .ch-list:not(.in) .now { opacity: 1; translate: none; } }
+  
+  /* Phones: each part of the DOI on its own line, its label right under it. */
+  @media (max-width: 700px) {
+    .dia { --fs: 22px; display: grid; justify-items: start; padding: 0; } .dstr { display: contents; }
+    .pt { white-space: normal; overflow-wrap: anywhere; margin-top: 18px; } .pt:nth-child(1) { grid-row: 1; } .pt:nth-child(2) { grid-row: 3; } .pt:nth-child(3) { grid-row: 5; }
+    .tag, .tag.above, .tag.below { position: relative; left: 0; top: auto; bottom: auto; margin-top: 16px; white-space: normal; } .tag.above::before, .tag.below::before { top: 2px; bottom: 2px; }
+    .dia > figcaption:nth-of-type(1) { grid-row: 2; } .dia > figcaption:nth-of-type(2) { grid-row: 4; } .dia > figcaption:nth-of-type(3) { grid-row: 6; }
+  }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .ch-list:not(.in) li, :global(.js) .dia:not(.in) .tag { opacity: 1; translate: none; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
   @media (prefers-reduced-motion: reduce) { :global(.js) .p-run:not(.in) .thread i { transform: none; } :global(.js) .p-run:not(.in) img, :global(.js) .p-run:not(.in) li > :not(img) { opacity: 1; filter: none; transform: none; translate: none; } }
 </style>
