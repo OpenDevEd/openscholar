@@ -3,7 +3,7 @@
 // field of a report's details that either registrar takes (plans/registrar-metadata).
 import { CREDIT_ROLES, type CreditRole } from "@opendeved/doi-sync-core";
 import { SDGS, STUDY_DESIGNS } from "../openalex/vocabulary";
-import { LICENCES, doiIn, isAuthor, type Metadata, type RelationKind, wholeDate } from "./report";
+import { LICENCES, doiIn, isAuthor, personName, type Metadata, type RelationKind, wholeDate } from "./report";
 import type { Series } from "./settings";
 
 /**
@@ -11,8 +11,6 @@ import type { Series } from "./settings";
  * the words such names carry. One it misses is filed as a person ("Organization, World Health"), and a person it
  * catches keeps their name whole, which reads right either way. Ask on the details form when either matters.
  */
-const BODY = /\b(organi[sz]ation|universit[yé]|institut[eo]?|minist(ry|ère|erio)|foundation|bank|agency|council|committee|commission|department|cent(er|re)|network|association|society|programme|consortium|collaboration|authority|ltd|inc|gmbh|llc)\b/i;
-const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
 
 
 /** How Crossref names each kind of link a report's details hold, with the words its record shows beside the link. */
@@ -51,10 +49,11 @@ const placeOf = (code: string) =>
 
 /** A person's name as the registrars keep one: family name, then given names. A single word is a family name. A body keeps its name as it is. */
 function creator(author: Metadata["authors"][number], institutions: RegistryIds["institutions"]) {
-  if (!author.orcid && (BODY.test(author.name) || ACRONYM.test(author.name))) return { type: "organizational" as const, name: author.name.trim(), creatorType: author.kind ?? "author" };
+  const parts = personName(author.name);
+  if (!author.orcid && !parts) return { type: "organizational" as const, name: author.name.trim(), creatorType: author.kind ?? "author" };
   const words = author.name.trim().split(/\s+/);
-  const familyName = words.at(-1)!;
-  const givenName = words.slice(0, -1).join(" ");
+  const familyName = parts?.family ?? words.at(-1)!;
+  const givenName = parts?.given ?? words.slice(0, -1).join(" ");
   const roles = author.roles.flatMap((role) => creditId(role) ?? []);
   const affiliations = author.affiliations
     .filter((affiliation) => affiliation.name.trim())

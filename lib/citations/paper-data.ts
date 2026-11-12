@@ -1,5 +1,6 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import type { CitationData } from "./formats";
+import { personName } from "../reports/report";
 
 const types: Record<string, string> = {
   "journal-article": "article-journal", "posted-content": "article", "proceedings-article": "paper-conference",
@@ -25,7 +26,15 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   };
   // OpenAlex does not provide given/family fields. Never guess a surname by
   // splitting the display name; DOI metadata can supply structured names later.
-  const author = paper.authorships?.flatMap(({ author }) => author.display_name?.trim() ? [{ literal: author.display_name.trim() }] : []);
+  // An Openscholar Report's authors are split as its Crossref record has them (last word the family name), so APA can
+  // give "Ramírez, D."; anyone else's name stays whole, as OpenAlex gives no parts and a surname is never guessed.
+  const report = id.startsWith("R");
+  const author = paper.authorships?.flatMap(({ author }) => {
+    const name = author.display_name?.trim();
+    if (!name) return [];
+    const parts = report ? personName(name) : null;
+    return [parts?.given ? { given: parts.given, family: parts.family } : { literal: name }];
+  });
   if (author?.length) data.author = author;
   // A year, a month or a day, as precisely as the work states it: a report's PDF may give only a month.
   if (paper.publication_date && /^\d{4}(?:-\d{2}){0,2}$/.test(paper.publication_date)) {
