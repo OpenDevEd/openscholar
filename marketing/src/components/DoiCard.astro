@@ -1,0 +1,177 @@
+---
+// Why a DOI: the same report twice, once with only a link and once with a DOI, taken through the same four moments.
+// Both sides are the same diagram (citing pages, the report, the research indexes), so the difference is what
+// happens to it: the link's page breaks, its citations fade out before they reach it and the indexes stay empty,
+// while the DOI's page stays lit, its citations arrive and are counted, and the indexes list it. Two panels of one
+// diagram with different outcomes is Intercom's old way and new way (Mobbin); the dim side beside the lit one is V7's.
+// Under it, the DOI itself with each part named. The pages are generated glass (art/art-prompts.txt).
+import { LOGOS } from "../data/logos.mjs";
+const moments = ["You publish", "The website moves", "Someone cites it", "Five years on"];
+// The indexes shown list DOIs like this one: checked for this publisher's Crossref prefix on 12 November 2026.
+const INDEXES = ["crossref", "openalex", "semanticscholar"];
+const sides = [
+  { id: "link", name: "Just a link", addr: "projectsite.org/reports/final-report.pdf", was: "Opens", now: "404 Page not found",
+    ends: ["Breaks when the website moves", "Citations are harder to match, so some go uncounted", "Easy for research indexes to miss"] },
+  { id: "doi", name: "With a DOI", addr: "doi.org/10.53832/openscholar-reports.r100230", was: "Opens", now: "Still opens, at its new address",
+    ends: ["Keeps opening, wherever the work is kept", "Citations that use it can be matched and counted", "Picked up by research indexes"] },
+];
+// The threads, in the stage's own 536 by 250: three from the citing pages into the report's left edge, three from its right edge out to the indexes.
+const IN = ["M30 55C96 55 96 125 156 125", "M30 125H156", "M30 195C96 195 96 125 156 125"];
+const OUT = ["M304 125C334 125 334 55 360 55", "M304 125H360", "M304 125C334 125 334 195 360 195"];
+// A real DOI taken apart into the three parts people need: where it points from, whose it is, and which work.
+// 10.53832 is Openscholar Reports' Crossref prefix, on production and on dev's sandbox alike; the report is one of dev's.
+const parts = [
+  { text: "https://doi.org/", c: "#7da7e6", name: "The link", note: "Opens wherever the work is kept now" },
+  { text: "10.53832", c: "#34d399", name: "The prefix", note: "Names its publisher" },
+  { text: "/openscholar-reports.r100230", c: "#fbbf24", name: "Your report", note: "This work and no other, for good" },
+];
+---
+<section class="doi" id="doi" aria-labelledby="doi-h">
+  <div class="d-head"><h2 id="doi-h">A link breaks. A DOI doesn't.</h2><p class="lead">A report on a website is one redesign away from a dead link. A DOI is a permanent ID for one piece of work: its link keeps opening wherever the work is kept, and it's what journals, libraries and reference managers use to cite it.</p></div>
+  {/* Without scripts or motion the card stands at its last moment, which says it all. */}
+  <div class="panel fate m1 m2 m3" data-fate data-at="3">
+    <div class="when">
+      <ol>{moments.map((m, i) => <li class:list={["on", { cur: i === 3 }]}><button type="button" data-go={i} aria-current={i === 3 ? "step" : "false"}><span class="bar" aria-hidden="true"><i></i></span>{m}</button></li>)}</ol>
+      <button type="button" class="again" data-again aria-label="Play again"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a6 6 0 1 0 1.900-4.400M4 4v3.600h3.600" /></svg><span>Play again</span></button>
+    </div>
+    <div class="sides">
+      {sides.map((s) => <article class={`side s-${s.id}`}>
+        <header class="s-head"><h3>{s.name}</h3><p class="addr">{s.addr}</p><p class="st"><span class="st-a">{s.was}</span><span class="st-b">{s.now}</span></p></header>
+        <div class="stage">
+          <svg class="thr" viewBox="0 0 536 250" fill="none" aria-hidden="true">
+            {s.id === "link" && <defs><linearGradient id="fate-fade" gradientUnits="userSpaceOnUse" x1="30" x2="150" y1="0" y2="0"><stop offset="0" stop-color="#93a4c4" stop-opacity=".75" /><stop offset=".82" stop-color="#93a4c4" stop-opacity="0" /></linearGradient></defs>}
+            {IN.map((d, n) => <path class="t-in" d={d} pathLength="1" style={`--n:${n}`} />)}
+            {s.id === "doi" && IN.map((d, n) => <path class="t-run" d={d} pathLength="1" style={`--n:${n}`} />)}
+            {s.id === "doi" && OUT.map((d, n) => <path class="t-out" d={d} pathLength="1" style={`--n:${n}`} />)}
+          </svg>
+          <span class="cites" aria-hidden="true">{[0, 1, 2].map((n) => <i class="pg" style={`--n:${n}`}></i>)}</span>
+          <span class="sheet">{s.id === "link"
+            ? <><img class="sh sh-a" src="/img/doi-page-plain.avif" width="440" height="640" loading="lazy" decoding="async" alt="" /><img class="sh sh-b" src="/img/doi-page-broken.avif" width="440" height="640" loading="lazy" decoding="async" alt="" /></>
+            : <img class="sh" src="/img/doi-page-sealed.avif" width="440" height="640" loading="lazy" decoding="async" alt="" />}</span>
+          <ul class="idx" aria-hidden={s.id === "link" ? "true" : undefined} aria-label={s.id === "doi" ? "Research indexes that list it" : undefined}>{INDEXES.map((id, n) => <li style={`--n:${n}`}>{LOGOS[id].mask ? <i class="mk" style={`--m:url(${LOGOS[id].mask});aspect-ratio:${LOGOS[id].ratio}`} aria-hidden="true"></i> : <svg viewBox={LOGOS[id].box} fill="currentColor" aria-hidden="true" set:html={LOGOS[id].body} />}<span>{LOGOS[id].name}</span></li>)}</ul>
+          {s.id === "doi" && <b class="plus" aria-hidden="true">+1</b>}
+        </div>
+        <ul class="ends">{s.ends.map((t, i) => <li class={`e${i + 1}`}><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{s.id === "link" ? <path d="M6 6l8 8M14 6l-8 8" /> : <path d="M4.500 10.500 8 14l7.500-7.500" />}</svg>{t}</li>)}</ul>
+      </article>)}
+    </div>
+    <figure class="dia" data-in aria-label="The parts of a DOI">
+      {parts.map((pt, i) => <div class="part" style={`--c:${pt.c};--i:${i}`}><span class="pt">{pt.text}</span><figcaption><b>{pt.name}</b><span>{pt.note}</span></figcaption></div>)}
+    </figure>
+  </div>
+  {/* Where motion is wanted the card starts at its first moment, set before it is first painted. */}
+  <script is:inline set:html={`(()=>{if(!document.documentElement.classList.contains("js"))return;const f=document.querySelector("[data-fate]");f.dataset.at="0";f.classList.remove("m1","m2","m3");f.querySelectorAll(".when li").forEach((l,i)=>{l.classList.toggle("on",i===0);l.classList.toggle("cur",i===0);l.firstElementChild.setAttribute("aria-current",i===0?"step":"false")})})()`} />
+</section>
+
+<script>
+  // The four moments play once when the card comes on screen, each holding for DWELL. Choosing a moment shows it and
+  // ends the run, or stops it from starting; Play again starts it over and, as it hides while playing, hands the
+  // keyboard to the first moment.
+  const fate = document.querySelector<HTMLElement>("[data-fate]");
+  if (fate) {
+    const rows = [...fate.querySelectorAll<HTMLElement>(".when li")], last = rows.length - 1, DWELL = 2600;
+    let timer = 0;
+    fate.style.setProperty("--dwell", `${DWELL}ms`);
+    const show = (at: number) => {
+      fate.dataset.at = String(at);
+      for (let k = 1; k <= last; k++) fate.classList.toggle(`m${k}`, at >= k);
+      rows.forEach((row, i) => { row.classList.toggle("on", i <= at); row.classList.toggle("cur", i === at); row.querySelector("button")!.setAttribute("aria-current", i === at ? "step" : "false"); });
+    };
+    const rest = () => { clearTimeout(timer); fate.classList.remove("auto"); };
+    const play = () => {
+      clearTimeout(timer); fate.classList.add("auto");
+      const step = (at: number) => { show(at); timer = window.setTimeout(() => (at < last ? step(at + 1) : rest()), DWELL); };
+      step(0);
+    };
+    const onView = new IntersectionObserver(([entry]) => { if (!entry.isIntersecting) return; onView.disconnect(); play(); }, { threshold: .45 });
+    rows.forEach((row, i) => row.querySelector("button")!.addEventListener("click", () => { onView.disconnect(); rest(); show(i); }));
+    fate.querySelector("[data-again]")!.addEventListener("click", () => { play(); rows[0].querySelector("button")!.focus({ preventScroll: true }); });
+    if (document.documentElement.classList.contains("js")) onView.observe(fate.querySelector(".sides")!);
+    new IntersectionObserver(([entry]) => fate.classList.toggle("away", !entry.isIntersecting)).observe(fate);
+  }
+</script>
+
+<style>
+  .doi { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
+  .d-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; padding-inline: var(--pad); } .d-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; }
+  .fate { --bg: var(--night); --cold: #93a4c4; --bad: #ff9d8a; --gold: #fbbf24; --warm: #ffd68c; display: grid; gap: clamp(28px, 3vw, 40px); padding: clamp(32px, 3.6vw, 48px) var(--pad) clamp(36px, 4vw, 56px); }
+
+  /* The four moments along the top: a bar over each that fills while its moment holds the card. */
+  .when { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+  .when ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .when li button { display: grid; gap: 12px; width: 100%; text-align: left; font-size: 15px; line-height: 1.3; color: rgb(255 255 255 / .46); transition: color .3s var(--ease); } .when li button:hover { color: #fff; } .when .on button { color: rgb(255 255 255 / .78); } .when .cur button { color: #fff; }
+  .bar { display: block; height: 3px; border-radius: 3px; background: rgb(255 255 255 / .12); overflow: hidden; } .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--warm), var(--gold)); transform-origin: left; transform: scaleX(0); transition: transform .45s var(--ease); }
+  .when .on .bar i { transform: scaleX(1); } .fate.auto .when .cur .bar i { animation: f-fill var(--dwell, 2.6s) linear both; } @keyframes f-fill { from { transform: scaleX(0); } }
+  .again { display: inline-flex; align-items: center; gap: 8px; height: 32px; margin-top: 9px; padding-inline: 12px; border-radius: 10px; font-size: 14px; color: rgb(255 255 255 / .78); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); transition: color .2s var(--ease), box-shadow .2s var(--ease), opacity .3s var(--ease), visibility .3s; } .again:hover { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); } .again:hover svg { rotate: -40deg; } .again svg { transition: rotate .4s var(--ease); }
+  /* While it plays there is nothing to play again; the button keeps its place, out of reach of the keyboard too. */
+  .fate.auto .again { opacity: 0; visibility: hidden; }
+
+  /* The two sides: one diagram each, on the same grid. */
+  .sides { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px clamp(40px, 5vw, 72px); }
+  .sides::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgb(255 255 255 / .1); }
+  .side { display: grid; grid-template-rows: auto auto 1fr; gap: 18px; min-width: 0; }
+  .s-head { display: grid; gap: 6px; } .s-head h3 { font-size: 24px; font-weight: 500; letter-spacing: -.02em; }
+  .addr { margin: 0; font: 400 14px/1.35 var(--mono); overflow-wrap: anywhere; text-decoration: line-through; text-decoration-color: transparent; transition: color .5s var(--ease), text-decoration-color .5s var(--ease); }
+  .s-link .addr { color: #b7c3de; } .s-doi .addr { color: var(--warm); } .fate.m1 .s-link .addr { color: rgb(183 195 222 / .5); text-decoration-color: var(--bad); }
+  /* What opening it gets you: one line that changes when the website moves. */
+  .st { display: grid; margin: 0; font-size: 14px; } .st span { grid-area: 1 / 1; transition: opacity .35s var(--ease), translate .45s var(--ease), visibility .35s; } .st-a { color: rgb(255 255 255 / .6); } .s-link .st-b { color: var(--bad); } .s-doi .st-b { color: var(--warm); }
+  .fate:not(.m1) .st-b { opacity: 0; translate: 0 6px; visibility: hidden; } .fate.m1 .st-a { opacity: 0; translate: 0 -6px; visibility: hidden; }
+
+  /* The stage, 536 by 250 at any size: citing pages on the left, the report, the indexes on the right, threads between. */
+  .stage { position: relative; aspect-ratio: 536 / 250; }
+  .thr { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; } .thr path { stroke-width: 1.5; stroke-linecap: round; }
+  .sheet { position: absolute; left: 27.990%; top: 3.200%; width: 29.850%; height: 93.600%; transition: opacity .9s var(--ease), filter .9s var(--ease); }
+  .sheet::before { content: ""; position: absolute; inset: -22% -34%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, var(--glow), transparent); opacity: var(--lit, .5); transition: opacity .9s var(--ease); }
+  .sh { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; transition: opacity .5s var(--ease); }
+  .cites { position: absolute; inset: 0 auto 0 0; width: 4.200%; } .pg { position: absolute; left: 0; top: calc(22% + var(--n) * 28%); translate: 0 -50%; width: 100%; aspect-ratio: 20 / 26; border-radius: 3px; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .5); background: linear-gradient(rgb(255 255 255 / .5) 0 28%, rgb(255 255 255 / .07) 28%); transition: opacity .45s var(--ease) calc(.1s + var(--n) * .22s), translate .55s var(--ease) calc(.1s + var(--n) * .22s); }
+  .fate:not(.m2) .pg { opacity: 0; translate: -14px -50%; transition-delay: 0s; }
+  .idx { position: absolute; inset: 0 0 0 68%; margin: 0; padding: 0; list-style: none; } .idx li { position: absolute; left: 0; top: calc(22% + var(--n) * 28%); translate: 0 -50%; display: flex; align-items: center; gap: 9px; font-size: 15px; white-space: nowrap; transition: opacity .5s var(--ease) calc(.35s + var(--n) * .28s), translate .6s var(--ease) calc(.35s + var(--n) * .28s); }
+  .idx svg, .mk { flex: none; height: 20px; width: auto; } .idx svg { aspect-ratio: 1; } .idx svg[viewBox="0 0 46.6 67.9"] { aspect-ratio: 46.6 / 67.9; height: 23px; } .mk { background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
+  .fate:not(.m3) .idx li { opacity: 0; translate: 10px -50%; transition-delay: 0s; }
+
+  /* Just a link. Its page breaks when the website moves, the citations fade out before they reach it, and the indexes stay empty. */
+  .s-link .sheet { --glow: rgb(147 164 196 / .22); } .fate:not(.m1) .sh-b, .fate.m1 .sh-a { opacity: 0; }
+  .fate.m1 .s-link .sheet { --lit: .25; animation: f-crack .55s cubic-bezier(.3, .6, .4, 1); } @keyframes f-crack { 0% { transform: none; } 18% { transform: translate(-3px, 1px) rotate(-1.200deg); } 40% { transform: translate(3px, -1px) rotate(1deg); } 62% { transform: translate(-2px, 1px) rotate(-.500deg); } 100% { transform: none; } }
+  .fate.m3 .s-link .sheet { opacity: .62; filter: saturate(.3); }
+  .s-link .pg { opacity: .55; } .s-link .t-in { stroke: url(#fate-fade); stroke-dasharray: .034 .034; transition: opacity .6s var(--ease) calc(.3s + var(--n) * .22s); } .fate:not(.m2) .s-link .t-in { opacity: 0; transition-delay: 0s; }
+  .s-link .idx li { color: #fff; opacity: .2; }
+
+  /* With a DOI. Its page stays lit and a little brighter each time; citations arrive along their threads and are counted; the indexes light up. */
+  .s-doi .sheet { --glow: rgb(251 191 36 / .3); --lit: .55; animation: f-float 7s ease-in-out infinite; } @keyframes f-float { 50% { transform: translateY(-5px); } }
+  .fate.m1 .s-doi .sheet { --lit: .75; } .fate.m2 .s-doi .sheet { --lit: .9; } .fate.m3 .s-doi .sheet { --lit: 1; }
+  .s-doi .t-in, .s-doi .t-out { stroke: var(--gold); stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .7s cubic-bezier(.5, 0, .3, 1) calc(.25s + var(--n) * .22s); }
+  .fate:not(.m2) .s-doi .t-in, .fate:not(.m3) .s-doi .t-out { stroke-dashoffset: 1; transition-delay: 0s; }
+  /* A light runs in along each thread in turn, and each arrival is counted. */
+  .t-run { stroke: #fff3d6; stroke-width: 2.2; stroke-dasharray: .12 1; stroke-dashoffset: .12; opacity: 0; } .fate.m2 .t-run { opacity: 1; animation: f-run 3.300s linear calc(1s + var(--n) * 1.100s) infinite; } @keyframes f-run { 0% { stroke-dashoffset: .12; } 34%, 100% { stroke-dashoffset: -1; } }
+  .plus { position: absolute; left: 24%; top: 30%; font-weight: 500; font-size: 15px; color: var(--gold); opacity: 0; } .fate.m2 .plus { animation: f-plus 1.100s var(--ease) 2s infinite; } @keyframes f-plus { 0% { opacity: 0; transform: translateY(6px); } 25%, 55% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
+  .s-doi .idx li { color: rgb(255 255 255 / .95); }
+  .fate.away .s-doi .sheet, .fate.away .t-run, .fate.away .plus { animation-play-state: paused; }
+
+  /* What each moment leaves you with, one line a moment. */
+  .ends { display: grid; align-content: start; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ends li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; font-size: 16px; line-height: 1.4; transition: opacity .5s var(--ease) .45s, translate .6s var(--ease) .45s; } .ends svg { margin-top: 1px; }
+  .s-link .ends li { color: rgb(255 255 255 / .72); } .s-link .ends svg { color: var(--bad); } .s-doi .ends svg { color: var(--gold); }
+  .fate:not(.m1) .e1, .fate:not(.m2) .e2, .fate:not(.m3) .e3 { opacity: 0; translate: 0 8px; transition-delay: 0s; }
+
+  /* The DOI itself fills the card's width: 52 characters of a typeface whose characters are half an em wide. Each part
+     is a column the width of its own characters, with its name under it. */
+  .dia { container-type: inline-size; display: flex; margin: 0; padding-top: clamp(28px, 3vw, 40px); border-top: 1px solid rgb(255 255 255 / .1); }
+  .part { flex: none; display: grid; gap: 18px; min-width: 0; }
+  .pt { position: relative; font: 400 clamp(18px, 2.85vw, 40px)/1.1 var(--mono); font-size: calc(100cqw / 26); white-space: nowrap; color: #fff; padding-bottom: 14px; }
+  .pt::after { content: ""; position: absolute; left: 1px; right: 1px; bottom: 0; height: 4px; border-radius: 4px; background: var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 70%, transparent); transform-origin: left; }
+  /* A name never widens its part's column: it takes the column's width and wraps inside it. */
+  .part figcaption { display: grid; gap: 2px; width: 0; min-width: 100%; padding-right: 12px; } .part figcaption b { font-weight: 500; font-size: 16px; color: var(--c); } .part figcaption span { color: rgb(255 255 255 / .7); font-size: 14px; line-height: 1.4; }
+  :global(.js) .dia[data-in] { opacity: 1; transform: none; } :global(.js) .dia:not(.in) .pt::after { transform: scaleX(0); } :global(.js) .dia:not(.in) figcaption { opacity: 0; translate: 0 8px; }
+  :global(.js) .dia.in .pt::after { transition: transform .7s var(--ease) calc(.15s + var(--i) * .3s); } :global(.js) .dia.in figcaption { transition: opacity .5s var(--ease) calc(.4s + var(--i) * .3s), translate .6s var(--ease) calc(.4s + var(--i) * .3s); }
+
+  @media (max-width: 900px) {
+    .d-head { grid-template-columns: minmax(0, 1fr); }
+    .sides { grid-template-columns: minmax(0, 1fr); gap: 36px; } .sides::before { display: none; } .s-doi { padding-top: 36px; border-top: 1px solid rgb(255 255 255 / .1); }
+    .when { gap: 12px; } .when li button { font-size: 13px; } .again span { display: none; } .again { padding-inline: 7px; }
+  }
+  /* Phones: the indexes are their marks alone, and each part of the DOI takes a line with its name under it. */
+  @media (max-width: 700px) {
+    .idx span { display: none; } .idx svg, .mk { height: 22px; } .idx svg[viewBox="0 0 46.6 67.9"] { height: 25px; } .idx { left: 72%; }
+    .s-head h3 { font-size: 22px; } .ends li { font-size: 15px; }
+    .dia { flex-direction: column; gap: 22px; } .pt { font-size: 22px; white-space: normal; overflow-wrap: anywhere; justify-self: start; } .part figcaption { width: auto; min-width: 0; padding-right: 0; }
+  }
+</style>

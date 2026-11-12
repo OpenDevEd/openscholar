@@ -6801,8 +6801,8 @@
       },
       "overview": {
         "title": "Publicar um relatório com {series}",
-        "intro": "Cerca de dez minutos do início ao fim. Isto é o que cada passo lhe pede.",
-        "introReviewed": "Cerca de dez minutos do seu tempo. Depois, um revisor aprova o relatório antes de ele poder ficar publicado, e é avisado por e-mail.",
+        "intro": "Cerca de cinco minutos do início ao fim. Isto é o que cada passo lhe pede.",
+        "introReviewed": "Cerca de cinco minutos do seu tempo. Depois, um revisor aprova o relatório antes de ele poder ficar publicado, e é avisado por e-mail.",
         "start": "Assinar o acordo",
         "agreement": {
           "title": "Assinar o acordo de publicação",

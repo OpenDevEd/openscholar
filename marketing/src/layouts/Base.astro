@@ -55,12 +55,13 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
         <svg class="mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" set:html={MARK} />
         <span class="name">Openscholar</span><span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>
       </a>
-      <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
+      {/* A link is the current page when it leads to this page, whichever part of it: Product leads to /#product, on the home page. */}
+      <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href.split("#")[0] ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
         <a class="signin" href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a>
         <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
         <a class="go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span></a>
-        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href}>{n.label}<Arrow /></a>)}<a href={`${APP}/pricing`}>Pricing<Arrow /></a><a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
+        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href} aria-current={path === n.href.split("#")[0] ? "page" : undefined}>{n.label}<Arrow /></a>)}<a href={`${APP}/pricing`}>Pricing<Arrow /></a><a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
       </div>
       {sections.length > 0 && <nav class="rail" aria-label="On this page" data-rail>{sections.map(([id, label, color]) => <a href={`#${id}`} data-to={id} data-label={label} style={`--c:${color}`} aria-label={label}><i></i></a>)}</nav>}
     </header>
@@ -85,7 +86,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
     <div class="f-in">
       <div class="f-brand"><img src="/favicon-dark.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p><a class="f-go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span><Arrow /></a></div>
       <nav aria-label="Footer">
-        <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
+        <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a><a href="/publithon/"><span class="roll" data-t="Publithon"><span>Publithon</span></span></a></div>
         <div><b>Use it for</b>{INTENTS.map((p) => <a href={p.href}><span class="roll" data-t={p.title}><span>{p.title}</span></span></a>)}</div>
         <div><b>Compare</b>{COMPARISONS.map((c) => <a href={c.href}><span class="roll" data-t={`${c.name} alternative`}><span>{c.name} alternative</span></span></a>)}</div>
         <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a><a href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a><a href="/contact/"><span class="roll" data-t="Contact"><span>Contact</span></span></a></div>
@@ -167,7 +168,8 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   .veil { position: absolute; left: 0; top: 0; bottom: 0; width: 300vw; background: linear-gradient(90deg, rgb(7 11 26 / .93) 42%, rgb(7 11 26 / .3) 44.5%, transparent 45% 55%, rgb(7 11 26 / .3) 55.5%, rgb(7 11 26 / .93) 58%); transform: translateX(-150vw); animation: sweep 11s ease-in-out infinite alternate; pointer-events: none; transition: translate .35s var(--ease); }
   .foot.away .veil, .foot.held .veil { animation-play-state: paused; } @keyframes sweep { to { transform: translateX(-50vw); } }
   @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
-  @media (max-width: 960px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
+  /* Five links, the two on the right and the button need 1024 px between them; below that the links go into the menu. */
+  @media (max-width: 1023px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
   @media (max-width: 900px) { .f-in { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { columns: 150px; column-gap: 24px; } .foot nav:not(.belt) > div { margin-bottom: 28px; } .belt { padding-block: 16px; } .belt img { filter: saturate(1.5); width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }

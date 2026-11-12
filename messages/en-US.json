@@ -6800,8 +6800,8 @@
       },
       "overview": {
         "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
+        "intro": "About five minutes from start to finish. This is what each step asks of you.",
+        "introReviewed": "About five minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
         "start": "Sign the agreement",
         "agreement": {
           "title": "Sign the publishing agreement",

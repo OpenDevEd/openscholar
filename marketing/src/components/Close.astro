@@ -1,10 +1,11 @@
 ---
-// The page's last word: one line and the search box, over the dark ribbon.
+// The page's last word: one line and the search box, or the page's own action, over the dark ribbon.
 import Art from "./Art.astro";
 import AskBar from "./AskBar.astro";
 const { title = "Start with your next question", art = "dark-ribbon" } = Astro.props;
 ---
-<section class="bleed close"><Art name={art} pos="50% 100%" /><div class="inner"><h2>{title}</h2><AskBar id="ask-end" label="Ask your next question" /></div></section>
+<section class="bleed close"><Art name={art} pos="50% 100%" /><div class="inner"><h2>{title}</h2>{Astro.slots.has("action") ? <slot name="action" /> : <AskBar id="ask-end" label="Ask your next question" />}</div></section>
 <style>
   .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
+  .close .inner > :global(.btn) { height: 62px; padding-inline: 28px 10px; font-size: 19px; border-radius: 16px; }
 </style>

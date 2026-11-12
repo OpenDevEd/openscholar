@@ -34,6 +34,12 @@ export const NAV = [
     { href: "/teams/#publish", title: "Review before you publish", text: "Creators submit, editors decide", icon: "check", color: "#34d399", field: "emerald", art: "gates", img: "c-search-laptop-light" },
     { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#7da7e6", field: "night", art: "team-merge" },
   ] },
+  { id: "publish", href: "/publithon/", label: "Publish", rows: [
+    { href: "/publithon/#publish", title: "From PDF to DOI", text: "Sign, upload, check, and your report is live", icon: "pen", color: "#fbbf24", field: "night", art: "pub-rise" },
+    { href: "/publithon/#doi", title: "What a DOI gives your work", text: "A permanent link, cited in one paste", icon: "thread", color: "#38bdf8", field: "night", art: "pub-rise", img: "r-page-laptop-light" },
+    { href: "/publithon/#done", title: "The paperwork, done for you", text: "Details read from your PDF, the DOI registered", icon: "check", color: "#7da7e6", field: "steel", art: "pub-paperwork-wide" },
+    { href: "/publithon/#sponsor", title: "Sponsor a publithon", text: "Back research on a topic or a region", icon: "globe", color: "#ff9d36", field: "night", art: "pub-world" },
+  ] },
   { id: "docs", href: "/docs/", label: "Docs" },
 ];
 // Each page's sections, for the map of the page in the header once you scroll.
@@ -41,6 +47,7 @@ export const SECTIONS = {
   "/": [["tour", "Tour", "#ff9d36"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fde047"], ["assistant", "Assistant", "#7da7e6"], ["community", "Communities", "#fb7185"]],
   "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
   "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
+  "/publithon/": [["publish", "Steps", "#fbbf24"], ["doi", "DOI", "#38bdf8"], ["done", "Done for you", "#7da7e6"], ["ways", "Take part", "#34d399"], ["sponsor", "Sponsor", "#ff9d36"]],
 };
 // Pages written for what people search when they need the product. Each links to the others, and the menu and footer link to them.
 export const INTENTS = [
