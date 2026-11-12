@@ -6415,9 +6415,10 @@
       "enterSeriesName": "Enter the series' name.",
       "enterByline": "Enter the byline.",
       "bylineNeedsDoi": "The byline needs {doi} in it, which becomes each report's DOI.",
+      "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "That isn't an ISSN. One looks like 2049-3630, and its last digit is a check on the rest.",
       "byline": "Byline",
-      "bylineHint": "{series}, {issn} and {doi} are filled in for each report",
+      "bylineHint": "{series}, {issn}, {doi} and {licence} are filled in for each report",
       "bylineSaved": "Byline saved",
       "registration": "DOI registration",
       "zenodoSandbox": "Zenodo sandbox",
@@ -6492,7 +6493,10 @@
       "activations": "Activations",
       "balances": "Balances",
       "balancesHint": "Each workspace has a balance of activations in Autumn. Give a person or an organisation some there, once or refilled every day, week, month or year. An item on a plan gives them to every workspace on it.",
-      "openAutumn": "Open Autumn"
+      "openAutumn": "Open Autumn",
+      "priceThree": "Price for three",
+      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
     "flow": {
       "steps": {
@@ -6526,8 +6530,8 @@
       "changesWithReviewer": "Your changes are with a reviewer",
       "agreementTitle": "Publishing agreement with {series}",
       "version": "Version {version}",
-      "agreementIntro": "You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI.",
-      "agreementShared": "You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI. The report is this workspace's: its members can see it, and you and its admins work on it.",
+      "agreementIntro": "You keep the copyright and choose the licence. Signing reserves your DOI.",
+      "agreementShared": "You keep the copyright and choose the licence. Signing reserves your DOI. The report is this workspace's: its members can see it, and you and its admins work on it.",
       "signedBy": "Signed by",
       "signForAll": "I sign for all the authors, who have agreed",
       "agree": "I agree to this agreement",
@@ -6711,7 +6715,7 @@
         "after": "After",
         "reserved": "Reserved",
         "live": "Live",
-        "activationLine": "Activation",
+        "activationLine": "{count, plural, one {Activation} other {# activations}}",
         "codeLine": "Code {code}",
         "promo": {
           "add": "Add a voucher code",
@@ -6721,7 +6725,7 @@
           "off": "{percent}% off",
           "failed": "That code couldn't be checked. Try again.",
           "unknownCode": "{code} isn't a code we know, or it has been used up.",
-          "nothingOff": "{code} doesn't take anything off an activation.",
+          "nothingOff": "{code} doesn't take anything off activating this report.",
           "codeTooLong": "That code is too long to be one of ours.",
           "applyFirst": "Apply the code, or clear it, to activate."
         },
@@ -6730,8 +6734,8 @@
           "goesLive": "It goes live as soon as the payment is confirmed.",
           "refused": "Your bank didn't confirm the last payment, so nothing was charged.",
           "add": "Activate with a card or a voucher code",
-          "costs": "Each activation costs {price}.",
-          "costsOrg": "Each activation costs {price}, charged to {organization}.",
+          "costs": "Activating this report costs {price}.",
+          "costsOrg": "Activating this report costs {price}, charged to {organization}.",
           "needed": "A saved card is needed to activate.",
           "orgCard": "{organization}'s card",
           "yourCard": "Your card",
@@ -6746,15 +6750,15 @@
           "balance": "Activations",
           "left": "{count, number} left",
           "unlimited": "No limit",
-          "uses": "Activating uses one from your balance. Nothing is charged.",
-          "usesOrg": "Activating uses one from {organization}'s balance. Nothing is charged."
+          "uses": "Activating uses {count, plural, one {one} other {#}} from your balance. Nothing is charged.",
+          "usesOrg": "Activating uses {count, plural, one {one} other {#}} from {organization}'s balance. Nothing is charged."
         },
         "creditLine": "Account credit",
         "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
-        "noneLeft": "There's no activation left in the balance. Activate again to pay for one.",
-        "kept": "The activation paid for this report went to your balance. The next report you activate uses it.",
-        "keptOrg": "The activation paid for this report went to {organization}'s balance. The next report activated there uses it."
+        "noneLeft": "There aren't enough activations left in the balance. Activate again to pay for them.",
+        "kept": "What was paid for this report went to your balance. The next report you activate uses it.",
+        "keptOrg": "What was paid for this report went to {organization}'s balance. The next report activated there uses it."
       },
       "back": "Back",
       "bylineFirst": "Your PDF carries this line",
@@ -6789,7 +6793,7 @@
         "start": "Next: sign the agreement",
         "agreement": {
           "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "body": "You keep the copyright and choose the licence."
         },
         "doi": {
           "title": "Get your DOI",
@@ -6811,8 +6815,35 @@
           "title": "Activate",
           "body": "Paid with a card. A voucher code can lower the price or cover it. The DOI is registered and the report goes live.",
           "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
-          "bodyBalance": "Uses one activation from the balance, which has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
-          "bodyUnlimited": "Uses one activation from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live."
+          "bodyBalance": "Uses one activation from the balance, or three under an NC, ND or own licence. It has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
+          "bodyUnlimited": "Uses activations from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live.",
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+        }
+      },
+      "licence": {
+        "label": "Licence",
+        "uses": "{count, plural, one {# activation} other {# activations}}",
+        "by": "Anyone may share and adapt it, crediting you.",
+        "bySa": "As CC BY, and what others make from it keeps this licence.",
+        "other": "Another licence",
+        "otherBody": "Non-commercial, no derivatives, or your own.",
+        "which": "Which licence",
+        "own": "My own licence",
+        "ownName": "Its name",
+        "ownUrl": "Web address of its text",
+        "ownNeeded": "Give your licence a name and the web address of its text.",
+        "help": {
+          "title": "Licences",
+          "by": "Anyone who reuses it credits you.",
+          "sa": "What others make from it keeps the same licence.",
+          "nc": "Nobody may use it commercially without asking you.",
+          "nd": "Others may not share changed versions of it.",
+          "mining": "All of them let anyone read, download and share the report as it is, and mine its text for data, though not commercially under NC. The agreement lets Openscholar publish and archive it under any of them.",
+          "compare": "What each licence allows",
+          "sentTo": "Sent to",
+          "crossref": "Registers the DOI",
+          "zenodo": "Archives a copy",
+          "openscholar": "Shows the report"
         }
       }
     },

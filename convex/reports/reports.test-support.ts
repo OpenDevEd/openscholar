@@ -54,7 +54,7 @@ export async function setup({ humanReview = false } = {}) {
 }
 
 export type World = Awaited<ReturnType<typeof setup>>;
-export const sign = (who: World["author"], workspaceId: Id<"workspaces">) => who.mutation(api.reports.flow.sign, { workspaceId, name: "Ada Author", onBehalfOfAll: true, version: 1 });
+export const sign = (who: World["author"], workspaceId: Id<"workspaces">) => who.mutation(api.reports.flow.sign, { workspaceId, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0" });
 export const read = async (who: World["author"], workspaceId: Id<"workspaces">, key: string) => {
   const found = await who.query(api.reports.flow.get, { workspaceId, key });
   if (!found || !("report" in found)) throw new Error("not this workspace's report");

@@ -6415,6 +6415,7 @@
       "enterSeriesName": "शृंखला का नाम लिखें।",
       "enterByline": "उल्लेख लिखें।",
       "bylineNeedsDoi": "उल्लेख में {doi} होना चाहिए, जो हर रिपोर्ट का DOI बनता है।",
+      "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "यह ISSN नहीं है। ISSN 2049-3630 जैसा दिखता है, और उसका अंतिम अंक बाकी अंकों की जाँच करता है।",
       "byline": "उल्लेख",
       "bylineHint": "हर रिपोर्ट के लिए {series}, {issn} और {doi} भरे जाते हैं",
@@ -6492,7 +6493,10 @@
       "activations": "सक्रियण",
       "balances": "बैलेंस",
       "balancesHint": "हर कार्यक्षेत्र का Autumn में सक्रियणों का एक बैलेंस होता है। वहाँ किसी व्यक्ति या संगठन को सक्रियण दें, एक बार या हर दिन, सप्ताह, महीने या साल फिर से भरने के लिए। किसी प्लान का आइटम उस प्लान के हर कार्यक्षेत्र को सक्रियण देता है।",
-      "openAutumn": "Autumn खोलें"
+      "openAutumn": "Autumn खोलें",
+      "priceThree": "Price for three",
+      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
     "flow": {
       "steps": {
@@ -6812,7 +6816,34 @@
           "body": "कार्ड से भुगतान। प्रोमो कोड कीमत को घटा या पूरा कवर कर सकता है। DOI पंजीकृत होता है और रिपोर्ट प्रकाशित हो जाती है।",
           "bodyPriced": "हर रिपोर्ट के लिए {price}, कार्ड से भुगतान। प्रोमो कोड इस कीमत को घटा या पूरा कवर कर सकता है। DOI पंजीकृत होता है और रिपोर्ट प्रकाशित हो जाती है।",
           "bodyBalance": "बैलेंस से एक सक्रियण लगता है, जिसमें {count, number} बचे हैं। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
-          "bodyUnlimited": "बैलेंस से एक सक्रियण लगता है, जिसकी कोई सीमा नहीं है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।"
+          "bodyUnlimited": "बैलेंस से एक सक्रियण लगता है, जिसकी कोई सीमा नहीं है। कुछ चुकाना नहीं है। DOI पंजीकृत होता है और रिपोर्ट लाइव हो जाती है।",
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+        }
+      },
+      "licence": {
+        "label": "Licence",
+        "uses": "{count, plural, one {# activation} other {# activations}}",
+        "by": "Anyone may share and adapt it, crediting you.",
+        "bySa": "As CC BY, and what others make from it keeps this licence.",
+        "other": "Another licence",
+        "otherBody": "Non-commercial, no derivatives, or your own.",
+        "which": "Which licence",
+        "own": "My own licence",
+        "ownName": "Its name",
+        "ownUrl": "Web address of its text",
+        "ownNeeded": "Give your licence a name and the web address of its text.",
+        "help": {
+          "title": "Licences",
+          "by": "Anyone who reuses it credits you.",
+          "sa": "What others make from it keeps the same licence.",
+          "nc": "Nobody may use it commercially without asking you.",
+          "nd": "Others may not share changed versions of it.",
+          "mining": "All of them let anyone read, download and share the report as it is, and mine its text for data, though not commercially under NC. The agreement lets Openscholar publish and archive it under any of them.",
+          "compare": "What each licence allows",
+          "sentTo": "Sent to",
+          "crossref": "Registers the DOI",
+          "zenodo": "Archives a copy",
+          "openscholar": "Shows the report"
         }
       }
     },

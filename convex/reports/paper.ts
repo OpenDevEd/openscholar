@@ -10,7 +10,7 @@ import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
 import { liveReportValidator, metadataValidator, withdrawnReportValidator } from "./validators";
-import { REPORTS_PER_READ } from "../../lib/reports/report";
+import { REPORTS_PER_READ, licenceName } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 
@@ -174,7 +174,7 @@ export const forCommunity = internalQuery({
           type: metadata.type,
           language: metadata.language,
           date: metadata.date,
-          licence: metadata.licence,
+          licence: licenceName(metadata.licence),
           abstract: metadata.abstract,
           authors: metadata.authors.filter((author) => author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null, affiliations: author.affiliations })),
           keywords: metadata.keywords,

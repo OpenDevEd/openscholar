@@ -3,11 +3,15 @@
 // What only Openscholar can say (its legal form, registration and address, and the fees) reads "to be confirmed"
 // until that text is settled.
 
+import { LICENCES, type Licence } from "./report";
+
 export type AgreementFacts = {
   name: string;
   date: Date;
   /** The line the work's PDF carries, with its DOI once there is one: the one the upload asks for. */
   byline: string;
+  /** The licence the author chose, which `[licence]` names. */
+  licence: Licence;
   doi?: string;
   title?: string;
   authors?: string[];
@@ -16,7 +20,14 @@ export type AgreementFacts = {
 
 const day = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-export function fillAgreement(text: string, { name, date, byline, doi, title, authors, pages }: AgreementFacts) {
+/** An agreement whose author chooses the licence: one that names a licence of its own offers only CC BY 4.0. */
+export const choosesLicence = (text: string) => text.includes("[licence]");
+
+/** A licence as the agreement names it: in full, with its short name and the address of its text. */
+const licenceWords = (licence: Licence) =>
+  typeof licence === "string" ? `the ${LICENCES[licence].title} licence (${licence}, ${LICENCES[licence].url})` : `the licence “${licence.name}” (${licence.url})`;
+
+export function fillAgreement(text: string, { name, date, byline, licence, doi, title, authors, pages }: AgreementFacts) {
   const signer = name.trim() || "the person signing below";
   const work = title ? `“${title}”${authors?.length ? `, by ${authors.join(", ")}` : ""}${pages ? `, ${pages} ${pages === 1 ? "page" : "pages"}` : ""}` : "the work the Author uploads for publication after signing";
   return (
@@ -25,6 +36,7 @@ export function fillAgreement(text: string, { name, date, byline, doi, title, au
       .replace(/^Draft for discussion.*\n+/m, "")
       .replaceAll("[date]", day(date))
       .replaceAll("[byline]", `“${byline}”`)
+      .replaceAll("[licence]", licenceWords(licence))
       .replaceAll("[Name of author(s) or organisation], of [address]", signer)
       .replaceAll("[Name of author(s) or organisation]", signer)
       .replaceAll("[title], by [authors], [number of pages], [date of completion]", work)

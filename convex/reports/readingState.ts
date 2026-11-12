@@ -9,7 +9,7 @@ import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
 import { metadataValidator } from "./validators";
 import type { Doc } from "../_generated/dataModel";
-import type { Metadata } from "../../lib/reports/report";
+import { licenceOf, type Metadata } from "../../lib/reports/report";
 
 /** The PDF to read and the model that reads it; null when a newer PDF replaced it or the report is past its details. */
 export const begin = internalQuery({
@@ -81,7 +81,7 @@ export const finish = internalMutation({
     }
     if (text) await ctx.db.insert("reportFiles", { file: text, reportId });
     const profile = (await ctx.db.get("users", report.ownerId))?.profile;
-    const kept = held ?? keptDetails(signerFilledIn(metadata!, report.signedBy.name, profile));
+    const kept = held ?? keptDetails(signerFilledIn(metadata!, report.signedBy.name, profile), licenceOf(report));
     if (!held) await ctx.db.patch("reportDetails", details._id, { metadata: kept });
     // An author who went back to the DOI while the PDF was being read stays there: the reading moves on only a
     // report still waiting at its upload.

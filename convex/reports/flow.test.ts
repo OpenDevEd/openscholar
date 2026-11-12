@@ -25,8 +25,8 @@ describe("starting a report", () => {
 
   it("is refused while publishing is off, for an agreement that changed, and without a name", async () => {
     const world = await setup();
-    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada", onBehalfOfAll: false, version: 7 })).rejects.toMatchObject(refused("CONFLICT"));
-    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "   ", onBehalfOfAll: false, version: 1 })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada", onBehalfOfAll: false, version: 7, licence: "CC BY 4.0" })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "   ", onBehalfOfAll: false, version: 1, licence: "CC BY 4.0" })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await world.t.run(async (ctx) => ctx.db.patch("reportSettings", (await ctx.db.query("reportSettings").first())!._id, { enabled: false }));
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FEATURE_DISABLED"));
     // Nothing a refused signing asked for was kept or counted.

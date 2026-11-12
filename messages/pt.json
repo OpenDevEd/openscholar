@@ -6416,6 +6416,7 @@
       "enterSeriesName": "Escreva o nome da série.",
       "enterByline": "Escreva a linha de crédito.",
       "bylineNeedsDoi": "A linha de crédito precisa de {doi}, que se torna o DOI de cada relatório.",
+      "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "Isso não é um ISSN. Um ISSN se parece com 2049-3630, e o último dígito confere os demais.",
       "byline": "Menção",
       "bylineHint": "{series}, {issn} e {doi} são preenchidos para cada relatório",
@@ -6493,7 +6494,10 @@
       "activations": "Ativações",
       "balances": "Saldos",
       "balancesHint": "Cada espaço de trabalho tem um saldo de ativações no Autumn. Dê lá algumas a uma pessoa ou a uma organização, uma só vez ou renovadas todos os dias, semanas, meses ou anos. Um item de um plano dá-as a todos os espaços de trabalho que o têm.",
-      "openAutumn": "Abrir o Autumn"
+      "openAutumn": "Abrir o Autumn",
+      "priceThree": "Price for three",
+      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
     "flow": {
       "steps": {
@@ -6813,7 +6817,34 @@
           "body": "Pago com cartão. Um código promocional pode baixar o preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyPriced": "{price} por relatório, pagos com cartão. Um código promocional pode baixar esse preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyBalance": "Usa uma ativação do saldo, que tem {count, number}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
-          "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado."
+          "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado.",
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+        }
+      },
+      "licence": {
+        "label": "Licence",
+        "uses": "{count, plural, one {# activation} other {# activations}}",
+        "by": "Anyone may share and adapt it, crediting you.",
+        "bySa": "As CC BY, and what others make from it keeps this licence.",
+        "other": "Another licence",
+        "otherBody": "Non-commercial, no derivatives, or your own.",
+        "which": "Which licence",
+        "own": "My own licence",
+        "ownName": "Its name",
+        "ownUrl": "Web address of its text",
+        "ownNeeded": "Give your licence a name and the web address of its text.",
+        "help": {
+          "title": "Licences",
+          "by": "Anyone who reuses it credits you.",
+          "sa": "What others make from it keeps the same licence.",
+          "nc": "Nobody may use it commercially without asking you.",
+          "nd": "Others may not share changed versions of it.",
+          "mining": "All of them let anyone read, download and share the report as it is, and mine its text for data, though not commercially under NC. The agreement lets Openscholar publish and archive it under any of them.",
+          "compare": "What each licence allows",
+          "sentTo": "Sent to",
+          "crossref": "Registers the DOI",
+          "zenodo": "Archives a copy",
+          "openscholar": "Shows the report"
         }
       }
     },

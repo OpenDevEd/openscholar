@@ -57,7 +57,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** What a report published on Openscholar has beyond a paper's record: sections under the authors and in the sidebar, its PDF's cover, and what only its workspace does. */
-  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; actions?: ReactNode };
+  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; actions?: ReactNode; /** The licence its author chose, which may be their own. */ licence?: { name: string; url: string } };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -117,7 +117,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             pdf={!!communityCover?.pdf || !!pdf}
           />
           <div className="flex min-w-0 flex-col">
-            <HeaderChips paper={paper} detail={detail} />
+            <HeaderChips paper={paper} detail={detail} licence={extra?.licence} />
             {/* The bar's heading is the title; this is the title at reading size. */}
             <p dir="auto" className="mt-4 text-pretty text-2xl font-semibold leading-tight tracking-tight sm:text-[2rem]">{title}</p>
             <AuthorLine detail={detail} fallback={paper.authors_unparsed} />
@@ -275,14 +275,14 @@ function SeeAll({ href }: { href: string }) {
   );
 }
 
-function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetail }) {
+function HeaderChips({ paper, detail, licence }: { paper: PaperResult; detail: PaperDetail; licence?: { name: string; url: string } | undefined }) {
   const { workType } = useVocabulary();
   const t = useTranslations("paperPage");
   const format = useFormatter();
   const locale = useLocale();
   // As precisely as the work states it: a report's PDF may give only a month or a year.
   const dated = paper.publication_date ? dateMoment(paper.publication_date) : null;
-  const license = detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
+  const license = licence ?? detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
   const language = detail.language && detail.language !== locale.split("-")[0] ? new Intl.DisplayNames([locale], { type: "language" }).of(detail.language) : null;
   return (
     <div className="flex flex-wrap items-center gap-2">

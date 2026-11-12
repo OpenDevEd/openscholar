@@ -51,10 +51,14 @@ function text(value: string, what: string, max: number, { empty = false } = {}) 
   return trimmed;
 }
 
-/** The byline with `{doi}` in it: the line each PDF must carry is how a reader of the PDF finds the report, and what the byline check looks for. */
+/**
+ * The byline with `{doi}` and `{licence}` in it: the line each PDF must carry is how a reader of the PDF finds the
+ * report and the licence it is under, and what the byline check looks for.
+ */
 function byline(typed: string) {
   const kept = text(typed, "the byline", SERIES_TEXT_MAX);
   if (!kept.includes("{doi}")) throw createError("VALIDATION_ERROR", "The byline needs {doi} in it, which becomes each report's DOI.");
+  if (!kept.includes("{licence}")) throw createError("VALIDATION_ERROR", "The byline needs {licence} in it, which becomes each report's licence.");
   return kept;
 }
 

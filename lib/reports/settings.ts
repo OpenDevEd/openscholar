@@ -4,6 +4,10 @@ import type { PublicationSettings } from "../../convex/evidenceLibraries/publica
 import type { Effort } from "../ai/core/call-options";
 import { JEV_MODEL } from "../ai/decisions";
 import { DEFAULT_AGREEMENT } from "./agreement-text";
+import type { Licence } from "./report";
+
+/** A licence as the byline names it: a Creative Commons one by its short name, an author's own with its address too, since its name alone says nothing of what it allows. */
+const licenceInByline = (licence: Licence) => (typeof licence === "string" ? licence : `${licence.name} (${licence.url})`);
 
 /** GPT-6 Luna at medium read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
 export const DEFAULT_TEXT_MODEL = "openai/gpt-6-luna";
@@ -101,7 +105,7 @@ export const NO_PUBLICATION: PublicationSettings = {
 export const REPORT_DEFAULTS = {
   enabled: false,
   humanReview: true,
-  series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}" } satisfies Series,
+  series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}, under {licence}" } satisfies Series,
   publication: NO_PUBLICATION,
   metadataModelId: DEFAULT_TEXT_MODEL,
   metadataEffort: DEFAULT_TEXT_EFFORT as Effort | undefined,
@@ -128,7 +132,7 @@ export const canRegister = (publication: PublicationSettings) => publication.cro
  */
 /** The series a report is published in: the name it was signed under, which its byline prints, and the ISSN as the series has it now. */
 export const seriesOf = (report: { seriesName?: string }, series: Pick<Series, "name" | "issn">) => ({ name: report.seriesName ?? series.name, issn: series.issn });
-export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name);
+export const bylineOf = (series: Series, doi: string, licence: Licence) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name).replace("{licence}", licenceInByline(licence));
 /** The DOI a report gets under the Crossref prefix and namespace; with Crossref off, none (canRegister). */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
 

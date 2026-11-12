@@ -31,6 +31,15 @@ export const ACTIVATIONS_FEATURE = "report_activations";
  */
 export const ACTIVATION_PLAN = "report_activation";
 
+/**
+ * One-off add-on that adds three activations, bought when a report under a licence that takes three (`activationsFor`:
+ * NC, ND or the author's own) is activated with too few left. Priced at three activations in Autumn.
+ */
+export const THREE_ACTIVATIONS_PLAN = "report_activation_custom";
+
+/** The plan that buys what activating a report under a licence takes: one activation, or three. */
+export const activationPlanFor = (activations: number) => (activations === 1 ? ACTIVATION_PLAN : THREE_ACTIVATIONS_PLAN);
+
 /** The plan an organization's customer starts on (#650): its own credits, shared by its members, and Free's limits. */
 export const ORGANIZATION_PLAN = "free_organization";
 

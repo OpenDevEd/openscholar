@@ -49,9 +49,10 @@ import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirma
 import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
-import { fillAgreement } from "@/lib/reports/agreement";
+import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
+import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, stepsOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, ownLicence, stageOf, stepsOf, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -634,7 +635,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
-            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} price={starts?.price ?? null} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} activations={starts ? starts.activations : 0} price={starts?.price ?? null} priceOfThree={starts?.priceOfThree ?? null} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -896,6 +897,12 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   const name = typed ?? user?.fullName ?? "";
   const [busy, start] = useTransition();
   const { agreement } = basics;
+  // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
+  const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
+  const choosing = choosesLicence(agreement.text);
+  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
+  // An own licence still being typed reads in the agreement as far as it goes.
+  const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
   // Each tick is for the agreement as it read when it was made. One changed since, while the page was open, is
   // read and ticked again before it can be signed.
   // Kept with the tab until the report is signed: someone who ticks them signed out, then signs up, finds them as
@@ -921,8 +928,13 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
         {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
+      {choosing ? (
+        <div className="mb-5">
+          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} cost={{ activations: starts ? starts.activations : 0, price: starts?.price ?? null, priceOfThree: starts?.priceOfThree ?? null }} />
+        </div>
+      ) : null}
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <label className="space-y-1.5">
@@ -963,6 +975,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
             <ArrowLeft /> {t("back")}
           </Button>
         ) : null}
+        {/* Why Sign is shut while an own licence lacks its name or address, said beside it. */}
+        {!licence && !blocked ? <p className="text-sm text-muted-foreground">{t("licence.ownNeeded")}</p> : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -976,12 +990,12 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
         {starts ? (
           <Button
             className="relative"
-            disabled={!agreed || !name.trim() || busy || !!signed || !!blocked || !workspaceId}
+            disabled={!agreed || !name.trim() || !licence || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
                 say(null);
                 try {
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version });
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version, licence: licence! });
                   // Signed, the ticks have done their work: the next report's agreement starts unticked.
                   keepTicks(null);
                   onSigned(key);
@@ -1155,7 +1169,7 @@ function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, reviewed, activations, price, onStart }: { series: string; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+function Overview({ series, reviewed, activations, price, priceOfThree, onStart }: { series: string; /** What the three activations an NC, ND or own licence takes cost, in US dollars; null signed out or with no price. */ priceOfThree: number | null; /** Activations left in the workspace's balance, which pay for the last step; null for no limit, 0 signed out. */ activations: number | null; /** What activating costs with none left, in US dollars, said here so it is no surprise at the last step; null signed out or with no price. */ price: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const flow = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1169,7 +1183,7 @@ function Overview({ series, reviewed, activations, price, onStart }: { series: s
     { id: "checks", icon: ShieldCheck },
     { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
-  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? t("activate.bodyBalance", { count: activations }) : price !== null ? t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) }) : t("activate.body");
+  const activating = activations === null ? t("activate.bodyUnlimited") : activations > 0 ? t("activate.bodyBalance", { count: activations }) : price !== null ? (priceOfThree !== null ? t("activate.bodyPricedThree", { price: dollars(Math.round(price * 100)), priceOfThree: dollars(Math.round(priceOfThree * 100)) }) : t("activate.bodyPriced", { price: dollars(Math.round(price * 100)) })) : t("activate.body");
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -1531,7 +1545,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
   const organization = terms?.organization ?? null;
   const admin = terms?.admin ?? true;
   /** The balance has an activation to spend; null is a balance with no limit. */
-  const spendable = !!terms && (terms.activations === null || terms.activations > 0);
+  const spendable = !!terms && (terms.activations === null || terms.activations >= terms.needs);
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
   const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
@@ -1682,6 +1696,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
                   onFailed={(error) => (error === null ? say(null) : failed(t("activation.card.stripeFailed"))(error))}
                   organization={organization}
                   activations={terms.activations}
+                  needs={terms.needs}
                   card={card}
                   credit={credit}
                   price={price}
@@ -1802,7 +1817,7 @@ function Checks({ rows, report, carried: quoted = null, humanReview, terms, onAc
             lineItems:
               code || fromCredit > 0
                 ? [
-                    { description: t("activation.activationLine"), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
+                    { description: t("activation.activationLine", { count: terms?.needs ?? 1 }), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
                     ...(code ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" }] : []),
                     ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
                   ]
@@ -1959,7 +1974,7 @@ function inViewOnReturn(node: HTMLDivElement | null) {
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, activations, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
+function PaymentLine({ organization, activations, needs, card, credit, price, pending, refused, onAddCard, onFailed, quoted, voucher, action }: { /** How many activations putting the report live takes, by its licence. */ needs: number; /** Stripe's page couldn't be opened: said by the screen, above this bar. Null as another try starts. */ onFailed: (error: unknown) => void; /** The code applied, with what the activation comes to with it, in cents. */ quoted: { code: string; total: number } | null; /** The field a code goes in, where one can be used. */ voucher: ReactNode; organization: string | null; /** Left in the workspace's balance; null for no limit. */ activations: number | null; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: (code?: string) => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1967,7 +1982,7 @@ function PaymentLine({ organization, activations, card, credit, price, pending, 
   /** The code takes the whole price off: nothing to pay, so no card is asked for. */
   const covered = quoted?.total === 0;
   /** The balance pays: neither a card nor a code comes into it. */
-  const spendable = activations === null || activations > 0;
+  const spendable = activations === null || activations >= needs;
   // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
   const saveCard = () =>
     save(async () => {
@@ -2014,8 +2029,8 @@ function PaymentLine({ organization, activations, card, credit, price, pending, 
               ? t("refused")
               : spendable
                 ? organization
-                  ? t("usesOrg", { organization })
-                  : t("uses")
+                  ? t("usesOrg", { organization, count: needs })
+                  : t("uses", { count: needs })
                 : !card
                   ? covered
                     ? t("coveredHint")

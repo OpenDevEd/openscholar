@@ -25,7 +25,7 @@ import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useRelationName, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, LICENCE_URL, dateParts, daysIn, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, dateParts, licenceName, licenceUrl, daysIn, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 const REFS_PER_PAGE = 5;
@@ -502,9 +502,9 @@ export function DetailsStep({
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">{t("licence")}</span>
               <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
-                <a href={LICENCE_URL[m.licence]} target="_blank" rel="noreferrer license" className="inline-flex items-center gap-1.5 underline-offset-2 hover:underline">
-                  {m.licence}
-                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                <a href={licenceUrl(m.licence)} target="_blank" rel="noreferrer license" className="inline-flex min-w-0 items-center gap-1.5 underline-offset-2 hover:underline">
+                  <span className="truncate">{licenceName(m.licence)}</span>
+                  <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
                 </a>
               </div>
             </div>

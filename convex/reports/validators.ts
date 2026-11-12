@@ -4,7 +4,7 @@ import { keptCustomValidator, publicationSettingsValidator } from "../evidenceLi
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, LICENCE_NAMES, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -59,6 +59,9 @@ export const reportSettingsFields = {
 
 const literals = <T extends string>(values: readonly T[]) => v.union(...values.map((value) => v.literal(value)));
 
+/** A report's licence: one of the Creative Commons ones by name, or the author's own (`ownLicence`). */
+export const licenceValidator = v.union(literals(LICENCE_NAMES), v.object({ name: v.string(), url: v.string() }));
+
 export const checkResultValidator = v.object({
   checkId: v.string(),
   name: v.string(),
@@ -89,7 +92,7 @@ export const metadataValidator = v.object({
   type: v.string(),
   language: v.string(),
   date: v.string(),
-  licence: v.literal("CC BY 4.0"),
+  licence: licenceValidator,
   authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
   abstract: v.string(),
   topics: capped(v.array(v.object({ id: v.string(), name: v.string(), score: v.number() })), DETAIL_CAPS.topics),
@@ -149,6 +152,9 @@ export const reportFields = {
   /** The series' name its byline prints, kept from the same moment: its page, citations and registrations keep it,
    * so renaming the series names only reports signed after. A report signed before this was kept has none (seriesOf). */
   seriesName: v.optional(v.string()),
+  /** The licence its author chose when signing, which the agreement and byline name: it never changes after. A report
+   * signed before authors chose has none, and is CC BY 4.0 (`licenceOf`). */
+  licence: v.optional(licenceValidator),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */
@@ -292,7 +298,7 @@ export const adminReportValidator = v.object({
   emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author"), v.literal("admins")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
 });
-export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
+export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), licence: licenceValidator, doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
 export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), updatedAt: v.number() });

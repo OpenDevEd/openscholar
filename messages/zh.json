@@ -6415,6 +6415,7 @@
       "enterSeriesName": "请输入系列名称。",
       "enterByline": "请输入署名行。",
       "bylineNeedsDoi": "署名行需要包含 {doi}，它会变成每份报告的 DOI。",
+      "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "这不是 ISSN。ISSN 形如 2049-3630，最后一位用于校验其余数字。",
       "byline": "署名",
       "bylineHint": "每份报告都会填入 {series}、{issn} 和 {doi}",
@@ -6492,7 +6493,10 @@
       "activations": "激活次数",
       "balances": "余额",
       "balancesHint": "每个工作区在 Autumn 中都有激活次数余额。可在那里为个人或组织发放次数，一次性发放，或按日、周、月、年补充。方案中的条目会发放给使用该方案的所有工作区。",
-      "openAutumn": "打开 Autumn"
+      "openAutumn": "打开 Autumn",
+      "priceThree": "Price for three",
+      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
     "flow": {
       "steps": {
@@ -6812,7 +6816,34 @@
           "body": "用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
           "bodyPriced": "每份报告 {price}，用银行卡支付。优惠码可以降低或抵扣全部费用。DOI 随即注册，报告上线。",
           "bodyBalance": "使用余额中的一次激活，余额还剩 {count, number} 次。无需付款。DOI 完成注册，报告随即上线。",
-          "bodyUnlimited": "使用余额中的一次激活，余额不限次数。无需付款。DOI 完成注册，报告随即上线。"
+          "bodyUnlimited": "使用余额中的一次激活，余额不限次数。无需付款。DOI 完成注册，报告随即上线。",
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+        }
+      },
+      "licence": {
+        "label": "Licence",
+        "uses": "{count, plural, one {# activation} other {# activations}}",
+        "by": "Anyone may share and adapt it, crediting you.",
+        "bySa": "As CC BY, and what others make from it keeps this licence.",
+        "other": "Another licence",
+        "otherBody": "Non-commercial, no derivatives, or your own.",
+        "which": "Which licence",
+        "own": "My own licence",
+        "ownName": "Its name",
+        "ownUrl": "Web address of its text",
+        "ownNeeded": "Give your licence a name and the web address of its text.",
+        "help": {
+          "title": "Licences",
+          "by": "Anyone who reuses it credits you.",
+          "sa": "What others make from it keeps the same licence.",
+          "nc": "Nobody may use it commercially without asking you.",
+          "nd": "Others may not share changed versions of it.",
+          "mining": "All of them let anyone read, download and share the report as it is, and mine its text for data, though not commercially under NC. The agreement lets Openscholar publish and archive it under any of them.",
+          "compare": "What each licence allows",
+          "sentTo": "Sent to",
+          "crossref": "Registers the DOI",
+          "zenodo": "Archives a copy",
+          "openscholar": "Shows the report"
         }
       }
     },

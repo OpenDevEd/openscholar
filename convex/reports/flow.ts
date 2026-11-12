@@ -4,7 +4,7 @@
 import { v, type Infer } from "convex/values";
 import { readAccount } from "../billing/accounts";
 import { readCatalog } from "../billing/catalog";
-import { ACTIVATION_PLAN } from "../../lib/billing/plans";
+import { ACTIVATION_PLAN, THREE_ACTIVATIONS_PLAN } from "../../lib/billing/plans";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
@@ -17,14 +17,15 @@ import { workspacesOf } from "../workspaces/personal";
 import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
+import { choosesLicence } from "../../lib/reports/agreement";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, bylineByValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
+import { authorRowValidator, bylineByValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -77,7 +78,7 @@ const FROM_A_LIST: Array<[what: string, values: (metadata: Metadata) => string[]
  * value that has a list taken from it. A link still being typed is saved as it is; one that leads nowhere holds the
  * checks, and one left empty is dropped.
  */
-export function checkedDetails(metadata: Metadata) {
+export function checkedDetails(metadata: Metadata, licence: Licence) {
   // A draft may be saved without one, but nothing is checked or published undated: Crossref takes no record without a year.
   if (!metadata.date) throw createError("VALIDATION_ERROR", "Give the report's date: its year at least.");
   for (const [what, values, known] of FROM_A_LIST) {
@@ -89,11 +90,15 @@ export function checkedDetails(metadata: Metadata) {
   const relations = metadata.relations.filter((relation, i, all) => relation.target.trim() !== "" && all.findIndex((other) => other.kind === relation.kind && address(other.target) === address(relation.target)) === i);
   const dead = relations.find((relation) => !linkHref(relation.target));
   if (dead) throw createError("VALIDATION_ERROR", `"${dead.target.slice(0, 80)}" isn't a web address or a DOI. Put the link right, or remove it.`);
-  return keptDetails({ ...metadata, relations });
+  return keptDetails({ ...metadata, relations }, licence);
 }
 
-/** A report's details as they may be kept: each list within its cap, said in words, and the whole within its size. */
-export function keptDetails(metadata: Metadata) {
+/**
+ * A report's details as they may be kept: each list within its cap, said in words, and the whole within its size. The
+ * licence is the report's own (`licenceOf`), chosen when it was signed: whatever a form or a reading sent is replaced.
+ */
+export function keptDetails(sent: Metadata, licence: Licence) {
+  const metadata = { ...sent, licence };
   const over = (Object.keys(DETAIL_CAPS) as Array<keyof typeof DETAIL_CAPS>).find((list) => list in metadata && (metadata[list as keyof Metadata] as unknown[]).length > DETAIL_CAPS[list]);
   if (over) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS[over].toLocaleString("en")} ${over === "studyDesigns" ? "study designs" : over === "sdgs" ? "goals" : over === "relations" ? "links" : over}.`);
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
@@ -178,12 +183,13 @@ export const startsAction = defineUserQuery({
     "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
     "`activations` is how many activations the workspace has left in its balance, each of which makes one report live at no charge, or null for no limit. `price` is what activating one costs in US dollars when that balance is empty, or null. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
-  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()), /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */ activations: v.union(v.number(), v.null()), /** What activating a report costs with none left, in US dollars, said before a report is started; null while there is no price. */ price: v.union(v.number(), v.null()) }),
+  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()), /** Activations left in the workspace's balance, as last read from Autumn; null for no limit. */ activations: v.union(v.number(), v.null()), /** What activating a report costs with none left, in US dollars, said before a report is started; null while there is no price. */ price: v.union(v.number(), v.null()), /** What the three activations a report under an NC, ND or own licence takes cost, in US dollars; null while there is no price. */ priceOfThree: v.union(v.number(), v.null()) }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
-    const price = (await readCatalog(ctx))?.plans.find((plan) => plan.id === ACTIVATION_PLAN)?.price?.amount ?? null;
+    const plans = (await readCatalog(ctx))?.plans ?? [];
+    const priceOf = (id: string) => plans.find((plan) => plan.id === id)?.price?.amount ?? null;
     const account = await readAccount(ctx, workspaceId);
-    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }), activations: account?.activations === null ? null : (account?.activations ?? 0), price };
+    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }), activations: account?.activations === null ? null : (account?.activations ?? 0), price: priceOf(ACTIVATION_PLAN), priceOfThree: priceOf(THREE_ACTIVATIONS_PLAN) };
   },
 });
 export const starts = userQuery(startsAction);
@@ -195,9 +201,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number() },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -205,12 +211,16 @@ export const sign = workspaceMutation({
     const signer = name.trim();
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
+    const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url);
+    if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name and the web address of its text.");
+    // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
+    if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
     const { crossref, zenodo } = settings.publication;
     // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi), seriesName: settings.series.name });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -231,8 +241,9 @@ export const sign = workspaceMutation({
       // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
       // the report registers is fixed with it, and so is the line its PDF carries.
       doi,
-      byline: bylineOf(settings.series, doi),
+      byline: bylineOf(settings.series, doi, licence),
       seriesName: settings.series.name,
+      licence,
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
       status: "draft",
@@ -268,7 +279,7 @@ export const saveDetails = workspaceMutation({
     if (report.step === "done" || report.run || report.pdf?.at !== pdfAt) return null;
     const details = await detailsOf(ctx, report._id);
     if (!details.metadata) return null;
-    const metadata = keptDetails({ ...details.metadata, ...changes });
+    const metadata = keptDetails({ ...details.metadata, ...changes }, licenceOf(report));
     await ctx.db.patch("reportDetails", details._id, { metadata });
     await touch(ctx, report, { title: metadata.title.trim() || undefined });
     return null;
@@ -481,7 +492,7 @@ export const typeChanges = workspaceMutation({
     // What the form shows under its own changes (publish-flow.tsx): the changes typed so far, else those waiting, else the report.
     const typed = details.trying ?? details.correction?.metadata ?? details.metadata;
     if (changes && !typed) return null;
-    await ctx.db.patch("reportDetails", details._id, { trying: changes && typed ? keptDetails({ ...typed, ...changes }) : undefined });
+    await ctx.db.patch("reportDetails", details._id, { trying: changes && typed ? keptDetails({ ...typed, ...changes }, licenceOf(report)) : undefined });
     return null;
   },
 });
@@ -697,6 +708,7 @@ export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
     onBehalfOfAll: report.signedBy.onBehalfOfAll,
     signedAt: report.signedAt,
     byline: report.byline,
+    licence: licenceOf(report),
     doi: report.doi,
     ...(metadata?.title && { title: metadata.title }),
     authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),

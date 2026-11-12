@@ -28,7 +28,7 @@ The Work is: [title], by [authors], [number of pages], [date of completion] (the
 
 3.1. The Author keeps the copyright in the Work.
 
-3.2. The Work is published under the Creative Commons Attribution 4.0 licence (CC BY 4.0).
+3.2. The Work is published under [licence].
 
 3.3. The Author grants Openscholar a non-exclusive, worldwide, irrevocable licence to publish, host, archive and distribute the Work, and to register and publish its metadata.
 
@@ -36,7 +36,7 @@ The Work is: [title], by [authors], [number of pages], [date of completion] (the
 
 4.1. The Author confirms that:
 
-- the Author has the right to enter into this agreement and to publish the Work under CC BY 4.0;
+- the Author has the right to enter into this agreement and to publish the Work under [licence];
 - the Work is original, and is free of third-party material for which the Author does not have permission (any such material is listed and credited in the Work, with its own licence);
 - the Work contains nothing defamatory, unlawful or otherwise offending, and does not breach anyone’s privacy or confidentiality;
 - the Work has not been published elsewhere with a DOI.

@@ -6415,6 +6415,7 @@
       "enterSeriesName": "シリーズ名を入力してください。",
       "enterByline": "クレジット行を入力してください。",
       "bylineNeedsDoi": "クレジット行には {doi} が必要です。これが各レポートの DOI になります。",
+      "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "これは ISSN ではありません。ISSN は 2049-3630 のような形で、最後の桁が残りの桁を検証します。",
       "byline": "表記",
       "bylineHint": "{series}、{issn}、{doi} は各レポートで埋められます",
@@ -6492,7 +6493,10 @@
       "activations": "有効化",
       "balances": "残高",
       "balancesHint": "各ワークスペースはAutumnに有効化の残高を持ちます。個人や組織への付与はAutumnで行います。1回限りにも、毎日、毎週、毎月、毎年の補充にもできます。プランの項目に入れると、そのプランのすべてのワークスペースに付与されます。",
-      "openAutumn": "Autumnを開く"
+      "openAutumn": "Autumnを開く",
+      "priceThree": "Price for three",
+      "priceThreeHint": "What a workspace pays when a report under an NC, ND or own licence needs three activations and the balance has too few. It is the Three report activations plan's price in Autumn.",
+      "priceThreeHintNone": "Autumn has no Three report activations plan, so a report under an NC, ND or own licence can't be activated with too few in the balance."
     },
     "flow": {
       "steps": {
@@ -6812,7 +6816,34 @@
           "body": "カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。",
           "bodyPriced": "レポート 1 件につき {price}、カードで支払います。プロモコードで値引きまたは全額をまかなえます。DOI が登録され、レポートが公開されます。",
           "bodyBalance": "残高から有効化を1回分使います。残りは{count, number}回です。支払いはありません。DOIが登録され、レポートが公開されます。",
-          "bodyUnlimited": "残高から有効化を1回分使います。残高に上限はありません。支払いはありません。DOIが登録され、レポートが公開されます。"
+          "bodyUnlimited": "残高から有効化を1回分使います。残高に上限はありません。支払いはありません。DOIが登録され、レポートが公開されます。",
+          "bodyPricedThree": "{price} for each report, or {priceOfThree} under an NC, ND or own licence, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+        }
+      },
+      "licence": {
+        "label": "Licence",
+        "uses": "{count, plural, one {# activation} other {# activations}}",
+        "by": "Anyone may share and adapt it, crediting you.",
+        "bySa": "As CC BY, and what others make from it keeps this licence.",
+        "other": "Another licence",
+        "otherBody": "Non-commercial, no derivatives, or your own.",
+        "which": "Which licence",
+        "own": "My own licence",
+        "ownName": "Its name",
+        "ownUrl": "Web address of its text",
+        "ownNeeded": "Give your licence a name and the web address of its text.",
+        "help": {
+          "title": "Licences",
+          "by": "Anyone who reuses it credits you.",
+          "sa": "What others make from it keeps the same licence.",
+          "nc": "Nobody may use it commercially without asking you.",
+          "nd": "Others may not share changed versions of it.",
+          "mining": "All of them let anyone read, download and share the report as it is, and mine its text for data, though not commercially under NC. The agreement lets Openscholar publish and archive it under any of them.",
+          "compare": "What each licence allows",
+          "sentTo": "Sent to",
+          "crossref": "Registers the DOI",
+          "zenodo": "Archives a copy",
+          "openscholar": "Shows the report"
         }
       }
     },
