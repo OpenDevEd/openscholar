@@ -1,16 +1,22 @@
 ---
 import Base from "../../layouts/Base.astro";
-import IntentHero from "../../components/IntentHero.astro";
-import Feature from "../../components/Feature.astro";
 import Device from "../../components/Device.astro";
 import Art from "../../components/Art.astro";
 import Arrow from "../../components/Arrow.astro";
 import Faq from "../../components/Faq.astro";
-import Related from "../../components/Related.astro";
 import Close from "../../components/Close.astro";
 import { APP } from "../../data/site.mjs";
 // What a publithon is and how to take part, for anyone invited to one. No event of its own: dates, topic and sponsor
 // come later, when an event needs them. Sponsors write to us through the contact form's sponsor topic.
+// The steps are /publish's own (publishReports.flow.overview), in the order the app takes them.
+const steps = [
+  ["Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
+  ["Get your DOI", "Reserved the moment you sign. It goes live with the report."],
+  ["Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
+  ["Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
+  ["Automatic checks", "They look for that line and for anything published before."],
+  ["Go live", "The DOI is registered and the report has its own page."],
+];
 const faq = [
   ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
   ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against published work, and a match goes to a reviewer before anything goes live."],
@@ -19,35 +25,123 @@ const faq = [
   ["Can I run a publithon for my field?", "Yes. Tell us the topic and who you'd invite, and we'll plan it with you."],
 ];
 ---
-<Base og="/og.jpg" top="#03140d" title="Publithon: Openscholar" description="Publish your research at a publithon: bring a finished report or paper, and it goes live with its own DOI, under your name and open for anyone to read and cite.">
-  <IntentHero
-    title="Publish your research at a publithon"
-    lead="At a publithon, researchers publish their own work together, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name, open for anyone to read and cite."
-    bg="#03140d" art="review-card" screen="r-page" theme="light" alt="A published report with its DOI, authors and topics">
-    <a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a>
-  </IntentHero>
-  <Feature id="publish" field="emerald" title="Sign, upload, check, go live" text="Sign the publishing agreement and your DOI is reserved. Upload the PDF, check the details read from it, and the checks run before it goes live. You keep the copyright and publish under CC BY 4.0.">
-    <div class="f-shot"><Device kind="laptop" name="r-prepare" theme="light" alt="Every step of publishing a report, from the agreement to going live" sizes="(max-width: 900px) 94vw, 680px" /></div>
-  </Feature>
-  <Feature id="recommend" field="rose" flip title="Already published? Suggest it instead" text="A publithon on a topic gathers the work that's already out there too. Search the topic's community, and if a paper it should hold is missing, suggest it. Its editors decide.">
-    <a slot="extra" class="btn ghost" href={`${APP}/communities`}>Find a community</a>
-    <div class="f-shot"><Device kind="laptop" name="c-search" theme="light" alt="A community's search, with filters and PDF covers" sizes="(max-width: 900px) 94vw, 680px" /></div>
-  </Feature>
-  <section class="panel spons" id="sponsor" aria-labelledby="spons-h">
-    <Art name="pavilion" pos="100% 60%" class="s-art" />
-    <div class="s-copy"><h2 id="spons-h">Sponsor a publithon</h2><p class="lead">Back a publithon on a topic or a region you care about. We plan it with you, and you see every report it brings in.</p></div>
-    <a class="btn" href="/contact/?topic=sponsor">Talk to us about sponsoring<Arrow /></a>
+<Base og="/og.jpg" top="#070b1a" title="Publithon: Openscholar" description="Publish your research at a publithon: bring a finished report or paper, and it goes live with its own DOI, under your name and open for anyone to read and cite.">
+  <section class="bleed hero">
+    <Art name="pub-rise" eager pos="70% 100%" class="h-art" />
+    <div class="inner h-copy">
+      <h1>Publish together</h1>
+      <p class="lead">At a publithon, researchers publish their own work at the same time, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name for anyone to read and cite.</p>
+      <div class="acts"><a class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a><a class="btn ghost" href="#sponsor">Sponsor a publithon</a></div>
+    </div>
   </section>
+
+  {/* Two doors: new work is published, work that's already out is suggested to a community. */}
+  <section class="ways" id="ways" aria-labelledby="ways-h">
+    <h2 id="ways-h">Two ways to take part</h2>
+    <div class="doors">
+      <a class="panel door d-new" href={`${APP}/publish`} data-in>
+        <img class="d-art" src="/img/art-pub-new.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+        <span class="d-copy"><b>Your own new work</b><span>A report, paper or study you wrote, published with its own DOI.</span><span class="go">Publish it<Arrow /></span></span>
+      </a>
+      <a class="panel door d-gap" href={`${APP}/communities`} data-in>
+        <img class="d-art" src="/img/art-pub-gap.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+        <span class="d-copy"><b>Work that's already out</b><span>A community on your topic is missing a paper? Suggest it, and its editors add it.</span><span class="go">Find a community<Arrow /></span></span>
+      </a>
+    </div>
+  </section>
+
+  {/* One sheet's journey across the art, and the six steps under the sheets they belong to. The light runs along the
+      thread as the section arrives, and each step comes up as it passes. */}
+  <section class="bleed path" id="publish" aria-labelledby="path-h">
+    <div class="inner p-head"><h2 id="path-h">From PDF to DOI</h2><p class="lead">The steps you take in Openscholar, start to finish. A reviewer approves each report before it goes live, and you hear by email.</p></div>
+    <div class="inner p-run" data-in>
+      <div class="p-art"><Art name="pub-path" pos="50% 45%" sizes="(max-width: 1280px) 100vw, 1280px" /></div>
+      <ol class="p-steps">{steps.map(([t, d], i) => <li style={`--i:${i}`}><b>{t}</b><span>{d}</span></li>)}</ol>
+    </div>
+  </section>
+
+  {/* What you leave with: the real page of a live report, hanging off the bottom of its panel. */}
+  <section class="panel result" id="result" aria-labelledby="res-h">
+    <i class="field f-emerald" aria-hidden="true"></i>
+    <div class="r-head"><h2 id="res-h">A page of its own, ready to cite</h2><p class="lead">Your report gets a page with its authors, topics, abstract and PDF, and a DOI that points to it.</p></div>
+    <div class="r-shot" data-in><Device kind="laptop" name="r-page" theme="light" alt="A published report's page with its DOI, author, topics and abstract" sizes="(max-width: 900px) 100vw, 980px" /></div>
+  </section>
+
+  <section class="bleed sponsor" id="sponsor" aria-labelledby="sp-h">
+    <Art name="pub-world" pos="60% 100%" class="s-art" />
+    <div class="inner s-copy">
+      <h2 id="sp-h">Sponsor a publithon</h2>
+      <p class="lead">Back a publithon on a topic or a region you care about. We plan it with you, and afterwards you see every report it brought in and where its authors work.</p>
+      <a class="btn" href="/contact/?topic=sponsor">Talk to us about sponsoring<Arrow /></a>
+    </div>
+  </section>
+
   <Faq items={faq} title="Questions about publithons" />
-  <Related />
-  <Close title="Give your work a DOI" art="dark-ribbon"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
+  <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
 </Base>
 <style>
-  /* Sponsoring: the lit pavilion on its own dark crimson, the case and one way in. */
-  .spons { display: grid; align-content: center; justify-items: start; gap: 28px; min-height: clamp(380px, 34vw, 480px); padding: clamp(32px, 4.4vw, 64px) var(--pad); --bg: #1e030c; }
-  .spons > :global(.s-art) { left: 30%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%); }
-  /* The way into the communities keeps its own width under the copy. */
-  :global(#recommend .copy > .btn) { justify-self: start; }
-  .s-copy { display: grid; gap: 12px; max-width: 560px; } .s-copy .lead { color: rgb(255 255 255 / .82); }
-  @media (max-width: 900px) { .spons > :global(.s-art) { left: 0; opacity: .4; } }
+  @keyframes up { from { opacity: 0; transform: translateY(20px); } }
+
+  /* The sheets rise off the horizon behind the words; the words sit in the calm sky on the left. */
+  .hero { background: var(--night); min-height: clamp(620px, 52vw, 760px); padding-block: clamp(150px, 13vw, 210px) clamp(120px, 12vw, 180px); }
+  .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent, #000 12%); mask-image: linear-gradient(transparent, #000 12%); }
+  .hero > :global(.h-art img) { animation: rise 2.6s var(--ease) both; } @keyframes rise { from { opacity: 0; transform: translateY(36px) scale(1.04); } }
+  /* The words keep a calm night behind them wherever the art runs under them. */
+  .hero::before, .sponsor::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgb(7 11 26 / .88), rgb(7 11 26 / .62) 36%, transparent 60%); }
+  .h-copy { position: relative; display: grid; gap: 22px; justify-items: start; }
+  .h-copy h1 { font-size: clamp(56px, 8.4vw, 128px); line-height: .94; letter-spacing: -.045em; max-width: 7em; }
+  .h-copy .lead { max-width: 29em; color: rgb(255 255 255 / .86); }
+  .h-copy > * { animation: up .9s var(--ease) both; } .h-copy > :nth-child(2) { animation-delay: .08s; } .h-copy > :nth-child(3) { animation-delay: .16s; }
+  .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  /* Two tall doors side by side, the art filling each and the words at its foot. */
+  .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding: clamp(48px, 6vw, 88px) var(--pad) 0; }
+  .ways h2 { font-size: clamp(30px, 3.2vw, 44px); }
+  .doors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  .door { display: grid; align-content: end; min-height: clamp(520px, 46vw, 660px); padding: clamp(24px, 3vw, 40px); color: #fff; }
+  .d-new { --bg: #02261d; } .d-gap { --bg: #2a0410; }
+  .d-art { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; transition: transform 1.2s var(--ease), filter .6s var(--ease); -webkit-mask-image: linear-gradient(#000 52%, transparent 92%); mask-image: linear-gradient(#000 52%, transparent 92%); filter: brightness(.86); }
+  .door:hover .d-art { transform: scale(1.04); filter: none; }
+  .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
+  .go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .go :global(i) { transform: translateX(4px); }
+
+  /* One sheet's journey, lit along its thread as the section arrives. */
+  .path { background: var(--night); padding-block: clamp(72px, 8vw, 120px) clamp(56px, 6vw, 96px); margin-top: clamp(48px, 6vw, 88px); }
+  .p-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .p-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; } .p-head .lead { color: rgb(255 255 255 / .78); }
+  .p-run { display: grid; margin-top: clamp(16px, 2vw, 32px); }
+  .p-art { position: relative; aspect-ratio: 1672 / 600; overflow: clip; } .p-art :global(.art) { position: absolute; inset: 0; } .p-art :global(.art img) { opacity: 1; object-fit: cover; }
+  /* The art fades into the night at every edge, so it has no box. */
+  .p-art :global(.art) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 16%, #000 84%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(transparent, #000 16%, #000 84%, transparent); mask-composite: intersect; }
+  .p-art { -webkit-mask-image: linear-gradient(90deg, #000 var(--lit, 100%), transparent calc(var(--lit, 100%) + 12%)); mask-image: linear-gradient(90deg, #000 var(--lit, 100%), transparent calc(var(--lit, 100%) + 12%)); }
+  /* The art puts its six sheets 16.1% apart, the first centred at 9.8%: the columns match them. */
+  .p-steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 96.6%; margin: -4px 0 0 1.75%; counter-reset: s; }
+  .p-steps li { display: grid; align-content: start; gap: 6px; padding-top: 16px; padding-inline: clamp(4px, .8vw, 12px); border-top: 1px solid rgb(255 214 140 / .28); text-align: center; }
+  .p-steps li::before { counter-increment: s; content: counter(s); justify-self: center; display: grid; place-items: center; width: 26px; height: 26px; margin-bottom: 4px; border-radius: 8px; background: rgb(255 214 140 / .14); color: #ffd68c; font-size: 13px; font-weight: 500; }
+  .p-steps b { font-weight: 500; font-size: 17px; letter-spacing: -.01em; } .p-steps span { color: rgb(255 255 255 / .66); font-size: 14px; line-height: 1.4; }
+  @property --lit { syntax: "<percentage>"; inherits: true; initial-value: 100%; }
+  :global(.js) .p-run[data-in] { opacity: 1; transform: none; } :global(.js) .p-run:not(.in) { --lit: -12%; } :global(.js) .p-run:not(.in) li { opacity: 0; translate: 0 12px; }
+  :global(.js) .p-run.in { transition: --lit 2.6s cubic-bezier(.45, 0, .2, 1); } :global(.js) .p-run.in li { transition: opacity .6s var(--ease) calc(.25s + var(--i) * .38s), translate .7s var(--ease) calc(.25s + var(--i) * .38s); }
+
+  /* The live report, frameless, hanging off the bottom of its panel. */
+  .result { display: grid; gap: clamp(24px, 3vw, 40px); padding: var(--pad) var(--pad) 0; margin-top: 16px; }
+  .r-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .r-head .lead { color: rgb(255 255 255 / .82); }
+  .r-shot { width: min(80%, 980px); margin-inline: auto; margin-bottom: -8%; } .r-shot :global(.body) { padding: 0; border-radius: 16px 16px 0 0; background: none; box-shadow: 0 0 0 1px rgb(255 255 255 / .28), 0 -10px 70px -10px rgb(255 214 140 / .3), 0 40px 90px -30px #000; } .r-shot :global(.glass) { border-radius: 16px 16px 0 0; } .r-shot :global(.cam), .r-shot :global(.deck), .r-shot :global(.sheen) { display: none; }
+
+  /* Sponsors: the world lights up where the work comes from, and every thread leads to one medallion. */
+  .sponsor { background: var(--night); min-height: clamp(560px, 50vw, 720px); padding-block: clamp(72px, 8vw, 120px); margin-top: 16px; display: grid; align-items: start; }
+  .sponsor > :global(.s-art) { -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / .35), #000 45%); mask-image: linear-gradient(90deg, rgb(0 0 0 / .35), #000 45%); }
+  .s-copy { position: relative; display: grid; gap: 20px; justify-items: start; } .s-copy h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; max-width: 6.5em; } .s-copy .lead { max-width: 30em; color: rgb(255 255 255 / .84); }
+
+  @media (max-width: 900px) {
+    .hero > :global(.h-art img), .sponsor > :global(.s-art img) { opacity: 1; }
+    .hero { min-height: 0; padding-block: 120px 300px; } .hero::before { display: none; } .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent 46%, #000 72%); mask-image: linear-gradient(transparent 46%, #000 72%); } .sponsor::before { display: none; } .hero > :global(.h-art img) { object-position: 75% 100%; }
+    .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
+    .p-head, .r-head { grid-template-columns: minmax(0, 1fr); }
+    .p-art { aspect-ratio: 1672 / 700; margin-inline: calc(var(--pad) * -1); }
+    .p-steps { width: 100%; margin: 8px 0 0; }
+    .p-steps { grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 8px; } .p-steps li { grid-template-columns: 26px minmax(0, 1fr); column-gap: 14px; padding-block: 14px; text-align: left; } .p-steps li::before { grid-row: span 2; margin: 0; } .p-steps b, .p-steps span { grid-column: 2; }
+    .r-shot { width: 100%; margin-bottom: -9%; }
+    .sponsor { min-height: 0; padding-bottom: 280px; } .sponsor > :global(.s-art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 60%); mask-image: linear-gradient(transparent 30%, #000 60%); }
+  }
+  @media (prefers-reduced-motion: reduce) { :global(.js) .p-run:not(.in) { --lit: 100%; } :global(.js) .p-run:not(.in) li { opacity: 1; translate: none; } }
 </style>
