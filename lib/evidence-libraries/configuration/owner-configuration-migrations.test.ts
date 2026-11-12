@@ -201,9 +201,10 @@ describe("owner configuration migrations", () => {
       const payload = (key: string) => snapshot.sections.find((row) => row.sectionKey === key)?.payload as Record<string, unknown> | undefined;
       return { identity: payload("identity"), footer: payload("footer") };
     };
-    // One a funder already names is that funder. One whose id a funder has gets a free id. The rest follow in order.
+    // One a funder already names is that funder. One whose id a funder has gets a free id. One left without a name is
+    // dropped. The rest follow in order.
     const both = migrate(
-      { fundingPartners: [{ id: "a", name: " jacobs foundation " }, { id: "fp", name: "FCDO" }, { id: "b", name: "World Bank" }] },
+      { fundingPartners: [{ id: "a", name: " jacobs foundation " }, { id: "fp", name: "FCDO" }, { id: "blank", name: " " }, { id: "b", name: "World Bank" }] },
       { disclaimer: "As is.", funders },
     );
     expect(both.identity).toEqual(IDENTITY);
@@ -212,6 +213,8 @@ describe("owner configuration migrations", () => {
     expect(migrate({ fundingPartners: [{ id: "a", name: "FCDO" }] }).footer).toEqual({ funders: [{ id: "a", name: "FCDO" }] });
     expect(migrate({ fundingPartners: [] }, { funders })).toEqual({ identity: IDENTITY, footer: { funders } });
     expect(migrate({}, { funders }).footer).toEqual({ funders });
+    // Partners that can't be read are never dropped: the snapshot is refused with them still in it.
+    for (const unreadable of [["FCDO"], { id: "a", name: "FCDO" }, [{ id: "a" }]]) expect(() => migrate({ fundingPartners: unreadable })).toThrow(OwnerConfigurationMigrationError);
   });
 
   it("gives a saved tag filter named after a search option a free address name, and drops its * tags, so it still loads", () => {

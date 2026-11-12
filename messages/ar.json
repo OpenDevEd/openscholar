@@ -2116,7 +2116,7 @@
       },
       "socialError": "استخدم عنوانًا كاملًا يبدأ بـ https://.",
       "fundersHeading": "الممولون",
-      "fundersHint": "Shown in the footer and on every record.",
+      "fundersHint": "يظهرون في التذييل وفي كل سجل.",
       "fundersEmpty": "لا يوجد ممولون بعد.",
       "addFunder": "إضافة ممول",
       "removeFunder": "إزالة الممول",

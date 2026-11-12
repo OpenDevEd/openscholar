@@ -2115,7 +2115,7 @@
       },
       "socialError": "https:// से शुरू होने वाला पूरा पता इस्तेमाल करें।",
       "fundersHeading": "फ़ंडर",
-      "fundersHint": "Shown in the footer and on every record.",
+      "fundersHint": "फ़ुटर में और हर रिकॉर्ड पर दिखते हैं।",
       "fundersEmpty": "अभी कोई फ़ंडर नहीं।",
       "addFunder": "फ़ंडर जोड़ें",
       "removeFunder": "फ़ंडर हटाएं",

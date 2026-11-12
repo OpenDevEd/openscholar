@@ -390,6 +390,9 @@ export function assembleEvidenceLibraryConfiguration({
     },
     now,
   ) as Record<string, unknown>;
+  // The runtime's schema still fills in the partners list it reads from older settings. Nothing is sent under it:
+  // a community's funders are the footer's.
+  if (isObject(withDefaults.identity)) delete withDefaults.identity.fundingPartners;
   // AI answers decide both halves of the AI offer: the assistant and search
   // by meaning. The runtime refuses AI search without an embedder, so the
   // two are written together or not at all. Deep research is a separate

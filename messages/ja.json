@@ -2115,7 +2115,7 @@
       },
       "socialError": "https:// で始まる完全なアドレスを使ってください。",
       "fundersHeading": "助成機関",
-      "fundersHint": "Shown in the footer and on every record.",
+      "fundersHint": "フッターとすべてのレコードに表示されます。",
       "fundersEmpty": "助成機関はまだありません。",
       "addFunder": "助成機関を追加",
       "removeFunder": "助成機関を削除",

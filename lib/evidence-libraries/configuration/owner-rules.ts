@@ -91,6 +91,16 @@ function ownerRuleIssues(
       message: "The generated public address cannot be changed.",
     });
   }
+  // Who funds a community is one list, the footer's funders (settings version 15). The runtime's schema still
+  // allows this key, which it reads from older settings; a current row never carries it.
+  if (sectionKey === "identity" && record && "fundingPartners" in record) {
+    issues.push({
+      pointer: "/identity/fundingPartners",
+      section: "identity",
+      keyword: "removed",
+      message: "Funding partners are the footer's funders now. Add them there.",
+    });
+  }
   // There is no plan model yet. Every library counts as a free plan, so the
   // "Powered by OpenScholar" footer credit stays on. Plan gating comes later.
   if (sectionKey === "footer" && record?.poweredBy === false) {

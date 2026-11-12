@@ -2115,7 +2115,7 @@
       },
       "socialError": "请使用以 https:// 开头的完整地址。",
       "fundersHeading": "资助方",
-      "fundersHint": "Shown in the footer and on every record.",
+      "fundersHint": "显示在页脚和每条记录上。",
       "fundersEmpty": "还没有资助方。",
       "addFunder": "添加资助方",
       "removeFunder": "移除资助方",
