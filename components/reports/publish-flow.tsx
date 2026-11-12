@@ -1823,8 +1823,9 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                   }
                 />
               ) : null}
-              {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again. */}
-              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t("activatingNow")}</p> : null}</AutoHeight>
+              {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again.
+                  With something to pay and no saved card, what it is doing is opening Stripe's page: nothing is activated yet. */}
+              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t(due > 0 && !card ? "activation.onStripe" : "activatingNow")}</p> : null}</AutoHeight>
               <div className="flex flex-wrap justify-end gap-2">
                 {/* Back to the details, as every other step has a way back to the one before it: wherever the server
                     lets a checked report change (flow.ts `goTo`). */}
