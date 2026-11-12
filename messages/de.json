@@ -6824,7 +6824,7 @@
         "own": "Meine eigene Lizenz",
         "ownName": "Ihr Name",
         "ownUrl": "Webadresse ihres Textes",
-        "ownNeeded": "Geben Sie Ihrer Lizenz einen Namen und die Webadresse ihres Textes.",
+        "ownNeeded": "Geben Sie Ihrer Lizenz einen Namen in lateinischen Buchstaben und die Webadresse ihres Textes.",
         "help": {
           "title": "Lizenzen",
           "about": "Über Lizenzen",

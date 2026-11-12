@@ -313,6 +313,12 @@ describe("activating a report", () => {
     await world.t.action(internal.reports.activation.finishHold, { activationId, hold, attempt: 0 });
     expect(autumn.holds()).toEqual({ given: 3 });
     expect((await activations(world))[0]!.finishedAt).toBeUndefined();
+    // Until it is taken, the workspace's next report waits: the $10 on its way is the first report's, not its own.
+    await world.t.run(async (ctx) => {
+      for (const started of await ctx.db.query("reportStarts").take(5)) await ctx.db.delete("reportStarts", started._id);
+    });
+    const next = await checked(world, [passed("byline")]);
+    await expect(world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key: next.key, payWith: "balance", price: 10 })).rejects.toMatchObject(refused("CONFLICT"));
     autumn.give(10);
     await world.t.action(internal.reports.activation.finishHold, { activationId, hold, attempt: 1 });
     await world.t.action(internal.reports.activation.finishHold, { activationId, hold, attempt: 2 });
@@ -320,6 +326,7 @@ describe("activating a report", () => {
     expect(autumn.holds()).toEqual({ given: 3, "bought-1": 0 });
     expect(autumn.asked.filter((call) => call.path === "balances.update")).toHaveLength(1);
     expect((await activations(world))[0]!.finishedAt).toBeDefined();
+    expect(await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key: next.key, payWith: "balance", price: 10 })).toBeTruthy();
   });
 
   it("shows the balance as it was while a card pays toward a report, never what was bought and not yet spent", async () => {

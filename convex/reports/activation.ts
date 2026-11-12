@@ -173,6 +173,15 @@ async function waitingOther(ctx: QueryCtx, workspaceId: Id<"workspaces">, report
   return other ? ((await ctx.db.get("reports", other.reportId))?.key ?? null) : null;
 }
 
+/** How long a card's price can be still to be taken: as long as the tries to take it go on (`finishHold`, about three and a half hours). */
+const OWED_MS = 4 * 60 * 60_000;
+
+/** Whether a report of the workspace went live on what a card bought and that price is still to be taken from the balance. */
+async function owed(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
+  const live = await ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", "live")).order("desc").take(5);
+  return live.some((row) => row.hold?.endsWith(BOUGHT) && row.finishedAt === undefined && Math.max(row.at, row.settling ?? 0) > Date.now() - OWED_MS);
+}
+
 /** Everything an activation needs to know before it starts, checked as the actor. */
 export const prepare = internalQuery({
   args: { actor: actorValidator, key: v.string() },
@@ -221,6 +230,9 @@ export const begin = internalMutation({
     if (await pendingOf(ctx, report._id)) throw createError("CONFLICT", STILL_PAYING);
     const other = await waitingOther(ctx, actor.workspaceId, report._id);
     if (other) throw createError("CONFLICT", `${other} is waiting for its payment. Open it and finish or cancel that first, then activate this one.`);
+    // Dollars a card bought for an earlier report, still to be taken from the balance because Autumn couldn't be
+    // reached, are that report's: nothing else is spent from the balance until they are taken.
+    if (await owed(ctx, actor.workspaceId)) throw createError("CONFLICT", "An earlier report's payment is still being finished. Try again in a few minutes.");
     if ((await priceFor(ctx, report)) !== price) throw createError("CONFLICT", "This report's price changed since this page read it. Check what is due, then activate again.", { reason: "changed" });
     return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price, ...(code && { code }) });
   },

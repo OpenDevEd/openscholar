@@ -63,6 +63,32 @@ describe("how a report is paid for", () => {
   });
 });
 
+describe("an author's own licence", () => {
+  it("is kept by name and address, and only with a name the page added to a PDF can print", async () => {
+    const world = await setup();
+    const own = (name: string) => world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: { name, url: "https://example.org/licence" } });
+    // The byline carries the licence's name, and the added page writes the byline in Latin letters only.
+    await expect(own("许可证")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    const key = await own("Licence Ouverte – Etalab 2.0");
+    expect(await read(world.author, world.own, key)).toMatchObject({ licence: { name: "Licence Ouverte – Etalab 2.0", url: "https://example.org/licence" } });
+    expect((await row(world.t, key)).byline).toContain("Licence Ouverte – Etalab 2.0");
+  });
+});
+
+describe("a report's details sent under another licence", () => {
+  it("are checked, kept and printed under the licence it was signed with", async () => {
+    const world = await setup();
+    const report = await atDetails(world);
+    await world.t.run((ctx) => ctx.db.patch("reports", report.reportId, { licence: "CC BY-NC 4.0" }));
+    // A form that says CC BY, as a changed or older page could send: the signed licence is the report's.
+    const started = await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key: report.key, metadata: { ...details(), licence: "CC BY 4.0" }, runId: "run-licence", from: { pdfAt: report.pdfAt } });
+    // What the run hands on is what the page added to the PDF is written with.
+    expect(started).toMatchObject({ licence: "CC BY-NC 4.0" });
+    const kept = await world.t.run(async (ctx) => (await ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", report.reportId)).unique())!.metadata);
+    expect(kept?.licence).toBe("CC BY-NC 4.0");
+  });
+});
+
 describe("reports that wait in a person's other workspaces", () => {
   it("tells an admin of the lab, from their own workspace, and tells a member nothing", async () => {
     const world = await setup();

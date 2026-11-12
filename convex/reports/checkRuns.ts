@@ -12,7 +12,7 @@ import { seriesOf } from "../../lib/reports/settings";
 import { becameReady, notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
-import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
+import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, licenceValidator, metadataValidator, runFromValidator } from "./validators";
 
 /**
  * Starts a run: the author's corrections are saved before anything runs, so a run that fails keeps them, and the
@@ -36,6 +36,8 @@ export const start = internalMutation({
     version: v.number(),
     checks: v.array(v.object({ ...checkValidator.fields, model: v.union(v.id("models"), v.null()) })),
     changes: v.boolean(),
+    /** The licence the report was signed under: its details are checked, kept and printed with it, whatever was sent. */
+    licence: licenceValidator,
     /** The PDF whose last page Openscholar added, for a report on its way out: that page is written again with these details. */
     page: v.optional(v.object({ file: v.id("_storage"), at: v.number(), line: v.string(), series: v.string() })),
   })),
@@ -88,6 +90,7 @@ export const start = internalMutation({
       version,
       checks: await Promise.all(on.map(async (check) => ({ ...check, model: (await slugPick(ctx, check.modelId, check.effort, "screening"))?.modelId ?? null }))),
       changes,
+      licence: licenceOf(report),
       ...(!changes && report.pdf?.stamped && { page: { file: report.pdf.file, at: report.pdf.at, line: report.byline, series: seriesOf(report, (await reportSettings(ctx)).series).name } }),
     };
   },

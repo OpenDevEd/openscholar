@@ -28,6 +28,8 @@ const WORTH = DEFAULT_PRICES.standard;
  * - What the old count left behind is cleared: `free`, `unbilled` and `refund` on `reportActivations`, `perDay` and
  *   `orgPerDay` on `reportSettings`, `activations` and `activationsRefill` on `billingAccounts`.
  * Safe to run again: each balance is given under a key of its own, and what was moved is gone. Its log says what moved.
+ * Run it again after a payment that was waiting on a bank at the deploy is paid: that one bought a counted activation,
+ * which lands in the old balance until this moves it.
  */
 export const run = internalAction({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },

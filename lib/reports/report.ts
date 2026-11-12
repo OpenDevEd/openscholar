@@ -199,11 +199,20 @@ export function payment({ price, balance, payWith, off }: { price: number; balan
   return { fromBalance: price - bought, bought, discount, due: Math.round((bought - discount) * 100) / 100 };
 }
 
-/** An author's own licence as it may be kept: a name, and a web address for its text. Null when it can't be. */
+/**
+ * The letters the page Openscholar adds to a PDF can print (lib/reports/byline-page.ts, Helvetica in WinAnsi): Latin
+ * ones with their accents, digits and the usual punctuation. A licence's name is printed there, in the byline.
+ */
+const PRINTABLE = /^[\x20-\x7E\u00A0-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u2013\u2014\u2018-\u201A\u201C-\u201E\u2026\u20AC\u2122]+$/;
+
+/**
+ * An author's own licence as it may be kept: a name the byline can print, and a web address for its text. Null when
+ * it can't be.
+ */
 export function ownLicence(name: string, url: string): OwnLicence | null {
   const named = name.trim();
   const address = url.trim();
-  if (!named || named.length > LICENCE_NAME_MAX || LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase())) return null;
+  if (!named || named.length > LICENCE_NAME_MAX || !PRINTABLE.test(named) || LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase())) return null;
   return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? { name: named, url: address } : null;
 }
 

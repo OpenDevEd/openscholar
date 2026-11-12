@@ -6823,7 +6823,7 @@
         "own": "Ma propre licence",
         "ownName": "Son nom",
         "ownUrl": "Adresse web de son texte",
-        "ownNeeded": "Donnez à votre licence un nom et l’adresse web de son texte.",
+        "ownNeeded": "Donnez à votre licence un nom en lettres latines et l’adresse web de son texte.",
         "help": {
           "title": "Licences",
           "about": "À propos des licences",

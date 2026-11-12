@@ -117,7 +117,7 @@ export const run = action({
     // with these on it. A page that can't be written ends the run here, and its author is told what to do.
     if (started.page) {
       try {
-        await restamp(ctx, reportId, runId, started.page, metadata);
+        await restamp(ctx, reportId, runId, started.page, { ...metadata, licence: started.licence });
       } catch (error) {
         console.error(JSON.stringify({ event: "report-byline-page-failed", reportId, error: String(error).slice(0, 300) }));
         await ctx.runMutation(internal.reports.checkRuns.abandon, { reportId, runId });

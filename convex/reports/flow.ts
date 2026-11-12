@@ -232,7 +232,7 @@ export const sign = workspaceMutation({
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
     const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url);
-    if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name and the web address of its text.");
+    if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name in Latin letters and the web address of its text.");
     const { voucher, voucherOff } = keptVoucher(applied);
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);

@@ -6823,7 +6823,7 @@
         "own": "My own license",
         "ownName": "Its name",
         "ownUrl": "Web address of its text",
-        "ownNeeded": "Give your license a name and the web address of its text.",
+        "ownNeeded": "Give your license a name in Latin letters and the web address of its text.",
         "help": {
           "title": "Licenses",
           "about": "About licenses",
