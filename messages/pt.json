@@ -6931,7 +6931,7 @@
       "cancel": "Cancelar",
       "sendForReview": "Verificar as alterações e enviá-las para revisão",
       "checkAndPublish": "Verificar e publicar as alterações",
-      "runChecks": "Seguinte: executar as verificações",
+      "runChecks": "Enviar",
       "tooEarly": "Um relatório não pode ter data anterior a 1400.",
       "back": "Voltar"
     }

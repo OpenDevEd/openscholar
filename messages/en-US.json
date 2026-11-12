@@ -6930,7 +6930,7 @@
       "cancel": "Cancel",
       "sendForReview": "Check the changes and send them for review",
       "checkAndPublish": "Check and publish the changes",
-      "runChecks": "Next: run the checks",
+      "runChecks": "Submit",
       "tooEarly": "A report can't be dated before 1400.",
       "back": "Back"
     }
