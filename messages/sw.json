@@ -6835,6 +6835,7 @@
         "ownNeeded": "Give your licence a name and the web address of its text.",
         "help": {
           "title": "Licences",
+          "about": "About licences",
           "by": "Anyone who reuses it credits you.",
           "sa": "What others make from it keeps the same licence.",
           "nc": "Nobody may use it commercially without asking you.",

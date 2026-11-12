@@ -7,6 +7,7 @@
 import { useId, type ReactNode } from "react";
 import { preload } from "react-dom";
 import { useFormatter, useTranslations } from "next-intl";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { FadeImage } from "@/components/ui/fade-image";
 import { Input } from "@/components/ui/input";
@@ -74,34 +75,38 @@ export function LicenceChoice({ value, onChange, cost, disabled = false }: { val
           );
         })}
       </RadioGroup>
-      {other ? (
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-start">
-          <Select value={typeof value === "string" ? value : OWN} disabled={disabled} onValueChange={(picked) => onChange(picked === OWN ? { name: "", url: "" } : (picked as LicenceName))}>
-            <SelectTrigger aria-label={t("which")} className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {OTHERS.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-              <SelectItem value={OWN}>{t("own")}</SelectItem>
-            </SelectContent>
-          </Select>
-          {typeof value === "string" ? (
-            <a href={LICENCES[value].url} target="_blank" rel="noreferrer license" className="inline-flex h-9 min-w-0 items-center gap-1.5 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-              <span className="truncate">{LICENCES[value].title}</span>
-              <ExternalLink className="size-3.5 shrink-0" />
-            </a>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input value={value.name} maxLength={LICENCE_NAME_MAX} disabled={disabled} aria-label={t("ownName")} placeholder={t("ownName")} onChange={(e) => onChange({ ...value, name: e.target.value })} />
-              <Input value={value.url} maxLength={DETAIL_TEXT.link} disabled={disabled} type="url" inputMode="url" aria-label={t("ownUrl")} placeholder="https://" onChange={(e) => onChange({ ...value, url: e.target.value })} />
-            </div>
-          )}
-        </div>
-      ) : null}
+      {/* Opens under the cards as it is picked, rather than pushing the agreement down in one frame. Its top space is
+          inside it, so closed it takes none. */}
+      <AutoHeight className="!mt-0">
+        {other ? (
+          <div className="grid gap-3 pt-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-start">
+            <Select value={typeof value === "string" ? value : OWN} disabled={disabled} onValueChange={(picked) => onChange(picked === OWN ? { name: "", url: "" } : (picked as LicenceName))}>
+              <SelectTrigger aria-label={t("which")} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OTHERS.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+                <SelectItem value={OWN}>{t("own")}</SelectItem>
+              </SelectContent>
+            </Select>
+            {typeof value === "string" ? (
+              <a href={LICENCES[value].url} target="_blank" rel="noreferrer license" className="inline-flex h-9 min-w-0 items-center gap-1.5 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                <span className="truncate">{LICENCES[value].title}</span>
+                <ExternalLink className="size-3.5 shrink-0" />
+              </a>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input value={value.name} maxLength={LICENCE_NAME_MAX} disabled={disabled} aria-label={t("ownName")} placeholder={t("ownName")} onChange={(e) => onChange({ ...value, name: e.target.value })} />
+                <Input value={value.url} maxLength={DETAIL_TEXT.link} disabled={disabled} type="url" inputMode="url" aria-label={t("ownUrl")} placeholder="https://" onChange={(e) => onChange({ ...value, url: e.target.value })} />
+              </div>
+            )}
+          </div>
+        ) : null}
+      </AutoHeight>
     </div>
   );
 }
@@ -115,11 +120,11 @@ function LicenceHelp() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("title")} className="-my-1 size-5 shrink-0 rounded-full text-muted-foreground hover:text-foreground aria-expanded:text-primary">
+        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("about")} className="-my-1 size-5 shrink-0 rounded-full text-muted-foreground hover:text-foreground aria-expanded:text-primary">
           <CircleHelp className="size-3.5" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" aria-label={t("title")} className="w-80 p-0 font-normal text-foreground">
+      <PopoverContent align="start" aria-label={t("about")} className="w-80 p-0 font-normal text-foreground">
         <div className="space-y-3 p-4">
           <p className="text-sm font-semibold">{t("title")}</p>
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm/5">
