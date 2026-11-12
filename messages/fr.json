@@ -6784,8 +6784,8 @@
       },
       "overview": {
         "title": "Publier un rapport avec {series}",
-        "intro": "Environ dix minutes du début à la fin. Voici ce que chaque étape vous demande.",
-        "introReviewed": "Environ dix minutes de votre temps. Un relecteur approuve ensuite le rapport avant sa mise en ligne, et vous êtes prévenu par e-mail.",
+        "intro": "Environ cinq minutes du début à la fin. Voici ce que chaque étape vous demande.",
+        "introReviewed": "Environ cinq minutes de votre temps. Un relecteur approuve ensuite le rapport avant sa mise en ligne, et vous êtes prévenu par e-mail.",
         "start": "Suivant : signer l’accord",
         "agreement": {
           "title": "Signer l'accord de publication",
