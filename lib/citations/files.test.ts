@@ -23,6 +23,8 @@ describe("a citation file", () => {
   });
   it("names a report's series from its paper, as the page's Cite downloads and the file routes build it", () => {
     const paper = { id: "R100018", title: "Rainwater", type: "report", authorships: [], primary_location: { source: { display_name: "Openscholar Reports", type: "repository" } } } as unknown as PaperResult;
+    // A presentation is cited as a report in the series, keeping its number.
+    expect(citationFile(paperToCitationData({ ...paper, type: "presentation" } as PaperResult)!, "bibtex").text).toContain("number = {R100018}");
     const data = paperToCitationData(paper)!;
     expect(citationFile(data, "ris").text).toContain("T2  - Openscholar Reports");
     expect(citationFile(data, "bibtex").text).toMatch(/series = \{Openscholar \{?Reports\}?\}/);
