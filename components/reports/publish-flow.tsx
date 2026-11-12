@@ -592,6 +592,10 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
       shown.current = true;
       return;
     }
+    // A screen that changed without a press here, as when the report went live from another tab, opens at its top
+    // too: left where the page was scrolled, its heading sat under the page's bar.
+    // The bars fixed at the top of the page (the notice, the phone's header, the page's own) cover about this much.
+    if (window.scrollY > 0 && node.getBoundingClientRect().top < 160) window.scrollTo({ top: 0 });
     const heading = node.querySelector("h2");
     // Only focus the old screen lost, which has fallen to the page: someone typing elsewhere, in the assistant say, keeps theirs.
     if (!heading || (document.activeElement && document.activeElement !== document.body)) return;
