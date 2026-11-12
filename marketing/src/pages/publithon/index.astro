@@ -8,15 +8,16 @@ import Close from "../../components/Close.astro";
 import { APP } from "../../data/site.mjs";
 // What a publithon is and how to take part, for anyone invited to one. No event of its own: dates, topic and sponsor
 // come later, when an event needs them. Sponsors write to us through the contact form's sponsor topic.
-// The steps are /publish's own (publishReports.flow.overview), in the order the app takes them, each with a glass
-// emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck).
+// The steps are /publish's own (publishReports.flow.overview), in the order the app takes them. Each has a glass
+// emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck)
+// and the real screen of that step, captured on dev from one report taken through the flow.
 const steps = [
-  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
-  ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report."],
-  ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
-  ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
-  ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before."],
-  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page."],
+  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0.", "The publishing agreement, with the author's name ready to sign"],
+  ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report.", "The DOI reserved for the report"],
+  ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you.", "The upload step, with the line each PDF carries and who adds it"],
+  ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF.", "The report's details read from the PDF: its title, type, language, date and author"],
+  ["checks", "#a3e635", "Automatic checks", "They look for that line and for anything published before.", "Four automatic checks, each passed"],
+  ["live", "#fbbf24", "Go live", "Once the checks pass, the DOI is registered and the report has its own page.", "The report live, with its DOI registered"],
 ];
 // A real DOI taken apart into the three parts people need: where it points from, whose it is, and which work.
 // The prefix is shared dev's sandbox one (10.53832); production's goes here at launch. Positions are in the mono
@@ -60,18 +61,19 @@ const faq = [
     </div>
   </section>
 
-  {/* Two doors: new work is published, work that's already out is suggested to a community. */}
-  <section class="ways" id="ways" aria-labelledby="ways-h">
-    <h2 id="ways-h">Two ways to take part</h2>
-    <div class="doors">
-      <a class="panel door d-new" href={`${APP}/publish`} data-in>
-        <img class="d-art" src="/img/art-pub-new.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
-        <span class="d-copy"><b>Your own new work</b><span>A report, paper or study you wrote, published with its own DOI.</span><span class="go">Publish it<Arrow /></span></span>
-      </a>
-      <a class="panel door d-gap" href={`${APP}/communities`} data-in>
-        <img class="d-art" src="/img/art-pub-gap.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
-        <span class="d-copy"><b>Work that's already out</b><span>A community on your topic is missing a paper? Suggest it, and its editors add it.</span><span class="go">Find a community<Arrow /></span></span>
-      </a>
+  {/* The steps, right under the hero and on the same night sky. The section stays on screen while six short scrolls
+      go by: the thread fills, the step in hand opens with its emblem, and its real screen takes the window.
+      Laid out after Midday's list beside a product screen and Giga's lit progress line (Mobbin). */}
+  <section class="bleed how" id="publish" aria-labelledby="how-h" data-how data-at="0" style={`--n:${steps.length}`}>
+    <div class="stage">
+      <div class="inner how-in">
+        <div class="how-head"><h2 id="how-h">From PDF to DOI in a few clicks</h2><p class="lead">About ten minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
+        <ol class="road">
+          <i class="thread" aria-hidden="true"><i></i></i>
+          {steps.map(([id, c, t, d], i) => <li class:list={{ on: i === 0 }} style={`--c:${c}`} data-step={i}><button type="button" aria-current={i === 0 ? "step" : "false"}><img src={`/img/step-${id}.avif`} width="264" height="264" decoding="async" alt="" /><span class="txt"><b>{t}</b><span>{d}</span></span></button></li>)}
+        </ol>
+        <div class="shots">{steps.map(([id, , , , alt], i) => <img class:list={["shot", { on: i === 0 }]} data-shot={i} src={`/img/screens/pub-${id}-laptop-light.avif`} srcset={`/img/screens/pub-${id}-laptop-light-1000.avif 1000w, /img/screens/pub-${id}-laptop-light.avif 2000w`} sizes="(max-width: 1000px) 94vw, 700px" width="2000" height="1250" loading={i === 0 ? "eager" : "lazy"} decoding="async" alt={alt} />)}</div>
+      </div>
     </div>
   </section>
 
@@ -103,12 +105,18 @@ const faq = [
     </div>
   </section>
 
-  {/* The six steps on one thread, each with its icon from the app as a glass emblem. The thread fills from the first
-      step to the last as the section arrives, and each emblem lights as it reaches it. */}
-  <section class="bleed path" id="publish" aria-labelledby="path-h">
-    <div class="inner p-head"><h2 id="path-h">What's left: a few clicks</h2><p class="lead">About ten minutes from start to finish. Once the automatic checks pass, your report goes live straight away.</p></div>
-    <div class="inner p-run" data-in>
-      <ol class="p-steps"><i class="thread" aria-hidden="true"><i></i></i>{steps.map(([id, c, t, d], i) => <li style={`--i:${i};--c:${c}`}><img src={`/img/step-${id}.avif`} width="264" height="264" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></li>)}</ol>
+  {/* Two doors: new work is published, work that's already out is suggested to a community. */}
+  <section class="ways" id="ways" aria-labelledby="ways-h">
+    <h2 id="ways-h">Two ways to take part</h2>
+    <div class="doors">
+      <a class="panel door d-new" href={`${APP}/publish`} data-in>
+        <img class="d-art" src="/img/art-pub-new.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+        <span class="d-copy"><b>Your own new work</b><span>A report, paper or study you wrote, published with its own DOI.</span><span class="d-go">Publish it<Arrow /></span></span>
+      </a>
+      <a class="panel door d-gap" href={`${APP}/communities`} data-in>
+        <img class="d-art" src="/img/art-pub-gap.avif" width="1024" height="1536" loading="lazy" decoding="async" alt="" />
+        <span class="d-copy"><b>Work that's already out</b><span>A community on your topic is missing a paper? Suggest it, and its editors add it.</span><span class="d-go">Find a community<Arrow /></span></span>
+      </a>
     </div>
   </section>
 
@@ -124,6 +132,33 @@ const faq = [
   <Faq items={faq} title="Questions about publithons" />
   <Close title="Give your work a DOI" art="close-green"><a slot="action" class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a></Close>
 </Base>
+<script>
+  // The steps follow the scroll while their section is pinned: which step is in hand, and how far it is to the next.
+  const how = document.querySelector<HTMLElement>("[data-how]");
+  if (how) {
+    const stage = how.querySelector<HTMLElement>(".stage")!, rows = [...how.querySelectorAll<HTMLElement>("[data-step]")], shots = [...how.querySelectorAll<HTMLElement>("[data-shot]")];
+    const n = rows.length, still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let at = 0, queued = false;
+    const pinned = () => getComputedStyle(stage).position === "sticky";
+    const span = () => how.offsetHeight - stage.offsetHeight;
+    const show = (i: number) => {
+      if (i === at) return;
+      at = i; how.dataset.at = String(i); how.style.setProperty("--step", String(i)); how.style.setProperty("--pub-tint", rows[i].style.getPropertyValue("--c"));
+      rows.forEach((r, j) => { r.classList.toggle("on", j === i); r.classList.toggle("done", j < i); r.querySelector("button")!.setAttribute("aria-current", j === i ? "step" : "false"); });
+      shots.forEach((s, j) => { s.classList.toggle("on", j === i); s.classList.toggle("done", j < i); });
+    };
+    const read = () => {
+      queued = false;
+      if (!pinned() || span() <= 0) return;
+      const x = Math.min(n - 1e-4, Math.max(0, -how.getBoundingClientRect().top / span()) * n), i = Math.floor(x);
+      show(i); how.style.setProperty("--frac", i === n - 1 ? "0" : (x - i).toFixed(3));
+    };
+    const ask = () => { if (!queued) { queued = true; requestAnimationFrame(read); } };
+    addEventListener("scroll", ask, { passive: true }); addEventListener("resize", ask); read();
+    // A step in the list takes the page to it.
+    rows.forEach((r, j) => r.querySelector("button")!.addEventListener("click", () => { if (pinned()) scrollTo({ top: how.getBoundingClientRect().top + scrollY + span() * (j + .5) / n, behavior: still ? "auto" : "smooth" }); }));
+  }
+</script>
 <style>
   @keyframes up { from { opacity: 0; transform: translateY(20px); } }
 
@@ -133,6 +168,8 @@ const faq = [
   .hero > :global(.h-art img) { animation: rise 2.6s var(--ease) both; } @keyframes rise { from { opacity: 0; transform: translateY(36px) scale(1.04); } }
   /* The words keep a calm night behind them wherever the art runs under them. */
   .hero::before, .sponsor::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgb(7 11 26 / .88), rgb(7 11 26 / .62) 36%, transparent 60%); }
+  /* The Earth sinks into the same night the steps stand on, so the two read as one sky. */
+  .hero::after { content: ""; position: absolute; inset: auto 0 0; height: 140px; z-index: -1; pointer-events: none; background: linear-gradient(transparent, var(--night)); }
   .h-copy { position: relative; display: grid; gap: 22px; justify-items: start; }
   .h-copy h1 { font-size: clamp(56px, 8.4vw, 128px); line-height: .94; letter-spacing: -.045em; max-width: 7em; }
   .h-copy .lead { max-width: 29em; color: rgb(255 255 255 / .86); }
@@ -141,15 +178,15 @@ const faq = [
 
   /* Two tall doors side by side, the art filling each and the words at its foot. */
   /* Dark blocks take the strip's full width, as the panels do; headings and text keep the margin. */
-  .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding-top: clamp(48px, 6vw, 88px); } .ways h2 { padding-inline: var(--pad); }
+  .ways { display: grid; gap: clamp(20px, 2.4vw, 32px); padding-top: clamp(72px, 8vw, 120px); } .ways h2 { padding-inline: var(--pad); }
   .ways h2 { font-size: clamp(30px, 3.2vw, 44px); }
   .doors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
   .door { display: grid; align-content: end; min-height: clamp(520px, 46vw, 660px); padding: clamp(24px, 3vw, 40px); color: #fff; }
   .d-new { --bg: #02261d; } .d-gap { --bg: #2a0410; }
   .d-art { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; transition: transform 1.2s var(--ease), filter .6s var(--ease); -webkit-mask-image: linear-gradient(#000 52%, transparent 92%); mask-image: linear-gradient(#000 52%, transparent 92%); filter: brightness(.86); }
   .door:hover .d-art { transform: scale(1.04); filter: none; }
-  .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
-  .go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .go :global(i) { transform: translateX(4px); }
+  .d-copy { display: grid; gap: 10px; max-width: 26em; } .d-copy b { font-weight: 500; font-size: clamp(26px, 2.6vw, 36px); line-height: 1.08; letter-spacing: -.02em; } .d-copy > span:not(.d-go) { color: rgb(255 255 255 / .8); font-size: 17px; line-height: 1.45; }
+  .d-go { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 500; font-size: 17px; } .d-go :global(i) { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); transition: transform .3s var(--ease); } .door:hover .d-go :global(i) { transform: translateX(4px); }
 
   /* A DOI labelled like a diagram: each label at its own part, joined to it by a short line in the part's colour. */
   .doi { display: grid; gap: clamp(28px, 3.4vw, 48px); padding-top: clamp(72px, 8vw, 120px); }
@@ -191,24 +228,47 @@ const faq = [
   :global(.js) .ch-table:not(.in) .was b { background-size: 0 1.5px; } :global(.js) .ch-table.in .was b { transition: background-size .5s cubic-bezier(.65, 0, .35, 1) calc(.3s + var(--i) * .3s); }
   :global(.js) .ch-table:not(.in) .now { opacity: 0; translate: -10px 0; } :global(.js) .ch-table.in .now { transition: opacity .5s var(--ease) calc(.5s + var(--i) * .3s), translate .6s var(--ease) calc(.5s + var(--i) * .3s); }
 
-  /* The steps, on a thread that lights from the first to the last. */
-  .path { background: var(--night); padding-block: clamp(72px, 8vw, 120px) clamp(56px, 6vw, 96px); margin-top: clamp(48px, 6vw, 88px); }
-  .p-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .p-head h2 { font-size: clamp(40px, 5.4vw, 80px); line-height: 1; letter-spacing: -.035em; } .p-head .lead { color: rgb(255 255 255 / .78); }
-  .p-run { display: grid; margin-top: clamp(40px, 5vw, 72px); }
-  /* Six equal columns; the thread runs behind the emblems' middles, from the first column's centre to the last's. */
-  .p-steps { --em: clamp(96px, 9vw, 132px); position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 clamp(10px, 1.4vw, 20px); }
-  .thread { position: absolute; z-index: -1; top: calc(var(--em) / 2); left: calc(100% / 12); right: calc(100% / 12); height: 2px; border-radius: 2px; background: rgb(255 255 255 / .1); }
-  .thread i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .45); transform-origin: left; }
-  .p-steps li { display: grid; justify-items: center; align-content: start; gap: 6px; text-align: center; }
-  .p-steps img { width: var(--em); height: var(--em); margin-bottom: 10px; object-fit: contain; filter: drop-shadow(0 0 22px color-mix(in srgb, var(--c) 40%, transparent)); }
-  .p-steps b { font-weight: 500; font-size: 17px; letter-spacing: -.01em; } .p-steps span { color: rgb(255 255 255 / .66); font-size: 14px; line-height: 1.4; max-width: 15em; }
-  /* Arriving: the thread fills over 2.4 s and each step lights as the fill reaches its column. */
-  :global(.js) .p-run[data-in] { opacity: 1; transform: none; }
-  :global(.js) .p-run:not(.in) .thread i { transform: scaleX(0); } :global(.js) .p-run:not(.in) img { opacity: .25; filter: grayscale(1); transform: translateY(10px) scale(.92); } :global(.js) .p-run:not(.in) li > :not(img) { opacity: 0; translate: 0 10px; }
-  :global(.js) .p-run.in .thread i { transition: transform 2.4s cubic-bezier(.45, 0, .2, 1) .2s; }
-  :global(.js) .p-run.in img { transition: opacity .5s var(--ease) calc(.2s + var(--i) * .44s), filter .6s var(--ease) calc(.2s + var(--i) * .44s), transform .8s cubic-bezier(.34, 1.56, .64, 1) calc(.2s + var(--i) * .44s); }
-  :global(.js) .p-run.in li > :not(img) { transition: opacity .6s var(--ease) calc(.35s + var(--i) * .44s), translate .7s var(--ease) calc(.35s + var(--i) * .44s); }
-  .p-steps li:hover img { transform: translateY(-4px) rotate(-4deg); transition: transform .5s cubic-bezier(.34, 1.56, .64, 1); }
+  /* The steps. Without the pin (no script, or a window too short for it) they are a plain list beside the last screen. */
+  @property --pub-tint { syntax: "<color>"; inherits: true; initial-value: #3b82f6; }
+  .how { --h0: 52px; --h1: 132px; --em0: 40px; --em1: 96px; --step: 0; --frac: 0; --top: calc(var(--h0) / 2); background: var(--night); transition: --pub-tint .8s var(--ease); /* Flush under the hero: the strip's gap between sections would show as a white line across the sky. */ margin-top: calc(var(--gap) * -1); }
+  /* The contents sit in the middle of the stage, and start at its top when they are taller than it. */
+  .stage { position: relative; isolation: isolate; display: grid; align-items: start; padding-block: clamp(64px, 7vw, 104px); }
+  .stage::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(44% 56% at 72% 58%, color-mix(in srgb, var(--pub-tint) 22%, transparent), transparent 72%); }
+  .how-in { margin-block: auto; display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: clamp(32px, 4vw, 64px); row-gap: 28px; align-items: center; }
+  .how-head { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .how-head h2 { font-size: 44px; line-height: 1.05; letter-spacing: -.03em; } .how-head .lead { color: rgb(255 255 255 / .78); }
+  .road { position: relative; isolation: isolate; display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+  .road button { display: grid; grid-template-columns: var(--em1) minmax(0, 1fr); column-gap: 20px; align-items: center; width: 100%; height: 100%; padding: 0; text-align: left; color: #fff; cursor: default; }
+  .road img { justify-self: center; width: 64px; height: 64px; object-fit: contain; }
+  .txt { display: grid; gap: 4px; min-width: 0; } .txt b { font-weight: 500; font-size: 20px; line-height: 1.1; letter-spacing: -.01em; } .txt > span { color: rgb(255 255 255 / .7); font-size: 16px; line-height: 1.45; }
+  .thread { display: none; }
+  .shots { position: relative; justify-self: end; width: min(100%, calc((100vh - 300px) * 1.6)); aspect-ratio: 1120 / 700; overflow: clip; border-radius: 16px; background: #0d1326; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 50px 120px -40px #000, 0 0 140px -30px color-mix(in srgb, var(--pub-tint) 65%, transparent); }
+  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; } .shot:last-child { opacity: 1; }
+
+  /* Pinned: the section is six short scrolls tall and its stage holds the screen while they go by. */
+  @media (min-height: 561px) {
+    :global(.has-js) .how { height: calc(100vh + var(--n) * 55vh); height: calc(100svh + var(--n) * 55svh); }
+    :global(.has-js) .stage { position: sticky; top: 0; height: 100vh; height: 100svh; padding-block: 104px 36px; }
+    :global(.has-js) .road { gap: 0; }
+    /* Each step is a row: shut it is its emblem and its name; in hand it opens, its emblem grows and its line shows. */
+    :global(.has-js) .road li { height: var(--h0); transition: height .55s var(--ease); } :global(.has-js) .road li.on { height: var(--h1); }
+    :global(.has-js) .road button { cursor: pointer; }
+    :global(.has-js) .road img { width: var(--em0); height: var(--em0); filter: grayscale(1) opacity(.42); transition: width .6s cubic-bezier(.34, 1.4, .64, 1), height .6s cubic-bezier(.34, 1.4, .64, 1), filter .5s var(--ease); }
+    :global(.has-js) .road .done img { filter: none; } :global(.has-js) .road .on img { width: var(--em1); height: var(--em1); filter: drop-shadow(0 0 26px color-mix(in srgb, var(--c) 50%, transparent)); }
+    :global(.has-js) .txt b { font-size: 18px; color: rgb(255 255 255 / .46); transition: font-size .5s var(--ease), color .4s var(--ease); } :global(.has-js) .done .txt b { color: rgb(255 255 255 / .78); } :global(.has-js) .on .txt b { font-size: 28px; letter-spacing: -.02em; color: #fff; }
+    :global(.has-js) .road button:hover .txt b { color: #fff; }
+    :global(.has-js) .txt > span { max-height: 0; overflow: hidden; opacity: 0; transition: max-height .5s var(--ease), opacity .25s var(--ease); } :global(.has-js) .on .txt > span { max-height: 4.4em; opacity: 1; transition: max-height .5s var(--ease), opacity .45s var(--ease) .15s; }
+    /* The thread runs through the emblems' middles and lights as far as the step in hand, then on toward the next as
+       the page moves. Its ends sit on the first and last emblems, wherever those are while a row opens or shuts. */
+    :global(.has-js) .how[data-at="0"] { --top: calc(var(--h1) / 2); }
+    :global(.has-js) .thread { display: block; position: absolute; z-index: -1; left: calc(var(--em1) / 2 - 1px); width: 2px; top: var(--top); bottom: calc(var(--h0) / 2); border-radius: 2px; background: rgb(255 255 255 / .1); transition: top .55s var(--ease), bottom .55s var(--ease); }
+    :global(.has-js) .how[data-at="5"] .thread { bottom: calc(var(--h1) / 2); }
+    :global(.has-js) .thread i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); box-shadow: 0 0 14px rgb(255 214 140 / .5); clip-path: inset(0 0 calc(100% - (var(--step) * var(--h0) + var(--h1) / 2 - var(--top) + var(--frac) * (var(--h1) / 2 + var(--h0) / 2))) 0); transition: clip-path .55s var(--ease); }
+    /* The window stays; each step's screen comes up into it as the last one leaves through the top. */
+    :global(.has-js) .shot, :global(.has-js) .shot:last-child { opacity: 0; transform: translateY(36px) scale(.985); transition: opacity .45s var(--ease), transform .7s var(--ease); }
+    :global(.has-js) .shot.done { transform: translateY(-28px) scale(.985); } :global(.has-js) .shot.on { opacity: 1; transform: none; }
+  }
+  /* A short window keeps the pin with everything a size down. */
+  @media (min-height: 561px) and (max-height: 720px) and (min-width: 1001px) { .how { --h0: 44px; --h1: 116px; --em0: 34px; --em1: 80px; } .how-in { row-gap: 18px; } .how-head h2 { font-size: 34px; } :global(.has-js) .on .txt b { font-size: 24px; } :global(.has-js) .stage { padding-block: 92px 24px; } }
 
   /* Sponsors: the world lights up where the work comes from, and every thread leads to one medallion. */
   .sponsor { background: var(--night); min-height: clamp(560px, 50vw, 720px); padding-block: clamp(72px, 8vw, 120px); margin-top: 16px; display: grid; align-items: start; }
@@ -219,14 +279,10 @@ const faq = [
     .hero > :global(.h-art img), .sponsor > :global(.s-art img) { opacity: 1; }
     .hero { min-height: 0; padding-block: 120px 300px; } .hero::before { display: none; } .hero > :global(.h-art) { -webkit-mask-image: linear-gradient(transparent 46%, #000 72%); mask-image: linear-gradient(transparent 46%, #000 72%); } .sponsor::before { display: none; } .hero > :global(.h-art img) { object-position: 75% 100%; }
     .doors { grid-template-columns: minmax(0, 1fr); } .door { min-height: 480px; }
-    .p-head, .d-head { grid-template-columns: minmax(0, 1fr); }
+    .d-head { grid-template-columns: minmax(0, 1fr); }
     .lands { grid-template-columns: minmax(0, 1fr); } .gains { padding-bottom: 0; } .d-shot { margin-bottom: -9%; }
     .ch-head { grid-template-columns: minmax(0, 1fr); } .ch-art { aspect-ratio: 1672 / 760; }
     .ch-row { grid-template-columns: minmax(0, 1fr); } .ch-th { display: none; } .ch-row > .was { padding-bottom: 4px; } .ch-row > .now { padding-top: 4px; }
-    .p-steps { --em: 72px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
-    .thread { top: calc(var(--em) / 2); bottom: calc(var(--em) / 2); left: calc(var(--em) / 2 - 1px); right: auto; width: 2px; height: auto; } .thread i { background: linear-gradient(#3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); transform-origin: top; }
-    :global(.js) .p-run:not(.in) .thread i { transform: scaleY(0); }
-    .p-steps li { grid-template-columns: var(--em) minmax(0, 1fr); column-gap: 16px; justify-items: start; align-items: center; text-align: left; } .p-steps img { grid-row: span 2; margin: 0; } .p-steps b { align-self: end; } .p-steps span { align-self: start; max-width: none; }
     .sponsor { min-height: 0; padding-bottom: 280px; } .sponsor > :global(.s-art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 60%); mask-image: linear-gradient(transparent 30%, #000 60%); }
   }
   
@@ -238,5 +294,22 @@ const faq = [
     .dia > figcaption:nth-of-type(1) { grid-row: 2; } .dia > figcaption:nth-of-type(2) { grid-row: 4; } .dia > figcaption:nth-of-type(3) { grid-row: 6; }
   }
   @media (prefers-reduced-motion: reduce) { :global(.js) .ch-table:not(.in) .now, :global(.js) .dia:not(.in) .tag { opacity: 1; translate: none; } :global(.js) .ch-table:not(.in) .was b { background-size: 100% 1.5px; } :global(.js) .dia:not(.in) .pt::after { transform: none; } }
-  @media (prefers-reduced-motion: reduce) { :global(.js) .p-run:not(.in) .thread i { transform: none; } :global(.js) .p-run:not(.in) img, :global(.js) .p-run:not(.in) li > :not(img) { opacity: 1; filter: none; transform: none; translate: none; } }
+  /* Narrow screens: the screen on top, the six emblems in a row on the thread under it, and the step in hand's words below. */
+  @media (max-width: 1000px) {
+    .how { --em0: 34px; --em1: 52px; }
+    .how-in { grid-template-columns: minmax(0, 1fr); row-gap: 16px; } .how-head { grid-template-columns: minmax(0, 1fr); gap: 8px; } .how-head h2 { font-size: 28px; } .how-head .lead { font-size: 15px; line-height: 1.45; }
+    .shots { order: 2; justify-self: center; width: min(100%, calc((100vh - 420px) * 1.6)); border-radius: 12px; } .road { order: 3; }
+    .road button { grid-template-columns: 64px minmax(0, 1fr); column-gap: 14px; }
+  }
+  @media (max-width: 1000px) and (min-height: 561px) {
+    :global(.has-js) .stage { padding-block: 88px 16px; }
+    :global(.has-js) .road { grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: 112px; }
+    :global(.has-js) .road li, :global(.has-js) .road li.on { height: 56px; }
+    :global(.has-js) .road button { display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; }
+    :global(.has-js) .txt { position: absolute; left: 0; right: 0; top: 68px; pointer-events: none; opacity: 0; translate: 0 8px; transition: opacity .25s var(--ease), translate .4s var(--ease); } :global(.has-js) .on .txt { opacity: 1; translate: 0; transition: opacity .45s var(--ease) .12s, translate .5s var(--ease) .12s; }
+    :global(.has-js) .txt b, :global(.has-js) .on .txt b, :global(.has-js) .done .txt b { font-size: 22px; color: #fff; } :global(.has-js) .txt > span, :global(.has-js) .on .txt > span { max-height: none; opacity: 1; font-size: 15px; }
+    :global(.has-js) .thread, :global(.has-js) .how[data-at="5"] .thread { top: 27px; bottom: auto; left: calc(100% / 12); right: calc(100% / 12); width: auto; height: 2px; }
+    :global(.has-js) .thread i { background: linear-gradient(90deg, #3b82f6, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24); clip-path: inset(0 calc(100% - (var(--step) + var(--frac)) / 5 * 100%) 0 0); }
+  }
+  @media (prefers-reduced-motion: reduce) { .how, .how * { transition: none !important; } }
 </style>
