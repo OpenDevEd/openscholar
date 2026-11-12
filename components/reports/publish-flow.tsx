@@ -36,6 +36,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AutoHeight } from "@/components/ui/auto-height";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { Button } from "@/components/ui/button";
+import { NextButton } from "@/components/reports/next-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
@@ -1037,8 +1038,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           </>
         ) : null}
         {starts ? (
-          <Button
-            className="relative"
+          <NextButton
+            busy={busy || !!signed}
             disabled={!agreed || !name.trim() || !licence || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
@@ -1056,12 +1057,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
               })
             }
           >
-            <Working busy={busy || !!signed}>
-              <span className="flex items-center gap-2">
-                {t("sign")} <ArrowRight />
-              </span>
-            </Working>
-          </Button>
+            {t("sign")}
+          </NextButton>
         ) : (
           <Button onClick={() => openSignIn()}>
             <PenLine /> {t("signIn")}
@@ -1147,9 +1144,9 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
         <StepNav
           hint={by ? undefined : t("bylineBy.choose")}
           next={
-            <Button disabled={!by} onClick={onNext}>
-              {t("nextUpload")} <ArrowRight />
-            </Button>
+            <NextButton disabled={!by} onClick={onNext}>
+              {t("nextUpload")}
+            </NextButton>
           }
         />
       </motion.div>
@@ -1254,9 +1251,7 @@ function Overview({ series, reviewed, activations, refill, price, priceOfThree, 
         ))}
       </ol>
       <div className="mt-6 flex justify-end">
-        <Button onClick={onStart}>
-          {t("start")} <ArrowRight />
-        </Button>
+        <NextButton onClick={onStart}>{t("start")}</NextButton>
       </div>
     </div>
   );
@@ -1474,9 +1469,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         onBack={busy ? undefined : onBack}
         next={
           onNext && !busy ? (
-            <Button onClick={onNext}>
-              {t("nextDetails")} <ArrowRight />
-            </Button>
+            <NextButton onClick={onNext}>{t("nextDetails")}</NextButton>
           ) : null
         }
       />

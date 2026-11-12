@@ -6557,7 +6557,7 @@
         "workspaceClosed": "Hierdie werkruimte se plan sluit publikasie nie in nie. Skuif na 'n plan wat dit insluit."
       },
       "signFailed": "Die ooreenkoms kon nie onderteken word nie.",
-      "sign": "Volgende: teken en reserveer ’n DOI",
+      "sign": "Teken en reserveer ’n DOI",
       "signIn": "Teken in om te publiseer",
       "doiReserved": "Jou DOI is gereserveer",
       "doiReservedBody": "Dit bly by jou verslag en word gepubliseer wanneer die verslag gepubliseer word.",
@@ -6775,10 +6775,11 @@
         "keptNoteOrg": "As 'n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly die aktivering in {organization} se saldo vir die volgende verslag."
       },
       "back": "Terug",
+      "next": "Volgende",
       "bylineFirst": "Jou PDF dra hierdie reël",
       "bylineFirstBody": "Elke verslag in hierdie reeks dra hierdie reël in sy PDF, as teks. Ons kontroles soek daarna sodra jy oplaai.",
-      "nextUpload": "Volgende: laai die PDF op",
-      "nextDetails": "Volgende: gaan die besonderhede na",
+      "nextUpload": "Laai die PDF op",
+      "nextDetails": "Gaan die besonderhede na",
       "problem": {
         "outOfStep": "Hierdie bladsy en die bediener is op verskillende weergawes. Herlaai die bladsy en probeer dan weer.",
         "retry": "Probeer weer. As dit aanhou gebeur, <link>rapporteer ’n probleem</link>.",
@@ -6803,7 +6804,7 @@
         "title": "Publiseer 'n verslag by {series}",
         "intro": "Omtrent tien minute van begin tot einde. Dit is wat elke stap van jou vra.",
         "introReviewed": "Omtrent tien minute van jou tyd. Daarna keur 'n hersiener die verslag goed voordat dit kan verskyn, en jy kry 'n e-pos.",
-        "start": "Volgende: teken die ooreenkoms",
+        "start": "Teken die ooreenkoms",
         "agreement": {
           "title": "Onderteken die publikasie-ooreenkoms",
           "body": "Jy behou die kopiereg en publiseer onder CC BY 4.0."

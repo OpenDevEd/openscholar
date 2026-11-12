@@ -15,12 +15,13 @@ import { AffiliationPicker } from "@/components/people/affiliation-picker";
 import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { NextButton } from "@/components/reports/next-button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowLeft, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
 import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
@@ -445,6 +446,14 @@ export function DetailsStep({
   const early = !!dated && dated.year < EARLIEST_YEAR;
   // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
   const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
+  const unready = !m.title.trim() || !m.authors.some((a) => a.name.trim()) || !dated || typedYear !== null || future || early || wrongLinks || (!!onCancel && !resend && !touched);
+  // Not in a transition: the page shows the checks running at once, which a transition would hold back until they end.
+  const run = () => {
+    // The run carries the details as they are, so a save still waiting has nothing left to send.
+    clearTimeout(held.current.timer);
+    held.current.send = undefined;
+    void onRun(m, opened);
+  };
 
   return (
     <div>
@@ -768,24 +777,14 @@ export function DetailsStep({
             {t("cancel")}
           </Button>
         ) : null}
-        {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || !dated || typedYear !== null || future || early || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
-          // The run carries the details as they are, so a save still waiting has nothing left to send.
-          clearTimeout(held.current.timer);
-          held.current.send = undefined;
-          void onRun(m, opened);
-        }}>
-          {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
-          {words || onCancel ? (
-            <>
-              <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
-            </>
-          ) : (
-            <>
-              {t("runChecks")} <ArrowRight />
-            </>
-          )}
-        </Button>
+        {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
+        {words || onCancel ? (
+          <Button disabled={unready} onClick={run}>
+            <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
+          </Button>
+        ) : (
+          <NextButton disabled={unready} onClick={run}>{t("runChecks")}</NextButton>
+        )}
       </div>
     </div>
   );
