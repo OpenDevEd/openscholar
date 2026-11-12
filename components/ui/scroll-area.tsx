@@ -12,6 +12,8 @@ function ScrollArea({
   className,
   children,
   shades = false,
+  // Its bar shows whenever the content overflows, not only under the pointer: what scrolls shows that it does.
+  type = "auto",
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
   /** Fades the content out at an edge that has more to scroll. */
@@ -43,6 +45,7 @@ function ScrollArea({
       // when the root is itself sized by a container with only a maximum height, and the list then
       // runs over what's under it without scrolling.
       className={cn("relative flex flex-col", className)}
+      type={type}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
