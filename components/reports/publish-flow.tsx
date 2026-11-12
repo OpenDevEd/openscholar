@@ -883,7 +883,7 @@ function usePassed(at: number | undefined) {
 /**
  * The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the
  * report is live, as the server allows (convex/reports/flow.ts `goTo`), and one taken back from its checks with
- * nothing changed can return to them. A step that can't be opened says why.
+ * nothing changed can return to them. A step that can't be opened is locked and faded, and says why.
  */
 function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }: { report: Report | null; /** The page before the agreement is open. */ preparing: boolean; /** Back to it from the agreement. */ onPrepare: () => void; humanReview: boolean; /** Its payment is going through. */ paying: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void }) {
   const reduce = useReducedMotion();
@@ -916,19 +916,21 @@ function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }
         {STEPS.map((s, i) => {
           const done = i < place || (i === place && place === LIVE_AT);
           const current = i === place && place !== LIVE_AT;
-          // Once signed, Prepare and the agreement are done for good: locked and faded, they can't be opened again.
+          // Once signed, Prepare and the agreement are done for good: they can't be opened again.
           const sealed = done && (s.id === "agreement" || s.id === "prepare") && !!report;
-          const Icon = sealed ? Lock : done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
+          // A step done that can't be opened, and why: signed for good, or one that could be gone back to (the DOI, the
+          // PDF, the details) while something shuts it. Every one of them looks the same, locked and faded, with its
+          // reason on it: a lock that only a hover told apart from an open step read as a broken link.
+          const blocked = sealed ? t("steps.sealed") : shut && done && i > 1 && i < CHECKS_AT ? shut : null;
+          const Icon = blocked ? Lock : done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
           // Every step done before the checks can be gone back to, as each step's Back button goes: the DOI, the PDF and
           // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
           // Before a report, Prepare is a step back from the agreement.
           const back = !report && s.id === "prepare" && !preparing;
           const clickable = back || (returns && i === CHECKS_AT) || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && report.pdf?.pages !== undefined && !!report.metadata)));
-          // A step done after the agreement that can't be opened now.
-          const locked = !!shut && done && i > 1 && !sealed;
           const body = (
             <>
-              <Icon className={cn("size-4 shrink-0", sealed ? "text-muted-foreground" : done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
+              <Icon className={cn("size-4 shrink-0", blocked ? "text-muted-foreground" : done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
               {/* On a phone only the current step keeps its name; the others are their icons. */}
               <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{t(`steps.${s.id}`)}</span>
             </>
@@ -939,15 +941,9 @@ function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }
                 <button type="button" onClick={() => (back ? onPrepare() : onStep(s.id as BackStep | "checks"))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
-              ) : sealed ? (
-                <TooltipHint label={t("steps.sealed")}>
+              ) : blocked ? (
+                <TooltipHint label={blocked}>
                   <div tabIndex={0} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1 opacity-50">
-                    {body}
-                  </div>
-                </TooltipHint>
-              ) : locked ? (
-                <TooltipHint label={shut}>
-                  <div tabIndex={0} aria-current={current ? "step" : undefined} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1">
                     {body}
                   </div>
                 </TooltipHint>
