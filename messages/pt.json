@@ -6809,7 +6809,7 @@
           "title": "Ativar",
           "body": "Pago com cartão. Um código promocional pode baixar o preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
           "bodyPriced": "{price} por relatório, pagos com cartão. Um código promocional pode baixar esse preço ou cobri-lo. O DOI é registado e o relatório fica publicado.",
-          "bodyBalance": "Usa uma ativação do saldo, que tem {count}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
+          "bodyBalance": "Usa uma ativação do saldo, que tem {count, number}. Nada a pagar. O DOI é registado e o relatório fica publicado.",
           "bodyUnlimited": "Usa uma ativação do saldo, que não tem limite. Nada a pagar. O DOI é registado e o relatório fica publicado."
         }
       }

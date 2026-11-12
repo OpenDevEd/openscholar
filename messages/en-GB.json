@@ -6741,7 +6741,7 @@
           "coveredHint": "Nothing to pay, so no card is needed.",
           "costsWith": "With {code}, this activation costs {price}.",
           "balance": "Activations",
-          "left": "{count} left",
+          "left": "{count, number} left",
           "unlimited": "No limit",
           "uses": "Activating uses one from your balance. Nothing is charged.",
           "usesOrg": "Activating uses one from {organization}'s balance. Nothing is charged."
@@ -6808,7 +6808,7 @@
           "title": "Activate",
           "body": "Paid with a card. A voucher code can lower the price or cover it. The DOI is registered and the report goes live.",
           "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live.",
-          "bodyBalance": "Uses one activation from the balance, which has {count} left. Nothing to pay. The DOI is registered and the report goes live.",
+          "bodyBalance": "Uses one activation from the balance, which has {count, number} left. Nothing to pay. The DOI is registered and the report goes live.",
           "bodyUnlimited": "Uses one activation from the balance, which has no limit. Nothing to pay. The DOI is registered and the report goes live."
         }
       }

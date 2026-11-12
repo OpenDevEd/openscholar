@@ -6742,7 +6742,7 @@
           "coveredHint": "Nichts zu zahlen, also ist keine Karte nötig.",
           "costsWith": "Mit {code} kostet diese Aktivierung {price}.",
           "balance": "Aktivierungen",
-          "left": "{count} übrig",
+          "left": "{count, number} übrig",
           "unlimited": "Ohne Limit",
           "uses": "Das Aktivieren verbraucht eine aus Ihrem Guthaben. Es wird nichts abgebucht.",
           "usesOrg": "Das Aktivieren verbraucht eine aus dem Guthaben von {organization}. Es wird nichts abgebucht."
@@ -6809,7 +6809,7 @@
           "title": "Aktivieren",
           "body": "Bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
           "bodyPriced": "{price} je Bericht, bezahlt mit Karte. Ein Gutscheincode kann den Preis senken oder decken. Die DOI wird registriert und der Bericht geht online.",
-          "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
+          "bodyBalance": "Verbraucht eine Aktivierung aus dem Guthaben, in dem noch {count, number} sind. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online.",
           "bodyUnlimited": "Verbraucht eine Aktivierung aus dem Guthaben, das kein Limit hat. Nichts zu zahlen. Die DOI wird registriert und der Bericht geht online."
         }
       }

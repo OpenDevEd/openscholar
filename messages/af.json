@@ -6742,7 +6742,7 @@
           "coveredHint": "Niks om te betaal nie, dus is geen kaart nodig nie.",
           "costsWith": "Met {code} kos hierdie aktivering {price}.",
           "balance": "Aktiverings",
-          "left": "{count} oor",
+          "left": "{count, number} oor",
           "unlimited": "Geen limiet",
           "uses": "Aktivering gebruik een uit jou saldo. Niks word gehef nie.",
           "usesOrg": "Aktivering gebruik een uit {organization} se saldo. Niks word gehef nie."
@@ -6809,7 +6809,7 @@
           "title": "Aktiveer",
           "body": "Betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
           "bodyPriced": "{price} vir elke verslag, betaal met 'n kaart. 'n Promosiekode kan die prys verlaag of dek. Die DOI word geregistreer en die verslag verskyn.",
-          "bodyBalance": "Gebruik een aktivering uit die saldo, wat {count} oor het. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
+          "bodyBalance": "Gebruik een aktivering uit die saldo, wat {count, number} oor het. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks.",
           "bodyUnlimited": "Gebruik een aktivering uit die saldo, wat geen limiet het nie. Niks om te betaal nie. Die DOI word geregistreer en die verslag gaan regstreeks."
         }
       }
