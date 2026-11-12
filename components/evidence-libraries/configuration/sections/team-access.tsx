@@ -588,6 +588,7 @@ export function TeamAccess({
                     </PopoverTrigger>
                     <PopoverContent
                       align="start"
+                      aria-label={isProfile ? t("person") : t("organizationMember")}
                       className="w-[var(--radix-popover-trigger-width)] p-0"
                     >
                       <OrganizationPeople
