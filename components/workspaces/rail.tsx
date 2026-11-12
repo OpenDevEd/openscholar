@@ -146,6 +146,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const { userId } = auth;
   const cached = cachedRail(firstWorkspace, slug, auth, useHydrated());
   const current: WorkspaceLook | undefined = picked ?? loaded ?? cached.look;
+  // The workspace the card reads its details from: the page's, but not while a picked one is on its way, when the
+  // card is already the picked one's and the page's details are the last workspace's.
+  const settled = picked && loaded?.workspaceId !== picked.workspaceId ? undefined : loaded;
   // The person as the account button shows them: as last time until Clerk and Convex load.
   const { user } = useUser();
   const { phase } = useAuthReadiness();
@@ -333,7 +336,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         {signedIn ? (
           <AccountCard
             me={me}
-            workspace={loaded}
+            workspace={settled}
             shown={current}
             workspaces={workspaces}
             shared={sharedWithYou}
@@ -701,8 +704,9 @@ function AccountCard({
           flies back lands on the rail. */}
       <AnimatePresence>
         {hasCredits ? (
-          <Opening key="credits" instant={creditsFromStart} className="px-1 pb-1">
-            <Link href={billing} onClick={onNavigate} className="block rounded-2xl bg-foreground/[0.04] px-3 py-2.5 transition-colors hover:bg-foreground/[0.07]">
+          <Opening key="credits" instant={creditsFromStart}>
+            {/* The space around it is inside what opens: on the part itself it would be there before it has any height. */}
+            <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block rounded-2xl bg-foreground/[0.04] px-3 py-2.5 transition-colors hover:bg-foreground/[0.07]">
               <span className="flex items-baseline gap-1.5">
                 <span className="text-xl font-semibold tabular-nums leading-none tracking-tight">{format.number(credits)}</span>
                 <span className="flex-1 text-xs text-muted-foreground">{tb("credits")}</span>
@@ -722,16 +726,18 @@ function AccountCard({
       </AnimatePresence>
       <AnimatePresence>
         {hasCredits && canUpgrade ? (
-          <Opening key="upgrade" instant={upgradeFromStart} className="px-1 pb-1">
-            <Button asChild size="sm" className="w-full">
-              <Link href="/pricing" onClick={onNavigate}>
-                <UpgradeIcon /> {tc("upgrade")}
-              </Link>
-            </Button>
+          <Opening key="upgrade" instant={upgradeFromStart}>
+            <div className="px-1 pb-1">
+              <Button asChild size="sm" className="w-full">
+                <Link href="/pricing" onClick={onNavigate}>
+                  <UpgradeIcon /> {tc("upgrade")}
+                </Link>
+              </Button>
+            </div>
           </Opening>
         ) : null}
       </AnimatePresence>
-      <WorkspaceMenu all={workspaces} shared={shared} onSwitch={onSwitch} onCreate={onCreate} />
+      <WorkspaceMenu current={workspace} all={workspaces} shared={shared} onSwitch={onSwitch} onCreate={onCreate} />
       <Preferences />
       {/* One Settings: its page lists your account's and, in an organization, the organization's. The plan is the credits above. */}
       <div className="space-y-px border-t border-border/60 pt-1">

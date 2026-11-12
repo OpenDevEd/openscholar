@@ -25,7 +25,7 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
-import { Framed, Opening, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { Framed, Opening, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS, INVITES_AT_ONCE } from "@/lib/billing/plans";
 import { useSeatBilling } from "@/lib/feature-flags/hook";
 
@@ -99,14 +99,14 @@ export function useAnswerInvitation() {
 }
 
 /**
- * The workspaces to switch to and the invitations to answer, in the account card. `all` is read by
- * the rail, which is always there, so the list is in the card as it opens. `onSwitch` goes to a
+ * The workspaces to switch to and the invitations to answer, in the account card. `current` is the
+ * workspace the card is on, undefined until it is read. `all` is read by the rail, which is always
+ * there, so the list is in the card as it opens. `onSwitch` goes to a
  * workspace: the rail does it, so one picked here is the rail's while its pages load.
  */
-export function WorkspaceMenu({ all, shared, onSwitch, onCreate }: { all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
+export function WorkspaceMenu({ current, all, shared, onSwitch, onCreate }: { current: WorkspaceRow | undefined; all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
-  const current = useCurrentWorkspace();
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
   const email = useUser().user?.primaryEmailAddress?.emailAddress;
