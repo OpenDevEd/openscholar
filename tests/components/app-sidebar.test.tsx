@@ -120,7 +120,7 @@ describe("<AppSidebar>", () => {
     const container = document.body.appendChild(document.createElement("div"));
     container.innerHTML = renderToString(rail);
     // The page before, or another tab, saves the workspace's look once the request has gone.
-    document.cookie = `${LOOK_COOKIE}=${encodeURIComponent(JSON.stringify({ user: "user_ada", looks: { [lookKey(null)]: { kind: "personal", workspaceId: "ws_own", name: "Ada" } } }))}`;
+    document.cookie = `${LOOK_COOKIE}=${encodeURIComponent(JSON.stringify({ user: "user_ada", looks: { [lookKey(null)]: { kind: "organization", workspaceId: "ws_lab", name: "Ada Lab" } } }))}`;
     const mismatch = vi.fn();
     const root = await act(async () => hydrateRoot(container, rail, { onRecoverableError: mismatch }));
     onTestFinished(() => {
@@ -129,7 +129,7 @@ describe("<AppSidebar>", () => {
       document.cookie = `${LOOK_COOKIE}=; Max-Age=0`;
     });
     expect(mismatch).not.toHaveBeenCalled();
-    // Once hydrated, the rail takes the look the browser now has.
+    // Once hydrated, the rail takes the look the browser now has: the account button is named for the organization.
     expect(screen.getByRole("button", { name: "switchFrom" })).toBeInTheDocument();
   });
 
