@@ -7290,7 +7290,7 @@
         "activation": {
           "title": "Activation",
           "about": "Activer rend votre rapport public : sa page s’ouvre, son DOI se met à fonctionner, et il est enregistré.",
-          "note": "Ce qui est dû est payé d'abord : avec le solde de publication de votre espace de travail, par carte, ou les deux. Un code promo réduit ce que la carte paie."
+          "note": "Ce qui est dû est payé d'abord : avec le solde de publication de votre espace de travail, par carte, ou les deux. Un code promo réduit ce que la carte paie. Un paiement par carte vous est d'abord présenté pour confirmation, et vous pouvez alors le régler avec une autre carte."
         }
       }
     }

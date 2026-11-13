@@ -7291,7 +7291,7 @@
         "activation": {
           "title": "Aktivieren",
           "about": "Aktivieren macht Ihren Bericht öffentlich: Seine Seite öffnet sich, sein DOI funktioniert, und er wird registriert.",
-          "note": "Der fällige Betrag wird zuerst bezahlt: aus dem Publikationsguthaben Ihres Arbeitsbereichs, mit Karte oder beidem. Ein Gutscheincode senkt, was die Karte zahlt."
+          "note": "Der fällige Betrag wird zuerst bezahlt: aus dem Publikationsguthaben Ihres Arbeitsbereichs, mit Karte oder beidem. Ein Gutscheincode senkt, was die Karte zahlt. Eine Kartenzahlung wird Ihnen zuerst zur Bestätigung angezeigt; dort können Sie auch mit einer anderen Karte zahlen."
         }
       }
     }
