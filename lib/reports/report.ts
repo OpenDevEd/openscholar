@@ -180,7 +180,7 @@ export const tierOf = (licence: Licence): LicenceTier => (typeof licence === "st
 /** What publishing a report costs, in whole US dollars, by its licence's tier: set on Admin > Publications. */
 export type Prices = Record<LicenceTier, number>;
 export const DEFAULT_PRICES: Prices = { standard: 10, other: 30 };
-/** The most a price can be set to, and the least: a whole number of dollars, as the balance that pays it is bought. */
+/** The most a price can be set to, and the least: a whole number of dollars. */
 export const PRICE_MAX = 10_000;
 export const isPrice = (dollars: number) => Number.isInteger(dollars) && dollars >= 1 && dollars <= PRICE_MAX;
 export const priceOf = (licence: Licence, prices: Prices) => prices[tierOf(licence)];
@@ -188,15 +188,32 @@ export const priceOf = (licence: Licence, prices: Prices) => prices[tierOf(licen
 /** What pays for a report: the workspace's publication balance, with a card for what it can't cover, or a card alone. */
 export const PAY_WITH = ["balance", "card"] as const;
 export type PayWith = (typeof PAY_WITH)[number];
+/** The least a card buys of the balance, in US dollars: Stripe takes no payment under about 50 cents, and a code can halve what is bought. */
+export const BOUGHT_MIN = 1;
+/** Dollars to the cent, half a cent going up, whatever binary arithmetic made of it (2.835 can come out a hair under). */
+export const cents = (dollars: number) => Math.round(dollars * 100 + 1e-7) / 100;
 /**
  * What a price comes to, in US dollars: what the balance pays, what is bought by card, what a code takes off that,
- * and what is due. With the balance, it pays what it can and the card the rest; by card, the balance is left as it
- * is. What is bought is whole dollars, so a balance with cents in it keeps them. `balance` null is one with no limit.
+ * and what is due. With the balance, it pays what it holds, to the cent, and a card buys the rest; by card, the
+ * balance is left as it is. A card buys at least `BOUGHT_MIN`: with less than that missing, the balance pays that
+ * much less and keeps the difference (`spare`). A code's share comes off what is bought as Autumn quotes and bills
+ * it: what is due is rounded to the cent, half a cent going up, and the code's part is the rest. `balance` null is
+ * one with no limit.
+ * ponytail: on half a cent (half off $5.67), Stripe's own page, which a customer with no saved card pays on, rounds
+ * the other way and takes a cent less than is shown here. Reckoning each way of paying by its own rounding would
+ * tie this to two services' habits for a cent in the person's favour.
+ * ponytail: a code that takes more than half off what is bought, and less than all of it, could leave under Stripe's
+ * minimum to pay on the least a card buys. None we give out does; one that did needs the floor raised to that
+ * minimum over the share the code leaves.
  */
 export function payment({ price, balance, payWith, off }: { price: number; balance: number | null; payWith: PayWith; /** The share of what is bought that a code takes off, 0 to 1. */ off: number }) {
-  const bought = payWith === "card" ? price : balance === null ? 0 : Math.ceil(price - Math.min(Math.max(balance, 0), price));
-  const discount = Math.round(bought * off * 100) / 100;
-  return { fromBalance: price - bought, bought, discount, due: Math.round((bought - discount) * 100) / 100 };
+  // What the balance surely holds, in whole cents: a fraction of a cent is never counted on, or the price would be
+  // that fraction short once the rest is bought. The 1e-9 forgives only what binary arithmetic makes of 4.33 * 100.
+  const held = balance === null ? price : Math.min(Math.max(Math.floor(balance * 100 + 1e-9) / 100, 0), price);
+  const short = cents(price - held);
+  const bought = payWith === "card" ? price : short === 0 ? 0 : Math.min(price, Math.max(short, BOUGHT_MIN));
+  const due = cents(bought * (1 - off));
+  return { fromBalance: cents(price - bought), bought, spare: payWith === "card" ? 0 : cents(bought - short), discount: cents(bought - due), due };
 }
 
 /**

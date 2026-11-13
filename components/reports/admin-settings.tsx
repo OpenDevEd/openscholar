@@ -276,7 +276,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
 function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string | null }) {
   const t = useTranslations("publishReports.settings");
   const update = useMutation(api.reports.settings.update);
-  // A price is whole dollars, as the balance that pays it is bought: anything else is refused, and the box shows what is saved.
+  // A price is whole dollars: anything else is refused, and the box shows what is saved.
   const save = (which: keyof Prices) => (typed: string) => {
     const dollars = Number(typed.replace(/^\$/, ""));
     return isPrice(dollars) ? update({ prices: { [which]: dollars } }).then(() => true, () => false) : Promise.resolve(false);

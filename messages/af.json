@@ -6853,7 +6853,8 @@
         "title": "Betaling",
         "sign": "Lees en teken",
         "noLimit": "Geen limiet",
-        "credit": "Rekeningkrediet"
+        "credit": "Rekeningkrediet",
+        "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans."
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {

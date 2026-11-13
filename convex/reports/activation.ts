@@ -2,8 +2,8 @@
 // costs its licence's price, in US dollars, set on Admin > Publications (`priceOf`). It is paid from the workspace's
 // publication balance, which Autumn keeps (lib/billing/plans.ts PUBLICATION_FEATURE): plans and balances given in
 // Autumn's dashboard fill it, by the day, week, month or year, or once. The person chooses what pays. From the
-// balance, it pays what it can, its refilling part first, and a card buys the rest as dollars of that balance
-// (PUBLICATION_TOP_UP_PLAN), spent on the spot. By card, the card buys the whole price and the balance is left as it
+// balance, it pays what it holds, its refilling part first, and a card buys the rest as dollars of that balance, to
+// the cent and at least a dollar (PUBLICATION_TOP_UP_PLAN), spent on the spot. By card, the card buys the whole price and the balance is left as it
 // was. A promotion code lowers what the card pays, never what the balance does. A workspace with no saved card pays
 // on Stripe's own page, which comes back to the report. A payment still to be made, there or at the bank, waits as
 // `pending`, and the report goes live once Stripe has it paid (`settle`). What a card bought for a report that can't
@@ -26,7 +26,7 @@ import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, checkoutId, checkoutOf, expireCheckout, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/plans";
-import { CODE_MAX, PRICE_MAX, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
+import { BOUGHT_MIN, CODE_MAX, PRICE_MAX, cents, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { MOVED_ON, byKey, changing, mayChange, paymentOf, touch, voucherValidator } from "./flow";
@@ -676,7 +676,7 @@ export const activate = action({
           }
           // Bought: the dollars are in the balance now, and this report's to spend.
           // What the account's credit took off the invoice: its lines less what was due.
-          const credit = Math.max(0, Math.round((linesOf(quoted) - quoted.total) * 100) / 100);
+          const credit = Math.max(0, cents(linesOf(quoted) - quoted.total));
           if (await spendPaid(ctx, first.customerId, activationId, { payWith, price }, { ...done.charge, ...(credit > 0 && { credit }) })) return { live: true as const };
           throw createError("CONFLICT", KEPT);
         } catch (error) {
@@ -759,7 +759,7 @@ export const reconcileLater = internalAction({
  * page showed (`activate`'s `expect`).
  */
 export const quoteCode = action({
-  args: { workspaceId: v.id("workspaces"), code: v.string(), /** What a card would buy now, in whole US dollars. */ amount: v.number() },
+  args: { workspaceId: v.id("workspaces"), code: v.string(), /** What a card would buy now, in US dollars. */ amount: v.number() },
   returns: v.object({ off: v.number() }),
   handler: async (ctx, { workspaceId, code: typed, amount }): Promise<{ off: number }> => {
     await refuseApps(ctx);
@@ -767,7 +767,7 @@ export const quoteCode = action({
     const code = codeOf(typed);
     if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
     const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: actor.workspaceId });
-    const bought = dollars(Math.min(Math.max(Math.ceil(amount), 1), PRICE_MAX));
+    const bought = dollars(Math.min(Math.max(cents(amount), BOUGHT_MIN), PRICE_MAX));
     const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, undefined, bought), autumn.previewAttach(customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, bought).catch(refusedCode<never>(code))]);
     // Read from the quote's lines: its total is what's due after any credit on the account, which a code doesn't change.
     const price = linesOf(plain);

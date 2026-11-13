@@ -6852,7 +6852,8 @@
         "title": "Payment",
         "sign": "Read and sign",
         "noLimit": "No limit",
-        "credit": "Account credit"
+        "credit": "Account credit",
+        "least": "A card pays for at least {least}, so {spare} stays in your balance."
       },
       "activateFree": "Activate the DOI",
       "paid": {

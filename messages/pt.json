@@ -6853,7 +6853,8 @@
         "title": "Pagamento",
         "sign": "Ler e assinar",
         "noLimit": "Sem limite",
-        "credit": "Crédito da conta"
+        "credit": "Crédito da conta",
+        "least": "Um cartão paga pelo menos {least}, por isso {spare} ficam no seu saldo."
       },
       "activateFree": "Ativar o DOI",
       "paid": {

@@ -6852,7 +6852,8 @@
         "title": "Inkokhelo",
         "sign": "Funda bese usayina",
         "noLimit": "Akukho mkhawulo",
-        "credit": "Isikweletu se-akhawunti"
+        "credit": "Isikweletu se-akhawunti",
+        "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho."
       },
       "activateFree": "Vula i-DOI",
       "paid": {
