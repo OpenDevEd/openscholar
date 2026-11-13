@@ -1,0 +1,35 @@
+---
+// The team as cards. Each opens that person's page, and their own links sit under their name.
+import Portrait from "./Portrait.astro";
+import Mark from "./Mark.astro";
+import { ORGS, LINK_NAMES } from "../data/team.mjs";
+const { people, eager = 0 } = Astro.props;
+---
+<ul class="tg" data-team-grid>{people.map((m, i) => <li>
+  <a class="who" href={`/about/${m.slug}/`}><Portrait person={m} eager={i < eager} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a>
+  <ul class="soc">{m.links.filter(([kind]) => kind in LINK_NAMES).map(([kind, url]) => <li><a href={url} rel="me noopener" aria-label={`${m.name} on ${LINK_NAMES[kind]}`}><Mark kind={kind} size={16} /></a></li>)}</ul>
+</li>)}</ul>
+<script>
+  // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
+  if (matchMedia("(hover: hover)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) for (const card of document.querySelectorAll("[data-team-grid] .who")) {
+    const frame = card.querySelector(".pf");
+    card.addEventListener("pointermove", (e) => { const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
+    card.addEventListener("pointerleave", () => { frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty"); });
+  }
+</script>
+<style>
+  .tg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 36px 16px; }
+  .who { display: grid; align-content: start; } b { margin-top: 14px; font-weight: 500; font-size: 18px; line-height: 1.25; letter-spacing: -.01em; } em { min-height: 2.7em; font-style: normal; font-size: 15px; line-height: 1.35; color: var(--t2); }
+  small { margin-top: 2px; font-size: 14px; color: var(--t3); }
+  /* Their links sit under their name. The row keeps its height with none, so the cards beside it stay level. */
+  .soc { display: flex; min-height: 32px; margin: 6px 0 0 -8px; } .soc a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: var(--t3); transition: background-color .2s var(--ease), color .2s var(--ease); } .soc a:hover { background: var(--soft); color: var(--ink); }
+  /* The card lifts and leans with the pointer, and comes back slowly. */
+  .who :global(.pf) { transition: transform .7s var(--ease), translate .4s var(--ease), box-shadow .4s var(--ease); }
+  @media (hover: hover) { .who:hover :global(.pf) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } .who:hover :global(.pf)::before { opacity: 1; } .who:hover :global(.pf-who) { scale: 1.05; } .who:hover :global(.pf-art) { scale: 1.1; } }
+  /* Each card rises into place as it scrolls into view, where the browser can tie motion to the scroll. The timeline has its
+     own rule: folded into the shorthand by the minifier, browsers reject it. */
+  @supports (animation-timeline: view()) { li { animation: tg-in linear both; animation-range: entry 0% entry 70%; } li { animation-timeline: view(); } @keyframes tg-in { from { opacity: 0; translate: 0 40px; scale: .96; } } }
+  @media (max-width: 1100px) { .tg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 860px) { .tg { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } }
+</style>

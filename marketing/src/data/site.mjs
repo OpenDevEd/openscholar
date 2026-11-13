@@ -47,6 +47,7 @@ export const SECTIONS = {
   "/": [["tour", "Tour", "#ff9d36"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fde047"], ["assistant", "Assistant", "#7da7e6"], ["community", "Communities", "#fb7185"]],
   "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
   "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
+  "/about/": [["places", "Places", "#ff9d36"], ["team", "Team", "#38bdf8"], ["research", "Research", "#fbbf24"], ["makers", "Organisations", "#34d399"]],
   "/publithon/": [["publish", "Steps", "#fbbf24"], ["doi", "DOI", "#38bdf8"], ["done", "Done for you", "#7da7e6"], ["ways", "Take part", "#34d399"], ["sponsor", "Sponsor", "#ff9d36"]],
 };
 // Pages written for what people search when they need the product. Each links to the others, and the menu and footer link to them.
