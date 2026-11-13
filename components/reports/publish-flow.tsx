@@ -1801,8 +1801,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 // every step before it. Only the licence, which set the price, is fixed.
                 <section className="mb-7" inert={activating || undefined}>
                   <h3 className={SECTION}>{t("payment.title")}</h3>
-                  <div className="@container/pay flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <PayWithSwitch balance={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} card={card} />
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <PayWithSwitch balance={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
                     {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
                         applied is kept, and is back when a card pays again. */}
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
