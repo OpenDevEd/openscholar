@@ -37,6 +37,13 @@ function RollingMoney({ value }: { value: number }) {
   return <motion.span className="tabular-nums">{text}</motion.span>;
 }
 
+/**
+ * How a switch of two long labels sits on a phone: the icons go, and past that the second label takes a row of its
+ * own, never cut off. At large text a label wider than the phone wraps inside its segment instead of running off the screen.
+ */
+export const PHONE_WRAP =
+  "max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl";
+
 /** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
 export function PayWithSwitch({ balance, payWith, onPayWith, className }: { balance: Balance; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
@@ -48,9 +55,8 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
         label={t("payWith")}
         value={payWith}
         onChange={onPayWith}
-        // On a phone the two don't always fit side by side: the icons go, and past that the card takes a second row, never cut off.
-        // At large text a label wider than the phone wraps inside its segment instead of running off the screen.
-        className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
+        // The two forms take each other's place when the balance changes under them, as when another workspace is picked: each fades in.
+        className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] animate-in fade-in duration-200 motion-reduce:animate-none", PHONE_WRAP, className)}
         options={[
           { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
           // No card is named here: which card pays is chosen in the pay dialog, and naming one would read as the only one.
@@ -60,7 +66,7 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
     );
   return (
     // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
-    <p className="flex h-9 items-center gap-2 text-sm font-medium">
+    <p className="flex h-9 items-center gap-2 text-sm font-medium animate-in fade-in duration-200 motion-reduce:animate-none">
       <CreditCard className="size-4 text-muted-foreground" />
       {t("byCard")}
     </p>

@@ -7262,6 +7262,11 @@
           "about": "Where the report's data, code, other versions and supplements live.",
           "note": "Each is a web address or a DOI."
         },
+        "workspace": {
+          "title": "Workspace",
+          "about": "The report belongs to the workspace you pick. It can't be moved to another once you sign.",
+          "note": "In an organisation, its members can see the report, and you and its admins work on it. The workspace's publication balance pays for it."
+        },
         "agreement": {
           "title": "The publishing agreement",
           "about": "What you and Openscholar agree to before your report is published.",

@@ -68,8 +68,8 @@ export function Segmented<T extends string>({
 }: {
   value: T;
   onChange: (v: T) => void;
-  /** `detail` sits after the label; `below` is a line under it, across the segment. */
-  options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode; below?: ReactNode }>;
+  /** `lead` is a picture before the label, where an icon would be; `detail` sits after the label; `below` is a line under it, across the segment. */
+  options: Array<{ id: T; label: string; icon?: Ico; lead?: ReactNode; detail?: ReactNode; below?: ReactNode }>;
   label: string;
   size?: "sm" | "md" | "lg";
   /**
@@ -151,7 +151,7 @@ export function Segmented<T extends string>({
             )}
           >
             <span className="flex min-w-0 items-center gap-2">
-              {o.icon ? <o.icon className={size === "sm" ? "size-3.5" : "size-4"} /> : null}
+              {o.lead ?? (o.icon ? <o.icon className={size === "sm" ? "size-3.5" : "size-4"} /> : null)}
               <span className="truncate">{o.label}</span>
             </span>
             {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}

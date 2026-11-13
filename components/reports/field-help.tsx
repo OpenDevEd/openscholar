@@ -90,6 +90,7 @@ const HELP = {
   references: { note: true, filled: "pdf", entry: "pasted", sources: ["doi", "crossrefReferences"], sent: BOTH },
   links: { note: true, filled: "pdf", entry: "either", sources: ["crossrefRelations"], sent: BOTH },
   agreement: { note: true, sources: ["ccBy"] },
+  workspace: { note: true },
   doi: { note: true, filled: "reserved", sources: ["doi"] },
   byline: { note: true, entry: "chosen", sources: ["issn"] },
   checks: { note: true },
