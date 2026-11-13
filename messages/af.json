@@ -6614,7 +6614,14 @@
           "notPublished": "Nie in Openscholar Reports, OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "notPublishedElsewhere": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
-          "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
+          "bylineFound": "Die PDF se teks bevat die reël woord vir woord.",
+          "namesVersion": "Die verslag noem ’n ander weergawe van homself onder sy skakels.",
+          "sameTitle": "Dieselfde titel, uit dieselfde jaar.",
+          "sameStudy": "Dieselfde studie as hierdie rekord, volgens sy titel en opsomming ({percent} seker)."
+        },
+        "foundAt": {
+          "ownLinks": "Gevind in die verslag se eie skakels:",
+          "ourIndex": "Gevind in Openscholar se indeks:"
         },
         "defaults": {
           "byline": {

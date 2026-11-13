@@ -95,9 +95,9 @@ export function ApplyDialog({ seed }: { seed: ApplySeed | null }) {
   const waits = application?.state === "declined" && application.appliesAgainAt !== null && application.appliesAgainAt > Date.now();
   return (
     <Dialog open={Boolean(libraryId) && ready} onOpenChange={(open) => { if (!open) close(); }}>
-      {/* Scrolls on a short screen, so Send is always reachable. */}
+      {/* Scrolls on a short screen, so Send is always reachable. Its width is what its header and buttons measure themselves against. */}
       <DialogContent
-        className="gap-0 p-0 sm:max-w-lg"
+        className={cn("@container gap-0 p-0 sm:max-w-lg", WRAPPED_BUTTONS)}
         onCloseAutoFocus={(event) => {
           // The seed still names its opener after the address stops naming the community.
           if (!seed?.returnTo?.isConnected) return;
@@ -126,19 +126,29 @@ export function ApplyDialog({ seed }: { seed: ApplySeed | null }) {
   );
 }
 
-/** Who you're applying to: its icon over its accent, its name and who runs it. */
+/**
+ * On a phone whose dialog is narrow for the text size in use (large text), a button's label wraps, and a word too long
+ * for the button breaks, with a hyphen where the browser can. At normal text, and from sm up, labels stay on one line.
+ */
+const WRAPPED_BUTTONS = "max-sm:@max-[17rem]:**:data-[slot=button]:h-auto max-sm:@max-[17rem]:**:data-[slot=button]:whitespace-normal max-sm:@max-[17rem]:**:data-[slot=button]:hyphens-auto max-sm:@max-[17rem]:**:data-[slot=button]:wrap-anywhere";
+
+/**
+ * Who you're applying to: its icon over its accent, its name and who runs it. On a phone whose dialog is narrow for the
+ * text size in use (large text, where 17rem is wider than the dialog), the icon goes above the name, which then has the
+ * whole width and wraps. At normal text, and from sm up, they sit side by side.
+ */
 function CommunityHeader({ community }: { community: AppliedCommunity }) {
   const t = useTranslations("communityApplications");
   return (
-    <DialogHeader className="flex-row items-center gap-3 space-y-0 border-b border-border-subtle p-5 pe-12 text-start">
+    <DialogHeader className="flex-row items-center gap-3 space-y-0 border-b border-border-subtle p-5 pe-12 text-start max-sm:@max-[17rem]:flex-col max-sm:@max-[17rem]:items-start max-sm:@max-[17rem]:pe-5">
       <span className="size-12 shrink-0 overflow-hidden rounded-xl bg-inset">
         <FadeImage src={community.faviconUrl ?? "/icon.svg"} fallback="/icon.svg" className="size-full object-cover" />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 max-sm:@max-[17rem]:wrap-anywhere">
         <DialogTitle className="text-base leading-snug">{t("joinName", { name: community.name })}</DialogTitle>
         <DialogDescription className="mt-1 flex min-w-0 items-center gap-1.5 text-xs">
           <WorkspaceTile workspace={{ kind: community.owner.kind === "organization" ? "organization" : "personal", name: community.owner.name, imageUrl: community.owner.imageUrl ?? undefined, workspaceId: community.owner.workspaceId }} size="xxs" />
-          <span className="min-w-0 truncate">{t("runBy", { name: community.owner.name || t("anOpenscholarMember") })}</span>
+          <span className="min-w-0 truncate max-sm:@max-[17rem]:whitespace-normal">{t("runBy", { name: community.owner.name || t("anOpenscholarMember") })}</span>
         </DialogDescription>
       </div>
     </DialogHeader>

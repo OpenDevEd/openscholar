@@ -6613,7 +6613,14 @@
           "notPublished": "Akukho ku-Openscholar Reports, ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
           "notPublishedElsewhere": "Akukho ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
           "unfinished": "Lokhu kuhlola akukwazanga ukuqedwa.",
-          "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama."
+          "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama.",
+          "namesVersion": "Umbiko ubala olunye uhlobo lwawo phakathi kwezixhumanisi zawo.",
+          "sameTitle": "Isihloko esifanayo, sonyaka ofanayo.",
+          "sameStudy": "Ucwaningo olufanayo nale rekhodi, ngokwesihloko nesifingqo sayo (ukuqiniseka {percent})."
+        },
+        "foundAt": {
+          "ownLinks": "Kutholwe ezixhumanisini zombiko uqobo:",
+          "ourIndex": "Kutholwe kunkomba ka-Openscholar:"
         },
         "defaults": {
           "byline": {

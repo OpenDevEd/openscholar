@@ -6614,7 +6614,14 @@
           "notPublished": "Haipo katika Openscholar Reports, OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "notPublishedElsewhere": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "unfinished": "Ukaguzi huu haukuweza kukamilika.",
-          "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
+          "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno.",
+          "namesVersion": "Ripoti inataja toleo jingine lake yenyewe miongoni mwa viungo vyake.",
+          "sameTitle": "Kichwa kilekile, cha mwaka uleule.",
+          "sameStudy": "Utafiti uleule na rekodi hii, kwa kichwa na muhtasari wake (uhakika {percent})."
+        },
+        "foundAt": {
+          "ownLinks": "Imepatikana katika viungo vya ripoti yenyewe:",
+          "ourIndex": "Imepatikana katika faharasa ya Openscholar:"
         },
         "defaults": {
           "byline": {

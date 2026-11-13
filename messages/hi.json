@@ -6613,7 +6613,14 @@
           "notPublished": "Openscholar Reports, OpenAlex, Openscholar के इंडेक्स या हमारे समुदायों में नहीं है।",
           "notPublishedElsewhere": "OpenAlex, Openscholar के इंडेक्स या हमारे समुदायों में नहीं है।",
           "unfinished": "यह जाँच पूरी नहीं हो सकी।",
-          "bylineFound": "PDF के टेक्स्ट में यह पंक्ति शब्दशः है।"
+          "bylineFound": "PDF के टेक्स्ट में यह पंक्ति शब्दशः है।",
+          "namesVersion": "रिपोर्ट अपने लिंक में अपने ही किसी दूसरे संस्करण का नाम देती है।",
+          "sameTitle": "वही शीर्षक, उसी वर्ष का।",
+          "sameStudy": "शीर्षक और सारांश के अनुसार इस रिकॉर्ड जैसा ही अध्ययन ({percent} निश्चित)।"
+        },
+        "foundAt": {
+          "ownLinks": "रिपोर्ट के अपने लिंक में मिला:",
+          "ourIndex": "Openscholar के इंडेक्स में मिला:"
         },
         "defaults": {
           "byline": {

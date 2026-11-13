@@ -21,7 +21,8 @@ import { searchRequestValidator } from "../paperSets/openalex";
 import { currentSearch } from "../../lib/research/records";
 import { CALL_TOKENS, estimateCredits } from "../../lib/pricing/estimate";
 import { findSearch } from "./records";
-import { defaultLocale, locales } from "../../i18n/config";
+import { defaultLocale } from "../../i18n/config";
+import { localeValidator } from "../lib/validators";
 import {
   BUILT_IN_LENSES,
   COUNTS_KEPT,
@@ -112,8 +113,6 @@ async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "use
   return { request, key: digest(JSON.stringify([request.search ?? request.semantic ?? "", request.filter ?? "", ...(request.source === "openscholar" ? [request.source] : [])])) };
 }
 
-/** The languages the app speaks, which an overview is written in: the page's. */
-const localeValidator = v.union(...locales.map((locale) => v.literal(locale)));
 /** The key an overview is stored by: its lens, and the language it's written in. One in American English keeps the bare lens key. */
 const inLanguage = (lens: string, locale: string | undefined) => (!locale || locale === defaultLocale ? lens : `${lens}~${locale}`);
 
