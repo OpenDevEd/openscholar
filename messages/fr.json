@@ -6852,7 +6852,8 @@
         "title": "Paiement",
         "sign": "Lire et signer",
         "noLimit": "Sans limite",
-        "credit": "Crédit du compte"
+        "credit": "Crédit du compte",
+        "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde."
       },
       "activateFree": "Activer le DOI",
       "paid": {

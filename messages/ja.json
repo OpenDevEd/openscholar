@@ -6852,7 +6852,8 @@
         "title": "支払い",
         "sign": "読んで署名",
         "noLimit": "無制限",
-        "credit": "アカウントのクレジット"
+        "credit": "アカウントのクレジット",
+        "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。"
       },
       "activateFree": "DOI を有効化",
       "paid": {

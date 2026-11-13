@@ -56,7 +56,7 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
 import { Bill, PayWithSwitch, PaymentChoice } from "@/components/reports/payment-choice";
-import { useMoney } from "@/lib/hooks/use-money";
+import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
@@ -2312,9 +2312,7 @@ function PaidChips({ paid }: { paid: Terms["paid"] }) {
   const t = useTranslations("publishReports.flow");
   const dollars = useMoney();
   if (!paid) return null;
-  // Inside a sentence, isolate marks keep an amount left to right, as <bdi dir="ltr"> keeps one that stands alone:
-  // an Arabic sentence splits "US$" around its number otherwise.
-  const money = (amount: number) => `\u2066${dollars(amount)}\u2069`;
+  const money = (amount: number) => inSentence(dollars(amount));
   return (
     <div className="flex flex-wrap items-center gap-2 pt-2">
       {paid.fromBalance > 0 ? (

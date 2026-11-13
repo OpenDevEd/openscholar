@@ -110,6 +110,19 @@ export type AutumnCharge = {
   required_action?: { code: string; reason?: string } | null;
 };
 
+/**
+ * Dollars of a balance sold at a dollar each, bought as exactly `amount` of them for `amount` dollars, on one line of
+ * the invoice: the purchase carries its own price for the lot. By the plan's price alone, Autumn sells whole units
+ * and rounds a fraction up.
+ */
+const exactly = (quantity?: { feature: string; amount: number }) =>
+  quantity
+    ? {
+        feature_quantities: [{ feature_id: quantity.feature, quantity: quantity.amount }],
+        customize: { items: [{ feature_id: quantity.feature, price: { amount: quantity.amount, billing_units: quantity.amount, billing_method: "prepaid", interval: "one_off" } }] },
+      }
+    : {};
+
 /** A promotion code given with a purchase, as Autumn's `discounts` take it. */
 const promotion = (code?: string) => (code ? { discounts: [{ promotion_code: code }] } : {});
 
@@ -328,7 +341,7 @@ export const autumn = {
     idempotencyKey?: string;
     newMonth?: boolean;
     seats?: SeatQuantity;
-    /** How much of a feature sold by the unit is bought, in place of `credits`: dollars of a publication balance. */
+    /** How much of a feature sold at a dollar a unit is bought, to the cent, in place of `credits`: dollars of a publication balance. */
     quantity?: { feature: string; amount: number };
     /** A promotion code of an Autumn reward, taken off the charge. */
     code?: string;
@@ -354,7 +367,7 @@ export const autumn = {
         ...(args.credits
           ? { feature_quantities: [{ feature_id: "credits", quantity: args.credits }] }
           : {}),
-        ...(args.quantity ? { feature_quantities: [{ feature_id: args.quantity.feature, quantity: args.quantity.amount }] } : {}),
+        ...exactly(args.quantity),
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
         ...(args.unbilled ? { invoice_mode: { enabled: true, enable_plan_immediately: true, finalize: true } } : {}),
@@ -374,7 +387,7 @@ export const autumn = {
       ...(newMonth ? { billing_cycle_anchor: "now" } : {}),
       ...licenseQuantities(seats),
       ...promotion(code),
-      ...(quantity ? { feature_quantities: [{ feature_id: quantity.feature, quantity: quantity.amount }] } : {}),
+      ...exactly(quantity),
     });
   },
 

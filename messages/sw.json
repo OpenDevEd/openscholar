@@ -6853,7 +6853,8 @@
         "title": "Malipo",
         "sign": "Soma na utie saini",
         "noLimit": "Bila kikomo",
-        "credit": "Salio la akaunti"
+        "credit": "Salio la akaunti",
+        "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako."
       },
       "activateFree": "Washa DOI",
       "paid": {

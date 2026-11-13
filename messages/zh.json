@@ -6852,7 +6852,8 @@
         "title": "付款",
         "sign": "阅读并签署",
         "noLimit": "不限次数",
-        "credit": "账户余额抵扣"
+        "credit": "账户余额抵扣",
+        "least": "银行卡至少支付 {least}，因此 {spare} 会留在余额中。"
       },
       "activateFree": "激活 DOI",
       "paid": {

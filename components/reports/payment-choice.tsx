@@ -12,8 +12,8 @@ import { CreditCard, Wallet } from "@/components/icons";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import type { BalancePart } from "@/convex/billing/validators";
-import { useMoney } from "@/lib/hooks/use-money";
-import { payment, type PayWith } from "@/lib/reports/report";
+import { inSentence, useMoney } from "@/lib/hooks/use-money";
+import { BOUGHT_MIN, payment, type PayWith } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 /** A workspace's publication balance: what it holds in US dollars (null for no limit), and its parts. */
@@ -91,6 +91,8 @@ export function Bill({ licence, price, balance, payWith, code, credit = 0, actio
           <RollingMoney value={Math.round((sum.due - fromCredit) * 100) / 100} />
         </bdi>
       </div>
+      {/* The least a card buys can be more than is missing: said, so the bill adds up to what the balance shows. */}
+      <AutoHeight>{sum.spare > 0 ? <p className="pt-2 text-xs text-pretty text-muted-foreground">{t("least", { least: inSentence(money(BOUGHT_MIN)), spare: inSentence(money(sum.spare)) })}</p> : null}</AutoHeight>
       {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
       {action ? <div className="mt-3 flex justify-end">{action}</div> : null}
     </div>

@@ -65,7 +65,7 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
     if (url.startsWith("https://api.stripe.com")) return Response.json({ id: "in_late", status: "paid", total: stripeTotal, amount_due: Math.max(0, stripeTotal - credit * 100), currency: "usd", payments: { data: [] } });
     const path = url.split("/v1/")[1]!;
     const key = (init?.headers as Record<string, string> | undefined)?.["Idempotency-Key"];
-    const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; email?: string; feature_id?: string; required_balance?: number; lock?: { lock_id: string }; lock_id?: string; action?: string; discounts?: Array<{ promotion_code: string }>; invoice_mode?: unknown; feature_quantities?: Array<{ feature_id: string; quantity: number }>; balance_id?: string; add_to_balance?: number };
+    const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; email?: string; feature_id?: string; required_balance?: number; lock?: { lock_id: string }; lock_id?: string; action?: string; discounts?: Array<{ promotion_code: string }>; invoice_mode?: unknown; customize?: { items?: Array<{ price?: { amount: number; billing_units: number } }> }; feature_quantities?: Array<{ feature_id: string; quantity: number }>; balance_id?: string; add_to_balance?: number };
     const quantity = body.feature_quantities?.[0]?.quantity ?? 0;
     const due = quantity * (1 - (OFF[body.discounts?.[0]?.promotion_code ?? ""] ?? 0));
     if (path === "billing.preview_attach") {
@@ -98,7 +98,7 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
       return Response.json({ success: true });
     }
     if (path === "billing.attach") {
-      asked.push({ path, quantity, discounts: body.discounts, invoice_mode: body.invoice_mode });
+      asked.push({ path, quantity, priced: body.customize?.items?.[0]?.price, discounts: body.discounts, invoice_mode: body.invoice_mode });
       // Something to pay and no card: Stripe's page, and nothing given until it is paid.
       if (!card && !body.invoice_mode) return Response.json({ payment_url: CHECKOUT });
       if (!keys.has(key!)) add(quantity);
@@ -197,18 +197,19 @@ describe("activating a report", () => {
     expect((await activations(world)).map((activation) => activation.state)).toEqual(["live"]);
   });
 
-  it("has a card buy the rest in whole dollars when the balance is short, then spends the price from the balance", async () => {
+  it("has a card buy exactly what the balance is short of, as one line at its own price, then spends the price from the balance", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
     const autumn = autumnStub({ monthly: 4.5, card: true });
-    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, expect: 6 })).toEqual({ live: true });
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, expect: 5.5 })).toEqual({ live: true });
     vi.unstubAllGlobals();
     expect(autumn.asked.map((call) => call.path)).toEqual(["billing.attach", "balances.check", "balances.finalize"]);
-    expect(autumn.asked[0]).toMatchObject({ quantity: 6 });
-    // $4.50 and the $6 bought, less the $10 the report costs.
-    expect(Object.values(autumn.holds()).reduce((sum, held) => sum + held, 0)).toBe(0.5);
-    expect(await activations(world)).toMatchObject([{ state: "live", payWith: "balance", price: 10, bought: 6, charge: { invoice: "in_bought", total: 6 } }]);
-    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 4, byCredit: 0, byCard: 6, code: null } });
+    // $5.50 of balance for $5.50: by the plan's own price Autumn would sell six whole dollars.
+    expect(autumn.asked[0]).toMatchObject({ quantity: 5.5, priced: { amount: 5.5, billing_units: 5.5 } });
+    // $4.50 and the $5.50 bought, less the $10 the report costs.
+    expect(Object.values(autumn.holds()).reduce((sum, held) => sum + held, 0)).toBe(0);
+    expect(await activations(world)).toMatchObject([{ state: "live", payWith: "balance", price: 10, bought: 5.5, charge: { invoice: "in_bought", total: 5.5 } }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 4.5, byCredit: 0, byCard: 5.5, code: null } });
   });
 
   it("by card, buys the whole price and leaves the balance as it was", async () => {
