@@ -53,7 +53,7 @@ function matchesPattern(pathname: string, pattern: string) {
  * is a paper page that isn't found) and a page needs Clerk.
  */
 export const isPublicFile = (pathname: string) =>
-  /^\/(?:robots\.txt|sitemap\.xml|papers\/sitemap\/\d+\.xml|papers\/doi\/.+|papers\/[^/]+\/(?:report\.pdf|cite\.(?:bib|ris)|cover\.png)|question-stage\/(?:hold|earth\.js))$/.test(pathname);
+  /^\/(?:robots\.txt|sitemap\.xml|[0-9a-f]{32}\.txt|papers\/sitemap\/\d+\.xml|papers\/doi\/.+|papers\/[^/]+\/(?:report\.pdf|cite\.(?:bib|ris)|cover\.png)|question-stage\/(?:hold|earth\.js))$/.test(pathname);
 
 export function isPublicPath(pathname: string) {
   const normalizedPath = normalizePathname(pathname);

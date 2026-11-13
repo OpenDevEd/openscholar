@@ -111,6 +111,8 @@ describe("public route auth matrix", () => {
   it("keeps Clerk off every file and redirect a route serves outside /api, and only those", () => {
     const routes = appRoutes();
     const files = [...routes.filter(({ kind, path }) => kind === "route" && !path.startsWith("/api/")).map(({ path }) => path), "/robots.txt", "/sitemap.xml", "/papers/sitemap/0.xml"];
+    // The IndexNow key, which a search engine fetches with no cookies to check a list of addresses is ours.
+    files.push(...readdirSync(join(__dirname, "../public")).filter((name) => name.endsWith(".txt")).map((name) => `/${name}`));
     expect(files.filter((path) => !isPublicFile(path))).toEqual([]);
     const pages = [...routes.filter(({ kind }) => kind === "page").map(({ path }) => path), "/papers/sitemap.xml", "/papers/W1/a-title", "/wp-login.php", "/papers/doi", "/question-stage/missing.php"];
     expect(pages.filter(isPublicFile)).toEqual([]);
