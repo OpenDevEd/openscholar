@@ -144,7 +144,7 @@ function CommunityHeader({ community }: { community: AppliedCommunity }) {
       <span className="size-12 shrink-0 overflow-hidden rounded-xl bg-inset">
         <FadeImage src={community.faviconUrl ?? "/icon.svg"} fallback="/icon.svg" className="size-full object-cover" />
       </span>
-      <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+      <div className="min-w-0 flex-1 max-sm:@max-[17rem]:wrap-anywhere">
         <DialogTitle className="text-base leading-snug">{t("joinName", { name: community.name })}</DialogTitle>
         <DialogDescription className="mt-1 flex min-w-0 items-center gap-1.5 text-xs">
           <WorkspaceTile workspace={{ kind: community.owner.kind === "organization" ? "organization" : "personal", name: community.owner.name, imageUrl: community.owner.imageUrl ?? undefined, workspaceId: community.owner.workspaceId }} size="xxs" />
