@@ -48,6 +48,8 @@ export type ManagedEvidenceLibraryConfiguration = {
   // The platform pays for meaning-based search. Assembly builds the embedder
   // from this key; owners never see it. Undefined means no key is set up.
   embeddingApiKey?: string;
+  // Whether the community tells IndexNow search engines about changed records. Only the live deployment sets it.
+  indexNow?: boolean;
   // The platform mail service. Owners only choose who receives the emails.
   // Undefined means the mail service is not set up yet.
   mail?: PlatformMailService;
@@ -402,6 +404,8 @@ export function assembleEvidenceLibraryConfiguration({
   const candidate: Record<string, unknown> = {
     ...withDefaults,
     features: { ...features, aiSearch: aiOn, deepResearch: false },
+    // The deployment's answer, never a draft's: a test community must not announce itself to search engines.
+    generation: { ...(isObject(withDefaults.generation) ? withDefaults.generation : {}), indexNow: managed.indexNow === true },
     search: {
       ...(isObject(withDefaults.search) ? withDefaults.search : {}),
       embedder:

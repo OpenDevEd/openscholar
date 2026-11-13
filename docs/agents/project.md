@@ -131,6 +131,10 @@ development Convex service.
   at once; prod offers a release only once it's promoted at
   `/settings/admin/community-releases`, which also runs updates. Updates only
   go forward; rollbacks are done by hand on the server.
+- Communities tell IndexNow search engines when a record is published, changed
+  or taken down only where Convex sets `EL_INDEXNOW=true`: prod. Never set it on
+  shared dev or e2e, whose communities must not announce themselves. A community
+  takes the setting at its next activation.
 - new-el's `coolify` branch and the tenants it runs are off limits. Never
   touch, push to, or use them as a reference; see new-el's
   `docs/agents/project.md`.

@@ -193,6 +193,18 @@ describe("validateOwnerSection", () => {
     expect(configuration.identity).not.toHaveProperty("fundingPartners");
   });
 
+  // Only the live deployment sets it: a test community must not announce itself to search engines.
+  test("turns IndexNow on for a community only when the deployment says so", () => {
+    const assemble = (indexNow?: boolean) =>
+      assembleEvidenceLibraryConfiguration({ sections: ownerSections, managed: { ...managedConfiguration, indexNow }, now: new Date("2026-08-24T19:00:00.000Z") });
+
+    const live = assemble(true);
+    expect(validateLibraryConfigStructure(live)).toEqual({ valid: true, issues: [] });
+    expect(live.generation).toMatchObject({ indexNow: true, sitemap: true });
+    expect(assemble(false).generation).toMatchObject({ indexNow: false, sitemap: true });
+    expect(assemble().generation).toMatchObject({ indexNow: false, sitemap: true });
+  });
+
   test("lets a draft carry a source without its write-only key", () => {
     expect(
       validateOwnerSection("sources", [
