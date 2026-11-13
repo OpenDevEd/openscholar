@@ -11,10 +11,10 @@ import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { DecisionsError, decideYesNo, isDecisionModel } from "../../lib/ai/decisions";
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl, searchUrl } from "../../lib/openalex/request-url";
-import type { Metadata } from "../../lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, sameStudySaid, type Metadata } from "../../lib/reports/report";
 
-/** The model a check runs on, as the server resolved it, and the effort it runs at. */
-export type CheckModel = { model: LanguageModel; slug: string; effort?: Effort };
+/** The model a check runs on, as the server resolved it, the effort it runs at, and the language it says why in: its author's. */
+export type CheckModel = { model: LanguageModel; slug: string; effort?: Effort; language: string };
 /** A live community to search, by its name and public address. */
 export type Community = { name: string; address: string };
 
@@ -106,7 +106,7 @@ async function inOurIndex(m: Report, ownDoi: string, missed: Missed): Promise<Ca
     const { results } = (await response.json()) as { results: Array<{ id: string; title: string; doi: string | null; publication_year?: number; abstract_inverted_index?: Record<string, number[]> | null }> };
     return results.flatMap((w) => {
       const text = abstractOf(w.abstract_inverted_index);
-      return text && !isReport(w.doi, ownDoi) ? [{ title: w.title, abstract: text, url: w.doi ?? `/papers/${w.id.split("/").at(-1)}`, where: "Openscholar's index", year: String(w.publication_year ?? "") }] : [];
+      return text && !isReport(w.doi, ownDoi) ? [{ title: w.title, abstract: text, url: w.doi ?? `/papers/${w.id.split("/").at(-1)}`, where: CHECK_WHERE.ourIndex, year: String(w.publication_year ?? "") }] : [];
     });
   } catch (error) {
     console.error(JSON.stringify({ event: "report-index-search-failed", error: String(error).slice(0, 300) }));
@@ -167,14 +167,14 @@ async function sameWorks(m: Report, candidates: Candidate[], slug: string): Prom
     questions: candidates.map((_, i) => SAME_WORK(`record${i + 1}`)),
   });
   // Sure of yes, or it isn't a match: an unclear answer never stops a report.
-  return answers.map(({ answer, confidence }) => (answer === true && confidence >= 0.5 ? `The same study as this record, by its title and abstract (${Math.round(confidence * 100)}% sure).` : false));
+  return answers.map(({ answer, confidence }) => (answer === true && confidence >= 0.5 ? sameStudySaid(Math.round(confidence * 100)) : false));
 }
 
-async function sameWork(m: Report, c: Candidate, { model, effort }: CheckModel): Promise<boolean | string> {
+async function sameWork(m: Report, c: Candidate, { model, effort, language }: CheckModel): Promise<boolean | string> {
   const result = await generateText({
     model,
     maxRetries: 1,
-    instructions: JUDGE,
+    instructions: `${JUDGE}\nWrite the reason in ${language}.`,
     output: Output.object({ schema: verdict }),
     prompt: `The report\nTitle: ${m.title}\n${saysLabel(m)}: ${reportSays(m).slice(0, 2500) || "(none)"}\n\nThe existing record\nTitle: ${c.title}\nAbstract: ${c.abstract.slice(0, 2500) || "(none)"}`,
     providerOptions: callOptions(model, { effort }),
@@ -199,7 +199,7 @@ export async function alreadyPublished(m: Report, ownDoi: string, judge: CheckMo
   // near matches, where on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
   const year = m.date.slice(0, 4);
   const identical = candidates.find((c) => sameTitle(c.title, m.title) && year !== "" && c.year === year);
-  if (identical) return { title: identical.title, url: identical.url, where: identical.where, reason: "The same title, from the same year." };
+  if (identical) return { title: identical.title, url: identical.url, where: identical.where, reason: CHECK_SAID.sameTitle };
   const judged = isDecisionModel(judge.slug)
     ? await sameWorks(m, candidates, judge.slug).then(
         (same) => candidates.map((c, i) => ({ c, same: same[i] ?? (false as const) })),

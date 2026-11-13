@@ -6614,7 +6614,14 @@
           "notPublished": "Nicht in Openscholar Reports, in OpenAlex, im Index von Openscholar oder in unseren Communities.",
           "notPublishedElsewhere": "Nicht in OpenAlex, im Index von Openscholar oder in unseren Communities.",
           "unfinished": "Diese Prüfung konnte nicht abgeschlossen werden.",
-          "bylineFound": "Der Text des PDFs enthält die Zeile wörtlich."
+          "bylineFound": "Der Text des PDFs enthält die Zeile wörtlich.",
+          "namesVersion": "Der Bericht nennt unter seinen Links eine andere Version von sich selbst.",
+          "sameTitle": "Derselbe Titel, aus demselben Jahr.",
+          "sameStudy": "Dieselbe Studie wie dieser Datensatz, nach Titel und Abstract ({percent} sicher)."
+        },
+        "foundAt": {
+          "ownLinks": "Gefunden in den eigenen Links des Berichts:",
+          "ourIndex": "Gefunden im Index von Openscholar:"
         },
         "defaults": {
           "byline": {

@@ -6613,7 +6613,14 @@
           "notPublished": "Not in Openscholar Reports, OpenAlex, Openscholar's index or our communities.",
           "notPublishedElsewhere": "Not in OpenAlex, Openscholar's index or our communities.",
           "unfinished": "This check couldn't finish.",
-          "bylineFound": "The PDF's text has the line word for word."
+          "bylineFound": "The PDF's text has the line word for word.",
+          "namesVersion": "The report names another version of itself among its links.",
+          "sameTitle": "The same title, from the same year.",
+          "sameStudy": "The same study as this record, by its title and abstract ({percent} sure)."
+        },
+        "foundAt": {
+          "ownLinks": "Found in the report's own links:",
+          "ourIndex": "Found in Openscholar's index:"
         },
         "defaults": {
           "byline": {

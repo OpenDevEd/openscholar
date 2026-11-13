@@ -6614,7 +6614,14 @@
           "notPublished": "غير موجود في Openscholar Reports أو OpenAlex أو فهرس Openscholar أو مجتمعاتنا.",
           "notPublishedElsewhere": "غير موجود في OpenAlex أو فهرس Openscholar أو مجتمعاتنا.",
           "unfinished": "تعذّر إكمال هذا الفحص.",
-          "bylineFound": "يحتوي نص ملف PDF على السطر حرفيًا."
+          "bylineFound": "يحتوي نص ملف PDF على السطر حرفيًا.",
+          "namesVersion": "يذكر التقرير نسخة أخرى منه بين روابطه.",
+          "sameTitle": "العنوان نفسه، من السنة نفسها.",
+          "sameStudy": "الدراسة نفسها التي في هذا السجل، بحسب عنوانه وملخصه (بثقة {percent})."
+        },
+        "foundAt": {
+          "ownLinks": "وُجد في روابط التقرير نفسه:",
+          "ourIndex": "وُجد في فهرس Openscholar:"
         },
         "defaults": {
           "byline": {
