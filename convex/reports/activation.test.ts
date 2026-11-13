@@ -248,6 +248,16 @@ describe("activating a report", () => {
     expect(await row(world.t, key)).toMatchObject({ status: "passed" });
   });
 
+  it("refuses another card while the account's credit pays part: Stripe's page would ask for all of it", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ card: true, credit: 4 });
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 6, card: "4242", otherCard: true })).rejects.toMatchObject(refused("CONFLICT"));
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    expect(await activations(world)).toEqual([]);
+  });
+
   it("saves a report that goes live to the library of the workspace it was published in", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

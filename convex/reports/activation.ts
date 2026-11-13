@@ -656,6 +656,11 @@ export const activate = action({
           const cardless = !customer.payment_method?.card;
           // A card saved or removed since the page read the account: the person was told another way of paying (Stripe's
           // page, or that card), and is never charged by one they weren't shown. What the account's credit covers charges no card.
+          // What the account's credit takes off the invoice: its lines less what is due.
+          const credit = Math.max(0, cents(linesOf(quoted) - quoted.total));
+          // Stripe's page takes a payment whole and doesn't draw on the account's credit: it would ask for more than
+          // the page showed. The page doesn't offer it then; one that did read the credit before it arrived.
+          if (otherCard && !cardless && credit > 0) return await changed("The account's credit isn't used on Stripe's page. Pay with the saved card, or change it under Manage billing.");
           // Someone who asked for Stripe's page chooses the card there, whichever is saved by now.
           const elsewhere = otherCard === true && !cardless && quoted.total > 0.005;
           if (!elsewhere && card !== undefined && quoted.total > 0.005 && (customer.payment_method?.card?.last4 ?? null) !== card) return await changed(CARD_CHANGED);
@@ -682,8 +687,6 @@ export const activate = action({
             throw createError("CONFLICT", STILL_PAYING);
           }
           // Bought: the dollars are in the balance now, and this report's to spend.
-          // What the account's credit took off the invoice: its lines less what was due.
-          const credit = Math.max(0, cents(linesOf(quoted) - quoted.total));
           if (await spendPaid(ctx, first.customerId, activationId, { payWith, price }, { ...done.charge, ...(credit > 0 && { credit }) })) return { live: true as const };
           throw createError("CONFLICT", KEPT);
         } catch (error) {

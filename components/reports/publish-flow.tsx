@@ -1691,6 +1691,12 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const workspaceId = useWorkspace();
   // It comes back to this report, not to Plan and credits.
   const appToast = useAppToast();
+  // The card is read again as the dialog opens: one changed in Stripe's portal a moment ago shows, and is the one charged.
+  const refreshMine = useAction(api.billing.accounts.refreshMine);
+  const askToPay = () => {
+    void refreshMine(organization && workspaceId ? { workspaceId } : {}).catch(() => {});
+    setPaying(true);
+  };
   const manageBilling = () => void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${window.location.pathname}${window.location.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
   // What pays and the code are kept with the report, so the bill reads the same on every step and after a reload.
   const payWith: PayWith = terms ? payWithOf(terms) : "card";
@@ -1890,7 +1896,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                         ) : (
                           // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
                           // something due, it pays, and says how much.
-                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? () => activateNow() : () => setPaying(true)} />
+                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? () => activateNow() : askToPay} />
                         )}
                       </FieldHelp>
                     ) : null}
@@ -1942,7 +1948,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           onManageBilling={manageBilling}
           // This once on Stripe's page, which offers the saved cards and takes a new one: the saved card is left as it is.
           onOtherCard={
-            card
+            // Not while the account's credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
+            card && fromCredit === 0
               ? () => {
                   setPaying(false);
                   activateNow(true);
