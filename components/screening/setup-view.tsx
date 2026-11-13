@@ -203,7 +203,8 @@ export function SetupView({
   // What one paper costs at most on the model Screen all runs on: a job holds that much for each of its papers when it starts.
   const { data: price } = useProtectedQuery(api.screening.queries.estimate, inWorkspace(workspaceId, { papers: 1 }));
   const perPaper = price?.credits;
-  // An untouched range ends on the last paper the credits cover, so what the page first offers is a job the person can start.
+  // An untouched range ends on the last paper the credits cover (on the first, when they cover none), so what the
+  // page first offers is the most the person can start.
   const untouched: [number, number] = [1, Math.max(1, Math.min(top, perPaper ? Math.floor(balance / perPaper) : top))];
   const range = chosen ?? untouched;
   const setRange = (change: SetStateAction<[number, number]>) => setChosen((current) => (typeof change === "function" ? change(current ?? untouched) : change));
@@ -271,7 +272,8 @@ export function SetupView({
     picks.current++;
     setPickedOf((all) => ({ ...all, [next.kind]: next }));
     setChosen(was?.range ?? null);
-    if (was) setScope(was.scope);
+    // A set not picked before starts as its kind does, whatever the last one was left on.
+    setScope(was?.scope ?? (next.kind === "search" ? "range" : "all"));
     // A search picked again, coming back from another kind, keeps the questions as the person left them.
     setEdited(next.kind === "search" && !was ? null : questions);
   };
