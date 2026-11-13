@@ -1,0 +1,40 @@
+---
+// Concept A: where the team is. The map leads; the places and their people follow, north to south.
+import Base from "../../layouts/Base.astro";
+import TeamMap from "../../components/TeamMap.astro";
+import Close from "../../components/Close.astro";
+import Arrow from "../../components/Arrow.astro";
+import AboutSwitch from "../../components/AboutSwitch.astro";
+import { ORGS, PLACES, flag } from "../../data/team.mjs";
+---
+<Base top="#070b1a" title="About: Openscholar" description="The people who make Openscholar, where they work, and the two organisations behind it.">
+  <section class="bleed mhero">
+    <div class="inner m-copy"><h1>The people behind Openscholar</h1><p class="lead">One team working across Africa, Europe and North America, from <a href={ORGS.ode.url}>{ORGS.ode.name}</a> and <a href={ORGS.ekitabu.url}>{ORGS.ekitabu.name}</a>.</p></div>
+    <div class="inner m-map"><TeamMap /></div>
+  </section>
+  <section class="places" aria-labelledby="pl-h">
+    <h2 id="pl-h">Where we work</h2>
+    <ul class="pl">{PLACES.map((pl) => <li class="pr" data-row-place={pl.place}>
+      <h3><img src={flag(pl.cc)} width="24" height="17" alt="" />{pl.place}</h3>
+      <ul class="ppl">{pl.people.map((m) => <li><img class="av" src={`/img/team/${m.key}.avif`} width="56" height="56" alt="" loading="lazy" /><span><b>{m.name}</b><em>{m.role}</em></span><a class="org" href={ORGS[m.org].url}>{ORGS[m.org].short}</a></li>)}</ul>
+    </li>)}</ul>
+  </section>
+  <Close title="Talk to the team"><a slot="action" class="btn" href="/contact/">Get in touch<Arrow /></a></Close>
+  <AboutSwitch />
+</Base>
+<style>
+  .mhero { background: radial-gradient(ellipse 60% 60% at 60% 70%, #10204a, transparent 70%), #070b1a; padding-block: clamp(130px, 11vw, 168px) clamp(40px, 5vw, 72px); }
+  .m-copy { display: grid; gap: 18px; max-width: 1280px; } .m-copy h1 { max-width: 12em; } .m-copy .lead { max-width: 34em; color: rgb(255 255 255 / .82); }
+  .m-copy a { color: #fff; text-decoration: underline; text-decoration-color: rgb(255 255 255 / .35); text-underline-offset: 4px; } .m-copy a:hover { text-decoration-color: currentColor; }
+  .m-map { margin-top: clamp(24px, 4vw, 48px); }
+  .places { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 24px 48px; padding: clamp(56px, 7vw, 96px) var(--pad); }
+  .places h2 { position: sticky; top: 100px; align-self: start; }
+  .pl > li { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 12px 32px; padding-block: 22px; border-top: 1px solid var(--line); } .pl > li:last-child { border-bottom: 1px solid var(--line); }
+  .pl h3 { display: flex; align-items: center; gap: 12px; padding-top: 14px; font-size: 20px; } .pl h3 img { border-radius: 3px; box-shadow: 0 0 0 1px var(--line); }
+  .ppl { display: grid; gap: 12px; } .ppl li { display: flex; align-items: center; gap: 14px; }
+  .av { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; flex: none; }
+  .ppl span { display: grid; min-width: 0; } .ppl b { font-weight: 500; font-size: 17px; } .ppl em { font-style: normal; font-size: 15px; color: var(--t2); }
+  .org { margin-left: auto; flex: none; font-size: 14px; color: var(--t3); text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; } .org:hover { color: var(--ink); }
+  @media (max-width: 900px) { .places { grid-template-columns: minmax(0, 1fr); } .places h2 { position: static; } }
+  @media (max-width: 560px) { .pl > li { grid-template-columns: minmax(0, 1fr); } .pl h3 { padding-top: 0; } .org { display: none; } }
+</style>

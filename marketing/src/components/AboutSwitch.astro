@@ -1,0 +1,10 @@
+---
+// Mock only: moves between the About page concepts. Delete with the losing concepts.
+const path = Astro.url.pathname;
+const ALL = [["/about/", "Map"], ["/about/faces/", "Faces"], ["/about/makers/", "Organisations"]];
+---
+<nav class="aswitch" aria-label="About page concepts">{ALL.map(([href, label]) => <a href={href} aria-current={path === href ? "page" : undefined}>{label}</a>)}</nav>
+<style>
+  .aswitch { position: fixed; z-index: 60; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); translate: -50% 0; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: #10141f; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .14), 0 20px 40px -16px rgb(4 7 16 / .7); }
+  .aswitch a { height: 36px; display: grid; place-items: center; padding-inline: 14px; border-radius: 10px; font-size: 14px; color: rgb(255 255 255 / .75); white-space: nowrap; } .aswitch a:hover { color: #fff; } .aswitch a[aria-current] { background: #fff; color: var(--ink); }
+</style>
