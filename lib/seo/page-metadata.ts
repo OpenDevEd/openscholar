@@ -46,7 +46,7 @@ export async function namedTitle(name: string): Promise<Metadata["title"]> {
 }
 
 /** The search-engine pages, for the sitemap. */
-export const INDEXED_PATHS = ["/", "/pricing", "/terms", "/privacy", "/cookie-policy", "/credits"] as const;
+export const INDEXED_PATHS = ["/", "/pricing", "/terms", "/privacy", "/cookie-policy", "/credits", "/topics"] as const;
 
 /**
  * The paper pages search engines are asked to read (`app/papers/sitemap.ts`): in each band of years, the 10,000 most cited
