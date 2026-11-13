@@ -27,14 +27,17 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
         <button type="button" class="stack" data-go={i} aria-label={`${p.name}: ${p.people.map((m) => m.name).join(", ")}`}>{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="40" height="40" alt="" />)}</button>
       </div>; })}</div>
     </div>
-    <div class="band" aria-label="Where the team is">{places.map((p, i) => <div class="pl" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
+    <div class="band" aria-label="Where the team is">{places.map((p, i) => <div class="pl open" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
       <img class="pl-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" decoding="async" />
-      <button type="button" class="pl-head" data-place={i} aria-expanded="false" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
+      <button type="button" class="pl-head" data-place={i} aria-expanded="true" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
       <span class="pl-faces" aria-hidden="true">{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="34" height="34" alt="" />)}</span>
       <Clock tz={p.tz} />
-      <ul class="pl-who" id={`pl-${p.id}`} inert>{p.people.map((m) => <li><a href={`/about/${m.slug}/`}><img src={`/img/team/${m.key}-face.avif`} width="44" height="44" alt="" /><span><b>{m.name}</b><em>{m.role}</em></span><Arrow /></a></li>)}</ul>
+      <ul class="pl-who" id={`pl-${p.id}`}>{p.people.map((m) => <li><a href={`/about/${m.slug}/`}><img src={`/img/team/${m.key}-face.avif`} width="44" height="44" alt="" /><span><b>{m.name}</b><em>{m.role}</em></span><Arrow /></a></li>)}</ul>
     </div>)}</div>
   </div>
+  {/* Every place is open in the markup, so the page reads without scripts. This shuts them as the page is read, before the
+      first paint: all of them where they stand side by side, all but the first where they are a list, which keeps its height. */}
+  <script is:inline>(() => { const wide = matchMedia("(min-width: 1180px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); el.querySelector(".pl-head").setAttribute("aria-expanded", String(on)); el.querySelector(".pl-who").inert = !on; }); })();</script>
   <script is:inline set:html={CLOCK_JS} />
 </section>
 <script>
@@ -56,7 +59,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     const ALL = facing({ lon: -18, lat: 12 });
     // The sun starts behind the planet's upper edge, a crescent with the cities lit, and comes round to the day side.
     const NIGHT = [-.72, .5, -.48], DAY = [-.42, .46, .78], DAWN_MS = 3000;
-    let W = 0, R = 0, dpr = 1, spin = ALL - .5, vel = 0, goal = ALL, focus = -1, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0;
+    let W = 0, R = 0, dpr = 1, spin = ALL - .5, vel = 0, goal = ALL, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0;
     // Nothing moves by itself for a visitor who asked for less motion, or where the planet can't be drawn.
     const still = () => calm.matches || !planet;
     const layout = () => ({ R, cx: W / 2, cy: W / 2, rx: R, ry: 1, tilt: 0, narrow: W < 500 });
@@ -90,9 +93,9 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       pins.forEach((el, k) => el.classList.toggle("here", k === i)); root.classList.toggle("some", i >= 0);
       if (still()) { spin = goal; vel = 0; frame(); } else { dirty = true; run(); }
     };
-    // The tour: everyone, then each place in turn, for as long as nobody has picked one and the pointer is elsewhere. In one
-    // column a place is always open, so the list keeps its height.
-    const tour = (now) => { if (pinned || held || drag) { nextAt = 0; return; } if (!nextAt) nextAt = now + (focus < 0 ? DAWN_MS + 1600 : 2600); if (now < nextAt) return; const n = focus + 1; select(n < P.length ? n : wide.matches ? -1 : 0); nextAt = now + (focus < 0 ? 3400 : 4600); };
+    // The tour: everyone, then each place in turn, for as long as nobody has picked one and the pointer and the keyboard are
+    // elsewhere. In one column a place is always open, so the list keeps its height.
+    const tour = (now) => { if (pinned || held || drag || root.contains(document.activeElement)) { nextAt = 0; return; } if (!nextAt) nextAt = now + (focus < 0 ? DAWN_MS + 1600 : 2600); if (now < nextAt) return; const n = focus + 1; select(n < P.length ? n : wide.matches ? -1 : 0); nextAt = now + (focus < 0 ? 3400 : 4600); };
     const run = () => { if (!raf && seen && !still() && !document.hidden) raf = requestAnimationFrame(loop); };
     const loop = (now) => {
       raf = 0; run(); if (scrolling) return;
@@ -110,12 +113,11 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       if (level) planet = Earth.renderer({ canvas: cv, width: W, height: W, layout: layout(), level: Math.min(level, 4), base: "/img/earth-", onLost: rest });
       if (planet) await planet.textures.catch(() => { planet = null; });
       if (!planet) return rest();
-      born = last = performance.now(); if (calm.matches) spin = goal; root.classList.add("lit"); select(wide.matches ? -1 : 0); frame(); run();
+      born = last = performance.now(); if (calm.matches) spin = goal; root.classList.add("lit"); select(focus); frame(); run();
     };
     for (const b of heads) { const i = Number(b.dataset.place); b.addEventListener("click", () => { pinned = true; select(i); }); b.parentElement.addEventListener("pointerenter", () => { if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }); }
     for (const b of $$("[data-go]")) b.addEventListener("click", () => { pinned = true; select(Number(b.dataset.go)); });
     for (const el of [band, globe]) { el.addEventListener("pointerenter", () => { if (hover.matches) held = true; }); el.addEventListener("pointerleave", () => { held = false; }); }
-    root.addEventListener("focusin", () => { held = true; }); root.addEventListener("focusout", () => { held = false; });
     // Dragging turns the globe by hand, with a mouse only, so a finger still scrolls the page.
     globe.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.target.closest("button, a") || still()) return; pinned = true; if (wide.matches) select(-1); goal = spin; vel = 0; drag = { x: e.clientX, s: spin }; globe.setPointerCapture(e.pointerId); globe.classList.add("grab"); });
     globe.addEventListener("pointermove", (e) => { if (drag) spin = goal = drag.s + (e.clientX - drag.x) * .006; });
@@ -146,8 +148,8 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .still { inset: 11%; width: 78%; height: 78%; border-radius: 50%; object-fit: cover; } img.still:not([src]) { display: none; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
   .pins { position: absolute; inset: 0; pointer-events: none; }
   .pin { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: opacity .35s var(--ease), visibility 0s; } .pin:global(.back) { opacity: 0; visibility: hidden; transition: opacity .25s var(--ease), visibility 0s .25s; }
-  /* The pins light up one after another as the sun comes round. */
-  :global(.js) .ah:not(.lit) .pin { opacity: 0; } :global(.js) .ah:global(.lit) .pin { animation: pin-in .8s var(--ease) calc(1.5s + var(--i) * 110ms) backwards; } @keyframes pin-in { from { opacity: 0; scale: .4; } }
+  /* The pins wait until the planet has placed them, then light up one after another as the sun comes round. */
+  .ah:not(.lit) .pins { visibility: hidden; } :global(.js) .ah:global(.lit) .pin { animation: pin-in .8s var(--ease) calc(1.5s + var(--i) * 110ms) backwards; } @keyframes pin-in { from { opacity: 0; scale: .4; } }
   .dot { position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%; background: #fff3e4; box-shadow: 0 0 0 3px rgb(255 157 54 / .85), 0 0 18px 4px rgb(255 157 54 / .7); }
   /* The pin of the place in focus sends out rings. */
   .dot::before, .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--brand-bright); opacity: 0; } .pin:global(.here) .dot::before, .pin:global(.here) .dot::after { animation: ring 2.4s var(--ease) infinite; } .pin:global(.here) .dot::after { animation-delay: 1.2s; } @keyframes ring { from { opacity: .9; scale: 1; } to { opacity: 0; scale: 4; } }
@@ -175,6 +177,8 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .pl-who { position: absolute; left: 10px; bottom: 10px; display: grid; gap: 2px; width: 272px; } .pl-who a { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 15px; background: color-mix(in srgb, var(--bg) 72%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: background-color .2s var(--ease); } .pl-who a:hover { background: rgb(255 255 255 / .16); }
   .pl-who a > img { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 1px rgb(255 255 255 / .22); } .pl-who a > span { display: grid; flex: 1; min-width: 0; } .pl-who b { font-weight: 500; font-size: 15px; line-height: 1.3; } .pl-who em { font-style: normal; font-size: 13px; line-height: 1.3; color: rgb(255 255 255 / .74); }
   .pl-who a :global(i) { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 9px; color: rgb(255 255 255 / .7); transition: background-color .2s var(--ease), color .2s var(--ease), translate .25s var(--ease); } .pl-who a:hover :global(i) { background: var(--brand); color: var(--brand-on); translate: 2px 0; }
+  /* Without scripts nothing can open a place, so they are all open, as a grid of cards. */
+  :global(html:not(.has-js)) .band { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); height: auto; } :global(html:not(.has-js)) .pl { height: 236px; }
   /* Narrower: words, globe, then the places as a list, the open one tall. A place is always open there, so the list's height
      never changes, and each row names its place, with its people and the time on the right. */
   @media (max-width: 1179px) {

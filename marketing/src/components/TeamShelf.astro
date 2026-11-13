@@ -8,11 +8,15 @@ import { SHELF } from "../data/team.mjs";
   <div class="sh-copy"><h2 id="shelf-h">Research by the team</h2><p class="lead">Reports and reviews written by people on this page.</p></div>
   <div class="run">{[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{SHELF.map((b) => <li><a href={b.url} rel="noopener" tabindex={copy ? -1 : undefined} aria-label={`${b.title}, ${b.year}`}><img src={`/img/team/pub-${b.cover}.avif`} width="150" height="200" alt="" loading="lazy" decoding="async" /><span class="cap"><b>{b.title}</b><em>{b.year}</em></span></a></li>)}</ul>)}</div>
 </section>
+<script>
+  // A cover reached with the keyboard is brought into view once the shelf has become a row that scrolls.
+  document.querySelector(".shelf .run")?.addEventListener("focusin", (e) => requestAnimationFrame(() => e.target.scrollIntoView({ block: "nearest", inline: "center" })));
+</script>
 <style>
   .shelf { --bg: #020614; container-type: inline-size; height: clamp(460px, 47cqw, 590px); background: url(/img/art-shelf.avif) 50% 100% / 100% auto no-repeat, #020614; }
   .sh-copy { display: grid; gap: 10px; padding: clamp(28px, 3.4vw, 48px) var(--pad) 0; } .sh-copy .lead { color: rgb(255 255 255 / .8); }
-  /* The covers pass slowly along the shelf, and hold still under the pointer or keyboard focus. */
-  .run { position: absolute; left: 0; right: 0; bottom: 15.6cqw; display: flex; width: max-content; animation: shelf 90s linear infinite; } .run:hover, .run:focus-within { animation-play-state: paused; } @keyframes shelf { to { transform: translateX(-50%); } }
+  /* The covers pass slowly along the shelf, and hold still under the pointer. */
+  .run { position: absolute; left: 0; right: 0; bottom: 15.6cqw; display: flex; width: max-content; animation: shelf 90s linear infinite; } .run:hover { animation-play-state: paused; } @keyframes shelf { to { transform: translateX(-50%); } }
   .run ul { display: flex; align-items: flex-end; flex: none; gap: clamp(18px, 2.4cqw, 30px); padding-right: clamp(18px, 2.4cqw, 30px); }
   .run a { position: relative; display: block; transition: translate .35s var(--ease); } .run img { width: clamp(96px, 11.6cqw, 150px); height: auto; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 0; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 -18px 40px -18px rgb(255 170 70 / .5), 0 2px 0 rgb(255 196 120 / .9); transition: box-shadow .35s var(--ease); }
   .run a:hover, .run a:focus-visible { translate: 0 -12px; } .run a:hover img, .run a:focus-visible img { box-shadow: 0 0 0 1px rgb(255 255 255 / .3), 0 -18px 50px -14px rgb(255 170 70 / .8), 0 14px 22px -8px rgb(0 0 0 / .8); }
@@ -20,5 +24,8 @@ import { SHELF } from "../data/team.mjs";
   .cap { position: absolute; left: 50%; bottom: calc(100% + 12px); z-index: 2; display: grid; gap: 2px; width: 240px; padding: 10px 12px; border-radius: 12px; background: #10141f; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 18px 30px -12px #000; translate: -50% 6px; opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); } .run a:hover .cap, .run a:focus-visible .cap { opacity: 1; translate: -50% 0; }
   .cap b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-weight: 500; font-size: 14px; line-height: 1.3; } .cap em { font: 400 13px/1.2 var(--mono); color: rgb(255 255 255 / .62); }
   @media (max-width: 700px) { .shelf { height: clamp(360px, 96cqw, 440px); background-size: 180% auto; } .run { bottom: 28.1cqw; } .run img { width: 104px; } .cap { display: none; } }
-  @media (prefers-reduced-motion: reduce) { .run { position: absolute; width: auto; overflow-x: auto; } .run ul[aria-hidden] { display: none; } }
+  /* With the keyboard on a cover, or for a visitor who asked for less motion, the shelf stops being a moving strip and
+     becomes one row that scrolls, so the cover in focus is always brought into view. */
+  .run:has(:focus-visible) { width: auto; overflow-x: auto; animation: none; } .run:has(:focus-visible) ul[aria-hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) { .run { width: auto; overflow-x: auto; } .run ul[aria-hidden] { display: none; } }
 </style>
