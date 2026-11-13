@@ -1099,6 +1099,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
   // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
   // whatever the day has left.
+  // The same in a few words, for beside the workspace picked: one line that never wraps.
+  const shut = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`shut.${starts.perDay > 0 ? "used" : starts.kind === "personal" ? "ownClosed" : "closed"}`) : null;
   // The plans of the workspace picked, which isn't always the page's.
   const plans = workspaceHref(away ? chosen?.slug : slug, "/pricing");
   const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
@@ -1119,7 +1121,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
-          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} />
+          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut && !settling ? { why: shut, plans } : null} />
         </section>
       ) : null}
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
