@@ -6855,7 +6855,15 @@
         "noLimit": "Bila kikomo",
         "credit": "Salio la akaunti"
       },
-      "activateFree": "Washa DOI"
+      "activateFree": "Washa DOI",
+      "paid": {
+        "balance": "{amount} zimelipwa kutoka kwenye salio",
+        "balanceLeft": "{amount} zimelipwa kutoka kwenye salio, zimebaki {left}",
+        "card": "{amount} zimelipwa kwa kadi",
+        "code": "{code} imegharamia bei",
+        "codeRest": "{code} imegharamia kilichobaki",
+        "credit": "{amount} zimelipwa kutoka kwenye salio la akaunti"
+      }
     },
     "meta": {
       "publish": "Chapisha | Openscholar",
@@ -7280,7 +7288,7 @@
         "activation": {
           "title": "Kuwezesha",
           "about": "Kuwezesha hufanya ripoti yako iwe ya umma: ukurasa wake hufunguka, DOI yake huanza kufanya kazi, na husajiliwa.",
-          "note": "Uwezeshaji hutoka kwenye salio la eneo lako la kazi, au hulipiwa hapa. Msimbo wa vocha hupunguza bei yake."
+          "note": "Kinachodaiwa hulipwa kwanza: kutoka kwenye salio la uchapishaji la eneo lako la kazi, kwa kadi, au vyote viwili. Msimbo wa vocha hupunguza kile kadi inacholipa."
         }
       }
     }

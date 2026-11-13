@@ -6855,7 +6855,15 @@
         "noLimit": "Ohne Limit",
         "credit": "Guthaben des Kontos"
       },
-      "activateFree": "DOI aktivieren"
+      "activateFree": "DOI aktivieren",
+      "paid": {
+        "balance": "{amount} aus dem Guthaben bezahlt",
+        "balanceLeft": "{amount} aus dem Guthaben bezahlt, {left} übrig",
+        "card": "{amount} mit Karte bezahlt",
+        "code": "{code} hat den Preis gedeckt",
+        "codeRest": "{code} hat den Rest gedeckt",
+        "credit": "{amount} aus dem Guthaben des Kontos bezahlt"
+      }
     },
     "meta": {
       "publish": "Veröffentlichen | Openscholar",
@@ -7280,7 +7288,7 @@
         "activation": {
           "title": "Aktivieren",
           "about": "Aktivieren macht Ihren Bericht öffentlich: Seine Seite öffnet sich, sein DOI funktioniert, und er wird registriert.",
-          "note": "Eine Aktivierung kommt aus dem Guthaben Ihres Arbeitsbereichs oder wird hier bezahlt. Ein Gutscheincode senkt ihren Preis."
+          "note": "Der fällige Betrag wird zuerst bezahlt: aus dem Publikationsguthaben Ihres Arbeitsbereichs, mit Karte oder beidem. Ein Gutscheincode senkt, was die Karte zahlt."
         }
       }
     }

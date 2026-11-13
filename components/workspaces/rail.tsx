@@ -39,6 +39,7 @@ import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
 import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useQueryHighlight } from "@/components/query-highlight";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Switch } from "@/components/ui/switch";
 import { LogoMark } from "@/components/logo";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -60,6 +61,7 @@ import { findPlan, mainPlans } from "@/lib/billing/catalog";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
+import { useMoney } from "@/lib/hooks/use-money";
 import { cn } from "@/lib/utils";
 import { bareWorkspacePath, switchTarget } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -653,6 +655,7 @@ function AccountCard({
   const tc = useTranslations("common");
   const tb = useTranslations("billingPage");
   const format = useFormatter();
+  const money = useMoney();
   const { user } = useUser();
   const { account, catalog, resolvedPlan, planFeatures } = useSubscriptionState();
   const subscriptions = useFeatureFlagForPlan("subscriptions.enabled", planFeatures);
@@ -667,6 +670,8 @@ function AccountCard({
   const credits = account?.balance;
   const share = monthly && credits !== undefined ? Math.min(1, credits / monthly) : null;
   const hasCredits = !!workspace && credits !== undefined;
+  /** What the workspace's publication balance holds, in US dollars: null for no limit, 0 for none. */
+  const publication = account?.publicationUnlimited ? null : (account?.publication ?? []).reduce((sum, part) => sum + part.left, 0);
   // What is in the card as it opens is simply there; what is read after opens its place.
   const [creditsFromStart] = useState(hasCredits);
   const [upgradeFromStart] = useState(hasCredits && canUpgrade);
@@ -721,6 +726,19 @@ function AccountCard({
                   <motion.span className="block h-full rounded-full bg-primary" style={{ width: `${share * 100}%` }} initial={{ x: "-100%" }} animate={{ x: 0 }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
                 </span>
               ) : null}
+              {/* What pays for reports, under the credits and in smaller print, while it holds anything: with nothing
+                  in it, it would say only that. A balance that is given or runs out while the card is open opens
+                  or closes its line. */}
+              <AutoHeight>
+                {publication !== 0 ? (
+                  <span className="flex items-baseline justify-between gap-2 pt-2 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">{tb("publication.title")}</span>
+                    <bdi dir="ltr" className="shrink-0 font-medium tabular-nums text-foreground">
+                      {publication === null ? tb("publication.noLimit") : money(publication)}
+                    </bdi>
+                  </span>
+                ) : null}
+              </AutoHeight>
             </Link>
           </Opening>
         ) : null}

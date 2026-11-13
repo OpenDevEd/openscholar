@@ -7,22 +7,17 @@
 
 import { useEffect, type ReactNode } from "react";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { CreditCard, Wallet } from "@/components/icons";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import type { BalancePart } from "@/convex/billing/validators";
+import { useMoney } from "@/lib/hooks/use-money";
 import { payment, type PayWith } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 /** A workspace's publication balance: what it holds in US dollars (null for no limit), and its parts. */
 export type Balance = { balance: number | null; parts: BalancePart[] };
-
-/** Dollars in the reader's own format, without cents when there are none: $5, $2.50. */
-export function useMoney() {
-  const format = useFormatter();
-  return (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: amount % 1 ? 2 : 0 });
-}
 
 /** An amount that rolls to each new value, as the app's other numbers do. It jumps there when motion is reduced. */
 function RollingMoney({ value }: { value: number }) {
