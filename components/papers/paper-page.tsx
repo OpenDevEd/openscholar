@@ -6,7 +6,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { dateMoment, dateStyleOf } from "@/lib/reports/report";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { copyText } from "@/components/copy-text";
 import Link from "@/components/workspace-link";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -222,6 +222,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
 /** The DOI where it's seen: under the journal, opening the paper, with a button that copies it. */
 function DoiLine({ doi }: { doi: string }) {
   const t = useTranslations("paperPage");
+  const tToast = useTranslations("toast");
   const [copied, setCopied] = useState(false);
   return (
     <p className="mt-2 flex items-center gap-2 text-sm">
@@ -229,8 +230,7 @@ function DoiLine({ doi }: { doi: string }) {
       <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
       <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
         <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
-          try { await navigator.clipboard.writeText(`https://doi.org/${doi}`); setCopied(true); toast.success(t("doiCopied")); }
-          catch { toast.error(t("doiCopyFailed")); }
+          if (await copyText(`https://doi.org/${doi}`, { copied: t("doiCopied"), failed: t("doiCopyFailed"), select: tToast("copyFailedDescription") })) setCopied(true);
         }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
       </TooltipHint>
     </p>

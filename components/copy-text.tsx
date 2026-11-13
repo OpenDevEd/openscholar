@@ -4,12 +4,14 @@ import { toast } from "sonner";
 
 /**
  * Copies text to the clipboard and says so. Where the browser refuses, or has no clipboard to write to (an insecure
- * page, an old browser), it says that, and shows the text to select and copy by hand, for long enough to.
+ * page, an old browser), it says that, and shows the text to select and copy by hand, for long enough to. Returns
+ * whether it copied.
  */
 export async function copyText(text: string, words: { copied: string; failed: string; select: string }) {
   try {
     await navigator.clipboard.writeText(text);
     toast.success(words.copied);
+    return true;
   } catch {
     toast.error(words.failed, {
       description: (
@@ -20,5 +22,6 @@ export async function copyText(text: string, words: { copied: string; failed: st
       ),
       duration: 20_000,
     });
+    return false;
   }
 }
