@@ -7055,7 +7055,6 @@
         "matched": "مقروء من ملف PDF ثم مبحوث عنه",
         "classified": "مقترح من OpenAlex",
         "author": "يبدأ بصفة مؤلف",
-        "fixed": "تحدّده Openscholar",
         "reserved": "يُحجز عند التوقيع"
       },
       "entry": {
@@ -7083,9 +7082,9 @@
           "name": "رموز اللغات ISO 639",
           "detail": "الرموز التي يستخدمها OpenAlex"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "المشاع الإبداعي، نسب المصنف 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "ما تسمح به كل رخصة"
         },
         "crossrefContributors": {
           "name": "المساهمون في Crossref",
@@ -7194,7 +7193,7 @@
         },
         "licence": {
           "title": "الترخيص",
-          "about": "يُنشر كل Openscholar Report بترخيص CC BY 4.0، كما تنص الاتفاقية التي وقّعتها."
+          "about": "الرخصة التي اخترتها عند توقيع الاتفاقية. لا يمكن تغييرها الآن."
         },
         "authors": {
           "title": "المؤلفون",
