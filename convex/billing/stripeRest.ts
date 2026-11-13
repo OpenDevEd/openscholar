@@ -73,7 +73,7 @@ async function invoiceOf(invoice: string) {
   const read = await stripe(`invoices/${encodeURIComponent(invoice)}?expand[]=payments.data.payment.payment_intent`);
   const payments = ((read.payments as { data?: Array<{ payment?: { payment_intent?: Stripe | string } }> } | undefined)?.data ?? []).map((payment) => payment.payment?.payment_intent);
   const intent = payments.find((candidate): candidate is Stripe => typeof candidate === "object" && candidate !== null);
-  return { status: String(read.status), total: Number(read.total ?? 0), currency: String(read.currency ?? "usd"), intent };
+  return { status: String(read.status), total: Number(read.total ?? 0), due: Number(read.amount_due ?? read.total ?? 0), currency: String(read.currency ?? "usd"), intent };
 }
 
 /**
@@ -99,9 +99,10 @@ export async function bankPage(invoice: string, back: string): Promise<string | 
  * How a charge's invoice stands: paid (what it came to in US dollars), void, or open, and whether the bank or the
  * card refused its payment, which then can't go through without being made again. Throws when Stripe can't be read.
  */
-export async function chargeOf(invoice: string): Promise<{ status: "paid"; total: number; currency: string } | { status: "void" } | { status: "open"; refused: boolean }> {
+export async function chargeOf(invoice: string): Promise<{ status: "paid"; total: number; credit: number; currency: string } | { status: "void" } | { status: "open"; refused: boolean }> {
   const read = await invoiceOf(invoice);
-  if (read.status === "paid") return { status: "paid", total: read.total / 100, currency: read.currency };
+  // Stripe takes the customer's credit off an invoice before the card: what was due is its total less that credit.
+  if (read.status === "paid") return { status: "paid", total: read.total / 100, credit: Math.max(0, read.total - read.due) / 100, currency: read.currency };
   if (read.status === "void" || read.status === "uncollectible") return { status: "void" };
   return { status: "open", refused: read.intent?.status === "requires_payment_method" };
 }

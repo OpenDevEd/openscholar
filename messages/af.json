@@ -6860,9 +6860,9 @@
         "balance": "{amount} uit die balans betaal",
         "balanceLeft": "{amount} uit die balans betaal, {left} oor",
         "card": "{amount} per kaart betaal",
-        "cardCode": "{amount} per kaart betaal met {code}",
         "code": "{code} het die prys gedek",
-        "codeRest": "{code} het die res gedek"
+        "codeRest": "{code} het die res gedek",
+        "credit": "{amount} uit rekeningkrediet betaal"
       }
     },
     "meta": {

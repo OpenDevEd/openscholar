@@ -6859,9 +6859,9 @@
         "balance": "从余额支付 {amount}",
         "balanceLeft": "从余额支付 {amount}，剩余 {left}",
         "card": "用银行卡支付 {amount}",
-        "cardCode": "用银行卡支付 {amount}，使用 {code}",
         "code": "{code} 已抵扣全部费用",
-        "codeRest": "{code} 已抵扣剩余费用"
+        "codeRest": "{code} 已抵扣剩余费用",
+        "credit": "用账户余额抵扣 {amount}"
       }
     },
     "meta": {

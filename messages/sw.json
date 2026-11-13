@@ -6860,9 +6860,9 @@
         "balance": "{amount} zimelipwa kutoka kwenye salio",
         "balanceLeft": "{amount} zimelipwa kutoka kwenye salio, zimebaki {left}",
         "card": "{amount} zimelipwa kwa kadi",
-        "cardCode": "{amount} zimelipwa kwa kadi kwa {code}",
         "code": "{code} imegharamia bei",
-        "codeRest": "{code} imegharamia kilichobaki"
+        "codeRest": "{code} imegharamia kilichobaki",
+        "credit": "{amount} zimelipwa kutoka kwenye salio la akaunti"
       }
     },
     "meta": {

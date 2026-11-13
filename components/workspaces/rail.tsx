@@ -39,6 +39,7 @@ import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
 import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useQueryHighlight } from "@/components/query-highlight";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Switch } from "@/components/ui/switch";
 import { LogoMark } from "@/components/logo";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -726,15 +727,18 @@ function AccountCard({
                 </span>
               ) : null}
               {/* What pays for reports, under the credits and in smaller print, while it holds anything: with nothing
-                  in it, it would say only that. */}
-              {publication !== 0 ? (
-                <span className="mt-2 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate">{tb("publication.title")}</span>
-                  <bdi dir="ltr" className="shrink-0 font-medium tabular-nums text-foreground">
-                    {publication === null ? tb("publication.noLimit") : money(publication)}
-                  </bdi>
-                </span>
-              ) : null}
+                  in it, it would say only that. A balance that is given or runs out while the card is open opens
+                  or closes its line. */}
+              <AutoHeight>
+                {publication !== 0 ? (
+                  <span className="flex items-baseline justify-between gap-2 pt-2 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">{tb("publication.title")}</span>
+                    <bdi dir="ltr" className="shrink-0 font-medium tabular-nums text-foreground">
+                      {publication === null ? tb("publication.noLimit") : money(publication)}
+                    </bdi>
+                  </span>
+                ) : null}
+              </AutoHeight>
             </Link>
           </Opening>
         ) : null}

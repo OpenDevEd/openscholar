@@ -6859,9 +6859,9 @@
         "balance": "शेष से {amount} का भुगतान",
         "balanceLeft": "शेष से {amount} का भुगतान, {left} बचे",
         "card": "कार्ड से {amount} का भुगतान",
-        "cardCode": "कार्ड से {amount} का भुगतान, {code} के साथ",
         "code": "{code} ने कीमत चुका दी",
-        "codeRest": "{code} ने बाकी रकम चुका दी"
+        "codeRest": "{code} ने बाकी रकम चुका दी",
+        "credit": "खाते के क्रेडिट से {amount} का भुगतान"
       }
     },
     "meta": {

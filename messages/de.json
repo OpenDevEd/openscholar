@@ -6860,9 +6860,9 @@
         "balance": "{amount} aus dem Guthaben bezahlt",
         "balanceLeft": "{amount} aus dem Guthaben bezahlt, {left} übrig",
         "card": "{amount} mit Karte bezahlt",
-        "cardCode": "{amount} mit Karte bezahlt, mit {code}",
         "code": "{code} hat den Preis gedeckt",
-        "codeRest": "{code} hat den Rest gedeckt"
+        "codeRest": "{code} hat den Rest gedeckt",
+        "credit": "{amount} aus dem Guthaben des Kontos bezahlt"
       }
     },
     "meta": {

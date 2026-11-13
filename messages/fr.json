@@ -6859,9 +6859,9 @@
         "balance": "{amount} payés avec le solde",
         "balanceLeft": "{amount} payés avec le solde, il reste {left}",
         "card": "{amount} payés par carte",
-        "cardCode": "{amount} payés par carte avec {code}",
         "code": "{code} a couvert le prix",
-        "codeRest": "{code} a couvert le reste"
+        "codeRest": "{code} a couvert le reste",
+        "credit": "{amount} payés avec le crédit du compte"
       }
     },
     "meta": {

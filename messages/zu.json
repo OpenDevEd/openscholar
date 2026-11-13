@@ -6859,9 +6859,9 @@
         "balance": "Kukhokhwe {amount} ngebhalansi",
         "balanceLeft": "Kukhokhwe {amount} ngebhalansi, kusele {left}",
         "card": "Kukhokhwe {amount} ngekhadi",
-        "cardCode": "Kukhokhwe {amount} ngekhadi nge-{code}",
         "code": "I-{code} ikhokhele inani",
-        "codeRest": "I-{code} ikhokhele okusele"
+        "codeRest": "I-{code} ikhokhele okusele",
+        "credit": "Kukhokhwe {amount} ngesikweletu se-akhawunti"
       }
     },
     "meta": {

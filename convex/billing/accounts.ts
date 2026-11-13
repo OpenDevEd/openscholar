@@ -224,6 +224,7 @@ export const writeSnapshot = internalMutation({
     const row = {
       ...snapshot,
       ...(paying && { publication: existing.publication, publicationUnlimited: existing.publicationUnlimited }),
+      publicationAt: paying ? existing.publicationAt : fetchedAt,
       ...(withCard ? { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt } : { card: existing?.card, credit: existing?.credit, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,

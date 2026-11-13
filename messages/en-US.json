@@ -6859,9 +6859,9 @@
         "balance": "Paid {amount} from the balance",
         "balanceLeft": "Paid {amount} from the balance, {left} left",
         "card": "Paid {amount} by card",
-        "cardCode": "Paid {amount} by card with {code}",
         "code": "{code} covered the price",
-        "codeRest": "{code} covered the rest"
+        "codeRest": "{code} covered the rest",
+        "credit": "Paid {amount} from account credit"
       }
     },
     "meta": {

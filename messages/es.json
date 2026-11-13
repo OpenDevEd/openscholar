@@ -6860,9 +6860,9 @@
         "balance": "{amount} pagados con el saldo",
         "balanceLeft": "{amount} pagados con el saldo, quedan {left}",
         "card": "{amount} pagados con tarjeta",
-        "cardCode": "{amount} pagados con tarjeta con {code}",
         "code": "{code} cubrió el precio",
-        "codeRest": "{code} cubrió el resto"
+        "codeRest": "{code} cubrió el resto",
+        "credit": "{amount} pagados con el saldo a favor de la cuenta"
       }
     },
     "meta": {

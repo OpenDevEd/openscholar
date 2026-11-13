@@ -623,7 +623,7 @@ export default defineSchema({
     state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused"), v.literal("refused")),
     /** The promotion code it was asked with. */
     code: v.optional(v.string()),
-    charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
+    charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string(), /** What the account's credit at Stripe paid of `total`. */ credit: v.optional(v.number()) })),
     /** What pays for it: the balance, with a card for the rest, or a card alone, which leaves the balance as it is. */
     payWith: v.optional(payWithValidator),
     /** What the report costs, in US dollars, and how many of them a card buys for it. */

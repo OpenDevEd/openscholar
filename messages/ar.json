@@ -6860,9 +6860,9 @@
         "balance": "دُفع {amount} من الرصيد",
         "balanceLeft": "دُفع {amount} من الرصيد، والباقي {left}",
         "card": "دُفع {amount} بالبطاقة",
-        "cardCode": "دُفع {amount} بالبطاقة مع {code}",
         "code": "غطّى {code} السعر",
-        "codeRest": "غطّى {code} الباقي"
+        "codeRest": "غطّى {code} الباقي",
+        "credit": "دُفع {amount} من رصيد الحساب"
       }
     },
     "meta": {

@@ -6859,9 +6859,9 @@
         "balance": "残高から {amount} を支払い",
         "balanceLeft": "残高から {amount} を支払い、残り {left}",
         "card": "カードで {amount} を支払い",
-        "cardCode": "カードで {amount} を支払い（{code} 使用）",
         "code": "{code} で全額をまかないました",
-        "codeRest": "{code} で残りをまかないました"
+        "codeRest": "{code} で残りをまかないました",
+        "credit": "アカウントのクレジットから {amount} を支払い"
       }
     },
     "meta": {

@@ -50,7 +50,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Coins, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
@@ -2304,14 +2304,17 @@ function Seal({ play }: { play: boolean }) {
 }
 
 /**
- * What a live report was paid with, under its other facts: what the balance paid, with what it holds since, what a
- * card paid, with its code, or the code that covered what a card would have. People looked for this here once their
- * report was live.
+ * What a live report was paid with, under its other facts: what the balance paid, with what it holds since, what the
+ * account's credit and a card paid, and the code that lowered that or covered it. People looked for this here once
+ * their report was live.
  */
 function PaidChips({ paid }: { paid: Terms["paid"] }) {
   const t = useTranslations("publishReports.flow");
-  const money = useMoney();
+  const dollars = useMoney();
   if (!paid) return null;
+  // Inside a sentence, isolate marks keep an amount left to right, as <bdi dir="ltr"> keeps one that stands alone:
+  // an Arabic sentence splits "US$" around its number otherwise.
+  const money = (amount: number) => `\u2066${dollars(amount)}\u2069`;
   return (
     <div className="flex flex-wrap items-center gap-2 pt-2">
       {paid.fromBalance > 0 ? (
@@ -2319,13 +2322,20 @@ function PaidChips({ paid }: { paid: Terms["paid"] }) {
           {paid.left === null ? t("paid.balance", { amount: money(paid.fromBalance) }) : t("paid.balanceLeft", { amount: money(paid.fromBalance), left: money(paid.left) })}
         </StatusChip>
       ) : null}
+      {paid.byCredit > 0 ? (
+        <StatusChip tone="neutral" icon={Coins}>
+          {t("paid.credit", { amount: money(paid.byCredit) })}
+        </StatusChip>
+      ) : null}
       {paid.byCard > 0 ? (
         <StatusChip tone="neutral" icon={CreditCard}>
-          {paid.code ? t("paid.cardCode", { amount: money(paid.byCard), code: paid.code }) : t("paid.card", { amount: money(paid.byCard) })}
+          {t("paid.card", { amount: money(paid.byCard) })}
         </StatusChip>
-      ) : paid.code ? (
+      ) : null}
+      {/* A code that left something to pay is named as the bill named it; one that left nothing covered it. */}
+      {paid.code ? (
         <StatusChip tone="neutral" icon={Tag}>
-          {t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
+          {paid.byCard + paid.byCredit > 0 ? t("payment.code", { code: paid.code }) : t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
         </StatusChip>
       ) : null}
     </div>
