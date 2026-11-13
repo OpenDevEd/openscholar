@@ -4672,6 +4672,7 @@
     "explore": "探索",
     "authors": "作者",
     "account": "账户",
+    "organizations": "组织",
     "close": "关闭",
     "switchFrom": "工作区：{name}。切换工作区",
     "runningLabel": "{label}，{what}，{done}/{total}",
@@ -6547,13 +6548,17 @@
       "agreementTitle": "与{series}的出版协议",
       "version": "第 {version} 版",
       "agreementIntro": "版权仍归你所有，许可由你选择，签署后不能更改。签署即预留你的 DOI。",
-      "agreementShared": "版权仍归你所有，许可由你选择，签署后不能更改。签署即预留你的 DOI。此报告属于本工作区：成员都能看到，您和工作区管理员负责处理。",
       "signedBy": "签署人",
       "agree": "我代表本人及全体合著者同意此协议，全体合著者均已同意",
       "untouched": "您已为 <mono>{key}</mono> 预留了 DOI，但尚未上传其 PDF。",
       "continueWith": "继续处理它",
       "agreementChanged": "此页面打开期间协议已更改。请重新阅读，然后勾选方框。",
       "agreementInEnglish": "协议本身以英文撰写。",
+      "shut": {
+        "closed": "它的方案不包含发布",
+        "ownClosed": "你的方案不包含发布",
+        "used": "今天没有可开始的报告了"
+      },
       "limit": {
         "personal": "你的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
         "personalClosed": "你的方案不包含发布。请换一个包含发布的方案。",
@@ -7268,6 +7273,11 @@
           "title": "数据、代码和版本",
           "about": "报告的数据、代码、其他版本和补充材料所在的位置。",
           "note": "每项都是网址或 DOI。"
+        },
+        "workspace": {
+          "title": "工作区",
+          "about": "报告属于你选择的工作区。签署后不能移到其他工作区。",
+          "note": "在组织中，成员都能看到报告，你和组织管理员负责处理。费用由该工作区的出版余额支付。"
         },
         "agreement": {
           "title": "出版协议",

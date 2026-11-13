@@ -4673,6 +4673,7 @@
     "explore": "Verken",
     "authors": "Outeurs",
     "account": "Rekening",
+    "organizations": "Organisasies",
     "close": "Maak toe",
     "switchFrom": "Werkruimte: {name}. Wissel werkruimte",
     "runningLabel": "{label}, {what}, {done} van {total}",
@@ -6548,13 +6549,17 @@
       "agreementTitle": "Publikasie-ooreenkoms met {series}",
       "version": "Weergawe {version}",
       "agreementIntro": "Jy behou die kopiereg en kies die lisensie, wat nie kan verander nadat jy geteken het nie. Deur te teken word jou DOI bespreek.",
-      "agreementShared": "Jy behou die kopiereg en kies die lisensie, wat nie kan verander nadat jy geteken het nie. Deur te teken word jou DOI bespreek. Hierdie verslag behoort aan hierdie werkruimte: sy lede kan dit sien, en jy en sy administrateurs werk daaraan.",
       "signedBy": "Onderteken deur",
       "agree": "Ek stem in tot hierdie ooreenkoms, vir myself en enige medeskrywers, wat ingestem het",
       "untouched": "Jy het reeds 'n DOI vir <mono>{key}</mono> gereserveer en nog nie sy PDF opgelaai nie.",
       "continueWith": "Gaan daarmee voort",
       "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkie.",
       "agreementInEnglish": "Die ooreenkoms self is in Engels geskryf.",
+      "shut": {
+        "closed": "Sy plan sluit publikasie nie in nie",
+        "ownClosed": "Jou plan sluit publikasie nie in nie",
+        "used": "Geen verslae oor om vandag te begin nie"
+      },
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
         "personalClosed": "Jou plan sluit publikasie nie in nie. Skuif na 'n plan wat dit insluit.",
@@ -7269,6 +7274,11 @@
           "title": "Data, kode en weergawes",
           "about": "Waar die verslag se data, kode, ander weergawes en aanvullings is.",
           "note": "Elkeen is ’n webadres of ’n DOI."
+        },
+        "workspace": {
+          "title": "Werkruimte",
+          "about": "Die verslag behoort aan die werkruimte wat jy kies. Dit kan nie na 'n ander geskuif word nadat jy geteken het nie.",
+          "note": "In 'n organisasie kan sy lede die verslag sien, en jy en sy administrateurs werk daaraan. Die werkruimte se publikasiebalans betaal daarvoor."
         },
         "agreement": {
           "title": "Die publikasie-ooreenkoms",

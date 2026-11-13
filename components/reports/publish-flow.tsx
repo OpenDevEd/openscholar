@@ -60,7 +60,7 @@ import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
 import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { WorkspaceChoice } from "@/components/reports/workspace-choice";
-import { useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
+import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
@@ -1037,7 +1037,10 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const locale = useLocale();
   // The workspace the report is to belong to: the page's, until another of the person's is picked here. What the
   // others' days and balances hold is read with the step, so picking one changes the payment at once.
-  const { list } = useWorkspaces();
+  // The first page of them, with the page's own, which someone in more than a page of them may be past.
+  const first = useWorkspaces().list;
+  const current = useCurrentWorkspace();
+  const list = first && current && !first.some((workspace) => workspace.workspaceId === current.workspaceId) ? [...first, current] : first;
   const slug = useWorkspaceSlug();
   const [into, setInto] = useState<Id<"workspaces"> | null>(null);
   const away = into !== null && into !== pageWorkspace;

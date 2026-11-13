@@ -4672,6 +4672,7 @@
     "explore": "Hlola",
     "authors": "Ababhali",
     "account": "I-akhawunti",
+    "organizations": "Izinhlangano",
     "close": "Vala",
     "switchFrom": "Isikhala sokusebenzela: {name}. Shintsha isikhala sokusebenzela",
     "runningLabel": "{label}, {what}, {done} kwa-{total}",
@@ -6547,13 +6548,17 @@
       "agreementTitle": "Isivumelwano sokushicilela no-{series}",
       "version": "Inguqulo {version}",
       "agreementIntro": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense, engeke isashintshwa uma ususayinile. Ukusayina kubekisa i-DOI yakho.",
-      "agreementShared": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense, engeke isashintshwa uma ususayinile. Ukusayina kubekisa i-DOI yakho. Lo mbiko ungowale ndawo yokusebenza: amalungu ayo angawubona, futhi wena nabaphathi bayo niyawusebenza.",
       "signedBy": "Kusayinwa ngu-",
       "agree": "Ngiyavumelana nalesi sivumelwano, egameni lami nelabo bonke ababhali engibhala nabo, bonke abavumile",
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
       "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza ibhokisi.",
       "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
+      "shut": {
+        "closed": "Uhlelo lwayo alukufaki ukushicilela",
+        "ownClosed": "Uhlelo lwakho alukufaki ukushicilela",
+        "used": "Ayisekho imibiko ongayiqala namuhla"
+      },
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
         "personalClosed": "Uhlelo lwakho alukufaki ukushicilela. Thuthela ohlelweni olukufakayo.",
@@ -7268,6 +7273,11 @@
           "title": "Idatha, ikhodi nezinguqulo",
           "about": "Lapho idatha yombiko, ikhodi, ezinye izinguqulo nezengezo kukhona.",
           "note": "Ngayinye ingukheli lewebhu noma i-DOI."
+        },
+        "workspace": {
+          "title": "Isikhala sokusebenzela",
+          "about": "Umbiko ungowendawo yokusebenza oyikhethayo. Awukwazi ukuthuthelwa kwenye uma ususayinile.",
+          "note": "Enhlanganweni, amalungu ayo angawubona umbiko, futhi wena nabaphathi bayo niyawusebenza. Ibhalansi yokushicilela yendawo yokusebenza iyawukhokhela."
         },
         "agreement": {
           "title": "Isivumelwano sokushicilela",

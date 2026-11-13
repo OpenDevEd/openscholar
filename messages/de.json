@@ -4673,6 +4673,7 @@
     "explore": "Entdecken",
     "authors": "Autoren",
     "account": "Konto",
+    "organizations": "Organisationen",
     "close": "Schließen",
     "switchFrom": "Arbeitsbereich: {name}. Arbeitsbereich wechseln",
     "runningLabel": "{label}, {what}, {done} von {total}",
@@ -6548,13 +6549,17 @@
       "agreementTitle": "Veröffentlichungsvereinbarung mit {series}",
       "version": "Version {version}",
       "agreementIntro": "Sie behalten das Urheberrecht und wählen die Lizenz, die sich nach der Unterschrift nicht mehr ändern lässt. Mit der Unterschrift wird Ihr DOI reserviert.",
-      "agreementShared": "Sie behalten das Urheberrecht und wählen die Lizenz, die sich nach der Unterschrift nicht mehr ändern lässt. Mit der Unterschrift wird Ihr DOI reserviert. Der Bericht gehört zu diesem Arbeitsbereich: Seine Mitglieder können ihn sehen, und Sie und seine Admins arbeiten daran.",
       "signedBy": "Unterzeichnet von",
       "agree": "Ich stimme dieser Vereinbarung zu, für mich und alle Mitautorinnen und Mitautoren, die alle zugestimmt haben",
       "untouched": "Sie haben bereits einen DOI für <mono>{key}</mono> reserviert und sein PDF noch nicht hochgeladen.",
       "continueWith": "Damit weitermachen",
       "agreementChanged": "Die Vereinbarung hat sich geändert, während diese Seite offen war. Lesen Sie sie erneut und setzen Sie dann das Häkchen.",
       "agreementInEnglish": "Die Vereinbarung selbst ist auf Englisch verfasst.",
+      "shut": {
+        "closed": "Sein Plan enthält kein Veröffentlichen",
+        "ownClosed": "Ihr Plan enthält kein Veröffentlichen",
+        "used": "Heute lassen sich keine Berichte mehr beginnen"
+      },
       "limit": {
         "personal": "Mit Ihrem Plan beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
         "personalClosed": "Ihr Plan enthält kein Veröffentlichen. Wechseln Sie zu einem Plan, der es enthält.",
@@ -7269,6 +7274,11 @@
           "title": "Daten, Code und Versionen",
           "about": "Wo die Daten, der Code, andere Versionen und Ergänzungen des Berichts liegen.",
           "note": "Jeweils eine Webadresse oder ein DOI."
+        },
+        "workspace": {
+          "title": "Arbeitsbereich",
+          "about": "Der Bericht gehört zu dem Arbeitsbereich, den Sie wählen. Nach der Unterschrift lässt er sich nicht in einen anderen verschieben.",
+          "note": "In einer Organisation können ihre Mitglieder den Bericht sehen, und Sie und ihre Admins arbeiten daran. Das Publikationsguthaben des Arbeitsbereichs bezahlt ihn."
         },
         "agreement": {
           "title": "Die Veröffentlichungsvereinbarung",

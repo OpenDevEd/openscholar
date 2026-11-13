@@ -4673,6 +4673,7 @@
     "explore": "Explorar",
     "authors": "Autores",
     "account": "Conta",
+    "organizations": "Organizações",
     "close": "Fechar",
     "switchFrom": "Espaço de trabalho: {name}. Mudar de espaço de trabalho",
     "runningLabel": "{label}, {what}, {done} de {total}",
@@ -6548,13 +6549,17 @@
       "agreementTitle": "Acordo de publicação com {series}",
       "version": "Versão {version}",
       "agreementIntro": "Você mantém os direitos autorais e escolhe a licença, que não pode mudar depois de assinar. Assinar reserva o seu DOI.",
-      "agreementShared": "Você mantém os direitos autorais e escolhe a licença, que não pode mudar depois de assinar. Assinar reserva o seu DOI. O relatório pertence a este espaço de trabalho: os membros podem vê-lo, e o utilizador e os administradores trabalham nele.",
       "signedBy": "Assinado por",
       "agree": "Aceito este acordo, por mim e por eventuais coautores, que concordaram",
       "untouched": "Já reservou um DOI para <mono>{key}</mono> e ainda não carregou o PDF.",
       "continueWith": "Continuar com ele",
       "agreementChanged": "O acordo mudou enquanto esta página estava aberta. Leia-o de novo e assinale a caixa.",
       "agreementInEnglish": "O acordo em si está redigido em inglês.",
+      "shut": {
+        "closed": "O plano dele não inclui publicação",
+        "ownClosed": "O seu plano não inclui publicação",
+        "used": "Não restam relatórios para iniciar hoje"
+      },
       "limit": {
         "personal": "O seu plano permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",
         "personalClosed": "O seu plano não inclui publicação. Mude para um plano que inclua.",
@@ -7269,6 +7274,11 @@
           "title": "Dados, código e versões",
           "about": "Onde estão os dados, o código, outras versões e os materiais suplementares do relatório.",
           "note": "Cada um é um endereço web ou um DOI."
+        },
+        "workspace": {
+          "title": "Espaço de trabalho",
+          "about": "O relatório pertence ao espaço de trabalho que você escolher. Não pode ser movido para outro depois de assinar.",
+          "note": "Numa organização, os membros podem ver o relatório, e você e os administradores trabalham nele. O saldo de publicação do espaço de trabalho paga por ele."
         },
         "agreement": {
           "title": "O acordo de publicação",

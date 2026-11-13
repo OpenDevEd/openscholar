@@ -25,8 +25,6 @@ import { cn } from "@/lib/utils";
 export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked }: { workspaces: WorkspaceRow[]; value: Id<"workspaces">; onChange: (workspaceId: Id<"workspaces">) => void; /** How the step names its sections. */ heading: string; /** Why the workspace picked starts no report now, in a few words, said where it was picked: the button it shuts is a screen further down. */ blocked?: { why: string; plans: string } | null }) {
   const t = useTranslations("workspaces");
   const tf = useTranslations("publishReports.flow");
-  // ponytail: the organizations' heading borrows the admin's tab name, which every language has. The build gives it its own.
-  const ta = useTranslations("settingsAdmin.evidenceLibraries");
   const option = (workspace: WorkspaceRow) => (
     <SelectItem key={workspace.workspaceId} value={workspace.workspaceId} className="py-1.5 *:[span]:last:min-w-0 *:[span]:last:flex-1 *:[span]:last:gap-2.5">
       <WorkspaceLine workspace={workspace} />
@@ -41,7 +39,8 @@ export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked 
       </h3>
       {/* The step shows after the page has loaded, so its photos and logos fade in. */}
       <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-2", AVATARS_FADE_IN)}>
-        {/* ponytail: lists the first page of the person's workspaces (20). Past that, page the list as the Move dialog's picker does. */}
+        {/* ponytail: lists the first page of the person's workspaces (20) and the one the page is in. Someone in more
+            reaches the others from the rail's switcher; page this list as the Move dialog's picker does if that is asked for. */}
         <Select value={value} onValueChange={(picked) => onChange(picked as Id<"workspaces">)}>
           {/* As tall as a row of the switcher, which it shows: the picture, the name, and the line under it. */}
           <SelectTrigger aria-label={t("workspace")} className="w-full py-1.5 ps-2 data-[size=default]:h-auto *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:gap-2.5 sm:w-80">
@@ -55,16 +54,17 @@ export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked 
             </SelectGroup>
             <SelectSeparator />
             <SelectGroup>
-              <SelectLabel>{ta("organizationsTab")}</SelectLabel>
+              <SelectLabel>{t("organizations")}</SelectLabel>
               {workspaces.filter((workspace) => workspace.kind === "organization").map(option)}
             </SelectGroup>
           </SelectContent>
         </Select>
         {blocked ? (
           // Its words stay on one line. Where the row is too narrow for them and the button, the button goes under them.
+          // Only on a phone at large text, where one line can't fit, do they wrap.
           <p role="status" className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-            <span className="flex items-center gap-2 whitespace-nowrap">
-              <TriangleAlert className="size-4 shrink-0 ink-warning" />
+            <span className="flex items-start gap-2 sm:whitespace-nowrap">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
               {blocked.why}
             </span>
             <Button size="sm" variant="outline" asChild>
@@ -74,7 +74,7 @@ export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked 
             </Button>
           </p>
         ) : chosen ? (
-          <p key={chosen.workspaceId} className="flex h-9 items-center gap-2 whitespace-nowrap text-sm text-muted-foreground">
+          <p key={chosen.workspaceId} className="flex min-h-9 items-center gap-2 text-sm text-muted-foreground sm:whitespace-nowrap">
             {chosen.kind === "organization" ? <MemberFaces workspaceId={chosen.workspaceId} label={t("members", { count: chosen.members ?? 0 })} ring="ring-card" count={chosen.members} /> : null}
             {chosen.kind === "organization" ? t("move.membersSee", { count: chosen.members ?? 0 }) : t("move.onlyYou")}
           </p>
