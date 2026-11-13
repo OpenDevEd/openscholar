@@ -1119,7 +1119,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
-          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={blocked && !settling ? { why: blocked, plans } : null} />
+          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} />
         </section>
       ) : null}
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
