@@ -6618,9 +6618,9 @@
           "sameTitle": "वही शीर्षक, उसी वर्ष का।",
           "sameStudy": "शीर्षक और सारांश के अनुसार इस रिकॉर्ड जैसा ही अध्ययन ({percent} निश्चित)।"
         },
-        "where": {
-          "ownLinks": "रिपोर्ट के अपने लिंक",
-          "ourIndex": "Openscholar के इंडेक्स"
+        "foundAt": {
+          "ownLinks": "रिपोर्ट के अपने लिंक में मिला:",
+          "ourIndex": "Openscholar के इंडेक्स में मिला:"
         },
         "defaults": {
           "byline": {

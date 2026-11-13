@@ -6619,9 +6619,9 @@
           "sameTitle": "O mesmo título, do mesmo ano.",
           "sameStudy": "O mesmo estudo que este registo, pelo título e pelo resumo ({percent} de certeza)."
         },
-        "where": {
-          "ownLinks": "as próprias ligações do relatório",
-          "ourIndex": "o índice do Openscholar"
+        "foundAt": {
+          "ownLinks": "Encontrado nas próprias ligações do relatório:",
+          "ourIndex": "Encontrado no índice do Openscholar:"
         },
         "defaults": {
           "byline": {

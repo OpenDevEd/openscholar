@@ -6619,9 +6619,9 @@
           "sameTitle": "Dieselfde titel, uit dieselfde jaar.",
           "sameStudy": "Dieselfde studie as hierdie rekord, volgens sy titel en opsomming ({percent} seker)."
         },
-        "where": {
-          "ownLinks": "die verslag se eie skakels",
-          "ourIndex": "Openscholar se indeks"
+        "foundAt": {
+          "ownLinks": "Gevind in die verslag se eie skakels:",
+          "ourIndex": "Gevind in Openscholar se indeks:"
         },
         "defaults": {
           "byline": {

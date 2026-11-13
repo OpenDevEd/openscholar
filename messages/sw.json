@@ -6619,9 +6619,9 @@
           "sameTitle": "Kichwa kilekile, cha mwaka uleule.",
           "sameStudy": "Utafiti uleule na rekodi hii, kwa kichwa na muhtasari wake (uhakika {percent})."
         },
-        "where": {
-          "ownLinks": "viungo vya ripoti yenyewe",
-          "ourIndex": "faharasa ya Openscholar"
+        "foundAt": {
+          "ownLinks": "Imepatikana katika viungo vya ripoti yenyewe:",
+          "ourIndex": "Imepatikana katika faharasa ya Openscholar:"
         },
         "defaults": {
           "byline": {

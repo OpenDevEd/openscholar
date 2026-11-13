@@ -6618,9 +6618,9 @@
           "sameTitle": "The same title, from the same year.",
           "sameStudy": "The same study as this record, by its title and abstract ({percent} sure)."
         },
-        "where": {
-          "ownLinks": "the report's own links",
-          "ourIndex": "Openscholar's index"
+        "foundAt": {
+          "ownLinks": "Found in the report's own links:",
+          "ourIndex": "Found in Openscholar's index:"
         },
         "defaults": {
           "byline": {

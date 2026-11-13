@@ -1582,10 +1582,10 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };
-  /** Where it was found, in the page's language when it is no community's or series' name. */
-  const whereIn = (where: string) => {
+  /** Where it was found, said whole for the places that aren't a community's or series' name: languages join "in" to what follows. */
+  const foundIn = (where: string) => {
     const key = (Object.keys(CHECK_WHERE) as Array<keyof typeof CHECK_WHERE>).find((said) => CHECK_WHERE[said] === where);
-    return key ? t(`check.where.${key}`) : where;
+    return key ? t(`check.foundAt.${key}`) : t("check.foundIn", { where });
   };
   const checkWords = useCheckWords();
   const shownName = checkWords.name(name);
@@ -1648,7 +1648,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
               {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{inWords(result.detail)}</p> : null}
               {result.evidence ? (
                 <a href={result.evidence.url} target="_blank" rel="noopener noreferrer" className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
-                  <span className="shrink-0">{result.evidence.where ? t("check.foundIn", { where: whereIn(result.evidence.where) }) : t("check.foundAs")}</span>
+                  <span className="shrink-0">{result.evidence.where ? foundIn(result.evidence.where) : t("check.foundAs")}</span>
                   <span className="truncate font-medium text-foreground/80">{result.evidence.title}</span>
                   <ArrowUpRight className="size-3 shrink-0" />
                 </a>

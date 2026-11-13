@@ -6618,9 +6618,9 @@
           "sameTitle": "Le même titre, de la même année.",
           "sameStudy": "La même étude que cette notice, d’après son titre et son résumé (sûr à {percent})."
         },
-        "where": {
-          "ownLinks": "les propres liens du rapport",
-          "ourIndex": "l’index d’Openscholar"
+        "foundAt": {
+          "ownLinks": "Trouvé dans les propres liens du rapport :",
+          "ourIndex": "Trouvé dans l’index d’Openscholar :"
         },
         "defaults": {
           "byline": {

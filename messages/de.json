@@ -6619,9 +6619,9 @@
           "sameTitle": "Derselbe Titel, aus demselben Jahr.",
           "sameStudy": "Dieselbe Studie wie dieser Datensatz, nach Titel und Abstract ({percent} sicher)."
         },
-        "where": {
-          "ownLinks": "den eigenen Links des Berichts",
-          "ourIndex": "Openscholars Index"
+        "foundAt": {
+          "ownLinks": "Gefunden in den eigenen Links des Berichts:",
+          "ourIndex": "Gefunden im Index von Openscholar:"
         },
         "defaults": {
           "byline": {

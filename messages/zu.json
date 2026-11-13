@@ -6618,9 +6618,9 @@
           "sameTitle": "Isihloko esifanayo, sonyaka ofanayo.",
           "sameStudy": "Ucwaningo olufanayo nale rekhodi, ngokwesihloko nesifingqo sayo (ukuqiniseka {percent})."
         },
-        "where": {
-          "ownLinks": "izixhumanisi zombiko uqobo",
-          "ourIndex": "inkomba ka-Openscholar"
+        "foundAt": {
+          "ownLinks": "Kutholwe ezixhumanisini zombiko uqobo:",
+          "ourIndex": "Kutholwe kunkomba ka-Openscholar:"
         },
         "defaults": {
           "byline": {

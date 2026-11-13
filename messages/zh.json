@@ -6618,9 +6618,9 @@
           "sameTitle": "标题相同，年份相同。",
           "sameStudy": "根据标题和摘要，与此记录是同一项研究（把握度 {percent}）。"
         },
-        "where": {
-          "ownLinks": "报告自身的链接",
-          "ourIndex": "Openscholar 索引"
+        "foundAt": {
+          "ownLinks": "在报告自身的链接中找到：",
+          "ourIndex": "在 Openscholar 索引中找到："
         },
         "defaults": {
           "byline": {

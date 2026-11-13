@@ -6619,9 +6619,9 @@
           "sameTitle": "العنوان نفسه، من السنة نفسها.",
           "sameStudy": "الدراسة نفسها التي في هذا السجل، بحسب عنوانه وملخصه (بثقة {percent})."
         },
-        "where": {
-          "ownLinks": "روابط التقرير نفسه",
-          "ourIndex": "فهرس Openscholar"
+        "foundAt": {
+          "ownLinks": "وُجد في روابط التقرير نفسه:",
+          "ourIndex": "وُجد في فهرس Openscholar:"
         },
         "defaults": {
           "byline": {

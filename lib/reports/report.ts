@@ -74,7 +74,7 @@ export const CHECK_SAID = {
   namesVersion: "The report names another version of itself among its links.",
   sameTitle: "The same title, from the same year.",
 } as const;
-/** Where a check found the report already published, when it is no community's or series' name (`check.where`). */
+/** Where a check found the report already published, when it is no community's or series' name (`check.foundAt`). */
 export const CHECK_WHERE = { ownLinks: "the report's own links", ourIndex: "Openscholar's index" } as const;
 /** What a decision model, which gives no reason, is said to have found: the same study, this sure (`check.said.sameStudy`). */
 export const sameStudySaid = (percent: number) => `The same study as this record, by its title and abstract (${percent}% sure).`;
