@@ -6613,7 +6613,14 @@
           "notPublished": "不在 Openscholar Reports、OpenAlex、Openscholar 索引或我们的社区中。",
           "notPublishedElsewhere": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
           "unfinished": "此项检查未能完成。",
-          "bylineFound": "PDF 文本中逐字包含这一行。"
+          "bylineFound": "PDF 文本中逐字包含这一行。",
+          "namesVersion": "报告在其链接中列出了自身的另一个版本。",
+          "sameTitle": "标题相同，年份相同。",
+          "sameStudy": "根据标题和摘要，与此记录是同一项研究（把握度 {percent}）。"
+        },
+        "where": {
+          "ownLinks": "报告自身的链接",
+          "ourIndex": "Openscholar 索引"
         },
         "defaults": {
           "byline": {

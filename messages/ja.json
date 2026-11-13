@@ -6613,7 +6613,14 @@
           "notPublished": "Openscholar Reports、OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "notPublishedElsewhere": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
-          "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
+          "bylineFound": "PDF のテキストにこの行がそのまま含まれています。",
+          "namesVersion": "レポートのリンクに、このレポートの別のバージョンが含まれています。",
+          "sameTitle": "同じタイトルで、同じ年です。",
+          "sameStudy": "タイトルと要旨から、このレコードと同じ研究です（確信度 {percent}）。"
+        },
+        "where": {
+          "ownLinks": "レポート自身のリンク",
+          "ourIndex": "Openscholar のインデックス"
         },
         "defaults": {
           "byline": {

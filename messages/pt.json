@@ -6614,7 +6614,14 @@
           "notPublished": "Não está no Openscholar Reports, no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
           "notPublishedElsewhere": "Não está no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
           "unfinished": "Esta verificação não conseguiu terminar.",
-          "bylineFound": "O texto do PDF tem a linha palavra por palavra."
+          "bylineFound": "O texto do PDF tem a linha palavra por palavra.",
+          "namesVersion": "O relatório indica outra versão de si próprio entre as suas ligações.",
+          "sameTitle": "O mesmo título, do mesmo ano.",
+          "sameStudy": "O mesmo estudo que este registo, pelo título e pelo resumo ({percent} de certeza)."
+        },
+        "where": {
+          "ownLinks": "as próprias ligações do relatório",
+          "ourIndex": "o índice do Openscholar"
         },
         "defaults": {
           "byline": {

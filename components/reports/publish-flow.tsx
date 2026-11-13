@@ -13,6 +13,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
 import { useFormatter, useTranslations, useLocale } from "next-intl";
+import type { Locale } from "@/i18n/config";
 import { copyText } from "@/components/copy-text";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
@@ -59,7 +60,7 @@ import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -608,7 +609,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 /** The one report's screen, chosen from where the report stands. */
 function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** The place under the cover, on a wide page. */ beside: HTMLDivElement | null; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
-  const locale = useLocale();
+  const locale = useLocale() as Locale;
   const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -730,7 +731,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
                   trouble.say(null);
                   setStarting(true);
                   try {
-                    await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
+                    await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at }, locale });
                     onMoved("checks");
                   } catch (error) {
                     // The form comes back at its top, which is where this is said.
@@ -766,7 +767,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
                 trouble.say(null);
                 setStarting(true);
                 try {
-                  const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
+                  const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! }, locale });
                   // Live or kept for a reviewer, the changes are with the report now: the form closes on where they stand.
                   setAttempt(null);
                   onCorrected();
@@ -1576,8 +1577,15 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
   const inWords = (words: string | undefined) => {
     // A result saved before Openscholar Reports itself was searched (2026-11-12) says what was searched then.
     if (words === BEFORE_OWN_REPORTS) return t("check.said.notPublishedElsewhere");
+    const sure = sameStudySure(words);
+    if (sure !== undefined) return t("check.said.sameStudy", { percent: format.number(sure / 100, { style: "percent" }) });
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
+  };
+  /** Where it was found, in the page's language when it is no community's or series' name. */
+  const whereIn = (where: string) => {
+    const key = (Object.keys(CHECK_WHERE) as Array<keyof typeof CHECK_WHERE>).find((said) => CHECK_WHERE[said] === where);
+    return key ? t(`check.where.${key}`) : where;
   };
   const checkWords = useCheckWords();
   const shownName = checkWords.name(name);
@@ -1640,7 +1648,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
               {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{inWords(result.detail)}</p> : null}
               {result.evidence ? (
                 <a href={result.evidence.url} target="_blank" rel="noopener noreferrer" className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
-                  <span className="shrink-0">{result.evidence.where ? t("check.foundIn", { where: result.evidence.where }) : t("check.foundAs")}</span>
+                  <span className="shrink-0">{result.evidence.where ? t("check.foundIn", { where: whereIn(result.evidence.where) }) : t("check.foundAs")}</span>
                   <span className="truncate font-medium text-foreground/80">{result.evidence.title}</span>
                   <ArrowUpRight className="size-3 shrink-0" />
                 </a>
