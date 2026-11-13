@@ -9,7 +9,7 @@ import { preload } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { FadeImage } from "@/components/ui/fade-image";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AiIcon, Check, CircleCheck, CircleHelp, ExternalLink, Globe, ListChecks, Lock, Minus, Pencil, Search, type AppIcon } from "@/components/icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { OrcidIcon, RorIcon } from "@/components/icons/author-service-icons";
@@ -148,7 +148,22 @@ function Taker({ takes, name, does, href, children }: { takes: boolean; name: st
 }
 
 /** The "?" beside a part of a report's details or a publish step. */
-export function FieldHelp({ field, className, side }: { field: HelpKey; className?: string; /** Where it opens, for a "?" whose usual side would cover what it explains. */ side?: "top" }) {
+export function FieldHelp({
+  field,
+  className,
+  side,
+  children,
+  around,
+}: {
+  field: HelpKey;
+  className?: string;
+  /** Where it opens, for a "?" whose usual side would cover what it explains. */
+  side?: "top";
+  /** What it explains, laid out after the "?" on its line: the help then opens clear of all of it. A button taller than the "?" was half covered. */
+  children?: ReactNode;
+  /** How that line is laid out, with `children`. */
+  around?: string;
+}) {
   const t = useTranslations("publishReports.help");
   // Beside its "?" where the screen is wide, where the whole window's height is free: above or below a field low on a
   // laptop's screen, the longest help ran past the window and hid where the field is sent.
@@ -159,14 +174,27 @@ export function FieldHelp({ field, className, side }: { field: HelpKey; classNam
   // The registrars' logos are fetched with the page, so they are there when the first "?" opens.
   preload("/brands/crossref.svg", { as: "image" });
   preload("/brands/zenodo.svg", { as: "image" });
+  const trigger = (
+    <PopoverTrigger asChild>
+      <Button type="button" variant="ghost" size="icon-xs" aria-label={t("aboutLabel", { title })} className={cn("-my-1 size-5 shrink-0 rounded-full text-muted-foreground hover:text-foreground aria-expanded:text-primary", className)}>
+        <CircleHelp className="size-3.5" />
+      </Button>
+    </PopoverTrigger>
+  );
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("aboutLabel", { title })} className={cn("-my-1 size-5 shrink-0 rounded-full text-muted-foreground hover:text-foreground aria-expanded:text-primary", className)}>
-          <CircleHelp className="size-3.5" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={t("aboutLabel", { title })} className="w-80 p-0 font-normal text-foreground">
+      {children ? (
+        <PopoverAnchor asChild>
+          <span className={around}>
+            {trigger}
+            {children}
+          </span>
+        </PopoverAnchor>
+      ) : (
+        trigger
+      )}
+      {/* On a phone it is never wider than the window: 20rem is, on a narrow one and at large text. */}
+      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={t("aboutLabel", { title })} className="w-80 p-0 font-normal text-foreground max-sm:max-w-(--radix-popover-content-available-width)">
         <div className="space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-semibold">{title}</p>

@@ -24,7 +24,8 @@ export function PublicationBalanceRow({ parts, unlimited = false }: { parts: Bal
   const kept = parts.find((part) => part.interval === "once");
   return (
     <div className="@container/publication space-y-1.5 border-t border-border-subtle pt-4">
-      <div className="flex items-center gap-2">
+      {/* Too narrow for the title and a long amount (a phone at large text), the amount goes under the title. */}
+      <div className="flex items-center gap-2 @max-[12rem]/publication:flex-wrap">
         <p className="min-w-0 text-sm font-medium sm:truncate">{t("title")}</p>
         <StatusChip tone={balance === 0 && !unlimited ? "neutral" : "success"}>{unlimited ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance)}</bdi>}</StatusChip>
         {/* Narrow, the way to Publish is its arrow, so the amount keeps its line. */}
