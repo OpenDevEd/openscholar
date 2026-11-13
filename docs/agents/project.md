@@ -121,6 +121,7 @@ development Convex service.
   - Never open a pull request into `marketing`, and never commit to it directly. CI pushes a pull request's Convex functions to the test backend, which refuses a branch whose schema is behind `dev`'s.
   - Cloudflare redirects every path of `openscholar.ai` it doesn't list to discover, so a new page's paths (`/x`, `/x/` and its `og-x.jpg`) go into that redirect rule after the deploy.
   - A page that sends something new to the app or Convex ships after production has the side that receives it.
+- After a deploy that adds or changes a public page on `openscholar.ai` or `discover.openscholar.ai`, tell Bing and the other IndexNow search engines: `node scripts/indexnow.mjs https://openscholar.ai/sitemap.xml`, or the app's sitemaps, or the page's own address. The key is the 32-character `.txt` file in `public/` and `marketing/public/`, which both hosts serve at their root.
 - `dev` deploys to `dev.openscholar.ai` and is where all current work lands.
 - Before deploying to prod or moving or updating a community, read
   `docs/deploy-lessons.md`: what went wrong in the launch week and what to do
