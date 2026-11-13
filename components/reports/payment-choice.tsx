@@ -38,12 +38,9 @@ function RollingMoney({ value }: { value: number }) {
 }
 
 /** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
-export function PayWithSwitch({ balance, payWith, onPayWith, card, className }: { balance: Balance; payWith: PayWith; onPayWith: (payWith: PayWith) => void; /** The saved card a charge goes to: its last digits ride on the Card choice. */ card?: { last4: string } | null; className?: string }) {
+export function PayWithSwitch({ balance, payWith, onPayWith, className }: { balance: Balance; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
-  // Only where its column has the room: in a narrower one they would push the Card choice onto a second row.
-  // ui-rules-allow: dot-separator -- the masked digits of a card number
-  const digits = card ? <span className="hidden tabular-nums @min-[26rem]/pay:inline">{`\u2022\u2022\u2022\u2022 ${card.last4}`}</span> : undefined;
   if (balance.balance !== 0)
     return (
       <Segmented
@@ -56,7 +53,8 @@ export function PayWithSwitch({ balance, payWith, onPayWith, card, className }: 
         className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
         options={[
           { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
-          { id: "card", label: t("card"), icon: CreditCard, detail: digits },
+          // No card is named here: which card pays is chosen in the pay dialog, and naming one would read as the only one.
+          { id: "card", label: t("card"), icon: CreditCard },
         ]}
       />
     );
@@ -65,7 +63,6 @@ export function PayWithSwitch({ balance, payWith, onPayWith, card, className }: 
     <p className="flex h-9 items-center gap-2 text-sm font-medium">
       <CreditCard className="size-4 text-muted-foreground" />
       {t("byCard")}
-      {digits ? <span className="font-normal text-muted-foreground">{digits}</span> : null}
     </p>
   );
 }
