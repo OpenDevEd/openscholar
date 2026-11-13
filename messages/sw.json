@@ -4673,6 +4673,7 @@
     "explore": "Gundua",
     "authors": "Waandishi",
     "account": "Akaunti",
+    "organizations": "Mashirika",
     "close": "Funga",
     "switchFrom": "Nafasi kazi: {name}. Badilisha nafasi kazi",
     "runningLabel": "{label}, {what}, {done} kati ya {total}",
@@ -6548,13 +6549,17 @@
       "agreementTitle": "Makubaliano ya uchapishaji na {series}",
       "version": "Toleo {version}",
       "agreementIntro": "Unabaki na hakimiliki na unachagua leseni, ambayo haiwezi kubadilishwa baada ya kutia saini. Kutia saini kunahifadhi DOI yako.",
-      "agreementShared": "Unabaki na hakimiliki na unachagua leseni, ambayo haiwezi kubadilishwa baada ya kutia saini. Kutia saini kunahifadhi DOI yako. Ripoti hii ni ya eneo hili la kazi: wanachama wake wanaweza kuiona, na wewe na wasimamizi wake mnaifanyia kazi.",
       "signedBy": "Inasainiwa na",
       "agree": "Ninakubali makubaliano haya, kwa niaba yangu na ya waandishi wenza wote, ambao wote wamekubali",
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
       "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye kisanduku.",
       "agreementInEnglish": "Makubaliano yenyewe yameandikwa kwa Kiingereza.",
+      "shut": {
+        "closed": "Mpango wake haujumuishi uchapishaji",
+        "ownClosed": "Mpango wako haujumuishi uchapishaji",
+        "used": "Hakuna ripoti zilizobaki za kuanzisha leo"
+      },
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
         "personalClosed": "Mpango wako haujumuishi uchapishaji. Hamia mpango unaoujumuisha.",
@@ -7269,6 +7274,11 @@
           "title": "Data, msimbo na matoleo",
           "about": "Mahali data, msimbo, matoleo mengine na nyongeza za ripoti zilipo.",
           "note": "Kila moja ni anwani ya wavuti au DOI."
+        },
+        "workspace": {
+          "title": "Nafasi kazi",
+          "about": "Ripoti ni ya eneo la kazi unalochagua. Haiwezi kuhamishwa kwenda jingine baada ya kutia saini.",
+          "note": "Katika shirika, wanachama wake wanaweza kuiona ripoti, na wewe na wasimamizi wake mnaifanyia kazi. Salio la uchapishaji la eneo la kazi ndilo linaloilipia."
         },
         "agreement": {
           "title": "Makubaliano ya uchapishaji",

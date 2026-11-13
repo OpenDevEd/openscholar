@@ -5,9 +5,9 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useConvex, useMutation, useQueries, useQuery } from "convex/react";
 import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -20,6 +20,8 @@ import { ConvexError } from "convex/values";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import Link from "@/components/workspace-link";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -57,6 +59,8 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
 import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
+import { WorkspaceChoice } from "@/components/reports/workspace-choice";
+import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
@@ -64,7 +68,7 @@ import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, 
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
-import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { useWorkspaceSlug, workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { cn, finePointer } from "@/lib/utils";
@@ -185,6 +189,16 @@ const watchEntry = (wake: () => void) => {
 const entryKey = () => historyOf()?.currentEntry?.key ?? "";
 
 /** The history entries a signed report was started from, by the browser's key, kept with the tab: a reload doesn't forget them. */
+/**
+ * A report just signed for another workspace than the page's: its page is another one there, so that it was just
+ * signed goes with it for a few seconds. Written as the page is left, read as the next one opens.
+ */
+let followed: { key: string; until: number } | null = null;
+/** As many of the person's workspaces as the agreement offers and reads the day of: the first page, whatever the rail has loaded since. */
+const OFFERED = 20;
+/** The minute a page's reads of a workspace's day are asked for, so they aren't read again on every draw. */
+const thisMinute = () => Math.floor(Date.now() / 60_000) * 60_000;
+
 const STARTED_FROM = "publish:started-from";
 const startedFrom = () => {
   try {
@@ -278,6 +292,10 @@ const PLACE = {
 export function PublishFlow() {
   const { isLoaded, isSignedIn } = useAuth();
   const workspaceId = useWorkspace();
+  const convex = useConvex();
+  const router = useRouter();
+  // The person's workspaces, which the agreement offers: read by the rail, and waited for so its choice is there as it opens.
+  const workspaces = useWorkspaces();
   const t = useTranslations("publishReports.flow");
   // In an organisation's workspace every member sees its reports, so each row says who signed.
   const shared = useWorkspaceSlug() !== undefined;
@@ -301,7 +319,7 @@ export function PublishFlow() {
 
   // Asked once for the minute the page opened in, so the count isn't read again on every draw; a report started
   // here changes the count by itself.
-  const [now] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
+  const [now] = useState(thisMinute);
   const basics = useQuery(api.reports.settings.forAuthors, {});
   const { data: counts } = useProtectedQuery(api.reports.flow.counts, inWorkspace(workspaceId, {}));
   // Reports ready in the person's other workspaces, read with the page so their notice is there when it opens.
@@ -360,8 +378,48 @@ export function PublishFlow() {
   useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
-  const [fresh, setFresh] = useState<{ key: string; step: "doi" | "live" } | null>(null);
+  const [fresh, setFresh] = useState<{ key: string; step: "doi" | "live" } | null>(() => (followed && followed.key === asked && Date.now() < followed.until ? { key: followed.key, step: "doi" } : null));
   if (listed && fresh) setFresh(null);
+  // A report signed for another of the person's workspaces is that workspace's, and so is its page: they go with it,
+  // as with anything moved to one. What its page reads first is read before leaving and held while the page changes,
+  // so it opens on the report's DOI and not on the page's loading frame.
+  const follow = async (to: WorkspaceRow, key: string) => {
+    const at = { workspaceId: to.workspaceId };
+    const reads = [
+      to.slug ? convex.watchQuery(api.workspaces.queries.bySlug, { slug: to.slug }) : convex.watchQuery(api.workspaces.queries.personal, {}),
+      convex.watchQuery(api.reports.settings.forAuthors, {}),
+      convex.watchQuery(api.reports.flow.counts, at),
+      convex.watchQuery(api.reports.flow.waitingElsewhere, at),
+      convex.watchQuery(api.reports.flow.starts, { ...at, now: thisMinute() }),
+      // The next page asks for the minute it opens in, which is the next one when the move crosses it.
+      convex.watchQuery(api.reports.flow.starts, { ...at, now: thisMinute() + 60_000 }),
+      convex.watchQuery(api.reports.flow.get, { ...at, key }),
+      convex.watchQuery(api.reports.activation.terms, { ...at, key }),
+    ];
+    const read = (watch: (typeof reads)[number]) => {
+      try {
+        return watch.localQueryResult() !== undefined;
+      } catch {
+        // A read that fails is the next page's to say.
+        return true;
+      }
+    };
+    const all = Promise.all(
+      reads.map(
+        (watch) =>
+          new Promise<void>((done) => {
+            const stop = watch.onUpdate(() => void (read(watch) && done()));
+            if (read(watch)) done();
+            // Let go once the next page has had time to take the read up.
+            setTimeout(stop, 15_000);
+          }),
+      ),
+    );
+    // ponytail: a read slower than four seconds is left to the next page, which then shows its loading frame.
+    await Promise.race([all, new Promise((done) => setTimeout(done, 4_000))]);
+    followed = { key, until: Date.now() + 15_000 };
+    router.replace(`${workspaceHref(to.slug, "/publish")}?report=${key}`);
+  };
   // Just signed, its report is still on its way: the agreement stays up until it is here, and the page never falls
   // back to its loading frame in between (that would start the screens anew, and the DOI's moment with them).
   const arriving = !listed && found === undefined && fresh?.step === "doi" && fresh.key === shownKey;
@@ -376,7 +434,7 @@ export function PublishFlow() {
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && waiting !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && waiting !== undefined && starts !== undefined && workspaceId !== undefined && (workspaces.list !== undefined || shownKey !== "new") && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -548,15 +606,15 @@ export function PublishFlow() {
             report={report}
             starts={starts ?? null}
             terms={terms ?? null}
-            shared={shared}
             workspaceId={workspaceId}
             fresh={fresh}
             setFresh={setFresh}
-            onSigned={(key) => {
+            onSigned={(key, into) => {
               const navigation = hearsHistory() ? historyOf() : undefined;
               const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
               if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) keepStartedFrom(behind.key);
-              void setPlace({ report: key, step: null, byline: null });
+              if (into) void follow(into, key);
+              else void setPlace({ report: key, step: null, byline: null });
             }}
             onAnother={another}
             correcting={correct}
@@ -607,7 +665,7 @@ function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slu
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** The place under the cover, on a wide page. */ beside: HTMLDivElement | null; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, report, starts, terms, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** The place under the cover, on a wide page. */ beside: HTMLDivElement | null; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; /** `into` is the workspace it was signed for, when that isn't the page's. */ onSigned: (key: string, into?: WorkspaceRow) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const locale = useLocale() as Locale;
   const readAgain = useMutation(api.reports.flow.readAgain);
@@ -694,14 +752,14 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               onBack={onUnprepare}
               beside={beside}
               basics={basics}
-              shared={shared}
               starts={starts}
               workspaceId={workspaceId}
               signed={signed}
-              onSigned={(key) => {
-                setFresh({ key, step: "doi" });
+              onSigned={(key, into) => {
+                // A report of another workspace opens on its own page there, which is told it was just signed.
+                if (!into) setFresh({ key, step: "doi" });
                 // In place of the unsigned page, so going back never lands on an agreement that starts a second report.
-                onSigned(key);
+                onSigned(key, into);
               }}
             />
           ) : !report.mine ? (
@@ -974,13 +1032,42 @@ function keepTicks(ticks: Ticks | null) {
   }
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack, beside }: { /** The place under the cover, on a wide page: the bill goes there. */ beside: HTMLDivElement | null; /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
+function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signed, onSigned, onBack, beside }: { /** The place under the cover, on a wide page: the bill goes there. */ beside: HTMLDivElement | null; /** Back to Prepare. */ onBack?: () => void; basics: Basics; /** The page's workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; /** `into` is the workspace it was signed for, when that isn't the page's. */ onSigned: (key: string, into?: WorkspaceRow) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
   const { problem, say, failed } = useProblem();
   const sign = useMutation(api.reports.flow.sign);
   const locale = useLocale();
+  // The workspace the report is to belong to: the page's, until another of the person's is picked here. What the
+  // others' days and balances hold is read with the step, so picking one changes the payment at once.
+  // The first page of them, with the page's own, which someone in more than a page of them may be past.
+  const first = useWorkspaces().list?.slice(0, OFFERED);
+  const current = useCurrentWorkspace();
+  const list = first && current && !first.some((workspace) => workspace.workspaceId === current.workspaceId) ? [...first, current] : first;
+  const slug = useWorkspaceSlug();
+  const [into, setInto] = useState<Id<"workspaces"> | null>(null);
+  // One picked and then left, as when a membership is taken away meanwhile, is picked no longer: the page's own is back.
+  const chosen = into !== null && into !== pageWorkspace ? list?.find((workspace) => workspace.workspaceId === into) : undefined;
+  const away = chosen !== undefined;
+  const workspaceId = chosen ? chosen.workspaceId : pageWorkspace;
+  const [now] = useState(thisMinute);
+  const others = here && pageWorkspace ? (list ?? []).filter((workspace) => workspace.workspaceId !== pageWorkspace).map((workspace) => workspace.workspaceId) : [];
+  const asked = others.join(" ");
+  const elsewhere = useQueries(useMemo(() => Object.fromEntries(asked.split(" ").filter(Boolean).map((id) => [id, { query: api.reports.flow.starts, args: { workspaceId: id as Id<"workspaces">, now } }])), [asked, now]));
+  const there = chosen ? (elsewhere[chosen.workspaceId] as Starts | Error | undefined) : undefined;
+  // Until the picked workspace's day is read, the page's stays up, and nothing in it can be pressed.
+  const settling = away && (there === undefined || there instanceof Error);
+  const starts = away && !settling ? (there as Starts) : here;
+  // What is said of the workspace's day (a DOI reserved there, a day used up) waits for that read: until then the
+  // day on screen is the page's own, and its reserved DOI is not the picked workspace's to continue.
+  const day = settling ? null : starts;
+  // Signed for another workspace, the step waits for that workspace's page as it waited for the signing.
+  const [leaving, setLeaving] = useState(false);
+  const signedFor = (key: string) => {
+    if (chosen) setLeaving(true);
+    onSigned(key, chosen);
+  };
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
   const [today] = useState(() => new Date());
   // The name they are known by, until they type another.
@@ -991,7 +1078,10 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
   const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
   // A promotion code, quoted here and kept with the report when it is signed, for what a card pays to activate it.
-  const [voucher, setVoucher] = useState<Quote | null>(null);
+  const [quoted, setQuoted] = useState<(Quote & { for?: Id<"workspaces"> }) | null>(null);
+  // A code is quoted for one workspace's customer, so it counts only for the workspace it was asked for: with another
+  // picked it is asked again, and an answer that comes back after the pick is not the new workspace's either.
+  const voucher: Quote | null = quoted && quoted.for === workspaceId ? { code: quoted.code, off: quoted.off } : null;
   const [typedCode, setTypedCode] = useState("");
   const quoteCode = useAction(api.reports.activation.quoteCode);
   // How the report is to be paid: from the balance while it holds something, unless the author picks the card. Kept
@@ -1024,11 +1114,15 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
   // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
   // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
   // whatever the day has left.
-  const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
+  // The same in a few words, for beside the workspace picked: one line that never wraps.
+  const shut = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`shut.${day.perDay > 0 ? "used" : day.kind === "personal" ? "ownClosed" : "closed"}`) : null;
+  // The plans of the workspace picked, which isn't always the page's.
+  const plans = workspaceHref(away ? chosen?.slug : slug, "/pricing");
+  const blocked = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`limit.${day.kind === "personal" ? "personal" : "workspace"}${day.perDay === 0 ? "Closed" : ""}`, { count: day.perDay }) : null;
   return (
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
-        {t(shared ? "agreementShared" : "agreementIntro")}
+        {t("agreementIntro")}
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
         {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
@@ -1039,21 +1133,30 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} />
         </section>
       ) : null}
+      {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
+      {here && workspaceId && list && list.length > 1 ? (
+        <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
+          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut ? { why: shut, plans } : null} />
+        </section>
+      ) : null}
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
       {starts && workspaceId ? (
-        <section className="mb-7" inert={busy || !!signed || undefined}>
+        <section className="mb-7" inert={busy || !!signed || leaving || settling || undefined}>
           <h3 className={SECTION}>{t("payment.title")}</h3>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <PayWithSwitch balance={starts} payWith={payWith} onPayWith={setPicked} />
             {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
                 is kept, and is back when a card pays again. */}
-            <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
-              {bought > 0 ? (
-                <div className="px-3 py-1">
-                  <PromoCode applied={voucher} onApply={setVoucher} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off }))} typed={typedCode} onTyped={setTypedCode} />
-                </div>
-              ) : null}
-            </AutoHeight>
+            {/* Another workspace's balance changes how wide the way to pay is: the field slides to its new place. */}
+            <motion.div layout="position" transition={{ duration: 0.3, ease: EASE }} className="min-w-0 flex-1 basis-64 sm:max-w-sm">
+              <AutoHeight>
+                {bought > 0 ? (
+                  <div className="px-3 py-1">
+                    <PromoCode applied={voucher} onApply={setQuoted} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off, for: workspaceId }))} typed={typedCode} onTyped={setTypedCode} />
+                  </div>
+                ) : null}
+              </AutoHeight>
+            </motion.div>
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
           <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />
@@ -1075,13 +1178,13 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
         </label>
       </div>
       {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
-      {starts?.untouched && starts.untouched !== signed ? (
+      {day?.untouched && day.untouched !== signed ? (
         // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
         <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
           <span className="min-w-0 flex-1 basis-56">
-            {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
+            {t.rich("untouched", { key: day.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
           </span>
-          <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
+          <Button size="sm" variant="outline" disabled={leaving} onClick={() => signedFor(day.untouched!)}>
             {t("continueWith")} <ArrowUpRight />
           </Button>
         </p>
@@ -1105,16 +1208,16 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
             <Button variant="outline" asChild>
-              <Link href="/pricing">
+              <NextLink href={plans}>
                 {t("seePlans")} <ArrowUpRight />
-              </Link>
+              </NextLink>
             </Button>
           </>
         ) : null}
         {starts ? (
           <NextButton
-            busy={busy || !!signed}
-            disabled={!agreed || !name.trim() || !licence || busy || !!signed || !!blocked || !workspaceId}
+            busy={busy || !!signed || leaving}
+            disabled={!agreed || !name.trim() || !licence || busy || !!signed || leaving || settling || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
                 say(null);
@@ -1123,7 +1226,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
                   const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, payWith, ...(voucher && { voucher }) });
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
-                  onSigned(key);
+                  signedFor(key);
                 } catch (error) {
                   failed(t("signFailed"))(error);
                 }
