@@ -24,3 +24,4 @@ The research records you search come from [OpenAlex](https://openalex.org).
 - The typeface is [Ubuntu](https://design.ubuntu.com/font), © Canonical Ltd, under the Ubuntu Font Licence 1.0.
 - A few icons that Solar lacks are from [Lucide](https://lucide.dev) (ISC license), and the icon picker for library menus uses [Hugeicons](https://hugeicons.com) (MIT license).
 - Country flags are served by [Flagpedia](https://flagpedia.net) and are in the public domain.
+- The Earth and its city lights are drawn from NASA imagery, [Blue Marble](https://science.nasa.gov/earth/earth-observatory/collections/blue-marble/) and [Black Marble](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) (NASA Earth Observatory; night lights by Joshua Stevens from Suomi NPP VIIRS data, Miguel Román, NASA Goddard Space Flight Center), which is in the public domain.

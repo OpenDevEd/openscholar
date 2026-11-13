@@ -13,8 +13,13 @@ export type AutumnBalance = {
   unlimited?: boolean;
   breakdown?: Array<{
     id: string;
+    /** The plan that gave or sold it; none for one given by hand. */
     plan_id: string | null;
     remaining: number;
+    /** What the grant gives, which a refill restores. */
+    included_grant?: number;
+    /** What was bought of it, beside what it gives. */
+    prepaid_grant?: number;
     reset?: { interval: string; resets_at: number | null } | null;
   }>;
 };
@@ -35,6 +40,8 @@ export type AutumnSubscription = {
 
 export type AutumnCustomer = {
   id: string;
+  /** None on an organisation's customer until someone gives it one. */
+  email?: string | null;
   stripe_id: string | null;
   subscriptions: AutumnSubscription[];
   purchases?: Array<{ plan_id: string }>;
@@ -103,6 +110,19 @@ export type AutumnCharge = {
   required_action?: { code: string; reason?: string } | null;
 };
 
+/**
+ * Dollars of a balance sold at a dollar each, bought as exactly `amount` of them for `amount` dollars, on one line of
+ * the invoice: the purchase carries its own price for the lot. By the plan's price alone, Autumn sells whole units
+ * and rounds a fraction up.
+ */
+const exactly = (quantity?: { feature: string; amount: number }) =>
+  quantity
+    ? {
+        feature_quantities: [{ feature_id: quantity.feature, quantity: quantity.amount }],
+        customize: { items: [{ feature_id: quantity.feature, price: { amount: quantity.amount, billing_units: quantity.amount, billing_method: "prepaid", interval: "one_off" } }] },
+      }
+    : {};
+
 /** A promotion code given with a purchase, as Autumn's `discounts` take it. */
 const promotion = (code?: string) => (code ? { discounts: [{ promotion_code: code }] } : {});
 
@@ -127,6 +147,9 @@ export class AutumnError extends Error {
   }
 }
 
+/** Calls that only read, or that Autumn answers the same way however often they're sent. */
+const REPEATABLE = /(^customers\.get_or_create$|\.preview_[a-z_]+$|\.list$)/;
+
 function config() {
   const url = process.env.AUTUMN_URL;
   const secretKey = process.env.AUTUMN_SECRET_KEY;
@@ -136,20 +159,46 @@ function config() {
   return { url, secretKey };
 }
 
+/** The languages Stripe's checkout comes in, by the site's locale; another gets Stripe's own guess from the browser. */
+const STRIPE_LOCALES: Record<string, string> = { "en-US": "en", "en-GB": "en-GB", zh: "zh", fr: "fr", ja: "ja", pt: "pt", es: "es", de: "de" };
+
+/**
+ * What Stripe's checkout page takes a payment with, in the person's language. A typed card only, no Apple Pay, Google
+ * Pay, Link or Amazon Pay (the user's choice, 2026-11-12): the Stripe account's card-only payment method configuration
+ * (STRIPE_CARD_ONLY_CONFIG, one per Stripe account), or without it cards with Link hidden.
+ */
+function checkoutParams({ locale, saved }: { locale?: string; saved?: boolean }) {
+  const only = process.env.STRIPE_CARD_ONLY_CONFIG;
+  const methods = only ? { payment_method_configuration: only } : { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } };
+  // The customer's saved cards, offered beside a new one: Stripe's page lists those that carry a name, an email and a
+  // country, as the ones saved through its own pages do (docs.stripe.com/payments/existing-customers).
+  const cards = saved ? { saved_payment_method_options: { allow_redisplay_filters: ["always", "limited", "unspecified"] } } : {};
+  return { ...methods, ...cards, locale: STRIPE_LOCALES[locale ?? ""] ?? "auto" };
+}
+
 async function call<T>(
   path: string,
   body: Record<string, unknown>,
   idempotencyKey?: string,
 ): Promise<T> {
   const { url, secretKey } = config();
-  const response = await fetch(`${url}/v1/${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/json",
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-    },
-    body: JSON.stringify(body),
+  const send = () =>
+    fetch(`${url}/v1/${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  // A request that never got an answer (a dropped or stale connection) is sent once more when sending it twice changes
+  // nothing: a read, or a change that carries its idempotency key. People saw it as a code that "couldn't be checked".
+  const repeatable = idempotencyKey !== undefined || REPEATABLE.test(path);
+  const response = await send().catch((error: unknown) => {
+    if (!repeatable) throw error;
+    console.warn(`[autumn] ${path} got no answer (${String(error).slice(0, 200)}); asking once more`);
+    return send();
   });
   const text = await response.text();
   let data: unknown = text;
@@ -189,12 +238,14 @@ export const autumn = {
   },
 
   /**
-   * Holds `credits` until the lock is finalized. `allowed: false` holds nothing. With
-   * `entityId`, a member's entity (#652): its monthly usage limit, the member's cap, counts too.
+   * Holds `credits` until the lock is finalized, of `feature` when it isn't credits. `allowed: false` holds nothing.
+   * With `entityId`, a member's entity (#652): its monthly usage limit, the member's cap, counts too. This server
+   * never lets go of a lock at `expiresAt` by itself: whoever holds one finalizes it.
    */
   lock(args: {
     customerId: string;
     entityId?: string;
+    feature?: string;
     credits: number;
     lockId: string;
     expiresAt: number;
@@ -204,7 +255,7 @@ export const autumn = {
       {
         customer_id: args.customerId,
         ...(args.entityId ? { entity_id: args.entityId } : {}),
-        feature_id: "credits",
+        feature_id: args.feature ?? "credits",
         required_balance: args.credits,
         lock: { enabled: true, lock_id: args.lockId, expires_at: args.expiresAt },
       },
@@ -241,6 +292,36 @@ export const autumn = {
     );
   },
 
+  /**
+   * Gives the customer a balance of `feature`: one that refills to `amount` every `interval`, one of `amount` that
+   * stays until used (no `interval`), or one with no limit.
+   */
+  createBalance(args: { customerId: string; feature: string; idempotencyKey: string } & ({ amount: number; interval?: string } | { unlimited: true })) {
+    return call<{ success: boolean }>(
+      "balances.create",
+      { customer_id: args.customerId, feature_id: args.feature, ...("unlimited" in args ? { unlimited: true } : { included_grant: args.amount, ...(args.interval && { reset: { interval: args.interval } }) }) },
+      args.idempotencyKey,
+    );
+  },
+
+  /** Sets what is left now of the customer's balance of `feature` that refills every `interval`. */
+  setBalance(args: { customerId: string; feature: string; interval: string; left: number }) {
+    return call<{ success: boolean }>("balances.update", { customer_id: args.customerId, feature_id: args.feature, interval: args.interval, current_balance: args.left });
+  },
+
+  /** Removes one of the customer's balances of `feature`, with whatever is left in it. */
+  deleteBalance(args: { customerId: string; feature: string; balanceId: string }) {
+    return call<{ success: boolean }>("balances.delete", { customer_id: args.customerId, feature_id: args.feature, balance_id: args.balanceId });
+  },
+
+  /**
+   * Takes `amount` of `feature` from one of the customer's balances and no other, stopping at zero. Asked twice under
+   * one `idempotencyKey`, Autumn refuses the second (409 `duplicate_idempotency_key`), so it is only ever taken once.
+   */
+  takeFrom(args: { customerId: string; feature: string; balanceId: string; amount: number; idempotencyKey: string }) {
+    return call<unknown>("balances.update", { customer_id: args.customerId, feature_id: args.feature, balance_id: args.balanceId, add_to_balance: -args.amount }, args.idempotencyKey);
+  },
+
   /** Removes `credits` from one balance, stopping at zero. For refunds. */
   removeFromBalance(args: { customerId: string; balanceId: string; credits: number }) {
     return call<unknown>("balances.update", {
@@ -263,35 +344,54 @@ export const autumn = {
     idempotencyKey?: string;
     newMonth?: boolean;
     seats?: SeatQuantity;
+    /** How much of a feature sold at a dollar a unit is bought, to the cent, in place of `credits`: dollars of a publication balance. */
+    quantity?: { feature: string; amount: number };
     /** A promotion code of an Autumn reward, taken off the charge. */
     code?: string;
+    /**
+     * Billed by invoice and given at once, for a purchase quoted at nothing to a customer with no card: Autumn sends a
+     * card-less customer to Stripe's page otherwise, even for $0. Only ever with a quote of nothing: anything owed
+     * would be given unpaid.
+     */
+    unbilled?: boolean;
+    /**
+     * A report's payment made on Stripe's checkout (a customer with no card on file): a typed card only, in the
+     * person's language. Plans keep Stripe's default page.
+     */
+    checkout?: { locale?: string; /** Always there, with the customer's saved cards to choose from: someone paying this once with a card other than their saved one. */ saved?: boolean };
   }) {
     return call<AutumnCharge>(
       "billing.attach",
       {
         customer_id: args.customerId,
         plan_id: args.planId,
-        redirect_mode: "if_required",
+        redirect_mode: args.checkout?.saved ? "always" : "if_required",
         ...licenseQuantities(args.seats),
         ...(args.credits
           ? { feature_quantities: [{ feature_id: "credits", quantity: args.credits }] }
           : {}),
+        ...exactly(args.quantity),
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
+        ...(args.unbilled ? { invoice_mode: { enabled: true, enable_plan_immediately: true, finalize: true } } : {}),
+        // Used only when Autumn sends the person to Stripe's checkout: a customer with no card on file.
+        ...(args.checkout ? { checkout_session_params: checkoutParams(args.checkout) } : {}),
         ...promotion(args.code),
       },
       args.idempotencyKey,
     );
   },
 
-  /** What `attach` would charge now, with the same `newMonth`, `seats` and promotion `code`. */
-  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity, code?: string) {
-    return call<AutumnPreview>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}), ...licenseQuantities(seats), ...promotion(code) });
-  },
-
-  /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
-  setupPayment(customerId: string, successUrl: string) {
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl });
+  /** What `attach` would charge now, with the same `newMonth`, `seats`, promotion `code` and `quantity`. */
+  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity, code?: string, quantity?: { feature: string; amount: number }) {
+    return call<AutumnPreview>("billing.preview_attach", {
+      customer_id: customerId,
+      plan_id: planId,
+      ...(newMonth ? { billing_cycle_anchor: "now" } : {}),
+      ...licenseQuantities(seats),
+      ...promotion(code),
+      ...exactly(quantity),
+    });
   },
 
   /**

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildZenodoRecordPayload, mapCrossrefRecord } from "@opendeved/doi-sync-core";
+import { buildCrossrefPublicationXml, buildZenodoRecordPayload, mapCrossrefRecord } from "@opendeved/doi-sync-core";
 import { api, internal } from "../_generated/api";
 import { registrationRecord, zenodoRecord } from "../../lib/reports/registration-record";
 import { REGISTRATION_TRIES } from "./registration";
@@ -77,6 +77,53 @@ describe("a report's record for its registrars", () => {
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { series: { title: "Openscholar Reports", issns: ["2049-3630"] }, freeToRead: true } });
   });
 
+  it("names each person by their role, and sends each reference by its DOI or, without one, as written", () => {
+    const people = { ...m, authors: [m.authors[0]!, { ...m.authors[1]!, name: "Ada Okafor", kind: "editor" as const }] };
+    const record = registrationRecord(report, { ...people, citations: [{ text: "Poor Economics (2011)." }, { text: "Scaling up successfully (2018).", doi: "10.1007/s10833-018-9325-4" }], references: ["10.1007/s10833-018-9325-4"] }, series, "https://openscholar.ai");
+    expect(record.creators.map((creator) => creator.creatorType)).toEqual(["author", "editor"]);
+    expect(record.references).toEqual(["Poor Economics (2011).", "10.1007/s10833-018-9325-4"]);
+    expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true });
+    // A report whose references were never written out keeps sending its DOIs.
+    expect(registrationRecord(report, { ...m, references: ["10.1038/nature12373"] }, series, "https://openscholar.ai").references).toEqual(["10.1038/nature12373"]);
+  });
+
+  it("sends a funder only ROR knows by its ROR ID, with the Funder Registry DOI ROR lists for it where it lists one", () => {
+    const funding = [
+      { funder: { id: null, name: "The LEGO Foundation", ror: "https://ror.org/020yc1y85" }, awards: ["G-1"] },
+      { funder: { id: null, name: "Foreign, Commonwealth & Development Office", ror: "https://ror.org/037wke960" }, awards: [] },
+    ];
+    const record = registrationRecord(report, { ...m, funding }, series, "https://openscholar.ai", { funders: {}, institutions: {}, rorFunders: { "020yc1y85": "10.13039/100018325" } });
+    expect(record.funding).toEqual([
+      { funderName: "The LEGO Foundation", funderIdentifier: "https://doi.org/10.13039/100018325", funderRor: "020yc1y85", awards: ["G-1"] },
+      // Not in the Funder Registry: Crossref still knows it by its ROR ID.
+      { funderName: "Foreign, Commonwealth & Development Office", funderRor: "037wke960", awards: [] },
+    ]);
+  });
+
+  it("keeps a date its PDF gives as a month as a month for Crossref, and gives Zenodo, which takes only a whole date, the first of it", () => {
+    const record = registrationRecord(report, { ...m, date: "2026-10" }, series, "https://openscholar.ai");
+    const mapped = mapCrossrefRecord(record, report.doi);
+    if (!mapped.ok) throw new Error("Crossref refused the record");
+    const xml = buildCrossrefPublicationXml({ batchId: "b", timestamp: "1", depositorName: "d", emailAddress: "e@example.org", registrant: "r", record: mapped.record });
+    expect(xml.match(/<publication_date[^>]*>[\s\S]*?<\/publication_date>/)?.[0].replace(/\s+/g, "")).toBe('<publication_datemedia_type="online"><month>10</month><year>2026</year></publication_date>');
+    const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, date: "2026-10" });
+    expect(buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.publication_date).toBe("2026-10-01");
+  });
+
+  it("carries its licence to both registrars: one of Creative Commons' by its name there, and an author's own by its name and address", () => {
+    const sent = (licence: typeof m.licence) => {
+      const record = registrationRecord(report, { ...m, licence }, series, "https://openscholar.ai");
+      const { landingUrl, doi, ...metadata } = zenodoRecord(record, { ...m, licence });
+      const crossref = mapCrossrefRecord(record, doi);
+      return { crossref: crossref.ok ? crossref.record.licenseUrl : crossref, zenodo: buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.rights };
+    };
+    expect(sent("CC BY-NC 4.0")).toEqual({ crossref: "https://creativecommons.org/licenses/by-nc/4.0/legalcode", zenodo: [{ id: "cc-by-nc-4.0" }] });
+    expect(sent({ name: "Licence Ouverte 2.0", url: "https://www.etalab.gouv.fr/licence-ouverte-open-licence" })).toEqual({
+      crossref: "https://www.etalab.gouv.fr/licence-ouverte-open-licence",
+      zenodo: [{ title: { en: "Licence Ouverte 2.0" }, link: "https://www.etalab.gouv.fr/licence-ouverte-open-licence" }],
+    });
+  });
+
   it("goes to Zenodo as the kind of work its author chose, while Crossref still takes it as a report in the series", () => {
     const zenodoType = (type: string) => {
       const record = registrationRecord(report, { ...m, type }, series, "https://openscholar.ai");
@@ -87,6 +134,7 @@ describe("a report's record for its registrars", () => {
     expect(zenodoType("article")).toEqual({ id: "publication-article" });
     expect(zenodoType("dataset")).toEqual({ id: "dataset" });
     expect(zenodoType("report")).toEqual({ id: "publication-report" });
+    expect(zenodoType("presentation")).toEqual({ id: "presentation" });
     expect(zenodoType("paratext")).toEqual({ id: "publication-other" });
     // A dissertation is awarded by its author's university, never by Openscholar, the publisher.
     const thesis = (authors: typeof m.authors) => {

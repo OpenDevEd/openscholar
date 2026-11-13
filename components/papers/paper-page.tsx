@@ -4,6 +4,7 @@ import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { creativeCommons } from "@/lib/papers/licence";
 import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
+import { dateMoment, dateStyleOf } from "@/lib/reports/report";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -56,7 +57,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** What a report published on Openscholar has beyond a paper's record: sections under the authors and in the sidebar, its PDF's cover, and what only its workspace does. */
-  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; actions?: ReactNode };
+  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; /** The report's cover's width over its height, when kept. */ coverShape?: number | null; actions?: ReactNode; /** The licence its author chose, which may be their own. */ licence?: { name: string; url: string } };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -112,11 +113,12 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             // A community's picture of its PDF's first page opens that PDF.
             // An Openscholar Report wears the cover Openscholar made of its own PDF.
             image={extra?.cover ?? communityCover?.cover ?? null}
+            shape={extra?.cover ? (extra.coverShape ?? null) : null}
             href={communityCover?.pdf ?? pdf ?? doi}
             pdf={!!communityCover?.pdf || !!pdf}
           />
           <div className="flex min-w-0 flex-col">
-            <HeaderChips paper={paper} detail={detail} />
+            <HeaderChips paper={paper} detail={detail} licence={extra?.licence} />
             {/* The bar's heading is the title; this is the title at reading size. */}
             <p dir="auto" className="mt-4 text-pretty text-2xl font-semibold leading-tight tracking-tight sm:text-[2rem]">{title}</p>
             <AuthorLine detail={detail} fallback={paper.authors_unparsed} />
@@ -160,7 +162,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
       </header>
     }>
       {/* Keeping the paper: in the library, a collection or a community. At the end, what only its workspace does. */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-5 py-3 sm:px-8">
+      <div className="@container flex flex-wrap items-center gap-2 border-b border-border-subtle px-5 py-3 sm:px-8">
         <SaveControl paper={paper} named />
         {extra?.actions ? <div className="sm:ms-auto">{extra.actions}</div> : null}
       </div>
@@ -227,7 +229,7 @@ function DoiLine({ doi }: { doi: string }) {
       <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
       <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
         <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
-          try { await navigator.clipboard.writeText(doi); setCopied(true); toast.success(t("doiCopied")); }
+          try { await navigator.clipboard.writeText(`https://doi.org/${doi}`); setCopied(true); toast.success(t("doiCopied")); }
           catch { toast.error(t("doiCopyFailed")); }
         }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
       </TooltipHint>
@@ -274,18 +276,19 @@ function SeeAll({ href }: { href: string }) {
   );
 }
 
-function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetail }) {
+function HeaderChips({ paper, detail, licence }: { paper: PaperResult; detail: PaperDetail; licence?: { name: string; url: string } | undefined }) {
   const { workType } = useVocabulary();
   const t = useTranslations("paperPage");
   const format = useFormatter();
   const locale = useLocale();
-  const date = paper.publication_date ? new Date(`${paper.publication_date}T00:00:00Z`) : null;
-  const license = detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
+  // As precisely as the work states it: a report's PDF may give only a month or a year.
+  const dated = paper.publication_date ? dateMoment(paper.publication_date) : null;
+  const license = licence ?? detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
   const language = detail.language && detail.language !== locale.split("-")[0] ? new Intl.DisplayNames([locale], { type: "language" }).of(detail.language) : null;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {detail.retracted ? <span className={`${CHIP} bg-destructive/10 text-destructive`}><TriangleAlert aria-hidden className="size-3.5" />{t("retracted")}</span> : null}
-      {date || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{date ? format.dateTime(date, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : paper.publication_year}</span> : null}
+      {dated || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{dated ? format.dateTime(dated.at, dateStyleOf(dated.parts, "short")) : paper.publication_year}</span> : null}
       {paper.type ? <span className={CHIP}><FileText aria-hidden className="size-3.5" />{workType(paper.type)}</span> : null}
       {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
       {license?.url ? (
@@ -449,11 +452,12 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
     <Section id="paper-copies" title={t("whereToRead")} count={copies.length} action={copies.length > COPIES_SHOWN ? (
       <Button variant="ghost" size="sm" className="-me-2 h-7 px-2 text-xs" aria-expanded={all} onClick={() => setAll((value) => !value)}>{all ? t("showFewer") : t("showAll", { count: copies.length })}</Button>
     ) : undefined}>
-      <AutoHeight>
+      {/* The rows reach past the column by their own padding: the frame does too, or it cuts off their hover and focus ring. */}
+      <AutoHeight className="-mx-2">
         <ul className="space-y-0.5">
           {copies.map((copy, index) => (
             <li key={copy.name} className={cn(!all && index >= COPIES_SHOWN && "hidden")}>
-              <a href={copy.url} target="_blank" rel="noopener noreferrer" className="group -mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+              <a href={copy.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
                 <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", copy.pdf ? "bg-success/15 ink-success" : "bg-inset text-muted-foreground")}>
                   {copy.pdf ? <FileText aria-hidden className="size-4" /> : copy.kind === "publisher" ? <BookOpen aria-hidden className="size-4" /> : <Library aria-hidden className="size-4" />}
                 </span>
@@ -527,10 +531,10 @@ function Details({ detail }: { detail: PaperDetail }) {
         {rows.map((row) => (
           <Fragment key={row.label}>
             <dt className="text-muted-foreground">{row.label}</dt>
-            <dd className="min-w-0 truncate">
+            <dd className="min-w-0">
               {row.href
-                ? <a href={row.href} target="_blank" rel="noopener noreferrer" dir="ltr" className="inline-flex max-w-full items-center gap-1.5 font-mono text-xs hover:text-primary hover:underline">{row.icon}<span className="truncate">{row.value}</span></a>
-                : <span dir="ltr" className="font-mono text-xs">{row.value}</span>}
+                ? <a href={row.href} target="_blank" rel="noopener noreferrer" dir="ltr" className="inline-flex max-w-full items-center gap-1.5 rounded-sm font-mono text-xs hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">{row.icon}<span className="truncate">{row.value}</span></a>
+                : <span dir="ltr" className="block truncate font-mono text-xs">{row.value}</span>}
             </dd>
           </Fragment>
         ))}

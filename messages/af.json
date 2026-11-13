@@ -196,21 +196,6 @@
     "anotherPlan": "’n ander plan",
     "onDate": "op {date}",
     "connections": "Verbindings",
-    "localeLabels": {
-      "enUS": "Engels (VSA)",
-      "enGB": "Engels (VK)",
-      "zh": "Chinees",
-      "fr": "Frans",
-      "hi": "Hindi",
-      "ja": "Japannees",
-      "ar": "Arabies",
-      "sw": "Swahili",
-      "pt": "Portugees",
-      "es": "Spaans",
-      "de": "Duits",
-      "af": "Afrikaans",
-      "zu": "Zoeloe"
-    },
     "you": "Jy",
     "calendarToday": "Vandag, {date}",
     "calendarSelected": "{date}, gekies",
@@ -350,6 +335,7 @@
     "password": "Crossref-wagwoord",
     "prefix": "DOI-voorvoegsel",
     "registrant": "Registreerder",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Naam van deponeerder",
     "email": "E-pos van deponeerder",
     "namespace": "DOI-naamruimte",
@@ -435,7 +421,16 @@
     "topUpDue": "Nou betaalbaar",
     "topUpBalanceNow": "Saldo",
     "topUpBalanceAfter": "Daarna",
-    "seePlans": "Sien planne"
+    "seePlans": "Sien planne",
+    "publication": {
+      "title": "Publikasiebalans",
+      "hint": "Betaal vir die verslae wat jy op Openscholar Reports publiseer.",
+      "every": "{interval, select, hour {Elke uur} day {Elke dag} week {Elke week} month {Elke maand} quarter {Elke drie maande} semi_annual {Elke ses maande} other {Elke jaar}}",
+      "backTo": "Terug na {amount} op {date}",
+      "kept": "{amount} bly tot gebruik",
+      "publish": "Publiseer",
+      "noLimit": "Geen limiet"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ons het ’n onverwagte probleem ondervind. Probeer weer, of gaan terug na ’n stabiele bladsy.",
@@ -681,6 +676,7 @@
     "uploadFailed": "Oplaai het misluk",
     "uploadFailedDescription": "Kon nie {format} oplaai nie. Probeer weer.",
     "accountChanged": "Jou rekening het verander. Probeer weer.",
+    "couldntCopy": "Kon dit nie kopieer nie",
     "copyFailedDescription": "Jou blaaier het ons nie toegelaat om dit te kopieer nie. Kies die teks en kopieer dit self.",
     "validationFailed": "Validering het misluk",
     "entityCreated": "{entity} geskep",
@@ -1253,19 +1249,20 @@
     "reviewed": "Nagegaan"
   },
   "saveToLibrary": {
-    "save": "Stoor",
-    "saved": "Gestoor",
-    "saveToLibrary": "Stoor in biblioteek",
+    "save": "Voeg by biblioteek",
+    "saved": "In biblioteek",
+    "saveToLibrary": "Voeg by biblioteek",
     "removeFromLibrary": "Verwyder uit biblioteek",
     "addToCollection": "Voeg by versameling",
     "newCollection": "Nuwe versameling",
     "removed": "Uit biblioteek verwyder",
     "undo": "Maak ongedaan",
-    "saveError": "Kon nie die artikel stoor nie",
+    "saveError": "Kon nie die artikel by die biblioteek voeg nie",
     "removeError": "Kon nie die artikel verwyder nie",
     "restoreError": "Kon nie die artikel terugplaas nie",
     "collectionError": "Kon nie die versameling verander nie",
-    "newCollectionWithPaper": "Nuwe versameling met hierdie artikel"
+    "newCollectionWithPaper": "Nuwe versameling met hierdie artikel",
+    "finishSaving": "Voltooi byvoeging"
   },
   "rating": {
     "noRating": "Geen gradering nie",
@@ -1412,8 +1409,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Ons waardeer jou privaatheid",
-    "bannerDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies.",
-    "dialogDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies. Jy kan jou keuse enige tyd verander.",
+    "bannerDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar en sy gemeenskappe gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies.",
+    "dialogDescription": "Ons en ons ontledingsverskaffers, PostHog en Google, gebruik koekies om te verstaan hoe Openscholar en sy gemeenskappe gebruik word en dit te verbeter. As jy weier, tel ons net besoeke, sonder koekies. Jy kan jou keuse enige tyd verander.",
     "acceptAll": "Aanvaar alles",
     "rejectNonEssential": "Weier nie-noodsaaklike",
     "preferencesTitle": "Koekievoorkeure",
@@ -1440,7 +1437,11 @@
     "upgradeSuccess": "Opgradering suksesvol",
     "upgradeSuccessCredits": "Opgegradeer na {plan} — {credits} krediete bygevoeg",
     "totalCharge": "Totaal nou verskuldig",
-    "paymentMethod": "Betaalmetode"
+    "paymentMethod": "Betaalmetode",
+    "anotherCard": "’n Ander kaart",
+    "anotherCardNote": "Stripe se bladsy open met jou gestoorde kaarte en plek vir ’n nuwe een.",
+    "manageBilling": "Bestuur fakturering",
+    "toPayment": "Gaan voort na betaling"
   },
   "libraryPage": {
     "title": "Biblioteek",
@@ -1465,7 +1466,7 @@
     "ratingFilter": "Gradering",
     "loadMore": "Laai meer",
     "emptyLibraryTitle": "Hierdie biblioteek is leeg",
-    "emptyLibraryDescription": "Stoor artikels uit soekresultate om hierdie biblioteek te bou.",
+    "emptyLibraryDescription": "Voeg artikels uit soekresultate by om hierdie biblioteek te bou.",
     "emptyLibraryCta": "Soek artikels",
     "noResultsTitle": "Geen artikels pas by jou soektog of filters nie",
     "clearFilters": "Maak filters leeg",
@@ -1860,7 +1861,6 @@
       "notificationSchedule": "Kies ’n geldige verteldag, tyd en tydsone.",
       "nameMissing": "Gee die gemeenskap ’n naam.",
       "shortNameMissing": "Gee die gemeenskap ’n kort naam.",
-      "partnerName": "Elke befondsingsvennoot het ’n naam nodig.",
       "badColour": "Een van die kleure is nie geldig nie.",
       "institutionName": "Elke instelling het ’n naam nodig.",
       "linkLabel": "Elke skakel het ’n etiket nodig.",
@@ -1942,13 +1942,6 @@
       "searchTitlePlaceholder": "Navorsing en bewyse oor klimaataanpassing",
       "descriptionLabel": "Beskrywing",
       "descriptionHint": "Word op die tuisblad en in soekresultate gewys.",
-      "partnersHeading": "Befondsingsvennote",
-      "partnersHint": "Word op die tuisblad gewys.",
-      "addPartner": "Voeg vennoot by",
-      "noPartners": "Nog geen befondsingsvennote nie.",
-      "removePartner": "Verwyder vennoot",
-      "partnerName": "Naam van vennoot",
-      "partnerPlaceholder": "Naam van vennoot",
       "shareImageLabel": "Deelbeeld",
       "shareImageHint": "Word gebruik wanneer die gemeenskap op sosiale media gedeel word. PNG, JPG of WEBP.",
       "showNameLabel": "Naam langs die logo",
@@ -2138,6 +2131,7 @@
       },
       "socialError": "Gebruik ’n volledige adres wat met https:// begin.",
       "fundersHeading": "Befondsers",
+      "fundersHint": "Word in die voetstuk en op elke rekord gewys.",
       "fundersEmpty": "Nog geen befondsers nie.",
       "addFunder": "Voeg befonser by",
       "removeFunder": "Verwyder befonser",
@@ -4678,13 +4672,11 @@
     "communities": "Gemeenskappe",
     "explore": "Verken",
     "authors": "Outeurs",
-    "workspacesCard": "Werkruimtes",
     "account": "Rekening",
     "close": "Maak toe",
     "switchFrom": "Werkruimte: {name}. Wissel werkruimte",
     "runningLabel": "{label}, {what}, {done} van {total}",
     "doneOf": "{done} van {total}",
-    "planFor": "{plan} vir {workspace}",
     "planAndCredits": "Plan en krediete",
     "theme": "Tema",
     "light": "Lig",
@@ -4692,7 +4684,6 @@
     "auto": "Outo",
     "signOut": "Meld af",
     "signOutFailed": "Kon nie afmeld nie. Gaan jou verbinding na en probeer weer.",
-    "personal": "Persoonlik",
     "admin": "Admin",
     "member": "Lid",
     "members": "{count, plural, one {# lid} other {# lede}}",
@@ -4704,7 +4695,6 @@
     "decline": "Weier",
     "join": "Sluit aan",
     "newOrganization": "Nuwe organisasie",
-    "workspaceSettings": "Werkruimte-instellings",
     "invitationGone": "Hierdie uitnodiging is nie meer oop nie.",
     "couldntJoin": "Kon nie by die organisasie aansluit nie",
     "couldntDecline": "Kon nie die uitnodiging weier nie",
@@ -5643,6 +5633,7 @@
     "keepInvitation": "Hou uitnodiging",
     "declineInvitation2": "Weier uitnodiging",
     "previewCover": "Vertoon {title} se omslag",
+    "noPdf": "Geen PDF",
     "preview": "Vertoon {title}",
     "declineBody": "Jy sal nie toegang tot {name} ontvang nie. Jou ander gemeenskappe word nie geraak nie.",
     "owner": "Eienaar",
@@ -6168,6 +6159,7 @@
     },
     "admin": {
       "backToReport": "Terug na die verslag",
+      "editLost": "Die outeur het {key} teruggeneem om dit te verander terwyl jy dit geredigeer het, dus is wat jy getik het nie bewaar nie. Maak dit weer oop sodra sy kontroles klaar is.",
       "editTitle": "Wysig besonderhede",
       "editIntroLive": "{key} is gepubliseer. As jy stoor, word jou wysiging dadelik sonder kontroles gepubliseer, en die verslag word weer geregistreer.",
       "editIntroNotLive": "{key} is nog nie gepubliseer nie. As jy stoor, geld jou wysiging dadelik sonder kontroles.",
@@ -6209,7 +6201,9 @@
       "places": "Plekke bestudeer",
       "studyDesign": "Studie-ontwerp",
       "seeChanges": "Sien jou wysigings",
-      "correct": "Korrigeer besonderhede"
+      "correct": "Korrigeer besonderhede",
+      "takeDownTitle": "Om dit te laat verwyder",
+      "openDoi": "Maak die DOI {doi} oop"
     },
     "stages": {
       "draft": "Konsep",
@@ -6257,9 +6251,10 @@
       "action": {
         "openPage": "Maak sy bladsy oop",
         "open": "Maak oop",
-        "activate": "Aktiveer",
+        "activate": "Betaal",
         "carryOn": "Gaan voort",
-        "seeFailed": "Sien wat gefaal het"
+        "seeFailed": "Sien wat gefaal het",
+        "manage": "Maak oop in Publiseer"
       },
       "seeChanges": "Sien jou wysigings",
       "correct": "Korrigeer besonderhede"
@@ -6331,7 +6326,6 @@
       },
       "which": "Watter verslae",
       "pagerItems": "verslae",
-      "approvedToast": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
       "sentAgain": "Weer gestuur",
       "noMatch": "Geen verslae pas nie",
       "noReports": "Nog geen verslae nie",
@@ -6348,7 +6342,7 @@
       "openPage": "Maak sy bladsy oop",
       "openPageLabel": "Maak {key} se bladsy oop",
       "done": {
-        "approve": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
+        "approve": "Goedgekeur. Dit kan nou geaktiveer word.",
         "reinstate": "Herstel. Dit is weer gepubliseer.",
         "withdraw": "Teruggetrek",
         "decline": "Afgekeur"
@@ -6364,6 +6358,7 @@
         "humanReview": "Menslike hersiening is aan, so wysigings wag vir 'n hersiener."
       },
       "approving": "Goedkeuring laat sy skrywer dit aktiveer, en dit word gepubliseer sodra hulle dit doen.",
+      "approvingOrg": "Goedkeuring laat ’n admin van {organization} dit aktiveer, en dit gaan regstreeks wanneer hulle dit doen.",
       "standing": {
         "failedAsked": "'n Kontrole het gefaal. {approving}",
         "failed": "'n Kontrole het gefaal, so die verslag is terug by die skrywer om reg te stel. Jy kan steeds besluit. {approving}",
@@ -6435,9 +6430,10 @@
       "enterSeriesName": "Tik die reeks se naam.",
       "enterByline": "Tik die eienaarsreël.",
       "bylineNeedsDoi": "Die eienaarsreël moet {doi} bevat, wat elke verslag se DOI word.",
+      "bylineNeedsLicence": "Die reël het {licence} nodig, wat elke verslag se lisensie word.",
       "notIssn": "Dit is nie 'n ISSN nie. Een lyk soos 2049-3630, en sy laaste syfer kontroleer die res.",
       "byline": "Eienaarsreël",
-      "bylineHint": "{series}, {issn} en {doi} word vir elke verslag ingevul",
+      "bylineHint": "{series}, {issn}, {doi} en {licence} word vir elke verslag ingevul",
       "bylineSaved": "Eienaarsreël gestoor",
       "registration": "DOI-registrasie",
       "zenodoSandbox": "Zenodo-toetsomgewing",
@@ -6460,32 +6456,6 @@
       "changed": "Verander op {date}",
       "asWritten": "Soos eers geskryf",
       "edit": "Wysig",
-      "limits": "Gratis aktiverings",
-      "limitsPager": "gratis aktiverings",
-      "personal": "Iemand se eie werkruimte",
-      "personalHint": "Aktiverings per dag wat niks kos nie. 'n Gestoorde kaart is steeds nodig.",
-      "personalLabel": "Gratis aktiverings per dag in 'n persoon se eie werkruimte",
-      "limitSaved": "Gratis aktiverings gestoor",
-      "organization": "'n Organisasie se werkruimte",
-      "organizationHint": "Aktiverings per dag wat niks kos nie, gedeel deur sy lede.",
-      "organizationLabel": "Gratis aktiverings per dag in 'n organisasie se werkruimte",
-      "goneAccount": "'n Rekening wat nie meer bestaan nie",
-      "goneOrganization": "'n Organisasie wat nie meer bestaan nie",
-      "person": "Persoon",
-      "organisation": "Organisasie",
-      "perDayLabel": "{name} se gratis aktiverings per dag",
-      "aDay": "gratis per dag",
-      "backToPeople": "Terug na die getal vir mense",
-      "backToOrganizations": "Terug na die getal vir organisasies",
-      "removeLimit": "Verwyder {name} se gratis aktiverings",
-      "alreadyLimited": "{name} het reeds 'n eie getal: {count} gratis per dag.",
-      "people": "Mense",
-      "organisations": "Organisasies",
-      "giveLimit": "Gee 'n persoon of organisasie eie gratis aktiverings",
-      "pickerPlaceholder": "'n Organisasie se naam, of 'n persoon se e-pos",
-      "pickerEmpty": "Geen rekening of organisasie pas nie",
-      "limitMax": "'n Perk gaan tot {max} per dag",
-      "limitWhole": "'n Perk is 'n heelgetal van 0 tot {max}",
       "builtIn": "Ingebou",
       "modelGone": "Sy model is nie meer beskikbaar nie",
       "passesAt": "Slaag by {percent} sekerheid",
@@ -6531,25 +6501,36 @@
       "agreementLabel": "Ooreenkoms, in Markdown",
       "agreementSaved": "Ooreenkoms weergawe {version}",
       "saveVersion": "Stoor as weergawe {version}",
-      "price": "Prys",
-      "priceHint": "Wat 'n aktivering kos ná die gratis een: die prys van die Report activation-plan in Autumn.",
-      "priceHintNone": "Autumn het geen Report activation-plan nie, so net gratis aktiverings gaan deur.",
-      "notOnSale": "Nie te koop nie"
+      "priceOne": "CC BY en CC BY-SA",
+      "priceHint": "Wat dit kos om ’n verslag onder CC BY of CC BY-SA te publiseer, in Amerikaanse dollar.",
+      "balances": "Saldo's",
+      "balancesHint": "Elke werkruimte het ’n publikasiebalans in Autumn, in dollar, wat hierdie pryse betaal voordat ’n kaart dit doen. Gee daar balans aan ’n persoon of ’n organisasie, een keer of elke dag, week, maand of jaar aangevul. ’n Item op ’n plan gee dit aan elke werkruimte op daardie plan.",
+      "openAutumn": "Maak Autumn oop",
+      "priceThree": "NC, ND en eie lisensies",
+      "priceThreeHint": "Wat dit kos om ’n verslag onder ’n NC- of ND-lisensie, of die outeur se eie lisensie, te publiseer, in Amerikaanse dollar.",
+      "prices": "Pryse"
     },
     "flow": {
       "steps": {
+        "prepare": "Berei voor",
         "agreement": "Ooreenkoms",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Besonderhede",
         "checks": "Kontroles",
-        "live": "Gepubliseer"
+        "live": "Gepubliseer",
+        "sealed": "Gesluit sodra die ooreenkoms onderteken is.",
+        "paying": "Die betaling is aan die gang, so die stappe kan nie nou oopgemaak word nie. As die bank dit weier, gaan hulle weer oop.",
+        "liveNow": "Dit is lewendig. Verander die besonderhede met {action}.",
+        "closed": "’n Beoordelaar het dit afgehaal, so dit kan nie verander word nie.",
+        "running": "Die kontroles loop. Die stappe gaan weer oop wanneer hulle klaar is.",
+        "notYours": "Net die persoon wat hierdie verslag begin het, kan dit verander."
       },
       "publish": "Publiseer",
       "newReport": "Nuwe verslag",
       "yourReports": "Jou verslae",
       "discarded": "Verslag weggegooi",
-      "discardFailed": "Die verslag kon nie weggegooi word nie",
+      "discardFailed": "Die verslag kon nie weggegooi word nie.",
       "closedTitle": "Publikasie is nou gesluit",
       "closedWithReports": "Nuwe verslae kan nou nie begin word nie. Jou bestaande verslae bly soos hulle is.",
       "closedNoReports": "Nuwe verslae kan nou nie begin word nie. Kom later terug.",
@@ -6559,29 +6540,29 @@
       "elsewhereTitle": "Hierdie verslag is in 'n ander werkruimte",
       "missingTitle": "Hierdie verslag is nie hier nie",
       "offNotice": "Publikasie is nou af vir nuwe verslae. Jy kan aan hierdie een voortwerk.",
-      "stepFailed": "Daardie stap kon nie oopgemaak word nie",
-      "checksFailed": "Die kontroles kon nie loop nie",
+      "stepFailed": "Daardie stap kon nie oopgemaak word nie.",
+      "checksFailed": "Die kontroles kon nie loop nie.",
       "saveFailed": "Jou wysigings kon nie gestoor word nie",
       "changesLive": "Jou wysigings is gepubliseer",
       "changesWithReviewer": "Jou wysigings is by 'n hersiener",
       "agreementTitle": "Publikasie-ooreenkoms met {series}",
       "version": "Weergawe {version}",
-      "agreementIntro": "Jy behou die kopiereg en publiseer onder CC BY 4.0. Ondertekening reserveer jou DOI.",
-      "agreementShared": "Jy behou die kopiereg en publiseer onder CC BY 4.0. Ondertekening reserveer jou DOI. Hierdie verslag behoort aan hierdie werkruimte: sy lede kan dit sien, en jy en sy administrateurs werk daaraan.",
+      "agreementIntro": "Jy behou die kopiereg en kies die lisensie, wat nie kan verander nadat jy geteken het nie. Deur te teken word jou DOI bespreek.",
+      "agreementShared": "Jy behou die kopiereg en kies die lisensie, wat nie kan verander nadat jy geteken het nie. Deur te teken word jou DOI bespreek. Hierdie verslag behoort aan hierdie werkruimte: sy lede kan dit sien, en jy en sy administrateurs werk daaraan.",
       "signedBy": "Onderteken deur",
-      "signForAll": "Ek onderteken namens al die skrywers wat ingestem het",
-      "agree": "Ek stem in tot hierdie ooreenkoms",
+      "agree": "Ek stem in tot hierdie ooreenkoms, vir myself en enige medeskrywers, wat ingestem het",
       "untouched": "Jy het reeds 'n DOI vir <mono>{key}</mono> gereserveer en nog nie sy PDF opgelaai nie.",
       "continueWith": "Gaan daarmee voort",
-      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkies.",
+      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkie.",
+      "agreementInEnglish": "Die ooreenkoms self is in Engels geskryf.",
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
         "personalClosed": "Jou plan sluit publikasie nie in nie. Skuif na 'n plan wat dit insluit.",
         "workspace": "Hierdie werkruimte se plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
         "workspaceClosed": "Hierdie werkruimte se plan sluit publikasie nie in nie. Skuif na 'n plan wat dit insluit."
       },
-      "signFailed": "Die ooreenkoms kon nie onderteken word nie",
-      "sign": "Onderteken en reserveer DOI",
+      "signFailed": "Die ooreenkoms kon nie onderteken word nie.",
+      "sign": "Teken en reserveer ’n DOI",
       "signIn": "Teken in om te publiseer",
       "doiReserved": "Jou DOI is gereserveer",
       "doiReservedBody": "Dit bly by jou verslag en word gepubliseer wanneer die verslag gepubliseer word.",
@@ -6591,15 +6572,17 @@
       "doiCopied": "DOI gekopieer",
       "uploadPdf": "Laai die PDF op",
       "textless": "Hierdie PDF het geen teks nie, soos 'n skandering. Die kontroles kan nie die eienaarsreël daarin vind nie. Voer die verslag uit as 'n PDF met teks en laai dit op, of vul die besonderhede met die hand in.",
+      "textlessAdded": "Hierdie PDF bevat geen teks nie, soos ’n skandering, dus kan die kontroles nie jou verslag daarin lees nie. Die reël is op die bladsy wat ons bygevoeg het. Voer die verslag uit as ’n PDF met sy teks en laai dit op, of vul die besonderhede met die hand in.",
       "unreadPdf": "Openscholar kon nie die besonderhede uit hierdie PDF lees nie. Vul hulle met die hand in.",
       "uploadAnother": "Laai 'n ander PDF op",
       "uploadLost": "Die oplaai het nie aangekom nie. Probeer weer.",
-      "choosePdf": "Kies 'n PDF",
+      "notPdf": "{name} is nie ’n PDF nie. Stoor of voer jou verslag uit as ’n PDF, en kies dan daardie lêer.",
       "emptyFile": "Daardie lêer is leeg. Kies die PDF weer.",
-      "tooBig": "Die PDF is groter as {max} MB",
+      "tooBig": "Die PDF is groter as {max} MB. Kies ’n kleiner een.",
       "offline": "Die PDF kon nie opgelaai word nie. Kontroleer jou verbinding en kies dit dan weer.",
-      "uploadFailed": "Die PDF kon nie opgelaai word nie. Probeer weer.",
-      "uploadIntro": "Plaas die volgende teks, woord vir woord, op die voorblad of die binneblad voordat jy oplaai. Ons kontrole soek na hierdie reël.",
+      "notSent": "Die PDF kon nie na ons gestuur word nie.",
+      "uploadFailed": "Die PDF het ons bereik, maar die bediener het dit nie by jou verslag gevoeg nie.",
+      "uploadIntro": "Elke verslag in hierdie reeks dra hierdie reël in sy PDF, as teks. Ons kontrole soek daarna.",
       "copyByline": "Kopieer eienaarsreël",
       "bylineCopied": "Eienaarsreël gekopieer",
       "uploading": "Laai {name} op",
@@ -6608,6 +6591,13 @@
       "drop": "Los die PDF hier, of kies dit",
       "dropHint": "Een PDF, tot {max} MB",
       "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. As dit 'n wagwoord het, verwyder dit; stoor dit dan weer as PDF en laai dit op.",
+      "lacksByline": "{name} dra nie die reël hierbo nie. Voeg die reël by en laai die PDF weer op, of laat ons dit byvoeg.",
+      "keptDetails": "Dit is die besonderhede wat jy gehad het voordat jy die PDF vervang het.",
+      "readAgain": "Lees dit eerder uit hierdie PDF",
+      "readAgainTitle": "Lees die besonderhede uit hierdie PDF?",
+      "readAgainBody": "Die besonderhede wat nou wys, word deur hierdie PDF s'n vervang, saam met alles wat jy daarin getik het.",
+      "readAgainKeep": "Hou hierdie besonderhede",
+      "readAgainFailed": "Die besonderhede kon nie weer gelees word nie.",
       "stuck": "Om {name} te lees neem langer as wat dit behoort. Laai dit weer op.",
       "replaces": "Weer oplaai vervang {name}",
       "check": {
@@ -6617,11 +6607,12 @@
         "failed": "Gefaal",
         "flagged": "Gemerk",
         "unclear": "Onduidelik",
-        "sure": "{percent} seker dit slaag",
+        "sure": "{percent}",
         "foundIn": "Gevind in {where}:",
         "foundAs": "Gevind as",
         "said": {
-          "notPublished": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "notPublished": "Nie in Openscholar Reports, OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
+          "notPublishedElsewhere": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
           "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
         },
@@ -6644,7 +6635,7 @@
           }
         }
       },
-      "activateFailed": "Dit kon nie geaktiveer word nie",
+      "activateFailed": "Dit kon nie geaktiveer word nie.",
       "running": "Kontroles loop",
       "ofTotal": "{done} van {total}",
       "runningHint": "Om na vroeëre kopieë te soek neem 'n paar sekondes. Jy kan hierdie bladsy verlaat: die kontroles gaan voort.",
@@ -6655,13 +6646,16 @@
       "readyPassed": "Jou verslag het sy kontroles geslaag. Aktiveer dit om sy DOI te publiseer en sy bladsy oop te maak.",
       "waiting": "Wag vir hersiening",
       "inReview": "In hersiening",
-      "waitingFlagged": "'n Kontrole het jou verslag gemerk, so 'n hersiener sal daarna kyk. Jy kan dit aktiveer sodra dit goedgekeur is, en jy kry 'n e-pos.",
-      "waitingPassed": "Jou verslag het sy kontroles geslaag. Jy kan dit aktiveer sodra 'n hersiener dit goedkeur, en jy kry 'n e-pos.",
+      "waitingFlagged": "'n Kontrole het jou verslag gemerk, dus kyk 'n hersiener daarna voordat dit kan verskyn. Jy kry 'n e-pos, en dit wag vir jou onder Publiseer.",
+      "reviewTakes": "'n Hersiening neem tot drie werksdae.",
+      "waitingPassed": "Jou verslag het sy kontroles geslaag. 'n Hersiener keur dit nou goed voordat dit kan verskyn. Jy kry 'n e-pos, en dit wag vir jou onder Publiseer.",
       "withdrawn": "Teruggetrek",
       "notPublished": "Nie gepubliseer nie",
       "declined": "Afgekeur",
       "withdrawnBody": "'n Hersiener het hierdie verslag teruggetrek. Sy bladsy sê dit nou.",
       "declinedBody": "'n Hersiener het hierdie verslag afgekeur.",
+      "declinedFix": "Jy kan die besonderhede verander of ’n nuwe PDF oplaai, en die kontroles weer laat loop.",
+      "activatingNow": "Jou verslag word geaktiveer. Dit neem ’n paar sekondes.",
       "notYet": "Nog nie gepubliseer nie",
       "aCheckFailed": "'n Kontrole het gefaal",
       "failedAsked": "Jy het 'n menslike hersiening gevra. Jy kan die besonderhede verander of 'n nuwe PDF oplaai om die kontroles weer te laat loop.",
@@ -6673,14 +6667,19 @@
       "changeDetails": "Verander besonderhede",
       "uploadNew": "Laai 'n nuwe PDF op",
       "publishAnother": "Publiseer nog een",
-      "activate": "Aktiveer",
+      "activate": "Betaal en aktiveer die DOI",
       "needsApproval": "'n Hersiener moet dit eers goedkeur",
       "untitled": "Verslag sonder titel",
       "startedBy": "{name} het hierdie verslag begin. Net hulle en die werkruimte se administrateurs kan dit verander.",
       "startedBySomeone": "Iemand in hierdie werkruimte het hierdie verslag begin. Net hulle en die werkruimte se administrateurs kan dit verander.",
       "openPage": "Maak sy bladsy oop",
+      "takeDown": "Om ’n verslag te laat verwyder, skryf aan <mail>{email}</mail> en noem sy sleutel, {key}. Ons antwoord binne drie werksdae. Sy bladsy en sy DOI bly, en sê dat die verslag teruggetrek is.",
+      "waitingIn": "{count, plural, one {# verslag in {name} is gereed vir jou om te aktiveer.} other {# verslae in {name} is gereed vir jou om te aktiveer.}}",
+      "waitingOwn": "{count, plural, one {# verslag in jou eie werkruimte is gereed vir jou om te aktiveer.} other {# verslae in jou eie werkruimte is gereed vir jou om te aktiveer.}}",
+      "waitingOpen": "{count, plural, one {Maak dit oop} other {Maak hulle oop}}",
+      "registering": "Die bladsy is nou oop en kan gedeel word. Die DOI begin werk sodra dit geregistreer is, gewoonlik binne ’n paar minute.",
       "sentToReviewer": "Na 'n hersiener gestuur",
-      "requestFailed": "Die versoek kon nie gestuur word nie",
+      "requestFailed": "Die versoek kon nie gestuur word nie.",
       "reviewIntro": "'n Hersiener lees jou verslag en die kontroles se resultate. Vra as jy dink 'n kontrole het 'n fout gemaak.",
       "reviewQuestion": "Wat het die kontroles verkeerd gehad?",
       "cancel": "Kanselleer",
@@ -6705,7 +6704,7 @@
       "discardBody": "Jou verslag bly gepubliseer soos dit nou is. Die wysigings wat jy gemaak het, word weggegooi.",
       "keepThem": "Hou hulle",
       "changesDiscarded": "Wysigings weggegooi",
-      "changesDiscardFailed": "Die wysigings kon nie weggegooi word nie",
+      "changesDiscardFailed": "Die wysigings kon nie weggegooi word nie.",
       "discard": "Gooi weg",
       "pages": "{count, plural, one {# bladsy} other {# bladsye}}",
       "agreementVersion": "Ooreenkoms weergawe {version}",
@@ -6723,16 +6722,12 @@
         "onlyAdmin": "Net 'n admin kan dit aktiveer",
         "notForSale": "Aktivering kan nie nou betaal word nie",
         "payTitle": "Betaal {price} om {key} te aktiveer",
-        "freeTitle": "Aktiveer {key}",
         "orgCardCharged": "{organization} se kaart word gedebiteer.",
-        "orgCardNothing": "Niks word van {organization} se kaart gedebiteer nie.",
-        "payConfirm": "Betaal en aktiveer",
         "dueNow": "Nou betaalbaar",
         "doiNow": "Sy DOI nou",
         "after": "Daarna",
         "reserved": "Gereserveer",
         "live": "Gepubliseer",
-        "activationLine": "Aktivering",
         "codeLine": "Kode {code}",
         "promo": {
           "add": "Voeg 'n promosiekode by",
@@ -6742,34 +6737,135 @@
           "off": "{percent}% af",
           "failed": "Daardie kode kon nie nagegaan word nie. Probeer weer.",
           "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
-          "nothingOff": "{code} haal niks van ’n aktivering af nie.",
-          "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees."
+          "nothingOff": "{code} neem niks af van die prys om ’n verslag te publiseer nie.",
+          "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees.",
+          "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",
-          "goesLive": "Dit word gepubliseer sodra die betaling bevestig is.",
+          "goesLive": "Dit gaan lewendig sodra die betaling gemaak is.",
           "refused": "Jou bank het nie die laaste betaling bevestig nie, so niks is gehef nie.",
-          "free": "Gratis",
-          "freeLeft": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag",
-          "freeLeftNoCard": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag. 'n Gestoorde kaart is steeds nodig.",
-          "add": "Voeg 'n betaalmetode by om te aktiveer",
-          "costs": "Elke aktivering kos {price}.",
-          "costsOrg": "Elke aktivering kos {price}, gedebiteer aan {organization}.",
-          "needed": "'n Gestoorde kaart is nodig om te aktiveer.",
-          "orgCard": "{organization} se kaart",
-          "yourCard": "Jou kaart",
           "confirm": "Bevestig betaling",
-          "change": "Verander",
-          "addButton": "Voeg betaalmetode by",
-          "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
-          "credit": "{amount} krediet"
+          "toPayment": "Gaan voort na betaling",
+          "unfinished": "Die betaling is nie voltooi nie",
+          "cancel": "Kanselleer betaling",
+          "cancelFailed": "Die betaling kon nie gekanselleer word nie. Probeer weer."
         },
-        "creditLine": "Rekeningkrediet",
-        "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
-        "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal.",
-        "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
-        "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal.",
-        "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek."
+        "declined": "Jou kaart is geweier. Niks is gehef nie. Probeer weer, of betaal op ’n ander manier.",
+        "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek.",
+        "kept": "Wat vir hierdie verslag betaal is, het na jou publikasiebalans gegaan. Die volgende verslag wat jy aktiveer, gebruik dit.",
+        "keptOrg": "Wat vir hierdie verslag betaal is, het na {organization} se publikasiebalans gegaan. Die volgende verslag wat daar geaktiveer word, gebruik dit.",
+        "balanceLine": "Publikasiebalans",
+        "onStripe": "Stripe se bladsy open vir die betaling.",
+        "changed": "Wat verskuldig is, het verander sedert hierdie bladsy dit gelees het. Gaan dit na en aktiveer weer.",
+        "toStripe": "Gaan voort na betaling"
+      },
+      "back": "Terug",
+      "next": "Volgende",
+      "bylineFirst": "Jou PDF dra hierdie reël",
+      "bylineFirstBody": "Elke verslag in hierdie reeks dra hierdie reël in sy PDF, as teks. Ons kontroles soek daarna sodra jy oplaai.",
+      "nextUpload": "Laai die PDF op",
+      "nextDetails": "Gaan die besonderhede na",
+      "problem": {
+        "outOfStep": "Hierdie bladsy en die bediener is op verskillende weergawes. Herlaai die bladsy en probeer dan weer.",
+        "retry": "Probeer weer. As dit aanhou gebeur, <link>rapporteer ’n probleem</link>.",
+        "retryQuote": "Probeer weer. As dit aanhou gebeur, <link>rapporteer ’n probleem</link> en noem {reference}."
+      },
+      "bylineBy": {
+        "label": "Wie die reël byvoeg",
+        "choose": "Kies wie die reël byvoeg om voort te gaan.",
+        "chooseFirst": "Kies eers wie die reël byvoeg",
+        "failed": "Ons kon nie die bladsy by {name} voeg nie. Voeg self die reël by en laai die PDF weer op.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "Ek voeg dit self by",
+          "body": "Sit die reël, woord vir woord, op die voorblad of binneblad van jou PDF voordat jy dit oplaai."
+        },
+        "added": {
+          "title": "Voeg dit vir my by",
+          "body": "Ons voeg ’n laaste bladsy by met hierdie reël en jou verslag se besonderhede."
+        }
+      },
+      "overview": {
+        "title": "Publiseer 'n verslag by {series}",
+        "intro": "Omtrent vyf minute van begin tot einde. Dit is wat elke stap van jou vra.",
+        "introReviewed": "Omtrent vyf minute van jou tyd. Daarna keur 'n hersiener die verslag goed voordat dit kan verskyn, en jy kry 'n e-pos.",
+        "start": "Teken die ooreenkoms",
+        "agreement": {
+          "title": "Onderteken die publikasie-ooreenkoms",
+          "body": "Jy behou die kopiereg en kies die lisensie."
+        },
+        "doi": {
+          "title": "Kry jou DOI",
+          "body": "Gereserveer die oomblik wat jy teken. Dit word saam met die verslag aktief."
+        },
+        "pdf": {
+          "title": "Laai jou PDF op",
+          "body": "Met een reël wat die reeks en die DOI noem. Voeg dit self by, of ons voeg dit op ’n laaste bladsy by."
+        },
+        "details": {
+          "title": "Gaan die besonderhede na",
+          "body": "Vir jou uit die PDF gelees: titel, outeurs, ORCID iD's, instellings en befondsers."
+        },
+        "checks": {
+          "title": "Outomatiese kontroles",
+          "body": "Omtrent ’n minuut. Hulle soek daardie reël en enigiets wat reeds gepubliseer is."
+        },
+        "activate": {
+          "title": "Aktiveer",
+          "bodyPrices": "{price} onder CC BY of CC BY-SA, {priceOfThree} onder ’n ander lisensie. Betaal uit jou publikasiebalans of per kaart. Die DOI word geregistreer en die verslag gaan lewendig.",
+          "bodyCard": "{price} onder CC BY of CC BY-SA, {priceOfThree} onder ’n ander lisensie, per kaart betaal. ’n Koopbewyskode kan dit verminder of dek. Die DOI word geregistreer en die verslag gaan lewendig."
+        }
+      },
+      "licence": {
+        "label": "Lisensie",
+        "by": "Enigiemand mag dit deel en aanpas, met erkenning aan jou.",
+        "bySa": "Soos CC BY, en wat ander daaruit maak, behou hierdie lisensie.",
+        "other": "’n Ander lisensie",
+        "otherBody": "Nie-kommersieel, geen afgeleide werke, of jou eie.",
+        "which": "Watter lisensie",
+        "own": "My eie lisensie",
+        "ownName": "Sy naam",
+        "ownUrl": "Webadres van sy teks",
+        "ownNeeded": "Gee jou lisensie ’n naam in Latynse letters en die webadres van sy teks.",
+        "help": {
+          "title": "Lisensies",
+          "about": "Oor lisensies",
+          "by": "Wie dit hergebruik, gee erkenning aan jou.",
+          "sa": "Wat ander daaruit maak, behou dieselfde lisensie.",
+          "nc": "Niemand mag dit kommersieel gebruik sonder om jou te vra nie.",
+          "nd": "Ander mag nie veranderde weergawes deel nie.",
+          "mining": "Almal laat enigiemand toe om die verslag soos dit is te lees, af te laai en te deel, en om data uit die teks te ontgin, maar nie kommersieel onder NC nie. Die ooreenkoms laat Openscholar toe om dit onder enige van hulle te publiseer en te argiveer.",
+          "compare": "Wat elke lisensie toelaat",
+          "sentTo": "Gestuur aan",
+          "crossref": "Registreer die DOI",
+          "zenodo": "Argiveer ’n kopie",
+          "openscholar": "Wys die verslag"
+        }
+      },
+      "payment": {
+        "payWith": "Betaal met",
+        "balance": "Publikasiebalans",
+        "card": "Kaart",
+        "byCard": "Betaling per kaart",
+        "due": "Verskuldig by aktivering",
+        "later": "Niks word gehef voordat die verslag geaktiveer word nie, en hoe jy betaal kan nog verander.",
+        "code": "Kode {code}",
+        "dueNow": "Nou verskuldig",
+        "title": "Betaling",
+        "sign": "Lees en teken",
+        "noLimit": "Geen limiet",
+        "credit": "Rekeningkrediet",
+        "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans."
+      },
+      "activateFree": "Aktiveer die DOI",
+      "paid": {
+        "balance": "{amount} uit die balans betaal",
+        "balanceLeft": "{amount} uit die balans betaal, {left} oor",
+        "card": "{amount} per kaart betaal",
+        "code": "{code} het die prys gedek",
+        "codeRest": "{code} het die res gedek",
+        "credit": "{amount} uit rekeningkrediet betaal"
       }
     },
     "meta": {
@@ -6785,14 +6881,11 @@
       "name": "Naam",
       "moveUp": "Skuif op",
       "moveDown": "Skuif af",
-      "removeAuthor": "Verwyder skrywer",
+      "removeAuthor": "Verwyder persoon",
       "moveUpLabel": "Skuif {name} op",
       "moveDownLabel": "Skuif {name} af",
       "author": "Skrywer",
-      "roles": "Bydraerrolle",
-      "roleCount": "{count, plural, one {# rol} other {# rolle}}",
-      "findRole": "Soek 'n rol",
-      "noRole": "Geen sulke rol nie",
+      "noContribution": "Geen sulke bydrae nie. Om die verslag te redigeer of te vertaal is ’n rol: kies dit onder Rol.",
       "corresponding": "Korresponderende skrywer",
       "orcidFound": "Op ORCID gevind deur hul naam en {institution}",
       "correctTitle": "Korrigeer besonderhede",
@@ -6808,11 +6901,17 @@
       "type": "Tipe",
       "language": "Taal",
       "date": "Publikasiedatum",
+      "dateYear": "Jaar",
+      "dateMonth": "Maand",
+      "dateDay": "Dag",
+      "noMonth": "Geen maand",
+      "noDay": "Geen dag",
+      "yearInvalid": "Tik die jaar as vier syfers.",
       "future": "'n Verslag se datum kan nie in die toekoms wees nie.",
       "licence": "Lisensie",
-      "authors": "Skrywers",
-      "authorsPager": "skrywers",
-      "addAuthor": "Voeg skrywer by",
+      "authors": "Mense",
+      "authorsPager": "mense",
+      "addPerson": "Voeg ’n persoon by",
       "abstract": "Opsomming",
       "subjects": "Vakgebied",
       "topics": "Onderwerpe",
@@ -6846,6 +6945,9 @@
       "addGrant": "Voeg toekenningsnommer vir {name} by",
       "references": "Verwysings",
       "referencesPager": "verwysings",
+      "editReference": "Wysig verwysing",
+      "editReferenceLabel": "Wysig verwysing {number}",
+      "referenceLabel": "Verwysing {number}",
       "removeReference": "Verwyder verwysing",
       "addReference": "Voeg verwysing per DOI by",
       "doiPlaceholder": "Voeg 'n DOI by wat dit aanhaal",
@@ -6867,8 +6969,331 @@
       "cancel": "Kanselleer",
       "sendForReview": "Kontroleer wysigings en stuur vir hersiening",
       "checkAndPublish": "Kontroleer wysigings en publiseer",
-      "runChecks": "Laat kontroles loop",
-      "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie."
+      "runChecks": "Dien in",
+      "tooEarly": "’n Verslag kan nie voor 1400 gedateer word nie.",
+      "back": "Terug",
+      "backToChecks": "Terug na die kontroles",
+      "role": "Rol",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Bydraes",
+      "contributionsPlaceholder": "Wat hierdie persoon gedoen het",
+      "contributionCount": "{count, plural, one {# bydrae} other {# bydraes}}",
+      "findContribution": "Soek ’n bydrae",
+      "writeAbstract": "Skryf uit die PDF",
+      "replaceAbstractTitle": "Vervang die opsomming?",
+      "replaceAbstractBody": "’n Nuwe een word uit die PDF geskryf en neem die plek in van die een in die blokkie.",
+      "keepAbstract": "Hou dit",
+      "replaceAbstract": "Vervang",
+      "noAbstract": "Jou PDF druk geen opsomming nie. Tik een, of laat een uit die PDF skryf.",
+      "abstractFailed": "Die opsomming kon nie geskryf word nie. Probeer weer.",
+      "addReferences": "Voeg verwysings by",
+      "referencesPlaceholder": "Plak verwysings of DOI’s, een per reël",
+      "uploadReferences": "Laai ’n lêer op",
+      "uploadReferencesLabel": "Laai ’n lêer met verwysings op",
+      "referenceFormats": "BibTeX, RIS of gewone teks",
+      "noReferencesFound": "Geen verwysings daarin gevind nie.",
+      "referencesListed": "Al hierdie is reeds gelys.",
+      "referencesAdded": "{count, plural, one {# verwysing bygevoeg} other {# verwysings bygevoeg}}",
+      "undo": "Ontdoen",
+      "referencesTooBig": "Daardie lêer is groter as 2 MB. ’n Verwysingslys is baie kleiner.",
+      "openItsDoi": "Maak sy DOI oop",
+      "openReferenceDoi": "Maak die DOI van verwysing {number} oop"
+    },
+    "kinds": {
+      "author": "Skrywer",
+      "editor": "Redakteur",
+      "chair": "Voorsitter",
+      "translator": "Vertaler",
+      "reviewer": "Beoordelaar",
+      "review-assistant": "Beoordelingsassistent",
+      "reviewer-external": "Beoordelaar (ekstern)",
+      "stats-reviewer": "Beoordelaar (statistiek)",
+      "reader": "Leser",
+      "other": "Ander"
+    },
+    "roleDetails": {
+      "conceptualization": "Het die idees gehad en die doelwitte gestel",
+      "dataCuration": "Het die data georganiseer, skoongemaak en bewaar",
+      "formalAnalysis": "Het die statistiek of ander formele ontleding gedoen",
+      "fundingAcquisition": "Het die geld vir die projek verkry",
+      "investigation": "Het die navorsing gedoen en die bewyse ingesamel",
+      "methodology": "Het die metodes of modelle ontwerp",
+      "projectAdministration": "Het die projek bestuur en gekoördineer",
+      "resources": "Het materiaal, monsters, gereedskap of rekenaarkrag verskaf",
+      "software": "Het die kode geskryf of getoets",
+      "supervision": "Het die span gelei en begelei",
+      "validation": "Het nagegaan dat die resultate herhaal kan word",
+      "visualization": "Het die figure en datavoorstelling gemaak",
+      "writingOriginalDraft": "Het die eerste konsep geskryf",
+      "writingReviewEditing": "Het die teks nagegaan en hersien"
+    },
+    "help": {
+      "aboutLabel": "Oor: {title}",
+      "sentTo": "Gestuur na",
+      "does": {
+        "crossref": "Registreer die DOI",
+        "zenodo": "Argiveer ’n kopie",
+        "openscholar": "Wys die verslag"
+      },
+      "sent": "{name}, kry dit: {does}",
+      "notSent": "{name}, kry dit nie: {does}",
+      "filled": {
+        "pdf": "Uit jou PDF gelees",
+        "judged": "Uit jou PDF beoordeel",
+        "matched": "Uit jou PDF gelees en dan opgesoek",
+        "classified": "Deur OpenAlex voorgestel",
+        "author": "Begin as Skrywer",
+        "fixed": "Deur Openscholar vasgestel",
+        "reserved": "Gereserveer wanneer jy teken"
+      },
+      "entry": {
+        "list": "Uit ’n lys gekies",
+        "typed": "Vrylik getik",
+        "either": "Uit ’n lys, of getik",
+        "pasted": "Geplak of opgelaai",
+        "toggle": "Aan of af",
+        "chosen": "Jou keuse"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex se werksoorte",
+          "detail": "Die lys wat hierdie kieser wys"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo se hulpbronsoorte",
+          "detail": "Wat elke soort op Zenodo word"
+        },
+        "crossrefReports": {
+          "name": "Verslae by Crossref",
+          "detail": "Die rekord wat Crossref hou"
+        },
+        "iso639": {
+          "name": "ISO 639-taalkodes",
+          "detail": "Die kodes wat OpenAlex gebruik"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Erkenning 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Bydraers by Crossref",
+          "detail": "Hoe Crossref mense opteken"
+        },
+        "crossrefRoles": {
+          "name": "Crossref se bydraerrolle",
+          "detail": "Die lys wat hierdie kieser wys"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "Wat ’n iD is"
+        },
+        "orcidRegister": {
+          "name": "Kry ’n iD",
+          "detail": "Gratis, en dit neem ’n minuut"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex se instellings",
+          "detail": "Eerste deursoek"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Deursoek vir dié wat OpenAlex nie het nie"
+        },
+        "rorAdd": {
+          "name": "Vra ROR om ’n organisasie by te voeg",
+          "detail": "Vir een wat op nie een van die lyste is nie"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO se taksonomie van bydraerrolle"
+        },
+        "crossrefAbstracts": {
+          "name": "Opsommings by Crossref",
+          "detail": "Hoe Crossref een hou"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex se onderwerpe",
+          "detail": "Die lys wat hierdie kieser deursoek"
+        },
+        "sdgs": {
+          "name": "Die 17 doelwitte",
+          "detail": "Verenigde Nasies"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex se studie-ontwerpe",
+          "detail": "Die lys wat hierdie kieser wys"
+        },
+        "iso3166": {
+          "name": "ISO 3166-landkodes",
+          "detail": "Die lande wat hierdie kieser lys"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex se befondsers",
+          "detail": "Eerste deursoek"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Ook deursoek, vir regerings en stigtings"
+        },
+        "funderRegistry": {
+          "name": "Crossref se Funder Registry",
+          "detail": "Die ID’s waarmee Crossref befondsers herken"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "Wat ’n DOI is"
+        },
+        "crossrefReferences": {
+          "name": "Verwysings by Crossref",
+          "detail": "Hoe aanhalings daaruit getel word"
+        },
+        "crossrefRelations": {
+          "name": "Verhoudings by Crossref",
+          "detail": "Hoe Crossref werke aan mekaar koppel"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "Wat ’n ISSN is"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Titel",
+          "about": "Die verslag se titel soos sy voorblad dit druk."
+        },
+        "subtitle": {
+          "title": "Subtitel",
+          "about": "Die reël onder die titel, as die voorblad een het.",
+          "note": "Leeg as die PDF nie een druk nie."
+        },
+        "type": {
+          "title": "Soort",
+          "about": "Watter soort werk dit is.",
+          "note": "Crossref teken elke Openscholar Report as ’n verslag op. Zenodo en Openscholar gebruik die soort wat hier gekies is."
+        },
+        "language": {
+          "title": "Taal",
+          "about": "Die taal waarin die verslag geskryf is."
+        },
+        "date": {
+          "title": "Publikasiedatum",
+          "about": "Wanneer die verslag gepubliseer is: ’n jaar, ’n maand of ’n dag, so presies as wat die PDF dit sê, en hoogstens vandag.",
+          "note": "Crossref hou dit so presies as wat dit is. Zenodo neem ’n volle datum, dus gaan ’n jaar of ’n maand daarheen as sy eerste dag. ’n PDF sonder ’n datum kry vandag s’n."
+        },
+        "licence": {
+          "title": "Lisensie",
+          "about": "Elke Openscholar Report word onder CC BY 4.0 gepubliseer, soos die ooreenkoms wat jy geteken het sê."
+        },
+        "authors": {
+          "title": "Skrywers",
+          "about": "Almal wat die verslag erken, in die volgorde wat sy aanhaling hulle noem.",
+          "note": "Die PDF se skrywers is reeds ingevul. Voeg redakteurs, vertalers en ander hier by, en kies hulle rol."
+        },
+        "name": {
+          "title": "Naam",
+          "about": "Die naam soos die verslag dit druk. ’n Organisasie se volle naam werk ook.",
+          "note": "’n Persoon se naam bereik Crossref en Zenodo as van, dan voorname: die laaste woord word as die van geneem. ’n Organisasie se naam, met ’n woord soos Department, Ministry of University daarin, word heel gestuur."
+        },
+        "kind": {
+          "title": "Rol",
+          "about": "Wat hierdie persoon vir die verslag is. Die meeste mense is skrywers.",
+          "note": "Net outeurs word in die verslag se aanhaling genoem. Almal anders word met hul rol onder Bydraes op die verslag se bladsy gelys, en Crossref en Zenodo kry elke persoon se rol."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "’n Gratis nommer wat navorsers met dieselfde naam van mekaar onderskei.",
+          "note": "As die PDF nie een druk nie, word ORCID deursoek vir een persoon met presies hierdie naam by een van hierdie instellings."
+        },
+        "affiliations": {
+          "title": "Affiliasies",
+          "about": "Waar hierdie persoon gewerk het toe die verslag geskryf is.",
+          "note": "’n Instelling met ’n ROR-ID word daarmee gestuur, sodat Crossref en Zenodo weet watter een dit is. Een wat met die hand getik is, gaan net as ’n naam."
+        },
+        "contributions": {
+          "title": "Bydraes",
+          "about": "Wat hierdie persoon vir die werk gedoen het, in die 14 rolle van CRediT.",
+          "note": "Net ingevul as die PDF ’n verklaring oor bydraes het. Dit leeg los is goed."
+        },
+        "corresponding": {
+          "title": "Korresponderende skrywer",
+          "about": "Die persoon aan wie lesers oor die verslag skryf.",
+          "note": "Net aangeskakel as die PDF een aandui."
+        },
+        "abstract": {
+          "title": "Opsomming",
+          "about": "Die opsomming wat jou PDF druk, net so oorgeneem.",
+          "note": "As die PDF geen druk nie, stel Skryf uit die PDF ’n konsep op wat jy nagaan en verander."
+        },
+        "topics": {
+          "title": "Onderwerpe",
+          "about": "Waaroor die verslag gaan, in OpenAlex se onderwerpe.",
+          "note": "OpenAlex se klassifiseerder lees die titel en opsomming. Die balk by ’n onderwerp wys hoe seker dit was. Onderwerpe wat jy byvoeg, het nie een nie."
+        },
+        "keywords": {
+          "title": "Sleutelwoorde",
+          "about": "Jou eie woorde vir waaroor die verslag gaan.",
+          "note": "Die PDF se sleutelwoorde. As dit geen lys nie, tot vyf van OpenAlex se klassifiseerder."
+        },
+        "sdgs": {
+          "title": "Volhoubare Ontwikkelingsdoelwitte",
+          "about": "Die VN-doelwitte waaroor die verslag wesenlik gaan.",
+          "note": "Hoogstens drie word ingevul. Voeg enige by of verwyder dit."
+        },
+        "design": {
+          "title": "Studie-ontwerp",
+          "about": "Hoe die studie gedoen is.",
+          "note": "Net ingevul as die PDF dit duidelik maak. Zenodo wys dit as ’n nota oor die metodes."
+        },
+        "places": {
+          "title": "Plekke bestudeer",
+          "about": "Die lande en streke waaroor die verslag gaan, nie waar sy skrywers werk nie."
+        },
+        "funding": {
+          "title": "Befondsing",
+          "about": "Wie vir die werk betaal het, met die toekenningsnommers soos gedruk.",
+          "note": "Befondsers word op OpenAlex en ROR opgesoek. Een wat daar gevind word, gaan met sy ROR-ID, en met sy Funder Registry-ID as hy een het. Een wat met die hand getik is, gaan net as ’n naam."
+        },
+        "references": {
+          "title": "Verwysings",
+          "about": "Die werke wat hierdie verslag aanhaal, soos sy verwysingslys hulle skryf.",
+          "note": "Plak die lys, of laai dit op as ’n BibTeX-, RIS- of gewone tekslêer. Elke DOI wat die PDF druk, is reeds ingevul, en Crossref koppel elke verwysing met ’n DOI aan die werk wat dit aanhaal."
+        },
+        "links": {
+          "title": "Data, kode en weergawes",
+          "about": "Waar die verslag se data, kode, ander weergawes en aanvullings is.",
+          "note": "Elkeen is ’n webadres of ’n DOI."
+        },
+        "agreement": {
+          "title": "Die publikasie-ooreenkoms",
+          "about": "Waartoe jy en Openscholar instem voordat jou verslag gepubliseer word.",
+          "note": "Jy behou die kopiereg. Om die blokkie te merk stem in namens jou en elke medeskrywer, so maak eers seker dat hulle ingestem het. ’n Getekende ooreenkoms kan nie verander word nie."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "’n Permanente skakel na jou verslag wat werk waarheen sy bladsy ook al skuif.",
+          "note": "Dit word gereserveer wanneer jy teken, sodat jy dit in jou PDF kan druk. Dit werk sodra jou verslag regstreeks is."
+        },
+        "byline": {
+          "title": "Die reeksreël",
+          "about": "Die reël wat elke verslag in hierdie reeks druk, met die reeks se naam, sy ISSN en die verslag se DOI.",
+          "note": "Dit moet teks in die PDF wees, nie ’n prent nie, want die toetse soek daarna. Kies Voeg dit vir my by en Openscholar voeg ’n laaste bladsy met die reël by."
+        },
+        "checks": {
+          "title": "Toetse",
+          "about": "Wat Openscholar nagaan voordat ’n verslag regstreeks kan gaan, soos die reeksreël in die PDF en of die werk reeds gepubliseer is.",
+          "note": "Elke toets sê waarna dit gesoek het, en wat om reg te stel as dit misluk. As jy seker is dat ’n toets verkeerd is, vra dat ’n persoon dit beoordeel."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Die nommer wat die reeks identifiseer, soos ’n tydskrif s’n.",
+          "note": "Hangende totdat die reeks geregistreer is. Jou verslag se DOI werk daarsonder."
+        },
+        "activation": {
+          "title": "Aktiveer",
+          "about": "Aktivering maak jou verslag openbaar: sy bladsy gaan oop, sy DOI begin werk, en dit word geregistreer.",
+          "note": "Wat verskuldig is, word eers betaal: uit jou werkruimte se publikasiebalans, per kaart, of albei. ’n Koeponkode verminder wat die kaart betaal."
+        }
+      }
     }
   },
   "people": {
@@ -6951,6 +7376,7 @@
       "preprint": "Voordruk",
       "book": "Boek",
       "report": "Verslag",
+      "presentation": "Aanbieding",
       "review": "Oorsigartikel",
       "reference-entry": "Naslaaninskrywing",
       "conference-abstract": "Konferensie-opsomming",

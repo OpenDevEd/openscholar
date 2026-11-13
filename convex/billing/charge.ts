@@ -54,7 +54,7 @@ const RETRY_DELAYS_MS = [10_000, 60_000, 5 * 60_000, 30 * 60_000, 2 * 60 * 60_00
  */
 const SETTLE_BACKSTOP_MS = 5 * 60_000;
 
-function isLockNotFound(error: unknown): boolean {
+export function isLockNotFound(error: unknown): boolean {
   return (
     error instanceof AutumnError &&
     error.status === 400 &&

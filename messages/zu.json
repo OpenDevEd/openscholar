@@ -196,21 +196,6 @@
     "anotherPlan": "olunye uhlelo",
     "onDate": "ngo-{date}",
     "connections": "Ukuxhumana",
-    "localeLabels": {
-      "enUS": "IsiNgisi (US)",
-      "enGB": "IsiNgisi (UK)",
-      "zh": "IsiShayina",
-      "fr": "IsiFulentshi",
-      "hi": "IsiHindi",
-      "ja": "IsiJapane",
-      "ar": "IsiArabhu",
-      "sw": "IsiSwahili",
-      "pt": "IsiPhuthukezi",
-      "es": "IsiSpanishi",
-      "de": "IsiJalimane",
-      "af": "IsiAfrikaans",
-      "zu": "IsiZulu"
-    },
     "you": "Wena",
     "calendarToday": "Namuhla, {date}",
     "calendarSelected": "{date}, kukhethiwe",
@@ -350,6 +335,7 @@
     "password": "Iphasiwedi ye-Crossref",
     "prefix": "Isiqalo se-DOI",
     "registrant": "Umbhalisi",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Igama lomfaki",
     "email": "Imeyili yomfaki",
     "namespace": "Isikhala segama le-DOI",
@@ -434,7 +420,16 @@
     "chargesLabel": "izindleko",
     "paymentFailedEnds": "Inkokhelo engu-{amount} yehlulekile. I-{plan} iphela ngo-{date} uma ingakhokhiwe.",
     "fixPayment": "Lungisa inkokhelo",
-    "seePlans": "Bona amapulani"
+    "seePlans": "Bona amapulani",
+    "publication": {
+      "title": "Ibhalansi yokushicilela",
+      "hint": "Ikhokhela imibiko oyishicilela ku-Openscholar Reports.",
+      "every": "{interval, select, hour {Njalo ngehora} day {Nsuku zonke} week {Njalo ngesonto} month {Njalo ngenyanga} quarter {Njalo ezinyangeni ezintathu} semi_annual {Njalo ezinyangeni eziyisithupha} other {Njalo ngonyaka}}",
+      "backTo": "Ibuyela ku-{amount} ngo-{date}",
+      "kept": "{amount} igcinwa kuze kusetshenziswe",
+      "publish": "Shicilela",
+      "noLimit": "Akukho mkhawulo"
+    }
   },
   "errors": {
     "unexpectedIssue": "Sibhekene nenkinga engalindelekile. Sicela uzame futhi, noma ubuyele ekhasini elizinzile.",
@@ -680,6 +675,7 @@
     "uploadFailed": "Ukulayisha kehlulekile",
     "uploadFailedDescription": "Ayikwazanga ukulayisha i-{format}. Sicela uzame futhi.",
     "accountChanged": "I-akhawunti yakho ishintshile. Zama futhi.",
+    "couldntCopy": "Ayikwazanga ukukopisha",
     "copyFailedDescription": "Isiphequluli sakho asisivumelanga ukukopisha. Khetha umbhalo bese uwukopisha ngokwakho.",
     "validationFailed": "Ukuhlola kehlulekile",
     "entityCreated": "{entity} kudalwe",
@@ -1252,19 +1248,20 @@
     "reviewed": "Kubuyekeziwe"
   },
   "saveToLibrary": {
-    "save": "Gcina",
-    "saved": "Kugciniwe",
-    "saveToLibrary": "Gcina emtapweni wolwazi",
+    "save": "Engeza emtapweni wolwazi",
+    "saved": "Lisemtapweni wolwazi",
+    "saveToLibrary": "Engeza emtapweni wolwazi",
     "removeFromLibrary": "Susa emtapweni wolwazi",
     "addToCollection": "Engeza eqoqweni",
     "newCollection": "Iqoqo elisha",
     "removed": "Kususwe emtapweni wolwazi",
     "undo": "Hlehlisa",
-    "saveError": "Ayikwazanga ukugcina iphepha",
+    "saveError": "Ayikwazanga ukwengeza iphepha emtapweni wolwazi",
     "removeError": "Ayikwazanga ukususa iphepha",
     "restoreError": "Ayikwazanga ukubuyisela iphepha",
     "collectionError": "Ayikwazanga ukushintsha iqoqo",
-    "newCollectionWithPaper": "Iqoqo elisha nalelu phepha"
+    "newCollectionWithPaper": "Iqoqo elisha nalelu phepha",
+    "finishSaving": "Qedela ukwengeza"
   },
   "rating": {
     "noRating": "Akukho isilinganiso",
@@ -1411,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Siyawuhlonipha ubumfihlo bakho",
-    "bannerDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie.",
-    "dialogDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie. Ungashintsha ukukhetha kwakho noma nini.",
+    "bannerDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar nemiphakathi yayo isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie.",
+    "dialogDescription": "Thina nabahlinzeki bethu bokuhlaziya, i-PostHog ne-Google, sisebenzisa ama-cookie ukuze siqonde ukuthi i-Openscholar nemiphakathi yayo isetshenziswa kanjani futhi siyithuthukise. Uma wenqaba, sibala kuphela ukuvakasha, ngaphandle kwama-cookie. Ungashintsha ukukhetha kwakho noma nini.",
     "acceptAll": "Amukela konke",
     "rejectNonEssential": "Yenqaba engadingekile",
     "preferencesTitle": "Izintandokazi zama-cookie",
@@ -1439,7 +1436,11 @@
     "upgradeSuccess": "Ukuthuthukiswa kuphumelele",
     "upgradeSuccessCredits": "Kuthuthukiswe kwaba ku-{plan} — kungezwe amakhredithi angu-{credits}",
     "totalCharge": "Okufanele manje ngokuphelele",
-    "paymentMethod": "Indlela yokukhokha"
+    "paymentMethod": "Indlela yokukhokha",
+    "anotherCard": "Elinye ikhadi",
+    "anotherCardNote": "Ikhasi le-Stripe livuleka namakhadi akho alondoloziwe nendawo yelisha.",
+    "manageBilling": "Phatha ukukhokha",
+    "toPayment": "Qhubekela enkokhelweni"
   },
   "libraryPage": {
     "title": "Umtapo wolwazi",
@@ -1464,7 +1465,7 @@
     "ratingFilter": "Isilinganiso",
     "loadMore": "Layisha okwengeziwe",
     "emptyLibraryTitle": "Lo mtapo wolwazi awunalutho",
-    "emptyLibraryDescription": "Londoloza amaphepha emiphumeleni yosesho ukuze wakhe lo mtapo wolwazi.",
+    "emptyLibraryDescription": "Engeza amaphepha emiphumeleni yosesho ukuze wakhe lo mtapo wolwazi.",
     "emptyLibraryCta": "Sesha amaphepha",
     "noResultsTitle": "Akukho maphepha ahambisana nokusesha kwakho noma nezihlungi",
     "clearFilters": "Sula izihlungi",
@@ -1859,7 +1860,6 @@
       "notificationSchedule": "Khetha usuku olusemthethweni lwesifinyezo, isikhathi nesikhathi sezindawo.",
       "nameMissing": "Nika umphakathi igama.",
       "shortNameMissing": "Nika umphakathi igama elifushanisiwe.",
-      "partnerName": "Wonke abasekeli ngezimali badinga igama.",
       "badColour": "Enye yemibala ayivumelekile.",
       "institutionName": "Wonke amasikhungo adinga igama.",
       "linkLabel": "Wonke amaxhumanisi adinga ilebula.",
@@ -1941,13 +1941,6 @@
       "searchTitlePlaceholder": "Ucwaningo nobufakazi mayelana nokuzivumelanisa nesimo sezulu",
       "descriptionLabel": "Incazelo",
       "descriptionHint": "Iboniswa ekhasini lokuqala nasemiphumelweni yokusesha.",
-      "partnersHeading": "Abasekela ngezimali",
-      "partnersHint": "Iboniswa ekhasini lokuqala.",
-      "addPartner": "Engeza umlekeleli",
-      "noPartners": "Azikho abasekela ngezimali okwamanje.",
-      "removePartner": "Susa umlekeleli",
-      "partnerName": "Igama lomlekeleli",
-      "partnerPlaceholder": "Igama lomlekeleli",
       "shareImageLabel": "Isithombe sokwabelana",
       "shareImageHint": "Sisetshenziswa lapho umphakathi wabelwana ezinkundleni zokuxhumana. PNG, JPG noma WEBP.",
       "showNameLabel": "Igama eduze kologo",
@@ -2137,6 +2130,7 @@
       },
       "socialError": "Sebenzisa ikheli eliphelele eliqala nge-https://.",
       "fundersHeading": "Abasekeli ngezimali",
+      "fundersHint": "Baboniswa esiphethweni sekhasi nakuwo wonke amarekhodi.",
       "fundersEmpty": "Abasekeli ngezimali abakho okwamanje.",
       "addFunder": "Engeza umsekeli",
       "removeFunder": "Susa umsekeli",
@@ -4677,13 +4671,11 @@
     "communities": "Imiphakathi",
     "explore": "Hlola",
     "authors": "Ababhali",
-    "workspacesCard": "Izikhala zokusebenzela",
     "account": "I-akhawunti",
     "close": "Vala",
     "switchFrom": "Isikhala sokusebenzela: {name}. Shintsha isikhala sokusebenzela",
     "runningLabel": "{label}, {what}, {done} kwa-{total}",
     "doneOf": "{done} kwa-{total}",
-    "planFor": "{plan} ye-{workspace}",
     "planAndCredits": "Uhlelo namakhredithi",
     "theme": "Itimu",
     "light": "Ukukhanya",
@@ -4691,7 +4683,6 @@
     "auto": "Ngokuzenzakalelayo",
     "signOut": "Phuma",
     "signOutFailed": "Ayikwazanga ukuphuma. Hlola ukuxhumana kwakho bese uzama futhi.",
-    "personal": "Okomuntu siqu",
     "admin": "Umphathi",
     "member": "Ilungu",
     "members": "{count, plural, one {# ilungu} other {# amalungu}}",
@@ -4703,7 +4694,6 @@
     "decline": "Nqaba",
     "join": "Joyina",
     "newOrganization": "Inhlangano entsha",
-    "workspaceSettings": "Izilungiselelo zesikhala sokusebenzela",
     "invitationGone": "Lesi simemo asisavulekile.",
     "couldntJoin": "Ayikwazanga ukujoyina inhlangano",
     "couldntDecline": "Ayikwazanga ukunqaba isimemo",
@@ -5642,6 +5632,7 @@
     "keepInvitation": "Gcina isimemo",
     "declineInvitation2": "Nqaba isimemo",
     "previewCover": "Buka ukumbozwa kwe-{title}",
+    "noPdf": "Ayikho i-PDF",
     "preview": "Buka {title}",
     "declineBody": "Ngeke uthole ukufinyelela ku-{name}. Eminye imiphakathi yakho yolwazi ayithintekile.",
     "owner": "Umnikazi",
@@ -6167,6 +6158,7 @@
     },
     "admin": {
       "backToReport": "Buyela embikweni",
+      "editLost": "Umbhali uthathe futhi u-{key} ukuze awushintshe ngesikhathi uwuhlela, ngakho okubhalile akugcinwanga. Wuvule futhi uma ukuhlolwa kwawo sekuphelile.",
       "editTitle": "Hlela imininingwane",
       "editIntroLive": "I-{key} ishicilelwe. Uma ulondoloza, ushintsho lwakho lushicilelwa ngokushesha ngaphandle kokuhlolwa, futhi umbiko ubhaliswa kabusha.",
       "editIntroNotLive": "I-{key} ayikashicilelwa. Uma ulondoloza, ushintsho lwakho lusebenza ngokushesha ngaphandle kokuhlolwa.",
@@ -6208,7 +6200,9 @@
       "places": "Izindawo ezifundiwe",
       "studyDesign": "Uhlaka locwaningo",
       "seeChanges": "Bona izinguquko zakho",
-      "correct": "Lungisa imininingwane"
+      "correct": "Lungisa imininingwane",
+      "takeDownTitle": "Ukuwususa",
+      "openDoi": "Vula i-DOI {doi}"
     },
     "stages": {
       "draft": "Uhlaka",
@@ -6256,9 +6250,10 @@
       "action": {
         "openPage": "Vula ikhasi lawo",
         "open": "Vula",
-        "activate": "Yenza kusebenze",
+        "activate": "Khokha",
         "carryOn": "Qhubeka",
-        "seeFailed": "Bona okuhlulekile"
+        "seeFailed": "Bona okuhlulekile",
+        "manage": "Vula ku-Shicilela"
       },
       "seeChanges": "Bona izinguquko zakho",
       "correct": "Lungisa imininingwane"
@@ -6330,7 +6325,6 @@
       },
       "which": "Yimiphi imibiko",
       "pagerItems": "imibiko",
-      "approvedToast": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
       "sentAgain": "Kuthunyelwe futhi",
       "noMatch": "Ayikho imibiko efanayo",
       "noReports": "Ayikho imibiko okwamanje",
@@ -6347,7 +6341,7 @@
       "openPage": "Vula ikhasi lawo",
       "openPageLabel": "Vula ikhasi le-{key}",
       "done": {
-        "approve": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
+        "approve": "Kuvunyiwe. Manje ungenziwa usebenze.",
         "reinstate": "Kubuyiselwe. Kushicilelwe futhi.",
         "withdraw": "Kuhoxisiwe",
         "decline": "Kwenqatshiwe"
@@ -6363,6 +6357,7 @@
         "humanReview": "Ukubuyekezwa ngumuntu kuvuliwe, ngakho izinguquko zilinde umbuyekezi."
       },
       "approving": "Ukuvuma kuvumela umbhali wawo ukuthi awenze usebenze, futhi ushicilelwa lapho ewenza usebenze.",
+      "approvingOrg": "Ukuvuma kuvumela umphathi we-{organization} ukuthi awenze usebenze, futhi ushicilelwa uma enza kanjalo.",
       "standing": {
         "failedAsked": "Ukuhlolwa kuhlulekile. {approving}",
         "failed": "Ukuhlolwa kuhlulekile, ngakho umbiko ubuyele kumbhali ukuze awulungise. Usengakwazi ukunquma. {approving}",
@@ -6434,9 +6429,10 @@
       "enterSeriesName": "Thayipha igama lochungechunge.",
       "enterByline": "Thayipha umugqa womnikazi.",
       "bylineNeedsDoi": "Umugqa womnikazi udinga i-{doi}, eba yi-DOI yombiko ngamunye.",
+      "bylineNeedsLicence": "Umugqa udinga i-{licence}, eba ilayisense yombiko ngamunye.",
       "notIssn": "Lokhu akuyona i-ISSN. Ibukeka njenge-2049-3630, futhi idijithi yayo yokugcina ihlola ezinye.",
       "byline": "Umugqa womnikazi",
-      "bylineHint": "I-{series}, i-{issn} ne-{doi} kugcwaliswa embikweni ngamunye",
+      "bylineHint": "I-{series}, i-{issn}, i-{doi} ne-{licence} kugcwaliswa embikweni ngamunye",
       "bylineSaved": "Umugqa womnikazi ulondoloziwe",
       "registration": "Ukubhaliswa kwe-DOI",
       "zenodoSandbox": "Indawo yokuhlola ye-Zenodo",
@@ -6459,32 +6455,6 @@
       "changed": "Kushintshwe ngo-{date}",
       "asWritten": "Njengoba kwabhalwa okokuqala",
       "edit": "Hlela",
-      "limits": "Ukuvula kwamahhala",
-      "limitsPager": "ukuvula kwamahhala",
-      "personal": "Indawo yokusebenza yomuntu siqu",
-      "personalHint": "Ukuvula ngosuku okungabizi lutho. Isadingeka ikhadi eligciniwe.",
-      "personalLabel": "Ukuvula kwamahhala ngosuku endaweni yokusebenza yomuntu",
-      "limitSaved": "Ukuvula kwamahhala kugciniwe",
-      "organization": "Indawo yokusebenza yenhlangano",
-      "organizationHint": "Ukuvula ngosuku okungabizi lutho, okwabelwana ngakho ngamalungu ayo.",
-      "organizationLabel": "Ukuvula kwamahhala ngosuku endaweni yokusebenza yenhlangano",
-      "goneAccount": "I-akhawunti engasekho",
-      "goneOrganization": "Inhlangano engasekho",
-      "person": "Umuntu",
-      "organisation": "Inhlangano",
-      "perDayLabel": "Ukuvula kwamahhala kuka-{name} ngosuku",
-      "aDay": "mahhala ngosuku",
-      "backToPeople": "Buyela enanini labantu",
-      "backToOrganizations": "Buyela enanini lezinhlangano",
-      "removeLimit": "Susa ukuvula kwamahhala kuka-{name}",
-      "alreadyLimited": "{name} usevele unenani lakhe: {count} mahhala ngosuku.",
-      "people": "Abantu",
-      "organisations": "Izinhlangano",
-      "giveLimit": "Nika umuntu noma inhlangano ukuvula kwamahhala okungokwayo",
-      "pickerPlaceholder": "Igama lenhlangano, noma i-imeyili yomuntu",
-      "pickerEmpty": "Ayikho i-akhawunti noma inhlangano efanayo",
-      "limitMax": "Umkhawulo ufinyelela ku-{max} ngosuku",
-      "limitWhole": "Umkhawulo uyinombolo ephelele kusuka ku-0 kuya ku-{max}",
       "builtIn": "Eyakhelwe ngaphakathi",
       "modelGone": "Imodeli yayo ayisatholakali",
       "passesAt": "Iphumelela ngokuqiniseka okungu-{percent}",
@@ -6530,25 +6500,36 @@
       "agreementLabel": "Isivumelwano, ku-Markdown",
       "agreementSaved": "Isivumelwano inguqulo {version}",
       "saveVersion": "Londoloza njengenguqulo {version}",
-      "price": "Intengo",
-      "priceHint": "Okubizwa ukuvula ngaphezu kwalokho kwamahhala: intengo yohlelo lwe-Report activation ku-Autumn.",
-      "priceHintNone": "I-Autumn ayinalo uhlelo lwe-Report activation, ngakho kudlula ukuvula kwamahhala kuphela.",
-      "notOnSale": "Akudayiswa"
+      "priceOne": "I-CC BY ne-CC BY-SA",
+      "priceHint": "Ukuthi kubiza malini ukushicilela umbiko ngaphansi kwe-CC BY noma i-CC BY-SA, ngamadola aseMelika.",
+      "balances": "Amabhalansi",
+      "balancesHint": "Indawo yokusebenza ngayinye inebhalansi yokushicilela ku-Autumn, ngamadola, ekhokhela la manani ngaphambi kwekhadi. Nika umuntu noma inhlangano ibhalansi lapho, kanye noma egcwaliswa nsuku zonke, masonto onke, nyanga zonke noma minyaka yonke. Into esohlelweni iyinika yonke indawo yokusebenza ekulolo hlelo.",
+      "openAutumn": "Vula i-Autumn",
+      "priceThree": "I-NC, i-ND namalayisense omnikazi",
+      "priceThreeHint": "Ukuthi kubiza malini ukushicilela umbiko ngaphansi kwelayisense ye-NC noma ye-ND, noma eyombhali uqobo, ngamadola aseMelika.",
+      "prices": "Amanani"
     },
     "flow": {
       "steps": {
+        "prepare": "Lungiselela",
         "agreement": "Isivumelwano",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Imininingwane",
         "checks": "Ukuhlolwa",
-        "live": "Kushicilelwe"
+        "live": "Kushicilelwe",
+        "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe.",
+        "paying": "Inkokhelo yayo isaqhubeka, ngakho izinyathelo zayo azikwazi ukuvulwa manje. Uma ibhange liyenqaba, ziyavuleka futhi.",
+        "liveNow": "Isiku-inthanethi. Shintsha imininingwane yayo nge-{action}.",
+        "closed": "Umbuyekezi uyikhiphile, ngakho ayikwazi ukushintshwa.",
+        "running": "Ukuhlola kwayo kuyaqhubeka. Izinyathelo zizovuleka futhi uma kuqedile.",
+        "notYours": "Umuntu oqale lo mbiko kuphela ongawushintsha."
       },
       "publish": "Shicilela",
       "newReport": "Umbiko omusha",
       "yourReports": "Imibiko yakho",
       "discarded": "Umbiko ulahliwe",
-      "discardFailed": "Umbiko awukwazanga ukulahlwa",
+      "discardFailed": "Umbiko awukwazanga ukulahlwa.",
       "closedTitle": "Ukushicilela kuvaliwe manje",
       "closedWithReports": "Imibiko emisha ayikwazi ukuqalwa manje. Imibiko yakho ekhona ihlala njengoba injalo.",
       "closedNoReports": "Imibiko emisha ayikwazi ukuqalwa manje. Buya kamuva.",
@@ -6558,29 +6539,29 @@
       "elsewhereTitle": "Lo mbiko usendaweni yokusebenza ehlukile",
       "missingTitle": "Lo mbiko awukho lapha",
       "offNotice": "Ukushicilela kuvaliwe kwimibiko emisha manje. Ungaqhubeka usebenza kulo.",
-      "stepFailed": "Leso sinyathelo asikwazanga ukuvulwa",
-      "checksFailed": "Ukuhlolwa akukwazanga ukwenziwa",
+      "stepFailed": "Leso sinyathelo asikwazanga ukuvulwa.",
+      "checksFailed": "Ukuhlolwa akukwazanga ukwenziwa.",
       "saveFailed": "Izinguquko zakho azikwazanga ukulondolozwa",
       "changesLive": "Izinguquko zakho zishicilelwe",
       "changesWithReviewer": "Izinguquko zakho zikumbuyekezi",
       "agreementTitle": "Isivumelwano sokushicilela no-{series}",
       "version": "Inguqulo {version}",
-      "agreementIntro": "Ugcina i-copyright futhi ushicilela ngaphansi kwe-CC BY 4.0. Ukusayina kugodla i-DOI yakho.",
-      "agreementShared": "Ugcina i-copyright futhi ushicilela ngaphansi kwe-CC BY 4.0. Ukusayina kugodla i-DOI yakho. Lo mbiko ungowale ndawo yokusebenza: amalungu ayo angawubona, futhi wena nabaphathi bayo niyawusebenza.",
+      "agreementIntro": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense, engeke isashintshwa uma ususayinile. Ukusayina kubekisa i-DOI yakho.",
+      "agreementShared": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense, engeke isashintshwa uma ususayinile. Ukusayina kubekisa i-DOI yakho. Lo mbiko ungowale ndawo yokusebenza: amalungu ayo angawubona, futhi wena nabaphathi bayo niyawusebenza.",
       "signedBy": "Kusayinwa ngu-",
-      "signForAll": "Ngisayina egameni labo bonke ababhali abavumile",
-      "agree": "Ngiyavumelana nalesi sivumelwano",
+      "agree": "Ngiyavumelana nalesi sivumelwano, egameni lami nelabo bonke ababhali engibhala nabo, bonke abavumile",
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
-      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza amabhokisi.",
+      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza ibhokisi.",
+      "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
         "personalClosed": "Uhlelo lwakho alukufaki ukushicilela. Thuthela ohlelweni olukufakayo.",
         "workspace": "Uhlelo lwale ndawo yokusebenza luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
         "workspaceClosed": "Uhlelo lwale ndawo yokusebenza alukufaki ukushicilela. Thuthela ohlelweni olukufakayo."
       },
-      "signFailed": "Isivumelwano asikwazanga ukusayinwa",
-      "sign": "Sayina futhi ugodle i-DOI",
+      "signFailed": "Isivumelwano asikwazanga ukusayinwa.",
+      "sign": "Sayina ubekise i-DOI",
       "signIn": "Ngena ngemvume ukuze ushicilele",
       "doiReserved": "I-DOI yakho igodliwe",
       "doiReservedBody": "Ihlala nombiko wakho, futhi ishicilelwa lapho umbiko ushicilelwa.",
@@ -6590,15 +6571,17 @@
       "doiCopied": "I-DOI ikopishiwe",
       "uploadPdf": "Layisha i-PDF",
       "textless": "Le PDF ayinawo umbhalo, njengesithombe esiskeniwe. Ukuhlolwa akukwazi ukuthola umugqa womnikazi kuyo. Khipha umbiko njenge-PDF enombhalo bese uyilayisha, noma ugcwalise imininingwane ngesandla.",
+      "textlessAdded": "Le PDF ayinawo umbhalo, njengoba kunjalo ngesithombe esiskeniwe, ngakho ukuhlola akukwazi ukufunda umbiko wakho kuyo. Umugqa usekhasini esilengezile. Khipha umbiko njenge-PDF enombhalo wawo bese uyilayisha, noma ugcwalise imininingwane ngesandla.",
       "unreadPdf": "I-Openscholar ayikwazanga ukufunda imininingwane kule PDF. Yigcwalise ngesandla.",
       "uploadAnother": "Layisha enye i-PDF",
       "uploadLost": "Okulayishwayo akufikanga. Zama futhi.",
-      "choosePdf": "Khetha i-PDF",
+      "notPdf": "I-{name} akuyona i-PDF. Londoloza noma ukhiphe umbiko wakho njenge-PDF, bese ukhetha lelo fayela.",
       "emptyFile": "Lelo fayela alinalutho. Khetha i-PDF futhi.",
-      "tooBig": "I-PDF inkulu kuno-{max} MB",
+      "tooBig": "I-PDF ingaphezu kuka-{max} MB. Khetha encane.",
       "offline": "I-PDF ayikwazanga ukulayishwa. Hlola ukuxhumana kwakho, bese uyikhetha futhi.",
-      "uploadFailed": "I-PDF ayikwazanga ukulayishwa. Zama futhi.",
-      "uploadIntro": "Beka lo mbhalo olandelayo, njengoba unjalo, esembozweni noma esembozweni sangaphakathi ngaphambi kokulayisha. Ukuhlolwa kwethu kufuna lo mugqa.",
+      "notSent": "I-PDF ayikwazanga ukuthunyelwa kithi.",
+      "uploadFailed": "I-PDF ifikile kithi, kodwa iseva ayiyengezanga embikweni wakho.",
+      "uploadIntro": "Wonke umbiko kulolu chungechunge unalo mugqa ku-PDF yawo, njengombhalo. Ukuhlola kwethu kuyawufuna.",
       "copyByline": "Kopisha umugqa womnikazi",
       "bylineCopied": "Umugqa womnikazi ukopishiwe",
       "uploading": "Kulayishwa i-{name}",
@@ -6607,6 +6590,13 @@
       "drop": "Faka i-PDF lapha, noma uyikhethe",
       "dropHint": "I-PDF eyodwa, kuze kufike ku-{max} MB",
       "unopenedPdf": "I-{name} ayikwazanga ukuvulwa njenge-PDF. Uma inephasiwedi, yisuse, bese uyilondoloza futhi njenge-PDF bese uyilayisha.",
+      "lacksByline": "I-{name} ayinawo umugqa ongenhla. Engeza umugqa bese ulayisha i-PDF futhi, noma usivumele siwengeze.",
+      "keptDetails": "Lena imininingwane obunayo ngaphambi kokuthi ushintshe i-PDF.",
+      "readAgain": "Kunalokho yifunde kule PDF",
+      "readAgainTitle": "Funda imininingwane kule PDF?",
+      "readAgainBody": "Imininingwane ebonakala manje izothathelwa indawo yile PDF, kanye nakho konke okubhalile kuyo.",
+      "readAgainKeep": "Gcina le mininingwane",
+      "readAgainFailed": "Imininingwane ayikwazanga ukufundwa futhi.",
       "stuck": "Ukufunda i-{name} kuthatha isikhathi eside kunokufanele. Yilayishe futhi.",
       "replaces": "Ukulayisha futhi kuthatha isikhundla se-{name}",
       "check": {
@@ -6616,11 +6606,12 @@
         "failed": "Kuhlulekile",
         "flagged": "Kuphawuliwe",
         "unclear": "Akucacile",
-        "sure": "Kuqinisekwe ngo-{percent} ukuthi kuyaphumelela",
+        "sure": "{percent}",
         "foundIn": "Kutholwe ku-{where}:",
         "foundAs": "Kutholwe njenge-",
         "said": {
-          "notPublished": "Akukho ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
+          "notPublished": "Akukho ku-Openscholar Reports, ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
+          "notPublishedElsewhere": "Akukho ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
           "unfinished": "Lokhu kuhlola akukwazanga ukuqedwa.",
           "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama."
         },
@@ -6643,7 +6634,7 @@
           }
         }
       },
-      "activateFailed": "Akukwazanga ukwenziwa kusebenze",
+      "activateFailed": "Akukwazanga ukwenziwa kusebenze.",
       "running": "Kwenziwa ukuhlolwa",
       "ofTotal": "{done} kokungu-{total}",
       "runningHint": "Ukufuna amakhophi angaphambili kuthatha imizuzwana embalwa. Ungashiya leli khasi: ukuhlolwa kuyaqhubeka.",
@@ -6654,13 +6645,16 @@
       "readyPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Wenze usebenze ukuze ushicilele i-DOI yawo futhi uvule ikhasi lawo.",
       "waiting": "Kulindwe ukubuyekezwa",
       "inReview": "Kuyabuyekezwa",
-      "waitingFlagged": "Ukuhlolwa kuphawule umbiko wakho, ngakho umbuyekezi uzowubheka. Ungawenza usebenze uma usuvunyiwe, futhi uzothola i-imeyili.",
-      "waitingPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Ungawenza usebenze uma umbuyekezi esewuvumile, futhi uzothola i-imeyili.",
+      "waitingFlagged": "Ukuhlolwa okukodwa kuphawule umbiko wakho, ngakho umbuyekezi uyawubheka ngaphambi kokuthi ushicilelwe. Uzothola i-imeyili, futhi ukulindile ngaphansi kokuthi Shicilela.",
+      "reviewTakes": "Ukubuyekezwa kuthatha kuze kufike ezinsukwini ezintathu zokusebenza.",
+      "waitingPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Manje umbuyekezi uyawuvuma ngaphambi kokuthi ushicilelwe. Uzothola i-imeyili, futhi ukulindile ngaphansi kokuthi Shicilela.",
       "withdrawn": "Kuhoxisiwe",
       "notPublished": "Akushicilelwanga",
       "declined": "Kwenqatshiwe",
       "withdrawnBody": "Umbuyekezi uhoxise lo mbiko. Ikhasi lawo manje lisho lokho.",
       "declinedBody": "Umbuyekezi wenqabe lo mbiko.",
+      "declinedFix": "Ungashintsha imininingwane noma ulayishe i-PDF entsha, bese uqhuba ukuhlola futhi.",
+      "activatingNow": "Umbiko wakho uyenziwa usebenze. Kuthatha imizuzwana embalwa.",
       "notYet": "Akukashicilelwa",
       "aCheckFailed": "Ukuhlolwa kuhlulekile",
       "failedAsked": "Ucele ukubuyekezwa ngumuntu. Ungashintsha imininingwane noma ulayishe i-PDF entsha ukuze uphinde wenze ukuhlolwa.",
@@ -6672,14 +6666,19 @@
       "changeDetails": "Shintsha imininingwane",
       "uploadNew": "Layisha i-PDF entsha",
       "publishAnother": "Shicilela omunye",
-      "activate": "Yenza kusebenze",
+      "activate": "Khokha bese uvula i-DOI",
       "needsApproval": "Umbuyekezi kufanele awuvume kuqala",
       "untitled": "Umbiko ongenasihloko",
       "startedBy": "U-{name} uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
       "startedBySomeone": "Othile kule ndawo yokusebenza uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
       "openPage": "Vula ikhasi lawo",
+      "takeDown": "Ukuze umbiko ususwe, sibhalele ku-<mail>{email}</mail> usho ukhiye wawo, {key}. Siphendula zingakapheli izinsuku ezintathu zomsebenzi. Ikhasi lawo ne-DOI yawo kuyahlala, futhi kusho ukuthi umbiko uhoxisiwe.",
+      "waitingIn": "{count, plural, one {Umbiko ongu-# ku-{name} ulungele ukuthi uwenze usebenze.} other {Imibiko engu-# ku-{name} ilungele ukuthi uyenze isebenze.}}",
+      "waitingOwn": "{count, plural, one {Umbiko ongu-# endaweni yakho yokusebenza ulungele ukuthi uwenze usebenze.} other {Imibiko engu-# endaweni yakho yokusebenza ilungele ukuthi uyenze isebenze.}}",
+      "waitingOpen": "{count, plural, one {Wuvule} other {Yivule}}",
+      "registering": "Ikhasi selivuliwe manje futhi lingabelwa. I-DOI iqala ukusebenza uma isibhalisiwe, ngokuvamile emizuzwini embalwa.",
       "sentToReviewer": "Kuthunyelwe kumbuyekezi",
-      "requestFailed": "Isicelo asikwazanga ukuthunyelwa",
+      "requestFailed": "Isicelo asikwazanga ukuthunyelwa.",
       "reviewIntro": "Umbuyekezi ufunda umbiko wakho nemiphumela yokuhlolwa. Cela uma ucabanga ukuthi ukuhlolwa kwenze iphutha.",
       "reviewQuestion": "Yini ukuhlolwa okungayenzanga kahle?",
       "cancel": "Khansela",
@@ -6704,7 +6703,7 @@
       "discardBody": "Umbiko wakho uhlala ushicilelwe njengoba unjalo manje. Izinguquko ozenzile ziyalahlwa.",
       "keepThem": "Zigcine",
       "changesDiscarded": "Izinguquko zilahliwe",
-      "changesDiscardFailed": "Izinguquko azikwazanga ukulahlwa",
+      "changesDiscardFailed": "Izinguquko azikwazanga ukulahlwa.",
       "discard": "Lahla",
       "pages": "{count, plural, one {ikhasi elingu-#} other {amakhasi angu-#}}",
       "agreementVersion": "Isivumelwano inguqulo {version}",
@@ -6722,16 +6721,12 @@
         "onlyAdmin": "Umphathi kuphela ongawuvula",
         "notForSale": "Ukuvula akukwazi ukukhokhelwa njengamanje",
         "payTitle": "Khokha {price} ukuze uvule u-{key}",
-        "freeTitle": "Vula u-{key}",
         "orgCardCharged": "Kukhokhiswa ikhadi le-{organization}.",
-        "orgCardNothing": "Akukho okukhokhiswayo ekhadini le-{organization}.",
-        "payConfirm": "Khokha futhi uvule",
         "dueNow": "Okukhokhwa manje",
         "doiNow": "I-DOI yawo manje",
         "after": "Ngemuva",
         "reserved": "Kubekiwe",
         "live": "Kusebenza",
-        "activationLine": "Ukuvula",
         "codeLine": "Ikhodi {code}",
         "promo": {
           "add": "Engeza ikhodi yesaphulelo",
@@ -6741,34 +6736,135 @@
           "off": "{percent}% isaphulelo",
           "failed": "Leyo khodi ayikwazanga ukuhlolwa. Zama futhi.",
           "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
-          "nothingOff": "{code} ayehlisi lutho entengweni yokwenza isebenze.",
-          "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu."
+          "nothingOff": "{code} ayehlisi inani lokushicilela umbiko.",
+          "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu.",
+          "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",
-          "goesLive": "Uzosebenza ngokushesha uma inkokhelo isiqinisekisiwe.",
+          "goesLive": "Uba ku-inthanethi ngokushesha nje lapho inkokhelo yenziwe.",
           "refused": "Ibhange lakho alizange liqinisekise inkokhelo yokugcina, ngakho akukho okukhokhisiwe.",
-          "free": "Mahhala",
-          "freeLeft": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla",
-          "freeLeftNoCard": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla. Isadingeka ikhadi eligciniwe.",
-          "add": "Engeza indlela yokukhokha ukuze uvule",
-          "costs": "Ukuvula ngakunye kubiza u-{price}.",
-          "costsOrg": "Ukuvula ngakunye kubiza u-{price}, okukhokhiswa i-{organization}.",
-          "needed": "Kudingeka ikhadi eligciniwe ukuze uvule.",
-          "orgCard": "Ikhadi le-{organization}",
-          "yourCard": "Ikhadi lakho",
           "confirm": "Qinisekisa inkokhelo",
-          "change": "Shintsha",
-          "addButton": "Engeza indlela yokukhokha",
-          "stripeFailed": "Ikhasi le-Stripe alikwazanga ukuvuleka",
-          "credit": "Isikweletu esingu-{amount}"
+          "toPayment": "Qhubekela enkokhelweni",
+          "unfinished": "Inkokhelo ayiqediwe",
+          "cancel": "Khansela inkokhelo",
+          "cancelFailed": "Inkokhelo ayikwazanga ukukhanselwa. Zama futhi."
         },
-        "creditLine": "Isikweletu se-akhawunti",
-        "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
-        "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa.",
-        "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
-        "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele.",
-        "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo."
+        "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Zama futhi, noma ukhokhe ngenye indlela.",
+        "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo.",
+        "kept": "Okukhokhelwe lo mbiko kuye ebhalansini yakho yokushicilela. Umbiko olandelayo owuvulayo uzokusebenzisa.",
+        "keptOrg": "Okukhokhelwe lo mbiko kuye ebhalansini yokushicilela ye-{organization}. Umbiko olandelayo ovulwa lapho uzokusebenzisa.",
+        "balanceLine": "Ibhalansi yokushicilela",
+        "onStripe": "Ikhasi le-Stripe livulekela inkokhelo.",
+        "changed": "Okukweletwayo kushintshile selokhu leli khasi lakufunda. Kuhlole, bese uvula futhi.",
+        "toStripe": "Qhubekela enkokhelweni"
+      },
+      "back": "Emuva",
+      "next": "Okulandelayo",
+      "bylineFirst": "I-PDF yakho inalo mugqa",
+      "bylineFirstBody": "Wonke umbiko kulolu chungechunge unalo mugqa ku-PDF yawo, njengombhalo. Ukuhlola kwethu kuyawufuna uma usulayishile.",
+      "nextUpload": "Layisha i-PDF",
+      "nextDetails": "Hlola imininingwane",
+      "problem": {
+        "outOfStep": "Leli khasi neseva kusezinguqulweni ezahlukene. Layisha kabusha ikhasi, bese uzama futhi.",
+        "retry": "Zama futhi. Uma kuqhubeka kwenzeka, <link>bika inkinga</link>.",
+        "retryQuote": "Zama futhi. Uma kuqhubeka kwenzeka, <link>bika inkinga</link> bese usho u-{reference}."
+      },
+      "bylineBy": {
+        "label": "Ubani owengeza umugqa",
+        "choose": "Khetha ukuthi ubani owengeza umugqa ukuze uqhubeke.",
+        "chooseFirst": "Khetha kuqala ukuthi ubani owengeza umugqa",
+        "failed": "Asikwazanga ukwengeza ikhasi ku-{name}. Zengezele umugqa bese ulayisha i-PDF futhi.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "Ngizowengeza mina",
+          "body": "Beka umugqa, igama ngegama, ekhasini langaphandle noma elingaphakathi le-PDF yakho ngaphambi kokuyilayisha."
+        },
+        "added": {
+          "title": "Ngengezeleni wona",
+          "body": "Sengeza ikhasi lokugcina elinalo mugqa nemininingwane yombiko wakho."
+        }
+      },
+      "overview": {
+        "title": "Ukushicilela umbiko nge-{series}",
+        "intro": "Cishe imizuzu emihlanu kusukela ekuqaleni kuya ekugcineni. Yilokhu okucelwa yisinyathelo ngasinye kuwe.",
+        "introReviewed": "Cishe imizuzu emihlanu yesikhathi sakho. Bese umbuyekezi evuma umbiko ngaphambi kokuthi ushicilelwe, futhi uzothola i-imeyili.",
+        "start": "Sayina isivumelwano",
+        "agreement": {
+          "title": "Sayina isivumelwano sokushicilela",
+          "body": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense."
+        },
+        "doi": {
+          "title": "Thola i-DOI yakho",
+          "body": "Igcinelwa wena ngesikhathi usayina. Iqala ukusebenza kanye nombiko."
+        },
+        "pdf": {
+          "title": "Layisha i-PDF yakho",
+          "body": "Inomugqa osho uchungechunge ne-DOI. Zengezele wona, noma siwengeze ekhasini lokugcina."
+        },
+        "details": {
+          "title": "Hlola imininingwane",
+          "body": "Ifundwa ku-PDF egameni lakho: isihloko, ababhali, ama-ORCID iD, izikhungo nabaxhasi."
+        },
+        "checks": {
+          "title": "Ukuhlolwa okuzenzakalelayo",
+          "body": "Cishe umzuzu. Kufuna lowo mugqa nanoma yini eshicilelwe ngaphambilini."
+        },
+        "activate": {
+          "title": "Yenza kusebenze",
+          "bodyPrices": "{price} ngaphansi kwe-CC BY noma i-CC BY-SA, {priceOfThree} ngaphansi kwenye ilayisense. Kukhokhwa ngebhalansi yakho yokushicilela noma ngekhadi. I-DOI iyabhaliswa futhi umbiko uba ku-inthanethi.",
+          "bodyCard": "{price} ngaphansi kwe-CC BY noma i-CC BY-SA, {priceOfThree} ngaphansi kwenye ilayisense, kukhokhwa ngekhadi. Ikhodi yevawusha ingakwehlisa noma ikukhokhele. I-DOI iyabhaliswa futhi umbiko uba ku-inthanethi."
+        }
+      },
+      "licence": {
+        "label": "Ilayisense",
+        "by": "Noma ubani angawabelana futhi awuguqule, ekuphawula.",
+        "bySa": "Njenge-CC BY, futhi abanye abakwenzayo ngawo kugcina le layisense.",
+        "other": "Enye ilayisense",
+        "otherBody": "Akuyona eyokuhweba, akukho ukuguqulwa, noma eyakho.",
+        "which": "Iyiphi ilayisense",
+        "own": "Ilayisense yami",
+        "ownName": "Igama layo",
+        "ownUrl": "Ikheli lewebhu lombhalo wayo",
+        "ownNeeded": "Nika ilayisense yakho igama ngezinhlamvu zesiLatini nekheli lewebhu lombhalo wayo.",
+        "help": {
+          "title": "Amalayisense",
+          "about": "Mayelana namalayisense",
+          "by": "Noma ubani owusebenzisa futhi uyakuphawula.",
+          "sa": "Abanye abakwenzayo ngawo kugcina ilayisense efanayo.",
+          "nc": "Akekho ongawusebenzisela ukuhweba ngaphandle kokukucela.",
+          "nd": "Abanye abakwazi ukwabelana ngezinguqulo eziguquliwe.",
+          "mining": "Onke avumela noma ubani ukuthi afunde, alande futhi abelane ngombiko njengoba unjalo, futhi akhiphe idatha embhalweni wawo, kodwa hhayi ngokuhweba ngaphansi kwe-NC. Isivumelwano sivumela i-Openscholar ukuthi iwushicilele futhi iwugcine ngaphansi kwanoma iyiphi yawo.",
+          "compare": "Lokho ilayisense ngayinye ekuvumelayo",
+          "sentTo": "Kuthunyelwa ku-",
+          "crossref": "Ibhalisa i-DOI",
+          "zenodo": "Igcina ikhophi",
+          "openscholar": "Ibonisa umbiko"
+        }
+      },
+      "payment": {
+        "payWith": "Khokha nge-",
+        "balance": "Ibhalansi yokushicilela",
+        "card": "Ikhadi",
+        "byCard": "Ukukhokha ngekhadi",
+        "due": "Okukweletwayo lapho kuvulwa",
+        "later": "Akukho okukhokhiswayo kuze kuvulwe umbiko, futhi indlela okhokha ngayo isengashintsha.",
+        "code": "Ikhodi {code}",
+        "dueNow": "Okukweletwayo manje",
+        "title": "Inkokhelo",
+        "sign": "Funda bese usayina",
+        "noLimit": "Akukho mkhawulo",
+        "credit": "Isikweletu se-akhawunti",
+        "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho."
+      },
+      "activateFree": "Vula i-DOI",
+      "paid": {
+        "balance": "Kukhokhwe {amount} ngebhalansi",
+        "balanceLeft": "Kukhokhwe {amount} ngebhalansi, kusele {left}",
+        "card": "Kukhokhwe {amount} ngekhadi",
+        "code": "I-{code} ikhokhele inani",
+        "codeRest": "I-{code} ikhokhele okusele",
+        "credit": "Kukhokhwe {amount} ngesikweletu se-akhawunti"
       }
     },
     "meta": {
@@ -6784,14 +6880,11 @@
       "name": "Igama",
       "moveUp": "Hambisa phezulu",
       "moveDown": "Hambisa phansi",
-      "removeAuthor": "Susa umbhali",
+      "removeAuthor": "Susa umuntu",
       "moveUpLabel": "Hambisa u-{name} phezulu",
       "moveDownLabel": "Hambisa u-{name} phansi",
       "author": "Umbhali",
-      "roles": "Izindima zomnikeli",
-      "roleCount": "{count, plural, one {indima engu-#} other {izindima ezingu-#}}",
-      "findRole": "Sesha indima",
-      "noRole": "Ayikho indima enjalo",
+      "noContribution": "Awukho umnikelo onjalo. Ukuhlela noma ukuhumusha umbiko kuyindima: yikhethe ngaphansi kwe-Indima.",
       "corresponding": "Umbhali wokuxhumana",
       "orcidFound": "Kutholwe ku-ORCID ngegama labo kanye ne-{institution}",
       "correctTitle": "Lungisa imininingwane",
@@ -6807,11 +6900,17 @@
       "type": "Uhlobo",
       "language": "Ulimi",
       "date": "Usuku lokushicilelwa",
+      "dateYear": "Unyaka",
+      "dateMonth": "Inyanga",
+      "dateDay": "Usuku",
+      "noMonth": "Ayikho inyanga",
+      "noDay": "Alukho usuku",
+      "yearInvalid": "Bhala unyaka ngezinombolo ezine.",
       "future": "Usuku lombiko alukwazi ukuba ngolwesikhathi esizayo.",
       "licence": "Ilayisensi",
-      "authors": "Ababhali",
-      "authorsPager": "ababhali",
-      "addAuthor": "Engeza umbhali",
+      "authors": "Abantu",
+      "authorsPager": "abantu",
+      "addPerson": "Engeza umuntu",
       "abstract": "Isifinyezo",
       "subjects": "Isifundo",
       "topics": "Izihloko zocwaningo",
@@ -6845,6 +6944,9 @@
       "addGrant": "Engeza inombolo yoxhaso ka-{name}",
       "references": "Izinkomba",
       "referencesPager": "izinkomba",
+      "editReference": "Hlela inkomba",
+      "editReferenceLabel": "Hlela inkomba {number}",
+      "referenceLabel": "Inkomba {number}",
       "removeReference": "Susa inkomba",
       "addReference": "Engeza inkomba nge-DOI",
       "doiPlaceholder": "Engeza i-DOI ewucaphunayo",
@@ -6866,8 +6968,331 @@
       "cancel": "Khansela",
       "sendForReview": "Hlola izinguquko bese uthumela ukuze kubuyekezwe",
       "checkAndPublish": "Hlola izinguquko bese ushicilela",
-      "runChecks": "Yenza ukuhlolwa",
-      "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400."
+      "runChecks": "Thumela",
+      "tooEarly": "Umbiko awukwazi ukuba nosuku ngaphambi kuka-1400.",
+      "back": "Emuva",
+      "backToChecks": "Buyela ekuhloleni",
+      "role": "Indima",
+      "orcidLabel": "I-ORCID iD",
+      "contributions": "Iminikelo",
+      "contributionsPlaceholder": "Lokho lo muntu akwenzile",
+      "contributionCount": "{count, plural, one {umnikelo o-#} other {iminikelo e-#}}",
+      "findContribution": "Thola umnikelo",
+      "writeAbstract": "Bhala kusuka ku-PDF",
+      "replaceAbstractTitle": "Shintsha isifinyezo?",
+      "replaceAbstractBody": "Kubhalwa esisha kusuka ku-PDF, bese sithatha indawo yalesi esisebhokisini.",
+      "keepAbstract": "Sigcine",
+      "replaceAbstract": "Shintsha",
+      "noAbstract": "I-PDF yakho ayinasifinyezo esiphrintiwe. Thayipha esisodwa, noma sibhalwe kusuka ku-PDF.",
+      "abstractFailed": "Isifinyezo asikwazanga ukubhalwa. Zama futhi.",
+      "addReferences": "Engeza izinkomba",
+      "referencesPlaceholder": "Namathisela izinkomba noma ama-DOI, eyodwa emgqeni ngamunye",
+      "uploadReferences": "Layisha ifayela",
+      "uploadReferencesLabel": "Layisha ifayela lezinkomba",
+      "referenceFormats": "I-BibTeX, i-RIS noma umbhalo ojwayelekile",
+      "noReferencesFound": "Azikho izinkomba ezitholakele lapho.",
+      "referencesListed": "Zonke lezo sezivele zisohlwini.",
+      "referencesAdded": "{count, plural, one {Kungezwe inkomba e-#} other {Kungezwe izinkomba ezi-#}}",
+      "undo": "Hlehlisa",
+      "referencesTooBig": "Lelo fayela lingaphezu kuka-2 MB. Uhlu lwezinkomba luncane kakhulu kunalokho.",
+      "openItsDoi": "Vula i-DOI yayo",
+      "openReferenceDoi": "Vula i-DOI yenkomba {number}"
+    },
+    "kinds": {
+      "author": "Umbhali",
+      "editor": "Umhleli",
+      "chair": "Usihlalo",
+      "translator": "Umhumushi",
+      "reviewer": "Umbuyekezi",
+      "review-assistant": "Umsizi wokubuyekeza",
+      "reviewer-external": "Umbuyekezi (wangaphandle)",
+      "stats-reviewer": "Umbuyekezi (wezibalo)",
+      "reader": "Umfundi",
+      "other": "Okunye"
+    },
+    "roleDetails": {
+      "conceptualization": "Weza nemibono futhi wabeka izinhloso",
+      "dataCuration": "Wahlela, wahlanza futhi wagcina idatha",
+      "formalAnalysis": "Wenza izibalo noma okunye ukuhlaziya okusemthethweni",
+      "fundingAcquisition": "Wathola imali yephrojekthi",
+      "investigation": "Wenza ucwaningo futhi waqoqa ubufakazi",
+      "methodology": "Waklama izindlela noma amamodeli",
+      "projectAdministration": "Waphatha futhi wahlanganisa iphrojekthi",
+      "resources": "Wanikeza izinto, amasampula, amathuluzi noma amakhompyutha",
+      "software": "Wabhala noma wahlola ikhodi",
+      "supervision": "Wahola futhi weluleka ithimba",
+      "validation": "Wahlola ukuthi imiphumela ingaphindwa",
+      "visualization": "Wenza izithombe nokwethulwa kwedatha",
+      "writingOriginalDraft": "Wabhala uhlaka lokuqala",
+      "writingReviewEditing": "Wabuyekeza futhi walungisa umbhalo"
+    },
+    "help": {
+      "aboutLabel": "Mayelana: {title}",
+      "sentTo": "Kuthunyelwa ku",
+      "does": {
+        "crossref": "Ibhalisa i-DOI",
+        "zenodo": "Igcina ikhophi",
+        "openscholar": "Ibonisa umbiko"
+      },
+      "sent": "{name}, iyakuthola lokhu: {does}",
+      "notSent": "{name}, ayikutholi lokhu: {does}",
+      "filled": {
+        "pdf": "Kufundwe ku-PDF yakho",
+        "judged": "Kucatshangwe ku-PDF yakho",
+        "matched": "Kufundwe ku-PDF yakho, bese kuyabhekwa",
+        "classified": "Kuphakanyiswe yi-OpenAlex",
+        "author": "Iqala njengoMbhali",
+        "fixed": "Kusethwe yi-Openscholar",
+        "reserved": "Kubekelwa eceleni uma usayina"
+      },
+      "entry": {
+        "list": "Kukhethwa ohlwini",
+        "typed": "Kuthayiphwa ngokukhululeka",
+        "either": "Ohlwini, noma kuthayiphwe",
+        "pasted": "Kunamathiselwe noma kulayishiwe",
+        "toggle": "Kuvuliwe noma kuvaliwe",
+        "chosen": "Ukukhetha kwakho"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "Izinhlobo zemisebenzi ze-OpenAlex",
+          "detail": "Uhlu olukhonjiswa yilesi sikhethi"
+        },
+        "zenodoTypes": {
+          "name": "Izinhlobo zezinsiza ze-Zenodo",
+          "detail": "Lokho uhlobo ngalunye oluba yikho ku-Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Imibiko ku-Crossref",
+          "detail": "Irekhodi i-Crossref eyigcinayo"
+        },
+        "iso639": {
+          "name": "Amakhodi olimi e-ISO 639",
+          "detail": "Amakhodi i-OpenAlex ewasebenzisayo"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "I-Creative Commons Attribution 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Abanikeli ku-Crossref",
+          "detail": "Indlela i-Crossref erekhoda ngayo abantu"
+        },
+        "crossrefRoles": {
+          "name": "Izindima zabanikeli ze-Crossref",
+          "detail": "Uhlu olukhonjiswa yilesi sikhethi"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "Iyini i-iD"
+        },
+        "orcidRegister": {
+          "name": "Thola i-iD",
+          "detail": "Mahhala, kuthatha umzuzu"
+        },
+        "openalexInstitutions": {
+          "name": "Izikhungo ze-OpenAlex",
+          "detail": "Kusesha kuqala"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Kusesha lezo i-OpenAlex engenazo"
+        },
+        "rorAdd": {
+          "name": "Cela i-ROR ukuthi yengeze inhlangano",
+          "detail": "Ngenhlangano engekho kunoma yiluphi uhlu"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "Uhlelo lwe-NISO lwezindima zabanikeli"
+        },
+        "crossrefAbstracts": {
+          "name": "Izifinyezo ku-Crossref",
+          "detail": "Indlela i-Crossref esigcina ngayo"
+        },
+        "openalexTopics": {
+          "name": "Izihloko ze-OpenAlex",
+          "detail": "Uhlu lesi sikhethi esisesha kulo"
+        },
+        "sdgs": {
+          "name": "Izinhloso eziyi-17",
+          "detail": "Izizwe Ezihlangene"
+        },
+        "openalexDesigns": {
+          "name": "Imiklamo yocwaningo ye-OpenAlex",
+          "detail": "Uhlu olukhonjiswa yilesi sikhethi"
+        },
+        "iso3166": {
+          "name": "Amakhodi amazwe e-ISO 3166",
+          "detail": "Amazwe asohlwini lwalesi sikhethi"
+        },
+        "openalexFunders": {
+          "name": "Abaxhasi be-OpenAlex",
+          "detail": "Kusesha kuqala"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Kusesha nakulokhu, ohulumeni nezisekelo"
+        },
+        "funderRegistry": {
+          "name": "I-Funder Registry ye-Crossref",
+          "detail": "Ama-ID i-Crossref ehlonza ngawo abaxhasi"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "Iyini i-DOI"
+        },
+        "crossrefReferences": {
+          "name": "Izinkomba ku-Crossref",
+          "detail": "Indlela izingcaphuno ezibalwa ngayo kuzo"
+        },
+        "crossrefRelations": {
+          "name": "Ubudlelwano ku-Crossref",
+          "detail": "Indlela i-Crossref exhumanisa ngayo imisebenzi"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "Iyini i-ISSN"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Isihloko",
+          "about": "Isihloko sombiko njengoba siphrintiwe ekhasini langaphambili."
+        },
+        "subtitle": {
+          "title": "Isihlokwana",
+          "about": "Umugqa ongaphansi kwesihloko, uma ikhasi langaphambili linawo.",
+          "note": "Akunalutho uma i-PDF ingasiphrinti."
+        },
+        "type": {
+          "title": "Uhlobo",
+          "about": "Uhlobo lomsebenzi lona.",
+          "note": "I-Crossref ifaka yonke i-Openscholar Report njengombiko. I-Zenodo ne-Openscholar zisebenzisa uhlobo olukhethwe lapha."
+        },
+        "language": {
+          "title": "Ulimi",
+          "about": "Ulimi umbiko obhalwe ngalo."
+        },
+        "date": {
+          "title": "Usuku lokushicilelwa",
+          "about": "Lapho umbiko ushicilelwe khona: unyaka, inyanga noma usuku, ngokunemba i-PDF ekusho ngakho, futhi kungadluli namuhla.",
+          "note": "I-Crossref iyigcina inembile njengoba injalo. I-Zenodo ithatha usuku oluphelele, ngakho unyaka noma inyanga iya khona njengosuku lwayo lokuqala. I-PDF engashongo usuku ithola olwanamuhla."
+        },
+        "licence": {
+          "title": "Ilayisensi",
+          "about": "Yonke i-Openscholar Report ishicilelwa ngaphansi kwe-CC BY 4.0, njengoba isivumelwano osisayinile sisho."
+        },
+        "authors": {
+          "title": "Ababhali",
+          "about": "Wonke umuntu umbiko omnika udumo, ngokulandelana kokucaphuna kwawo.",
+          "note": "Ababhali be-PDF sebegcwalisiwe. Engeza abahleli, abahumushi nabanye lapha, bese ukhetha izindima zabo."
+        },
+        "name": {
+          "title": "Igama",
+          "about": "Igama njengoba umbiko uliphrinta. Igama eliphelele lenhlangano nalo liyasebenza.",
+          "note": "Igama lomuntu lifika ku-Crossref naku-Zenodo njengesibongo, bese kuba amagama: igama lokugcina lithathwa njengesibongo. Igama lenhlangano, elinegama elifana no-Department, Ministry noma University, lithunyelwa lonke."
+        },
+        "kind": {
+          "title": "Indima",
+          "about": "Lo muntu uyini embikweni. Iningi labantu lingababhali.",
+          "note": "Ababhali kuphela abaqanjwa ekucaphuneni kombiko. Abanye bonke babhalwe nendima yabo ngaphansi kwe-Iminikelo ekhasini lombiko, futhi i-Crossref ne-Zenodo bathola indima yomuntu ngamunye."
+        },
+        "orcid": {
+          "title": "I-ORCID iD",
+          "about": "Inombolo yamahhala ehlukanisa abacwaningi abanegama elifanayo.",
+          "note": "Uma i-PDF ingayiphrinti, kuseshwa ku-ORCID umuntu oyedwa onegama eliqondile kwesinye salezi zikhungo."
+        },
+        "affiliations": {
+          "title": "Izikhungo ahlobene nazo",
+          "about": "Lapho lo muntu ayesebenza khona lapho umbiko ubhalwa.",
+          "note": "Isikhungo esine-ID ye-ROR sithunyelwa nayo, ukuze i-Crossref ne-Zenodo zazi ukuthi yisiphi. Esithayiphwe ngesandla sihamba nje ngegama."
+        },
+        "contributions": {
+          "title": "Iminikelo",
+          "about": "Lokho lo muntu akwenzela umsebenzi, ngezindima eziyi-14 ze-CRediT.",
+          "note": "Kugcwaliswa kuphela uma i-PDF inesitatimende seminikelo. Ukukushiya kungenalutho kulungile."
+        },
+        "corresponding": {
+          "title": "Umbhali wokuxhumana",
+          "about": "Umuntu abafundi abambhalela ngombiko.",
+          "note": "Kuvulwa kuphela uma i-PDF ikhombisa oyedwa."
+        },
+        "abstract": {
+          "title": "Isifinyezo",
+          "about": "Isifinyezo noma isiqephu i-PDF yakho esiphrintayo, esikopishwe njengoba sinjalo.",
+          "note": "Uma i-PDF ingaphrinti nokukodwa, u-Bhala kusuka ku-PDF wenza uhlaka ukuze ulubheke futhi uluguqule."
+        },
+        "topics": {
+          "title": "Izihloko",
+          "about": "Lokho umbiko okhuluma ngakho, ngezihloko ze-OpenAlex.",
+          "note": "Isihlukanisi se-OpenAlex sifunda isihloko nesifinyezo. Ibha esihlokweni ikhombisa ukuthi sasiqiniseka kangakanani. Izihloko ozengezayo azinayo."
+        },
+        "keywords": {
+          "title": "Amagama abalulekile",
+          "about": "Amagama akho mayelana nalokho umbiko okhuluma ngakho.",
+          "note": "Amagama abalulekile e-PDF. Uma ingabalanga, afika kwamahlanu avela esihlukanisini se-OpenAlex."
+        },
+        "sdgs": {
+          "title": "Izinhloso Zentuthuko Esimeme",
+          "about": "Izinhloso ze-UN umbiko okhuluma ngazo kakhulu.",
+          "note": "Kugcwaliswa ezingeqi kwezintathu. Engeza noma ususe noma yisiphi."
+        },
+        "design": {
+          "title": "Umklamo wocwaningo",
+          "about": "Indlela ucwaningo olwenziwa ngayo.",
+          "note": "Kugcwaliswa kuphela uma i-PDF ikucacisa. I-Zenodo ikubonisa njengenothi lezindlela."
+        },
+        "places": {
+          "title": "Izindawo ezicwaningiwe",
+          "about": "Amazwe nezifunda umbiko okhuluma ngazo, hhayi lapho ababhali bawo besebenza khona."
+        },
+        "funding": {
+          "title": "Uxhaso",
+          "about": "Ubani owakhokhela umsebenzi, nezinombolo zoxhaso njengoba ziphrintiwe.",
+          "note": "Abaxhasi bayabhekwa ku-OpenAlex naku-ROR. Otholakala lapho uhamba ne-ID yakhe ye-ROR, kanye ne-ID ye-Funder Registry uma enayo. Othayiphwe ngesandla uhamba nje ngegama."
+        },
+        "references": {
+          "title": "Izinkomba",
+          "about": "Imisebenzi lo mbiko oyicaphunayo, njengoba uhlu lwawo lwezinkomba luyibhala.",
+          "note": "Namathisela uhlu, noma lulayishe njengefayela le-BibTeX, i-RIS noma lombhalo ojwayelekile. Yonke i-DOI i-PDF eyiphrintayo isigcwalisiwe, futhi i-Crossref ixhumanisa inkomba ngayinye ene-DOI nomsebenzi oyicaphunayo."
+        },
+        "links": {
+          "title": "Idatha, ikhodi nezinguqulo",
+          "about": "Lapho idatha yombiko, ikhodi, ezinye izinguqulo nezengezo kukhona.",
+          "note": "Ngayinye ingukheli lewebhu noma i-DOI."
+        },
+        "agreement": {
+          "title": "Isivumelwano sokushicilela",
+          "about": "Lokho wena ne-Openscholar enivumelana ngakho ngaphambi kokuba umbiko wakho ushicilelwe.",
+          "note": "Ugcina amalungelo obunikazi. Ukumaka ibhokisi kuwukuvuma egameni lakho nelalowo nalowo mbhali ohlanganyele nawe, ngakho qala uqinisekise ukuthi bavumile. Isivumelwano esisayiniwe asikwazi ukushintshwa."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "Isixhumanisi esihlala njalo esiya embikweni wakho, esisebenza noma ngabe ikhasi lawo lithuthelwa kuphi.",
+          "note": "Ibekelwa eceleni uma usayina, ukuze ukwazi ukuyiphrinta ku-PDF yakho. Iyasebenza uma umbiko wakho usuku-inthanethi."
+        },
+        "byline": {
+          "title": "Umugqa wochungechunge",
+          "about": "Umugqa wonke umbiko kulolu chungechunge owuphrintayo, onegama lochungechunge, i-ISSN yalo ne-DOI yombiko.",
+          "note": "Kumele ube umbhalo ku-PDF, hhayi isithombe, ngoba ukuhlola kuyawufuna. Khetha u-Ngengezeleni wona, i-Openscholar yengeza ikhasi lokugcina elinomugqa."
+        },
+        "checks": {
+          "title": "Ukuhlola",
+          "about": "Lokho i-Openscholar ekuhlolayo ngaphambi kokuba umbiko uye ku-inthanethi, njengomugqa wochungechunge ku-PDF nokuthi umsebenzi usushicilelwe yini.",
+          "note": "Ukuhlola ngakunye kusho ukuthi bekufunani, nokuthi yini okufanele ilungiswe uma kwehluleka. Uma uqinisekile ukuthi ukuhlola akulungile, cela ukuthi umuntu akubuyekeze."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Inombolo ehlonza uchungechunge, njengeyejenali.",
+          "note": "Ilindile kuze kube uchungechunge selubhalisiwe. I-DOI yombiko wakho iyasebenza ngaphandle kwayo."
+        },
+        "activation": {
+          "title": "Ukwenza kusebenze",
+          "about": "Ukwenza kusebenze kwenza umbiko wakho ube sobala: ikhasi lawo liyavuleka, i-DOI yawo iqala ukusebenza, futhi uyabhaliswa.",
+          "note": "Okukweletwayo kukhokhwa kuqala: ngebhalansi yokushicilela yendawo yakho yokusebenza, ngekhadi, noma ngakho kokubili. Ikhodi yevawusha yehlisa lokho okukhokhwa yikhadi."
+        }
+      }
     }
   },
   "people": {
@@ -6950,6 +7375,7 @@
       "preprint": "Okushicilelwe kuqala",
       "book": "Incwadi",
       "report": "Umbiko",
+      "presentation": "Isethulo",
       "review": "Isihloko sokubuyekeza",
       "reference-entry": "Okufakwe kwireferensi",
       "conference-abstract": "Isifinyezo sengqungquthela",

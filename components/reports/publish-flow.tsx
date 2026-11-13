@@ -5,12 +5,15 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useTranslations, useLocale } from "next-intl";
+import { copyText } from "@/components/copy-text";
 import { toast } from "sonner";
 import { ConvexError } from "convex/values";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
@@ -26,31 +29,39 @@ import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { MarkdownContent } from "@/components/markdown-content";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { DetailsStep } from "@/components/reports/details-step";
+import { FieldHelp, type HelpKey } from "@/components/reports/field-help";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
+import { Problem, useProblem } from "@/components/reports/problem";
 import { useChangeLabel, useCheckWords } from "@/components/reports/words";
 import { Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
-import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
+import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
+import { NextButton } from "@/components/reports/next-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { EASE } from "@/components/ui/opening";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Coins, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
-import { fillAgreement } from "@/lib/reports/agreement";
+import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
+import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
+import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { reportPaper } from "@/lib/reports/report-paper";
+import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -64,12 +75,14 @@ type Report = Extract<Found, { report: unknown }>["report"];
 type Starts = FunctionReturnType<typeof api.reports.flow.starts>;
 type Terms = NonNullable<FunctionReturnType<typeof api.reports.activation.terms>>;
 /** What an activation costs with a promotion code, in US dollars, as Autumn quotes it. */
-type Quote = { code: string; price: number; discount: number; total: number };
+/** A promotion code applied, with the share of what a card pays that Autumn quoted it takes off, 0 to 1. */
+type Quote = { code: string; off: number };
 
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
 const STUCK_MS = RUN_STUCK_MS;
 
-const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" | "live"; icon: typeof PenLine }> = [
+const STEPS: Array<{ id: "prepare" | "agreement" | "doi" | "upload" | "details" | "checks" | "live"; icon: typeof PenLine }> = [
+  { id: "prepare", icon: ListChecks },
   { id: "agreement", icon: PenLine },
   { id: "doi", icon: Hash },
   { id: "upload", icon: FileUp },
@@ -79,10 +92,14 @@ const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" |
 ];
 type BackStep = "doi" | "upload" | "details";
 
-/** Where the trail stands: the step being done, or past the checks, the outcome. */
-function placeOf(report: Report | null) {
-  if (!report) return 0;
-  if (report.step === "done") return report.status === "live" ? 5 : 4;
+/** The trail's last step, Live, and the one before it, the checks. */
+const LIVE_AT = STEPS.length - 1;
+const CHECKS_AT = STEPS.length - 2;
+
+/** Where the trail stands: the step being done, or past the checks, the outcome. Before a report, preparing or the agreement. */
+function placeOf(report: Report | null, preparing: boolean) {
+  if (!report) return preparing ? 0 : 1;
+  if (report.step === "done") return report.status === "live" ? LIVE_AT : CHECKS_AT;
   return STEPS.findIndex((s) => s.id === report.step);
 }
 
@@ -93,9 +110,153 @@ const said = (otherwise: string) => (error: unknown) => void toast.error(getErro
 const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
+/**
+ * The report's bill under its cover, from the moment it is signed until it is live: what its licence costs, and what
+ * that comes to with the way of paying and the code kept with it. Where the report is activated, the checks' own bar
+ * draws it with what is chosen there.
+ */
+function KeptBill({ report, terms, humanReview, beside }: { report: Report; terms: Terms; humanReview: boolean; beside: HTMLDivElement }) {
+  const t = useTranslations("publishReports.flow");
+  const stage = stageOf(report, humanReview);
+  // The checks' bar has it, where the report is activated.
+  const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
+  // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
+  if (stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} balance={terms} payWith={payWithOf(terms)} code={terms.voucher} credit={terms.credit} note={t("payment.later")} />, beside);
+}
 
-function copy(text: string, copied: string) {
-  void navigator.clipboard.writeText(text).then(() => toast.success(copied));
+/** What pays for a report: as kept with it, else the balance while it holds something, else a card. */
+const payWithOf = (terms: Pick<Terms, "payWith" | "balance">): PayWith => (terms.balance === 0 ? "card" : (terms.payWith ?? "balance"));
+
+/** A section's name inside a step: the step's own heading is above them all. */
+const SECTION = "mb-3 flex items-center gap-1 text-sm font-semibold";
+
+
+/** Who puts the line on the PDF: its author, on the cover, or Openscholar, on a last page it adds. */
+const BYLINE_BY = ["self", "added"] as const;
+type BylineBy = (typeof BYLINE_BY)[number];
+
+/** A report's steps as the address names them, in order: the DOI is the address with no step. */
+const TRAIL = ["doi", "upload", "details", "checks"] as const;
+
+/** The step of `key`'s report that an address stands at; null for another report's address, or another page's. */
+function stepIn(url: URL, key: string) {
+  if (url.pathname !== window.location.pathname || url.searchParams.get("report") !== key) return null;
+  return TRAIL.find((step) => step === url.searchParams.get("step")) ?? "doi";
+}
+
+/** Whether a report can be sent to a step from where it stands, as the server decides (convex/reports/flow.ts `goTo`). */
+function opens(report: Report, step: BackStep, humanReview: boolean) {
+  // A report whose author asked for a human review waits on that: stepping back to its details would take the
+  // request back with it, which the browser's Back must never do. Its own buttons still can.
+  if (!report.mine || report.run || (report.step === "done" && (stageOf(report, humanReview) !== "failed" || report.asked))) return false;
+  return step !== "details" || (!!report.metadata && report.pdf?.pages !== undefined);
+}
+
+type HistoryEntry = { index: number; key: string; url: string | null };
+type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[]; /** How this load of the page was come to. */ activation?: { navigationType: string | null; from: HistoryEntry | null; entry: HistoryEntry } | null };
+/** The browser's history, where it can be asked what its entries are (the Navigation API). */
+const historyOf = () => (window as { navigation?: Navigation }).navigation;
+
+/**
+ * Whether the browser says when its history moves, and where from (the Navigation API's `currententrychange`). One
+ * engine has the API's object and never fires the event, so it is believed only once it has been heard: the page's
+ * own first step, or the app's own upkeep of the entry it is on, is enough.
+ */
+let heard = false;
+// What counts is hearing an entry the page itself made or replaced (the app does so soon after every load). One
+// engine reports the person's Back and Forward but never those, so its list of entries is wrong and a step pushed
+// there would have nothing to tell Back where it came from.
+if (typeof window !== "undefined") {
+  historyOf()?.addEventListener("currententrychange", (event) => {
+    const type = (event as EntryChange).navigationType;
+    if (type === "push" || type === "replace") heard = true;
+  });
+}
+const hearsHistory = () => heard && historyOf()?.currentEntry?.url === window.location.href;
+
+/** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
+const watchEntry = (wake: () => void) => {
+  const navigation = historyOf();
+  navigation?.addEventListener("currententrychange", wake);
+  return () => navigation?.removeEventListener("currententrychange", wake);
+};
+const entryKey = () => historyOf()?.currentEntry?.key ?? "";
+
+/** The history entries a signed report was started from, by the browser's key, kept with the tab: a reload doesn't forget them. */
+const STARTED_FROM = "publish:started-from";
+const startedFrom = () => {
+  try {
+    return window.sessionStorage.getItem(STARTED_FROM) ?? "";
+  } catch {
+    return "";
+  }
+};
+const keepStartedFrom = (key: string) => {
+  try {
+    window.sessionStorage.setItem(STARTED_FROM, `${startedFrom()} ${key}`.trim());
+  } catch {
+    // Without the tab's storage the entry is forgotten on a reload, and shows Prepare again.
+  }
+};
+/** Read as the page is drawn, and written only by a signing, which draws it again. */
+const unwatched = () => () => undefined;
+type EntryChange = Event & { navigationType: string | null; from: HistoryEntry };
+
+/**
+ * Back and Forward between a report's steps. Each step is an entry in the browser's history that names it, and where
+ * a report stands is the report's own, so a step the browser goes to is one the report is sent to: Back from the
+ * details is the details' own Back button. An entry for a step the report can't open again (it passed its checks),
+ * or for the one it already shows, is gone past the way the person was going, so no press leaves the screen as it was.
+ * After a reload the entries behind belong to the page's earlier load, and Back to one loads the page again: that
+ * arrival is settled the same way, once, when the report is in.
+ */
+let arrived = false;
+function useStepHistory(report: Report | null, humanReview: boolean, send: (step: BackStep | "checks") => void) {
+  // The browser's history is the outside system: it says where a step came from only through the Navigation API.
+  useEffect(() => {
+    const navigation = historyOf();
+    if (!report || !navigation) return;
+    /** The browser came from the entry `from` to the one it is at. */
+    const land = (from: HistoryEntry) => {
+      const at = navigation.currentEntry;
+      if (!from.url || !at) return;
+      const was = stepIn(new URL(from.url), report.key);
+      const to = stepIn(new URL(window.location.href), report.key);
+      // Another report, another page, or the same step with something else opened over it: not a step between steps.
+      if (!was || !to || was === to) return;
+      // The step on the screen as the browser left it. Before its PDF is the report's, the DOI and the upload are two
+      // screens of one state, which the address picks.
+      const shown = report.step === "done" ? "checks" : report.step === "doi" && was !== "doi" ? "upload" : report.step;
+      // What an entry's step comes to: shown by the address alone, one the report is sent to, or neither.
+      const reach = (step: (typeof TRAIL)[number]) => (step === shown ? null : report.step === "doi" && (step === "doi" || step === "upload") ? "shown" : step === "checks" ? (report.reopened && report.step !== "details" ? "sent" : null) : opens(report, step, humanReview) ? "sent" : null);
+      const here = reach(to);
+      if (here === "shown") return;
+      if (here === "sent") return send(to);
+      // On past it, the way the person was going, to the first entry that is another screen: in one step, since
+      // each entry of an earlier load of the page would load it again.
+      const direction = Math.sign(at.index - from.index);
+      if (!direction) return;
+      const entries = navigation.entries();
+      let next = at.index + direction;
+      for (let url = entries[next]?.url; url; url = entries[next]?.url) {
+        const step = stepIn(new URL(url), report.key);
+        if (!step || reach(step)) break;
+        next += direction;
+      }
+      window.history.go(next - at.index);
+    };
+    // This load of the page was itself a step of Back or Forward, and the page is still on the entry it loaded at.
+    const arrival = navigation.activation;
+    if (!arrived && arrival?.navigationType === "traverse" && arrival.from && arrival.entry.key === navigation.currentEntry?.key) land(arrival.from);
+    arrived = true;
+    const onChange = (event: Event) => {
+      const { navigationType, from } = event as EntryChange;
+      if (navigationType === "traverse") land(from);
+    };
+    navigation.addEventListener("currententrychange", onChange);
+    return () => navigation.removeEventListener("currententrychange", onChange);
+  }, [report, humanReview, send]);
 }
 
 /** Where the Publish page is, kept in its address so a link, a reload and the back button all land on it. */
@@ -105,10 +266,12 @@ const PLACE = {
   report: parseAsString,
   /** A live report's details open to be corrected. */
   correct: parseAsBoolean.withDefault(false),
-  /** A report still without its PDF, opened at its upload: before that it shows its DOI. */
-  step: parseAsStringLiteral(["upload"] as const),
+  /** The step the address stands at: the agreement before a report has one, then the report's own (`useStepHistory`). */
+  step: parseAsStringLiteral(["agreement", "upload", "details", "checks"] as const),
   show: parseAsStringLiteral(SHOWS).withDefault("all"),
   page: parseAsInteger.withDefault(1),
+  /** Who adds the byline to the report shown, as chosen on the way to its upload. It is one report's choice: another report starts without one. */
+  byline: parseAsStringLiteral(BYLINE_BY),
 };
 
 export function PublishFlow() {
@@ -123,7 +286,12 @@ export function PublishFlow() {
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
-  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push", scroll: true });
+  // What went wrong with something done on this page, said on the screen it was done on, until the page moves on.
+  const trouble = useProblem(`${view}:${asked ?? ""}`);
+  const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => {
+    trouble.say(null);
+    void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
+  };
   // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
   // Back afterwards never reopens it; what a link or a reload opened closes in place.
   const up = (...closed: Array<keyof typeof PLACE>) => {
@@ -135,28 +303,60 @@ export function PublishFlow() {
   const [now] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
   const basics = useQuery(api.reports.settings.forAuthors, {});
   const { data: counts } = useProtectedQuery(api.reports.flow.counts, inWorkspace(workspaceId, {}));
+  // Reports ready in the person's other workspaces, read with the page so their notice is there when it opens.
+  const { data: waiting } = useProtectedQuery(api.reports.flow.waitingElsewhere, inWorkspace(workspaceId, {}));
   const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
-  // The report shown is the one the address names; with none named, the only one under way.
-  const listed = view === "reports" || (asked === null && (counts?.underWay ?? 0) > 1);
-  // Opened with no report named, the page stays on the one it opened: when that one stops being under way (activated
-  // here, or declined by a reviewer meanwhile) it shows where it stands now and never gives way to a new report's
-  // agreement, and a report started in another tab doesn't take its place. A report that is gone lets go of it.
-  const only = counts?.only ?? null;
-  const [held, setHeld] = useState<string | null>(null);
-  // The list, and an address that names a report, are the person's own move on: the next time the page names none, it
-  // opens the one under way then.
-  const movedOn = listed || asked !== null;
-  if (movedOn ? held !== null : held === null && only !== null) setHeld(movedOn ? null : only);
-  const shownKey = listed ? null : (asked ?? held ?? only ?? "new");
+  // With no report named the page opens the workspace's reports, and a new report only when it has none. Opened on
+  // that new report, it stays on it while it is signed: its own first report must not turn the page into the list
+  // before the address names it.
+  const bare = asked === null && view !== "reports";
+  const [began, setBegan] = useState<typeof workspaceId>(undefined);
+  if (bare ? began !== workspaceId && counts?.all === 0 : began !== undefined) setBegan(bare ? workspaceId : undefined);
+  // A report signed here took its agreement's place in the history, and the Prepare it was started from is still
+  // the entry behind it. Back from its DOI lands there, on a report already started: that entry shows the list
+  // from then on, never a second new report nobody asked for. Entries are told apart by the browser's own key.
+  const used = useSyncExternalStore(unwatched, startedFrom, () => "");
+  const entry = useSyncExternalStore(watchEntry, entryKey, () => "");
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (entry !== "" && used.split(" ").includes(entry));
+  const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
-  // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
-  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
-  const { data: list } = useProtectedQuery(api.reports.flow.page, listed ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
+  // What the shown report costs and what pays for it, read with it so its screen opens with its bill in place.
+  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  // A charge left under way by an action that died stops holding the report once its time is up.
+  const chargeOver = usePassed(terms?.paying?.until ?? undefined);
+  // With no report named, the list is read along with the counts that decide it shows, so it lands with them instead of a
+  // round trip later.
+  const { data: list } = useProtectedQuery(api.reports.flow.page, listed || bare ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
   // A list page keeps showing while the next one is read, so paging never empties the card.
   const [lastList, setLastList] = useState(list);
   if (list && list !== lastList) setLastList(list);
 
   const discard = useMutation(api.reports.flow.discard);
+  // Said at once, before the answer is back: the screen follows the press, and a second press of Back or Forward
+  // right behind it starts from where the first one led.
+  const goTo = useMutation(api.reports.flow.goTo).withOptimisticUpdate((store, { key, step }) => {
+    for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
+      if (!value || !("report" in value) || value.report.key !== key) continue;
+      // Ready to activate, waiting for a reviewer, or failed with its author asking for one, it can go back to its checks
+      // as they were (convex/reports/flow.ts `goTo`).
+      const stage = value.report.step === "done" ? stageOf(value.report, basics?.humanReview ?? false) : null;
+      const waiting = stage === "ready" || stage === "review" || (stage === "failed" && value.report.asked === true);
+      store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step, reopened: value.report.reopened || waiting } });
+    }
+  });
+  const backToChecks = useMutation(api.reports.flow.backToChecks).withOptimisticUpdate((store, { key }) => {
+    for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
+      if (value && "report" in value && value.report.key === key) store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step: "done", reopened: false } });
+    }
+  });
+  const saved = found && "report" in found ? found.report : null;
+  // The details form open now: an edit it still holds is saved before the report moves, so the move never leaves it behind.
+  const form = useRef<{ flush: () => void }>(null);
+  // The place under the cover, beside the steps on a wide page, where a step shows what it is working out: the element
+  // itself, given by its ref, so the step draws into it.
+  const [beside, setBeside] = useState<HTMLDivElement | null>(null);
+  const send = (step: BackStep | "checks") => void (saved && workspaceId && (form.current?.flush(), step === "checks" ? backToChecks({ workspaceId, key: saved.key }) : goTo({ workspaceId, key: saved.key, step })).catch(trouble.failed(t("stepFailed"))));
+  useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
   const [fresh, setFresh] = useState<{ key: string; step: "doi" | "live" } | null>(null);
@@ -164,7 +364,6 @@ export function PublishFlow() {
   // Just signed, its report is still on its way: the agreement stays up until it is here, and the page never falls
   // back to its loading frame in between (that would start the screens anew, and the DOI's moment with them).
   const arriving = !listed && found === undefined && fresh?.step === "doi" && fresh.key === shownKey;
-  if (held !== null && shownKey === held && found !== undefined && !(found && "report" in found)) setHeld(null);
   // A report opened from the list: the list stays up, dimmed and inert, until the report is here. The loading frame
   // in between was a blank flash.
   const [fromList, setFromList] = useState(false);
@@ -176,7 +375,7 @@ export function PublishFlow() {
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && waiting !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -189,17 +388,53 @@ export function PublishFlow() {
     );
   }
 
-  const saved = found && "report" in found ? found.report : null;
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
-  // address's: opening the upload is a step forward, and Back from it returns to the DOI.
-  const report = saved?.step === "doi" && (at === "upload" || saved.pdf) ? { ...saved, step: "upload" as const } : saved;
-  // A step the report is sent to is its own from then on, whatever the address said before.
-  const ownStep = () => void (at && setPlace({ step: null }));
+  // address's: opening the upload is a step forward, and Back from it returns to the DOI. Any other step an
+  // address names is only a name: the report shows where it stands.
+  // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
+  const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
+  // Every new report starts on Prepare, what publishing asks for, then the agreement: a step forward in the
+  // browser's history, so Back from the agreement is Prepare. A signing on its way stays on the agreement.
+  const preparing = !report && at !== "agreement" && !arriving;
+  // On to a report's next step: a step forward in the browser's history. Asked for when the work that leads there
+  // is done (a PDF sent, the checks run), which can be after the person has left for another report: then nothing.
+  const stepOn = (step: Exclude<(typeof TRAIL)[number], "doi">) => {
+    setFresh(null);
+    const from = saved && stepIn(new URL(window.location.href), saved.key);
+    if (!from || from === step) return;
+    // The upload is the address's alone. The steps after it are the report's, and Back between them needs the
+    // browser to say where a step came from: without that the upload's step is taken back as the report moves on,
+    // so Back never lands on a step that shows the same screen again.
+    if (step === "upload" || hearsHistory()) {
+      // The entry being left is first named for the screen it showed, so Back from the next step returns to that
+      // screen: a report opened from the list at its upload has an address that names no step.
+      const shown = report ? (report.step === "done" ? "checks" : report.step) : from;
+      const named = shown !== from && shown !== step && hearsHistory() ? setPlace({ step: shown === "doi" ? null : shown }) : Promise.resolve();
+      void named.then(() => go({ step }));
+    } else if (from !== "doi") up("step");
+  };
+  // To a step the trail or a screen's own button names. Back is the browser's own step back when the entry behind
+  // is that step, and the history then sends the report there; a step opened by a link or a reload moves in place.
+  const toStep = (step: BackStep | "checks") => {
+    if (!saved || !report) return;
+    setFresh(null);
+    if (TRAIL.indexOf(step) > TRAIL.indexOf(report.step === "done" ? "checks" : report.step)) {
+      send(step);
+      return stepOn(step as "upload" | "details" | "checks");
+    }
+    // A step back the address alone makes, or one the history then sends the report to (useStepHistory).
+    // Only where the history will send the report there itself (it won't for one a review was asked for, which Back
+    // must leave alone): otherwise this button's own press sends it, in place.
+    if (step === "checks") return;
+    if ((saved.step === step || (hearsHistory() && opens(saved, step, basics.humanReview))) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
+    if (saved.step !== step) send(step);
+    void setPlace({ step: step === "doi" ? null : step });
+  };
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
   const missing = !listing && shownKey !== "new" && !report && !arriving;
   const another = () => {
     setFresh(null);
-    go({ view: null, report: "new", correct: null });
+    go({ view: null, report: "new", correct: null, step: null });
   };
   const hasReports = (counts?.all ?? 0) > 0;
   // Publishing switched off stops new reports. One already started keeps its address, and the list stays.
@@ -228,10 +463,12 @@ export function PublishFlow() {
           </Button>
         ) : undefined
       }
-      intro={!listing && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
+      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} paying={!!terms?.paying && !chargeOver} onStep={toStep} /> : undefined}
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
+          <WaitingElsewhere waiting={waiting?.first ?? null} className="px-4 pt-4 sm:px-6" />
+          <Problem className="px-4 pt-4 sm:px-6">{trouble.problem}</Problem>
           <YourReports
             list={(list ?? lastList)!}
             humanReview={basics.humanReview}
@@ -242,7 +479,7 @@ export function PublishFlow() {
             onOpen={(key) => go({ view: null, report: key, correct: null })}
             // Changes already waiting open where they stand; otherwise the details open to be corrected.
             onCorrect={(key) => go({ view: null, report: key, correct: (list ?? lastList)?.rows.find((row) => row.key === key)?.changes ? null : true })}
-            onDiscard={(key) => discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), said(t("discardFailed")))}
+            onDiscard={(key) => (trouble.say(null), discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), trouble.failed(t("discardFailed"))))}
             onNew={basics?.open ? another : undefined}
           />
         </div>
@@ -291,6 +528,7 @@ export function PublishFlow() {
         </ListEmpty>
       ) : (
         <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_13rem] @3xl:gap-10">
+          {preparing ? <WaitingElsewhere waiting={waiting?.first ?? null} className="col-span-full" /> : null}
           {/* Switched off, publishing takes no new report. One already started says why its sidebar item is gone. */}
           {report?.mine && !basics.open && report.status !== "live" ? (
             <p role="status" className="col-span-full flex items-start gap-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
@@ -301,6 +539,9 @@ export function PublishFlow() {
           {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
           <Screens
+            preparing={preparing}
+            onPrepared={() => go({ step: "agreement" })}
+            onUnprepare={() => up("step")}
             signed={arriving ? fresh.key : null}
             basics={basics}
             report={report}
@@ -310,46 +551,76 @@ export function PublishFlow() {
             workspaceId={workspaceId}
             fresh={fresh}
             setFresh={setFresh}
-            onSigned={(key) => void setPlace({ report: key })}
-            // A report that is about to stop being under way is named in the address first, in place of the plain
-            // one: a reload, or Back and Forward, then opens it and not a new report's agreement.
-            onNamed={(key) => {
-              if (asked === null) void setPlace({ report: key });
+            onSigned={(key) => {
+              const navigation = hearsHistory() ? historyOf() : undefined;
+              const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
+              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) keepStartedFrom(behind.key);
+              void setPlace({ report: key, step: null, byline: null });
             }}
             onAnother={another}
             correcting={correct}
-            onUpload={() => {
-              // The DOI's moment has played: coming back to it finds it settled.
-              setFresh(null);
-              go({ step: "upload" });
-            }}
-            // With its PDF the report moves on by itself, to its reading and then its details, so the upload's step
-            // in the history is taken back: Back from the details then leaves the report, and never lands on a
-            // step that shows the same screen again.
-            onAttached={() => at && up("step")}
-            onStep={ownStep}
+            onStep={toStep}
+            onMoved={stepOn}
+            form={form}
+            beside={beside}
+            trouble={trouble}
             onCorrect={() => {
               setFresh(null);
               go({ correct: true });
             }}
             onCorrected={() => up("correct")}
           />
-          <ReportCover basics={basics} report={report} />
+          <ReportCover basics={basics} report={report} slot={setBeside} />
+          {/* The report's bill stays under its cover from signing until it is live. */}
+          {report && terms && beside ? <KeptBill report={report} terms={terms} humanReview={basics.humanReview} beside={beside} /> : null}
         </div>
       )}
     </LibraryPageShell>
   );
 }
 
-/** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+/**
+ * Reports ready in another of the person's workspaces, said where they are looking: each workspace's Publish lists
+ * only its own. One workspace at a time, the first that holds some; the next shows once these are activated.
+ */
+function WaitingElsewhere({ waiting, className }: { waiting: { name: string; slug: string | null; ready: number } | null; className?: string }) {
   const t = useTranslations("publishReports.flow");
-  const goTo = useMutation(api.reports.flow.goTo);
+  if (!waiting) return null;
+  const { name, slug, ready } = waiting;
+  return (
+    <div className={className}>
+      <p role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+        <span className="flex min-w-0 items-start gap-2.5">
+          <PublishIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+          {slug ? t("waitingIn", { count: ready, name }) : t("waitingOwn", { count: ready })}
+        </span>
+        <Button size="sm" variant="outline" asChild>
+          {/* A plain address: the other workspace's own reports, the ready ones. */}
+          <a href={`${slug ? `/o/${slug}` : ""}/publish?view=reports&show=ready`}>
+            {t("waitingOpen", { count: ready })} <ArrowUpRight />
+          </a>
+        </Button>
+      </p>
+    </div>
+  );
+}
+
+/** The one report's screen, chosen from where the report stands. */
+function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected, trouble }: { /** Where the details form lets the page save an edit it still holds. */ form: RefObject<{ flush: () => void } | null>; /** The place under the cover, on a wide page. */ beside: HTMLDivElement | null; /** What went wrong on the screen shown, said at its top. */ trouble: ReturnType<typeof useProblem>; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+  const t = useTranslations("publishReports.flow");
+  const locale = useLocale();
+  const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
   const activate = useAction(api.reports.activation.activate);
-  const addCard = useAction(api.reports.activation.addCard);
-  const quote = useAction(api.reports.activation.quote);
+  const quoteCode = useAction(api.reports.activation.quoteCode);
+  const cancelPayment = useAction(api.reports.activation.cancelPayment);
+  // Said at once: the bill follows the press, before the server has kept the choice.
+  const choosePayment = useMutation(api.reports.flow.choosePayment).withOptimisticUpdate((store, { key, payWith, voucher }) => {
+    for (const { args, value } of store.getAllQueries(api.reports.activation.terms)) {
+      if (value && args.key === key) store.setQuery(api.reports.activation.terms, args, { ...value, ...(payWith && { payWith }), ...(voucher !== undefined && { voucher }) });
+    }
+  });
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
@@ -383,11 +654,6 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
   // A change of screen made from the foot of a long form opens the next screen at its top, at once, as a step to
   // another page does. Left to itself the page slid up over a quarter of a second while the tall form closed.
   const toTop = () => window.scrollTo({ top: 0 });
-  const back = (step: BackStep) => {
-    setFresh(null);
-    onStep();
-    if (report) void goTo({ ...here, key: report.key, step }).catch(said(t("stepFailed")));
-  };
   // A run that has gone on too long is given up on here, so its author can run the checks again.
   const runStuck = usePassed(report?.run ? report.run.at + STUCK_MS : undefined);
   const running = !!report?.run && !runStuck;
@@ -403,20 +669,29 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
       shown.current = true;
       return;
     }
+    // A screen that changed without a press here, as when the report went live from another tab, opens at its top
+    // too: left where the page was scrolled, its heading sat under the page's bar.
+    // The bars fixed at the top of the page (the notice, the phone's header, the page's own) cover about this much.
+    if (window.scrollY > 0 && node.getBoundingClientRect().top < 160) window.scrollTo({ top: 0 });
     const heading = node.querySelector("h2");
     // Only focus the old screen lost, which has fallen to the page: someone typing elsewhere, in the assistant say, keeps theirs.
     if (!heading || (document.activeElement && document.activeElement !== document.body)) return;
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
   }, []);
-  const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
+  const screen = !report ? (preparing ? "prepare" : "agreement") : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
-          {!report ? (
+          <Problem className="pb-4">{trouble.problem}</Problem>
+          {!report && preparing ? (
+            <Overview series={basics.series.name} reviewed={basics.humanReview} prices={basics.prices} balance={starts ? starts.balance : 0} onStart={onPrepared} />
+          ) : !report ? (
             <AgreementStep
+              onBack={onUnprepare}
+              beside={beside}
               basics={basics}
               shared={shared}
               starts={starts}
@@ -433,24 +708,33 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
           ) : busy ? (
             <Checks rows={basics.checks.map((check) => ({ id: check.id, name: check.name, result: report.run?.results.find((result) => result.checkId === check.id) }))} report={null} humanReview={basics.humanReview} />
           ) : report.step === "doi" ? (
-            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
+            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={() => onMoved("upload")} />
           ) : report.step === "upload" ? (
-            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} />
+            <UploadStep report={report} workspaceId={workspaceId!} onAttached={() => onMoved("details")} onBack={() => onStep("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => onStep("details") : undefined} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
-              <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
+              <PdfNotice trouble={report.pdf.trouble} lineAdded={report.pdf.bylineBy === "added" && !report.pdf.lacksByline} onUpload={() => onStep("upload")} />
+              {report.pdf.kept ? <KeptNotice onReadAgain={() => readAgain({ ...here, key: report.key })} /> : null}
               <DetailsStep
+                onBack={() => onStep("upload")}
+                ref={form}
+                onReturn={report.reopened ? () => onStep("checks") : undefined}
+                writing={report.pdf?.trouble === "textless" ? undefined : { key: report.key, workspaceId: workspaceId! }}
+                registrars={report.registration}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
                 initial={report.metadata}
                 onRun={async (metadata: Metadata) => {
                   toTop();
+                  trouble.say(null);
                   setStarting(true);
                   try {
                     await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
+                    onMoved("checks");
                   } catch (error) {
-                    said(t("checksFailed"))(error);
+                    // The form comes back at its top, which is where this is said.
+                    trouble.failed(t("checksFailed"))(error);
                   } finally {
                     setStarting(false);
                   }
@@ -461,6 +745,8 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
+              writing={report.pdf?.trouble === "textless" ? undefined : { key: report.key, workspaceId: workspaceId! }}
+              registrars={report.registration}
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}
@@ -477,6 +763,7 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
                 toTop();
                 setAttempt({ metadata, since: since! });
                 setTyping(false);
+                trouble.say(null);
                 setStarting(true);
                 try {
                   const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
@@ -486,7 +773,7 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
                   if (stands === "live") toast.success(t("changesLive"));
                   else if (stands === "review") toast.success(t("changesWithReviewer"));
                 } catch (error) {
-                  said(t("checksFailed"))(error);
+                  trouble.failed(t("checksFailed"))(error);
                 } finally {
                   setStarting(false);
                 }
@@ -512,21 +799,21 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
+            <LiveReport report={report} series={basics.series} paid={terms?.paid ?? null} fresh={fresh?.key === report.key && fresh.step === "live"} onCorrect={onCorrect} />
           ) : (
             <Checks
+              beside={beside}
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
               report={report}
               humanReview={basics.humanReview}
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
               terms={terms}
-              onActivate={(pay, code, expect) => {
-                onNamed(report.key);
+              onActivate={(payWith, code, price, expect, otherCard) => {
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key, pay, ...(code && { code }), ...(expect !== undefined && { expect }) }).then(
+                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect, locale, card: terms?.card?.last4 ?? null, ...(otherCard && { otherCard }) }).then(
                   (done) => {
-                    // The bank asks to confirm the charge on Stripe's page, which comes back here.
+                    // The payment is made on Stripe's page, or confirmed at the bank: both come back here.
                     if ("url" in done) {
                       setFresh(null);
                       window.location.assign(done.url);
@@ -538,10 +825,11 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
                   },
                 );
               }}
-              onAddCard={() => addCard({ ...here, key: report.key }).then((url) => window.location.assign(url))}
-              onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
-              onFix={() => back("upload")}
-              onDetails={() => back("details")}
+              onChoose={(choice) => void choosePayment({ ...here, key: report.key, ...choice }).catch(said(t("saveFailed")))}
+              onQuote={(code, amount) => quoteCode({ ...here, code, amount }).then(({ off }) => ({ code: code.trim(), off }))}
+              onCancelPayment={() => cancelPayment({ ...here, key: report.key }).then(() => undefined)}
+              onFix={() => onStep("upload")}
+              onDetails={() => onStep("details")}
               onRequestReview={(comment) => requestReview({ ...here, key: report.key, comment }).then(() => undefined)}
               onAnother={basics.open ? onAnother : undefined}
             />
@@ -564,31 +852,57 @@ function usePassed(at: number | undefined) {
   return at !== undefined && Date.now() >= at;
 }
 
-/** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
+/**
+ * The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the
+ * report is live, as the server allows (convex/reports/flow.ts `goTo`), and one taken back from its checks with
+ * nothing changed can return to them. A step that can't be opened is locked and faded, and says why.
+ */
+function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }: { report: Report | null; /** The page before the agreement is open. */ preparing: boolean; /** Back to it from the agreement. */ onPrepare: () => void; humanReview: boolean; /** Its payment is going through. */ paying: boolean; /** To a step already done, on to the details already read, or back to the checks it left. */ onStep: (step: BackStep | "checks") => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
-  const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
-  const place = running ? 4 : placeOf(report);
+  const place = running ? CHECKS_AT : placeOf(report, preparing);
   const stage = report?.step === "done" ? stageOf(report, humanReview) : null;
   const failed = stage === "failed" || stage === "declined";
   const waiting = stage === "review";
-  const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
+  // Why the steps already done stay shut, said on each of them.
+  const shut = !report
+    ? null
+    : !report.mine
+      ? t("steps.notYours")
+      : running
+        ? t("steps.running")
+        : paying
+          ? t("steps.paying")
+          : stage === "live"
+            ? t("steps.liveNow", { action: t("correct") })
+            : stage === "declined" && report.activatedAt !== undefined
+              ? t("steps.closed")
+              : null;
+  const canGoBack = !!report && !shut;
+  // Not from the details: the form keeps an edit a moment before saving it, and its own button returns once nothing is typed.
+  const returns = !!report && !shut && report.reopened && report.step !== "done" && report.step !== "details";
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
-      <ol className="grid grid-cols-6 gap-1 max-sm:flex max-sm:justify-between">
+      <ol className="grid grid-cols-7 gap-1 max-sm:flex max-sm:justify-between">
         {STEPS.map((s, i) => {
-          const done = i < place || (i === place && place === 5);
-          const current = i === place && place !== 5;
-          const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
-          // The PDF and the details once done, and the DOI until there is a PDF (it shows beside the trail after, and
-          // going back to it would ask for the PDF again); the agreement is signed for good. Back at the upload, the
-          // details already read are still a step away.
-          const clickable = canGoBack && i > 0 && i < 4 && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata);
+          const done = i < place || (i === place && place === LIVE_AT);
+          const current = i === place && place !== LIVE_AT;
+          // Once signed, Prepare and the agreement are done for good: they can't be opened again.
+          const sealed = done && (s.id === "agreement" || s.id === "prepare") && !!report;
+          // A step done that can't be opened, and why: signed for good, or one that could be gone back to (the DOI, the
+          // PDF, the details) while something shuts it. Every one of them looks the same, locked and faded, with its
+          // reason on it: a lock that only a hover told apart from an open step read as a broken link.
+          const blocked = sealed ? t("steps.sealed") : shut && done && i > 1 && i < CHECKS_AT ? shut : null;
+          const Icon = blocked ? Lock : done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
+          // Every step done before the checks can be gone back to, as each step's Back button goes: the DOI, the PDF and
+          // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
+          // Before a report, Prepare is a step back from the agreement.
+          const back = !report && s.id === "prepare" && !preparing;
+          const clickable = back || (returns && i === CHECKS_AT) || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && report.pdf?.pages !== undefined && !!report.metadata)));
           const body = (
             <>
-              <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
+              <Icon className={cn("size-4 shrink-0", blocked ? "text-muted-foreground" : done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
               {/* On a phone only the current step keeps its name; the others are their icons. */}
               <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{t(`steps.${s.id}`)}</span>
             </>
@@ -596,9 +910,15 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
           return (
             <li key={s.id} className={cn("min-w-0", current && "max-sm:flex-1")}>
               {clickable ? (
-                <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                <button type="button" onClick={() => (back ? onPrepare() : onStep(s.id as BackStep | "checks"))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
+              ) : blocked ? (
+                <TooltipHint label={blocked}>
+                  <div tabIndex={0} className="flex min-w-0 cursor-default items-center gap-1.5 rounded-md py-1 opacity-50">
+                    {body}
+                  </div>
+                </TooltipHint>
               ) : (
                 <div aria-current={current ? "step" : undefined} className="flex min-w-0 items-center gap-1.5 py-1">
                   {body}
@@ -609,17 +929,20 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
         })}
       </ol>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-inset">
-        <motion.div className={cn("h-full rounded-full", failed ? "bg-destructive" : "bg-primary")} initial={false} animate={{ width: `${((place + (place === 5 ? 1 : 0.5)) / STEPS.length) * 100}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
+        <motion.div className={cn("h-full rounded-full", failed ? "bg-destructive" : "bg-primary")} initial={false} animate={{ width: `${((place + (place === LIVE_AT ? 1 : 0.5)) / STEPS.length) * 100}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
       </div>
     </div>
   );
 }
 
-function StepHead({ title, aside, children }: { title: string; aside?: ReactNode; children?: ReactNode }) {
+function StepHead({ title, aside, help, children }: { title: string; aside?: ReactNode; /** The "?" beside the title, for a step whose words people may not know. */ help?: HelpKey; children?: ReactNode }) {
   return (
     <div className="mb-5 space-y-1">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <h2 className="flex items-center gap-1 text-lg font-semibold tracking-tight">
+          {title}
+          {help ? <FieldHelp field={help} /> : null}
+        </h2>
         {aside}
       </div>
       {children ? <p className="max-w-xl text-sm text-muted-foreground">{children}</p> : null}
@@ -627,11 +950,36 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }: { basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
+/**
+ * The agreement's confirmation as last ticked in this tab, for the agreement as it then read. Its own key: a tick
+ * saved under the old one agreed for the signer alone, and must never count for their co-authors.
+ */
+const TICKS = "publish:agreement-tick";
+type Ticks = { version: number; agreed: boolean };
+function keptTicks(version: number): Ticks | null {
+  try {
+    const kept = JSON.parse(window.sessionStorage.getItem(TICKS) ?? "null") as Ticks | null;
+    return kept && kept.version === version && typeof kept.agreed === "boolean" ? { version, agreed: kept.agreed } : null;
+  } catch {
+    return null;
+  }
+}
+function keepTicks(ticks: Ticks | null) {
+  try {
+    if (ticks) window.sessionStorage.setItem(TICKS, JSON.stringify(ticks));
+    else window.sessionStorage.removeItem(TICKS);
+  } catch {
+    // Without the tab's storage the ticks are made again after signing in.
+  }
+}
+
+function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, onBack, beside }: { /** The place under the cover, on a wide page: the bill goes there. */ beside: HTMLDivElement | null; /** Back to Prepare. */ onBack?: () => void; basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const t = useTranslations("publishReports.flow");
+  const { problem, say, failed } = useProblem();
   const sign = useMutation(api.reports.flow.sign);
+  const locale = useLocale();
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
   const [today] = useState(() => new Date());
   // The name they are known by, until they type another.
@@ -639,12 +987,37 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   const name = typed ?? user?.fullName ?? "";
   const [busy, start] = useTransition();
   const { agreement } = basics;
-  // Each tick is for the agreement as it read when it was made. One changed since, while the page was open, is
-  // read and ticked again before it can be signed.
-  const [ticks, setTicks] = useState({ version: agreement.version, all: false, agreed: false });
-  const changed = ticks.version !== agreement.version && (ticks.all || ticks.agreed);
-  const { all, agreed } = ticks.version === agreement.version ? ticks : { all: false, agreed: false };
-  const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
+  // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
+  const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
+  // A promotion code, quoted here and kept with the report when it is signed, for what a card pays to activate it.
+  const [voucher, setVoucher] = useState<Quote | null>(null);
+  const [typedCode, setTypedCode] = useState("");
+  const quoteCode = useAction(api.reports.activation.quoteCode);
+  // How the report is to be paid: from the balance while it holds something, unless the author picks the card. Kept
+  // with the report when it is signed, and open to change until it is activated.
+  const [picked, setPicked] = useState<PayWith | null>(null);
+  const payWith: PayWith = starts?.balance === 0 ? "card" : (picked ?? "balance");
+  const choosing = choosesLicence(agreement.text);
+  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
+  // An own licence still being typed reads in the agreement as far as it goes.
+  const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
+  // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
+  const priceNow = priceOf(named, basics.prices);
+  const bought = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: 0 }).bought : 0;
+  // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
+  // aren't known until the PDF is read, so a tick only some signers needed let reports with several go unconfirmed.
+  // It is for the agreement as it read when it was made. One changed since, while the page was open, is read and
+  // ticked again before it can be signed.
+  // Kept with the tab until the report is signed: someone who ticks it signed out, then signs up, finds it as they
+  // left it and not cleared without a word. The step is drawn only in the browser, once the page has its data.
+  const [ticks, setTicks] = useState(() => keptTicks(agreement.version) ?? { version: agreement.version, agreed: false });
+  const changed = ticks.version !== agreement.version && ticks.agreed;
+  const agreed = ticks.version === agreement.version && ticks.agreed;
+  const tick = (now: boolean) => {
+    const next = { version: agreement.version, agreed: now };
+    setTicks(next);
+    keepTicks(next);
+  };
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
   // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
@@ -653,11 +1026,42 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
   return (
     <div>
-      <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
+      <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
+        {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
+        {locale.startsWith("en") ? null : ` ${t("agreementInEnglish")}`}
       </StepHead>
+      {/* Three things in turn, each under its own name: the licence, how it is paid, and the agreement to sign. What
+          the first two come to is a bill beside them, under the cover, so the steps themselves stay short. */}
+      {choosing ? (
+        <section className="mb-7">
+          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} />
+        </section>
+      ) : null}
+      {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
+      {starts && workspaceId ? (
+        <section className="mb-7" inert={busy || !!signed || undefined}>
+          <h3 className={SECTION}>{t("payment.title")}</h3>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <PayWithSwitch balance={starts} payWith={payWith} onPayWith={setPicked} />
+            {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
+                is kept, and is back when a card pays again. */}
+            <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
+              {bought > 0 ? (
+                <div className="px-3 py-1">
+                  <PromoCode applied={voucher} onApply={setVoucher} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off }))} typed={typedCode} onTyped={setTypedCode} />
+                </div>
+              ) : null}
+            </AutoHeight>
+          </div>
+          {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />, beside) : null}
+        </section>
+      ) : null}
+      <h3 className={SECTION}>{t("payment.sign")}</h3>
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <label className="space-y-1.5">
@@ -665,32 +1069,37 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
           <Input value={name} maxLength={SIGNER_NAME_MAX} onChange={(e) => setTyped(e.target.value)} autoComplete="name" />
         </label>
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={all} onCheckedChange={(v) => tick({ all: v === true })} className="mt-0.5" />
-          <span>{t("signForAll")}</span>
+          <Checkbox checked={agreed} onCheckedChange={(v) => tick(v === true)} className="mt-0.5" />
+          <span className="text-pretty">{t("agree")}</span>
         </label>
-        <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
-          <span>{t("agree")}</span>
-        </label>
-        {starts?.untouched && starts.untouched !== signed ? (
-          // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
-          <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
-            <span className="min-w-0 flex-1 basis-56">
-              {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
-            </span>
-            <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
-              {t("continueWith")} <ArrowUpRight />
-            </Button>
-          </p>
-        ) : null}
-        {changed ? (
-          <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
-            {t("agreementChanged")}
-          </p>
-        ) : null}
       </div>
+      {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
+      {starts?.untouched && starts.untouched !== signed ? (
+        // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
+        <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+          <span className="min-w-0 flex-1 basis-56">
+            {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
+            {t("continueWith")} <ArrowUpRight />
+          </Button>
+        </p>
+      ) : null}
+      {changed ? (
+        <p role="status" className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+          {t("agreementChanged")}
+        </p>
+      ) : null}
+      <Problem className="pt-4">{problem}</Problem>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        {onBack ? (
+          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
+            <ArrowLeft /> {t("back")}
+          </Button>
+        ) : null}
+        {/* Why Sign is shut while an own licence lacks its name or address, said beside it. */}
+        {!licence && !blocked ? <p className="text-sm text-muted-foreground">{t("licence.ownNeeded")}</p> : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -702,25 +1111,26 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
           </>
         ) : null}
         {starts ? (
-          <Button
-            className="relative"
-            disabled={!agreed || !name.trim() || busy || !!signed || !!blocked || !workspaceId}
+          <NextButton
+            busy={busy || !!signed}
+            disabled={!agreed || !name.trim() || !licence || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
+                say(null);
                 try {
-                  onSigned(await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: all, version: agreement.version }));
+                  // The licence is the report's from here on; what pays and the code can still change until it is activated.
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, payWith, ...(voucher && { voucher }) });
+                  // Signed, the tick has done its work: the next report's agreement starts unticked.
+                  keepTicks(null);
+                  onSigned(key);
                 } catch (error) {
-                  said(t("signFailed"))(error);
+                  failed(t("signFailed"))(error);
                 }
               })
             }
           >
-            <Working busy={busy || !!signed}>
-              <span className="flex items-center gap-2">
-                <PenLine /> {t("sign")}
-              </span>
-            </Working>
-          </Button>
+            {t("sign")}
+          </NextButton>
         ) : (
           <Button onClick={() => openSignIn()}>
             <PenLine /> {t("signIn")}
@@ -736,6 +1146,9 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
  * light across it. Plays only right after signing; opened any other way it is already settled.
  */
 function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; onNext: () => void }) {
+  // The choice made here, or the one a PDF already attached was uploaded with.
+  const [chosen, setBy] = useBylineBy();
+  const by = chosen ?? report.pdf?.bylineBy ?? null;
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const play = fresh && !reduce;
@@ -746,6 +1159,8 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
   const LETTERS_AT = 0.55;
   const LETTER = 0.03;
   return (
+    <div>
+    {/* The DOI itself, centred and held to a readable width; what to do with it runs the page's full width below. */}
     <div className="flex flex-col items-center pb-2 pt-3 text-center">
       <div className="relative size-20">
         {play ? <motion.span aria-hidden className="absolute inset-0 rounded-[1.75rem] border-2 border-primary" initial={{ opacity: 0.6, scale: 1 }} animate={{ opacity: 0, scale: 1.6 }} transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }} /> : null}
@@ -758,8 +1173,19 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           <Hash className="size-9" />
         </motion.span>
       </div>
-      <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
+      <motion.h2
+        // Just reserved, the signing screen it replaced took the focus with it: the heading takes it, as each step's does,
+        // so a keyboard carries on from here and a screen reader says the DOI is reserved.
+        ref={(heading) => {
+          if (!heading || !fresh || (document.activeElement && document.activeElement !== document.body)) return;
+          heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+        }}
+        className="mt-5 flex items-center gap-1 text-2xl font-semibold tracking-tight"
+        {...rise(0.3)}
+      >
         {t("doiReserved")}
+        <FieldHelp field="doi" />
       </motion.h2>
       <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.4)}>
         {t("doiReservedBody")}
@@ -792,20 +1218,174 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
           </StatusChip>
         </div>
       </motion.div>
-      <motion.div className="mt-6 flex flex-wrap justify-center gap-2" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
-        <Button variant="outline" onClick={() => copy(`https://doi.org/${report.doi}`, t("doiCopied"))}>
-          <Copy /> {t("copyDoi")}
-        </Button>
-        <Button onClick={onNext}>
-          <FileUp /> {t("uploadPdf")}
-        </Button>
+    </div>
+      {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
+          out as the upload's page is, which comes next. */}
+      <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
+        <StepHead title={t("bylineFirst")} help="byline">{t("bylineFirstBody")}</StepHead>
+        <BylineChoice byline={report.byline} by={by} onPick={(picked) => void setBy(picked)} />
+        <StepNav
+          hint={by ? undefined : t("bylineBy.choose")}
+          next={
+            <NextButton disabled={!by} onClick={onNext}>
+              {t("nextUpload")}
+            </NextButton>
+          }
+        />
       </motion.div>
     </div>
   );
 }
 
+/** The line a report's PDF carries on its cover, to copy. Its DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach. */
+function BylineBox({ byline, className }: { byline: string; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  const tToast = useTranslations("toast");
+  return (
+    <div className={cn("flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3", className)}>
+      <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{byline}</span>
+      <TooltipHint label={t("copyByline")}>
+        <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => void copyText(byline, { copied: t("bylineCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
+          <Copy />
+        </Button>
+      </TooltipHint>
+    </div>
+  );
+}
+
+/** Back and on, at the foot of a step: back to the step before, and on to the next one where it is open. */
+// Held in the page's address from the DOI's page to the upload, where it is saved with the PDF.
+const useBylineBy = () => useQueryState("byline", PLACE.byline);
+
+/**
+ * The line, and the choice of who adds it. Neither is chosen for the author: the DOI's page and the upload's both
+ * wait for one, so nobody uploads a PDF before knowing the line has to be in it.
+ */
+function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string; by: BylineBy | null; onPick: (by: BylineBy) => void; disabled?: boolean }) {
+  const t = useTranslations("publishReports.flow.bylineBy");
+  const id = useId();
+  return (
+    <div className="mb-5">
+      <BylineBox byline={byline} />
+      <RadioGroup aria-label={t("label")} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
+        {([["self", PenLine], ["added", FileCheck2]] as const).map(([value, Icon]) => (
+          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
+            <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                {t(`${value}.title`)}
+                <Icon className="ms-auto size-4 shrink-0 text-muted-foreground" />
+              </span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">{t(`${value}.body`)}</span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+    </div>
+  );
+}
+
+function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode; /** Why the way on is shut, said beside it. */ hint?: string }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    // A Next too wide to sit beside Back (a phone at large text) takes a line of its own.
+    <div className="mt-6 flex flex-wrap items-center gap-3">
+      {onBack ? (
+        <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
+          <ArrowLeft /> {t("back")}
+        </Button>
+      ) : null}
+      {hint ? <p className="ms-auto text-sm text-muted-foreground">{hint}</p> : null}
+      <div className={cn("min-w-0 max-w-full", !hint && "ms-auto")}>{next}</div>
+    </div>
+  );
+}
+
+/** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
+function Overview({ series, reviewed, prices, balance, onStart }: { series: string; /** What a report costs under each kind of licence, in US dollars, said here so it is no surprise at the last step. */ prices: Prices; /** What the workspace's publication balance holds, which pays for the last step before a card does; null for no limit, 0 signed out. */ balance: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
+  const t = useTranslations("publishReports.flow.overview");
+  const flow = useTranslations("publishReports.flow");
+  const money = useMoney();
+  /** The balance has something to pay the last step with. */
+  const spendable = balance !== 0;
+  const items = [
+    { id: "agreement", icon: PenLine },
+    { id: "doi", icon: Hash },
+    { id: "pdf", icon: FileText },
+    { id: "details", icon: ListChecks },
+    { id: "checks", icon: ShieldCheck },
+    { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
+  ] as const;
+  const activating = t(spendable ? "activate.bodyPrices" : "activate.bodyCard", { price: money(prices.standard), priceOfThree: money(prices.other) });
+  return (
+    <div>
+      <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
+      <ol className="relative space-y-1">
+        {/* One line through the icons: the steps as one road. */}
+        <span aria-hidden className="absolute inset-y-5 start-[1.1875rem] w-px bg-border" />
+        {items.map(({ id, icon: Icon }) => (
+          <li key={id} className="relative flex items-start gap-4 py-2">
+            <span className="relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-background text-primary">
+              <Icon className="size-4" />
+            </span>
+            <span className="min-w-0 pt-1">
+              <span className="block text-sm font-medium">{t(`${id}.title`)}</span>
+              <span className="block text-sm text-muted-foreground">{id === "activate" ? activating : t(`${id}.body`)}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 flex justify-end">
+        <NextButton onClick={onStart}>{t("start")}</NextButton>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Said over details kept from the PDF this one replaced: they may be the wrong file's, and the author can have them
+ * read from this PDF instead, which replaces them.
+ */
+function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
+  const t = useTranslations("publishReports.flow");
+  const [reading, read] = useTransition();
+  // Asked first: the details shown go, with whatever was typed into them.
+  const [asking, setAsking] = useState(false);
+  const { problem, say, failed } = useProblem();
+  return (
+    <div className="mb-5">
+    <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
+      <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
+        <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0">{t("keptDetails")}</span>
+      </p>
+      <Button size="sm" variant="outline" className="relative ms-auto" disabled={reading} onClick={() => setAsking(true)}>
+        <Working busy={reading}>
+          <span className="flex items-center gap-2">
+            <RotateCcw /> {t("readAgain")}
+          </span>
+        </Working>
+      </Button>
+      <AlertDialog open={asking} onOpenChange={setAsking}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("readAgainTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("readAgainBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("readAgainKeep")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => (say(null), read(() => onReadAgain().then(() => {}, failed(t("readAgainFailed")))))}>{t("readAgain")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+    <Problem className="ps-1 pt-2">{problem}</Problem>
+    </div>
+  );
+}
+
 /** What a PDF's reading fell short of, said where the author fills in what it left. */
-function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; onUpload: () => void }) {
+function PdfNotice({ trouble, lineAdded, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; /** Openscholar added the byline's page, so a scan has the line all the same. */ lineAdded: boolean; onUpload: () => void }) {
   const t = useTranslations("publishReports.flow");
   if (trouble !== "textless" && trouble !== "unread") return null;
   return (
@@ -813,7 +1393,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
       <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
         <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
         <span className="min-w-0">
-          {t(trouble === "textless" ? "textless" : "unreadPdf")}
+          {t(trouble === "textless" ? (lineAdded ? "textlessAdded" : "textless") : "unreadPdf")}
         </span>
       </p>
       {trouble === "textless" ? (
@@ -825,7 +1405,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
   );
 }
 
-function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
+function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void; /** Back to the DOI. */ onBack: () => void; /** On to the details already read from this PDF, when there are some. */ onNext?: () => void }) {
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
   /**
@@ -839,7 +1419,19 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   const [over, setOver] = useState(false);
   // The file on its way up. Once it's the report's, the report itself says it is being read.
   const [sending, setSending] = useState<File | null>(null);
+  const addByline = useMutation(api.reports.flow.addByline);
+  // The choice made on the way here, or the one the PDF already attached was uploaded with.
+  const [chosen, setBy] = useBylineBy();
+  const by = chosen ?? report.pdf?.bylineBy ?? null;
   const here = { workspaceId, key: report.key };
+  // A PDF already here without the line gets its page as soon as its author asks for it, by the choice or the notice.
+  // What went wrong with the last file or choice, said under the drop area until the next one.
+  const { problem, say, failed } = useProblem();
+  const pick = (picked: BylineBy) => {
+    say(null);
+    void setBy(picked);
+    if (picked === "added" && report.pdf?.lacksByline && report.pdf.bylineBy !== "added") void addByline(here).catch(failed(t("bylineBy.addFailed")));
+  };
   const put = async (file: Blob, type: string) => {
     const response = await fetch(await startUpload(here), { method: "POST", headers: { "Content-Type": type }, body: file });
     if (!response.ok) throw new Error(t("uploadLost"));
@@ -853,25 +1445,29 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   const reading = unread && !stuck;
   const busy = !!sending || reading;
   const send = async (picked: File | undefined) => {
-    if (!picked || busy) return;
-    if (!/\.pdf$/i.test(picked.name)) return void toast.error(t("choosePdf"));
-    if (picked.size === 0) return void toast.error(t("emptyFile"));
-    if (picked.size > MAX_PDF_BYTES) return void toast.error(t("tooBig", { max: MAX_PDF_MB }));
+    if (!picked || busy || !by) return;
+    say(null);
+    if (!/\.pdf$/i.test(picked.name)) return say(t("notPdf", { name: picked.name }));
+    if (picked.size === 0) return say(t("emptyFile"));
+    if (picked.size > MAX_PDF_BYTES) return say(t("tooBig", { max: MAX_PDF_MB }));
     setSending(picked);
+    // Whether the file got as far as Openscholar: a failure says which half went wrong.
+    let arrived = false;
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
       const [file, cover] = await Promise.all([
         put(picked, "application/pdf"),
-        drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
+        drawCover(picked).then(async (drawn) => (drawn ? { id: await put(drawn.picture, "image/jpeg"), shape: drawn.shape } : undefined)).catch(() => undefined),
       ]);
-      const refused = await attachPdf({ ...here, file, name: picked.name, ...(cover && { cover }) });
-      if (refused) return void toast.error(refused);
+      arrived = true;
+      const refused = await attachPdf({ ...here, file, name: picked.name, bylineBy: by, ...(cover && { cover: cover.id, coverShape: cover.shape }) });
+      if (refused) return say(refused);
       onAttached();
     } catch (error) {
       // A browser's own words for a request that never left ("Load failed") tell an author nothing: the file wasn't
       // kept, and the connection is what to look at.
-      if (error instanceof TypeError) toast.error(t("offline"));
-      else said(t("uploadFailed"))(error);
+      if (error instanceof TypeError) say(t("offline"));
+      else failed(t(arrived ? "uploadFailed" : "notSent"))(error);
     } finally {
       setSending(null);
       if (input.current) input.current.value = "";
@@ -879,17 +1475,8 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   };
   return (
     <div>
-      <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      {/* The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
-          button stays in reach. */}
-      <div className="mb-5 flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{report.byline}</span>
-        <TooltipHint label={t("copyByline")}>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(report.byline, t("bylineCopied"))}>
-            <Copy />
-          </Button>
-        </TooltipHint>
-      </div>
+      <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
+      <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -903,8 +1490,8 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
           setOver(false);
           void send(e.dataTransfer.files[0]);
         }}
-        disabled={busy}
-        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
+        disabled={busy || !by}
+        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", !by ? "border-border opacity-60" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
       >
         {sending ? (
           <>
@@ -921,17 +1508,37 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
         ) : (
           <>
             <FileUp className="size-6 text-primary" />
-            <span className="text-sm font-medium">{t("drop")}</span>
+            <span className="text-sm font-medium">{t(by ? "drop" : "bylineBy.chooseFirst")}</span>
             <span className="text-xs text-muted-foreground">{t("dropHint", { max: MAX_PDF_MB })}</span>
           </>
         )}
       </button>
       <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => void send(e.target.files?.[0])} />
+      <Problem className="ps-1 pt-3">{problem}</Problem>
       {report.pdf?.trouble === "unopened" && !busy ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
           <CircleX className="mt-0.5 size-4 shrink-0" />
           {t("unopenedPdf", { name: report.pdf.name })}
         </p>
+      ) : report.pdf?.lacksByline && !busy ? (
+        // Said here, where the PDF is replaced, not after the checks: the line is shown above, with its copy button,
+        // and so is the way out for an author who can't edit their PDF.
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 ps-1 text-sm text-destructive">
+          <p className="flex min-w-0 flex-1 basis-72 items-start gap-2">
+            <CircleX className="mt-0.5 size-4 shrink-0" />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{t(report.pdf.bylineBy === "added" ? "bylineBy.failed" : "lacksByline", { name: report.pdf.name })}</span>
+          </p>
+          {report.pdf.bylineBy === "added" ? null : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ms-auto text-foreground"
+              onClick={() => pick("added")}
+            >
+              <FileCheck2 /> {t("bylineBy.added.title")}
+            </Button>
+          )}
+        </div>
       ) : stuck ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-muted-foreground">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
@@ -943,6 +1550,14 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
           {t("replaces", { name: report.pdf.name })}
         </p>
       ) : null}
+      <StepNav
+        onBack={busy ? undefined : onBack}
+        next={
+          onNext && !busy ? (
+            <NextButton onClick={onNext}>{t("nextDetails")}</NextButton>
+          ) : null
+        }
+      />
     </div>
   );
 }
@@ -951,11 +1566,16 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
+/** What Already published said when it found nothing, before it searched Openscholar Reports too: said as it was. */
+const BEFORE_OWN_REPORTS = "Not in OpenAlex, Openscholar's index or our communities.";
+
 export function CheckRow({ name, result, advice = true, overruled = false }: { name: string; result?: CheckResult; /** Whether to say what the author can do about a failed check: only where they still can. */ advice?: boolean; /** A reviewer approved the report over this check's answer. */ overruled?: boolean }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   /** What a check says, in the page's language when it's one of the fixed things a check says. */
   const inWords = (words: string | undefined) => {
+    // A result saved before Openscholar Reports itself was searched (2026-11-12) says what was searched then.
+    if (words === BEFORE_OWN_REPORTS) return t("check.said.notPublishedElsewhere");
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };
@@ -1010,7 +1630,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                     <motion.div className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")} initial={{ width: "0%" }} animate={{ width: `${Math.max(sure, 2)}%` }} transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }} />
                     <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
                   </div>
-                  <span className="w-40 shrink-0 text-end text-xs tabular-nums">
+                  <span className="min-w-12 shrink-0 text-end text-xs tabular-nums">
                     <span className="font-medium text-foreground/80">{result.answer === "unclear" ? t("check.unclear") : t("check.sure", { percent: format.number(sure / 100, { style: "percent" }) })}</span>
                   </span>
                 </div>
@@ -1041,69 +1661,84 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: () => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ beside = null, rows, report, humanReview, terms, onActivate, onChoose, onQuote, onCancelPayment, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What the report costs and what pays for it; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, paid as chosen, with the code applied to a card's part, and the price and what is due as they were shown, in US dollars. */ onActivate?: (payWith: PayWith, code: string | undefined, price: number, expect: number, /** Paid this once on Stripe's page, with a card other than the saved one. */ otherCard?: boolean) => Promise<void>; /** Keeps with the report what pays, or the code applied (null takes it off). */ onChoose?: (choice: { payWith?: PayWith; voucher?: Quote | null }) => void; /** The share a code takes off `amount` dollars a card would buy. */ onQuote?: (code: string, amount: number) => Promise<Quote>; /** Gives up a payment still to be made. */ onCancelPayment?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
+  /** A report a reviewer declined before it ever went live: its author changes it and runs the checks again. */
+  const reopens = stage === "declined" && !!report && !report.withdrawn && report.activatedAt === undefined;
   const [activating, start] = useTransition();
-  // Only the workspace's admins activate (#1261). A free activation and a paid one both need a saved card; a paid one
-  // is confirmed in a dialog first, where a promotion code can lower it.
+  // Only the workspace's admins activate (#1261). The report costs its licence's price. What pays is the person's to
+  // choose until it is live: the workspace's publication balance, which pays what it can and leaves a card the rest, or
+  // a card alone. A code lowers what the card pays. Nothing due activates at once; a charge is confirmed in a dialog
+  // first, and with no saved card it is paid on Stripe's page.
   const organization = terms?.organization ?? null;
   const admin = terms?.admin ?? true;
-  const free = (terms?.free.left ?? 0) > 0;
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
-  const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
+  // A payment going through, started here or in another tab: the report can't change until it ends (flow.ts `goTo`).
+  const chargeOver = usePassed(terms?.paying?.until ?? undefined);
+  const charging = !!terms?.paying && !chargeOver;
+  /** In US dollars. */
+  const price = terms?.price ?? 0;
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
-  // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
-  if (paying && !admin) setPaying(false);
-  const [code, setCode] = useState<Quote | null>(null);
-  const [quoting, setQuoting] = useState(false);
-  // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
-  // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
-  // quote that couldn't be had leaves it closed, so a code still good is never dropped from the charge.
-  const openPay = () => {
-    const again = terms?.refused?.code;
-    if (!again || !onQuote) return setPaying(true);
-    setQuoting(true);
-    onQuote(again)
-      .then(
-        (quote) => {
-          setCode(quote);
-          setPaying(true);
-        },
-        (error: unknown) => {
-          if (!promoReason(error)) return said(t("activateFailed"))(error);
-          setCode(null);
-          setPaying(true);
-        },
-      )
-      .finally(() => setQuoting(false));
+  // Stripe's portal, where the workspace's cards are added, removed and made the default: the person's own, or the organisation's.
+  const openPortal = useAction(api.billing.actions.openPortal);
+  const workspaceId = useWorkspace();
+  // It comes back to this report, not to Plan and credits.
+  const appToast = useAppToast();
+  // The card is read again as the dialog opens: one changed in Stripe's portal a moment ago shows, and is the one charged.
+  const refreshMine = useAction(api.billing.accounts.refreshMine);
+  const askToPay = () => {
+    void refreshMine(organization && workspaceId ? { workspaceId } : {}).catch(() => {});
+    setPaying(true);
   };
-  const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
+  const manageBilling = () => void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${window.location.pathname}${window.location.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+  // What pays and the code are kept with the report, so the bill reads the same on every step and after a reload.
+  const payWith: PayWith = terms ? payWithOf(terms) : "card";
+  const code = terms?.voucher ?? null;
+  // What the report's price comes to: what the balance pays, what a card buys, and what the code takes off that.
+  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0 });
+  /** Where a code can be used: while a card pays something and no payment is waiting. It lowers what the card pays. */
+  const vouchers = !!terms && sum.bought > 0 && !pending && !!onQuote;
+  // What is typed in the code's field, kept here so paying sees it.
+  const [typed, setTyped] = useState("");
+  // A code typed and not applied: nothing is charged past it, or the price without the code would be.
+  const unapplied = vouchers && typed.trim() !== "";
+  // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
+  // It never stays open over a code still to be applied either.
+  if (paying && (!admin || unapplied)) setPaying(false);
+  // What went wrong with activating or paying, said above the payment bar.
+  const { problem, say, failed } = useProblem();
+  const subtotal = Math.round(sum.due * 100);
   const fromCredit = Math.min(credit, subtotal);
+  /** What a card is charged, in cents: nothing when the balance, a code or the account's credit covers it all. */
   const due = subtotal - fromCredit;
-  const activateNow = (pay: boolean, withCode?: string, expect?: number) =>
+  const activateNow = (otherCard = false) =>
     start(async () => {
+      say(null);
       try {
-        await onActivate?.(pay, withCode, expect);
+        // The code goes with it only where a card buys something for it to lower.
+        await onActivate?.(payWith, sum.bought > 0 ? code?.code : undefined, price, due / 100, otherCard);
       } catch (error) {
         const reason = promoReason(error);
-        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
-        else if (refusalOf(error)?.reason === "noFreeLeft") toast.error(t("activation.noFreeLeft"));
-        else if (refusalOf(error)?.reason === "paused") toast.error(t("activation.paused"));
-        else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
-        else said(t("activateFailed"))(error);
+        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
+        else if (refusalOf(error)?.reason === "changed") say(t("activation.changed"));
+        else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
+        else if (reason) say(t(`activation.promo.${reason}`, { code: code?.code ?? "" }));
+        else failed(t("activateFailed"))(error);
       }
     });
-  /** What Activate takes from the card, beside the word; null when it's free or credit covers it. */
-  const amount = free || price === null || price <= credit ? null : dollars(price - credit);
+  const [cancelling, cancel] = useTransition();
+  /** Why the report can't be paid for now, said on its button; null when it can. */
+  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : null;
+
   const head = !report ? (
-    <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
+    <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
     </StepHead>
   ) : stage === "ready" && !admin ? (
@@ -1115,16 +1750,20 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       {t(report.approved ? "readyApproved" : "readyPassed")}
     </StepHead>
   ) : stage === "review" ? (
-    <StepHead key="review" title={t("waiting")} aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
-      {t(rows.some((r) => r.result && !r.result.pass) ? "waitingFlagged" : "waitingPassed")}
+    <StepHead key="review" title={t("waiting")} help="checks" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip>}>
+      {t(rows.some((r) => r.result && !r.result.pass) ? "waitingFlagged" : "waitingPassed")} {t("reviewTakes")}
     </StepHead>
   ) : stage === "declined" ? (
     <StepHead key="declined" title={t(report.withdrawn ? "withdrawn" : "notPublished")} aside={<StatusChip tone="danger" icon={CircleX}>{t(report.withdrawn ? "withdrawn" : "declined")}</StatusChip>}>
       {t(report.withdrawn ? "withdrawnBody" : "declinedBody")}
+      {reopens ? ` ${t("declinedFix")}` : null}
     </StepHead>
   ) : (
-    <StepHead key="failed" title={t("notYet")} aside={<StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
+    // Asked of a reviewer, it reads as waiting on them, with how long that takes: "A check failed" alone left people
+    // unsure their request had gone anywhere.
+    <StepHead key="failed" title={t("notYet")} help="checks" aside={report.asked ? <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inReview")}</StatusChip> : <StatusChip tone="danger" icon={CircleX}>{t("aCheckFailed")}</StatusChip>}>
       {t(report.asked ? "failedAsked" : "failedFix")}
+      {report.asked ? ` ${t("reviewTakes")}` : null}
     </StepHead>
   );
   return (
@@ -1138,10 +1777,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       </AutoHeight>
       {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
-      {terms?.refund && stage !== "live" ? (
+      {terms?.kept && stage !== "live" ? (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <CreditCard className="size-4 shrink-0" />
-          {t(terms.refund.done ? "activation.refunded" : "activation.refunding", { amount: dollars(Math.round(terms.refund.amount * 100)) })}
+          <BadgeCheck className="size-4 shrink-0" />
+          {organization ? t("activation.keptOrg", { organization }) : t("activation.kept")}
         </p>
       ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
@@ -1155,32 +1794,59 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin && terms ? (
-                // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
-                // while the bank confirms a charge, the bar offers that instead.
-                <PaymentLine
-                  organization={organization}
-                  free={terms.free.left}
-                  card={card}
-                  credit={credit}
-                  price={price}
+              <Problem className="pb-3 ps-1">{problem}</Problem>
+              {stage === "ready" && admin && terms && !pending ? (
+                // How the report is paid, laid out as where its licence was chosen: what pays and a code under a
+                // heading, with the bill under the cover. Activate is with the step's other buttons, where Next is on
+                // every step before it. Only the licence, which set the price, is fixed.
+                <section className="mb-7" inert={activating || undefined}>
+                  <h3 className={SECTION}>{t("payment.title")}</h3>
+                  <div className="@container/pay flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <PayWithSwitch balance={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} card={card} />
+                    {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
+                        applied is kept, and is back when a card pays again. */}
+                    <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
+                      {vouchers ? (
+                        <div className="px-3 py-1">
+                          <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
+                        </div>
+                      ) : null}
+                    </AutoHeight>
+                  </div>
+                  {/* The bill: under the cover on a wide page, where it has been since the report was signed, and here on a narrow one. */}
+                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
+                  {terms.refused ? <p className="mt-2 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
+                </section>
+              ) : admin && pending && stage !== "live" ? (
+                // A payment still to be made, on Stripe's page or at the bank: the way back to it, and the way out of it.
+                // Wherever the report stands: declined meanwhile, the payment still holds it and the workspace's others.
+                <PendingPayment
                   pending={pending}
-                  refused={terms.refused !== null}
-                  onAddCard={onAddCard}
-                  action={
-                    terms.paused || (!free && price === null) ? (
-                      <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
-                        <span tabIndex={0}>
-                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                        </span>
-                      </TooltipHint>
-                    ) : (
-                      <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} onClick={free ? () => activateNow(false) : openPay} />
-                    )
+                  goesLive={stage === "ready"}
+                  cancelling={cancelling}
+                  onCancel={
+                    onCancelPayment
+                      ? () =>
+                          cancel(async () => {
+                            say(null);
+                            await onCancelPayment().catch(failed(t("activation.card.cancelFailed")));
+                          })
+                      : undefined
                   }
                 />
               ) : null}
+              {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again.
+                  With something to pay and no saved card, what it is doing is opening Stripe's page: nothing is activated yet. */}
+              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t(due > 0 && !card ? "activation.onStripe" : "activatingNow")}</p> : null}</AutoHeight>
               <div className="flex flex-wrap justify-end gap-2">
+                {/* Back to the details, as every other step has a way back to the one before it: wherever the server
+                    lets a checked report change (flow.ts `goTo`). */}
+                {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
+                  <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
+                    <ArrowLeft /> {t("back")}
+                  </Button>
+                ) : null}
                 {stage === "failed" ? (
                   <>
                     {report.asked ? null : (
@@ -1197,16 +1863,48 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   </>
                 ) : (
                   <>
-                    {onAnother ? (
-                      <Button variant={stage === "declined" ? "default" : stage === "ready" && admin ? "ghost" : "outline"} onClick={onAnother}>
+                    {/* Declined before it ever went live, it can be changed and sent round again: the reviewer's note is a reason to, not the end of it. */}
+                    {reopens ? (
+                      <>
+                        <Button variant="outline" onClick={onFix}>
+                          <RotateCcw /> {t("uploadNew")}
+                        </Button>
+                        <Button onClick={onDetails}>
+                          <PenLine /> {t("changeDetails")}
+                        </Button>
+                      </>
+                    ) : null}
+                    {/* Only where this report has come to its end, declined for good or taken down: there it is the way
+                        on. Beside Pay, or beside the buttons that change the report, it read as one more thing to do with
+                        this report. A new one starts from the list, as ever. */}
+                    {onAnother && stage === "declined" && !reopens ? (
+                      <Button onClick={onAnother}>
                         <Plus /> {t("publishAnother")}
                       </Button>
+                    ) : null}
+                    {stage === "ready" && admin && terms && !pending ? (
+                      // What pressing it does, in a "?" beside it: people asked what Activate would do before they
+                      // pressed. It opens above the two, where it leaves the button in sight.
+                      <FieldHelp field="activation" side="top" around="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                        {shut ? (
+                          // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
+                          <TooltipHint label={shut}>
+                            <span tabIndex={0}>
+                              <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                            </span>
+                          </TooltipHint>
+                        ) : (
+                          // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
+                          // something due, it pays, and says how much.
+                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? () => activateNow() : askToPay} />
+                        )}
+                      </FieldHelp>
                     ) : null}
                     {stage === "ready" && !admin ? (
                       <TooltipHint label={t("activation.onlyAdmin")}>
                         <span tabIndex={0}>
                           <Button disabled>
-                            <BadgeCheck /> {t("activate")}
+                            <BadgeCheck /> {t("activateFree")}
                           </Button>
                         </span>
                       </TooltipHint>
@@ -1214,7 +1912,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                       <TooltipHint label={t("needsApproval")}>
                         <span tabIndex={0}>
                           <Button disabled>
-                            <BadgeCheck /> {t("activate")}
+                            <BadgeCheck /> {t("activateFree")}
                           </Button>
                         </span>
                       </TooltipHint>
@@ -1227,27 +1925,37 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         </AnimatePresence>
       </AutoHeight>
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
-      {report && price !== null ? (
-        // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
+      {report && terms ? (
+        // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in
+        // between. With none saved, confirming goes on to Stripe's page, and the dialog says so.
         <UpgradeConfirmationDialog
           open={paying}
-          onOpenChange={(open) => {
-            setPaying(open);
-            if (!open) setCode(null);
-          }}
-          title={due === 0 ? t("activation.freeTitle", { key: report.key }) : t("activation.payTitle", { price: dollars(due), key: report.key })}
-          description={organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : undefined}
-          confirmLabel={due === 0 ? t("activate") : t("activation.payConfirm")}
+          onOpenChange={setPaying}
+          title={t("activation.payTitle", { price: dollars(due), key: report.key })}
+          // Who pays and where, in a few words: an organisation's card, or Stripe's page with no card saved.
+          description={!card ? t("activation.onStripe") : organization ? t("activation.orgCardCharged", { organization }) : undefined}
+          confirmLabel={t(card ? "activate" : "activation.toStripe")}
           totalLabel={t("activation.dueNow")}
           labels={{ from: t("activation.doiNow"), to: t("activation.after") }}
           isConfirming={false}
           onConfirm={() => {
             setPaying(false);
-            setCode(null);
-            activateNow(true, code?.code, due / 100);
+            activateNow();
           }}
           cardBrand={card?.brand}
           cardLast4={card?.last4}
+          toTone="success"
+          onManageBilling={manageBilling}
+          // This once on Stripe's page, which offers the saved cards and takes a new one: the saved card is left as it is.
+          onOtherCard={
+            // Not while the account's credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
+            card && fromCredit === 0
+              ? () => {
+                  setPaying(false);
+                  activateNow(true);
+                }
+              : undefined
+          }
           preview={{
             currency: "USD",
             immediateChargeCents: due,
@@ -1255,15 +1963,15 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
             targetPlan: t("activation.live"),
             targetPlanCreditsPerMonth: 0,
             lineItems:
-              code || fromCredit > 0
+              sum.fromBalance > 0 || sum.discount > 0 || fromCredit > 0
                 ? [
-                    { description: t("activation.activationLine"), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
-                    ...(code ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" }] : []),
-                    ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
+                    { description: licenceName(report.licence), amountCents: Math.round(price * 100), currency: "USD" },
+                    ...(sum.fromBalance > 0 ? [{ description: t("activation.balanceLine"), amountCents: -Math.round(sum.fromBalance * 100), currency: "USD" }] : []),
+                    ...(code && sum.discount > 0 ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(sum.discount * 100), currency: "USD" }] : []),
+                    ...(fromCredit > 0 ? [{ description: t("payment.credit"), amountCents: -fromCredit, currency: "USD" }] : []),
                   ]
                 : [],
           }}
-          extra={onQuote ? <PromoCode applied={code} onApply={setCode} onQuote={onQuote} /> : null}
         />
       ) : null}
     </div>
@@ -1273,18 +1981,19 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
 /** Activate, in the payment bar: taller than the buttons around it, its badge in a ring, and what it takes from the card in a segment of its own. */
 function ActivateButton({ label, amount, busy, disabled, onClick }: { label: string; amount: string | null; busy: boolean; disabled: boolean; onClick: () => void }) {
   return (
-    <Button size="lg" disabled={disabled || busy} onClick={onClick} className="relative h-11 shrink-0 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0">
+    // On a phone it never outgrows what holds it: its words wrap, and it grows taller.
+    <Button size="lg" disabled={disabled || busy} onClick={onClick} className="relative h-11 shrink-0 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0 max-sm:h-auto max-sm:min-h-11 max-sm:max-w-full max-sm:shrink max-sm:whitespace-normal">
       <Working busy={busy}>
-        <span className="flex h-11 items-center">
-          <span className="flex items-center gap-2.5 ps-2 pe-4">
-            <span className="flex size-7 items-center justify-center rounded-full bg-white/25">
+        <span className="flex h-11 items-center max-sm:h-auto max-sm:min-h-11">
+          <span className="flex items-center gap-2.5 ps-2 pe-4 max-sm:py-1.5 max-sm:text-start">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/25">
               <BadgeCheck className="size-4" />
             </span>
             {label}
           </span>
           {amount === null ? null : (
-            <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">
-              <bdi>{amount}</bdi>
+            <span className="flex h-full items-center self-stretch border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">
+              <bdi dir="ltr">{amount}</bdi>
             </span>
           )}
         </span>
@@ -1300,34 +2009,41 @@ function useDollars() {
 }
 
 /**
- * A promotion code for an activation that's paid for, in the charge's dialog: a link until it's wanted, then a field.
+ * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
-  const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState("");
+function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+  // A code already typed (it came back from Stripe's page in the address) opens the field with it.
+  const [open, setOpen] = useState(typed !== "");
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
+  const field = useRef<HTMLInputElement>(null);
+  const wrongId = useId();
   const t = useTranslations("publishReports.flow.activation.promo");
+  const close = useTranslations("common");
   const apply = () =>
     check(async () => {
       try {
+        if (!onQuote) return;
         onApply(await onQuote(typed));
         setWrong(null);
-        setTyped("");
+        onTyped("");
       } catch (error) {
         const reason = promoReason(error);
         setWrong(reason ? t(reason, { code: typed.trim() }) : getErrorMessage(error, t("failed")));
+        // Apply was disabled while the code was checked, which took the keyboard's place: it goes back to the field.
+        field.current?.focus();
       }
     });
-  const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
+  const off = applied ? Math.round(applied.off * 100) : 0;
   return (
     // Room around it for the buttons' focus rings, which its height animation would clip (WebKit has no clip margin).
     <AutoHeight className="-mx-3 -my-1">
-      <div className="px-3 py-1">
+      <div className="@container/code px-3 py-1">
         {applied ? (
-          <div className="flex items-center gap-2 text-sm">
-            <Tag className="size-4 text-muted-foreground" />
+          // Too narrow for one line (a phone at large text), what it takes off and the way to remove it go under the code.
+          <div className="flex min-h-[calc(2.25rem+2px)] items-center gap-2 text-sm @max-[11rem]/code:flex-wrap">
+            <Tag className="size-4 shrink-0 text-muted-foreground" />
             <span className="font-mono font-medium">{applied.code}</span>
             <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
             <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
@@ -1348,125 +2064,99 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
                 value={typed}
                 maxLength={100}
                 onChange={(e) => {
-                  setTyped(e.target.value);
+                  onTyped(e.target.value);
                   setWrong(null);
                 }}
                 placeholder={t("label")}
+                ref={field}
                 aria-label={t("label")}
                 aria-invalid={!!wrong}
+                aria-describedby={wrong ? wrongId : undefined}
                 className="font-mono placeholder:font-sans"
               />
-              <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+              {/* A code typed and not yet applied: Apply stands out as what to press next, in place of a line saying so. */}
+              <Button type="submit" variant={typed.trim() ? "default" : "outline"} className="shrink-0" disabled={!typed.trim() || checking}>
                 {t("apply")}
               </Button>
+              {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-muted-foreground"
+                aria-label={close("close")}
+                onClick={() => {
+                  onTyped("");
+                  setWrong(null);
+                  setOpen(false);
+                }}
+              >
+                <X />
+              </Button>
             </div>
-            {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
+            {wrong ? (
+              <p id={wrongId} role="alert" className="text-xs text-destructive">
+                {wrong}
+              </p>
+            ) : null}
           </form>
         ) : (
-          <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
-            <Tag /> {t("add")}
-          </Button>
+          // As tall as the field it opens into and the code it ends as, so neither moves what is under or beside it.
+          <div className="flex min-h-[calc(2.25rem+2px)] items-center">
+            <Button variant="ghost" size="sm" className="-ms-1.5 text-muted-foreground max-sm:h-auto max-sm:min-h-8 max-sm:max-w-full max-sm:whitespace-normal max-sm:text-start" onClick={() => setOpen(true)}>
+              <Tag /> {t("add")}
+            </Button>
+          </div>
         )}
       </div>
     </AutoHeight>
   );
 }
 
-/**
- * What activating is paid with, above the Activate button: the workspace's saved card, and whether this activation is
- * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
- * asked to confirm says so, with the way back to its page.
- */
 /** The return from Stripe's pages already brought into view: a page opens at its top, and on a phone the bar is below it. */
 let returnedTo: string | null = null;
 /**
- * Back from Stripe's page for a card, or the bank's, the bar the person left from is brought into view, once per return:
- * the page opens at its top, which on a phone leaves Activate out of sight.
+ * Back from Stripe's page, or the bank's, the bar the person left from is brought into view, once per return: the
+ * page opens at its top, which on a phone leaves the bar out of sight.
  */
 function inViewOnReturn(node: HTMLDivElement | null) {
   if (!node) return;
-  const params = new URLSearchParams(window.location.search);
-  const mark = params.get("session") ?? params.get("back");
+  const mark = new URLSearchParams(window.location.search).get("back");
   if (!mark || mark === returnedTo) return;
   returnedTo = mark;
   node.scrollIntoView({ block: "center" });
 }
 
-function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, action }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
-  const [saving, save] = useTransition();
+/**
+ * A payment for the report that is still to be made: on Stripe's page, where a workspace with no saved card pays, or
+ * at the bank, which asked to confirm it. The way back to that page, and the way out: giving the payment up opens the
+ * report's steps and its other ways of paying again. A report that can't go live any more, declined while its payment
+ * waited, has only the way out: paying it now would publish nothing.
+ */
+function PendingPayment({ pending, goesLive, cancelling, onCancel }: { pending: NonNullable<Terms["pending"]>; /** Whether making the payment still puts the report live. */ goesLive: boolean; cancelling: boolean; onCancel?: () => void }) {
   const t = useTranslations("publishReports.flow.activation.card");
-  const dollars = useDollars();
-  const costs = price === null ? null : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
-  // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
-  const saveCard = () =>
-    save(async () => {
-      try {
-        await onAddCard?.();
-      } catch (error) {
-        said(t("stripeFailed"))(error);
-      }
-    });
   return (
-    <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
-        <CreditCard className="size-4" />
-      </span>
-      {/* On a phone the words keep a readable width and the buttons go under them. */}
+    <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 p-3">
+      <CreditCard className="size-4 shrink-0 self-start text-muted-foreground max-sm:hidden sm:mt-0.5" />
       <div className="min-w-0 flex-1 basis-48">
-        {pending ? (
-          <p className="text-sm font-medium">{t("bankAsked")}</p>
-        ) : card ? (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-            <span className="capitalize">{card.brand}</span>
-            {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
-            <span className="tabular-nums">&bull;&bull;&bull;&bull; {card.last4}</span>
-            {free > 0 ? (
-              <StatusChip tone="success" icon={CircleCheck}>
-                {t("free")}
-              </StatusChip>
-            ) : credit > 0 ? (
-              <StatusChip tone="neutral">{t("credit", { amount: dollars(credit) })}</StatusChip>
-            ) : null}
-          </p>
-        ) : (
-          <p className="text-sm font-medium">{t("add")}</p>
-        )}
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {pending
-            ? t("goesLive")
-            : refused
-              ? t("refused")
-              : free > 0
-                ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
-                : !card
-                  ? (costs ?? t("needed"))
-                  : organization
-                    ? t("orgCard", { organization })
-                    : t("yourCard")}
-        </p>
+        <p className="text-sm font-medium">{t(pending.checkout ? "unfinished" : "bankAsked")}</p>
+        {goesLive ? <p className="mt-0.5 text-xs text-muted-foreground">{t("goesLive")}</p> : null}
       </div>
-      {pending?.url ? (
-        <Button variant="outline" asChild className="ms-auto shrink-0">
-          <a href={pending.url}>
-            {t("confirm")} <ArrowUpRight />
-          </a>
-        </Button>
-      ) : pending ? null : card ? (
-        <div className="ms-auto flex shrink-0 items-center gap-2">
-          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
-            <Working busy={saving}>{t("change")}</Working>
+      {/* Side by side while they fit; on a narrow or enlarged phone they stack and their words wrap. */}
+      <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2 max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-8 max-sm:[&>*]:max-w-full max-sm:[&>*]:whitespace-normal max-sm:[&>*]:py-1.5">
+        {onCancel ? (
+          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={cancelling} onClick={onCancel}>
+            <Working busy={cancelling}>{t("cancel")}</Working>
           </Button>
-          {action}
-        </div>
-      ) : onAddCard ? (
-        <Button variant="outline" className="relative ms-auto shrink-0" disabled={saving} onClick={saveCard}>
-          <Working busy={saving}>
-            <span className="flex items-center gap-2">
-              <CreditCard /> {t("addButton")}
-            </span>
-          </Working>
-        </Button>
-      ) : null}
+        ) : null}
+        {pending.url && goesLive ? (
+          <Button variant="outline" asChild>
+            <a href={pending.url}>
+              {t(pending.checkout ? "toPayment" : "confirm")} <ArrowUpRight />
+            </a>
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1493,15 +2183,37 @@ function ReportSeen({ report, humanReview }: { report: Report; humanReview: bool
         </ul>
       ) : null}
       {report.status === "live" ? (
-        <div className="mt-6 flex justify-end">
-          <Button asChild>
-            <Link href={`/papers/${report.key}`}>
-              {t("openPage")} <ArrowUpRight />
-            </Link>
-          </Button>
-        </div>
+        <>
+          <div className="mt-6 flex justify-end">
+            <Button asChild>
+              <Link href={`/papers/${report.key}`}>
+                {t("openPage")} <ArrowUpRight />
+              </Link>
+            </Button>
+          </div>
+          {/* A member who can't change the report is still told how one comes down. */}
+          <TakeDown reportKey={report.key} className="mt-4 text-end" />
+        </>
       ) : null}
     </div>
+  );
+}
+
+/** A live report is its author's to correct, not to remove: taking one down is asked of us, and this says how. */
+function TakeDown({ reportKey, className }: { reportKey: string; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  return (
+    <p className={cn("text-xs text-muted-foreground", className)}>
+      {t.rich("takeDown", {
+        email: CONTACT_EMAIL,
+        key: reportKey,
+        mail: (chunks) => (
+          <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(reportKey)}`} className="underline underline-offset-2 hover:text-foreground">
+            {chunks}
+          </a>
+        ),
+      })}
+    </p>
   );
 }
 
@@ -1537,18 +2249,25 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
   const [comment, setComment] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
   const [sending, start] = useTransition();
+  const { problem, say, failed } = useProblem();
+  // Closed, it forgets what went wrong: opened again, it starts clean.
+  const close = () => {
+    say(null);
+    onClose();
+  };
   const send = () =>
     start(async () => {
+      say(null);
       try {
         await onSend(comment);
         toast.success(t("sentToReviewer"));
         onClose();
       } catch (error) {
-        said(t("requestFailed"))(error);
+        failed(t("requestFailed"))(error);
       }
     });
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !sending && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && !sending && close()}>
       <DialogContent
         className="sm:max-w-lg"
         // Typing starts in the box. The dialog puts the focus there itself, so closing it gives the focus back to the
@@ -1567,11 +2286,12 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         <Field label={t("reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea ref={box} id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} />}
         </Field>
+        <Problem>{problem}</Problem>
         <DialogFooter>
-          <Button variant="outline" disabled={sending} onClick={onClose}>
+          <Button variant="outline" disabled={sending} onClick={close}>
             {t("cancel")}
           </Button>
-          <Button className="relative" disabled={sending} onClick={send}>
+          <Button className="relative max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal" disabled={sending} onClick={send}>
             <Working busy={sending}>
               <span className="flex items-center gap-2">
                 <ReviewQueueIcon /> {t("sendForReview")}
@@ -1610,12 +2330,51 @@ function Seal({ play }: { play: boolean }) {
   );
 }
 
+/**
+ * What a live report was paid with, under its other facts: what the balance paid, with what it holds since, what the
+ * account's credit and a card paid, and the code that lowered that or covered it. People looked for this here once
+ * their report was live.
+ */
+function PaidChips({ paid }: { paid: Terms["paid"] }) {
+  const t = useTranslations("publishReports.flow");
+  const dollars = useMoney();
+  if (!paid) return null;
+  const money = (amount: number) => inSentence(dollars(amount));
+  return (
+    <div className="flex flex-wrap items-center gap-2 pt-2">
+      {paid.fromBalance > 0 ? (
+        <StatusChip tone="neutral" icon={Wallet}>
+          {paid.left === null ? t("paid.balance", { amount: money(paid.fromBalance) }) : t("paid.balanceLeft", { amount: money(paid.fromBalance), left: money(paid.left) })}
+        </StatusChip>
+      ) : null}
+      {paid.byCredit > 0 ? (
+        <StatusChip tone="neutral" icon={Coins}>
+          {t("paid.credit", { amount: money(paid.byCredit) })}
+        </StatusChip>
+      ) : null}
+      {paid.byCard > 0 ? (
+        <StatusChip tone="neutral" icon={CreditCard}>
+          {t("paid.card", { amount: money(paid.byCard) })}
+        </StatusChip>
+      ) : null}
+      {/* A code that left something to pay is named as the bill named it; one that left nothing covered it. */}
+      {paid.code ? (
+        <StatusChip tone="neutral" icon={Tag}>
+          {paid.byCard + paid.byCredit > 0 ? t("payment.code", { code: paid.code }) : t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
+        </StatusChip>
+      ) : null}
+    </div>
+  );
+}
+
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; fresh: boolean; /** None while publishing is off. */ onAnother?: () => void; onCorrect: () => void }) {
+function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; /** What it was paid with, for whoever may pay for it. */ paid: Terms["paid"]; fresh: boolean; onCorrect: () => void }) {
+  // The report as the app's papers are, for saving it: the same as its own page saves.
+  const paper = report.metadata ? reportPaper({ key: report.key, doi: report.doi, pdfUrl: `/papers/${report.key}/report.pdf`, updatedAt: report.updatedAt }, report.metadata, series) : null;
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
+  const tToast = useTranslations("toast");
   const format = useFormatter();
-  const tAdded = useTranslations("addedPapers");
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
@@ -1640,7 +2399,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
             doi.org/{report.doi}
           </a>
           <TooltipHint label={t("copyDoi")}>
-            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => copy(url, t("doiCopied"))}>
+            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
               <Copy />
             </Button>
           </TooltipHint>
@@ -1657,32 +2416,28 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
             </StatusChip>
           ) : null}
         </div>
+        {/* What it came to, on a line of its own: it arrives with the payment's terms, and what the balance holds since a moment later, so its line opens instead of pushing the buttons below. */}
+        <AutoHeight>
+          <PaidChips paid={paid} />
+        </AutoHeight>
+        {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
+        {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
+        <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
       </motion.div>
       {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
-        {onAnother ? (
-          <Button variant="outline" onClick={onAnother}>
-            <Plus /> {t("publishAnother")}
-          </Button>
-        ) : null}
-        <Button variant="outline" onClick={onCorrect}>
+        <Button variant="outline" size="sm" onClick={onCorrect}>
           <PenLine /> {t("correct")}
         </Button>
-        {/* The app's own Add to community list, opened from a named button: a community takes the report by its DOI. */}
-        <CommunityControl
-          paper={{ id: report.key, title: report.metadata?.title ?? "", doi: report.doi }}
-          trigger={(icon) => (
-            <Button variant="outline">
-              {icon} {tAdded("addToCommunity")}
-            </Button>
-          )}
-        />
-        <Button asChild>
+        {/* The app's own three, as on the report's page: save to the library, add to a collection, add to a community. */}
+        {paper ? <SaveControl paper={paper} named /> : null}
+        <Button asChild size="sm">
           <Link href={`/papers/${report.key}`}>
             {t("openPage")} <ArrowUpRight />
           </Link>
         </Button>
       </motion.div>
+      <TakeDown reportKey={report.key} className="mt-6 text-center" />
     </div>
   );
 }
@@ -1693,6 +2448,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
  */
 function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview }: { report: Report; correction: NonNullable<Report["correction"]>; onEdit: () => void; onDiscard: () => Promise<void>; onRequestReview: (comment: string) => Promise<void> }) {
   const t = useTranslations("publishReports.flow");
+  const { problem, say, failed } = useProblem();
   const changeLabel = useChangeLabel();
   const stage = report.changes ?? "review";
   const [asking, setAsking] = useAsking();
@@ -1754,6 +2510,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           <PenLine /> {t("editChanges")}
         </Button>
       </div>
+      <Problem className="pt-3">{problem}</Problem>
       {/* Only where a review can be asked for: an address that still names the dialog opens nothing anywhere else. */}
       <ReviewRequestDialog open={asking && stage === "failed"} onClose={() => setAsking(false)} onSend={onRequestReview} />
       <AlertDialog open={discarding} onOpenChange={setDiscarding}>
@@ -1764,7 +2521,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("keepThem")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void onDiscard().then(() => toast.success(t("changesDiscarded")), said(t("changesDiscardFailed")))}>{t("discard")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => (say(null), void onDiscard().then(() => toast.success(t("changesDiscarded")), failed(t("changesDiscardFailed"))))}>{t("discard")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1776,7 +2533,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
  * The report as it will stand: the cover its page wears, which opens the PDF once there is one, with its DOI and
  * what's on its record under it.
  */
-function ReportCover({ basics, report }: { basics: Basics; report: Report | null }) {
+function ReportCover({ basics, report, slot }: { basics: Basics; report: Report | null; /** Given the element under the cover, on a wide page, where a step shows what it is working out. */ slot?: (element: HTMLDivElement | null) => void }) {
   const t = useTranslations("publishReports.flow");
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
@@ -1786,18 +2543,20 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
     ...(report?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: t("checksVersion", { version: report.checksVersion }) }] : []),
   ];
   return (
-    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it.
-    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-24 @3xl:block @3xl:self-start">
+    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it. As the
+    // page scrolls it stays under the page's bar, as far from it as it is from the card's edge.
+    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
       <PaperCover
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
         title={m?.title || t("yourTitle")}
-        authors={m?.authors.map((a) => a.name).filter(Boolean) ?? []}
+        authors={m?.authors.filter(isAuthor).map((a) => a.name).filter(Boolean) ?? []}
         source={basics.series.name}
         year={m?.date ? Number(m.date.slice(0, 4)) : null}
         type="report"
         // The picture of the PDF's first page takes the title page's place once it's made.
         image={report?.coverUrl ?? null}
+        shape={report?.coverShape ?? null}
         href={report?.pdf?.url ?? null}
         pdf={!!report?.pdf?.url}
       />
@@ -1805,7 +2564,10 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
         <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
           <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
         </TooltipHint>
-        <p className="mt-0.5 text-xs text-muted-foreground">{basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}</p>
+        <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
+          {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
+          <FieldHelp field="issn" />
+        </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {live ? (
             <StatusChip tone="success" icon={BadgeCheck} className="fade-enter">
@@ -1827,6 +2589,8 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
             ),
           )}
         </div>
+        {/* Where a step shows what it is working out, on a wide page: the agreement's bill. */}
+        <div ref={slot} />
       </div>
     </aside>
   );

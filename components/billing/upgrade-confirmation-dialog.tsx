@@ -10,7 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AutoHeight } from "@/components/ui/auto-height";
-import { Loader2, ArrowRight, Zap, CreditCard } from "@/components/icons";
+import { Loader2, ArrowRight, ArrowUpRight, Zap, CreditCard } from "@/components/icons";
+import { StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
+import { Segmented } from "@/components/settings/parts";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 
 export type UpgradePreview = {
@@ -47,6 +51,12 @@ type UpgradeConfirmationDialogProps = {
   cardLast4?: string;
   /** Under the total: a purchase's own controls, such as a promo code. */
   extra?: React.ReactNode;
+  /** How what it changes to is drawn: green where that is a good state reached, such as a report going live. */
+  toTone?: StatusTone;
+  /** Opens Stripe's portal, where the saved cards are added, removed and made the default. */
+  onManageBilling?: () => void;
+  /** Pays this once with a card other than the one shown, on Stripe's page: it offers the saved cards and takes a new one. */
+  onOtherCard?: () => void;
 };
 
 export function UpgradeConfirmationDialog({
@@ -63,12 +73,20 @@ export function UpgradeConfirmationDialog({
   cardBrand,
   cardLast4,
   extra,
+  toTone = "neutral",
+  onManageBilling,
+  onOtherCard,
 }: UpgradeConfirmationDialogProps) {
   const t = useTranslations("upgradeDialog");
   const format = useFormatter();
+  // Which card pays, chosen here: the one shown, or another on Stripe's page.
+  const [other, setOther] = useState(false);
 
   if (!preview) return null;
 
+  const lines = preview.lineItems ?? [];
+  // ui-rules-allow: dot-separator -- the masked digits of a card number
+  const saved = `${(cardBrand ?? "").replace(/^./, (first) => first.toUpperCase())} \u2022\u2022\u2022\u2022 ${cardLast4 ?? ""}`;
   const formattedCharge = format.number(preview.immediateChargeCents / 100, {
     style: "currency",
     currency: preview.currency,
@@ -76,7 +94,13 @@ export function UpgradeConfirmationDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setOther(false);
+        onOpenChange(next);
+      }}
+    >
       <DialogContent
           {...(preview.renewsAt || description ? {} : { "aria-describedby": undefined })}
           onEscapeKeyDown={(e) => {
@@ -105,83 +129,88 @@ export function UpgradeConfirmationDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Payment method */}
-          {cardLast4 && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-              <CreditCard className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">
-                {t("paymentMethod")}:
-              </span>
-              <span className="capitalize text-muted-foreground">
-                {cardBrand}
-              </span>
-              <span className="font-medium">
-                {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
-                &bull;&bull;&bull;&bull; {cardLast4}
-              </span>
+          {/* What it changes and what it comes to, in one panel: the step from one state to the next, over its bill. */}
+          <div className="rounded-2xl bg-inset/60 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="me-auto text-xs font-medium text-muted-foreground">{labels?.from ?? t("currentPlan")}</span>
+              <StatusChip tone="neutral">{preview.currentPlan}</StatusChip>
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground rtl:-scale-x-100" />
+              <StatusChip tone={toTone}>{preview.targetPlan}</StatusChip>
             </div>
-          )}
-
-          {/* Plan change */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg border p-3">
-            <div className="text-sm">
-              <span className="text-muted-foreground">{labels?.from ?? t("currentPlan")}: </span>
-              <span className="font-medium">{preview.currentPlan}</span>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            <div className="text-sm">
-              <span className="text-muted-foreground">{labels?.to ?? t("newPlan")}: </span>
-              <span className="font-semibold">{preview.targetPlan}</span>
-            </div>
+            {/* Lines that change while it's open, such as a promo code's, slide in. */}
+            <AutoHeight>
+              <div className="pt-4">
+                {lines.length > 0 ? (
+                  <dl className="space-y-2 text-sm">
+                    {lines.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between gap-3">
+                        {/* A long line wraps on a phone rather than pushing the amounts past the dialog's edge (#858). */}
+                        <dt className="min-w-0 text-muted-foreground">{item.description}</dt>
+                        {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
+                        <dd className={cn("shrink-0 tabular-nums", item.amountCents < 0 && "ink-success")}>
+                          <bdi dir="ltr">{format.number(item.amountCents / 100, { style: "currency", currency: item.currency, minimumFractionDigits: 2 })}</bdi>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : null}
+                <div className={cn("flex flex-wrap items-center justify-between gap-x-3", lines.length > 0 && "mt-2.5 border-t border-border-subtle pt-2.5")}>
+                  <span className="text-sm font-medium">{totalLabel ?? (lines.length > 0 ? t("totalCharge") : t("prorationCharge"))}</span>
+                  <bdi dir="ltr" data-testid="upgrade-total-charge" className="text-lg/6 font-semibold tabular-nums">
+                    {formattedCharge}
+                  </bdi>
+                </div>
+              </div>
+            </AutoHeight>
           </div>
-
-          {/* Proration breakdown. Lines that change while it's open, such as a promo code's, slide in. */}
-          <AutoHeight className="rounded-lg border">
-          <div className="p-3 space-y-2">
-            {(preview.lineItems ?? []).length > 0 && (
-              <>
-                {preview.lineItems.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    {/* A long line wraps on a phone rather than pushing the amounts past the dialog's edge (#858). */}
-                    <span className="min-w-0 me-2 text-muted-foreground">
-                      {item.description}
-                    </span>
-                    {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
-                    <bdi className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
-                      {format.number(item.amountCents / 100, {
-                        style: "currency",
-                        currency: item.currency,
-                        minimumFractionDigits: 2,
-                      })}
-                    </bdi>
-                  </div>
-                ))}
-              </>
-            )}
-            <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex flex-wrap items-center justify-between gap-x-2" : "flex flex-wrap items-center justify-between gap-x-2"}>
-              <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
-                {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
-              </span>
-              <bdi data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</bdi>
-            </div>
-          </div>
-          </AutoHeight>
 
           {extra}
 
           {preview.targetPlanCreditsPerMonth > 0 && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">
-                  {t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
-                </span>
+            <div className="flex items-start gap-2.5 rounded-2xl bg-primary/5 px-4 py-3">
+              <Zap className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-sm font-medium">{t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}</p>
+                <p className="text-xs text-muted-foreground">{t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}</p>
               </div>
-              <p className="text-xs text-muted-foreground ps-6">
-                {t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
-              </p>
             </div>
           )}
+
+          {/* The card it is charged to, with the two ways to another: for this once on Stripe's page, which offers the
+              saved cards and takes a new one, or for good in Stripe's portal. */}
+          {cardLast4 ? (
+            <div>
+              {/* Its name and the way to the saved cards share the line above it, so the choice has the dialog's width whatever the card is called. */}
+              <div className="flex items-center gap-3 pb-1.5 ps-1">
+                <span className="text-xs font-medium text-muted-foreground">{t("paymentMethod")}</span>
+                {onManageBilling ? (
+                  <Button variant="ghost" size="sm" className="-my-1 -me-2 ms-auto h-7 text-xs text-muted-foreground" disabled={isConfirming} onClick={onManageBilling}>
+                    {t("manageBilling")}
+                    <ArrowUpRight />
+                  </Button>
+                ) : null}
+              </div>
+              {onOtherCard ? (
+                <Segmented
+                  size="md"
+                  fill="labels"
+                  label={t("paymentMethod")}
+                  value={other ? "other" : "saved"}
+                  onChange={(next) => setOther(next === "other")}
+                  options={[
+                    { id: "saved", label: saved, icon: CreditCard },
+                    { id: "other", label: t("anotherCard") },
+                  ]}
+                />
+              ) : (
+                <span className="flex h-9 items-center gap-2 rounded-xl bg-inset px-3 text-sm font-medium">
+                  <CreditCard className="size-4 text-muted-foreground" />
+                  {saved}
+                </span>
+              )}
+              <AutoHeight>{other ? <p className="ps-1 pt-2 text-xs text-pretty text-muted-foreground">{t("anotherCardNote")}</p> : null}</AutoHeight>
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
@@ -194,13 +223,15 @@ export function UpgradeConfirmationDialog({
           >
             {t("cancel")}
           </Button>
-          <Button data-testid="upgrade-confirm-button" className="h-auto min-h-9 py-1 whitespace-normal" onClick={onConfirm} disabled={isConfirming}>
+          <Button data-testid="upgrade-confirm-button" className="h-auto min-h-9 py-1 whitespace-normal" onClick={other && onOtherCard ? onOtherCard : onConfirm} disabled={isConfirming}>
             {/* An action the caller names, such as removing seats, keeps its name while it runs (#858). */}
             {isConfirming ? (
               <>
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 {confirmLabel ?? t("upgrading")}
               </>
+            ) : other ? (
+              t("toPayment")
             ) : (
               confirmLabel ?? t("confirmUpgrade")
             )}

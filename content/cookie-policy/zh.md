@@ -12,7 +12,7 @@
 | `NEXT_LOCALE` | 记住您的语言 | 1 年 |
 | `__cf_bm`, `_cfuvid` | Cloudflare 用其保护网站免受自动化流量影响 | 30 分钟，或直到您关闭浏览器 |
 
-您的 Cookie 选择保存在名为 openscholar_consent 的 Cookie 中。显示设置（如打开的面板）保存在浏览器的本地存储中。
+您的 Cookie 选择保存在名为 openscholar_consent 的 Cookie 中。该 Cookie 设置在 openscholar.ai 上，因此同一选择适用于所有 Openscholar 网站以及所有使用 openscholar.ai 地址的社区。显示设置（如打开的面板）保存在浏览器的本地存储中。
 
 ## 性能和分析Cookie（可选）
 

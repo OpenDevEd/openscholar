@@ -1,11 +1,11 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowUpRight, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { FadeImage } from "@/components/ui/fade-image";
-import { resizable, type CoverKind } from "@/lib/papers/cover";
+import { coverFit, isCoverShape, resizable, type CoverKind } from "@/lib/papers/cover";
 
 type CoverProps = { kind: CoverKind; ink: string; title: string; authors: string[]; source: string | null; year: number | null; type: string | null };
 
@@ -92,26 +92,86 @@ function TitlePage({ kind, title, authors, source, year, type }: Omit<CoverProps
   );
 }
 
+const never = () => () => {};
+/** False while the browser takes over the page the server sent, and true ever after: what was put on the page by the server has been waited for. */
+const useTakenOver = () => useSyncExternalStore(never, () => true, () => false);
+
 /**
- * The paper's cover in its page's intro: the real first page when a community made a picture of it, otherwise a title page.
+ * A paper's cover: the real first page when a community or Openscholar made a picture of it, otherwise a title page.
  * It opens the PDF, or the publisher's page when there is none. A PDF says so in a frosted chip; a page elsewhere carries
  * the open-elsewhere mark.
+ *
+ * The cover keeps a frame 3 wide by 4 tall wherever it is shown, so nothing around it moves as a picture loads. A picture
+ * shaped like a page fills the frame. One of another shape, such as a slide, is shown whole at its own shape inside it
+ * (`coverFit`), anchored to the frame's top and start, wherever the cover is shown.
  */
-export function PaperCover({ href, pdf, image, className, ink, ...page }: CoverProps & { href: string | null; pdf: boolean; image: string | null; className?: string }) {
+export function PaperCover({ href, pdf, image, shape = null, className, ink, mark = true, sizes = "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px", ...page }: CoverProps & {
+  href: string | null;
+  pdf: boolean;
+  image: string | null;
+  /**
+   * The picture's width over its height, when it is known before the picture loads (a report keeps its cover's). The
+   * frame then takes that shape from the first frame: a wide one is only as tall as the picture, never kept 3 by 4.
+   */
+  shape?: number | null;
+  className?: string;
+  /** The PDF chip or the open-elsewhere mark on the cover; a cover too small to carry one leaves it off. */
+  mark?: boolean;
+  /** How wide the cover is shown, for a community's full-size picture to be resized to. */
+  sizes?: string;
+}) {
   const t = useTranslations("paperPage");
+  const takenOver = useTakenOver();
+  // The picture's width over its height once it has loaded, and whether it then fades in; and the picture that couldn't
+  // be loaded. Each is kept with the address it is of, so another paper's picture in the same place starts anew.
+  const [shaped, setShaped] = useState<{ image: string; shape: number; fades: boolean } | null>(null);
+  const [broken, setBroken] = useState<string | null>(null);
+  const picture = image && broken !== image ? image : null;
+  // Taken from the picture's address, not whether it loaded: a picture that fails keeps the frame it was given, and the
+  // title page shows in it, so nothing around it moves.
+  const given = image && shape !== null && isCoverShape(shape) ? shape : null;
+  const known = picture && shaped?.image === picture ? shaped : picture && given !== null ? { image: picture, shape: given, fades: false } : null;
+  const fit = coverFit(known?.shape ?? null);
+  // A wide picture whose shape was known from the start has a frame of its own shape; any other keeps the 3 by 4 one,
+  // which a picture learned only once loaded can't change without moving what is around it.
+  const own = given !== null && coverFit(given) === "wide";
   const sheet = (
-    <span style={{ "--ink": ink } as CSSProperties} className="@container relative block aspect-[3/4] overflow-hidden rounded-md bg-[#fbf8f2] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_8px_24px_-6px_rgb(0_0_0/0.18)] ring-1 ring-black/[0.06] transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_36px_-8px_rgb(0_0_0/0.24)] motion-reduce:transition-none dark:brightness-[0.94]">
-      {/* At most 200 pixels wide on the page (./paper-page.tsx), so a community's full-size picture is resized to that. */}
-      {image ? <FadeImage src={image} sizes={resizable(image) ? "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px" : undefined} className="size-full object-cover object-top" /> : <TitlePage {...page} />}
+    <span className={cn("relative flex items-start justify-start", !own && "aspect-[3/4]")} style={own ? { aspectRatio: given } : undefined}>
+      {picture && !known ? (
+        // Loaded out of sight first, to learn its shape: the sheet is then made at that shape and never changes it.
+        // One the browser already had is shown at once; one waited for fades in, as does one the server's page waited on.
+        <FadeImage
+          src={picture}
+          sizes={resizable(picture) ? sizes : undefined}
+          className="absolute size-px"
+          shown="opacity-0"
+          onShape={(shape, waited) => setShaped({ image: picture, shape, fades: waited || !takenOver })}
+          onFailed={() => setBroken(picture)}
+        />
+      ) : (
+        <span
+          style={fit === "fill" ? undefined : { aspectRatio: known!.shape }}
+          className={cn("block", fit === "fill" ? "size-full" : fit === "wide" ? "w-full" : "h-full", known?.fades && "animate-in fade-in duration-300 motion-reduce:animate-none")}
+        >
+          <span
+            style={{ "--ink": ink } as CSSProperties}
+            className="@container relative block size-full overflow-hidden rounded-md bg-[#fbf8f2] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_8px_24px_-6px_rgb(0_0_0/0.18)] ring-1 ring-black/[0.06] transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_36px_-8px_rgb(0_0_0/0.24)] motion-reduce:transition-none dark:brightness-[0.94]"
+          >
+            {picture ? <FadeImage src={picture} sizes={resizable(picture) ? sizes : undefined} className="size-full object-cover object-top" onFailed={() => setBroken(picture)} /> : <TitlePage {...page} />}
+            {href && mark ? (
+              <span className="absolute bottom-2.5 end-2.5 inline-flex h-6 items-center gap-1 rounded-full bg-black/60 px-2 text-[11px] font-medium text-white backdrop-blur-md">
+                {pdf ? <><FileText aria-hidden className="size-3" />{t("pdf")}</> : <ArrowUpRight aria-hidden className="size-3.5" />}
+              </span>
+            ) : null}
+          </span>
+        </span>
+      )}
     </span>
   );
   if (!href) return <span aria-hidden className={cn("block", className)}>{sheet}</span>;
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={pdf ? t("readPdf") : t("publisherPage")} className={cn("group relative block rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring", className)}>
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={pdf ? t("readPdf") : t("publisherPage")} className={cn("group block rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring", className)}>
       {sheet}
-      <span className="absolute bottom-2.5 end-2.5 inline-flex h-6 items-center gap-1 rounded-full bg-black/60 px-2 text-[11px] font-medium text-white backdrop-blur-md transition-transform duration-200 ease-out group-hover:-translate-y-1 motion-reduce:transition-none">
-        {pdf ? <><FileText aria-hidden className="size-3" />{t("pdf")}</> : <ArrowUpRight aria-hidden className="size-3.5" />}
-      </span>
     </a>
   );
 }

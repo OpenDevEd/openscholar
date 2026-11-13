@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CONTACT_EMAIL } from "../billing/contact";
 import { MAIL_EVENTS, reportEmail, type MailFacts } from "./emails";
 
-const report: MailFacts = { key: "R100007", doi: "10.53832/openscholar-r.r100007", title: "Shade trees & maize", activated: false, live: false, signer: "Ada Author", authorEmail: "ada@example.org", results: [], deposit: "none", archive: "none" };
+const report: MailFacts = { key: "R100007", doi: "10.53832/openscholar-r.r100007", title: "Shade trees & maize", activated: false, live: false, signer: "Ada Author", authorEmail: "ada@example.org", results: [], deposit: "none", archive: "none", prefix: "" };
 const origin = "https://openscholar.ai/";
 const links = (text: string) => text.match(/https?:\/\/\S+/g) ?? [];
 
@@ -17,19 +17,27 @@ describe("a report's emails", () => {
     expect(author.text).not.toContain("ada@example.org");
   });
 
+  it("name the organisation whose admins activate a member's approved report, and still go to the member alone", () => {
+    const email = reportEmail("approved", { ...report, prefix: "/o/lab", admins: { emails: ["head@example.org"], organization: "Learning Lab" } }, origin)!;
+    expect(email).toMatchObject({ audience: "author", to: ["ada@example.org"] });
+    expect(email.text).toContain("Learning Lab");
+    expect(email.text).not.toContain("head@example.org");
+  });
+
   it("are not written to an author with no address, and the team's then reply to the team", () => {
     const nobody = { ...report, authorEmail: null };
     expect(reportEmail("declined", nobody, origin)).toBeNull();
     expect(reportEmail("live", nobody, origin)).toMatchObject({ replyTo: CONTACT_EMAIL });
   });
 
-  it("link a reviewer to the report's dialog, and an author to the report on Publish or to its page once live", () => {
+  it("link a reviewer to the report's dialog, and an author to the report on Publish in its own workspace or to its page once live", () => {
     for (const event of MAIL_EVENTS) {
-      const email = reportEmail(event, { ...report, activated: true, live: true, admins: { emails: ["admin@lab.example"], organization: "Learning Lab", prefix: "/o/lab" } }, origin)!;
+      const email = reportEmail(event, { ...report, activated: true, live: true, prefix: "/o/lab", admins: { emails: ["admin@lab.example"], organization: "Learning Lab" } }, origin)!;
       const opened = links(email.text).filter((link) => link.startsWith("https://openscholar.ai"));
-      // Every email opens something of ours, by an absolute address with no doubled slash.
+      // Every email opens something of ours, by an absolute address with no doubled slash. An organisation's report
+      // opens in the organisation, never one step away in the person's own workspace.
       expect(opened.length, event).toBeGreaterThan(0);
-      for (const link of opened) expect(link, event).toMatch(/^https:\/\/openscholar\.ai\/(settings\/admin\/publishing\?report=R100007|(o\/lab\/)?publish\?report=R100007|papers\/R100007)$/);
+      for (const link of opened) expect(link, event).toMatch(/^https:\/\/openscholar\.ai\/(settings\/admin\/publishing\?report=R100007|o\/lab\/publish\?report=R100007|papers\/R100007)$/);
       if (email.audience === "team") expect(opened, event).toContain("https://openscholar.ai/settings/admin/publishing?report=R100007");
       else expect(opened.join(" "), event).not.toContain("/settings/admin");
     }

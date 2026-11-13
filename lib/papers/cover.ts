@@ -32,3 +32,21 @@ export const COMMUNITY_FILE_PATTERNS = COMMUNITY_FILES.map((files) => new URL(`$
 
 /** Whether a cover is one Openscholar's server resizes: next.config.ts allows these addresses with no query. */
 export const resizable = (src: string) => !src.includes("?") && COMMUNITY_FILES.some((files) => src.startsWith(files));
+
+/** A width over height a cover can have: a page or slide, not a sliver either way. */
+export const isCoverShape = (shape: number) => Number.isFinite(shape) && shape >= 0.2 && shape <= 5;
+
+/** The shapes a page comes in, as its width over its height: A4 is 0.71 and US Letter 0.77. */
+const PAGE_SHAPES = { narrowest: 0.66, widest: 0.8 } as const;
+
+/**
+ * How the picture of a first page sits in a cover's frame, which is 3 wide by 4 tall, from the picture's width over its
+ * height. One shaped like a page fills the frame and loses a sliver at most. A wider one, such as a slide, spans the
+ * frame's width, and a narrower one its height: each is shown whole, at its own shape. Until the picture has loaded
+ * its shape is unknown (null), and the frame is kept whole for it.
+ */
+export function coverFit(shape: number | null): "fill" | "wide" | "tall" {
+  if (shape === null || !Number.isFinite(shape) || shape <= 0) return "fill";
+  if (shape >= PAGE_SHAPES.narrowest && shape <= PAGE_SHAPES.widest) return "fill";
+  return shape > 3 / 4 ? "wide" : "tall";
+}

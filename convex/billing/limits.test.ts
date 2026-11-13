@@ -63,6 +63,28 @@ describe("plan limits", () => {
   });
 });
 
+describe("a workspace's publication balance", () => {
+  const grant = (id: string, interval: string, remaining: number, size: number, resets_at: number | null = null) => ({ id, plan_id: null, remaining, included_grant: size, reset: { interval, resets_at } });
+  const bought = (id: string, remaining: number, size: number) => ({ id, plan_id: "publication_top_up", remaining, prepaid_grant: size, reset: { interval: "one_off", resets_at: null } });
+  const parts = (balance: AutumnCustomer["balances"][string]) => snapshotFromCustomer(customer({ publication_balance: balance })).publication;
+  it("is read by part: what refills, with when it is next back up and to how much, then what stays until used", () => {
+    // Two monthly grants that refill on different days: at the first, only that one is back to full.
+    expect(parts({ remaining: 26.5, breakdown: [grant("gift", "one_off", 5, 10), grant("plan", "month", 12, 20, 5_000), grant("extra", "month", 4, 10, 9_000), bought("top-up", 5.5, 6)] })).toEqual([
+      { interval: "month", left: 16, size: 30, resetsAt: 5_000, refillsTo: 24 },
+      { interval: "once", left: 10.5, size: 16 },
+    ]);
+    // What stayed until used and is all spent says nothing; a refilling part that is empty still does.
+    expect(parts({ remaining: 0, breakdown: [bought("top-up", 0, 10), grant("plan", "week", 0, 20, 5_000)] })).toEqual([{ interval: "week", left: 0, size: 20, resetsAt: 5_000, refillsTo: 20 }]);
+  });
+
+  it("has no parts with no limit, and none at all for a customer never given any", () => {
+    expect(snapshotFromCustomer(customer({ publication_balance: { remaining: 0, unlimited: true } }))).toMatchObject({ publicationUnlimited: true });
+    const none = snapshotFromCustomer(customer({}));
+    expect(none.publication).toBeUndefined();
+    expect(none.publicationUnlimited).toBeUndefined();
+  });
+});
+
 describe("plan limits over time", () => {
   it("keep the newest snapshot's plan when an older refresh lands after it", async () => {
     const t = convexTest(schema);

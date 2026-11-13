@@ -288,7 +288,8 @@ export function FocusMode({
       // A key with Cmd, Ctrl or Alt is the browser's or the system's: Cmd+C copies, Cmd+L goes to the address bar.
       if (!isOpen || translationMenuOpen || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       // Keys typed in a field, or in an open popover or menu such as Cite's, are that control's.
-      if ((e.target as Element | null)?.closest?.("input, textarea, select, [contenteditable='true'], [data-radix-popper-content-wrapper]")) return;
+      // So are keys typed in Clerk's sign-in, opened from here by Add to library: Escape there closes only the sign-in.
+      if ((e.target as Element | null)?.closest?.("input, textarea, select, [contenteditable='true'], [data-radix-popper-content-wrapper], .cl-modalBackdrop")) return;
 
       switch (e.key) {
         case "ArrowLeft":

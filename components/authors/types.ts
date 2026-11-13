@@ -10,6 +10,8 @@ export type AuthorProfile = {
 export type AuthorPublication = {
   id: string; title: string; type: string; year: string; authors: string;
   cover?: string; pages?: number; url: string;
+  /** Its PDF as its community last said: where it opens, or null when the record has none. Absent when that isn't known. */
+  pdf?: { url: string } | null;
   library: {id: string; name: string; url: string; icon?: string};
 };
 /** Profiles per page of the Authors list: the server sends the first with the page, the browser reads the rest. */

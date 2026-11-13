@@ -1,16 +1,15 @@
 "use client";
 
-// The workspace card the rail's top button opens (#651): the workspace you're in at its head (its
-// tile flies in from the rail), the others to switch to, invitations to answer, and making an
-// organization. Everything on the site follows the workspace picked here: what you make goes into
-// it, and what you run uses its credits and plan.
+// The workspaces in the rail's account card (#651): the others to switch to, invitations to answer,
+// and making an organization. Everything on the site follows the workspace picked here: what you
+// make goes into it, and what you run uses its credits and plan.
 
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
-import { Home, Loader2, Plus, Settings, Share2, Users, X } from "@/components/icons";
+import { Loader2, Plus, Share2, Users, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -26,27 +25,15 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
-import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { Framed, Opening, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS, INVITES_AT_ONCE } from "@/lib/billing/plans";
 import { useSeatBilling } from "@/lib/feature-flags/hook";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-start transition-colors hover:bg-foreground/[0.045]";
 
-/** The square at the head of a rail card that the workspace tile flies into from the rail. */
-const HEAD = 40;
-
-
-/** What you are in a workspace, as an icon and a word, so it reads apart from the plan beside it. */
-function RoleOf({ workspace }: { workspace: WorkspaceRow }) {
+/** What you are in an organization, as an icon and a word, so it reads apart from the plan beside it. */
+export function RoleOf({ workspace }: { workspace: WorkspaceRow }) {
   const t = useTranslations("workspaces");
-  if (workspace.kind === "personal") {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <Home className="size-3.5" />
-        {t("personal")}
-      </span>
-    );
-  }
   return (
     <RoleLabel role={workspace.role === "admin" ? "admin" : "member"} className="text-inherit">
       {workspace.role === "admin" ? t("admin") : t("member")}
@@ -112,41 +99,24 @@ export function useAnswerInvitation() {
 }
 
 /**
- * The workspace card: the one you're in, the others, invitations, and making one. `all` is read by
- * the rail, which is always there, so the list is in the card as it opens. `onSwitch` goes to a
- * workspace: the rail does it, so one picked here is the rail's while its pages load. The card can be
- * opened while the page is still loading: it then has the name the rail shows (`shown`), and what
- * is read after opens its place.
+ * The workspaces to switch to and the invitations to answer, in the account card. `current` is the
+ * workspace the card is on, undefined until it is read. `all` is read by the rail, which is always
+ * there, so the list is in the card as it opens. `onSwitch` goes to a
+ * workspace: the rail does it, so one picked here is the rail's while its pages load.
  */
-export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }: { shown: WorkspaceLook | undefined; all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onDone: () => void; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
+export function WorkspaceMenu({ current, all, shared, onSwitch, onCreate }: { current: WorkspaceRow | undefined; all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
-  const router = useRouter();
-  const current = useCurrentWorkspace();
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
-  const others = (all.list ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
+  const email = useUser().user?.primaryEmailAddress?.emailAddress;
+  // Listed once the workspace you're in is read: before that it would be among the others, and its row would leave.
+  const others = current ? (all.list ?? []).filter((workspace) => workspace.workspaceId !== current.workspaceId) : [];
   // A list that is in the card as it opens is simply there; one read after opens its place.
   const [listed] = useState(others.length > 0);
   return (
-    <div>
-      <div className="flex items-center gap-3 px-2.5 pb-3 pt-2.5">
-        <span aria-hidden className="shrink-0 rounded-xl" style={{ width: HEAD, height: HEAD }} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{current?.name ?? shown?.name}</span>
-          {/* The line keeps its height while the plan, the members and the role are read, and they fade in. */}
-          <span className="mt-1 flex h-5 text-xs text-muted-foreground">
-            {current ? (
-              <span className="flex items-center gap-2 animate-in fade-in-0 duration-200">
-                <PlanChip workspace={current} />
-                {current.kind === "organization" ? <span className="tabular-nums">{t("members", { count: current.members ?? 0 })}</span> : null}
-                <RoleOf workspace={current} />
-              </span>
-            ) : null}
-          </span>
-        </span>
-      </div>
-
+    <>
+      {/* The workspaces: the others to switch to, then making one. No wrapper around the list: a part that opens is the card's own child. */}
       {/* Its own presence, so the card closing doesn't fold the list as it goes. */}
       <AnimatePresence>
         {others.length ? (
@@ -160,17 +130,26 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
                     onClick={() => onSwitch(workspace.slug, workspace)}
                     className={cn(ROW, "h-11")}
                   >
-                    <Framed>
-                      <WorkspaceTile workspace={workspace} size="md" home />
-                    </Framed>
+                    {/* Your own workspace is you: your photo, your name and your address, which the card's head shows while you're in it. */}
+                    {workspace.kind === "personal" ? (
+                      <WorkspaceTile workspace={workspace} size="md" />
+                    ) : (
+                      <Framed>
+                        <WorkspaceTile workspace={workspace} size="md" />
+                      </Framed>
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
-                      <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="font-medium">
-                          <PlanName workspace={workspace} />
+                      {workspace.kind === "personal" ? (
+                        <span className="mt-0.5 block h-4 truncate text-[11px] text-muted-foreground">{email}</span>
+                      ) : (
+                        <span className="mt-0.5 flex h-4 items-center gap-2 text-[11px] text-muted-foreground">
+                          <span className="font-medium">
+                            <PlanName workspace={workspace} />
+                          </span>
+                          <RoleOf workspace={workspace} />
                         </span>
-                        <RoleOf workspace={workspace} />
-                      </span>
+                      )}
                     </span>
                     {workspace.kind === "personal" && shared ? (
                       <TooltipHint label={t("sharedWithYou", { count: shared })}>
@@ -196,6 +175,15 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
           </Opening>
         ) : null}
       </AnimatePresence>
+      {/* The last row of the list, drawn as one of its rows: a new organization is one more workspace. With no list above it, the line that parts the group is its own. */}
+      <div className={cn("border-t pb-1 pt-1", others.length ? "border-transparent" : "border-border/60")}>
+        <button type="button" onClick={onCreate} className={cn(ROW, "h-11")}>
+          <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-foreground/20 text-muted-foreground">
+            <Plus className="size-4" />
+          </span>
+          <span className="text-[13px] font-medium">{t("newOrganization")}</span>
+        </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {(invitations?.page ?? []).map((invitation) => (
@@ -234,25 +222,7 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
           </Opening>
         ))}
       </AnimatePresence>
-
-      <div className="mt-1 space-y-px border-t border-border/60 pt-1">
-        <button type="button" onClick={onCreate} className={cn(ROW, "h-8 text-[13px]")}>
-          <Plus className="size-4 text-muted-foreground" />
-          {t("newOrganization")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onDone();
-            router.push(settingsHref(current));
-          }}
-          className={cn(ROW, "h-8 text-[13px]")}
-        >
-          <Settings className="size-4 text-muted-foreground" />
-          {t("workspaceSettings")}
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 

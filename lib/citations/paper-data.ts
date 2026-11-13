@@ -1,5 +1,6 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import type { CitationData } from "./formats";
+import { personName } from "../reports/report";
 
 const types: Record<string, string> = {
   "journal-article": "article-journal", "posted-content": "article", "proceedings-article": "paper-conference",
@@ -25,9 +26,18 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   };
   // OpenAlex does not provide given/family fields. Never guess a surname by
   // splitting the display name; DOI metadata can supply structured names later.
-  const author = paper.authorships?.flatMap(({ author }) => author.display_name?.trim() ? [{ literal: author.display_name.trim() }] : []);
+  // An Openscholar Report's authors are split as its Crossref record has them (last word the family name), so APA can
+  // give "Ramírez, D."; anyone else's name stays whole, as OpenAlex gives no parts and a surname is never guessed.
+  const report = id.startsWith("R");
+  const author = paper.authorships?.flatMap(({ author }) => {
+    const name = author.display_name?.trim();
+    if (!name) return [];
+    const parts = report ? personName(name, author.orcid) : null;
+    return [parts ? { family: parts.family, ...(parts.given && { given: parts.given }) } : { literal: name }];
+  });
   if (author?.length) data.author = author;
-  if (paper.publication_date && /^\d{4}-\d{2}-\d{2}$/.test(paper.publication_date)) {
+  // A year, a month or a day, as precisely as the work states it: a report's PDF may give only a month.
+  if (paper.publication_date && /^\d{4}(?:-\d{2}){0,2}$/.test(paper.publication_date)) {
     data.issued = { "date-parts": [paper.publication_date.split("-").map(Number)] };
   } else if (paper.publication_year) data.issued = { "date-parts": [[paper.publication_year]] };
   // An Openscholar Report is numbered in a series Openscholar publishes, and is cited as such: "Title (Openscholar
@@ -35,6 +45,8 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
   // printed the series twice ("In Openscholar Reports (Openscholar Reports)").
   if (source?.display_name && id.startsWith("R")) {
     Object.assign(data, { "collection-title": source.display_name, "collection-number": id, publisher: "Openscholar" });
+    // A presentation is cited as a report in the series, as Crossref registers it: its number stays in every format.
+    if ((paper.type as string | undefined) === "presentation") data.type = "report";
     // A thesis is cited with the university that awarded it, its first author's first institution, as Zenodo files it
     // (lib/reports/registration-record.ts). Without one, a dissertation is cited as a report.
     const university = paper.authorships?.[0]?.institutions?.[0]?.display_name;

@@ -1,9 +1,24 @@
 import { v, type Infer } from "convex/values";
+import { REFILL_INTERVALS } from "../../lib/billing/plans";
 import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS, capped } from "../lib/listCaps";
 
 /** A plan's limit on each of lib/billing/plans.ts PLAN_LIMITS it sets: a number, or null for unlimited. A limit left out isn't set. */
 const limitValue = v.optional(v.union(v.number(), v.null()));
 export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue, bulk_papers: limitValue, uploads_per_hour: limitValue, guests: limitValue, suggestions_per_day: limitValue, overviews_per_day: limitValue, reports_per_day: limitValue });
+
+/** How often a balance refills (lib/billing/plans.ts REFILL_INTERVALS). */
+export const refillValidator = v.union(...REFILL_INTERVALS.map((interval) => v.literal(interval)));
+
+/**
+ * One part of a workspace's publication balance, in US dollars: what refills by `interval`, back to `refillsTo` on
+ * `resetsAt` (`size` once every grant of it has refilled), or with `once` what stays until used (given once, or
+ * bought). `left` is what remains of it now.
+ */
+export const balancePartValidator = v.object({ interval: v.union(refillValidator, v.literal("once")), left: v.number(), size: v.number(), resetsAt: v.optional(v.number()), refillsTo: v.optional(v.number()) });
+export type BalancePart = Infer<typeof balancePartValidator>;
+/** At most one part of each kind: every interval, and `once`. */
+export const PUBLICATION_PARTS_MAX = REFILL_INTERVALS.length + 1;
+export const balancePartsValidator = capped(v.array(balancePartValidator), PUBLICATION_PARTS_MAX);
 
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
@@ -28,6 +43,13 @@ export const billingAccountSnapshotValidator = v.object({
   limits: v.optional(planLimitsValidator),
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
+  /**
+   * The customer's publication balance by part, refilling ones first, shortest interval first, as Autumn spends them;
+   * absent with nothing in it. Wrapped whole, as `v.optional` copies the validator it's given.
+   */
+  publication: capped(v.optional(v.array(balancePartValidator)), PUBLICATION_PARTS_MAX),
+  /** The publication balance has no limit: every report is paid from it. */
+  publicationUnlimited: v.optional(v.boolean()),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
   credit: v.optional(v.number()),
@@ -44,6 +66,9 @@ export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidato
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
+  // From before the publication balance, when a report's activation was counted: cleared by migrations/publicationBalance, then dropped.
+  activations: v.optional(v.union(v.number(), v.null())),
+  activationsRefill: v.optional(refillValidator),
   /** The workspace whose Autumn customer it caches (#650). */
   workspaceId: v.id("workspaces"),
   /** When it was first seen paying, so a return after cancelling isn't a first payment again. */
@@ -51,6 +76,8 @@ export const billingAccountFields = {
   refreshedAt: v.number(),
   /** When the snapshot was read from Autumn: a refresh read before it is older, and is dropped. Unlike `refreshedAt`, zeroing the balance leaves it. */
   fetchedAt: v.optional(v.number()),
+  /** When the cached publication balance was read from Autumn: a read made while a report is being paid for keeps the one before it, so this can be older than `fetchedAt`. */
+  publicationAt: v.optional(v.number()),
   /** When the cached `card` was read from Autumn: an older refresh that read the card still brings a newer one than this. */
   cardFetchedAt: v.optional(v.number()),
   /** Set while a refresh from Autumn is scheduled, so charges don't schedule more. */

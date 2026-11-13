@@ -2,7 +2,7 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { catalogAncestors } from "@/lib/topics/search";
-import type { Metadata } from "./report";
+import { LICENCES, isAuthor, type Metadata } from "./report";
 import type { Series } from "./settings";
 
 type Topic = Metadata["topics"][number];
@@ -22,7 +22,8 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     landing_page_url: `https://doi.org/${report.doi}`,
     // Its own lasting address, which leads to the file while the report is live (app/papers/[id]/report.pdf).
     pdf_url: report.pdfUrl ? `/papers/${report.key}/report.pdf` : null,
-    license: "cc-by-4.0",
+    // As OpenAlex writes a licence: the author's own has no such code, and the report's page names it (`extra.licence`).
+    license: typeof m.licence === "string" ? LICENCES[m.licence].zenodo : null,
     source: { id: null, display_name: series.name, type: "repository", issn_l: series.issn || null, host_organization_name: "Openscholar" },
   };
   const year = Number(m.date.slice(0, 4));
@@ -50,7 +51,8 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     sustainable_development_goals: m.sdgs.map((goal) => ({ id: `https://metadata.un.org/sdg/${goal}`, display_name: SDGS.find((g) => g.id === goal)?.name.replace(/^\d+\. /, "") ?? goal, score: 1 })),
     funders: m.funding.map((f) => ({ id: f.funder.id, display_name: f.funder.name })),
     awards: m.funding.flatMap((f) => f.awards.map((award) => ({ funder_id: f.funder.id, funder_display_name: f.funder.name, funder_award_id: award }))),
-    authorships: m.authors.map((a, i) => ({
+    // Its authors, as its citation names them: an editor or a translator is named on its page, not as an author.
+    authorships: m.authors.filter(isAuthor).map((a, i) => ({
       author_position: i === 0 ? "first" : "middle",
       author: { id: a.openalexId, display_name: a.name, orcid: a.orcid ? `https://orcid.org/${a.orcid}` : null },
       institutions: a.affiliations.map((inst) => ({ id: inst.id, display_name: inst.name, country_code: inst.country || null, ror: inst.ror ?? null })),

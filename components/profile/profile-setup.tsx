@@ -8,13 +8,14 @@
 // to sign in) carries on once the setup is finished or skipped, and it never stands in front of a page in the middle
 // of such a flow (`inFlow`): it comes on the next page.
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useConvexAuth, useMutation } from "convex/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { LogOut } from "@/components/icons";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogoMark } from "@/components/logo";
 import { AffiliationPicker } from "@/components/people/affiliation-picker";
 import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
@@ -25,6 +26,8 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { showStyledToast, Toaster } from "@/components/ui/sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { locales, type Locale } from "@/i18n/config";
+import { setLocale } from "@/i18n/locale";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { EMAILS, NO_EMAILS, inFlow, type EmailKind } from "@/lib/profile/setup";
 import type { Affiliation } from "@/lib/reports/report";
@@ -52,6 +55,14 @@ export function ProfileSetupGate({ due: dueOnLoad, person, children }: { due: bo
   const [doneFor, setDoneFor] = useState<string | null>(null);
   const [leaving, startLeaving] = useTransition();
   const done = !!user && doneFor === user.id;
+  // This browser keeps the language in a cookie, the outside system here. Signed in, the cookie follows the account:
+  // a language chosen on one device is the language on the next, and on this one from the moment it is chosen
+  // (LanguageSwitcher). An account that never chose one leaves each browser its own.
+  const locale = useLocale();
+  const chosen = setup.data?.locale;
+  useEffect(() => {
+    if (chosen && chosen !== locale && (locales as readonly string[]).includes(chosen)) void setLocale(chosen as Locale);
+  }, [chosen, locale]);
   // A page the server left out stays the setup until the refreshed page replaces it, whatever the answers say
   // meanwhile; otherwise the person's answers decide.
   const due = !done && !setup.isAnonymous && (dueOnLoad || setup.data?.due === true) && !inFlow(pathname);
@@ -69,11 +80,11 @@ export function ProfileSetupGate({ due: dueOnLoad, person, children }: { due: bo
         initial={setup.data?.profile}
         leaving={leaving}
         onSave={async (answers) => {
-          await save({ ...answers, first: true });
+          await save({ ...answers, first: true, locale });
           leave();
         }}
         onSkip={async () => {
-          await skip({});
+          await skip({ locale });
           leave();
         }}
       />
@@ -104,7 +115,10 @@ function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { pers
       <div className="w-full max-w-md space-y-8">
         <div className="flex items-center justify-between gap-3">
           <LogoMark className="size-9" />
-          <SignOutButton />
+          <div className="flex items-center gap-1">
+            <LanguageSwitcher />
+            <SignOutButton />
+          </div>
         </div>
         <header className="flex items-center gap-3">
           <IdentityAvatar name={person.name} imageUrl={person.imageUrl ?? undefined} className="size-12 shrink-0" />
@@ -181,13 +195,14 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 /** The person's ORCID iD, found on ORCID by their name, those at their institutions first, or pasted. */
 function OrcidField({ orcid, name, affiliations, onChange }: { orcid: string; name: string; affiliations: Affiliation[]; onChange: (orcid: string) => void }) {
+  const t = useTranslations("people");
   const [finding, setFinding] = useState(false);
   return (
     <Popover modal open={finding} onOpenChange={setFinding}>
       <PopoverTrigger asChild>
         <OrcidButton orcid={orcid} open={finding} className="w-full" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
+      <PopoverContent align="start" aria-label={t("find")} className="w-(--radix-popover-trigger-width) p-0">
         <OrcidSearch
           name={name}
           institutions={affiliations.map((a) => a.name)}

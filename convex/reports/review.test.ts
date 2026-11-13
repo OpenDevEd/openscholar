@@ -87,6 +87,23 @@ describe("reviewing", () => {
     await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
   });
 
+  it("leaves a declined report its author's to change and send round again, and a withdrawn one down", async () => {
+    const world = await setup({ humanReview: true });
+    const { key, reportId, pdfAt } = await checked(world, [passed("byline"), passed("harm")]);
+    await decide(world, key, "decline", "A more specific title, please");
+    expect(stageOf(await row(world.t, key), true)).toBe("declined");
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Shade trees and maize yields in Kakamega"), runId: "run-2", from: { pdfAt } });
+    await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-2", results: [passed("byline"), passed("harm")], version: 1 });
+    // Round again: it waits for a reviewer, with the new title.
+    expect(stageOf(await row(world.t, key), true)).toBe("review");
+    // One that went live and was taken down is not its author's to reopen.
+    await setReview(world, false);
+    const published = await live(world, world.member, world.lab);
+    await decide(world, published.key, "withdraw", "Taken down");
+    await expect(world.member.mutation(api.reports.flow.goTo, { workspaceId: world.lab, key: published.key, step: "details" })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+
   it("never takes a late decline for a withdrawal: withdrawing a live report is its own word", async () => {
     const world = await setup();
     const { key } = await live(world);
@@ -134,9 +151,9 @@ describe("changes to a live report", () => {
     const world = await setup();
     const report = await live(world);
     const signed = (await row(world.t, report.key)).byline;
-    expect(signed).toBe(`Published in Openscholar Reports (ISSN {pending}), https://doi.org/${(await row(world.t, report.key)).doi}`);
+    expect(signed).toBe(`Published in Openscholar Reports (ISSN {pending}), https://doi.org/${(await row(world.t, report.key)).doi}, under CC BY 4.0`);
     // Since then the series got its ISSN and a new wording, and a check was dropped.
-    await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630", byline: "An Openscholar Report, ISSN {issn}: {doi}" } });
+    await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630", byline: "An Openscholar Report, ISSN {issn}: {doi} ({licence})" } });
     await world.reviewer.mutation(api.reports.settings.removeCheck, { id: "harm" });
     const started = await change(world, report.key, "A corrected title");
     if ("unchanged" in started) throw new Error("the changes were taken for none");
@@ -146,7 +163,7 @@ describe("changes to a live report", () => {
     // A report signed now carries the new line, and its first checks are today's.
     // In the organisation's workspace: the author's own has started its one report today.
     const next = await atDetails(world, world.author, world.lab);
-    expect((await row(world.t, next.key)).byline).toBe(`An Openscholar Report, ISSN 2049-3630: https://doi.org/${(await row(world.t, next.key)).doi}`);
+    expect((await row(world.t, next.key)).byline).toBe(`An Openscholar Report, ISSN 2049-3630: https://doi.org/${(await row(world.t, next.key)).doi} (CC BY 4.0)`);
     const first = await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.lab, key: next.key, metadata: details(), runId: "run-next", from: { pdfAt: next.pdfAt } });
     if ("unchanged" in first) throw new Error("a first run is never unchanged");
     expect(first.checks.map((check) => check.id)).not.toContain("harm");

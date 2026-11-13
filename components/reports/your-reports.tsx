@@ -14,7 +14,6 @@ import { GRID_CLASSES } from "@/lib/constants/view-modes";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
@@ -172,11 +171,18 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
   return (
     <Entry viewMode="list-detail" className="items-center">
       {/* The cover its page wears: the PDF's first page once there is one, the series' title page until then. */}
-      <PaperCover className="w-9 shrink-0" {...REPORT_COVER} title={title} authors={[]} source={series} year={null} type="report" image={r.coverUrl} href={null} pdf={false} />
+      <PaperCover className="w-9 shrink-0 self-start" {...REPORT_COVER} title={title} authors={[]} source={series} year={null} type="report" image={r.coverUrl} href={null} pdf={false} />
       <div className="min-w-0 flex-1 space-y-1">
-        <button type="button" onClick={onOpen} className={cn(ENTRY_OPEN, "block w-full")}>
-          <span className="block truncate">{title}</span>
-        </button>
+        {/* A live report's title opens its page, as a published paper's does everywhere else; the steps are behind its own button. */}
+        {r.status === "live" ? (
+          <Link href={`/papers/${r.key}`} className={cn(ENTRY_OPEN, "block w-full")}>
+            <span className="block truncate">{title}</span>
+          </Link>
+        ) : (
+          <button type="button" onClick={onOpen} className={cn(ENTRY_OPEN, "block w-full")}>
+            <span className="block truncate">{title}</span>
+          </button>
+        )}
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="shrink-0 font-mono">{r.key}</span>
           {shared && r.signer ? <span className="shrink-0">{r.signer}</span> : null}
@@ -208,13 +214,7 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
           {onDiscard ? <EntryAction label={t("discard")} icon={Trash2} danger className="size-8" onClick={onDiscard} /> : null}
           {onCorrect ? <EntryAction label={t(r.changes ? "seeChanges" : "correct")} icon={PenLine} className={cn("size-8", r.changes && "text-primary")} onClick={onCorrect} /> : null}
           {r.status === "live" ? (
-            <TooltipHint label={action.label}>
-              <Button asChild variant="ghost" size="icon" className="size-8 text-muted-foreground">
-                <Link href={`/papers/${r.key}`} aria-label={`${action.label}: ${title}`}>
-                  <action.icon className="size-3.5" />
-                </Link>
-              </Button>
-            </TooltipHint>
+            <EntryAction label={t("action.manage")} icon={FileText} className="size-8" onClick={onOpen} />
           ) : (
             <EntryAction label={action.label} icon={action.icon} className="size-8" onClick={onOpen} />
           )}

@@ -1,9 +1,13 @@
 // Openscholar Reports' settings as Convex keeps them and its pages read them (plans/publish-reports): what the
-// series starts with, how a workspace's daily limit is worked out, and the words each rule is told to a person in.
+// series starts with, and the words each rule is told to a person in.
 import type { PublicationSettings } from "../../convex/evidenceLibraries/publicationValidators";
 import type { Effort } from "../ai/core/call-options";
 import { JEV_MODEL } from "../ai/decisions";
 import { DEFAULT_AGREEMENT } from "./agreement-text";
+import { DEFAULT_PRICES, type Licence } from "./report";
+
+/** A licence as the byline names it: a Creative Commons one by its short name, an author's own with its address too, since its name alone says nothing of what it allows. */
+export const licenceInByline = (licence: Licence) => (typeof licence === "string" ? licence : `${licence.name} (${licence.url})`);
 
 /** GPT-6 Luna at medium read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
 export const DEFAULT_TEXT_MODEL = "openai/gpt-6-luna";
@@ -40,9 +44,8 @@ export const CHECK_NAME_MAX = 80;
 export const CHECK_TEXT_MAX = 1000;
 export const SERIES_TEXT_MAX = 200;
 export const AGREEMENT_MAX = 100_000;
-/** A daily limit is a whole number from 0, which stops a workspace starting any, to 1,000. */
+/** The most new reports a day that are counted against a workspace's plan. */
 export const MAX_DAILY_LIMIT = 1000;
-export const dailyLimit = (n: number) => Math.min(MAX_DAILY_LIMIT, Math.max(0, Math.round(Number.isFinite(n) ? n : 0)));
 
 export const DEFAULT_CHECKS: Check[] = [
   {
@@ -102,11 +105,9 @@ export const NO_PUBLICATION: PublicationSettings = {
 export const REPORT_DEFAULTS = {
   enabled: false,
   humanReview: true,
-  series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}" } satisfies Series,
+  series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}, under {licence}" } satisfies Series,
   publication: NO_PUBLICATION,
-  // Free activations a day (#1261): none, so every activation is paid for, until an admin gives a workspace some.
-  perDay: 0,
-  orgPerDay: 0,
+  prices: DEFAULT_PRICES,
   metadataModelId: DEFAULT_TEXT_MODEL,
   metadataEffort: DEFAULT_TEXT_EFFORT as Effort | undefined,
   checks: DEFAULT_CHECKS,
@@ -115,10 +116,7 @@ export const REPORT_DEFAULTS = {
 };
 
 export type WorkspaceKind = "personal" | "organization";
-/** The activations a workspace makes free in a day: the number it was given, else the one for its kind. A person's
- * number is their own workspace's and nothing to do with the organisations they are in. */
-export const freeFor = (defaults: { perDay: number; orgPerDay: number }, kind: WorkspaceKind, own: number | null | undefined) => own ?? (kind === "personal" ? defaults.perDay : defaults.orgPerDay);
-/** How long a start or an activation counts against its workspace's day. */
+/** How long a start counts against its workspace's day. */
 export const DAY_MS = 24 * 60 * 60 * 1000;
 /** What a workspace whose plan's new reports for the day are used up, or that has none, is told. */
 export const startWords = (perDay: number, kind: WorkspaceKind) => {
@@ -135,7 +133,7 @@ export const canRegister = (publication: PublicationSettings) => publication.cro
  */
 /** The series a report is published in: the name it was signed under, which its byline prints, and the ISSN as the series has it now. */
 export const seriesOf = (report: { seriesName?: string }, series: Pick<Series, "name" | "issn">) => ({ name: report.seriesName ?? series.name, issn: series.issn });
-export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name);
+export const bylineOf = (series: Series, doi: string, licence: Licence) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name).replace("{licence}", licenceInByline(licence));
 /** The DOI a report gets under the Crossref prefix and namespace; with Crossref off, none (canRegister). */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
 

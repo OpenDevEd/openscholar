@@ -16,15 +16,16 @@ import { captureLater, UNNAMED_ACCOUNT } from "../lib/analyticsEvents";
 import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { createError } from "../lib/errors";
-import { autumn, type AutumnCustomer } from "./autumn";
+import { autumn, type AutumnBalance, type AutumnCustomer } from "./autumn";
 import {
   billingAccountFields,
   billingAccountSnapshotValidator,
+  type BalancePart,
   type BillingAccountSnapshot,
 } from "./validators";
-import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { PUBLICATION_FEATURE, EVIDENCE_LIBRARIES_FEATURE, REFILL_INTERVALS, type RefillInterval, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
-import { defaultToSavedCard, stripeCredit } from "./stripeRest";
+import { stripeCredit } from "./stripeRest";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
@@ -54,6 +55,39 @@ export const customerFor = internalQuery({
   returns: v.string(),
   handler: (ctx, { workspaceId }) => customerOf(ctx, workspaceId),
 });
+
+/** Which part of a balance a grant belongs to: the interval it refills by, or `once` for one that stays until used. */
+const partOf = (interval: string | undefined): RefillInterval | "once" | null => (!interval || interval === "one_off" ? "once" : (REFILL_INTERVALS as readonly string[]).includes(interval) ? (interval as RefillInterval) : null);
+
+/**
+ * A balance's grants by part, as Autumn spends them: those that refill, shortest interval first, then those that stay
+ * until used. Each part sums its grants. What stays, all spent, is left out: there is nothing to say of it.
+ */
+export function partsOf(balance: AutumnBalance | undefined): { publication?: BalancePart[]; publicationUnlimited?: true } {
+  if (!balance) return {};
+  if (balance.unlimited) return { publicationUnlimited: true };
+  // ponytail: the interval alone, not its count, so a grant every two weeks reads as weekly. Autumn's `interval_count` says when it matters.
+  const parts = ([...REFILL_INTERVALS, "once"] as const).flatMap((interval): BalancePart[] => {
+    const of = (balance.breakdown ?? []).filter((grant) => partOf(grant.reset?.interval) === interval);
+    const left = of.reduce((sum, grant) => sum + grant.remaining, 0);
+    if (of.length === 0 || (interval === "once" && left <= 0)) return [];
+    const sizeOf = (grant: (typeof of)[number]) => (grant.included_grant ?? 0) + (grant.prepaid_grant ?? 0);
+    const size = of.reduce((sum, grant) => sum + sizeOf(grant), 0);
+    const resets = of.flatMap((grant) => (grant.reset?.resets_at ? [grant.reset.resets_at] : []));
+    if (resets.length === 0) return [{ interval, left, size }];
+    // Grants of one interval can refill on different days: at the next one, only those come back to full.
+    const resetsAt = Math.min(...resets);
+    const refillsTo = of.reduce((sum, grant) => sum + (grant.reset?.resets_at === resetsAt ? sizeOf(grant) : grant.remaining), 0);
+    return [{ interval, left, size, resetsAt, refillsTo }];
+  });
+  return parts.length > 0 ? { publication: parts } : {};
+}
+
+/** The workspace's publication balance as its cached account has it: its parts, and what it holds in US dollars (null for no limit). */
+export function publicationOf(account: { publication?: BalancePart[]; publicationUnlimited?: boolean } | null) {
+  const parts = account?.publication ?? [];
+  return { parts, balance: account?.publicationUnlimited ? null : parts.reduce((sum, part) => sum + part.left, 0) };
+}
 
 /** Reads what OpenScholar needs from an Autumn customer. */
 export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSnapshot {
@@ -87,6 +121,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
+    ...partsOf(customer.balances[PUBLICATION_FEATURE]),
     card: customer.payment_method?.card
       ? { brand: customer.payment_method.card.brand, last4: customer.payment_method.card.last4 }
       : undefined,
@@ -182,8 +217,14 @@ export const writeSnapshot = internalMutation({
       return null;
     }
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
+    // A report being paid for buys into the publication balance and spends it in two steps at Autumn. A read between
+    // them would show the balance up, then back down: while one is under way the balance stays as it was last read,
+    // and the activation reads it again when it is done.
+    const paying = existing !== null && (await payingForReport(ctx, workspaceId, fetchedAt));
     const row = {
       ...snapshot,
+      ...(paying && { publication: existing.publication, publicationUnlimited: existing.publicationUnlimited }),
+      publicationAt: paying ? existing.publicationAt : fetchedAt,
       ...(withCard ? { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt } : { card: existing?.card, credit: existing?.credit, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,
@@ -197,6 +238,29 @@ export const writeSnapshot = internalMutation({
     return null;
   },
 });
+
+/** How long a report's charge can be under way: its hold at Autumn lasts as long (reports/activation.ts `HOLD_MS`). One older was left by an action that died. */
+const CHARGING_MS = 5 * 60_000;
+
+/**
+ * Whether a snapshot read at `fetchedAt` could show a report's payment half made: a charge of the workspace's is under
+ * way, or waits on the bank or on Stripe's page, or the price of one that just went live wasn't yet taken at Autumn
+ * when the snapshot was read.
+ */
+async function payingForReport(ctx: QueryCtx, workspaceId: Id<"workspaces">, fetchedAt: number) {
+  const last = (state: "charging" | "pending") => ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", state)).order("desc").first();
+  const charging = await last("charging");
+  if ((charging !== null && charging.at > Date.now() - CHARGING_MS) || (await last("pending")) !== null) return true;
+  // The newest few that went live: one whose price is still to be taken can have another go live after it.
+  const live = await ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", "live")).order("desc").take(5);
+  return live.some((row) => {
+    // One from before holds were finished on record says nothing.
+    if (!row.hold) return false;
+    if (row.finishedAt !== undefined) return row.finishedAt > fetchedAt;
+    // Live, and its hold still to be finished: unless that has taken longer than a hold lasts.
+    return Math.max(row.at, row.settling ?? 0) > Date.now() - CHARGING_MS;
+  });
+}
 
 /**
  * Zeroes the cached balance now, so work that only checks the cache stops: a
@@ -248,16 +312,11 @@ async function captureBillingChanges(
 export async function refreshAccount(
   ctx: ActionCtx,
   workspaceId: Id<"workspaces">,
-  options: { email?: string; name?: string; card?: boolean; savedIn?: string } = {},
+  options: { email?: string; name?: string; card?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   let customer = await autumn.customer(customerId, options);
-  // Back from saving a card on Stripe's page (its Checkout session, `savedIn`): that card is the one charged from now on.
-  if (options.savedIn && customer.stripe_id) {
-    await defaultToSavedCard(customer.stripe_id, options.savedIn);
-    customer = await autumn.customer(customerId, options);
-  }
   // A failed payment's invoice is read only while one is due, which is rare.
   if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
   // The card's read also reads the credit on the Stripe balance, which a purchase is paid from first.

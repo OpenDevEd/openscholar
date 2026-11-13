@@ -1,9 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowUpRight, FileText, Library } from "@/components/icons";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ArrowUpRight, FileText, FileX, Library } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { PaperCover } from "@/components/papers/paper-cover";
+import { coverOf } from "@/lib/papers/cover";
+import { cn } from "@/lib/utils";
 import type { AuthorPublication } from "@/components/authors/types";
 import { typeName } from "@/lib/evidence-libraries/reader-sources";
 import Link from "@/components/workspace-link";
@@ -28,6 +30,51 @@ function pageOf(id: string) {
   return null;
 }
 
+/** Whether a publication has a cover to show: a picture of its PDF's first page, or a PDF to stand a title page in for. */
+const covered = (p: Pick<AuthorPublication, "cover" | "pdf">) => !!p.cover || !!p.pdf;
+
+/**
+ * A publication's cover in a list, as wide as its place. The picture of its PDF's first page when a community made one,
+ * at the picture's own shape, anchored to its place's top and start. A title page when it has a PDF and no picture of it. Without a PDF, a quiet tile that says
+ * so; one whose community hasn't said either way claims nothing.
+ */
+export function PublicationCover({ publication: p, className }: { publication: Pick<AuthorPublication, "id" | "title" | "type" | "year" | "authors" | "cover" | "pdf" | "library">; className?: string }) {
+  const t = useTranslations("libraryList");
+  if (covered(p)) {
+    return (
+      <PaperCover
+        className={className}
+        {...coverOf(p.id)}
+        title={p.title}
+        authors={p.authors ? p.authors.split(", ") : []}
+        source={p.library.name}
+        year={Number(p.year) || null}
+        type={typeName(p.type.trim()) || null}
+        image={p.cover ?? null}
+        // The row's own button opens it; a cover this small carries no mark.
+        href={null}
+        pdf={false}
+        mark={false}
+        sizes="80px"
+      />
+    );
+  }
+  return (
+    <span className={cn("@container flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-md bg-inset text-muted-foreground", className)}>
+      {p.pdf === null ? (
+        <>
+          <FileX aria-hidden className="size-4 opacity-70" />
+          {/* On a cover too narrow for the words, the mark says it alone. */}
+          <span className="hidden text-center text-[10px] font-medium leading-tight @[56px]:block">{t("noPdf")}</span>
+          <span className="sr-only @[56px]:hidden">{t("noPdf")}</span>
+        </>
+      ) : (
+        <FileText aria-hidden className="size-4 opacity-50" />
+      )}
+    </span>
+  );
+}
+
 export function PublicationListItem({ publication: p, locations }: {
   publication: AuthorPublication;
   locations?: { name: string; url: string }[];
@@ -38,22 +85,18 @@ export function PublicationListItem({ publication: p, locations }: {
     <article
       className="fade-enter group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle px-4 py-4 transition-colors hover:bg-muted last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
     >
-      <button
-        className="rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-        aria-label={t("previewCover", { title: p.title })}
-        onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
-      >
-        <Avatar className="h-[92px] w-16 rounded-sm border border-border-subtle shadow-sm transition-transform group-hover:-translate-y-0.5 sm:h-28 sm:w-20">
-          <AvatarImage
-            src={p.cover}
-            alt=""
-            className="object-cover"
-          />
-          <AvatarFallback className="rounded-none bg-inset">
-            <FileText className="size-6 text-muted-foreground/50" />
-          </AvatarFallback>
-        </Avatar>
-      </button>
+      {/* The cover opens the record, as its title does. Without a PDF there is no cover to open: the title is the way in. */}
+      {covered(p) ? (
+        <button
+          className="block w-full self-start rounded-md outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+          aria-label={t("previewCover", { title: p.title })}
+          onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
+        >
+          <PublicationCover publication={p} />
+        </button>
+      ) : (
+        <PublicationCover publication={p} className="self-start" />
+      )}
       <div className="min-w-0">
         <PublicationMetadata year={p.year} type={p.type} className="mb-2 flex items-center gap-2 text-xs text-muted-foreground" />
         <button

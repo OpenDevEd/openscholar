@@ -196,21 +196,6 @@
     "anotherPlan": "別のプラン",
     "onDate": "{date}に",
     "connections": "接続",
-    "localeLabels": {
-      "enUS": "英語（米国）",
-      "enGB": "英語（英国）",
-      "zh": "中国語",
-      "fr": "フランス語",
-      "hi": "ヒンディー語",
-      "ja": "日本語",
-      "ar": "アラビア語",
-      "sw": "スワヒリ語",
-      "pt": "ポルトガル語",
-      "es": "スペイン語",
-      "de": "ドイツ語",
-      "af": "アフリカーンス語",
-      "zu": "ズールー語"
-    },
     "you": "あなた",
     "calendarToday": "今日、{date}",
     "calendarSelected": "{date}、選択済み",
@@ -350,6 +335,7 @@
     "password": "Crossref パスワード",
     "prefix": "DOI プレフィックス",
     "registrant": "登録機関",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "登録者名",
     "email": "登録者のメールアドレス",
     "namespace": "DOI 名前空間",
@@ -434,7 +420,16 @@
     "chargesLabel": "件",
     "paymentFailedEnds": "{amount}の支払いに失敗しました。支払われない場合、{plan}は{date}に終了します。",
     "fixPayment": "支払いを修正",
-    "seePlans": "プランを見る"
+    "seePlans": "プランを見る",
+    "publication": {
+      "title": "出版残高",
+      "hint": "Openscholar Reports で公開するレポートの支払いに使われます。",
+      "every": "{interval, select, hour {1時間ごと} day {毎日} week {毎週} month {毎月} quarter {3か月ごと} semi_annual {6か月ごと} other {毎年}}",
+      "backTo": "{date}に{amount}に戻ります",
+      "kept": "使うまで残る {amount}",
+      "publish": "公開",
+      "noLimit": "無制限"
+    }
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -680,6 +675,7 @@
     "uploadFailed": "アップロードに失敗しました",
     "uploadFailedDescription": "{format} をアップロードできませんでした。もう一度お試しください。",
     "accountChanged": "アカウントが変更されました。もう一度お試しください。",
+    "couldntCopy": "コピーできませんでした",
     "copyFailedDescription": "ブラウザがコピーを許可しませんでした。テキストを選択して手動でコピーしてください。",
     "validationFailed": "検証に失敗しました",
     "entityCreated": "{entity} を作成しました",
@@ -1252,19 +1248,20 @@
     "reviewed": "確認済み"
   },
   "saveToLibrary": {
-    "save": "保存",
-    "saved": "保存済み",
-    "saveToLibrary": "ライブラリに保存",
+    "save": "ライブラリに追加",
+    "saved": "ライブラリにあり",
+    "saveToLibrary": "ライブラリに追加",
     "removeFromLibrary": "ライブラリから削除",
     "addToCollection": "コレクションに追加",
     "newCollection": "新しいコレクション",
     "removed": "ライブラリから削除しました",
     "undo": "元に戻す",
-    "saveError": "論文を保存できませんでした",
+    "saveError": "論文をライブラリに追加できませんでした",
     "removeError": "論文を削除できませんでした",
     "restoreError": "論文を元に戻せませんでした",
     "collectionError": "コレクションを変更できませんでした",
-    "newCollectionWithPaper": "この論文で新しいコレクション"
+    "newCollectionWithPaper": "この論文で新しいコレクション",
+    "finishSaving": "追加を完了"
   },
   "rating": {
     "noRating": "評価なし",
@@ -1411,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "プライバシーを尊重します",
-    "bannerDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。",
-    "dialogDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。選択はいつでも変更できます。",
+    "bannerDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarとそのコミュニティの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。",
+    "dialogDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarとそのコミュニティの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。選択はいつでも変更できます。",
     "acceptAll": "すべて受け入れ",
     "rejectNonEssential": "必須でないものを拒否",
     "preferencesTitle": "Cookie設定",
@@ -1439,7 +1436,11 @@
     "upgradeSuccess": "アップグレード成功",
     "upgradeSuccessCredits": "{plan}にアップグレードしました — {credits}クレジットが追加されました",
     "totalCharge": "現在の請求合計",
-    "paymentMethod": "お支払い方法"
+    "paymentMethod": "お支払い方法",
+    "anotherCard": "別のカード",
+    "anotherCardNote": "Stripe のページが開き、保存済みのカードから選ぶか、新しいカードを入力できます。",
+    "manageBilling": "請求を管理",
+    "toPayment": "支払いへ進む"
   },
   "libraryPage": {
     "title": "ライブラリ",
@@ -1464,7 +1465,7 @@
     "ratingFilter": "最低評価でフィルター",
     "loadMore": "もっと読み込む",
     "emptyLibraryTitle": "このライブラリは空です",
-    "emptyLibraryDescription": "検索結果から論文を保存して、このライブラリを作りましょう。",
+    "emptyLibraryDescription": "検索結果から論文を追加して、このライブラリを作りましょう。",
     "emptyLibraryCta": "論文を検索",
     "noResultsTitle": "検索やフィルターに一致する論文はありません",
     "clearFilters": "フィルターをクリア",
@@ -1859,7 +1860,6 @@
       "notificationSchedule": "ダイジェストの曜日、時刻、タイムゾーンを正しく選んでください。",
       "nameMissing": "コミュニティに名前を付けてください。",
       "shortNameMissing": "コミュニティに短い名前を付けてください。",
-      "partnerName": "助成パートナーごとに名前が必要です。",
       "badColour": "色のひとつが正しくありません。",
       "institutionName": "機関ごとに名前が必要です。",
       "linkLabel": "リンクごとにラベルが必要です。",
@@ -1941,13 +1941,6 @@
       "searchTitlePlaceholder": "気候適応の研究とエビデンス",
       "descriptionLabel": "説明",
       "descriptionHint": "ホームページと検索結果に表示されます。",
-      "partnersHeading": "助成パートナー",
-      "partnersHint": "ホームページに表示されます。",
-      "addPartner": "パートナーを追加",
-      "noPartners": "助成パートナーはまだありません。",
-      "removePartner": "パートナーを削除",
-      "partnerName": "パートナー名",
-      "partnerPlaceholder": "パートナー名",
       "shareImageLabel": "共有画像",
       "shareImageHint": "コミュニティをソーシャルメディアで共有するときに使われます。PNG、JPG、WEBP に対応しています。",
       "showNameLabel": "ロゴの横の名前",
@@ -2137,6 +2130,7 @@
       },
       "socialError": "https:// で始まる完全なアドレスを使ってください。",
       "fundersHeading": "助成機関",
+      "fundersHint": "フッターとすべてのレコードに表示されます。",
       "fundersEmpty": "助成機関はまだありません。",
       "addFunder": "助成機関を追加",
       "removeFunder": "助成機関を削除",
@@ -4677,13 +4671,11 @@
     "communities": "コミュニティ",
     "explore": "探索",
     "authors": "著者",
-    "workspacesCard": "ワークスペース",
     "account": "アカウント",
     "close": "閉じる",
     "switchFrom": "ワークスペース：{name}。ワークスペースを切り替え",
     "runningLabel": "{label}、{what}、{total} 件中 {done} 件",
     "doneOf": "{total} 件中 {done} 件",
-    "planFor": "{workspace} の {plan}",
     "planAndCredits": "プランとクレジット",
     "theme": "テーマ",
     "light": "ライト",
@@ -4691,7 +4683,6 @@
     "auto": "自動",
     "signOut": "サインアウト",
     "signOutFailed": "サインアウトできませんでした。接続を確認して、もう一度お試しください。",
-    "personal": "個人",
     "admin": "管理者",
     "member": "メンバー",
     "members": "{count, plural, other {メンバー # 人}}",
@@ -4703,7 +4694,6 @@
     "decline": "辞退",
     "join": "参加",
     "newOrganization": "新しい組織",
-    "workspaceSettings": "ワークスペース設定",
     "invitationGone": "この招待は無効になりました。",
     "couldntJoin": "組織に参加できませんでした",
     "couldntDecline": "招待を辞退できませんでした",
@@ -5642,6 +5632,7 @@
     "keepInvitation": "招待を残す",
     "declineInvitation2": "招待を辞退",
     "previewCover": "{title} の表紙をプレビュー",
+    "noPdf": "PDFなし",
     "preview": "{title} をプレビュー",
     "declineBody": "{name} へのアクセス権は得られません。ほかのコミュニティには影響しません。",
     "owner": "所有者",
@@ -6167,6 +6158,7 @@
     },
     "admin": {
       "backToReport": "レポートに戻る",
+      "editLost": "編集中に著者が {key} を変更のために取り戻したため、入力した内容は保存されませんでした。チェックが終わってからもう一度開いてください。",
       "editTitle": "詳細を編集",
       "editIntroLive": "{key} は公開中です。保存すると、チェックを経ずに編集内容がすぐに公開され、レポートが再登録されます。",
       "editIntroNotLive": "{key} はまだ公開されていません。保存すると、チェックを経ずに編集内容がすぐに反映されます。",
@@ -6208,7 +6200,9 @@
       "places": "調査地域",
       "studyDesign": "研究デザイン",
       "seeChanges": "変更を見る",
-      "correct": "詳細を修正"
+      "correct": "詳細を修正",
+      "takeDownTitle": "取り下げについて",
+      "openDoi": "DOI {doi} を開く"
     },
     "stages": {
       "draft": "下書き",
@@ -6256,9 +6250,10 @@
       "action": {
         "openPage": "ページを開く",
         "open": "開く",
-        "activate": "有効化する",
+        "activate": "支払う",
         "carryOn": "続ける",
-        "seeFailed": "不合格の内容を見る"
+        "seeFailed": "不合格の内容を見る",
+        "manage": "「公開」で開く"
       },
       "seeChanges": "変更を見る",
       "correct": "詳細を修正"
@@ -6330,7 +6325,6 @@
       },
       "which": "対象のレポート",
       "pagerItems": "件のレポート",
-      "approvedToast": "承認しました。著者が有効化できるようになりました。",
       "sentAgain": "再送信しました",
       "noMatch": "一致するレポートはありません",
       "noReports": "まだレポートはありません",
@@ -6347,7 +6341,7 @@
       "openPage": "ページを開く",
       "openPageLabel": "{key} のページを開く",
       "done": {
-        "approve": "承認しました。著者が有効化できるようになりました。",
+        "approve": "承認しました。有効化できるようになりました。",
         "reinstate": "復元しました。再び公開中です。",
         "withdraw": "撤回しました",
         "decline": "却下しました"
@@ -6363,6 +6357,7 @@
         "humanReview": "人による審査が有効なため、変更は審査者を待っています。"
       },
       "approving": "承認すると著者が有効化でき、有効化した時点で公開されます。",
+      "approvingOrg": "承認すると {organization} の管理者が有効化できるようになり、有効化された時点で公開されます。",
       "standing": {
         "failedAsked": "チェックに不合格となりました。{approving}",
         "failed": "チェックに不合格となったため、レポートは修正のため著者に戻されています。あなたが判断することもできます。{approving}",
@@ -6434,9 +6429,10 @@
       "enterSeriesName": "シリーズ名を入力してください。",
       "enterByline": "クレジット行を入力してください。",
       "bylineNeedsDoi": "クレジット行には {doi} が必要です。これが各レポートの DOI になります。",
+      "bylineNeedsLicence": "この行には {licence} が必要です。各レポートのライセンスになります。",
       "notIssn": "これは ISSN ではありません。ISSN は 2049-3630 のような形で、最後の桁が残りの桁を検証します。",
       "byline": "表記",
-      "bylineHint": "{series}、{issn}、{doi} は各レポートで埋められます",
+      "bylineHint": "{series}、{issn}、{doi}、{licence} はレポートごとに埋められます",
       "bylineSaved": "表記を保存しました",
       "registration": "DOI 登録",
       "zenodoSandbox": "Zenodo テスト環境",
@@ -6459,32 +6455,6 @@
       "changed": "{date} に変更",
       "asWritten": "最初に書かれたまま",
       "edit": "編集",
-      "limits": "無料の有効化",
-      "limitsPager": "無料の有効化",
-      "personal": "個人のワークスペース",
-      "personalHint": "1日あたりの無料の有効化回数。保存済みのカードは引き続き必要です。",
-      "personalLabel": "個人のワークスペースでの1日あたりの無料の有効化回数",
-      "limitSaved": "無料の有効化を保存しました",
-      "organization": "組織のワークスペース",
-      "organizationHint": "1日あたりの無料の有効化回数。メンバーで共有されます。",
-      "organizationLabel": "組織のワークスペースでの1日あたりの無料の有効化回数",
-      "goneAccount": "存在しなくなったアカウント",
-      "goneOrganization": "存在しなくなった組織",
-      "person": "個人",
-      "organisation": "組織",
-      "perDayLabel": "{name}の1日あたりの無料の有効化回数",
-      "aDay": "回無料/日",
-      "backToPeople": "個人の回数に戻す",
-      "backToOrganizations": "組織の回数に戻す",
-      "removeLimit": "{name}の無料の有効化を削除",
-      "alreadyLimited": "{name}にはすでに独自の回数があります：1日{count}回無料。",
-      "people": "個人",
-      "organisations": "組織",
-      "giveLimit": "個人または組織に独自の無料の有効化を設定",
-      "pickerPlaceholder": "組織名または個人のメールアドレス",
-      "pickerEmpty": "一致するアカウントや組織はありません",
-      "limitMax": "上限は 1 日 {max} 件までです",
-      "limitWhole": "上限は 0 から {max} までの整数です",
       "builtIn": "組み込み",
       "modelGone": "モデルは提供終了しました",
       "passesAt": "確信度 {percent} で合格",
@@ -6530,25 +6500,36 @@
       "agreementLabel": "契約（Markdown）",
       "agreementSaved": "契約バージョン {version}",
       "saveVersion": "バージョン {version} として保存",
-      "price": "価格",
-      "priceHint": "無料分を超えた有効化1回の料金：AutumnのReport activationプランの価格です。",
-      "priceHintNone": "AutumnにReport activationプランがないため、無料の有効化だけが行えます。",
-      "notOnSale": "販売していません"
+      "priceOne": "CC BY と CC BY-SA",
+      "priceHint": "CC BY または CC BY-SA でレポートを公開する料金（米ドル）。",
+      "balances": "残高",
+      "balancesHint": "各ワークスペースには Autumn にドル建ての出版残高があり、カードより先にこれらの料金を支払います。そこで個人または組織に残高を付与できます。1回限り、または毎日・毎週・毎月・毎年補充する形です。プランの項目に入れると、そのプランのすべてのワークスペースに付与されます。",
+      "openAutumn": "Autumnを開く",
+      "priceThree": "NC、ND、独自のライセンス",
+      "priceThreeHint": "NC または ND ライセンス、あるいは著者独自のライセンスでレポートを公開する料金（米ドル）。",
+      "prices": "料金"
     },
     "flow": {
       "steps": {
+        "prepare": "準備",
         "agreement": "契約",
         "doi": "DOI",
         "upload": "PDF",
         "details": "詳細",
         "checks": "チェック",
-        "live": "公開"
+        "live": "公開",
+        "sealed": "契約に署名するとロックされます。",
+        "paying": "支払いの処理中のため、いまはステップを開けません。銀行に拒否された場合は、また開けるようになります。",
+        "liveNow": "公開中です。詳細は「{action}」から変更できます。",
+        "closed": "レビュアーが取り下げたため、変更できません。",
+        "running": "チェックを実行中です。終わるとステップをまた開けます。",
+        "notYours": "このレポートを変更できるのは、作成を始めた人だけです。"
       },
       "publish": "公開",
       "newReport": "新しいレポート",
       "yourReports": "あなたのレポート",
       "discarded": "レポートを破棄しました",
-      "discardFailed": "レポートを破棄できませんでした",
+      "discardFailed": "レポートを破棄できませんでした。",
       "closedTitle": "公開は現在停止中です",
       "closedWithReports": "現在、新しいレポートは開始できません。既存のレポートはそのままです。",
       "closedNoReports": "現在、新しいレポートは開始できません。後でもう一度お試しください。",
@@ -6558,28 +6539,28 @@
       "elsewhereTitle": "このレポートは別のワークスペースにあります",
       "missingTitle": "このレポートはここにありません",
       "offNotice": "現在、新しいレポートの公開は停止中です。このレポートの作業は続けられます。",
-      "stepFailed": "そのステップを開けませんでした",
-      "checksFailed": "チェックを実行できませんでした",
+      "stepFailed": "そのステップを開けませんでした。",
+      "checksFailed": "チェックを実行できませんでした。",
       "saveFailed": "変更を保存できませんでした",
       "changesLive": "変更が公開されました",
       "changesWithReviewer": "変更は審査者が確認中です",
       "agreementTitle": "{series}との出版契約",
       "version": "バージョン {version}",
-      "agreementIntro": "著作権はあなたが保持し、CC BY 4.0 で公開します。署名すると DOI が予約されます。",
-      "agreementShared": "著作権はあなたが保持し、CC BY 4.0 で公開します。署名すると DOI が予約されます。レポートはこのワークスペースのものです。メンバーは閲覧でき、あなたと管理者が作業します。",
+      "agreementIntro": "著作権はあなたに残り、ライセンスはあなたが選びます。ライセンスは署名後に変更できません。署名すると DOI が予約されます。",
+      "agreementShared": "著作権はあなたに残り、ライセンスはあなたが選びます。ライセンスは署名後に変更できません。署名すると DOI が予約されます。レポートはこのワークスペースのものです。メンバーは閲覧でき、あなたと管理者が作業します。",
       "signedBy": "署名者",
-      "signForAll": "同意した著者全員を代表して署名します",
-      "agree": "この契約に同意します",
+      "agree": "自分自身と共著者全員を代表してこの契約に同意します。共著者全員の同意を得ています",
       "untouched": "<mono>{key}</mono> の DOI をすでに予約していますが、PDF はまだアップロードしていません。",
       "continueWith": "これで続ける",
       "agreementChanged": "このページを開いている間に契約が変更されました。読み直してからチェックを入れてください。",
+      "agreementInEnglish": "契約書そのものは英語で書かれています。",
       "limit": {
         "personal": "ご利用のプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
         "personalClosed": "ご利用のプランには公開が含まれていません。公開を含むプランに変更してください。",
         "workspace": "このワークスペースのプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
         "workspaceClosed": "このワークスペースのプランには公開が含まれていません。公開を含むプランに変更してください。"
       },
-      "signFailed": "契約に署名できませんでした",
+      "signFailed": "契約に署名できませんでした。",
       "sign": "署名して DOI を予約",
       "signIn": "サインインして公開",
       "doiReserved": "DOI を予約しました",
@@ -6590,15 +6571,17 @@
       "doiCopied": "DOI をコピーしました",
       "uploadPdf": "PDF をアップロード",
       "textless": "この PDF にはスキャン画像のように文字が含まれていません。チェックは表記を見つけられません。文字を含む PDF として書き出してアップロードするか、詳細を手入力してください。",
+      "textlessAdded": "この PDF にはスキャンと同じくテキストが含まれていないため、チェックはレポートを読み取れません。表記は当方で追加したページにあります。テキスト付きの PDF として書き出してアップロードするか、詳細を手入力してください。",
       "unreadPdf": "Openscholar はこの PDF から詳細を読み取れませんでした。手入力してください。",
       "uploadAnother": "別の PDF をアップロード",
       "uploadLost": "アップロードが届きませんでした。もう一度お試しください。",
-      "choosePdf": "PDF を選んでください",
+      "notPdf": "{name} は PDF ではありません。レポートを PDF として保存または書き出し、そのファイルを選んでください。",
       "emptyFile": "そのファイルは空です。PDF を選び直してください。",
-      "tooBig": "PDF が {max} MB を超えています",
+      "tooBig": "PDF が {max} MB を超えています。より小さいものを選んでください。",
       "offline": "PDF をアップロードできませんでした。接続を確認して、もう一度選んでください。",
-      "uploadFailed": "PDF をアップロードできませんでした。もう一度お試しください。",
-      "uploadIntro": "アップロードする前に、次のテキストをそのまま表紙または表紙の裏に入れてください。チェックはこの行を探します。",
+      "notSent": "PDF を送信できませんでした。",
+      "uploadFailed": "PDF は届きましたが、サーバーがレポートに追加しませんでした。",
+      "uploadIntro": "このシリーズのレポートはすべて、PDF 内にこの表記をテキストとして含みます。チェックはこれを探します。",
       "copyByline": "表記をコピー",
       "bylineCopied": "表記をコピーしました",
       "uploading": "{name} をアップロード中",
@@ -6607,6 +6590,13 @@
       "drop": "ここに PDF をドロップするか、選んでください",
       "dropHint": "PDF 1 つ、{max} MB まで",
       "unopenedPdf": "{name} を PDF として開けませんでした。パスワードがかかっている場合は外してから、PDF として保存し直してアップロードしてください。",
+      "lacksByline": "{name} には上の表記がありません。表記を追加して PDF をもう一度アップロードするか、当方に追加をお任せください。",
+      "keptDetails": "これは PDF を差し替える前の詳細です。",
+      "readAgain": "この PDF から読み込む",
+      "readAgainTitle": "この PDF から詳細を読み込みますか？",
+      "readAgainBody": "いま表示されている詳細は、入力した内容も含めて、この PDF の詳細に置き換わります。",
+      "readAgainKeep": "この詳細を残す",
+      "readAgainFailed": "詳細を読み込み直せませんでした。",
       "stuck": "{name} の読み取りに時間がかかりすぎています。アップロードし直してください。",
       "replaces": "再アップロードすると {name} が置き換わります",
       "check": {
@@ -6616,11 +6606,12 @@
         "failed": "不合格",
         "flagged": "フラグあり",
         "unclear": "不明",
-        "sure": "合格の確信度 {percent}",
+        "sure": "{percent}",
         "foundIn": "{where}で見つかりました：",
         "foundAs": "見つかった作品",
         "said": {
-          "notPublished": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "notPublished": "Openscholar Reports、OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
+          "notPublishedElsewhere": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
           "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
         },
@@ -6643,7 +6634,7 @@
           }
         }
       },
-      "activateFailed": "有効化できませんでした",
+      "activateFailed": "有効化できませんでした。",
       "running": "チェックを実行中",
       "ofTotal": "{done}/{total}",
       "runningHint": "以前のコピーの検索には数秒かかります。このページを離れてもチェックは続きます。",
@@ -6654,13 +6645,16 @@
       "readyPassed": "あなたのレポートはチェックに合格しました。有効化すると DOI が公開され、ページが開きます。",
       "waiting": "審査待ち",
       "inReview": "審査中",
-      "waitingFlagged": "チェックがあなたのレポートにフラグを付けたため、審査者が確認します。承認されたら有効化でき、メールでお知らせします。",
-      "waitingPassed": "あなたのレポートはチェックに合格しました。審査者が承認したら有効化でき、メールでお知らせします。",
+      "waitingFlagged": "チェックでレポートに指摘があったため、公開前に審査者が確認します。メールでお知らせします。レポートは「公開」でお待ちしています。",
+      "reviewTakes": "審査には最大 3 営業日かかります。",
+      "waitingPassed": "あなたのレポートはチェックに合格しました。公開前に審査者が承認します。メールでお知らせします。レポートは「公開」でお待ちしています。",
       "withdrawn": "撤回済み",
       "notPublished": "未公開",
       "declined": "却下",
       "withdrawnBody": "審査者がこのレポートを撤回しました。ページにもそう表示されます。",
       "declinedBody": "審査者がこのレポートを却下しました。",
+      "declinedFix": "詳細を変更するか新しい PDF をアップロードして、もう一度チェックを実行できます。",
+      "activatingNow": "レポートを有効化しています。数秒かかります。",
       "notYet": "まだ公開されていません",
       "aCheckFailed": "チェックに不合格",
       "failedAsked": "人による審査を依頼しました。詳細を変更するか新しい PDF をアップロードして、チェックを再実行することもできます。",
@@ -6672,14 +6666,19 @@
       "changeDetails": "詳細を変更",
       "uploadNew": "新しい PDF をアップロード",
       "publishAnother": "別のレポートを公開",
-      "activate": "有効化",
+      "activate": "支払って DOI を有効化",
       "needsApproval": "先に審査者の承認が必要です",
       "untitled": "無題のレポート",
       "startedBy": "{name}がこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
       "startedBySomeone": "このワークスペースの誰かがこのレポートを開始しました。変更できるのは本人とワークスペースの管理者だけです。",
       "openPage": "ページを開く",
+      "takeDown": "レポートを取り下げるには、キー {key} を添えて <mail>{email}</mail> までご連絡ください。3営業日以内に返信します。ページと DOI は残り、レポートが取り下げられたことを示します。",
+      "waitingIn": "{name} に、有効化を待っているレポートが {count} 件あります。",
+      "waitingOwn": "ご自身のワークスペースに、有効化を待っているレポートが {count} 件あります。",
+      "waitingOpen": "開く",
+      "registering": "ページはすでに公開されており、共有できます。DOI は登録が済むと使えるようになります。通常は数分以内です。",
       "sentToReviewer": "審査者に送信しました",
-      "requestFailed": "依頼を送信できませんでした",
+      "requestFailed": "依頼を送信できませんでした。",
       "reviewIntro": "審査者があなたのレポートとチェックの結果を読みます。チェックが誤っていると思うときに依頼してください。",
       "reviewQuestion": "チェックはどこを誤りましたか？",
       "cancel": "キャンセル",
@@ -6704,7 +6703,7 @@
       "discardBody": "レポートは現在のまま公開されます。行った変更は失われます。",
       "keepThem": "残す",
       "changesDiscarded": "変更を破棄しました",
-      "changesDiscardFailed": "変更を破棄できませんでした",
+      "changesDiscardFailed": "変更を破棄できませんでした。",
       "discard": "破棄",
       "pages": "{count, plural, other {# ページ}}",
       "agreementVersion": "契約 v{version}",
@@ -6722,16 +6721,12 @@
         "onlyAdmin": "有効化できるのは管理者だけです",
         "notForSale": "現在、有効化の支払いはできません",
         "payTitle": "{price}を支払って{key}を有効化",
-        "freeTitle": "{key}を有効化",
         "orgCardCharged": "{organization}のカードに請求されます。",
-        "orgCardNothing": "{organization}のカードには請求されません。",
-        "payConfirm": "支払って有効化",
         "dueNow": "今回のお支払い",
         "doiNow": "現在のDOI",
         "after": "有効化後",
         "reserved": "予約済み",
         "live": "公開中",
-        "activationLine": "有効化",
         "codeLine": "コード {code}",
         "promo": {
           "add": "プロモコードを追加",
@@ -6741,34 +6736,135 @@
           "off": "{percent}%オフ",
           "failed": "コードを確認できませんでした。もう一度お試しください。",
           "unknownCode": "{code} は有効なコードではないか、使用済みです。",
-          "nothingOff": "{code} では有効化の料金は割り引かれません。",
-          "codeTooLong": "このコードは長すぎます。"
+          "nothingOff": "{code} ではレポートの公開料金は下がりません。",
+          "codeTooLong": "このコードは長すぎます。",
+          "applyFirst": "有効化するには、コードを適用するか消去してください。"
         },
         "card": {
           "bankAsked": "銀行が支払いの確認を求めています",
-          "goesLive": "支払いが確認されるとすぐに公開されます。",
+          "goesLive": "支払いが済むとすぐに公開されます。",
           "refused": "銀行が前回の支払いを確認しなかったため、請求は行われていません。",
-          "free": "無料",
-          "freeLeft": "本日の無料有効化は残り{count}回",
-          "freeLeftNoCard": "本日の無料有効化は残り{count}回。保存済みのカードは引き続き必要です。",
-          "add": "有効化するには支払い方法を追加してください",
-          "costs": "有効化は1回{price}です。",
-          "costsOrg": "有効化は1回{price}で、{organization}に請求されます。",
-          "needed": "有効化には保存済みのカードが必要です。",
-          "orgCard": "{organization}のカード",
-          "yourCard": "あなたのカード",
           "confirm": "支払いを確認",
-          "change": "変更",
-          "addButton": "支払い方法を追加",
-          "stripeFailed": "Stripeのページを開けませんでした",
-          "credit": "クレジット {amount}"
+          "toPayment": "支払いへ進む",
+          "unfinished": "支払いが完了していません",
+          "cancel": "支払いをキャンセル",
+          "cancelFailed": "支払いをキャンセルできませんでした。もう一度お試しください。"
         },
-        "creditLine": "アカウントのクレジット",
-        "refunded": "有効化のために支払われた {amount} は返金されました。",
-        "refunding": "有効化のために支払われた {amount} を返金しています。",
-        "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。",
-        "noFreeLeft": "本日の無料有効化はもう残っていません。もう一度有効化すると有料で行えます。",
-        "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。"
+        "declined": "カードが拒否されました。請求はありません。もう一度試すか、別の方法で支払ってください。",
+        "paused": "現在、公開は一時停止中のため、何も公開できません。レポートはそのまま保持されます。",
+        "kept": "このレポートに支払われた分は出版残高に入りました。次に有効化するレポートで使われます。",
+        "keptOrg": "このレポートに支払われた分は {organization} の出版残高に入りました。そこで次に有効化されるレポートで使われます。",
+        "balanceLine": "出版残高",
+        "onStripe": "支払いのために Stripe のページが開きます。",
+        "changed": "このページが読み込んだあとに支払額が変わりました。確認してから、もう一度有効化してください。",
+        "toStripe": "支払いへ進む"
+      },
+      "back": "戻る",
+      "next": "次へ",
+      "bylineFirst": "PDF にこの表記を入れます",
+      "bylineFirstBody": "このシリーズのレポートはすべて、PDF 内にこの表記をテキストとして含みます。アップロード後、チェックがこれを探します。",
+      "nextUpload": "PDF をアップロード",
+      "nextDetails": "詳細を確認",
+      "problem": {
+        "outOfStep": "このページとサーバーのバージョンが異なります。ページを再読み込みしてから、もう一度お試しください。",
+        "retry": "もう一度お試しください。繰り返し起きる場合は、<link>問題を報告</link>してください。",
+        "retryQuote": "もう一度お試しください。繰り返し起きる場合は、{reference} を添えて<link>問題を報告</link>してください。"
+      },
+      "bylineBy": {
+        "label": "表記を追加する人",
+        "choose": "続けるには、表記を追加する人を選んでください。",
+        "chooseFirst": "先に、表記を追加する人を選んでください",
+        "failed": "{name} にページを追加できませんでした。ご自身で表記を追加し、PDF をもう一度アップロードしてください。",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "自分で追加する",
+          "body": "アップロードする前に、表記を一字一句そのまま PDF の表紙または表紙裏に入れてください。"
+        },
+        "added": {
+          "title": "追加を任せる",
+          "body": "この表記とレポートの詳細を載せた最終ページを追加します。"
+        }
+      },
+      "overview": {
+        "title": "{series} でレポートを公開する",
+        "intro": "最初から最後まで約 5 分です。各ステップで必要なことは次のとおりです。",
+        "introReviewed": "あなたの作業は約 5 分です。その後、公開前に審査者がレポートを承認し、メールでお知らせします。",
+        "start": "契約に署名",
+        "agreement": {
+          "title": "公開契約に署名する",
+          "body": "著作権はあなたに残り、ライセンスはあなたが選びます。"
+        },
+        "doi": {
+          "title": "DOI を取得する",
+          "body": "署名した時点で予約されます。レポートと同時に有効になります。"
+        },
+        "pdf": {
+          "title": "PDF をアップロードする",
+          "body": "シリーズ名と DOI を示す表記を 1 行入れます。ご自身で追加するか、当方が最終ページに追加します。"
+        },
+        "details": {
+          "title": "詳細を確認する",
+          "body": "PDF から読み取ります：タイトル、著者、ORCID iD、所属機関、助成機関。"
+        },
+        "checks": {
+          "title": "自動チェック",
+          "body": "約 1 分。その表記と、すでに公開されているものを探します。"
+        },
+        "activate": {
+          "title": "有効化",
+          "bodyPrices": "CC BY または CC BY-SA は {price}、その他のライセンスは {priceOfThree}。出版残高またはカードで支払います。DOI が登録され、レポートが公開されます。",
+          "bodyCard": "CC BY または CC BY-SA は {price}、その他のライセンスは {priceOfThree}。カードで支払います。バウチャーコードで減額または全額をまかなえます。DOI が登録され、レポートが公開されます。"
+        }
+      },
+      "licence": {
+        "label": "ライセンス",
+        "by": "あなたのクレジットを表示すれば、誰でも共有・改変できます。",
+        "bySa": "CC BY と同じで、そこから作られたものも同じライセンスになります。",
+        "other": "その他のライセンス",
+        "otherBody": "非営利、改変禁止、または独自のもの。",
+        "which": "ライセンスの種類",
+        "own": "独自のライセンス",
+        "ownName": "名称",
+        "ownUrl": "本文のウェブアドレス",
+        "ownNeeded": "ライセンスの名称（ラテン文字）と本文のウェブアドレスを入力してください。",
+        "help": {
+          "title": "ライセンス",
+          "about": "ライセンスについて",
+          "by": "再利用する人はあなたのクレジットを表示します。",
+          "sa": "そこから作られたものも同じライセンスになります。",
+          "nc": "あなたに確認せずに営利目的で使うことはできません。",
+          "nd": "改変した版を他の人が共有することはできません。",
+          "mining": "どのライセンスでも、誰でもレポートをそのまま読み、ダウンロードし、共有でき、本文からデータを抽出できます。ただし NC では営利目的の抽出はできません。契約により、Openscholar はどのライセンスでも公開と保存ができます。",
+          "compare": "各ライセンスで許可されること",
+          "sentTo": "送信先",
+          "crossref": "DOI を登録",
+          "zenodo": "コピーを保存",
+          "openscholar": "レポートを表示"
+        }
+      },
+      "payment": {
+        "payWith": "支払い方法",
+        "balance": "出版残高",
+        "card": "カード",
+        "byCard": "カードで支払い",
+        "due": "有効化時の支払額",
+        "later": "レポートを有効化するまで請求はなく、支払い方法もまだ変更できます。",
+        "code": "コード {code}",
+        "dueNow": "今回の支払額",
+        "title": "支払い",
+        "sign": "読んで署名",
+        "noLimit": "無制限",
+        "credit": "アカウントのクレジット",
+        "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。"
+      },
+      "activateFree": "DOI を有効化",
+      "paid": {
+        "balance": "残高から {amount} を支払い",
+        "balanceLeft": "残高から {amount} を支払い、残り {left}",
+        "card": "カードで {amount} を支払い",
+        "code": "{code} で全額をまかないました",
+        "codeRest": "{code} で残りをまかないました",
+        "credit": "アカウントのクレジットから {amount} を支払い"
       }
     },
     "meta": {
@@ -6784,14 +6880,11 @@
       "name": "氏名",
       "moveUp": "上へ",
       "moveDown": "下へ",
-      "removeAuthor": "著者を削除",
+      "removeAuthor": "人物を削除",
       "moveUpLabel": "{name}を上へ",
       "moveDownLabel": "{name}を下へ",
       "author": "著者",
-      "roles": "貢献者の役割",
-      "roleCount": "{count, plural, other {# 件の役割}}",
-      "findRole": "役割を検索",
-      "noRole": "その役割はありません",
+      "noContribution": "該当する貢献はありません。レポートの編集や翻訳は役割です。「役割」で選んでください。",
       "corresponding": "責任著者",
       "orcidFound": "名前と {institution} で ORCID から見つかりました",
       "correctTitle": "詳細を修正",
@@ -6807,11 +6900,17 @@
       "type": "種類",
       "language": "言語",
       "date": "公開日",
+      "dateYear": "年",
+      "dateMonth": "月",
+      "dateDay": "日",
+      "noMonth": "月なし",
+      "noDay": "日なし",
+      "yearInvalid": "年は 4 桁の数字で入力してください。",
       "future": "レポートの日付を未来にすることはできません。",
       "licence": "ライセンス",
-      "authors": "著者",
-      "authorsPager": "人の著者",
-      "addAuthor": "著者を追加",
+      "authors": "人物",
+      "authorsPager": "人",
+      "addPerson": "人を追加",
       "abstract": "要旨",
       "subjects": "主題",
       "topics": "トピック",
@@ -6845,6 +6944,9 @@
       "addGrant": "{name}の助成番号を追加",
       "references": "参考文献",
       "referencesPager": "件の参考文献",
+      "editReference": "参考文献を編集",
+      "editReferenceLabel": "参考文献 {number} を編集",
+      "referenceLabel": "参考文献 {number}",
       "removeReference": "参考文献を削除",
       "addReference": "DOI で参考文献を追加",
       "doiPlaceholder": "引用している DOI を追加",
@@ -6866,8 +6968,331 @@
       "cancel": "キャンセル",
       "sendForReview": "変更をチェックして審査に送る",
       "checkAndPublish": "変更をチェックして公開",
-      "runChecks": "チェックを実行",
-      "tooEarly": "レポートの日付を1400年より前にすることはできません。"
+      "runChecks": "送信",
+      "tooEarly": "レポートの日付を1400年より前にすることはできません。",
+      "back": "戻る",
+      "backToChecks": "チェックに戻る",
+      "role": "役割",
+      "orcidLabel": "ORCID iD",
+      "contributions": "貢献",
+      "contributionsPlaceholder": "この人が行ったこと",
+      "contributionCount": "{count, plural, other {# 件の貢献}}",
+      "findContribution": "貢献を検索",
+      "writeAbstract": "PDF から作成",
+      "replaceAbstractTitle": "要旨を置き換えますか？",
+      "replaceAbstractBody": "PDF から新しい要旨を作成し、欄にある要旨と置き換えます。",
+      "keepAbstract": "このままにする",
+      "replaceAbstract": "置き換える",
+      "noAbstract": "PDF に要旨が印刷されていません。入力するか、PDF から作成してください。",
+      "abstractFailed": "要旨を作成できませんでした。もう一度お試しください。",
+      "addReferences": "参考文献を追加",
+      "referencesPlaceholder": "参考文献または DOI を 1 行に 1 件ずつ貼り付け",
+      "uploadReferences": "ファイルをアップロード",
+      "uploadReferencesLabel": "参考文献のファイルをアップロード",
+      "referenceFormats": "BibTeX、RIS、またはテキスト",
+      "noReferencesFound": "参考文献が見つかりませんでした。",
+      "referencesListed": "すべてすでに一覧にあります。",
+      "referencesAdded": "{count, plural, other {# 件の参考文献を追加しました}}",
+      "undo": "元に戻す",
+      "referencesTooBig": "このファイルは 2 MB を超えています。参考文献の一覧はずっと小さいはずです。",
+      "openItsDoi": "DOI を開く",
+      "openReferenceDoi": "参考文献 {number} の DOI を開く"
+    },
+    "kinds": {
+      "author": "著者",
+      "editor": "編者",
+      "chair": "議長",
+      "translator": "翻訳者",
+      "reviewer": "査読者",
+      "review-assistant": "査読補助",
+      "reviewer-external": "査読者（外部）",
+      "stats-reviewer": "査読者（統計）",
+      "reader": "閲読者",
+      "other": "その他"
+    },
+    "roleDetails": {
+      "conceptualization": "アイデアを出し、目標を定めた",
+      "dataCuration": "データを整理・クリーニングし、保管した",
+      "formalAnalysis": "統計などの形式的な分析を行った",
+      "fundingAcquisition": "プロジェクトの資金を獲得した",
+      "investigation": "研究を行い、データを集めた",
+      "methodology": "方法やモデルを設計した",
+      "projectAdministration": "プロジェクトを管理・調整した",
+      "resources": "材料、試料、道具、計算資源を提供した",
+      "software": "コードを書いた、またはテストした",
+      "supervision": "チームを率い、指導した",
+      "validation": "結果を再現できることを確かめた",
+      "visualization": "図とデータの表示を作成した",
+      "writingOriginalDraft": "最初の原稿を書いた",
+      "writingReviewEditing": "文章を見直し、修正した"
+    },
+    "help": {
+      "aboutLabel": "{title} について",
+      "sentTo": "送信先",
+      "does": {
+        "crossref": "DOI を登録",
+        "zenodo": "コピーを保存",
+        "openscholar": "報告書を表示"
+      },
+      "sent": "{name}、これを受け取る：{does}",
+      "notSent": "{name}、これは受け取らない：{does}",
+      "filled": {
+        "pdf": "PDF から読み取り",
+        "judged": "PDF から判断",
+        "matched": "PDF から読み取り、照合",
+        "classified": "OpenAlex の提案",
+        "author": "最初は著者",
+        "fixed": "Openscholar が設定",
+        "reserved": "署名時に予約"
+      },
+      "entry": {
+        "list": "一覧から選択",
+        "typed": "自由に入力",
+        "either": "一覧から選択または入力",
+        "pasted": "貼り付けまたはアップロード",
+        "toggle": "オンまたはオフ",
+        "chosen": "あなたが選択"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex の資料種別",
+          "detail": "この選択欄の一覧"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo のリソース種別",
+          "detail": "各種別が Zenodo で何になるか"
+        },
+        "crossrefReports": {
+          "name": "Crossref の報告書",
+          "detail": "Crossref が保管する記録"
+        },
+        "iso639": {
+          "name": "ISO 639 言語コード",
+          "detail": "OpenAlex が使うコード"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "クリエイティブ・コモンズ 表示 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Crossref の寄与者",
+          "detail": "Crossref が人を記録する方法"
+        },
+        "crossrefRoles": {
+          "name": "Crossref の寄与者の役割",
+          "detail": "この選択欄の一覧"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "iD とは"
+        },
+        "orcidRegister": {
+          "name": "iD を取得",
+          "detail": "無料、1 分で完了"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex の機関",
+          "detail": "最初に検索"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "OpenAlex にない機関を検索"
+        },
+        "rorAdd": {
+          "name": "ROR に組織の追加を依頼",
+          "detail": "どちらの一覧にもない組織向け"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO の寄与者役割分類"
+        },
+        "crossrefAbstracts": {
+          "name": "Crossref の要旨",
+          "detail": "Crossref が要旨を保管する方法"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex のトピック",
+          "detail": "この選択欄が検索する一覧"
+        },
+        "sdgs": {
+          "name": "17 の目標",
+          "detail": "国連"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex の研究デザイン",
+          "detail": "この選択欄の一覧"
+        },
+        "iso3166": {
+          "name": "ISO 3166 国コード",
+          "detail": "この選択欄の国"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex の助成機関",
+          "detail": "最初に検索"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "政府や財団のためにあわせて検索"
+        },
+        "funderRegistry": {
+          "name": "Crossref の Funder Registry",
+          "detail": "Crossref が助成機関を識別する ID"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "DOI とは"
+        },
+        "crossrefReferences": {
+          "name": "Crossref の参考文献",
+          "detail": "そこから被引用数を数える方法"
+        },
+        "crossrefRelations": {
+          "name": "Crossref の関係",
+          "detail": "Crossref が資料どうしを結び付ける方法"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "ISSN とは"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "タイトル",
+          "about": "表紙に印刷されている報告書のタイトル。"
+        },
+        "subtitle": {
+          "title": "サブタイトル",
+          "about": "表紙にある場合、タイトルの下の行。",
+          "note": "PDF に印刷されていない場合は空欄です。"
+        },
+        "type": {
+          "title": "種別",
+          "about": "どのような種類の資料か。",
+          "note": "Crossref はすべての Openscholar Report を報告書として登録します。Zenodo と Openscholar はここで選んだ種別を使います。"
+        },
+        "language": {
+          "title": "言語",
+          "about": "報告書が書かれている言語。"
+        },
+        "date": {
+          "title": "公開日",
+          "about": "報告書が公開された日。PDF の記載に合わせて年、月、または日で、遅くとも今日まで。",
+          "note": "Crossref はその精度のまま保管します。Zenodo は完全な日付を使うため、年や月はその初日として送られます。日付の記載がない PDF には今日の日付が入ります。"
+        },
+        "licence": {
+          "title": "ライセンス",
+          "about": "署名した契約のとおり、すべての Openscholar Report は CC BY 4.0 で公開されます。"
+        },
+        "authors": {
+          "title": "著者",
+          "about": "報告書がクレジットするすべての人。引用で並ぶ順。",
+          "note": "PDF の著者は入力済みです。編者や翻訳者などをここに加え、役割を設定してください。"
+        },
+        "name": {
+          "title": "氏名",
+          "about": "報告書に印刷されている氏名。組織の正式名称でもかまいません。",
+          "note": "個人名は姓、名の順で Crossref と Zenodo に送られ、最後の語が姓とみなされます。Department、Ministry、University などの語を含む組織名は、そのまま送られます。"
+        },
+        "kind": {
+          "title": "役割",
+          "about": "この人が報告書にとってどんな立場か。ほとんどの人は著者です。",
+          "note": "レポートの引用に名前が載るのは著者だけです。それ以外の人は、レポートのページの「貢献」に役割とともに表示され、Crossref と Zenodo には各人の役割が送られます。"
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "同姓同名の研究者を区別する無料の番号。",
+          "note": "PDF に印刷されていない場合、これらの機関のいずれかに所属し、この氏名と完全に一致する 1 人を ORCID で探します。"
+        },
+        "affiliations": {
+          "title": "所属",
+          "about": "報告書を書いたときにこの人が勤めていた機関。",
+          "note": "ROR ID のある機関は ID とともに送られ、Crossref と Zenodo がどの機関か分かるようになります。手で入力した機関は名前だけが送られます。"
+        },
+        "contributions": {
+          "title": "貢献",
+          "about": "この人がこの研究で行ったこと。CRediT の 14 の役割で表します。",
+          "note": "PDF に貢献の記載がある場合だけ入力されます。空欄のままでもかまいません。"
+        },
+        "corresponding": {
+          "title": "責任著者",
+          "about": "読者が報告書について連絡する相手。",
+          "note": "PDF に記載がある場合だけオンになります。"
+        },
+        "abstract": {
+          "title": "要旨",
+          "about": "PDF に印刷されている要旨や概要を、そのまま写したもの。",
+          "note": "どちらも印刷されていない場合は、「PDF から作成」で下書きを作り、確認して修正できます。"
+        },
+        "topics": {
+          "title": "トピック",
+          "about": "報告書の内容を OpenAlex のトピックで表したもの。",
+          "note": "OpenAlex の分類器がタイトルと要旨を読みます。トピックのバーは確信度を示します。自分で加えたトピックにはありません。"
+        },
+        "keywords": {
+          "title": "キーワード",
+          "about": "報告書の内容を表すあなた自身の言葉。",
+          "note": "PDF のキーワードです。記載がない場合は OpenAlex の分類器から最大 5 つ。"
+        },
+        "sdgs": {
+          "title": "持続可能な開発目標",
+          "about": "報告書が実質的に扱う国連の目標。",
+          "note": "入力されるのは最大 3 つです。自由に追加・削除できます。"
+        },
+        "design": {
+          "title": "研究デザイン",
+          "about": "研究がどのように行われたか。",
+          "note": "PDF に明記されている場合だけ入力されます。Zenodo では方法の注記として表示されます。"
+        },
+        "places": {
+          "title": "対象地域",
+          "about": "報告書が扱う国や地域。著者の勤務地ではありません。"
+        },
+        "funding": {
+          "title": "助成",
+          "about": "研究の費用を出した組織と、印刷されている助成番号。",
+          "note": "助成機関は OpenAlex と ROR で検索されます。見つかった機関は ROR ID とともに、ある場合は Funder Registry ID とともに送られます。手で入力した機関は名前だけが送られます。"
+        },
+        "references": {
+          "title": "参考文献",
+          "about": "この報告書が引用する資料。参考文献一覧の書き方のまま。",
+          "note": "一覧を貼り付けるか、BibTeX、RIS、テキストのファイルでアップロードしてください。PDF に印刷された DOI は入力済みで、Crossref は DOI のある参考文献を引用先の資料と結び付けます。"
+        },
+        "links": {
+          "title": "データ、コード、版",
+          "about": "報告書のデータ、コード、ほかの版、補足資料の置き場所。",
+          "note": "それぞれウェブアドレスまたは DOI です。"
+        },
+        "agreement": {
+          "title": "出版契約",
+          "about": "報告書を公開する前に、あなたと Openscholar が合意する内容。",
+          "note": "著作権はあなたが持ちます。チェックを入れると、あなたとすべての共著者の同意になるので、先に共著者の同意を確認してください。署名した契約は変更できません。"
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "報告書への恒久的なリンク。ページの場所が変わっても機能します。",
+          "note": "署名時に予約されるので、PDF に印刷できます。報告書が公開されると機能します。"
+        },
+        "byline": {
+          "title": "シリーズ行",
+          "about": "このシリーズのすべての報告書に印刷する行。シリーズ名、ISSN、報告書の DOI が入ります。",
+          "note": "チェックで探すため、画像ではなく PDF 内の文字である必要があります。「追加を任せる」を選ぶと、Openscholar がこの行を載せた最終ページを加えます。"
+        },
+        "checks": {
+          "title": "チェック",
+          "about": "報告書を公開する前に Openscholar が確かめること。PDF のシリーズ行や、すでに出版された資料かどうかなど。",
+          "note": "各チェックは何を探したか、失敗したら何を直すかを示します。チェックが間違っていると確信できる場合は、人による確認を依頼してください。"
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "雑誌の番号と同じように、シリーズを識別する番号。",
+          "note": "シリーズが登録されるまでは保留中です。報告書の DOI はなくても機能します。"
+        },
+        "activation": {
+          "title": "有効化",
+          "about": "有効化すると報告書が公開されます。ページが開き、DOI が機能し、登録されます。",
+          "note": "まず支払いが行われます。ワークスペースの出版残高、カード、またはその両方から支払います。クーポンコードはカードで支払う金額を減らします。"
+        }
+      }
     }
   },
   "people": {
@@ -6950,6 +7375,7 @@
       "preprint": "プレプリント",
       "book": "書籍",
       "report": "報告書",
+      "presentation": "プレゼンテーション",
       "review": "レビュー論文",
       "reference-entry": "参考文献項目",
       "conference-abstract": "会議抄録",

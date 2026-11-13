@@ -1,4 +1,5 @@
 import { paperPath } from "../papers/page-address";
+import { isReportKey } from "../reports/report";
 import { paperLinkKey, paperLinkOf } from "../papers/paper-links";
 
 /** Papers one request to a community looks up or adds at most, as its endpoint allows. */
@@ -37,9 +38,20 @@ export function parsePaste(text: string): { papers: PastedPaper[]; invalid: stri
   return { papers, invalid };
 }
 
-/** The paper's page here, or its DOI's address for one OpenAlex doesn't have yet, which has no page here. */
-export const paperHref = (paper: { openalexId: string | null; doi: string | null; title: string }) =>
-  paper.openalexId ? paperPath(paper.openalexId, paper.title) : `https://doi.org/${paper.doi}`;
+/** The key of one of our own reports, which its DOI ends with (…reports.r100244), or null for any other DOI. */
+const reportKeyOf = (doi: string | null) => {
+  const tail = doi?.split(".").at(-1)?.toUpperCase();
+  return tail && isReportKey(tail) ? tail : null;
+};
+
+/**
+ * The paper's page here, or its DOI's address for one OpenAlex doesn't have yet, which has no page here. One of our
+ * own reports has its page here from the day it goes live, before OpenAlex or doi.org know its DOI.
+ */
+export const paperHref = (paper: { openalexId: string | null; doi: string | null; title: string }) => {
+  const own = paper.openalexId ?? reportKeyOf(paper.doi);
+  return own ? paperPath(own, paper.title) : `https://doi.org/${paper.doi}`;
+};
 
 /** The record's page on the community. */
 export const recordHref = (address: string, itemKey: string) => new URL(`/lib/${encodeURIComponent(itemKey)}`, address).toString();

@@ -97,6 +97,8 @@ describe("public route auth matrix", () => {
       "/results/x",
       "/settings/ai",
       "/sign-in/x",
+      // Where a community sends its reader to sign out of Openscholar too; someone already signed out goes straight back.
+      "/sign-out",
       "/sign-up/x",
       "/terms",
       "/topics",

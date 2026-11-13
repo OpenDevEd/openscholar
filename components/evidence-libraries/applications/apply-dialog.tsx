@@ -95,9 +95,9 @@ export function ApplyDialog({ seed }: { seed: ApplySeed | null }) {
   const waits = application?.state === "declined" && application.appliesAgainAt !== null && application.appliesAgainAt > Date.now();
   return (
     <Dialog open={Boolean(libraryId) && ready} onOpenChange={(open) => { if (!open) close(); }}>
-      {/* Scrolls on a short screen, so Send is always reachable, without a scrollbar. */}
+      {/* Scrolls on a short screen, so Send is always reachable. */}
       <DialogContent
-        className="gap-0 p-0 scrollbar-hide sm:max-w-lg"
+        className="gap-0 p-0 sm:max-w-lg"
         onCloseAutoFocus={(event) => {
           // The seed still names its opener after the address stops naming the community.
           if (!seed?.returnTo?.isConnected) return;

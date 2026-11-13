@@ -126,15 +126,26 @@ export function showStyledToast(
 
 /**
  * Wraps a modal's onInteractOutside so pressing a toast's button, such as Undo,
- * doesn't count as outside and close the modal.
+ * or Clerk's sign-in opened from inside the modal, doesn't count as outside and close the modal.
  */
-export function withToastsInside<Event extends { target: EventTarget | null; preventDefault(): void }>(
+export function withOverlaysInside<Event extends { target: EventTarget | null; preventDefault(): void }>(
   handler?: (event: Event) => void,
 ) {
   return (event: Event) => {
-    if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]")) {
+    if (event.target instanceof Element && event.target.closest("[data-sonner-toaster], .cl-modalBackdrop")) {
       event.preventDefault();
     }
+    handler?.(event);
+  };
+}
+
+/**
+ * Wraps a modal's onEscapeKeyDown so Escape pressed in Clerk's sign-in, opened from inside the modal, closes only the
+ * sign-in.
+ */
+export function withSignInAbove<Event extends { preventDefault(): void }>(handler?: (event: Event) => void) {
+  return (event: Event) => {
+    if (document.querySelector(".cl-modalBackdrop")) event.preventDefault();
     handler?.(event);
   };
 }

@@ -10,9 +10,8 @@ import type { FunctionReturnType } from "convex/server";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { AnimatePresence, motion } from "motion/react";
 import { api } from "@/convex/_generated/api";
-import { Enter, LIST, Paged, Segmented, Tile, Working, Zone } from "@/components/settings/parts";
+import { Enter, LIST, Segmented, Tile, Working, Zone } from "@/components/settings/parts";
 import { NodeCard, toMapModel, tintOf, type MapModel, type PickedModel } from "@/components/settings/model-map";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { ModelPicker } from "@/components/models/model-picker";
@@ -21,35 +20,24 @@ import { Field } from "@/components/evidence-libraries/configuration/section-car
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { IdentityRow } from "@/components/ui/identity";
-import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Input } from "@/components/ui/input";
-import { EASE } from "@/components/ui/opening";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { TooltipHint } from "@/components/ui/tooltip";
-import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/components/icons";
-import { ACTIVATION_PLAN } from "@/lib/billing/plans";
+import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2 } from "@/components/icons";
+import { DEFAULT_LICENCE, isPrice, type Prices } from "@/lib/reports/report";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit, isIssn } from "@/lib/reports/settings";
+import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, bylineOf, canRegister, crossrefDoiOf, isIssn } from "@/lib/reports/settings";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { useCheckWords, useFailed } from "@/components/reports/words";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
-import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
 
 type Settings = FunctionReturnType<typeof api.reports.settings.admin>;
 type CheckRow = Settings["checks"][number];
-type LimitRow = FunctionReturnType<typeof api.reports.limits.list>["page"][number];
-type Account = NonNullable<LimitRow["account"]>;
 
 /** How sure, as a percentage in the reader's language. */
 const usePct = () => {
@@ -92,21 +80,16 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
 
 export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
-  // Its page is in the address, and the next one opens where the list is: it sits far down a long page.
-  const limits = useCursorPageAt("limits", api.reports.limits.list, {}, LIMITS_PER_PAGE, { scroll: false });
-  // What an activation costs is the activation plan's price in Autumn, as the synced catalog has it.
-  const catalog = useQuery(api.billing.catalog.get, {});
   const links = useQuery(api.admins.queries.links, {});
-  if (!settings || limits.isLoading || catalog === undefined || links === undefined) return <Enter ready={false}>{null}</Enter>;
-  const price = catalog?.plans.find((plan) => plan.id === ACTIVATION_PLAN)?.price?.amount ?? null;
+  if (!settings || links === undefined) return <Enter ready={false}>{null}</Enter>;
   return (
     <Enter ready>
-      <SettingsView settings={settings} limits={limits} price={price} autumn={links.autumn ?? null} />
+      <SettingsView settings={settings} autumn={links.autumn ?? null} />
     </Enter>
   );
 }
 
-function SettingsView({ settings, limits, price, autumn }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; /** An activation's price in US dollars; null while Autumn sells none. */ price: number | null; /** Autumn's dashboard. */ autumn: string | null }) {
+function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's dashboard. */ autumn: string | null }) {
   const [nav, setNav] = useQueryStates(NAV);
   const t = useTranslations("publishReports.settings");
   const format = useFormatter();
@@ -140,6 +123,7 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
     name !== undefined && !name.trim() ? t("enterSeriesName")
     : byline !== undefined && !byline.trim() ? t("enterByline")
     : byline !== undefined && !byline.includes("{doi}") ? t("bylineNeedsDoi", { doi: "{doi}" })
+    : byline !== undefined && !byline.includes("{licence}") ? t("bylineNeedsLicence", { licence: "{licence}" })
     : issn?.trim() && !isIssn(issn.trim().toUpperCase()) ? t("notIssn")
     : null;
   const series = (part: Partial<Settings["series"]>, saved: string) => {
@@ -178,7 +162,7 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
         </ul>
       </Zone>
 
-      <Limits settings={settings} limits={limits} save={save} price={price} autumn={autumn} />
+      <PriceSettings prices={settings.prices} autumn={autumn} />
 
       <Zone label={t("series")}>
         <ul className={LIST}>
@@ -188,11 +172,11 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
           <Row label={t("issn")} hint={t("issnHint", { pending: "{pending}" })}>
             <SavedInput value={settings.series.issn} placeholder={t("issnPending")} onSave={(issn) => series({ issn }, t("issnSaved"))} className="w-40 font-mono" ariaLabel={t("issn")} />
           </Row>
-          <Row label={t("byline")} hint={t("bylineHint", { series: "{series}", issn: "{issn}", doi: "{doi}" })} wide>
+          <Row label={t("byline")} hint={t("bylineHint", { series: "{series}", issn: "{issn}", doi: "{doi}", licence: "{licence}" })} wide>
             <SavedInput value={settings.series.byline} onSave={(byline) => series({ byline }, t("bylineSaved"))} className="w-full" ariaLabel={t("byline")} />
             <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-muted-foreground">
               <FileText className="mt-px size-3.5 shrink-0" />
-              <span className="min-w-0 break-words">{bylineOf(settings.series, sampleDoi ?? "…")}</span>
+              <span className="min-w-0 break-words">{bylineOf(settings.series, sampleDoi ?? "…", DEFAULT_LICENCE)}</span>
             </p>
           </Row>
         </ul>
@@ -285,170 +269,54 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
   );
 }
 
-const LIMITS_PER_PAGE = 8;
-const LIMIT_ROW = 57;
-/** What a workspace newly given its own number of free activations starts with; the admin changes it in its row. */
-const OWN_LIMIT = 5;
-
 /**
- * What an activation costs, how many a workspace activates free each day, and the people and organisations with a
- * number of their own, shown as people and organisations are everywhere else in the app.
+ * What publishing a report costs, by its licence, and where the balances that pay it are given: the two prices are
+ * saved here, and each workspace's publication balance is Autumn's.
  */
-function Limits({ settings, limits, save, price, autumn }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean>; price: number | null; autumn: string | null }) {
-  const set = useMutation(api.reports.limits.set);
-  const remove = useMutation(api.reports.limits.remove);
+function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string | null }) {
   const t = useTranslations("publishReports.settings");
-  const format = useFormatter();
-  const failed = useFailed();
+  const update = useMutation(api.reports.settings.update);
+  // A price is whole dollars: anything else is refused, and the box shows what is saved.
+  const save = (which: keyof Prices) => (typed: string) => {
+    const dollars = Number(typed.replace(/^\$/, ""));
+    return isPrice(dollars) ? update({ prices: { [which]: dollars } }).then(() => true, () => false) : Promise.resolve(false);
+  };
   return (
-    <Zone label={t("limits")}>
-      <Paged pager={{ list: limits, size: LIMITS_PER_PAGE }} rowHeight={LIMIT_ROW} label={t("limitsPager")}>
-        <ul className={LIST}>
-          <Row label={t("price")} hint={t(price === null ? "priceHintNone" : "priceHint")}>
-            {autumn ? (
-              <Button variant="outline" size="sm" asChild>
-                <a href={autumn} target="_blank" rel="noopener noreferrer">
-                  {price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 })} <ArrowUpRight />
-                </a>
-              </Button>
-            ) : (
-              <span className="text-sm font-medium tabular-nums">{price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 })}</span>
-            )}
+    <Zone label={t("prices")}>
+      <ul className={LIST}>
+        {(["standard", "other"] as const).map((which) => (
+          <Row key={which} label={t(which === "standard" ? "priceOne" : "priceThree")} hint={t(which === "standard" ? "priceHint" : "priceThreeHint")}>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="text-sm text-muted-foreground">$</span>
+              <SavedInput value={String(now[which])} onSave={save(which)} ariaLabel={t(which === "standard" ? "priceOne" : "priceThree")} className="w-20 text-end tabular-nums" />
+            </span>
           </Row>
-          {/* Each workspace has its own number of free activations a day, and every free activation in it counts against it. */}
-          <Row label={t("personal")} hint={t("personalHint")}>
-            <SavedInput value={String(settings.perDay)} numeric onSave={(value) => save({ perDay: Number(value) }, t("limitSaved"))} className="w-20 text-end tabular-nums" ariaLabel={t("personalLabel")} />
-          </Row>
-          <Row label={t("organization")} hint={t("organizationHint")}>
-            <SavedInput value={String(settings.orgPerDay)} numeric onSave={(value) => save({ orgPerDay: Number(value) }, t("limitSaved"))} className="w-20 text-end tabular-nums" ariaLabel={t("organizationLabel")} />
-          </Row>
-          {/* A row opens and closes its own height, so the ones under it glide and don't jump. */}
-          <AnimatePresence initial={false}>
-            {limits.items.map((row) => (
-              <motion.li key={row._id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
-                <IdentityRow className="px-4 py-2.5" avatar={<IdentityAvatar name={row.name} imageUrl={row.imageUrl ?? null} kind={row.kind === "personal" ? "person" : "organization"} className="size-9" />} name={row.name || t(row.kind === "personal" ? "goneAccount" : "goneOrganization")} detail={row.detail ?? t(row.kind === "personal" ? "person" : "organisation")}>
-                  <SavedInput
-                    value={String(row.perDay)}
-                    numeric
-                    disabled={!row.account}
-                    onSave={(value) =>
-                      set({ account: row.account!, perDay: Number(value) }).then(
-                        () => (toast.success(t("limitSaved")), true),
-                        (error) => (failed(error), false),
-                      )
-                    }
-                    className="w-20 text-end tabular-nums"
-                    ariaLabel={t("perDayLabel", { name: row.name })}
-                  />
-                  <span className="shrink-0 text-xs text-muted-foreground">{t("aDay")}</span>
-                  <TooltipHint label={t(row.kind === "personal" ? "backToPeople" : "backToOrganizations")}>
-                    <Button variant="ghost" size="icon-sm" aria-label={t("removeLimit", { name: row.name })} className="text-muted-foreground hover:text-destructive" onClick={() => void remove({ limitId: row._id }).catch(failed)}>
-                      <Trash2 />
-                    </Button>
-                  </TooltipHint>
-                </IdentityRow>
-              </motion.li>
-            ))}
-          </AnimatePresence>
-          <li className="px-4 py-3">
-            <AccountPicker
-              onPick={(account, name) =>
-                void set({ account, perDay: OWN_LIMIT, keep: true }).then((now) => {
-                  if (now !== OWN_LIMIT) toast.info(t("alreadyLimited", { name, count: now }));
-                }, failed)
-              }
-            />
-          </li>
-        </ul>
-      </Paged>
+        ))}
+        <Row label={t("balances")} hint={t("balancesHint")}>
+          {autumn ? (
+            <Button variant="outline" size="sm" asChild>
+              <a href={autumn} target="_blank" rel="noopener noreferrer">
+                {t("openAutumn")} <ArrowUpRight />
+              </a>
+            </Button>
+          ) : null}
+        </Row>
+      </ul>
     </Zone>
   );
 }
 
-const PICKS = 6;
-
-/** Picks a person or an organisation from Openscholar's accounts: the first ones are there on opening, and typing searches them all. */
-function AccountPicker({ onPick }: { onPick: (account: Account, name: string) => void }) {
-  const workspaceId = useWorkspace();
-  const t = useTranslations("publishReports.settings");
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const search = useDebouncedValue(query.trim(), 250);
-  // Read from the page's first frame, so the list is there whenever the button is pressed. People are found by email.
-  const args = inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: PICKS }, ...(search ? { search } : {}) });
-  const people = useProtectedQuery(api.organizations.libraryAccess.listPeople, args).data;
-  const organizations = useProtectedQuery(api.organizations.libraryAccess.list, args).data;
-  // What was shown stays, dimmed, until a search's answer is in.
-  const [shown, setShown] = useState<{ people: NonNullable<typeof people>["page"]; organizations: NonNullable<typeof organizations>["page"] } | null>(null);
-  if (people && organizations && (shown?.people !== people.page || shown.organizations !== organizations.page)) setShown({ people: people.page, organizations: organizations.page });
-  // What is listed answers an earlier search until this one's answer is in, and while the typing settles: nothing
-  // of it can be picked then, or Enter would give a limit to the account the last search found.
-  const stale = !people || !organizations || query.trim() !== search;
-  const groups = [
-    { heading: t("people"), rows: (shown?.people ?? []).map((row) => ({ account: { userId: row._id } as Account, id: row._id as string, name: row.name ?? row.email, detail: row.name ? row.email : undefined, imageUrl: row.imageUrl ?? null, kind: "person" as const })) },
-    { heading: t("organisations"), rows: (shown?.organizations ?? []).map((row) => ({ account: { organizationId: row._id } as Account, id: row._id as string, name: row.name, detail: undefined, imageUrl: row.imageUrl ?? null, kind: "organization" as const })) },
-  ].filter((group) => group.rows.length);
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) setQuery("");
-      }}
-    >
-      <PopoverTrigger asChild>
-        {/* On a phone its words take two lines, and it never runs out of the card. */}
-        <Button variant="outline" className="h-auto min-h-9 max-w-full py-2 text-start whitespace-normal">
-          <UserPlus /> {t("giveLimit")}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
-        <Command shouldFilter={false}>
-          <CommandInput placeholder={t("pickerPlaceholder")} value={query} onValueChange={setQuery} busy={stale} />
-          <CommandList className={cn("transition-opacity", stale && "opacity-60")}>
-            {shown ? <CommandEmpty>{t("pickerEmpty")}</CommandEmpty> : null}
-            {groups.map((group) => (
-              <CommandGroup key={group.heading} heading={group.heading}>
-                {group.rows.map((row) => (
-                  <CommandItem
-                    key={row.id}
-                    value={row.id}
-                    disabled={stale}
-                    onSelect={() => {
-                      onPick(row.account, row.name);
-                      setOpen(false);
-                      setQuery("");
-                    }}
-                  >
-                    <IdentityRow className="min-w-0 flex-1" avatar={<IdentityAvatar name={row.name} imageUrl={row.imageUrl} kind={row.kind} className="size-8" />} name={row.name} detail={row.detail} />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** An input that saves when it loses focus or Enter is pressed. A `numeric` one takes a whole number from 0 and puts anything else back. */
-function SavedInput({ value, onSave, className, placeholder, ariaLabel, numeric = false, disabled = false }: { value: string; /** Resolves false when the value was refused: the box then shows what is saved. */ onSave: (v: string) => Promise<boolean>; className?: string; placeholder?: string; ariaLabel?: string; numeric?: boolean; disabled?: boolean }) {
+/** An input that saves when it loses focus or Enter is pressed. */
+function SavedInput({ value, onSave, className, placeholder, ariaLabel }: { value: string; /** Resolves false when the value was refused: the box then shows what is saved. */ onSave: (v: string) => Promise<boolean>; className?: string; placeholder?: string; ariaLabel?: string }) {
   const [draft, setDraft] = useState(value);
   const [was, setWas] = useState(value);
-  const t = useTranslations("publishReports.settings");
-  const format = useFormatter();
   if (value !== was) {
     setWas(value);
     // Only a box still showing what was saved follows a new saved value: typing done since is never replaced.
     if (draft === was) setDraft(value);
   }
   const commit = () => {
-    const typed = draft.trim();
-    const whole = /^\d+$/.test(typed);
-    const next = numeric ? (whole ? String(dailyLimit(Number(typed))) : value) : typed;
-    // What was typed isn't what is kept: the box says why it changed back, or to what.
-    if (numeric && typed !== next) toast.info(t(whole ? "limitMax" : "limitWhole", { max: format.number(MAX_DAILY_LIMIT) }));
+    const next = draft.trim();
     setDraft(next);
     if (next !== value) void onSave(next).then((kept) => kept || setDraft(value));
   };
@@ -457,8 +325,6 @@ function SavedInput({ value, onSave, className, placeholder, ariaLabel, numeric 
       value={draft}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      disabled={disabled}
-      inputMode={numeric ? "numeric" : undefined}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
@@ -645,7 +511,7 @@ function AgreementDialog({ open, agreement, series, onClose }: { open: boolean; 
           {preview ? (
             <div className="h-full overflow-y-auto rounded-xl border border-border-subtle px-5 py-4">
               {/* Filled the way the sign step fills it, with the admin as the signer. */}
-              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "…") })} />
+              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "…", DEFAULT_LICENCE), licence: DEFAULT_LICENCE })} />
             </div>
           ) : (
             <Textarea value={text} maxLength={AGREEMENT_MAX} aria-label={t("agreementLabel")} onChange={(e) => setText(e.target.value)} className="h-full resize-none font-mono text-xs/5" />

@@ -140,7 +140,7 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
                     row={row}
                     stage={stageOf(row, shown.humanReview)}
                     onOpen={() => onOpen(row.key)}
-                    onApprove={() => decide({ key: row.key, decision: "approve", seenAt: row.updatedAt, ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success(t("approvedToast")), failed)}
+                    onApprove={() => decide({ key: row.key, decision: "approve", seenAt: row.updatedAt, ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success(t("done.approve")), failed)}
                     onRetry={() => retry({ key: row.key }).then(() => void toast.success(t("sentAgain")), failed)}
                   />
                 ))}
@@ -319,7 +319,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
   // Why the report itself stands where it does, and what approving it does: a reviewer who arrives from an email reads
   // it before the buttons. Changes waiting say their own, above.
   const flagged = (s?.results ?? []).some((r) => !r.pass);
-  const approving = t("approving");
+  // In an organisation it's one of its admins who activates it, not its author (#1261).
+  const approving = s?.workspace ? t("approvingOrg", { organization: s.workspace }) : t("approving");
   const standing =
     !s || changes
       ? ""
@@ -486,7 +487,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                       <ReviewQueueIcon className="size-3.5 shrink-0" />
                       <span>{t.rich("decidedBy", { decision: t(`reviewed.${r.decision}`), name: r.by, b: (chunks) => <span className="font-medium text-foreground/80">{chunks}</span> })}</span>
                       <span className="tabular-nums">{format.dateTime(r.at, MOMENT)}</span>
-                      {r.decision === "edit" && r.note ? <span className="truncate">{r.note}</span> : null}
+                      {/* An edit names what it changed; a decision's note is what the author was told, read again when the report comes back. */}
+                      {r.note ? r.decision === "edit" ? <span className="truncate">{r.note}</span> : <span className="min-w-0 basis-full whitespace-pre-wrap break-words ps-5 text-foreground/80">{r.note}</span> : null}
                     </li>
                   ))}
                 </ul>

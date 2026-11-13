@@ -64,12 +64,18 @@ export async function matchOrcid(name: string, institutions: string[]): Promise<
 
 const ROR_API = "https://api.ror.org/v2/organizations";
 type RorRecord = { id: string; status: string; names: Array<{ value: string; types: string[] }>; locations: Array<{ geonames_details?: { name?: string; country_name?: string } }> };
-/** An organisation on ROR: its ROR ID, its name as ROR shows it, and its city and country as "Cambridge, United Kingdom". */
-export type RorOrganisation = { ror: string; name: string; place: string };
+/**
+ * An organisation on ROR: its ROR ID, its name as ROR shows it, its other names and acronyms ("FCDO", "Bill & Melinda
+ * Gates Foundation"), and its city and country as "Cambridge, United Kingdom".
+ */
+export type RorOrganisation = { ror: string; name: string; aliases: string[]; place: string };
 
 const rorName = (record: RorRecord) => record.names.find((n) => n.types.includes("ror_display"))?.value ?? record.names[0]?.value ?? "";
 const placeOf = (record: RorRecord) => [record.locations[0]?.geonames_details?.name, record.locations[0]?.geonames_details?.country_name].filter(Boolean).join(", ");
-const organisationOf = (record: RorRecord): RorOrganisation => ({ ror: record.id, name: rorName(record), place: placeOf(record) });
+const organisationOf = (record: RorRecord): RorOrganisation => {
+  const name = rorName(record);
+  return { ror: record.id, name, aliases: record.names.map((n) => n.value).filter((value) => value !== name), place: placeOf(record) };
+};
 
 /** ROR's API asks no key; it allows 2,000 requests in five minutes from one address. */
 async function rorGet<T>(parameters: Record<string, string>): Promise<T> {
@@ -90,6 +96,19 @@ export async function findRorOrganisations(words: string): Promise<RorOrganisati
   const query = terms.map((term, i) => (i === terms.length - 1 ? `${term}*` : term)).join(" AND ");
   const { items } = await rorGet<{ items: RorRecord[] }>({ "query.advanced": `names.value:(${query})` });
   return items.filter((record) => record.status === "active").slice(0, 6).map(organisationOf);
+}
+
+/**
+ * The Funder Registry ID ROR lists for an organisation (`100000001`), which Crossref's funder DOIs are made from, or none
+ * when Crossref has no such funder. Unreadable answers throw, so a deposit waits rather than going without it.
+ */
+export async function fundrefOf(ror: string): Promise<string | null> {
+  const response = await fetch(`${ROR_API}/${encodeURIComponent(ror)}`, { headers: { Accept: "application/json", "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(10_000) });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`ROR ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  const record = (await response.json()) as { external_ids?: Array<{ type: string; preferred: string | null; all: string[] }> };
+  const fundref = record.external_ids?.find((id) => id.type === "fundref");
+  return fundref?.preferred ?? fundref?.all[0] ?? null;
 }
 
 /** The organisation ROR's affiliation matcher is sure a printed affiliation names, or none when it isn't sure. */

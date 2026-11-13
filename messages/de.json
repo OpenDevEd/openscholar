@@ -196,21 +196,6 @@
     "anotherPlan": "einen anderen Tarif",
     "onDate": "am {date}",
     "connections": "Verbindungen",
-    "localeLabels": {
-      "enUS": "Englisch (USA)",
-      "enGB": "Englisch (UK)",
-      "zh": "Chinesisch",
-      "fr": "Französisch",
-      "hi": "Hindi",
-      "ja": "Japanisch",
-      "ar": "Arabisch",
-      "sw": "Suaheli",
-      "pt": "Portugiesisch",
-      "es": "Spanisch",
-      "de": "Deutsch",
-      "af": "Afrikaans",
-      "zu": "Zulu"
-    },
     "you": "Sie",
     "calendarToday": "Heute, {date}",
     "calendarSelected": "{date}, ausgewählt",
@@ -350,6 +335,7 @@
     "password": "Crossref-Passwort",
     "prefix": "DOI-Präfix",
     "registrant": "Registrant",
+    "registrantHint": "Crossref trägt dies beim Speichern anhand des Präfixes ein.",
     "depositorName": "Name des Einreichers",
     "email": "E-Mail des Einreichers",
     "namespace": "DOI-Namensraum",
@@ -435,7 +421,16 @@
     "topUpDue": "Jetzt fällig",
     "topUpBalanceNow": "Guthaben",
     "topUpBalanceAfter": "Danach",
-    "seePlans": "Pläne ansehen"
+    "seePlans": "Pläne ansehen",
+    "publication": {
+      "title": "Publikationsguthaben",
+      "hint": "Bezahlt die Berichte, die Sie bei Openscholar Reports veröffentlichen.",
+      "every": "{interval, select, hour {Jede Stunde} day {Jeden Tag} week {Jede Woche} month {Jeden Monat} quarter {Alle drei Monate} semi_annual {Alle sechs Monate} other {Jedes Jahr}}",
+      "backTo": "Am {date} wieder {amount}",
+      "kept": "{amount} bleiben bis zur Nutzung",
+      "publish": "Veröffentlichen",
+      "noLimit": "Ohne Limit"
+    }
   },
   "errors": {
     "unexpectedIssue": "Ein unerwartetes Problem ist aufgetreten. Versuchen Sie es erneut oder kehren Sie zu einer stabilen Seite zurück.",
@@ -681,6 +676,7 @@
     "uploadFailed": "Hochladen fehlgeschlagen",
     "uploadFailedDescription": "{format} konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.",
     "accountChanged": "Ihr Konto hat sich geändert. Versuchen Sie es erneut.",
+    "couldntCopy": "Kopieren nicht möglich",
     "copyFailedDescription": "Dein Browser hat das Kopieren nicht erlaubt. Markiere den Text und kopiere ihn selbst.",
     "validationFailed": "Prüfung fehlgeschlagen",
     "entityCreated": "{entity} erstellt",
@@ -1253,19 +1249,20 @@
     "reviewed": "Geprüft"
   },
   "saveToLibrary": {
-    "save": "Speichern",
-    "saved": "Gespeichert",
-    "saveToLibrary": "In Bibliothek speichern",
+    "save": "Zur Bibliothek hinzufügen",
+    "saved": "In der Bibliothek",
+    "saveToLibrary": "Zur Bibliothek hinzufügen",
     "removeFromLibrary": "Aus Bibliothek entfernen",
     "addToCollection": "Zu Sammlung hinzufügen",
     "newCollection": "Neue Sammlung",
     "removed": "Aus der Bibliothek entfernt",
     "undo": "Rückgängig",
-    "saveError": "Der Artikel konnte nicht gespeichert werden",
+    "saveError": "Der Artikel konnte nicht zur Bibliothek hinzugefügt werden",
     "removeError": "Der Artikel konnte nicht entfernt werden",
     "restoreError": "Der Artikel konnte nicht wiederhergestellt werden",
     "collectionError": "Die Sammlung konnte nicht geändert werden",
-    "newCollectionWithPaper": "Neue Sammlung mit diesem Artikel"
+    "newCollectionWithPaper": "Neue Sammlung mit diesem Artikel",
+    "finishSaving": "Hinzufügen abschließen"
   },
   "rating": {
     "noRating": "Keine Bewertung",
@@ -1412,8 +1409,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Wir schätzen Ihre Privatsphäre",
-    "bannerDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar genutzt wird, und es zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies.",
-    "dialogDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar genutzt wird, und es zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies. Sie können Ihre Entscheidung jederzeit ändern.",
+    "bannerDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar und seine Communities genutzt werden, und sie zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies.",
+    "dialogDescription": "Wir und unsere Analyseanbieter PostHog und Google verwenden Cookies, um zu verstehen, wie Openscholar und seine Communities genutzt werden, und sie zu verbessern. Wenn Sie ablehnen, zählen wir nur Besuche, ohne Cookies. Sie können Ihre Entscheidung jederzeit ändern.",
     "acceptAll": "Alle akzeptieren",
     "rejectNonEssential": "Nicht notwendige ablehnen",
     "preferencesTitle": "Cookie-Einstellungen",
@@ -1440,7 +1437,11 @@
     "upgradeSuccess": "Upgrade erfolgreich",
     "upgradeSuccessCredits": "Auf {plan} umgestellt – {credits} Credits hinzugefügt",
     "totalCharge": "Jetzt fällig",
-    "paymentMethod": "Zahlungsmethode"
+    "paymentMethod": "Zahlungsmethode",
+    "anotherCard": "Andere Karte",
+    "anotherCardNote": "Die Seite von Stripe öffnet sich mit Ihren gespeicherten Karten und nimmt auch eine neue an.",
+    "manageBilling": "Abrechnung verwalten",
+    "toPayment": "Weiter zur Zahlung"
   },
   "libraryPage": {
     "title": "Bibliothek",
@@ -1465,7 +1466,7 @@
     "ratingFilter": "Bewertung",
     "loadMore": "Mehr laden",
     "emptyLibraryTitle": "Diese Bibliothek ist leer",
-    "emptyLibraryDescription": "Speichern Sie Artikel aus den Suchergebnissen, um diese Bibliothek aufzubauen.",
+    "emptyLibraryDescription": "Fügen Sie Artikel aus den Suchergebnissen hinzu, um diese Bibliothek aufzubauen.",
     "emptyLibraryCta": "Artikel suchen",
     "noResultsTitle": "Keine Artikel passen zu Ihrer Suche oder Ihren Filtern",
     "clearFilters": "Filter löschen",
@@ -1860,7 +1861,6 @@
       "notificationSchedule": "Wählen Sie einen gültigen Tag, eine Uhrzeit und eine Zeitzone für die Übersicht.",
       "nameMissing": "Geben Sie der Community einen Namen.",
       "shortNameMissing": "Geben Sie der Community einen Kurznamen.",
-      "partnerName": "Jeder Förderpartner braucht einen Namen.",
       "badColour": "Eine der Farben ist ungültig.",
       "institutionName": "Jede Einrichtung braucht einen Namen.",
       "linkLabel": "Jeder Link braucht eine Beschriftung.",
@@ -1942,13 +1942,6 @@
       "searchTitlePlaceholder": "Forschung und Evidenz zur Klimaanpassung",
       "descriptionLabel": "Beschreibung",
       "descriptionHint": "Wird auf der Startseite und in den Suchergebnissen angezeigt.",
-      "partnersHeading": "Förderpartner",
-      "partnersHint": "Wird auf der Startseite angezeigt.",
-      "addPartner": "Partner hinzufügen",
-      "noPartners": "Noch keine Förderpartner.",
-      "removePartner": "Partner entfernen",
-      "partnerName": "Name des Partners",
-      "partnerPlaceholder": "Name des Partners",
       "shareImageLabel": "Teilbild",
       "shareImageHint": "Wird verwendet, wenn die Community in sozialen Medien geteilt wird. PNG, JPG oder WEBP.",
       "showNameLabel": "Name neben dem Logo",
@@ -2138,6 +2131,7 @@
       },
       "socialError": "Verwenden Sie eine vollständige Adresse, die mit https:// beginnt.",
       "fundersHeading": "Geldgeber",
+      "fundersHint": "Erscheinen in der Fußzeile und bei jedem Eintrag.",
       "fundersEmpty": "Noch keine Geldgeber.",
       "addFunder": "Geldgeber hinzufügen",
       "removeFunder": "Geldgeber entfernen",
@@ -4678,13 +4672,11 @@
     "communities": "Communities",
     "explore": "Entdecken",
     "authors": "Autoren",
-    "workspacesCard": "Arbeitsbereiche",
     "account": "Konto",
     "close": "Schließen",
     "switchFrom": "Arbeitsbereich: {name}. Arbeitsbereich wechseln",
     "runningLabel": "{label}, {what}, {done} von {total}",
     "doneOf": "{done} von {total}",
-    "planFor": "{plan} für {workspace}",
     "planAndCredits": "Tarif und Credits",
     "theme": "Design",
     "light": "Hell",
@@ -4692,7 +4684,6 @@
     "auto": "Automatisch",
     "signOut": "Abmelden",
     "signOutFailed": "Abmelden nicht möglich. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-    "personal": "Persönlich",
     "admin": "Admin",
     "member": "Mitglied",
     "members": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
@@ -4704,7 +4695,6 @@
     "decline": "Ablehnen",
     "join": "Beitreten",
     "newOrganization": "Neue Organisation",
-    "workspaceSettings": "Arbeitsbereich-Einstellungen",
     "invitationGone": "Diese Einladung ist nicht mehr offen.",
     "couldntJoin": "Der Organisation konnte nicht beigetreten werden",
     "couldntDecline": "Die Einladung konnte nicht abgelehnt werden",
@@ -5643,6 +5633,7 @@
     "keepInvitation": "Einladung behalten",
     "declineInvitation2": "Einladung ablehnen",
     "previewCover": "Vorschau des Titelbilds von {title}",
+    "noPdf": "Kein PDF",
     "preview": "Vorschau von {title}",
     "declineBody": "Sie erhalten keinen Zugriff auf {name}. Ihre anderen Communitys bleiben unberührt.",
     "owner": "Eigentümer",
@@ -6168,6 +6159,7 @@
     },
     "admin": {
       "backToReport": "Zurück zum Bericht",
+      "editLost": "Der Autor hat {key} zum Ändern zurückgenommen, während Sie ihn bearbeiteten. Ihre Eingaben wurden deshalb nicht übernommen. Öffnen Sie ihn erneut, sobald seine Prüfungen gelaufen sind.",
       "editTitle": "Angaben bearbeiten",
       "editIntroLive": "{key} ist veröffentlicht. Beim Speichern geht Ihre Änderung sofort online, ohne die Prüfungen, und der Bericht wird erneut registriert.",
       "editIntroNotLive": "{key} ist noch nicht veröffentlicht. Beim Speichern wird Ihre Änderung sofort übernommen, ohne die Prüfungen.",
@@ -6209,7 +6201,9 @@
       "places": "Untersuchte Orte",
       "studyDesign": "Studiendesign",
       "seeChanges": "Ihre Änderungen ansehen",
-      "correct": "Angaben korrigieren"
+      "correct": "Angaben korrigieren",
+      "takeDownTitle": "Zurückziehen lassen",
+      "openDoi": "DOI {doi} öffnen"
     },
     "stages": {
       "draft": "Entwurf",
@@ -6257,9 +6251,10 @@
       "action": {
         "openPage": "Seite öffnen",
         "open": "Öffnen",
-        "activate": "Aktivieren",
+        "activate": "Bezahlen",
         "carryOn": "Weitermachen",
-        "seeFailed": "Ansehen, was fehlschlug"
+        "seeFailed": "Ansehen, was fehlschlug",
+        "manage": "In Publizieren öffnen"
       },
       "seeChanges": "Ihre Änderungen ansehen",
       "correct": "Angaben korrigieren"
@@ -6331,7 +6326,6 @@
       },
       "which": "Welche Berichte",
       "pagerItems": "Berichte",
-      "approvedToast": "Genehmigt. Die Autorin oder der Autor kann ihn jetzt aktivieren.",
       "sentAgain": "Erneut gesendet",
       "noMatch": "Keine Berichte passen",
       "noReports": "Noch keine Berichte",
@@ -6348,7 +6342,7 @@
       "openPage": "Seite öffnen",
       "openPageLabel": "Seite von {key} öffnen",
       "done": {
-        "approve": "Genehmigt. Die Autorin oder der Autor kann ihn jetzt aktivieren.",
+        "approve": "Genehmigt. Er kann jetzt aktiviert werden.",
         "reinstate": "Wiederhergestellt. Er ist wieder online.",
         "withdraw": "Zurückgezogen",
         "decline": "Abgelehnt"
@@ -6364,6 +6358,7 @@
         "humanReview": "Die menschliche Prüfung ist aktiv, daher warten Änderungen auf eine Prüferin oder einen Prüfer."
       },
       "approving": "Mit der Genehmigung kann die Autorin oder der Autor ihn aktivieren, und er geht online, sobald das geschieht.",
+      "approvingOrg": "Mit der Freigabe kann ein Admin von {organization} ihn aktivieren; live geht er, sobald das geschieht.",
       "standing": {
         "failedAsked": "Eine Prüfung ist fehlgeschlagen. {approving}",
         "failed": "Eine Prüfung ist fehlgeschlagen, daher liegt der Bericht zur Korrektur bei der Autorin oder dem Autor. Sie können trotzdem entscheiden. {approving}",
@@ -6435,9 +6430,10 @@
       "enterSeriesName": "Gib den Namen der Reihe ein.",
       "enterByline": "Gib die Quellenzeile ein.",
       "bylineNeedsDoi": "Die Quellenzeile braucht {doi}, woraus die DOI jedes Berichts wird.",
+      "bylineNeedsLicence": "Die Zeile braucht {licence}, das zur Lizenz jedes Berichts wird.",
       "notIssn": "Das ist keine ISSN. Eine sieht aus wie 2049-3630, und ihre letzte Ziffer prüft die übrigen.",
       "byline": "Vermerk",
-      "bylineHint": "{series}, {issn} und {doi} werden für jeden Bericht ausgefüllt",
+      "bylineHint": "{series}, {issn}, {doi} und {licence} werden für jeden Bericht ausgefüllt",
       "bylineSaved": "Vermerk gespeichert",
       "registration": "DOI-Registrierung",
       "zenodoSandbox": "Zenodo-Testumgebung",
@@ -6460,32 +6456,6 @@
       "changed": "Geändert am {date}",
       "asWritten": "Wie ursprünglich verfasst",
       "edit": "Bearbeiten",
-      "limits": "Kostenlose Aktivierungen",
-      "limitsPager": "kostenlose Aktivierungen",
-      "personal": "Der eigene Arbeitsbereich einer Person",
-      "personalHint": "Aktivierungen am Tag, die nichts kosten. Eine gespeicherte Karte ist trotzdem nötig.",
-      "personalLabel": "Kostenlose Aktivierungen am Tag im eigenen Arbeitsbereich einer Person",
-      "limitSaved": "Kostenlose Aktivierungen gespeichert",
-      "organization": "Der Arbeitsbereich einer Organisation",
-      "organizationHint": "Aktivierungen am Tag, die nichts kosten, geteilt von ihren Mitgliedern.",
-      "organizationLabel": "Kostenlose Aktivierungen am Tag im Arbeitsbereich einer Organisation",
-      "goneAccount": "Ein Konto, das es nicht mehr gibt",
-      "goneOrganization": "Eine Organisation, die es nicht mehr gibt",
-      "person": "Person",
-      "organisation": "Organisation",
-      "perDayLabel": "Kostenlose Aktivierungen am Tag von {name}",
-      "aDay": "kostenlos am Tag",
-      "backToPeople": "Zurück zur Zahl für Personen",
-      "backToOrganizations": "Zurück zur Zahl für Organisationen",
-      "removeLimit": "Kostenlose Aktivierungen von {name} entfernen",
-      "alreadyLimited": "{name} hat schon eine eigene Zahl: {count} kostenlos am Tag.",
-      "people": "Personen",
-      "organisations": "Organisationen",
-      "giveLimit": "Einer Person oder Organisation eigene kostenlose Aktivierungen geben",
-      "pickerPlaceholder": "Der Name einer Organisation oder die E-Mail einer Person",
-      "pickerEmpty": "Kein Konto und keine Organisation passt",
-      "limitMax": "Ein Limit geht bis {max} pro Tag",
-      "limitWhole": "Ein Limit ist eine ganze Zahl von 0 bis {max}",
       "builtIn": "Eingebaut",
       "modelGone": "Ihr Modell wird nicht mehr angeboten",
       "passesAt": "besteht bei {percent} Sicherheit",
@@ -6531,25 +6501,36 @@
       "agreementLabel": "Die Vereinbarung als Markdown",
       "agreementSaved": "Vereinbarung, Version {version}",
       "saveVersion": "Als Version {version} speichern",
-      "price": "Preis",
-      "priceHint": "Was eine Aktivierung über die kostenlosen hinaus kostet: der Preis des Plans Report activation in Autumn.",
-      "priceHintNone": "Autumn hat keinen Plan Report activation, daher gehen nur kostenlose Aktivierungen durch.",
-      "notOnSale": "Nicht im Verkauf"
+      "priceOne": "CC BY und CC BY-SA",
+      "priceHint": "Was die Veröffentlichung eines Berichts unter CC BY oder CC BY-SA kostet, in US-Dollar.",
+      "balances": "Guthaben",
+      "balancesHint": "Jeder Arbeitsbereich hat in Autumn ein Publikationsguthaben in Dollar, das diese Preise vor einer Karte bezahlt. Geben Sie dort einer Person oder einer Organisation Guthaben, einmalig oder täglich, wöchentlich, monatlich oder jährlich aufgefüllt. Ein Posten in einem Tarif gibt es jedem Arbeitsbereich mit diesem Tarif.",
+      "openAutumn": "Autumn öffnen",
+      "priceThree": "NC, ND und eigene Lizenzen",
+      "priceThreeHint": "Was die Veröffentlichung eines Berichts unter einer NC- oder ND-Lizenz oder unter der eigenen Lizenz der Autorin oder des Autors kostet, in US-Dollar.",
+      "prices": "Preise"
     },
     "flow": {
       "steps": {
+        "prepare": "Vorbereiten",
         "agreement": "Vereinbarung",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Angaben",
         "checks": "Prüfungen",
-        "live": "Online"
+        "live": "Online",
+        "sealed": "Gesperrt, sobald die Vereinbarung unterzeichnet ist.",
+        "paying": "Die Zahlung läuft, daher lassen sich die Schritte gerade nicht öffnen. Lehnt die Bank sie ab, sind sie wieder offen.",
+        "liveNow": "Er ist live. Ändern Sie die Angaben mit {action}.",
+        "closed": "Eine prüfende Person hat ihn zurückgezogen, daher lässt er sich nicht mehr ändern.",
+        "running": "Die Prüfungen laufen. Die Schritte öffnen sich wieder, wenn sie fertig sind.",
+        "notYours": "Nur die Person, die diesen Bericht begonnen hat, kann ihn ändern."
       },
       "publish": "Veröffentlichen",
       "newReport": "Neuer Bericht",
       "yourReports": "Ihre Berichte",
       "discarded": "Bericht verworfen",
-      "discardFailed": "Der Bericht konnte nicht verworfen werden",
+      "discardFailed": "Der Bericht konnte nicht verworfen werden.",
       "closedTitle": "Die Veröffentlichung ist vorerst geschlossen",
       "closedWithReports": "Derzeit kann kein neuer Bericht begonnen werden. Ihre vorhandenen Berichte bleiben, wie sie sind.",
       "closedNoReports": "Derzeit kann kein neuer Bericht begonnen werden. Schauen Sie später wieder vorbei.",
@@ -6559,29 +6540,29 @@
       "elsewhereTitle": "Dieser Bericht liegt in einem anderen Arbeitsbereich",
       "missingTitle": "Dieser Bericht ist nicht hier",
       "offNotice": "Die Veröffentlichung ist für neue Berichte vorerst geschlossen. Sie können an diesem weiterarbeiten.",
-      "stepFailed": "Dieser Schritt konnte nicht geöffnet werden",
-      "checksFailed": "Die Prüfungen konnten nicht laufen",
+      "stepFailed": "Dieser Schritt konnte nicht geöffnet werden.",
+      "checksFailed": "Die Prüfungen konnten nicht laufen.",
       "saveFailed": "Ihre Änderungen konnten nicht gespeichert werden",
       "changesLive": "Ihre Änderungen sind online",
       "changesWithReviewer": "Ihre Änderungen liegen bei einer Prüferin oder einem Prüfer",
       "agreementTitle": "Veröffentlichungsvereinbarung mit {series}",
       "version": "Version {version}",
-      "agreementIntro": "Sie behalten das Urheberrecht und veröffentlichen unter CC BY 4.0. Mit der Unterschrift reservieren Sie Ihren DOI.",
-      "agreementShared": "Sie behalten das Urheberrecht und veröffentlichen unter CC BY 4.0. Mit der Unterschrift reservieren Sie Ihren DOI. Der Bericht gehört zu diesem Arbeitsbereich: Seine Mitglieder können ihn sehen, und Sie und seine Admins arbeiten daran.",
+      "agreementIntro": "Sie behalten das Urheberrecht und wählen die Lizenz, die sich nach der Unterschrift nicht mehr ändern lässt. Mit der Unterschrift wird Ihr DOI reserviert.",
+      "agreementShared": "Sie behalten das Urheberrecht und wählen die Lizenz, die sich nach der Unterschrift nicht mehr ändern lässt. Mit der Unterschrift wird Ihr DOI reserviert. Der Bericht gehört zu diesem Arbeitsbereich: Seine Mitglieder können ihn sehen, und Sie und seine Admins arbeiten daran.",
       "signedBy": "Unterzeichnet von",
-      "signForAll": "Ich unterzeichne für alle Autorinnen und Autoren, die zugestimmt haben",
-      "agree": "Ich stimme dieser Vereinbarung zu",
+      "agree": "Ich stimme dieser Vereinbarung zu, für mich und alle Mitautorinnen und Mitautoren, die alle zugestimmt haben",
       "untouched": "Sie haben bereits einen DOI für <mono>{key}</mono> reserviert und sein PDF noch nicht hochgeladen.",
       "continueWith": "Damit weitermachen",
-      "agreementChanged": "Die Vereinbarung hat sich geändert, während diese Seite offen war. Lesen Sie sie erneut und setzen Sie dann die Häkchen.",
+      "agreementChanged": "Die Vereinbarung hat sich geändert, während diese Seite offen war. Lesen Sie sie erneut und setzen Sie dann das Häkchen.",
+      "agreementInEnglish": "Die Vereinbarung selbst ist auf Englisch verfasst.",
       "limit": {
         "personal": "Mit Ihrem Plan beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
         "personalClosed": "Ihr Plan enthält kein Veröffentlichen. Wechseln Sie zu einem Plan, der es enthält.",
         "workspace": "Mit dem Plan dieses Arbeitsbereichs beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
         "workspaceClosed": "Der Plan dieses Arbeitsbereichs enthält kein Veröffentlichen. Wechseln Sie zu einem Plan, der es enthält."
       },
-      "signFailed": "Die Vereinbarung konnte nicht unterzeichnet werden",
-      "sign": "Unterzeichnen und einen DOI reservieren",
+      "signFailed": "Die Vereinbarung konnte nicht unterzeichnet werden.",
+      "sign": "Unterzeichnen und DOI reservieren",
       "signIn": "Zum Veröffentlichen anmelden",
       "doiReserved": "Ihr DOI ist reserviert",
       "doiReservedBody": "Er bleibt bei Ihrem Bericht und geht online, wenn der Bericht online geht.",
@@ -6591,15 +6572,17 @@
       "doiCopied": "DOI kopiert",
       "uploadPdf": "PDF hochladen",
       "textless": "Dieses PDF enthält keinen Text, wie bei einem Scan. Die Prüfungen können den Vermerk darin nicht finden. Exportieren Sie den Bericht als PDF mit Text und laden Sie dieses hoch, oder füllen Sie die Angaben von Hand aus.",
+      "textlessAdded": "Dieses PDF enthält keinen Text, wie ein Scan, daher können die Prüfungen Ihren Bericht darin nicht lesen. Der Vermerk steht auf der Seite, die wir hinzugefügt haben. Exportieren Sie den Bericht als PDF mit Text und laden Sie es hoch, oder tragen Sie die Angaben von Hand ein.",
       "unreadPdf": "Openscholar konnte die Angaben aus diesem PDF nicht lesen. Füllen Sie sie von Hand aus.",
       "uploadAnother": "Ein anderes PDF hochladen",
       "uploadLost": "Der Upload ist nicht angekommen. Versuchen Sie es erneut.",
-      "choosePdf": "Wählen Sie ein PDF",
+      "notPdf": "{name} ist kein PDF. Speichern oder exportieren Sie Ihren Bericht als PDF und wählen Sie dann diese Datei.",
       "emptyFile": "Diese Datei ist leer. Wählen Sie das PDF erneut.",
-      "tooBig": "Das PDF ist größer als {max} MB",
+      "tooBig": "Das PDF ist größer als {max} MB. Wählen Sie ein kleineres.",
       "offline": "Das PDF konnte nicht hochgeladen werden. Prüfen Sie Ihre Verbindung und wählen Sie es dann erneut.",
-      "uploadFailed": "Das PDF konnte nicht hochgeladen werden. Versuchen Sie es erneut.",
-      "uploadIntro": "Setzen Sie den folgenden Text wörtlich auf den Umschlag oder die Umschlaginnenseite, bevor Sie hochladen. Unsere Prüfung sucht nach dieser Zeile.",
+      "notSent": "Das PDF konnte nicht an uns gesendet werden.",
+      "uploadFailed": "Das PDF ist bei uns angekommen, aber der Server hat es Ihrem Bericht nicht hinzugefügt.",
+      "uploadIntro": "Jeder Bericht dieser Reihe trägt diesen Vermerk in seinem PDF, als Text. Unsere Prüfung sucht danach.",
       "copyByline": "Vermerk kopieren",
       "bylineCopied": "Vermerk kopiert",
       "uploading": "{name} wird hochgeladen",
@@ -6608,6 +6591,13 @@
       "drop": "PDF hier ablegen oder auswählen",
       "dropHint": "Ein PDF, bis zu {max} MB",
       "unopenedPdf": "{name} konnte nicht als PDF geöffnet werden. Hat es ein Passwort, entfernen Sie es; speichern Sie es dann erneut als PDF und laden Sie dieses hoch.",
+      "lacksByline": "{name} trägt den Vermerk oben nicht. Fügen Sie ihn hinzu und laden Sie das PDF erneut hoch, oder lassen Sie ihn von uns hinzufügen.",
+      "keptDetails": "Dies sind die Angaben, die Sie hatten, bevor Sie das PDF ersetzt haben.",
+      "readAgain": "Stattdessen aus diesem PDF lesen",
+      "readAgainTitle": "Angaben aus diesem PDF lesen?",
+      "readAgainBody": "Die jetzt angezeigten Angaben werden durch die dieses PDFs ersetzt, samt allem, was Sie darin eingegeben haben.",
+      "readAgainKeep": "Diese Angaben behalten",
+      "readAgainFailed": "Die Angaben konnten nicht erneut gelesen werden.",
       "stuck": "Das Lesen von {name} dauert länger als erwartet. Laden Sie es erneut hoch.",
       "replaces": "Ein erneuter Upload ersetzt {name}",
       "check": {
@@ -6617,11 +6607,12 @@
         "failed": "Nicht bestanden",
         "flagged": "Markiert",
         "unclear": "Unklar",
-        "sure": "{percent} sicher, dass er besteht",
+        "sure": "{percent}",
         "foundIn": "Gefunden in {where}:",
         "foundAs": "Gefunden als",
         "said": {
-          "notPublished": "Nicht in OpenAlex, im Index von Openscholar oder in unseren Communities.",
+          "notPublished": "Nicht in Openscholar Reports, in OpenAlex, im Index von Openscholar oder in unseren Communities.",
+          "notPublishedElsewhere": "Nicht in OpenAlex, im Index von Openscholar oder in unseren Communities.",
           "unfinished": "Diese Prüfung konnte nicht abgeschlossen werden.",
           "bylineFound": "Der Text des PDFs enthält die Zeile wörtlich."
         },
@@ -6644,7 +6635,7 @@
           }
         }
       },
-      "activateFailed": "Er konnte nicht aktiviert werden",
+      "activateFailed": "Er konnte nicht aktiviert werden.",
       "running": "Prüfungen laufen",
       "ofTotal": "{done} von {total}",
       "runningHint": "Die Suche nach früheren Fassungen dauert ein paar Sekunden. Sie können diese Seite verlassen: Die Prüfungen laufen weiter.",
@@ -6655,13 +6646,16 @@
       "readyPassed": "Ihr Bericht hat seine Prüfungen bestanden. Aktivieren Sie ihn, um seinen DOI online zu bringen und seine Seite zu öffnen.",
       "waiting": "Wartet auf Prüfung",
       "inReview": "In Prüfung",
-      "waitingFlagged": "Eine Prüfung hat Ihren Bericht markiert, daher sieht ihn sich jemand an. Sie können ihn aktivieren, sobald er genehmigt ist, und Sie erhalten eine E-Mail.",
-      "waitingPassed": "Ihr Bericht hat seine Prüfungen bestanden. Sie können ihn aktivieren, sobald er genehmigt ist, und Sie erhalten eine E-Mail.",
+      "waitingFlagged": "Eine Prüfung hat Ihren Bericht markiert, daher sieht ihn sich ein Gutachter an, bevor er online gehen kann. Sie erhalten eine E-Mail, und er wartet unter Publizieren auf Sie.",
+      "reviewTakes": "Eine Begutachtung dauert bis zu drei Werktage.",
+      "waitingPassed": "Ihr Bericht hat seine Prüfungen bestanden. Ein Gutachter genehmigt ihn nun, bevor er online gehen kann. Sie erhalten eine E-Mail, und er wartet unter Publizieren auf Sie.",
       "withdrawn": "Zurückgezogen",
       "notPublished": "Nicht veröffentlicht",
       "declined": "Abgelehnt",
       "withdrawnBody": "Eine Prüferin oder ein Prüfer hat diesen Bericht zurückgezogen. Seine Seite gibt das nun an.",
       "declinedBody": "Eine Prüferin oder ein Prüfer hat diesen Bericht abgelehnt.",
+      "declinedFix": "Sie können die Angaben ändern oder ein neues PDF hochladen und die Prüfungen erneut ausführen.",
+      "activatingNow": "Ihr Bericht wird aktiviert. Das dauert einige Sekunden.",
       "notYet": "Noch nicht veröffentlicht",
       "aCheckFailed": "Eine Prüfung ist fehlgeschlagen",
       "failedAsked": "Sie haben eine menschliche Prüfung angefragt. Sie können auch die Angaben ändern oder ein neues PDF hochladen und die Prüfungen erneut laufen lassen.",
@@ -6673,14 +6667,19 @@
       "changeDetails": "Angaben ändern",
       "uploadNew": "Ein neues PDF hochladen",
       "publishAnother": "Noch einen veröffentlichen",
-      "activate": "Aktivieren",
+      "activate": "Bezahlen und DOI aktivieren",
       "needsApproval": "Er muss zuerst genehmigt werden",
       "untitled": "Bericht ohne Titel",
       "startedBy": "{name} hat diesen Bericht begonnen. Nur diese Person und die Admins des Arbeitsbereichs können ihn ändern.",
       "startedBySomeone": "Jemand in diesem Arbeitsbereich hat diesen Bericht begonnen. Nur diese Person und die Admins des Arbeitsbereichs können ihn ändern.",
       "openPage": "Seite öffnen",
+      "takeDown": "Um einen Bericht zurückziehen zu lassen, schreiben Sie an <mail>{email}</mail> und nennen Sie seinen Schlüssel, {key}. Wir antworten innerhalb von drei Werktagen. Seine Seite und sein DOI bleiben bestehen und geben an, dass der Bericht zurückgezogen wurde.",
+      "waitingIn": "{count, plural, one {# Bericht in {name} wartet darauf, von Ihnen aktiviert zu werden.} other {# Berichte in {name} warten darauf, von Ihnen aktiviert zu werden.}}",
+      "waitingOwn": "{count, plural, one {# Bericht in Ihrem eigenen Arbeitsbereich wartet darauf, von Ihnen aktiviert zu werden.} other {# Berichte in Ihrem eigenen Arbeitsbereich warten darauf, von Ihnen aktiviert zu werden.}}",
+      "waitingOpen": "{count, plural, one {Öffnen} other {Öffnen}}",
+      "registering": "Die Seite ist jetzt offen und kann geteilt werden. Der DOI funktioniert, sobald er registriert ist, meist innerhalb weniger Minuten.",
       "sentToReviewer": "An eine Prüfung gesendet",
-      "requestFailed": "Die Anfrage konnte nicht gesendet werden",
+      "requestFailed": "Die Anfrage konnte nicht gesendet werden.",
       "reviewIntro": "Jemand liest Ihren Bericht und was die Prüfungen gesagt haben. Fragen Sie an, wenn Sie meinen, dass eine Prüfung sich geirrt hat.",
       "reviewQuestion": "Was haben die Prüfungen falsch gemacht?",
       "cancel": "Abbrechen",
@@ -6705,7 +6704,7 @@
       "discardBody": "Ihr Bericht bleibt so online, wie er jetzt ist. Ihre Änderungen werden aufgegeben.",
       "keepThem": "Behalten",
       "changesDiscarded": "Änderungen verworfen",
-      "changesDiscardFailed": "Die Änderungen konnten nicht verworfen werden",
+      "changesDiscardFailed": "Die Änderungen konnten nicht verworfen werden.",
       "discard": "Verwerfen",
       "pages": "{count, plural, one {# Seite} other {# Seiten}}",
       "agreementVersion": "Vereinbarung v{version}",
@@ -6723,53 +6722,150 @@
         "onlyAdmin": "Nur ein Admin kann ihn aktivieren",
         "notForSale": "Die Aktivierung kann gerade nicht bezahlt werden",
         "payTitle": "{price} zahlen, um {key} zu aktivieren",
-        "freeTitle": "{key} aktivieren",
         "orgCardCharged": "Die Karte von {organization} wird belastet.",
-        "orgCardNothing": "Die Karte von {organization} wird nicht belastet.",
-        "payConfirm": "Zahlen und aktivieren",
         "dueNow": "Jetzt fällig",
         "doiNow": "Sein DOI jetzt",
         "after": "Danach",
         "reserved": "Reserviert",
         "live": "Live",
-        "activationLine": "Aktivierung",
         "codeLine": "Code {code}",
         "promo": {
-          "add": "Aktionscode hinzufügen",
-          "label": "Aktionscode",
+          "add": "Gutscheincode hinzufügen",
+          "label": "Gutscheincode",
           "apply": "Anwenden",
           "remove": "{code} entfernen",
           "off": "{percent} % Rabatt",
           "failed": "Dieser Code konnte nicht geprüft werden. Versuchen Sie es noch einmal.",
           "unknownCode": "{code} ist kein Code, den wir kennen, oder er ist aufgebraucht.",
-          "nothingOff": "{code} macht eine Aktivierung nicht günstiger.",
-          "codeTooLong": "Dieser Code ist zu lang, um einer von unseren zu sein."
+          "nothingOff": "{code} senkt den Preis für die Veröffentlichung eines Berichts nicht.",
+          "codeTooLong": "Dieser Code ist zu lang, um einer von unseren zu sein.",
+          "applyFirst": "Wenden Sie den Code an oder löschen Sie ihn, um zu aktivieren."
         },
         "card": {
           "bankAsked": "Ihre Bank möchte die Zahlung bestätigen lassen",
-          "goesLive": "Er geht live, sobald die Zahlung bestätigt ist.",
+          "goesLive": "Er geht live, sobald die Zahlung erfolgt ist.",
           "refused": "Ihre Bank hat die letzte Zahlung nicht bestätigt, daher wurde nichts abgebucht.",
-          "free": "Kostenlos",
-          "freeLeft": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}",
-          "freeLeftNoCard": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}. Eine gespeicherte Karte ist trotzdem nötig.",
-          "add": "Fügen Sie eine Zahlungsmethode hinzu, um zu aktivieren",
-          "costs": "Jede Aktivierung kostet {price}.",
-          "costsOrg": "Jede Aktivierung kostet {price} und wird {organization} berechnet.",
-          "needed": "Zum Aktivieren ist eine gespeicherte Karte nötig.",
-          "orgCard": "Karte von {organization}",
-          "yourCard": "Ihre Karte",
           "confirm": "Zahlung bestätigen",
-          "change": "Ändern",
-          "addButton": "Zahlungsmethode hinzufügen",
-          "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden",
-          "credit": "{amount} Guthaben"
+          "toPayment": "Weiter zur Zahlung",
+          "unfinished": "Die Zahlung ist nicht abgeschlossen",
+          "cancel": "Zahlung abbrechen",
+          "cancelFailed": "Die Zahlung konnte nicht abgebrochen werden. Versuchen Sie es erneut."
         },
-        "creditLine": "Guthaben des Kontos",
-        "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
-        "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet.",
-        "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
-        "noFreeLeft": "Für heute ist keine kostenlose Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um dafür zu bezahlen.",
-        "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz."
+        "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts belastet. Versuchen Sie es erneut oder zahlen Sie auf anderem Weg.",
+        "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz.",
+        "kept": "Was für diesen Bericht bezahlt wurde, ging in Ihr Publikationsguthaben. Der nächste Bericht, den Sie aktivieren, nutzt es.",
+        "keptOrg": "Was für diesen Bericht bezahlt wurde, ging in das Publikationsguthaben von {organization}. Der nächste dort aktivierte Bericht nutzt es.",
+        "balanceLine": "Publikationsguthaben",
+        "onStripe": "Die Seite von Stripe öffnet sich für die Zahlung.",
+        "changed": "Der fällige Betrag hat sich geändert, seit diese Seite ihn gelesen hat. Prüfen Sie ihn und aktivieren Sie erneut.",
+        "toStripe": "Weiter zur Zahlung"
+      },
+      "back": "Zurück",
+      "next": "Weiter",
+      "bylineFirst": "Ihr PDF trägt diesen Vermerk",
+      "bylineFirstBody": "Jeder Bericht dieser Reihe trägt diesen Vermerk in seinem PDF, als Text. Unsere Prüfungen suchen danach, sobald Sie hochladen.",
+      "nextUpload": "PDF hochladen",
+      "nextDetails": "Angaben prüfen",
+      "problem": {
+        "outOfStep": "Diese Seite und der Server haben unterschiedliche Versionen. Laden Sie die Seite neu und versuchen Sie es dann erneut.",
+        "retry": "Versuchen Sie es erneut. Wenn es weiter passiert, <link>melden Sie ein Problem</link>.",
+        "retryQuote": "Versuchen Sie es erneut. Wenn es weiter passiert, <link>melden Sie ein Problem</link> und nennen Sie {reference}."
+      },
+      "bylineBy": {
+        "label": "Wer den Vermerk hinzufügt",
+        "choose": "Wählen Sie, wer den Vermerk hinzufügt, um fortzufahren.",
+        "chooseFirst": "Wählen Sie zuerst, wer den Vermerk hinzufügt",
+        "failed": "Wir konnten die Seite nicht zu {name} hinzufügen. Fügen Sie den Vermerk selbst hinzu und laden Sie das PDF erneut hoch.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "Ich füge ihn selbst hinzu",
+          "body": "Setzen Sie den Vermerk wortwörtlich auf das Deckblatt oder die Innenseite des Deckblatts Ihres PDFs, bevor Sie es hochladen."
+        },
+        "added": {
+          "title": "Für mich hinzufügen",
+          "body": "Wir fügen eine letzte Seite mit diesem Vermerk und den Angaben Ihres Berichts hinzu."
+        }
+      },
+      "overview": {
+        "title": "Einen Bericht bei {series} veröffentlichen",
+        "intro": "Etwa fünf Minuten von Anfang bis Ende. Das verlangt jeder Schritt von Ihnen.",
+        "introReviewed": "Etwa fünf Minuten Ihrer Zeit. Danach genehmigt ein Gutachter den Bericht, bevor er online gehen kann, und Sie erhalten eine E-Mail.",
+        "start": "Vereinbarung unterzeichnen",
+        "agreement": {
+          "title": "Die Veröffentlichungsvereinbarung unterzeichnen",
+          "body": "Sie behalten das Urheberrecht und wählen die Lizenz."
+        },
+        "doi": {
+          "title": "Ihre DOI erhalten",
+          "body": "Reserviert, sobald Sie unterzeichnen. Sie wird mit dem Bericht aktiv."
+        },
+        "pdf": {
+          "title": "Ihr PDF hochladen",
+          "body": "Mit einem Vermerk, der die Reihe und die DOI nennt. Fügen Sie ihn selbst hinzu, oder wir fügen ihn auf einer letzten Seite hinzu."
+        },
+        "details": {
+          "title": "Die Angaben prüfen",
+          "body": "Für Sie aus dem PDF gelesen: Titel, Autoren, ORCID iDs, Institutionen und Förderer."
+        },
+        "checks": {
+          "title": "Automatische Prüfungen",
+          "body": "Etwa eine Minute. Sie suchen nach diesem Vermerk und nach allem, was bereits veröffentlicht wurde."
+        },
+        "activate": {
+          "title": "Aktivieren",
+          "bodyPrices": "{price} unter CC BY oder CC BY-SA, {priceOfThree} unter einer anderen Lizenz. Bezahlt aus Ihrem Publikationsguthaben oder per Karte. Der DOI wird registriert und der Bericht geht live.",
+          "bodyCard": "{price} unter CC BY oder CC BY-SA, {priceOfThree} unter einer anderen Lizenz, bezahlt per Karte. Ein Gutscheincode kann den Preis senken oder decken. Der DOI wird registriert und der Bericht geht live."
+        }
+      },
+      "licence": {
+        "label": "Lizenz",
+        "by": "Alle dürfen ihn teilen und bearbeiten, wenn sie Sie nennen.",
+        "bySa": "Wie CC BY, und was andere daraus machen, behält diese Lizenz.",
+        "other": "Eine andere Lizenz",
+        "otherBody": "Nicht kommerziell, keine Bearbeitungen oder Ihre eigene.",
+        "which": "Welche Lizenz",
+        "own": "Meine eigene Lizenz",
+        "ownName": "Ihr Name",
+        "ownUrl": "Webadresse ihres Textes",
+        "ownNeeded": "Geben Sie Ihrer Lizenz einen Namen in lateinischen Buchstaben und die Webadresse ihres Textes.",
+        "help": {
+          "title": "Lizenzen",
+          "about": "Über Lizenzen",
+          "by": "Wer ihn weiterverwendet, nennt Sie.",
+          "sa": "Was andere daraus machen, behält dieselbe Lizenz.",
+          "nc": "Niemand darf ihn kommerziell nutzen, ohne Sie zu fragen.",
+          "nd": "Andere dürfen keine veränderten Fassungen teilen.",
+          "mining": "Alle erlauben jedem, den Bericht unverändert zu lesen, herunterzuladen und zu teilen und seinen Text nach Daten auszuwerten, unter NC jedoch nicht kommerziell. Die Vereinbarung erlaubt Openscholar, ihn unter jeder davon zu veröffentlichen und zu archivieren.",
+          "compare": "Was jede Lizenz erlaubt",
+          "sentTo": "Gesendet an",
+          "crossref": "Registriert den DOI",
+          "zenodo": "Archiviert eine Kopie",
+          "openscholar": "Zeigt den Bericht"
+        }
+      },
+      "payment": {
+        "payWith": "Bezahlen mit",
+        "balance": "Publikationsguthaben",
+        "card": "Karte",
+        "byCard": "Zahlung per Karte",
+        "due": "Fällig bei Aktivierung",
+        "later": "Nichts wird belastet, bis der Bericht aktiviert wird, und die Zahlungsart lässt sich noch ändern.",
+        "code": "Code {code}",
+        "dueNow": "Jetzt fällig",
+        "title": "Zahlung",
+        "sign": "Lesen und unterschreiben",
+        "noLimit": "Ohne Limit",
+        "credit": "Guthaben des Kontos",
+        "least": "Eine Karte zahlt mindestens {least}, daher bleiben {spare} in Ihrem Guthaben."
+      },
+      "activateFree": "DOI aktivieren",
+      "paid": {
+        "balance": "{amount} aus dem Guthaben bezahlt",
+        "balanceLeft": "{amount} aus dem Guthaben bezahlt, {left} übrig",
+        "card": "{amount} mit Karte bezahlt",
+        "code": "{code} hat den Preis gedeckt",
+        "codeRest": "{code} hat den Rest gedeckt",
+        "credit": "{amount} aus dem Guthaben des Kontos bezahlt"
       }
     },
     "meta": {
@@ -6785,14 +6881,11 @@
       "name": "Name",
       "moveUp": "Nach oben",
       "moveDown": "Nach unten",
-      "removeAuthor": "Autorin oder Autor entfernen",
+      "removeAuthor": "Person entfernen",
       "moveUpLabel": "{name} nach oben",
       "moveDownLabel": "{name} nach unten",
       "author": "Autorin oder Autor",
-      "roles": "Rollen der Beitragenden",
-      "roleCount": "{count, plural, one {# Rolle} other {# Rollen}}",
-      "findRole": "Eine Rolle suchen",
-      "noRole": "Keine solche Rolle",
+      "noContribution": "Keinen solchen Beitrag gefunden. Den Bericht herauszugeben oder zu übersetzen ist eine Rolle: Wählen Sie sie unter Rolle.",
       "corresponding": "Korrespondierende Autorin oder korrespondierender Autor",
       "orcidFound": "Auf ORCID über den Namen und {institution} gefunden",
       "correctTitle": "Angaben korrigieren",
@@ -6808,11 +6901,17 @@
       "type": "Typ",
       "language": "Sprache",
       "date": "Veröffentlichungsdatum",
+      "dateYear": "Jahr",
+      "dateMonth": "Monat",
+      "dateDay": "Tag",
+      "noMonth": "Ohne Monat",
+      "noDay": "Ohne Tag",
+      "yearInvalid": "Geben Sie das Jahr vierstellig ein.",
       "future": "Ein Bericht kann nicht in der Zukunft datiert sein.",
       "licence": "Lizenz",
-      "authors": "Autorinnen und Autoren",
-      "authorsPager": "Autorinnen und Autoren",
-      "addAuthor": "Eine Autorin oder einen Autor hinzufügen",
+      "authors": "Personen",
+      "authorsPager": "Personen",
+      "addPerson": "Person hinzufügen",
       "abstract": "Zusammenfassung",
       "subjects": "Fachgebiete",
       "topics": "Themen",
@@ -6846,6 +6945,9 @@
       "addGrant": "Ein Förderkennzeichen für {name} hinzufügen",
       "references": "Literatur",
       "referencesPager": "Literaturangaben",
+      "editReference": "Literaturangabe bearbeiten",
+      "editReferenceLabel": "Literaturangabe {number} bearbeiten",
+      "referenceLabel": "Literaturangabe {number}",
       "removeReference": "Literaturangabe entfernen",
       "addReference": "Eine Literaturangabe per DOI hinzufügen",
       "doiPlaceholder": "Einen zitierten DOI hinzufügen",
@@ -6867,8 +6969,331 @@
       "cancel": "Abbrechen",
       "sendForReview": "Änderungen prüfen und zur Prüfung senden",
       "checkAndPublish": "Änderungen prüfen und veröffentlichen",
-      "runChecks": "Prüfungen ausführen",
-      "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein."
+      "runChecks": "Absenden",
+      "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein.",
+      "back": "Zurück",
+      "backToChecks": "Zurück zu den Prüfungen",
+      "role": "Rolle",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Beiträge",
+      "contributionsPlaceholder": "Was diese Person getan hat",
+      "contributionCount": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+      "findContribution": "Beitrag suchen",
+      "writeAbstract": "Aus dem PDF schreiben",
+      "replaceAbstractTitle": "Zusammenfassung ersetzen?",
+      "replaceAbstractBody": "Eine neue wird aus dem PDF geschrieben und ersetzt die im Feld.",
+      "keepAbstract": "Behalten",
+      "replaceAbstract": "Ersetzen",
+      "noAbstract": "Ihr PDF druckt keine Zusammenfassung. Schreiben Sie eine oder lassen Sie eine aus dem PDF schreiben.",
+      "abstractFailed": "Die Zusammenfassung konnte nicht geschrieben werden. Versuchen Sie es noch einmal.",
+      "addReferences": "Literatur hinzufügen",
+      "referencesPlaceholder": "Literaturangaben oder DOIs einfügen, eine pro Zeile",
+      "uploadReferences": "Datei hochladen",
+      "uploadReferencesLabel": "Eine Datei mit Literaturangaben hochladen",
+      "referenceFormats": "BibTeX, RIS oder reiner Text",
+      "noReferencesFound": "Darin wurden keine Literaturangaben gefunden.",
+      "referencesListed": "Alle davon stehen schon in der Liste.",
+      "referencesAdded": "{count, plural, one {# Literaturangabe hinzugefügt} other {# Literaturangaben hinzugefügt}}",
+      "undo": "Rückgängig",
+      "referencesTooBig": "Diese Datei ist größer als 2 MB. Eine Literaturliste ist viel kleiner.",
+      "openItsDoi": "Ihren DOI öffnen",
+      "openReferenceDoi": "DOI der Literaturangabe {number} öffnen"
+    },
+    "kinds": {
+      "author": "Autorin oder Autor",
+      "editor": "Herausgabe",
+      "chair": "Vorsitz",
+      "translator": "Übersetzung",
+      "reviewer": "Begutachtung",
+      "review-assistant": "Begutachtungsassistenz",
+      "reviewer-external": "Begutachtung (extern)",
+      "stats-reviewer": "Begutachtung (Statistik)",
+      "reader": "Lektorat",
+      "other": "Andere"
+    },
+    "roleDetails": {
+      "conceptualization": "Hatte die Ideen und setzte die Ziele",
+      "dataCuration": "Ordnete, bereinigte und pflegte die Daten",
+      "formalAnalysis": "Führte die Statistik oder andere formale Analysen durch",
+      "fundingAcquisition": "Warb die Mittel für das Projekt ein",
+      "investigation": "Forschte und erhob die Daten",
+      "methodology": "Entwarf die Methoden oder Modelle",
+      "projectAdministration": "Leitete und koordinierte das Projekt",
+      "resources": "Stellte Material, Proben, Werkzeuge oder Rechenleistung bereit",
+      "software": "Schrieb oder testete den Code",
+      "supervision": "Leitete und betreute das Team",
+      "validation": "Prüfte, dass sich die Ergebnisse wiederholen lassen",
+      "visualization": "Erstellte die Abbildungen und die Darstellung der Daten",
+      "writingOriginalDraft": "Schrieb den ersten Entwurf",
+      "writingReviewEditing": "Prüfte und überarbeitete den Text"
+    },
+    "help": {
+      "aboutLabel": "Über: {title}",
+      "sentTo": "Geht an",
+      "does": {
+        "crossref": "Registriert den DOI",
+        "zenodo": "Archiviert eine Kopie",
+        "openscholar": "Zeigt den Bericht"
+      },
+      "sent": "{name}, bekommt das: {does}",
+      "notSent": "{name}, bekommt das nicht: {does}",
+      "filled": {
+        "pdf": "Aus Ihrem PDF gelesen",
+        "judged": "Aus Ihrem PDF erschlossen",
+        "matched": "Aus Ihrem PDF gelesen, dann nachgeschlagen",
+        "classified": "Von OpenAlex vorgeschlagen",
+        "author": "Zuerst Autorin oder Autor",
+        "fixed": "Von Openscholar festgelegt",
+        "reserved": "Beim Unterschreiben reserviert"
+      },
+      "entry": {
+        "list": "Aus einer Liste gewählt",
+        "typed": "Frei eingegeben",
+        "either": "Aus einer Liste oder eingegeben",
+        "pasted": "Eingefügt oder hochgeladen",
+        "toggle": "Ein oder aus",
+        "chosen": "Ihre Wahl"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "Werktypen von OpenAlex",
+          "detail": "Die Liste dieser Auswahl"
+        },
+        "zenodoTypes": {
+          "name": "Ressourcentypen von Zenodo",
+          "detail": "Was aus jedem Typ auf Zenodo wird"
+        },
+        "crossrefReports": {
+          "name": "Berichte bei Crossref",
+          "detail": "Der Eintrag, den Crossref führt"
+        },
+        "iso639": {
+          "name": "Sprachcodes nach ISO 639",
+          "detail": "Die Codes, die OpenAlex verwendet"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Namensnennung 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Beitragende bei Crossref",
+          "detail": "Wie Crossref Personen erfasst"
+        },
+        "crossrefRoles": {
+          "name": "Rollen von Beitragenden bei Crossref",
+          "detail": "Die Liste dieser Auswahl"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "Was eine iD ist"
+        },
+        "orcidRegister": {
+          "name": "Eine iD bekommen",
+          "detail": "Kostenlos, in einer Minute"
+        },
+        "openalexInstitutions": {
+          "name": "Einrichtungen bei OpenAlex",
+          "detail": "Werden zuerst gesucht"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Gesucht für die, die OpenAlex fehlen"
+        },
+        "rorAdd": {
+          "name": "ROR bitten, eine Organisation aufzunehmen",
+          "detail": "Für eine, die in keiner Liste steht"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "Die Taxonomie der Rollen von Beitragenden der NISO"
+        },
+        "crossrefAbstracts": {
+          "name": "Zusammenfassungen bei Crossref",
+          "detail": "Wie Crossref eine führt"
+        },
+        "openalexTopics": {
+          "name": "Themen von OpenAlex",
+          "detail": "Die Liste, die diese Auswahl durchsucht"
+        },
+        "sdgs": {
+          "name": "Die 17 Ziele",
+          "detail": "Vereinte Nationen"
+        },
+        "openalexDesigns": {
+          "name": "Studiendesigns von OpenAlex",
+          "detail": "Die Liste dieser Auswahl"
+        },
+        "iso3166": {
+          "name": "Ländercodes nach ISO 3166",
+          "detail": "Die Länder dieser Auswahl"
+        },
+        "openalexFunders": {
+          "name": "Förderer bei OpenAlex",
+          "detail": "Werden zuerst gesucht"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Wird auch gesucht, für Regierungen und Stiftungen"
+        },
+        "funderRegistry": {
+          "name": "Funder Registry von Crossref",
+          "detail": "Die IDs, an denen Crossref Förderer erkennt"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "Was ein DOI ist"
+        },
+        "crossrefReferences": {
+          "name": "Literatur bei Crossref",
+          "detail": "Wie daraus Zitationen gezählt werden"
+        },
+        "crossrefRelations": {
+          "name": "Beziehungen bei Crossref",
+          "detail": "Wie Crossref Werke miteinander verknüpft"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "Was eine ISSN ist"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Titel",
+          "about": "Der Titel des Berichts, wie er auf dem Umschlag steht."
+        },
+        "subtitle": {
+          "title": "Untertitel",
+          "about": "Die Zeile unter dem Titel, wenn der Umschlag eine hat.",
+          "note": "Leer, wenn das PDF keinen druckt."
+        },
+        "type": {
+          "title": "Typ",
+          "about": "Die Art von Werk, um die es sich handelt.",
+          "note": "Crossref führt jeden Openscholar Report als Bericht. Zenodo und Openscholar verwenden den hier gewählten Typ."
+        },
+        "language": {
+          "title": "Sprache",
+          "about": "Die Sprache, in der der Bericht geschrieben ist."
+        },
+        "date": {
+          "title": "Veröffentlicht am",
+          "about": "Wann der Bericht erschien: ein Jahr, ein Monat oder ein Tag, so genau wie das PDF es angibt, und spätestens heute.",
+          "note": "Crossref behält es so genau, wie es ist. Zenodo nimmt ein ganzes Datum, daher geht ein Jahr oder Monat als dessen erster Tag dorthin. Ein PDF ohne Datum bekommt das heutige."
+        },
+        "licence": {
+          "title": "Lizenz",
+          "about": "Jeder Openscholar Report erscheint unter CC BY 4.0, wie es in der Vereinbarung steht, die Sie unterschrieben haben."
+        },
+        "authors": {
+          "title": "Autorinnen und Autoren",
+          "about": "Alle, die der Bericht nennt, in der Reihenfolge seiner Zitation.",
+          "note": "Die Autorinnen und Autoren aus dem PDF sind schon eingetragen. Fügen Sie hier Herausgeber, Übersetzer und andere hinzu und wählen Sie ihre Rolle."
+        },
+        "name": {
+          "title": "Name",
+          "about": "Der Name, wie der Bericht ihn druckt. Der volle Name einer Organisation geht auch.",
+          "note": "Der Name einer Person kommt bei Crossref und Zenodo als Familienname, dann Vornamen an: Das letzte Wort gilt als Familienname. Der Name einer Organisation, mit einem Wort wie Department, Ministry oder University, wird vollständig gesendet."
+        },
+        "kind": {
+          "title": "Rolle",
+          "about": "Was diese Person für den Bericht ist. Die meisten sind Autorinnen oder Autoren.",
+          "note": "Nur Autorinnen und Autoren stehen in der Zitation des Berichts. Alle anderen stehen mit ihrer Rolle unter Beiträge auf der Seite des Berichts, und Crossref und Zenodo erhalten die Rolle jeder Person."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "Eine kostenlose Nummer, die Forschende mit gleichem Namen unterscheidet.",
+          "note": "Druckt das PDF keine, wird bei ORCID nach genau einer Person mit genau diesem Namen an einer dieser Einrichtungen gesucht."
+        },
+        "affiliations": {
+          "title": "Zugehörigkeiten",
+          "about": "Wo diese Person arbeitete, als der Bericht entstand.",
+          "note": "Eine Einrichtung mit ROR-ID wird mit ihr geschickt, damit Crossref und Zenodo wissen, welche es ist. Eine von Hand eingegebene geht nur mit ihrem Namen."
+        },
+        "contributions": {
+          "title": "Beiträge",
+          "about": "Was diese Person für das Werk getan hat, in den 14 Rollen von CRediT.",
+          "note": "Nur ausgefüllt, wenn das PDF eine Beitragserklärung hat. Es leer zu lassen ist in Ordnung."
+        },
+        "corresponding": {
+          "title": "Korrespondierende Autorin oder korrespondierender Autor",
+          "about": "Die Person, an die Lesende zum Bericht schreiben.",
+          "note": "Nur eingeschaltet, wenn das PDF eine solche Person kennzeichnet."
+        },
+        "abstract": {
+          "title": "Zusammenfassung",
+          "about": "Die Zusammenfassung, die Ihr PDF druckt, unverändert übernommen.",
+          "note": "Druckt das PDF keine, entwirft Aus dem PDF schreiben eine, die Sie prüfen und ändern."
+        },
+        "topics": {
+          "title": "Themen",
+          "about": "Worum es im Bericht geht, in den Themen von OpenAlex.",
+          "note": "Der Klassifikator von OpenAlex liest Titel und Zusammenfassung. Der Balken an einem Thema zeigt, wie sicher er war. Themen, die Sie hinzufügen, haben keinen."
+        },
+        "keywords": {
+          "title": "Schlagwörter",
+          "about": "Ihre eigenen Worte dafür, worum es im Bericht geht.",
+          "note": "Die Schlagwörter des PDFs. Nennt es keine, bis zu fünf vom Klassifikator von OpenAlex."
+        },
+        "sdgs": {
+          "title": "Ziele für nachhaltige Entwicklung",
+          "about": "Die UN-Ziele, um die es im Bericht wesentlich geht.",
+          "note": "Höchstens drei werden eingetragen. Fügen Sie beliebig hinzu oder entfernen Sie welche."
+        },
+        "design": {
+          "title": "Studiendesign",
+          "about": "Wie die Studie durchgeführt wurde.",
+          "note": "Nur ausgefüllt, wenn das PDF es klar sagt. Zenodo zeigt es als Methodenhinweis."
+        },
+        "places": {
+          "title": "Untersuchte Orte",
+          "about": "Die Länder und Regionen, um die es im Bericht geht, nicht wo seine Autorinnen und Autoren arbeiten."
+        },
+        "funding": {
+          "title": "Förderung",
+          "about": "Wer die Arbeit bezahlt hat, mit den Fördernummern wie gedruckt.",
+          "note": "Förderer werden bei OpenAlex und ROR gesucht. Einer, der dort gefunden wird, geht mit seiner ROR-ID und, wo vorhanden, seiner Funder-Registry-ID. Einer, der von Hand eingegeben wird, geht nur mit seinem Namen."
+        },
+        "references": {
+          "title": "Literatur",
+          "about": "Die Werke, die dieser Bericht zitiert, so wie seine Literaturliste sie schreibt.",
+          "note": "Fügen Sie die Liste ein oder laden Sie sie als BibTeX-, RIS- oder Textdatei hoch. Jeder DOI, den das PDF druckt, ist schon eingetragen, und Crossref verknüpft jede Literaturangabe mit DOI mit dem zitierten Werk."
+        },
+        "links": {
+          "title": "Daten, Code und Versionen",
+          "about": "Wo die Daten, der Code, andere Versionen und Ergänzungen des Berichts liegen.",
+          "note": "Jeweils eine Webadresse oder ein DOI."
+        },
+        "agreement": {
+          "title": "Die Veröffentlichungsvereinbarung",
+          "about": "Worauf Sie und Openscholar sich einigen, bevor Ihr Bericht erscheint.",
+          "note": "Sie behalten das Urheberrecht. Das Häkchen stimmt für Sie und alle Mitautorinnen und Mitautoren zu, prüfen Sie also vorher, dass sie zugestimmt haben. Eine unterschriebene Vereinbarung lässt sich nicht ändern."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "Ein dauerhafter Link zu Ihrem Bericht, der funktioniert, wohin seine Seite auch umzieht.",
+          "note": "Er wird beim Unterschreiben reserviert, damit Sie ihn in Ihr PDF drucken können. Er funktioniert, sobald Ihr Bericht online ist."
+        },
+        "byline": {
+          "title": "Die Reihenzeile",
+          "about": "Die Zeile, die jeder Bericht dieser Reihe druckt, mit dem Namen der Reihe, ihrer ISSN und dem DOI des Berichts.",
+          "note": "Sie muss Text im PDF sein, kein Bild, denn die Prüfungen suchen danach. Wählen Sie Für mich hinzufügen, und Openscholar fügt eine letzte Seite mit der Zeile an."
+        },
+        "checks": {
+          "title": "Prüfungen",
+          "about": "Was Openscholar prüft, bevor ein Bericht online gehen kann, etwa die Reihenzeile im PDF und ob das Werk schon veröffentlicht ist.",
+          "note": "Jede Prüfung sagt, wonach sie gesucht hat und was zu beheben ist, wenn sie scheitert. Sind Sie sicher, dass eine Prüfung irrt, bitten Sie um eine Begutachtung durch einen Menschen."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Die Nummer, die die Reihe kennzeichnet, wie die einer Zeitschrift.",
+          "note": "Ausstehend, bis die Reihe registriert ist. Der DOI Ihres Berichts funktioniert auch ohne sie."
+        },
+        "activation": {
+          "title": "Aktivieren",
+          "about": "Aktivieren macht Ihren Bericht öffentlich: Seine Seite öffnet sich, sein DOI funktioniert, und er wird registriert.",
+          "note": "Der fällige Betrag wird zuerst bezahlt: aus dem Publikationsguthaben Ihres Arbeitsbereichs, mit Karte oder beidem. Ein Gutscheincode senkt, was die Karte zahlt."
+        }
+      }
     }
   },
   "people": {
@@ -6951,6 +7376,7 @@
       "preprint": "Preprint",
       "book": "Buch",
       "report": "Bericht",
+      "presentation": "Präsentation",
       "review": "Übersichtsartikel",
       "reference-entry": "Nachschlageeintrag",
       "conference-abstract": "Konferenz-Abstract",

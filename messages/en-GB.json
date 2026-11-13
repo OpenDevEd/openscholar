@@ -194,21 +194,6 @@
     "anotherPlan": "another plan",
     "onDate": "on {date}",
     "connections": "Connections",
-    "localeLabels": {
-      "enUS": "English (US)",
-      "enGB": "English (UK)",
-      "zh": "Chinese",
-      "fr": "French",
-      "hi": "Hindi",
-      "ja": "Japanese",
-      "ar": "Arabic",
-      "sw": "Swahili",
-      "pt": "Portuguese",
-      "es": "Spanish",
-      "de": "German",
-      "af": "Afrikaans",
-      "zu": "Zulu"
-    },
     "noTitle": "No title",
     "noAbstract": "No abstract",
     "you": "You",
@@ -350,6 +335,7 @@
     "password": "Crossref password",
     "prefix": "DOI prefix",
     "registrant": "Registrant",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Depositor name",
     "email": "Depositor email",
     "namespace": "DOI namespace",
@@ -434,7 +420,16 @@
     "chargesLabel": "charges",
     "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
     "fixPayment": "Fix payment",
-    "seePlans": "See plans"
+    "seePlans": "See plans",
+    "publication": {
+      "title": "Publication balance",
+      "hint": "Pays for the reports you publish on Openscholar Reports.",
+      "every": "{interval, select, hour {Every hour} day {Every day} week {Every week} month {Every month} quarter {Every three months} semi_annual {Every six months} other {Every year}}",
+      "backTo": "Back to {amount} on {date}",
+      "kept": "{amount} kept until used",
+      "publish": "Publish",
+      "noLimit": "No limit"
+    }
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -680,6 +675,7 @@
     "uploadFailed": "Upload failed",
     "uploadFailedDescription": "Could not upload {format}. Please try again.",
     "accountChanged": "Your account changed. Try again.",
+    "couldntCopy": "Couldn't copy it",
     "copyFailedDescription": "Your browser didn't let us copy it. Select the text and copy it yourself.",
     "validationFailed": "Validation failed",
     "entityCreated": "{entity} created",
@@ -1252,19 +1248,20 @@
     "reviewed": "Reviewed"
   },
   "saveToLibrary": {
-    "save": "Save",
-    "saved": "Saved",
-    "saveToLibrary": "Save to library",
+    "save": "Add to library",
+    "saved": "In library",
+    "saveToLibrary": "Add to library",
     "removeFromLibrary": "Remove from library",
     "addToCollection": "Add to collection",
     "newCollection": "New collection",
     "removed": "Removed from library",
     "undo": "Undo",
-    "saveError": "Couldn't save the paper",
+    "saveError": "Couldn't add the paper to the library",
     "removeError": "Couldn't remove the paper",
     "restoreError": "Couldn't put the paper back",
     "collectionError": "Couldn't change the collection",
-    "newCollectionWithPaper": "New collection with this paper"
+    "newCollectionWithPaper": "New collection with this paper",
+    "finishSaving": "Finish adding"
   },
   "rating": {
     "noRating": "No rating",
@@ -1411,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "We value your privacy",
-    "bannerDescription": "We and our analytics providers, PostHog and Google, use cookies to understand how Openscholar is used and improve it. If you reject, we only count visits, without cookies.",
-    "dialogDescription": "We and our analytics providers, PostHog and Google, use cookies to understand how Openscholar is used and improve it. If you reject, we only count visits, without cookies. You can change your choice anytime.",
+    "bannerDescription": "We and our analytics providers, PostHog and Google, use cookies to understand how Openscholar and its communities are used and improve them. If you reject, we only count visits, without cookies.",
+    "dialogDescription": "We and our analytics providers, PostHog and Google, use cookies to understand how Openscholar and its communities are used and improve them. If you reject, we only count visits, without cookies. You can change your choice anytime.",
     "acceptAll": "Accept all",
     "rejectNonEssential": "Reject non-essential",
     "preferencesTitle": "Cookie preferences",
@@ -1439,7 +1436,11 @@
     "upgradeSuccess": "Upgrade successful",
     "upgradeSuccessCredits": "Upgraded to {plan} — {credits} credits added",
     "totalCharge": "Total due now",
-    "paymentMethod": "Payment method"
+    "paymentMethod": "Payment method",
+    "anotherCard": "Another card",
+    "anotherCardNote": "Stripe's page opens with your saved cards and room for a new one.",
+    "manageBilling": "Manage billing",
+    "toPayment": "Continue to payment"
   },
   "libraryPage": {
     "title": "Library",
@@ -1464,7 +1465,7 @@
     "ratingFilter": "Rating",
     "loadMore": "Load more",
     "emptyLibraryTitle": "This library is empty",
-    "emptyLibraryDescription": "Save papers from search results to build this library.",
+    "emptyLibraryDescription": "Add papers from search results to build this library.",
     "emptyLibraryCta": "Search papers",
     "noResultsTitle": "No papers match your search or filters",
     "clearFilters": "Clear filters",
@@ -1859,7 +1860,6 @@
       "notificationSchedule": "Choose a valid digest day, time and timezone.",
       "nameMissing": "Give the community a name.",
       "shortNameMissing": "Give the community a short name.",
-      "partnerName": "Every funding partner needs a name.",
       "badColour": "One of the colours is not valid.",
       "institutionName": "Every institution needs a name.",
       "linkLabel": "Every link needs a label.",
@@ -1941,13 +1941,6 @@
       "searchTitlePlaceholder": "Climate adaptation research and evidence",
       "descriptionLabel": "Description",
       "descriptionHint": "Shown on the home page and in search results.",
-      "partnersHeading": "Funding partners",
-      "partnersHint": "Shown on the home page.",
-      "addPartner": "Add partner",
-      "noPartners": "No funding partners yet.",
-      "removePartner": "Remove partner",
-      "partnerName": "Partner name",
-      "partnerPlaceholder": "Partner name",
       "shareImageLabel": "Share image",
       "shareImageHint": "Used when the community is shared on social media. PNG, JPG or WEBP.",
       "showNameLabel": "Name beside the logo",
@@ -2137,6 +2130,7 @@
       },
       "socialError": "Use a full address that starts with https://.",
       "fundersHeading": "Funders",
+      "fundersHint": "Shown in the footer and on every record.",
       "fundersEmpty": "No funders yet.",
       "addFunder": "Add funder",
       "removeFunder": "Remove funder",
@@ -4677,13 +4671,11 @@
     "communities": "Communities",
     "explore": "Explore",
     "authors": "Authors",
-    "workspacesCard": "Workspaces",
     "account": "Account",
     "close": "Close",
     "switchFrom": "Workspace: {name}. Switch workspace",
     "runningLabel": "{label}, {what}, {done} of {total}",
     "doneOf": "{done} of {total}",
-    "planFor": "{plan} for {workspace}",
     "planAndCredits": "Plan and credits",
     "theme": "Theme",
     "light": "Light",
@@ -4691,7 +4683,6 @@
     "auto": "Auto",
     "signOut": "Sign out",
     "signOutFailed": "Couldn't sign out. Check your connection and try again.",
-    "personal": "Personal",
     "admin": "Admin",
     "member": "Member",
     "members": "{count, plural, one {# member} other {# members}}",
@@ -4703,7 +4694,6 @@
     "decline": "Decline",
     "join": "Join",
     "newOrganization": "New organisation",
-    "workspaceSettings": "Workspace settings",
     "invitationGone": "This invitation is no longer open.",
     "couldntJoin": "Couldn't join the organisation",
     "couldntDecline": "Couldn't decline the invitation",
@@ -5642,6 +5632,7 @@
     "keepInvitation": "Keep invitation",
     "declineInvitation2": "Decline invitation",
     "previewCover": "Preview {title} cover",
+    "noPdf": "No PDF",
     "preview": "Preview {title}",
     "declineBody": "You won’t receive access to {name}. Your other communities are unaffected.",
     "owner": "Owner",
@@ -6167,6 +6158,7 @@
     },
     "admin": {
       "backToReport": "Back to the report",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Edit the details",
       "editIntroLive": "{key} is live. Saving puts your edit live at once, without the checks, and the report registers again.",
       "editIntroNotLive": "{key} isn't live yet. Saving puts your edit in place at once, without the checks.",
@@ -6208,7 +6200,9 @@
       "places": "Places studied",
       "studyDesign": "Study design",
       "seeChanges": "See your changes",
-      "correct": "Correct the details"
+      "correct": "Correct the details",
+      "takeDownTitle": "Taking it down",
+      "openDoi": "Open the DOI {doi}"
     },
     "stages": {
       "draft": "Draft",
@@ -6256,9 +6250,10 @@
       "action": {
         "openPage": "Open its page",
         "open": "Open",
-        "activate": "Activate it",
+        "activate": "Pay",
         "carryOn": "Carry on",
-        "seeFailed": "See what failed"
+        "seeFailed": "See what failed",
+        "manage": "Open in Publish"
       },
       "seeChanges": "See your changes",
       "correct": "Correct the details"
@@ -6330,7 +6325,6 @@
       },
       "which": "Which reports",
       "pagerItems": "reports",
-      "approvedToast": "Approved. Its author can activate it now.",
       "sentAgain": "Sent again",
       "noMatch": "No reports match",
       "noReports": "No reports yet",
@@ -6347,7 +6341,7 @@
       "openPage": "Open its page",
       "openPageLabel": "Open the page of {key}",
       "done": {
-        "approve": "Approved. Its author can activate it now.",
+        "approve": "Approved. It can be activated now.",
         "reinstate": "Reinstated. It's live again.",
         "withdraw": "Withdrawn",
         "decline": "Declined"
@@ -6363,6 +6357,7 @@
         "humanReview": "Human review is on, so changes wait for a reviewer."
       },
       "approving": "Approving lets its author activate it, and it goes live when they do.",
+      "approvingOrg": "Approving lets an admin of {organization} activate it, and it goes live when they do.",
       "standing": {
         "failedAsked": "A check failed. {approving}",
         "failed": "A check failed, so the report is with its author to fix. You can still decide. {approving}",
@@ -6434,9 +6429,10 @@
       "enterSeriesName": "Enter the series' name.",
       "enterByline": "Enter the byline.",
       "bylineNeedsDoi": "The byline needs {doi} in it, which becomes each report's DOI.",
+      "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "That isn't an ISSN. One looks like 2049-3630, and its last digit is a check on the rest.",
       "byline": "Byline",
-      "bylineHint": "{series}, {issn} and {doi} are filled in for each report",
+      "bylineHint": "{series}, {issn}, {doi} and {licence} are filled in for each report",
       "bylineSaved": "Byline saved",
       "registration": "DOI registration",
       "zenodoSandbox": "Zenodo sandbox",
@@ -6459,32 +6455,6 @@
       "changed": "Changed {date}",
       "asWritten": "As first written",
       "edit": "Edit",
-      "limits": "Free activations",
-      "limitsPager": "free activations",
-      "personal": "A person's own workspace",
-      "personalHint": "Activations a day that cost nothing. A saved card is still needed.",
-      "personalLabel": "Free activations a day in a person's own workspace",
-      "limitSaved": "Free activations saved",
-      "organization": "An organisation's workspace",
-      "organizationHint": "Activations a day that cost nothing, shared by its members.",
-      "organizationLabel": "Free activations a day in an organisation's workspace",
-      "goneAccount": "An account that has gone",
-      "goneOrganization": "An organisation that has gone",
-      "person": "Person",
-      "organisation": "Organisation",
-      "perDayLabel": "{name}'s free activations a day",
-      "aDay": "free a day",
-      "backToPeople": "Back to the number for people",
-      "backToOrganizations": "Back to the number for organisations",
-      "removeLimit": "Remove {name}'s free activations",
-      "alreadyLimited": "{name} already has its own number: {count} free a day.",
-      "people": "People",
-      "organisations": "Organisations",
-      "giveLimit": "Give a person or an organisation free activations of its own",
-      "pickerPlaceholder": "An organisation's name, or a person's email",
-      "pickerEmpty": "No account or organisation matches",
-      "limitMax": "A limit goes up to {max} a day",
-      "limitWhole": "A limit is a whole number from 0 to {max}",
       "builtIn": "Built in",
       "modelGone": "Its model is no longer offered",
       "passesAt": "passes at {percent} sure",
@@ -6530,25 +6500,36 @@
       "agreementLabel": "The agreement, as Markdown",
       "agreementSaved": "Agreement version {version}",
       "saveVersion": "Save as version {version}",
-      "price": "Price",
-      "priceHint": "What an activation costs past the free ones: the Report activation plan's price in Autumn.",
-      "priceHintNone": "Autumn has no Report activation plan, so only free activations go through.",
-      "notOnSale": "Not on sale"
+      "priceOne": "CC BY and CC BY-SA",
+      "priceHint": "What publishing a report under CC BY or CC BY-SA costs, in US dollars.",
+      "balances": "Balances",
+      "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organisation some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
+      "openAutumn": "Open Autumn",
+      "priceThree": "NC, ND and own licences",
+      "priceThreeHint": "What publishing a report under an NC or ND licence, or the author's own, costs, in US dollars.",
+      "prices": "Prices"
     },
     "flow": {
       "steps": {
+        "prepare": "Prepare",
         "agreement": "Agreement",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Details",
         "checks": "Checks",
-        "live": "Live"
+        "live": "Live",
+        "sealed": "Locked once the agreement is signed.",
+        "paying": "Its payment is going through, so its steps can't be opened now. If the bank refuses it, they open again.",
+        "liveNow": "It's live. Change its details with {action}.",
+        "closed": "A reviewer took it down, so it can't be changed.",
+        "running": "Its checks are running. The steps open again when they finish.",
+        "notYours": "Only the person who started this report can change it."
       },
       "publish": "Publish",
       "newReport": "New report",
       "yourReports": "Your reports",
       "discarded": "Report discarded",
-      "discardFailed": "The report couldn't be discarded",
+      "discardFailed": "The report couldn't be discarded.",
       "closedTitle": "Publishing is off for now",
       "closedWithReports": "No new report can be started for now. The reports you already have stay as they are.",
       "closedNoReports": "No new report can be started for now. Come back later.",
@@ -6558,28 +6539,28 @@
       "elsewhereTitle": "This report is in another workspace",
       "missingTitle": "This report isn't here",
       "offNotice": "Publishing is off for new reports for now. You can keep working on this one.",
-      "stepFailed": "That step couldn't be opened",
-      "checksFailed": "The checks couldn't run",
+      "stepFailed": "That step couldn't be opened.",
+      "checksFailed": "The checks couldn't run.",
       "saveFailed": "Your changes couldn't be saved",
       "changesLive": "Your changes are live",
       "changesWithReviewer": "Your changes are with a reviewer",
       "agreementTitle": "Publishing agreement with {series}",
       "version": "Version {version}",
-      "agreementIntro": "You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI.",
-      "agreementShared": "You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI. The report is this workspace's: its members can see it, and you and its admins work on it.",
+      "agreementIntro": "You keep the copyright and choose the licence, which can't change once you sign. Signing reserves your DOI.",
+      "agreementShared": "You keep the copyright and choose the licence, which can't change once you sign. Signing reserves your DOI. The report is this workspace's: its members can see it, and you and its admins work on it.",
       "signedBy": "Signed by",
-      "signForAll": "I sign for all the authors, who have agreed",
-      "agree": "I agree to this agreement",
+      "agree": "I agree to this agreement, for myself and any co-authors, who have agreed",
       "untouched": "You already reserved a DOI for <mono>{key}</mono> and haven't uploaded its PDF.",
       "continueWith": "Continue with it",
-      "agreementChanged": "The agreement changed while this page was open. Read it again, then tick the boxes.",
+      "agreementChanged": "The agreement changed while this page was open. Read it again, then tick the box.",
+      "agreementInEnglish": "The agreement itself is written in English.",
       "limit": {
         "personal": "Your plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
         "personalClosed": "Your plan doesn't include publishing. Move to a plan that does.",
         "workspace": "This workspace's plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
         "workspaceClosed": "This workspace's plan doesn't include publishing. Move to a plan that does."
       },
-      "signFailed": "The agreement couldn't be signed",
+      "signFailed": "The agreement couldn't be signed.",
       "sign": "Sign and reserve a DOI",
       "signIn": "Sign in to publish",
       "doiReserved": "Your DOI is reserved",
@@ -6590,15 +6571,17 @@
       "doiCopied": "DOI copied",
       "uploadPdf": "Upload the PDF",
       "textless": "This PDF holds no text, as a scan doesn't. The checks can't find the byline in it. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
+      "textlessAdded": "This PDF holds no text, as a scan doesn't, so the checks can't read your report in it. The line is on the page we added. Export the report as a PDF with its text and upload that, or fill in the details by hand.",
       "unreadPdf": "Openscholar couldn't read the details from this PDF. Fill them in by hand.",
       "uploadAnother": "Upload another PDF",
       "uploadLost": "The upload didn't arrive. Try again.",
-      "choosePdf": "Choose a PDF",
+      "notPdf": "{name} isn't a PDF. Save or export your report as a PDF, then choose that file.",
       "emptyFile": "That file is empty. Choose the PDF again.",
-      "tooBig": "The PDF is over {max} MB",
+      "tooBig": "The PDF is over {max} MB. Choose a smaller one.",
       "offline": "The PDF couldn't be uploaded. Check your connection, then choose it again.",
-      "uploadFailed": "The PDF couldn't be uploaded. Try again.",
-      "uploadIntro": "Put the following text, verbatim, on the cover or the inside cover before you upload. Our check looks for this line.",
+      "notSent": "The PDF couldn't be sent to us.",
+      "uploadFailed": "The PDF reached us, but the server didn't add it to your report.",
+      "uploadIntro": "Every report in this series carries this line in its PDF, as text. Our check looks for it.",
       "copyByline": "Copy byline",
       "bylineCopied": "Byline copied",
       "uploading": "Uploading {name}",
@@ -6607,6 +6590,13 @@
       "drop": "Drop the PDF here, or choose it",
       "dropHint": "One PDF, up to {max} MB",
       "unopenedPdf": "{name} couldn't be opened as a PDF. If it has a password, remove it, then save it again as a PDF and upload that.",
+      "lacksByline": "{name} doesn't carry the line above. Add the line and upload the PDF again, or have us add it.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainTitle": "Read the details from this PDF?",
+      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
+      "readAgainKeep": "Keep these details",
+      "readAgainFailed": "The details couldn't be read again.",
       "stuck": "Reading {name} is taking longer than it should. Upload it again.",
       "replaces": "Uploading again replaces {name}",
       "check": {
@@ -6616,11 +6606,12 @@
         "failed": "Failed",
         "flagged": "Flagged",
         "unclear": "Unclear",
-        "sure": "{percent} sure it passes",
+        "sure": "{percent}",
         "foundIn": "Found in {where}:",
         "foundAs": "Found as",
         "said": {
-          "notPublished": "Not in OpenAlex, Openscholar's index or our communities.",
+          "notPublished": "Not in Openscholar Reports, OpenAlex, Openscholar's index or our communities.",
+          "notPublishedElsewhere": "Not in OpenAlex, Openscholar's index or our communities.",
           "unfinished": "This check couldn't finish.",
           "bylineFound": "The PDF's text has the line word for word."
         },
@@ -6643,7 +6634,7 @@
           }
         }
       },
-      "activateFailed": "It couldn't be activated",
+      "activateFailed": "It couldn't be activated.",
       "running": "Running the checks",
       "ofTotal": "{done} of {total}",
       "runningHint": "Looking for earlier copies takes a few seconds. You can leave this page: the checks carry on.",
@@ -6654,13 +6645,16 @@
       "readyPassed": "Your report passed its checks. Activate it to make its DOI live and open its page.",
       "waiting": "Waiting for review",
       "inReview": "In review",
-      "waitingFlagged": "A check flagged your report, so a reviewer looks at it. You can activate it once they approve it, and you'll hear by email.",
-      "waitingPassed": "Your report passed its checks. You can activate it once a reviewer approves it, and you'll hear by email.",
+      "waitingFlagged": "A check flagged your report, so a reviewer looks at it before it can go live. You'll hear by email, and it waits for you under Publish.",
+      "reviewTakes": "A review takes up to three working days.",
+      "waitingPassed": "Your report passed its checks. A reviewer now approves it before it can go live. You'll hear by email, and it waits for you under Publish.",
       "withdrawn": "Withdrawn",
       "notPublished": "Not published",
       "declined": "Declined",
       "withdrawnBody": "A reviewer withdrew this report. Its page now says so.",
       "declinedBody": "A reviewer declined this report.",
+      "declinedFix": "You can change the details or upload a new PDF, and run the checks again.",
+      "activatingNow": "Activating your report. This takes a few seconds.",
       "notYet": "Not published yet",
       "aCheckFailed": "A check failed",
       "failedAsked": "You asked for a human review. You can also change the details or upload a new PDF, and run the checks again.",
@@ -6672,14 +6666,19 @@
       "changeDetails": "Change the details",
       "uploadNew": "Upload a new PDF",
       "publishAnother": "Publish another",
-      "activate": "Activate",
+      "activate": "Pay and activate the DOI",
       "needsApproval": "A reviewer has to approve it first",
       "untitled": "Untitled report",
       "startedBy": "{name} started this report. Only they and the workspace's admins can change it.",
       "startedBySomeone": "Someone in this workspace started this report. Only they and the workspace's admins can change it.",
       "openPage": "Open its page",
+      "takeDown": "To take a report down, write to <mail>{email}</mail> with its key, {key}. We answer within three working days. Its page and its DOI stay, and say the report was withdrawn.",
+      "waitingIn": "{count, plural, one {# report in {name} is ready for you to activate.} other {# reports in {name} are ready for you to activate.}}",
+      "waitingOwn": "{count, plural, one {# report in your own workspace is ready for you to activate.} other {# reports in your own workspace are ready for you to activate.}}",
+      "waitingOpen": "{count, plural, one {Open it} other {Open them}}",
+      "registering": "The page is open now and can be shared. The DOI starts working once it is registered, usually within a few minutes.",
       "sentToReviewer": "Sent to a reviewer",
-      "requestFailed": "The request couldn't be sent",
+      "requestFailed": "The request couldn't be sent.",
       "reviewIntro": "A reviewer reads your report and what the checks said. Ask when you think a check got it wrong.",
       "reviewQuestion": "What did the checks get wrong?",
       "cancel": "Cancel",
@@ -6704,7 +6703,7 @@
       "discardBody": "Your report stays live as it is now. The changes you made are given up.",
       "keepThem": "Keep them",
       "changesDiscarded": "Changes discarded",
-      "changesDiscardFailed": "The changes couldn't be discarded",
+      "changesDiscardFailed": "The changes couldn't be discarded.",
       "discard": "Discard",
       "pages": "{count, plural, one {# page} other {# pages}}",
       "agreementVersion": "Agreement v{version}",
@@ -6722,53 +6721,150 @@
         "onlyAdmin": "Only an admin can activate it",
         "notForSale": "Activating can't be paid for right now",
         "payTitle": "Pay {price} to activate {key}",
-        "freeTitle": "Activate {key}",
         "orgCardCharged": "{organization}'s card is charged.",
-        "orgCardNothing": "Nothing is charged to {organization}'s card.",
-        "payConfirm": "Pay and activate",
         "dueNow": "Due now",
         "doiNow": "Its DOI now",
         "after": "After",
         "reserved": "Reserved",
         "live": "Live",
-        "activationLine": "Activation",
         "codeLine": "Code {code}",
         "promo": {
-          "add": "Add a promo code",
-          "label": "Promo code",
+          "add": "Add a voucher code",
+          "label": "Voucher code",
           "apply": "Apply",
           "remove": "Remove {code}",
           "off": "{percent}% off",
           "failed": "That code couldn't be checked. Try again.",
           "unknownCode": "{code} isn't a code we know, or it has been used up.",
-          "nothingOff": "{code} doesn't take anything off an activation.",
-          "codeTooLong": "That code is too long to be one of ours."
+          "nothingOff": "{code} doesn't take anything off publishing a report.",
+          "codeTooLong": "That code is too long to be one of ours.",
+          "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",
-          "goesLive": "It goes live as soon as the payment is confirmed.",
+          "goesLive": "It goes live as soon as the payment is made.",
           "refused": "Your bank didn't confirm the last payment, so nothing was charged.",
-          "free": "Free",
-          "freeLeft": "{count, plural, one {# free activation} other {# free activations}} left today",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. A saved card is still needed.",
-          "add": "Add a payment method to activate",
-          "costs": "Each activation costs {price}.",
-          "costsOrg": "Each activation costs {price}, charged to {organization}.",
-          "needed": "A saved card is needed to activate.",
-          "orgCard": "{organization}'s card",
-          "yourCard": "Your card",
           "confirm": "Confirm payment",
-          "change": "Change",
-          "addButton": "Add payment method",
-          "stripeFailed": "Stripe's page couldn't be opened",
-          "credit": "{amount} credit"
+          "toPayment": "Continue to payment",
+          "unfinished": "The payment isn't finished",
+          "cancel": "Cancel payment",
+          "cancelFailed": "The payment couldn't be cancelled. Try again."
         },
-        "creditLine": "Account credit",
-        "refunded": "The {amount} paid to activate it was refunded.",
-        "refunding": "The {amount} paid to activate it is being refunded.",
-        "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
-        "noFreeLeft": "There's no free activation left for today. Activate it again to pay for it.",
-        "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place."
+        "declined": "Your card was declined. Nothing was charged. Try again, or pay another way.",
+        "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
+        "kept": "What was paid for this report went to your publication balance. The next report you activate uses it.",
+        "keptOrg": "What was paid for this report went to {organization}'s publication balance. The next report activated there uses it.",
+        "balanceLine": "Publication balance",
+        "onStripe": "Stripe's page opens for the payment.",
+        "changed": "What is due changed since this page read it. Check it, then activate again.",
+        "toStripe": "Continue to payment"
+      },
+      "back": "Back",
+      "next": "Next",
+      "bylineFirst": "Your PDF carries this line",
+      "bylineFirstBody": "Every report in this series carries this line in its PDF, as text. Our checks look for it once you upload.",
+      "nextUpload": "Upload the PDF",
+      "nextDetails": "Check the details",
+      "problem": {
+        "outOfStep": "This page and the server are on different versions. Reload the page, then try again.",
+        "retry": "Try again. If it keeps happening, <link>report a problem</link>.",
+        "retryQuote": "Try again. If it keeps happening, <link>report a problem</link> and quote {reference}."
+      },
+      "bylineBy": {
+        "label": "Who adds the line",
+        "choose": "Choose who adds the line to continue.",
+        "chooseFirst": "Choose who adds the line first",
+        "failed": "We couldn't add the page to {name}. Add the line yourself and upload the PDF again.",
+        "addFailed": "The page couldn't be added.",
+        "self": {
+          "title": "I'll add it myself",
+          "body": "Put the line, verbatim, on the cover or the inside cover of your PDF before you upload it."
+        },
+        "added": {
+          "title": "Add it for me",
+          "body": "We add a last page with this line and your report's details."
+        }
+      },
+      "overview": {
+        "title": "Publishing a report with {series}",
+        "intro": "About five minutes from start to finish. This is what each step asks of you.",
+        "introReviewed": "About five minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
+        "start": "Sign the agreement",
+        "agreement": {
+          "title": "Sign the publishing agreement",
+          "body": "You keep the copyright and choose the licence."
+        },
+        "doi": {
+          "title": "Get your DOI",
+          "body": "Reserved the moment you sign. It goes live with the report."
+        },
+        "pdf": {
+          "title": "Upload your PDF",
+          "body": "With one line that names the series and the DOI. Add it yourself, or we add it on a last page."
+        },
+        "details": {
+          "title": "Check the details",
+          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+        },
+        "checks": {
+          "title": "Automatic checks",
+          "body": "About a minute. They look for that line and anything published before."
+        },
+        "activate": {
+          "title": "Activate",
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another licence. Paid from your publication balance or by card. The DOI is registered and the report goes live.",
+          "bodyCard": "{price} under CC BY or CC BY-SA, {priceOfThree} under another licence, paid by card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+        }
+      },
+      "licence": {
+        "label": "Licence",
+        "by": "Anyone may share and adapt it, crediting you.",
+        "bySa": "As CC BY, and what others make from it keeps this licence.",
+        "other": "Another licence",
+        "otherBody": "Non-commercial, no derivatives, or your own.",
+        "which": "Which licence",
+        "own": "My own licence",
+        "ownName": "Its name",
+        "ownUrl": "Web address of its text",
+        "ownNeeded": "Give your licence a name in Latin letters and the web address of its text.",
+        "help": {
+          "title": "Licences",
+          "about": "About licences",
+          "by": "Anyone who reuses it credits you.",
+          "sa": "What others make from it keeps the same licence.",
+          "nc": "Nobody may use it commercially without asking you.",
+          "nd": "Others may not share changed versions of it.",
+          "mining": "All of them let anyone read, download and share the report as it is, and mine its text for data, though not commercially under NC. The agreement lets Openscholar publish and archive it under any of them.",
+          "compare": "What each licence allows",
+          "sentTo": "Sent to",
+          "crossref": "Registers the DOI",
+          "zenodo": "Archives a copy",
+          "openscholar": "Shows the report"
+        }
+      },
+      "payment": {
+        "payWith": "Pay with",
+        "balance": "Publication balance",
+        "card": "Card",
+        "byCard": "Payment by card",
+        "due": "Due at activation",
+        "later": "Nothing is charged until the report is activated, and how you pay can still change.",
+        "code": "Code {code}",
+        "dueNow": "Due now",
+        "title": "Payment",
+        "sign": "Read and sign",
+        "noLimit": "No limit",
+        "credit": "Account credit",
+        "least": "A card pays for at least {least}, so {spare} stays in your balance."
+      },
+      "activateFree": "Activate the DOI",
+      "paid": {
+        "balance": "Paid {amount} from the balance",
+        "balanceLeft": "Paid {amount} from the balance, {left} left",
+        "card": "Paid {amount} by card",
+        "code": "{code} covered the price",
+        "codeRest": "{code} covered the rest",
+        "credit": "Paid {amount} from account credit"
       }
     },
     "meta": {
@@ -6784,14 +6880,11 @@
       "name": "Name",
       "moveUp": "Move up",
       "moveDown": "Move down",
-      "removeAuthor": "Remove author",
+      "removeAuthor": "Remove person",
       "moveUpLabel": "Move {name} up",
       "moveDownLabel": "Move {name} down",
       "author": "author",
-      "roles": "Contributor roles",
-      "roleCount": "{count, plural, one {# role} other {# roles}}",
-      "findRole": "Find a role",
-      "noRole": "No such role",
+      "noContribution": "No such contribution. Editing or translating the report is a role: pick it under Role.",
       "corresponding": "Corresponding author",
       "orcidFound": "Found on ORCID by their name and {institution}",
       "correctTitle": "Correct the details",
@@ -6807,11 +6900,17 @@
       "type": "Type",
       "language": "Language",
       "date": "Date published",
+      "dateYear": "Year",
+      "dateMonth": "Month",
+      "dateDay": "Day",
+      "noMonth": "No month",
+      "noDay": "No day",
+      "yearInvalid": "Enter the year as four digits.",
       "future": "A report can't be dated in the future.",
       "licence": "Licence",
-      "authors": "Authors",
-      "authorsPager": "authors",
-      "addAuthor": "Add an author",
+      "authors": "People",
+      "authorsPager": "people",
+      "addPerson": "Add a person",
       "abstract": "Abstract",
       "subjects": "Subjects",
       "topics": "Topics",
@@ -6845,6 +6944,9 @@
       "addGrant": "Add a grant number for {name}",
       "references": "References",
       "referencesPager": "references",
+      "editReference": "Edit reference",
+      "editReferenceLabel": "Edit reference {number}",
+      "referenceLabel": "Reference {number}",
       "removeReference": "Remove reference",
       "addReference": "Add a reference by DOI",
       "doiPlaceholder": "Add a DOI it cites",
@@ -6866,8 +6968,331 @@
       "cancel": "Cancel",
       "sendForReview": "Check the changes and send them for review",
       "checkAndPublish": "Check and publish the changes",
-      "runChecks": "Run the checks",
-      "tooEarly": "A report can't be dated before 1400."
+      "runChecks": "Submit",
+      "tooEarly": "A report can't be dated before 1400.",
+      "back": "Back",
+      "backToChecks": "Back to the checks",
+      "role": "Role",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Contributions",
+      "contributionsPlaceholder": "What this person did",
+      "contributionCount": "{count, plural, one {# contribution} other {# contributions}}",
+      "findContribution": "Find a contribution",
+      "writeAbstract": "Write from the PDF",
+      "replaceAbstractTitle": "Replace the abstract?",
+      "replaceAbstractBody": "A new one is written from the PDF and takes the place of the one in the box.",
+      "keepAbstract": "Keep it",
+      "replaceAbstract": "Replace",
+      "noAbstract": "Your PDF prints no abstract. Type one, or have one written from the PDF.",
+      "abstractFailed": "The abstract couldn't be written. Try again.",
+      "addReferences": "Add references",
+      "referencesPlaceholder": "Paste references or DOIs, one on each line",
+      "uploadReferences": "Upload a file",
+      "uploadReferencesLabel": "Upload a file of references",
+      "referenceFormats": "BibTeX, RIS or plain text",
+      "noReferencesFound": "No references found in that.",
+      "referencesListed": "Every one of those is listed already.",
+      "referencesAdded": "{count, plural, one {# reference added} other {# references added}}",
+      "undo": "Undo",
+      "referencesTooBig": "That file is over 2 MB. A reference list is far smaller.",
+      "openItsDoi": "Open its DOI",
+      "openReferenceDoi": "Open the DOI of reference {number}"
+    },
+    "kinds": {
+      "author": "Author",
+      "editor": "Editor",
+      "chair": "Chair",
+      "translator": "Translator",
+      "reviewer": "Reviewer",
+      "review-assistant": "Review assistant",
+      "reviewer-external": "Reviewer (external)",
+      "stats-reviewer": "Reviewer (statistics)",
+      "reader": "Reader",
+      "other": "Other"
+    },
+    "roleDetails": {
+      "conceptualization": "Came up with the ideas, goals and aims",
+      "dataCuration": "Organised, cleaned and kept the data",
+      "formalAnalysis": "Ran the statistics or other formal analysis",
+      "fundingAcquisition": "Won the money for the project",
+      "investigation": "Did the research and collected the evidence",
+      "methodology": "Designed the methods or models",
+      "projectAdministration": "Managed and coordinated the project",
+      "resources": "Provided materials, samples, tools or computing",
+      "software": "Wrote or tested the code",
+      "supervision": "Led and mentored the team",
+      "validation": "Checked that the results can be reproduced",
+      "visualization": "Made the figures and data presentation",
+      "writingOriginalDraft": "Wrote the first draft",
+      "writingReviewEditing": "Reviewed and revised the text"
+    },
+    "help": {
+      "aboutLabel": "About {title}",
+      "sentTo": "Sent to",
+      "does": {
+        "crossref": "Registers the DOI",
+        "zenodo": "Archives a copy",
+        "openscholar": "Shows the report"
+      },
+      "sent": "{name}, sent this: {does}",
+      "notSent": "{name}, not sent this: {does}",
+      "filled": {
+        "pdf": "Read from your PDF",
+        "judged": "Judged from your PDF",
+        "matched": "Read from your PDF, then looked up",
+        "classified": "Suggested by OpenAlex",
+        "author": "Starts as Author",
+        "fixed": "Set by Openscholar",
+        "reserved": "Reserved when you sign"
+      },
+      "entry": {
+        "list": "Picked from a list",
+        "typed": "Typed freely",
+        "either": "From a list, or typed",
+        "pasted": "Pasted or uploaded",
+        "toggle": "On or off",
+        "chosen": "Your choice"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex work types",
+          "detail": "The list this picker shows"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo resource types",
+          "detail": "What each type becomes on Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Crossref reports",
+          "detail": "The record Crossref keeps"
+        },
+        "iso639": {
+          "name": "ISO 639 language codes",
+          "detail": "The codes OpenAlex uses"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Attribution 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Crossref contributors",
+          "detail": "How Crossref records people"
+        },
+        "crossrefRoles": {
+          "name": "Crossref contributor roles",
+          "detail": "The list this picker shows"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "What an iD is"
+        },
+        "orcidRegister": {
+          "name": "Get an iD",
+          "detail": "Free, and takes a minute"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex institutions",
+          "detail": "Searched first"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Searched for the ones OpenAlex lacks"
+        },
+        "rorAdd": {
+          "name": "Ask ROR to add an organisation",
+          "detail": "For one that is on neither list"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO's Contributor Role Taxonomy"
+        },
+        "crossrefAbstracts": {
+          "name": "Crossref abstracts",
+          "detail": "How Crossref keeps one"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex topics",
+          "detail": "The list this picker searches"
+        },
+        "sdgs": {
+          "name": "The 17 goals",
+          "detail": "United Nations"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex study designs",
+          "detail": "The list this picker shows"
+        },
+        "iso3166": {
+          "name": "ISO 3166 country codes",
+          "detail": "The countries this picker lists"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex funders",
+          "detail": "Searched first"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Searched too, for governments and foundations"
+        },
+        "funderRegistry": {
+          "name": "Crossref Funder Registry",
+          "detail": "The IDs Crossref matches funders by"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "What a DOI is"
+        },
+        "crossrefReferences": {
+          "name": "Crossref references",
+          "detail": "How citations are counted from them"
+        },
+        "crossrefRelations": {
+          "name": "Crossref relationships",
+          "detail": "How Crossref links works together"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "What an ISSN is"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Title",
+          "about": "The report's title as its cover prints it."
+        },
+        "subtitle": {
+          "title": "Subtitle",
+          "about": "The line under the title, when the cover has one.",
+          "note": "Empty when the PDF prints none."
+        },
+        "type": {
+          "title": "Type",
+          "about": "The kind of work this is.",
+          "note": "Crossref files every Openscholar Report as a report. Zenodo and Openscholar use the type chosen here."
+        },
+        "language": {
+          "title": "Language",
+          "about": "The language the report is written in."
+        },
+        "date": {
+          "title": "Date published",
+          "about": "When the report was published: a year, a month or a day, as precisely as the PDF states it, and today at the latest.",
+          "note": "Crossref keeps it as precise as it is. Zenodo takes a whole date, so a year or a month goes there as its first day. A PDF that states no date gets today."
+        },
+        "licence": {
+          "title": "Licence",
+          "about": "Every Openscholar Report is published under CC BY 4.0, as the agreement you signed says."
+        },
+        "authors": {
+          "title": "Authors",
+          "about": "Everyone the report credits, in the order its citation lists them.",
+          "note": "The PDF's authors are filled in. Add editors, translators and others here, and set their role."
+        },
+        "name": {
+          "title": "Name",
+          "about": "The name as the report prints it. An organization's full name works too.",
+          "note": "A person's name reaches Crossref and Zenodo as family name, then given names: the last word is taken as the family name. An organisation's name, one with a word such as Department, Ministry or University in it, is sent whole."
+        },
+        "kind": {
+          "title": "Role",
+          "about": "What this person is to the report. Most people are authors.",
+          "note": "Only authors are named in the report's citation. Everyone else is listed with their role under Contributions on the report's page, and Crossref and Zenodo get each person's role."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "A free number that tells researchers with the same name apart.",
+          "note": "When the PDF prints none, ORCID is searched for one person with exactly this name at one of these institutions."
+        },
+        "affiliations": {
+          "title": "Affiliations",
+          "about": "Where this person worked when the report was written.",
+          "note": "An institution with a ROR ID is sent with it, so Crossref and Zenodo know which one it is. One typed by hand goes as a name alone."
+        },
+        "contributions": {
+          "title": "Contributions",
+          "about": "What this person did for the work, in the 14 roles of CRediT.",
+          "note": "Filled in only when the PDF has a contributions statement. Leaving it empty is fine."
+        },
+        "corresponding": {
+          "title": "Corresponding author",
+          "about": "The person readers write to about the report.",
+          "note": "Switched on only when the PDF marks one."
+        },
+        "abstract": {
+          "title": "Abstract",
+          "about": "The abstract or summary your PDF prints, copied as it is.",
+          "note": "When the PDF prints neither, Write from the PDF drafts one for you to check and change."
+        },
+        "topics": {
+          "title": "Topics",
+          "about": "What the report is about, in OpenAlex's topics.",
+          "note": "OpenAlex's classifier reads the title and abstract. The bar on a topic shows how sure it was. Topics you add have none."
+        },
+        "keywords": {
+          "title": "Keywords",
+          "about": "Your own words for what the report is about.",
+          "note": "The PDF's keywords. When it lists none, up to five from OpenAlex's classifier."
+        },
+        "sdgs": {
+          "title": "Sustainable Development Goals",
+          "about": "The UN goals the report is substantially about.",
+          "note": "At most three are filled in. Add or remove any."
+        },
+        "design": {
+          "title": "Study design",
+          "about": "How the study was done.",
+          "note": "Filled in only when the PDF makes it clear. Zenodo shows it as a methods note."
+        },
+        "places": {
+          "title": "Places studied",
+          "about": "The countries and regions the report is about, not where its authors work."
+        },
+        "funding": {
+          "title": "Funding",
+          "about": "Who paid for the work, with the grant numbers as printed.",
+          "note": "Funders are looked up on OpenAlex and ROR. One found there goes with its ROR ID, and with its Funder Registry ID where it has one. One typed by hand goes as a name alone."
+        },
+        "references": {
+          "title": "References",
+          "about": "The works this report cites, as its reference list writes them.",
+          "note": "Paste the list, or upload it as a BibTeX, RIS or plain text file. Every DOI the PDF prints is filled in, and Crossref links each reference with a DOI to the work it cites."
+        },
+        "links": {
+          "title": "Data, code and versions",
+          "about": "Where the report's data, code, other versions and supplements live.",
+          "note": "Each is a web address or a DOI."
+        },
+        "agreement": {
+          "title": "The publishing agreement",
+          "about": "What you and Openscholar agree to before your report is published.",
+          "note": "You keep the copyright. Ticking the box agrees for you and every co-author, so check they have agreed first. A signed agreement can't be changed."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "A permanent link to your report that keeps working wherever its page moves.",
+          "note": "It's reserved when you sign, so you can print it in your PDF. It works once your report goes live."
+        },
+        "byline": {
+          "title": "The series line",
+          "about": "The line every report in this series prints, naming the series, its ISSN and the report's DOI.",
+          "note": "It has to be text in the PDF, not a picture, because the checks look for it. Choose Add it for me and Openscholar adds a last page with the line."
+        },
+        "checks": {
+          "title": "Checks",
+          "about": "What Openscholar checks before a report can go live, such as the series line in the PDF and whether the work is already published.",
+          "note": "Each check says what it looked for, and what to fix when it fails. If you're sure a check is wrong, ask for a person to review it."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "The number that identifies the series, as a journal's does.",
+          "note": "Pending until the series is registered. Your report's DOI works without it."
+        },
+        "activation": {
+          "title": "Activating",
+          "about": "Activating makes your report public: its page opens, its DOI starts working, and it's registered.",
+          "note": "What's due is paid first: from your workspace's publication balance, by card, or both. A voucher code lowers what the card pays."
+        }
+      }
     }
   },
   "people": {
@@ -6950,6 +7375,7 @@
       "preprint": "Preprint",
       "book": "Book",
       "report": "Report",
+      "presentation": "Presentation",
       "review": "Review",
       "reference-entry": "Reference entry",
       "conference-abstract": "Conference abstract",

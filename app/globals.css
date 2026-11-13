@@ -334,6 +334,25 @@
   [role="button"]:not([aria-disabled="true"]) {
     cursor: pointer;
   }
+  /* Scrollbars stay on screen wherever something scrolls, as the communities' do: macOS otherwise shows them only
+     while scrolling. The page keeps the bar's width whether or not it scrolls, so nothing moves sideways. */
+  html {
+    scrollbar-gutter: stable;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--foreground) 25%, transparent);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 
   /* Icons are drawn from overlapping shapes, so transparency must apply to the
      icon as a whole, never to one shape. Each shape is painted in a solid
@@ -386,16 +405,6 @@
   .bg-success { --icon-surface: var(--success); }
   .bg-warning { --icon-surface: var(--warning); }
   .bg-foreground { --icon-surface: var(--foreground); }
-}
-
-@layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 @layer components {
@@ -787,4 +796,18 @@ html[data-question-stage] body {
 }
 html[data-question-stage] body > * {
   visibility: hidden;
+}
+
+/* On a touch screen the keyboard takes half the screen, and the assistant's button, pinned to the corner above it,
+   sat over the button beside the field being typed in (Apply, Send). It steps out while a field has the focus. */
+@media (pointer: coarse) {
+  body:has(input:focus, textarea:focus) [data-assistant-launcher] {
+    visibility: hidden;
+  }
+}
+
+/* An open dialog or sheet turns pointer events off on the page. Clerk's sign-in, opened from inside one (Add to
+   library in a paper's reading view), is pressable above it, as toasts are. */
+.cl-modalBackdrop {
+  pointer-events: auto;
 }

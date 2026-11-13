@@ -137,6 +137,8 @@ export { ShieldWarningIcon as ShieldAlertIcon, ShieldWarningIcon as ShieldAlert 
 export { Widget5Icon as Shapes } from "@solar-icons/react/bold-duotone/widget-5";
 export { RocketIcon as Rocket } from "@solar-icons/react/bold-duotone/rocket";
 export { PanelLeftIcon as PanelLeft } from "@solar-icons/react/bold-duotone/panel-left";
+// Three plain lines: the duotone drew them on a filled square, which read as a button with no meaning.
+export { HamburgerMenuIcon as HamburgerMenu } from "@solar-icons/react/linear/hamburger-menu";
 export { MinusIcon as Minus } from "@solar-icons/react/bold-duotone/minus";
 export { Logout2Icon as LogOut } from "@solar-icons/react/bold-duotone/logout-2";
 export { Login2Icon as LogIn } from "@solar-icons/react/bold-duotone/login-2";
@@ -234,3 +236,4 @@ export const ChevronLeft = mirrored(AltArrowLeftBase);
 export const ChevronLeftIcon = ChevronLeft;
 export const ArrowRight = mirrored(ArrowRightBase);
 export const ArrowLeft = mirrored(ArrowLeftBase);
+export { WalletIcon as Wallet } from "@solar-icons/react/bold-duotone/wallet";

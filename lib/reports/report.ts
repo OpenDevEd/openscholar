@@ -1,7 +1,13 @@
 // A report in Openscholar Reports (plans/publish-reports): the steps it goes through, where it stands, and the rules
 // its pages and its Convex functions share. Nothing here reads a database or the clock.
 
+import { WORK_TYPES } from "../openalex/vocabulary";
+
 export type Answer = "yes" | "no" | "unclear";
+
+/** What a report can be: OpenAlex's types of work, and a presentation (a slide deck), which Zenodo files as one and
+ * OpenAlex and Crossref know only as a report's kind of work. */
+export const REPORT_TYPES = WORK_TYPES.flatMap((type) => (type.id === "report" ? [type, { id: "presentation", name: "Presentation" }] : [type]));
 
 /** A check's answer. `confidence` is how sure the model is of yes; Already published has none, only what it found. */
 export type CheckResult = {
@@ -27,12 +33,42 @@ export type CheckResult = {
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country, and its ROR ID (https://ror.org/…) where OpenAlex or ROR know it. */
 export type Affiliation = { id: string | null; name: string; country: string; ror?: string };
 /** CRediT's 14 contributor roles (credit.niso.org). */
-/** The earliest date a report can carry: Crossref registers no year before 1400. */
-export const EARLIEST_DATE = "1400-01-01";
+/** The earliest year a report can carry: Crossref registers no year before 1400. */
+export const EARLIEST_YEAR = 1400;
+
+/**
+ * A report's date as its PDF states it, as precisely as it states it: a year (2026), a month (2026-10) or a day
+ * (2026-10-11). Crossref takes each as it is; only what goes to Zenodo is made a whole date (`wholeDate`).
+ */
+export function dateParts(date: string): { year: number; month?: number; day?: number } | null {
+  const found = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(date);
+  if (!found) return null;
+  const year = Number(found[1]);
+  const month = found[2] ? Number(found[2]) : undefined;
+  const day = found[3] ? Number(found[3]) : undefined;
+  if (month !== undefined && (month < 1 || month > 12)) return null;
+  if (day !== undefined && (day < 1 || day > daysIn(year, month!))) return null;
+  return { year, ...(month && { month }), ...(day && { day }) };
+}
+
+/** How many days a month of a year has. */
+export const daysIn = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/** A date as a whole date, for what takes nothing less: the first of the month, or of the year, the report doesn't name. */
+export const wholeDate = (date: string) => (date.length === 4 ? `${date}-01-01` : date.length === 7 ? `${date}-01` : date);
+
+/** How to write a date as precisely as it is known (Intl), for a page that shows it: never a month or a day it doesn't have. */
+export const dateStyleOf = (parts: { month?: number; day?: number }, month: "long" | "short" = "long"): { year: "numeric"; month?: "long" | "short"; day?: "numeric"; timeZone: "UTC" } => ({ year: "numeric", ...(parts.month && { month }), ...(parts.day && { day: "numeric" }), timeZone: "UTC" });
+
+/** A date as a moment to hand to Intl, at the start of the period it names in UTC; null for one that isn't a date. */
+export const dateMoment = (date: string) => {
+  const parts = dateParts(date);
+  return parts ? { at: new Date(Date.UTC(parts.year, (parts.month ?? 1) - 1, parts.day ?? 1)), parts } : null;
+};
 
 /** The fixed things a check says (`detail`, `reasoning`), which a page shows in its own language (`publishReports.flow.check.said`). */
 export const CHECK_SAID = {
-  notPublished: "Not in OpenAlex, Openscholar's index or our communities.",
+  notPublished: "Not in Openscholar Reports, OpenAlex, Openscholar's index or our communities.",
   unfinished: "This check couldn't finish.",
   bylineFound: "The PDF's text has the line word for word.",
 } as const;
@@ -50,10 +86,13 @@ export type Author = {
   affiliations: Affiliation[];
   corresponding: boolean;
   roles: string[];
+  /** What the person is to the report, in Crossref's roles; none is an author. */
+  kind?: PersonKind;
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
-export type Funding = { funder: { id: string | null; name: string }; awards: string[] };
+/** A funder: OpenAlex's where it has it (F…), with its ROR ID (https://ror.org/…) where OpenAlex or ROR know it, or the name as typed. */
+export type Funding = { funder: { id: string | null; name: string; ror?: string }; awards: string[] };
 export const RELATION_KINDS = [
   { id: "data", name: "Data" },
   { id: "code", name: "Code" },
@@ -63,6 +102,15 @@ export const RELATION_KINDS = [
 export type RelationKind = (typeof RELATION_KINDS)[number]["id"];
 export type Relation = { kind: RelationKind; target: string };
 
+/** A work a report cites, as its reference list writes it, with its DOI when it has one. A DOI alone has no words. */
+export type Reference = { text: string; doi?: string };
+
+/** What a person can be to a report: Crossref's roles for a person, but its corresponding author, which is a switch. */
+export const PERSON_KINDS = ["author", "editor", "chair", "translator", "reviewer", "review-assistant", "reviewer-external", "stats-reviewer", "reader", "other"] as const;
+export type PersonKind = (typeof PERSON_KINDS)[number];
+/** Whether a person is one of the report's authors, as its citation names them. */
+export const isAuthor = (person: { kind?: PersonKind }) => !person.kind || person.kind === "author";
+
 export type Metadata = {
   title: string;
   subtitle: string;
@@ -71,7 +119,8 @@ export type Metadata = {
   /** ISO 639-1, as OpenAlex keeps it. */
   language: string;
   date: string;
-  licence: "CC BY 4.0";
+  /** The licence chosen when the agreement was signed: the report's own, which its details never change. */
+  licence: Licence;
   authors: Author[];
   abstract: string;
   topics: Topic[];
@@ -84,6 +133,8 @@ export type Metadata = {
   funding: Funding[];
   /** DOIs the work cites. */
   references: string[];
+  /** The works cited as their list writes them, where the author gave them so; `references` holds their DOIs. */
+  citations?: Reference[];
   relations: Relation[];
 };
 
@@ -91,10 +142,96 @@ export type Metadata = {
 export const DETAIL_CAPS = { authors: 200, affiliations: 10, roles: CREDIT_ROLES.length, topics: 20, keywords: 50, sdgs: 17, studyDesigns: 20, countries: 300, funding: 50, awards: 20, references: 1000, relations: 50 } as const;
 export const DETAILS_MAX_BYTES = 300_000;
 /** The longest each of a report's texts is, which its box shows as it's typed. */
-export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500 } as const;
+export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500, citation: 2000 } as const;
 
-/** Where each licence a report can carry is written out. */
-export const LICENCE_URL: Record<Metadata["licence"], string> = { "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/" };
+/**
+ * The Creative Commons licences an author picks from when signing (Björn, 11 Nov 2026): CC BY and CC BY-SA at the
+ * standard price, and the ones that hold back commercial use or changed versions at the other, as does a licence of
+ * the author's own. Each with its ID in Zenodo's vocabulary, which also gives Crossref its address.
+ */
+export const LICENCES = {
+  "CC BY 4.0": { title: "Creative Commons Attribution 4.0 International", zenodo: "cc-by-4.0", url: "https://creativecommons.org/licenses/by/4.0/", tier: "standard" },
+  "CC BY-SA 4.0": { title: "Creative Commons Attribution-ShareAlike 4.0 International", zenodo: "cc-by-sa-4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/", tier: "standard" },
+  "CC BY-NC 4.0": { title: "Creative Commons Attribution-NonCommercial 4.0 International", zenodo: "cc-by-nc-4.0", url: "https://creativecommons.org/licenses/by-nc/4.0/", tier: "other" },
+  "CC BY-ND 4.0": { title: "Creative Commons Attribution-NoDerivatives 4.0 International", zenodo: "cc-by-nd-4.0", url: "https://creativecommons.org/licenses/by-nd/4.0/", tier: "other" },
+  "CC BY-NC-SA 4.0": { title: "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International", zenodo: "cc-by-nc-sa-4.0", url: "https://creativecommons.org/licenses/by-nc-sa/4.0/", tier: "other" },
+  "CC BY-NC-ND 4.0": { title: "Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International", zenodo: "cc-by-nc-nd-4.0", url: "https://creativecommons.org/licenses/by-nc-nd/4.0/", tier: "other" },
+} as const;
+export type LicenceName = keyof typeof LICENCES;
+export const LICENCE_NAMES = Object.keys(LICENCES) as LicenceName[];
+/** A licence of the author's own: its name and the address of its text. */
+export type OwnLicence = { name: string; url: string };
+export type Licence = LicenceName | OwnLicence;
+/** What a report signed before authors chose is published under. */
+export const DEFAULT_LICENCE: LicenceName = "CC BY 4.0";
+/** The longest name an author's own licence takes. */
+export const LICENCE_NAME_MAX = 200;
+
+/** The longest promotion code taken: Stripe's are at most 500 characters, people's a few words. */
+export const CODE_MAX = 100;
+
+/** The licence a report is published under, a report signed before authors chose included. */
+export const licenceOf = (report: { licence?: Licence | undefined }): Licence => report.licence ?? DEFAULT_LICENCE;
+export const licenceName = (licence: Licence) => (typeof licence === "string" ? licence : licence.name);
+export const licenceUrl = (licence: Licence) => (typeof licence === "string" ? LICENCES[licence].url : licence.url);
+/** Which of the two prices a licence is published at: an author's own costs what the dearer Creative Commons ones do. */
+export type LicenceTier = "standard" | "other";
+export const tierOf = (licence: Licence): LicenceTier => (typeof licence === "string" ? LICENCES[licence].tier : "other");
+/** What publishing a report costs, in whole US dollars, by its licence's tier: set on Admin > Publications. */
+export type Prices = Record<LicenceTier, number>;
+export const DEFAULT_PRICES: Prices = { standard: 10, other: 30 };
+/** The most a price can be set to, and the least: a whole number of dollars. */
+export const PRICE_MAX = 10_000;
+export const isPrice = (dollars: number) => Number.isInteger(dollars) && dollars >= 1 && dollars <= PRICE_MAX;
+export const priceOf = (licence: Licence, prices: Prices) => prices[tierOf(licence)];
+
+/** What pays for a report: the workspace's publication balance, with a card for what it can't cover, or a card alone. */
+export const PAY_WITH = ["balance", "card"] as const;
+export type PayWith = (typeof PAY_WITH)[number];
+/** The least a card buys of the balance, in US dollars: Stripe takes no payment under about 50 cents, and a code can halve what is bought. */
+export const BOUGHT_MIN = 1;
+/** Dollars to the cent, half a cent going up, whatever binary arithmetic made of it (2.835 can come out a hair under). */
+export const cents = (dollars: number) => Math.round(dollars * 100 + 1e-7) / 100;
+/**
+ * What a price comes to, in US dollars: what the balance pays, what is bought by card, what a code takes off that,
+ * and what is due. With the balance, it pays what it holds, to the cent, and a card buys the rest; by card, the
+ * balance is left as it is. A card buys at least `BOUGHT_MIN`: with less than that missing, the balance pays that
+ * much less and keeps the difference (`spare`). A code's share comes off what is bought as Autumn quotes and bills
+ * it: what is due is rounded to the cent, half a cent going up, and the code's part is the rest. `balance` null is
+ * one with no limit.
+ * ponytail: on half a cent (half off $5.67), Stripe's own page, which a customer with no saved card pays on, rounds
+ * the other way and takes a cent less than is shown here. Reckoning each way of paying by its own rounding would
+ * tie this to two services' habits for a cent in the person's favour.
+ * ponytail: a code that takes more than half off what is bought, and less than all of it, could leave under Stripe's
+ * minimum to pay on the least a card buys. None we give out does; one that did needs the floor raised to that
+ * minimum over the share the code leaves.
+ */
+export function payment({ price, balance, payWith, off }: { price: number; balance: number | null; payWith: PayWith; /** The share of what is bought that a code takes off, 0 to 1. */ off: number }) {
+  // What the balance surely holds, in whole cents: a fraction of a cent is never counted on, or the price would be
+  // that fraction short once the rest is bought. The 1e-9 forgives only what binary arithmetic makes of 4.33 * 100.
+  const held = balance === null ? price : Math.min(Math.max(Math.floor(balance * 100 + 1e-9) / 100, 0), price);
+  const short = cents(price - held);
+  const bought = payWith === "card" ? price : short === 0 ? 0 : Math.min(price, Math.max(short, BOUGHT_MIN));
+  const due = cents(bought * (1 - off));
+  return { fromBalance: cents(price - bought), bought, spare: payWith === "card" ? 0 : cents(bought - short), discount: cents(bought - due), due };
+}
+
+/**
+ * The letters the page Openscholar adds to a PDF can print (lib/reports/byline-page.ts, Helvetica in WinAnsi): Latin
+ * ones with their accents, digits and the usual punctuation. A licence's name is printed there, in the byline.
+ */
+const PRINTABLE = /^[\x20-\x7E\u00A0-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u2013\u2014\u2018-\u201A\u201C-\u201E\u2026\u20AC\u2122]+$/;
+
+/**
+ * An author's own licence as it may be kept: a name the byline can print, and a web address for its text. Null when
+ * it can't be.
+ */
+export function ownLicence(name: string, url: string): OwnLicence | null {
+  const named = name.trim();
+  const address = url.trim();
+  if (!named || named.length > LICENCE_NAME_MAX || !PRINTABLE.test(named) || LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase())) return null;
+  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? { name: named, url: address } : null;
+}
 
 /** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */
 export function isOrcid(id: string) {
@@ -106,6 +243,18 @@ export function isOrcid(id: string) {
 }
 /** A DOI as a reference keeps it, lower case and without its address; null for text that isn't one. */
 export const doiIn = (text: string) => text.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:\s*/, "").match(/^10\.\d{4,9}\/\S+$/)?.[0] ?? null;
+/** The first DOI written in a reference, without the punctuation that ends a sentence after it. */
+export const doiWithin = (text: string) => text.match(/10\.\d{4,9}\/[^\s"<>]+/)?.[0].replace(/[.,;)\]]+$/, "").toLowerCase();
+/** A reference list's own numbering at the start of a reference: "[12]", "(12)", "12." or "12)", then a space. */
+export const LIST_NUMBER = /^\s*(?:\[\d+\]|\(\d+\)|\d+[.)])\s+/;
+/** One reference as written on a line: its DOI found in it, or a line that is only a DOI kept as the DOI alone. */
+export function referenceFrom(written: string): Reference | null {
+  const line = written.replace(/\s+/g, " ").trim();
+  if (!line) return null;
+  const doi = doiWithin(line);
+  const bare = doi && doiIn(line.replace(/[.,;]+$/, "")) === doi;
+  return bare ? { text: "", doi } : { text: line, ...(doi && { doi }) };
+}
 /** DOIs one request from a community asks about (`reports/records`). */
 export const REPORTS_ASKED_MAX = 100;
 /**
@@ -117,6 +266,16 @@ export const REPORTS_PER_READ = 10;
 export const REVIEW_TEXT_MAX = 3000;
 export const SIGNER_NAME_MAX = 200;
 export const FILE_NAME_MAX = 200;
+
+/**
+ * Whether `text` carries `line` whole, however the PDF wrapped it (spaces and line breaks anywhere in it, any case),
+ * and not run on into more letters or digits, as a DOI one digit longer would.
+ */
+export const carries = (text: string, line: string) => {
+  const chars = [...line.replace(/\s+/g, "")].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return chars.length > 0 && new RegExp(`${chars.join("\\s*")}(?![\\p{L}\\p{N}])`, "iu").test(text);
+};
+
 
 export const STEPS = ["doi", "upload", "details", "done"] as const;
 /** Where a report is in being made: its DOI just reserved, its PDF going up or being read, its details open, or checked. */
@@ -154,8 +313,6 @@ export function changeStageOf(results: CheckResult[] | undefined, changes: { res
 
 /** A report its author may give up: one never checked, or one its checks failed that no reviewer approved. Its DOI was never live. */
 export const canDiscard = (report: Pick<Standing, "status" | "approved">) => report.status === "draft" || (report.status === "failed" && !report.approved);
-/** The reports a workspace is in the middle of: neither live nor declined. */
-export const underWay = (report: Pick<Standing, "status">) => report.status !== "live" && report.status !== "declined";
 /** Whether a report wants a reviewer now: waiting for review, failed with its author asking, or live with changes waiting. */
 export const wantsReviewer = (report: Standing & { asked?: boolean; changes?: ChangeStage }, humanReview: boolean) => {
   const stage = stageOf(report, humanReview);
@@ -196,7 +353,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Type", (m) => m.type],
   ["Language", (m) => m.language],
   ["Date", (m) => m.date],
-  ["Authors", (m) => m.authors.map((a) => [a.name, a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
+  ["Authors", (m) => m.authors.map((a) => [a.name, a.kind && a.kind !== "author" ? a.kind : "", a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
   ["Abstract", (m) => m.abstract],
   ["Topics", (m) => m.topics.map((t) => t.name).join(", ")],
   ["Keywords", (m) => m.keywords.join(", ")],
@@ -204,7 +361,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Study designs", (m) => m.studyDesigns.join(", ")],
   ["Places", (m) => m.countries.join(", ")],
   ["Funding", (m) => m.funding.map((f) => [f.funder.name, ...f.awards].join(", ")).join("\n")],
-  ["References", (m) => m.references.join("\n")],
+  ["References", (m) => (m.citations ?? m.references.map((doi) => ({ text: "", doi }))).map((c) => [c.text, c.doi].filter(Boolean).join(", ")).join("\n")],
   ["Links", (m) => m.relations.map((r) => `${r.kind}: ${r.target}`).join("\n")],
 ];
 /** What a correction changes, field by field, as text: what it was and what it would be. */
@@ -223,7 +380,7 @@ export const keyOf = (n: number) => `R${String(100_000 + n).padStart(6, "0")}`;
 export const isReportKey = (id: string) => /^R\d{6,}$/.test(id);
 /** The details a PDF's reading couldn't give: its file's name as the title, for its author to fill in. */
 export const blankDetails = (fileName: string, today: string): Metadata => ({
-  title: fileName.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: today, licence: "CC BY 4.0",
+  title: fileName.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: today, licence: DEFAULT_LICENCE,
   authors: [], abstract: "", topics: [], keywords: [], sdgs: [], studyDesigns: [], countries: [], funding: [], references: [], relations: [],
 });
 
@@ -243,3 +400,19 @@ export function linkHref(target: string) {
   const doi = doiIn(text);
   return doi ? `https://doi.org/${doi}` : null;
 }
+
+/** Words that make a name an organisation's rather than a person's. */
+const BODY = /\b(organi[sz]ation|universit[yé]|institut[eo]?|minist(ry|ère|erio)|foundation|bank|agency|council|committee|commission|department|cent(er|re)|network|association|society|programme|consortium|collaboration|authority|ltd|inc|gmbh|llc)\b/i;
+const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
+
+/**
+ * A report author's name as the registrars, and its citations, take it: the last word is the family name and the
+ * words before it the given names. Null for a body (an organisation, an agency) without an ORCID iD, whose name stays whole.
+ */
+export function personName(name: string, orcid?: string | null): { given: string; family: string } | null {
+  // An ORCID iD is a person's, whatever words the name has ("John Bank").
+  if (!orcid && (BODY.test(name) || ACRONYM.test(name))) return null;
+  const words = name.trim().split(/\s+/);
+  return { given: words.slice(0, -1).join(" "), family: words.at(-1)! };
+}
+

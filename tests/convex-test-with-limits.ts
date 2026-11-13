@@ -69,6 +69,9 @@ export function convexTest<S extends GenericSchema>(options: Options & { schema?
 export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules) {
   const options: Options = isOptions(schemaOrOptions) ? schemaOrOptions : { schema: schemaOrOptions, modules };
   const t = baseConvexTest({ ...options, transactionLimits: options.transactionLimits ?? true } as never) as ReturnType<typeof baseConvexTest>;
+  // Known to the worker, so the file that made it can wait for the scheduled functions it started (tests/convex-timers.ts).
+  // Held weakly: a backend nothing is running on any more is the garbage collector's.
+  ((globalThis as { __convexBackends?: Set<WeakRef<{ finishInProgressScheduledFunctions: () => Promise<void> }>> }).__convexBackends ??= new Set()).add(new WeakRef(t));
   for (const name of aggregates) {
     registerAggregate(t as never, name);
     // The aggregate applies queued writes (`{ async: true }`) with its own batch worker.

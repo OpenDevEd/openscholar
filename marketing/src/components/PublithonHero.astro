@@ -1,0 +1,278 @@
+---
+// The publithon page's hero: the Earth's night side seen from orbit, its cities lit, the sun coming up along its edge,
+// and glass pages lifting off it and rising past the camera. The planet is drawn by a small shader from NASA's Black
+// Marble night lights and the home hero's cloud map; the pages are sprites on a second canvas. Before the scene is
+// ready, without WebGL, on a slow connection or under reduced motion, a still picture of the same idea stands in.
+import Arrow from "./Arrow.astro";
+import { APP } from "../data/site.mjs";
+const HEAD = ["Publish", "together"];
+// The scene's pictures, named once on the section so its scripts read them from the page (and art/prune.mjs, which
+// keeps only what the built pages name, keeps them): the night lights and their sharper copy, the clouds, the pages
+// and their out-of-focus copy.
+const MAPS = { night: "/img/earth-night-band-4096.avif", "night-sharp": "/img/earth-night-band.avif", clouds: "/img/earth-clouds.avif", pages: "/img/pub-pages.avif", "pages-soft": "/img/pub-pages-soft.avif" };
+---
+<section class="bleed phero" data-pub-hero {...Object.fromEntries(Object.entries(MAPS).map(([k, v]) => [`data-${k}`, v]))}>
+  <div class="ph-view" aria-hidden="true">
+    <img class="ph-still" data-still data-src="/img/art-pub-rise.avif" data-srcset="/img/art-pub-rise-960.avif 960w, /img/art-pub-rise.avif 1672w" sizes="100vw" width="1672" height="941" alt="" decoding="async" />
+    <noscript><img class="ph-still on" src="/img/art-pub-rise.avif" width="1672" height="941" alt="" /></noscript>
+    <canvas class="ph-sky"></canvas>
+    <canvas class="ph-air"></canvas>
+  </div>
+  <div class="inner ph-copy">
+    <h1>{HEAD.map((word) => <><span class="wd">{word}</span>{" "}</>)}</h1>
+    <p class="lead">At a publithon, researchers publish their own work at the same time, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name for anyone to read and cite.</p>
+    <div class="acts"><a class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a><a class="btn ghost" href="#sponsor">Sponsor a publithon</a></div>
+  </div>
+</section>
+{/* The scene's first pictures are fetched as the page arrives, not once its script has run, unless the still will stand in. */}
+<script is:inline>(() => { const c = navigator.connection, d = document.querySelector("[data-pub-hero]").dataset; if (matchMedia("(prefers-reduced-motion: reduce)").matches || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const href of [d.night, d.clouds, d.pages]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.href = href; document.head.append(k); } })();</script>
+
+<script>
+  const VERTEX = `#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+  // One pass draws the whole sky: the stars, the air along the planet's edge with the sun coming up behind it, and the
+  // planet's night side. Lengths named in px are CSS pixels (d is the canvas's pixels per CSS pixel).
+  const FRAGMENT = `#version 300 es
+precision highp float; out vec4 o;
+uniform sampler2D night, clouds; uniform vec2 c, band; uniform float r, d, t, spin, dawn, a0, fd, tilt, drift;
+const float PI = 3.14159265;
+const vec3 NIGHT = vec3(.027, .043, .102), BLUE = vec3(.11, .33, .98), ORANGE = vec3(1., .46, .12), GOLD = vec3(1., .8, .46), WHITE = vec3(1., .96, .9);
+float hash(vec2 p){ vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+// The air's light h px above the planet's edge, s being how near the sun's place along the edge (0 to 1).
+vec3 air(float h, float s, float amb){
+  float line = exp(-h / 1.5), inn = exp(-h / 10.), mid = exp(-h / 58.), far = exp(-h / 230.), wide = exp(-h / 620.), sd = s * dawn;
+  return BLUE * (inn * .55 + mid * .26 + far * .09) * amb * (1. - .5 * sd) + ORANGE * (inn * 1.2 + mid * .7 + far * .42 + wide * .16) * sd + GOLD * line * (.34 * amb + 1.8 * sd) + WHITE * exp(-h / .8) * sd * 1.4;
+}
+void main(){
+  vec2 p = (gl_FragCoord.xy - c) / r; float dl = length(p), ang = atan(p.x, p.y), s = exp(-pow((ang - a0) / .24, 2.)), amb = .22 + .78 * dawn, h = (dl - 1.) * r / d;
+  // Stars, one to a 40 px cell at most, each with its own size, brightness and twinkle, thinning toward the edge's glow.
+  vec2 q = gl_FragCoord.xy / d + vec2(0., drift), cell = floor(q / 40.), f = fract(q / 40.); float rnd = hash(cell);
+  float star = smoothstep(mix(.6, 1.5, pow(hash(cell + 9.1), 6.)), 0., length((f - vec2(hash(cell + 1.7), hash(cell + 5.3))) * 40.)) * pow(hash(cell + 3.3), 2.2) * (.5 + .5 * sin(t * (.6 + 2.4 * rnd) + rnd * 60.)) * smoothstep(10., 160., h);
+  // The sun, still behind the edge and rising to it: a hot core, and a glow that spreads along the edge more than up.
+  vec2 sdir = vec2(sin(a0), cos(a0)), rel = (p - sdir * (1. - (1. - dawn) * 30. * d / r)) * r / d; float up = dot(rel, sdir), side = dot(rel, vec2(sdir.y, -sdir.x)), qd = length(rel), qw = length(vec2(side / 2.6, up));
+  vec3 bloom = (mix(GOLD, WHITE, exp(-qd / 12.)) * (exp(-qd / 12.) * 2.6 + exp(-qw / 30.) * 1.1) + ORANGE * (exp(-qw / 95.) * .55 + exp(-qd / 300.) * .22)) * dawn;
+  vec3 col = NIGHT + (1. - NIGHT) * (1. - exp(-(vec3(.9, .95, 1.) * star * 1.5 + air(max(h, 0.), s, amb) + bloom)));
+  if (dl < 1.) {
+    float z = sqrt(1. - dl * dl), ca = cos(tilt), sa = sin(tilt); vec3 n = vec3(p.x, ca * p.y - sa * z, sa * p.y + ca * z);
+    float lon = atan(n.x, n.z), lat = asin(clamp(n.y, -1., 1.)), u = (lon - spin) / (2. * PI) + .5, v = .5 - lat / PI;
+    // Gradients taken on whichever copy of u doesn't jump at the map's seam.
+    float u1 = fract(u), u2 = fract(u + .5) - .5, ux = abs(dFdx(u1)) < abs(dFdx(u2)) ? dFdx(u1) : dFdx(u2), uy = abs(dFdy(u1)) < abs(dFdy(u2)) ? dFdy(u1) : dFdy(u2);
+    float span = band.x - band.y, vb = (band.x - lat) / span, inb = smoothstep(0., .03, vb) * smoothstep(1., .97, vb);
+    vec2 gx = vec2(ux, -dFdx(lat) / span), gy = vec2(uy, -dFdy(lat) / span), uvb = vec2(u1, clamp(vb, 0., 1.));
+    vec3 nc = textureGrad(night, uvb, gx, gy).rgb * inb, soft = textureGrad(night, uvb, gx * 12., gy * 12.).rgb * inb;
+    float cl = textureGrad(clouds, vec2(fract(u + spin * .02 + t * .0006), v), vec2(ux, dFdx(v)), vec2(uy, dFdy(v))).r;
+    // The map is dark blue land on a near-black sea with the lights on top: the lights are what's left above the land's blue.
+    float lit = max(nc.r - .27, 0.) / .73, glow = max(soft.r - .2, 0.) / .8, land = smoothstep(.035, .12, nc.r);
+    vec3 pl = mix(vec3(.005, .011, .03), vec3(.016, .03, .07) * (.55 + 3. * min(nc.r, .25)), land) * (.8 + .6 * amb);
+    pl += nc * lit * vec3(3.6, 2.8, 1.9) * (1. - cl * .8) + vec3(1.4, .76, .3) * glow * (1. + cl * 1.6);
+    pl += cl * vec3(.035, .055, .1) * (.6 + amb);
+    // The edge from inside: the thin air seen edge-on, and the first sun on the ground and the clouds near where it rises.
+    float e = (1. - dl) * r / d, rim = exp(-e / 8.), tw = exp(-e / 34.) * s * dawn, reach = exp(-e / 120.) * s * dawn;
+    pl += BLUE * rim * .5 * amb * (1. - .6 * s * dawn) + ORANGE * (rim * 1.25 + tw * .55 + reach * .1) * s * dawn + GOLD * tw * .42 + (WHITE * tw * .6 + ORANGE * reach * .5) * cl;
+    vec3 edge = NIGHT + (1. - NIGHT) * (1. - exp(-(air(0., s, amb) + bloom)));
+    col = mix(edge, 1. - exp(-pl), 1. - smoothstep(1. - 1.5 * d / r, 1., dl));
+  }
+  col = mix(NIGHT, col, smoothstep(0., fd, gl_FragCoord.y)) + (hash(gl_FragCoord.xy + t) - .5) / 255.;
+  o = vec4(col, 1.);
+}`;
+
+  type Page = { kind: number; x0: number; y0: number; z: number; born: number; life: number; rise: number; lean: number; sway: number; phase: number; size: number; turn: number; rate: number; cell: number; glow: number };
+
+  const root = document.querySelector<HTMLElement>("[data-pub-hero]");
+  if (root) {
+    const view = root.querySelector<HTMLElement>(".ph-view")!, still = root.querySelector<HTMLImageElement>("[data-still]")!, sky = root.querySelector<HTMLCanvasElement>(".ph-sky")!, air = root.querySelector<HTMLCanvasElement>(".ph-air")!;
+    // The still: fetched only when it's needed, and faded in once it can be drawn.
+    const rest = () => { root.classList.remove("live"); if (!still.src) { still.srcset = still.dataset.srcset!; still.src = still.dataset.src!; } still.decode().catch(() => {}).then(() => root.classList.add("resting")); };
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    const gl = matchMedia("(prefers-reduced-motion: reduce)").matches || (connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType ?? ""))) ? null : sky.getContext("webgl2", { alpha: false, antialias: false, powerPreference: "high-performance" });
+    const pen = gl && air.getContext("2d");
+    if (!gl || !pen) rest();
+    else {
+      // The band of latitudes the night map covers (public/img/earth-night-band*.avif), and how the planet is held: its
+      // top edge at about 46 degrees north and the tropics under the camera, starting over India (86 degrees east at the
+      // middle) and turning slowly east, so the Gulf and then the Nile come round.
+      const BAND = [54, -4].map((deg) => deg * Math.PI / 180), TILT = 44 * Math.PI / 180, TURN = .0032, START = -86 * Math.PI / 180;
+      const compile = (type: number, source: string) => { const shader = gl.createShader(type)!; gl.shaderSource(shader, source); gl.compileShader(shader); return shader; };
+      const program = gl.createProgram()!, fragment = compile(gl.FRAGMENT_SHADER, FRAGMENT);
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX)); gl.attachShader(program, fragment); gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { console.error("[publithon hero] shader:", gl.getShaderInfoLog(fragment) || gl.getProgramInfoLog(program)); rest(); }
+      else {
+        gl.useProgram(program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const corner = gl.getAttribLocation(program, "a"); gl.enableVertexAttribArray(corner); gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 0, 0);
+        const U = Object.fromEntries(["night", "clouds", "c", "band", "r", "d", "t", "spin", "dawn", "a0", "fd", "tilt", "drift"].map((name) => [name, gl.getUniformLocation(program, name)]));
+        gl.uniform1i(U.night, 0); gl.uniform1i(U.clouds, 1); gl.uniform2f(U.band, BAND[0], BAND[1]); gl.uniform1f(U.tilt, TILT);
+        const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
+        const picture = (src: string) => { const image = new Image(); image.src = src; return image.decode().then(() => image); };
+        const upload = (unit: number, image: HTMLImageElement) => {
+          gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image); gl.generateMipmap(gl.TEXTURE_2D);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+        };
+
+        // Sizes are fixed per width, never scaled with the window: the planet's radius, how much of it shows above the
+        // hero's foot, where its centre and the sun sit, and how many pages are in the air at each depth.
+        let W = 0, H = 0, R = 0, cx = 0, cy = 0, sunX = 0, scale = 1, counts = [0, 0, 0, 0], narrow = false;
+        const limb = (x: number) => cy - Math.sqrt(Math.max(0, R * R - (x - cx) * (x - cx)));
+        const size = () => {
+          W = view.clientWidth; H = view.clientHeight; narrow = W < 700;
+          const [radius, cap, at, sun, far, mid, close, near] = W >= 1200 ? [1700, 240, .68, 230, 120, 32, 4, 4] : W >= 700 ? [1300, 204, .66, 150, 80, 20, 3, 3] : [900, 172, .56, 70, 46, 12, 2, 0];
+          R = radius; cx = W * at; cy = H - cap + R; sunX = cx + sun; counts = [far, mid, close, near];
+          for (const canvas of [sky, air]) { canvas.width = Math.round(W * scale); canvas.height = Math.round(H * scale); }
+          gl.viewport(0, 0, sky.width, sky.height);
+        };
+
+        // The pages, at four depths (on a phone three, kept to the band between the words and the horizon). Far: points of light along the horizon, most of them near where the sun comes up,
+        // the largest just big enough to be seen as pages. Mid: glass pages a few dozen px across. Close: two or three
+        // large enough to read the lines on. Near: a few very large ones out of focus, passing the camera. Each lifts off a point just inside the planet's edge, rises along its
+        // own line with a thread of light back to that point, and fades; then it starts again from somewhere else.
+        const FAR = 0, MID = 1, CLOSE = 2, NEAR = 3;
+        const rnd = ((seed) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296))(7);
+        const between = (a: number, b: number) => a + (b - a) * rnd();
+        let pages: Page[] = [];
+        const launch = (page: Page, now: number, wait: number) => {
+          const kind = page.kind, far = kind === FAR;
+          // Clear of the words: far ones may lift off under them but stay low there; the larger ones keep to the right.
+          const from = narrow ? .02 : far ? .42 : kind === MID ? .5 : .62;
+          let x0 = W * between(from, 1.03);
+          if (far && rnd() < .55) x0 = Math.min(W * 1.03, Math.max(W * from, sunX + (rnd() + rnd() + rnd() - 1.5) * W * .34));
+          const wordy = !narrow && x0 < W * .52;
+          page.x0 = x0; page.y0 = limb(x0) + between(0, far ? 5 : 10); page.born = now + wait;
+          page.life = far ? between(6000, 11000) : kind === MID ? between(9000, 14000) : kind === CLOSE ? between(11000, 15000) : between(8000, 12000);
+          page.rise = narrow ? (far ? between(30, 120) : kind === MID ? between(70, 150) : between(110, 150)) : far ? between(40, wordy ? 90 : 230) : kind === MID ? between(240, 540) : kind === CLOSE ? between(430, 640) : between(680, 1000);
+          page.lean = far ? between(.02, .16) : between(.08, .26); page.sway = between(3, far ? 6 : 20); page.phase = between(0, 6.28);
+          page.size = far ? 2.4 + 8.6 * rnd() ** 2.2 : narrow ? (kind === MID ? between(20, 44) : between(62, 84)) : kind === MID ? between(28, 84) : kind === CLOSE ? between(120, 176) : between(220, 380);
+          page.turn = between(-.4, .4); page.rate = between(-.0001, .0001); page.glow = between(.8, 1.05) * (1 + .6 * Math.exp(-(((x0 - sunX) / 360) ** 2)));
+          // The pages with lines of text on them are the nearer ones, where the lines can be seen.
+          page.cell = far ? Math.floor(between(0, 18)) : kind === NEAR ? Math.floor(between(0, 9)) : kind === CLOSE || rnd() < .7 ? 9 + Math.floor(between(0, 9)) : Math.floor(between(0, 9));
+        };
+        const people = (now: number) => {
+          pages = [];
+          counts.forEach((count, kind) => { for (let i = 0; i < count; i++) {
+            const page = { kind, z: kind === FAR ? between(0, .3) : kind === MID ? between(.36, .62) : kind === CLOSE ? .72 : between(.86, 1) } as Page;
+            // Lift-off: the far ones go first, sooner the nearer they are to where the sun comes up, then the rest.
+            launch(page, now, 0); page.born = now + (kind === FAR ? 800 + Math.abs(page.x0 - sunX) * 1.7 + between(0, 2600) : kind === MID ? between(1500, 7000) : kind === CLOSE ? between(2600, 9000) : between(3400, 10000));
+            pages.push(page);
+          } });
+          pages.sort((a, b) => a.z - b.z);
+        };
+        // The thread a page trails behind it, drawn once: bright at the page, gone before it reaches the ground.
+        const thread = document.createElement("canvas"); thread.width = 4; thread.height = 128;
+        { const ink = thread.getContext("2d")!, fall = ink.createLinearGradient(0, 0, 0, 128); fall.addColorStop(0, "rgb(255 214 140 / .95)"); fall.addColorStop(.3, "rgb(255 180 84 / .45)"); fall.addColorStop(.85, "rgb(255 150 50 / .06)"); fall.addColorStop(1, "rgb(255 150 50 / 0)"); ink.fillStyle = fall; ink.fillRect(0, 0, 4, 128); }
+        // A point of light, for the pages too far off to have a shape.
+        const spark = document.createElement("canvas"); spark.width = spark.height = 32;
+        { const ink = spark.getContext("2d")!, fall = ink.createRadialGradient(16, 16, 0, 16, 16, 16); fall.addColorStop(0, "rgb(255 244 214 / 1)"); fall.addColorStop(.22, "rgb(255 206 120 / .8)"); fall.addColorStop(.55, "rgb(255 160 60 / .22)"); fall.addColorStop(1, "rgb(255 150 50 / 0)"); ink.fillStyle = fall; ink.fillRect(0, 0, 32, 32); }
+        // The pages' atlas is 6 by 3 cells of 256 px; the out-of-focus copy holds the first nine in 3 by 3 cells of 160 px.
+        let sharp: HTMLImageElement | null = null, soft: HTMLImageElement | null = null;
+        const CELL = 256, SOFT = 160, smooth = (a: number, b: number, v: number) => { const k = Math.min(1, Math.max(0, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
+        const fly = (now: number) => {
+          pen.setTransform(scale, 0, 0, scale, 0, 0); pen.clearRect(0, 0, W, H);
+          if (!sharp) return;
+          pen.globalCompositeOperation = "lighter";
+          for (const page of pages) {
+            const age = now - page.born; if (age < 0) continue;
+            if (age >= page.life) { launch(page, now, between(0, 1800)); continue; }
+            const kind = page.kind, far = kind === FAR, k = age / page.life, z = page.z, climbed = page.rise * Math.pow(k, 1.15), side = page.size * (far ? 1 : .6 + .4 * k);
+            // The camera's lean moves near pages more than far ones; the planet's sinking takes them all with it.
+            const across = climbed * page.lean + Math.sin(page.phase + age * .0006) * page.sway, x = page.x0 + across - px * (8 + 46 * z), y = page.y0 - climbed - py * (5 + 26 * z) + sink * (1 - .3 * z);
+            if (x < -side || x > W + side || y < -side) continue;
+            // It comes up out of the edge's glow, flickers a little as it turns in the light, and goes as it nears its height.
+            const light = smooth(0, .08, k) * (1 - smooth(.82, 1, k)) * page.glow * (.86 + .14 * Math.sin(page.phase * 7 + age * .0021));
+            const sx = (page.cell % 6) * CELL, sy = Math.floor(page.cell / 6) * CELL;
+            if (kind !== NEAR) {
+              // Its thread runs back down toward where it lifted off.
+              pen.globalAlpha = Math.min(1, light * (far ? .32 : .5) * (1 - k * .45));
+              pen.setTransform(scale, 0, 0, scale, x * scale, y * scale); pen.rotate(-Math.atan2(-across, climbed)); pen.drawImage(thread, far ? -.35 : -.6, 0, far ? .7 : 1.2, climbed * (far ? 1 : .8));
+            }
+            pen.setTransform(scale, 0, 0, scale, x * scale, y * scale); pen.rotate(page.turn + age * page.rate);
+            if (kind === NEAR) { pen.globalAlpha = Math.min(1, light * .3); if (soft) pen.drawImage(soft, (page.cell % 3) * SOFT, Math.floor(page.cell / 3) * SOFT, SOFT, SOFT, -side / 2, -side / 2, side, side); continue; }
+            // Too far to have a shape, it is a point of light; nearer, the page itself.
+            if (side < 6.5) { pen.globalAlpha = Math.min(1, light); pen.drawImage(spark, -side * 1.3, -side * 1.3, side * 2.6, side * 2.6); continue; }
+            pen.globalAlpha = Math.min(1, light * (far ? .9 : 1.1)); pen.drawImage(sharp, sx, sy, CELL, CELL, -side / 2, -side / 2, side, side);
+            // In strong light the glass burns brighter than one pass can show.
+            if (!far && light > .7) { pen.globalAlpha = Math.min(.55, (light - .7) * 1.1); pen.drawImage(sharp, sx, sy, CELL, CELL, -side / 2, -side / 2, side, side); }
+          }
+          pen.setTransform(1, 0, 0, 1, 0, 0); pen.globalAlpha = 1; pen.globalCompositeOperation = "source-over";
+        };
+
+        // With a mouse or trackpad the pointer leans the camera, and scrolling sinks the planet a little and the stars with it.
+        let px = 0, py = 0, tx = 0, ty = 0, sink = 0, sway = 0;
+        const pointer = matchMedia("(hover: hover)").matches;
+        if (pointer) {
+          root.addEventListener("pointermove", (e) => { const box = root.getBoundingClientRect(); tx = (e.clientX - box.left) / box.width - .5; ty = (e.clientY - box.top) / box.height - .5; });
+          root.addEventListener("pointerleave", () => { tx = ty = 0; });
+        }
+        // On a touch screen the scene holds still while the page is being scrolled and carries on once it stops: a phone
+        // drawing the sky and moving the page at the same time makes the scrolling stutter. Nothing in the scene follows the
+        // scroll there, so the two canvases move with the page as pictures do.
+        let moving = false, settle = 0;
+        if (!pointer) addEventListener("scroll", () => { moving = true; cancelAnimationFrame(frame); frame = 0; clearTimeout(settle); settle = window.setTimeout(() => { moving = false; run(); }, 140); }, { passive: true });
+
+        // The scene keeps its own clock, which runs only while it draws, so it picks up where it stopped after a pause
+        // (scrolling on a touch screen, the hero off screen, the tab hidden) with nothing jumping ahead.
+        let clock = 0, started = false, last = 0, spin = START, frame = 0, seen = true, lost = false, ready = false, slow = 0, tally = 0, total = 0;
+        const draw = (now: number) => {
+          frame = 0; if (lost || !ready) return;
+          if (!started) { started = true; last = now; people(0); }
+          const step = Math.min(64, now - last); last = now; clock += step;
+          // A device that can't keep up gets a coarser sky, then fewer pages, then the still.
+          if (clock > 1200) { tally++; total += step; if (tally === 50) { if (total / tally > 26) { slow++; if (slow === 1 && scale > 1) { scale = Math.max(1, scale - .5); size(); } else if (slow <= 2) { counts = counts.map((count) => Math.ceil(count * .6)); people(clock - 4000); } else { lost = true; rest(); return; } } tally = total = 0; } }
+          const seconds = clock / 1000, up = Math.min(1, Math.max(0, (seconds - .25) / 3.4)), risen = up * up * (3 - 2 * up), dawn = risen * (.94 + .06 * Math.sin(seconds * .45));
+          // The camera drifts a little by itself and leans to the pointer; the planet comes up 44 px as the sun does, and with a pointer sinks as the page scrolls.
+          sway = Math.sin(seconds * .17) * .05; spin += step * .001 * TURN; px += (tx + sway - px) * .06; py += (ty - py) * .06; sink = (pointer ? Math.max(0, Math.min(H, scrollY)) * .22 : 0) + 44 * (1 - risen);
+          gl.uniform2f(U.c, (cx - px * 12) * scale, sky.height - (cy + sink - py * 7) * scale); gl.uniform1f(U.r, R * scale); gl.uniform1f(U.d, scale); gl.uniform1f(U.t, seconds); gl.uniform1f(U.spin, spin);
+          gl.uniform1f(U.dawn, dawn); gl.uniform1f(U.a0, Math.asin((sunX - cx) / R)); gl.uniform1f(U.fd, (narrow ? 60 : 96) * scale); gl.uniform1f(U.drift, sink * .5);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+          fly(clock);
+          if (!root.classList.contains("live")) root.classList.add("live");
+          if (seen && !document.hidden && !moving) frame = requestAnimationFrame(draw);
+        };
+        const run = () => { if (!frame && seen && !document.hidden && !lost && !moving) { last = performance.now(); frame = requestAnimationFrame(draw); } };
+
+        scale = Math.min(devicePixelRatio || 1, view.clientWidth * view.clientHeight > 1.4e6 ? 1.5 : 2); size();
+        Promise.all([picture(root.dataset.night!), picture(root.dataset.clouds!)]).then(([night, clouds]) => {
+          if (gl.isContextLost()) return rest();
+          upload(0, night); upload(1, clouds); ready = true; run();
+          // The sharper night map follows where there are the pixels and the texture size for it.
+          if (W >= 1000 && gl.getParameter(gl.MAX_TEXTURE_SIZE) >= 8192) picture(root.dataset.nightSharp!).then((image) => { if (!gl.isContextLost()) upload(0, image); }, () => {});
+        }, rest);
+        picture(root.dataset.pages!).then((image) => { sharp = image; return picture(root.dataset.pagesSoft!); }).then((image) => { soft = image; }, () => {});
+        sky.addEventListener("webglcontextlost", () => { lost = true; rest(); });
+        let sized = 0; addEventListener("resize", () => { cancelAnimationFrame(sized); sized = requestAnimationFrame(() => { if (view.clientWidth !== W || view.clientHeight !== H) { size(); if (started) people(clock - 5000); } }); });
+        new IntersectionObserver(([entry]) => { seen = entry.isIntersecting; run(); }).observe(root);
+        document.addEventListener("visibilitychange", run);
+      }
+    }
+  }
+</script>
+
+<style>
+  /* Fixed heights that step down with the width, never scaled with the window. */
+  .phero { background: var(--night); min-height: 800px; padding-block: 176px 200px; display: grid; align-content: start; }
+  .ph-view { position: absolute; inset: 0; z-index: -2; overflow: clip; }
+  .ph-sky, .ph-air { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.6s var(--ease); } .phero.live .ph-sky, .phero.live .ph-air { opacity: 1; }
+  /* The still, for when the scene can't run: the same idea as one picture. */
+  .ph-still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 100%; opacity: 0; transition: opacity 1.4s var(--ease); -webkit-mask-image: linear-gradient(transparent, #000 12%); mask-image: linear-gradient(transparent, #000 12%); } .phero.resting .ph-still, .ph-still.on { opacity: 1; }
+  /* The words keep a calm night behind them, and the scene sinks into the night the next section stands on. */
+  .phero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgb(7 11 26 / .5), rgb(7 11 26 / .22) 34%, transparent 56%); }
+  .ph-copy { position: relative; display: grid; gap: 22px; justify-items: start; }
+  .ph-copy h1 { font-size: 128px; line-height: .94; letter-spacing: -.045em; max-width: 7em; text-shadow: 0 2px 40px rgb(7 11 26 / .6); }
+  .ph-copy .lead { max-width: 29em; color: rgb(255 255 255 / .88); text-shadow: 0 1px 18px rgb(7 11 26 / .9); }
+  /* The words come in as they do on every other page's hero (IntentHero, TeamHero, Contact): the heading, the
+     paragraph and the buttons each rise 18 px and fade in over .8 s, .06 s apart. */
+  .ph-copy > * { animation: ph-up .8s var(--ease) both; } .ph-copy > :nth-child(2) { animation-delay: .06s; } .ph-copy > :nth-child(3) { animation-delay: .12s; }
+  @keyframes ph-up { from { opacity: 0; transform: translateY(18px); } }
+  .wd { display: inline-block; white-space: nowrap; }
+  /* The headline takes the scene's light, as the planet does: a cool white while it is in the planet's shade, and once
+     the sun is coming up its warm light crosses the words from the right, the side the sun is on. Both lines share one
+     gradient, measured in the headline's own em from its left edge. */
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    /* A shadow would be drawn over the fill and grey it, so the words carry none. */
+    .wd { padding: .1em .06em .2em; margin: -.1em -.06em -.2em; color: transparent; text-shadow: none; background: linear-gradient(90deg, #e6ecfb 0 4em, #fffaf3 5.7em, #ffe2c2 8em) 0 0 / 9em 100% no-repeat; -webkit-background-clip: text; background-clip: text; transition: background-position 3.2s cubic-bezier(.3, .1, .3, 1) .9s; }
+    .phero.live .wd, .phero.resting .wd, :global(html:not(.has-js)) .wd { background-position: -3.7em 0; }
+  }
+  .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+  @media (max-width: 1399px) { .ph-copy h1 { font-size: 108px; } .phero { min-height: 760px; padding-block: 164px 200px; } }
+  @media (max-width: 1199px) { .ph-copy h1 { font-size: 88px; } .phero { min-height: 720px; padding-block: 150px 210px; } }
+  @media (max-width: 699px) { .ph-copy h1 { font-size: 56px; } .phero { min-height: 0; padding-block: 120px 320px; } .phero::before { display: none; } .ph-still { object-position: 75% 100%; -webkit-mask-image: linear-gradient(transparent 46%, #000 72%); mask-image: linear-gradient(transparent 46%, #000 72%); } }
+</style>

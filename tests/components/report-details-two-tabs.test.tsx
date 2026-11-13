@@ -9,6 +9,8 @@ import messages from "@/messages/en-US.json";
 
 vi.hoisted(() => vi.stubEnv("NEXT_PUBLIC_CONVEX_URL", "https://details-test.convex.cloud"));
 vi.mock("server-only", () => ({}));
+// The form only calls the abstract writer when its button is pressed.
+vi.mock("convex/react", async (actual) => ({ ...(await actual<typeof import("convex/react")>()), useAction: () => vi.fn() }));
 afterEach(() => {
   cleanup();
   vi.useRealTimers();

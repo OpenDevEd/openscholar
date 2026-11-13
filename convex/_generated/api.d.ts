@@ -345,6 +345,7 @@ import type * as migrations_clearModelWebSearchPrice from "../migrations/clearMo
 import type * as migrations_communityDirectory from "../migrations/communityDirectory.js";
 import type * as migrations_communityMoveCounts from "../migrations/communityMoveCounts.js";
 import type * as migrations_copyCollection from "../migrations/copyCollection.js";
+import type * as migrations_coverShapes from "../migrations/coverShapes.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
@@ -360,6 +361,7 @@ import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtract
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
+import type * as migrations_publicationBalance from "../migrations/publicationBalance.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
@@ -388,6 +390,7 @@ import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
 import type * as presence from "../presence.js";
 import type * as ratings from "../ratings.js";
+import type * as reports_abstract from "../reports/abstract.js";
 import type * as reports_activation from "../reports/activation.js";
 import type * as reports_checkRuns from "../reports/checkRuns.js";
 import type * as reports_checks from "../reports/checks.js";
@@ -397,7 +400,9 @@ import type * as reports_flow from "../reports/flow.js";
 import type * as reports_limits from "../reports/limits.js";
 import type * as reports_mail from "../reports/mail.js";
 import type * as reports_mailer from "../reports/mailer.js";
+import type * as reports_ownReports from "../reports/ownReports.js";
 import type * as reports_paper from "../reports/paper.js";
+import type * as reports_pdfBytes from "../reports/pdfBytes.js";
 import type * as reports_publication from "../reports/publication.js";
 import type * as reports_publicationActions from "../reports/publicationActions.js";
 import type * as reports_published from "../reports/published.js";
@@ -857,6 +862,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/communityDirectory": typeof migrations_communityDirectory;
   "migrations/communityMoveCounts": typeof migrations_communityMoveCounts;
   "migrations/copyCollection": typeof migrations_copyCollection;
+  "migrations/coverShapes": typeof migrations_coverShapes;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
   "migrations/extractionFacets": typeof migrations_extractionFacets;
@@ -872,6 +878,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/placeRatings": typeof migrations_placeRatings;
+  "migrations/publicationBalance": typeof migrations_publicationBalance;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
@@ -900,6 +907,7 @@ declare const fullApi: ApiFromModules<{
   "paperSets/search": typeof paperSets_search;
   presence: typeof presence;
   ratings: typeof ratings;
+  "reports/abstract": typeof reports_abstract;
   "reports/activation": typeof reports_activation;
   "reports/checkRuns": typeof reports_checkRuns;
   "reports/checks": typeof reports_checks;
@@ -909,7 +917,9 @@ declare const fullApi: ApiFromModules<{
   "reports/limits": typeof reports_limits;
   "reports/mail": typeof reports_mail;
   "reports/mailer": typeof reports_mailer;
+  "reports/ownReports": typeof reports_ownReports;
   "reports/paper": typeof reports_paper;
+  "reports/pdfBytes": typeof reports_pdfBytes;
   "reports/publication": typeof reports_publication;
   "reports/publicationActions": typeof reports_publicationActions;
   "reports/published": typeof reports_published;

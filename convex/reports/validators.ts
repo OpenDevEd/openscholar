@@ -4,7 +4,7 @@ import { keptCustomValidator, publicationSettingsValidator } from "../evidenceLi
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, LICENCE_NAMES, PERSON_KINDS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS, PAY_WITH } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -30,6 +30,8 @@ export const checkNamesValidator = capped(v.array(v.object({ id: v.string(), nam
 
 export const seriesValidator = v.object({ name: v.string(), issn: v.string(), byline: v.string() });
 
+/** What publishing a report costs, in whole US dollars: under CC BY or CC BY-SA, and under any other licence. */
+export const pricesValidator = v.object({ standard: v.number(), other: v.number() });
 /** The one settings row, once an admin changes something. Until then the series runs on `REPORT_DEFAULTS`. */
 export const reportSettingsFields = {
   enabled: v.boolean(),
@@ -43,8 +45,11 @@ export const reportSettingsFields = {
   customAccounts: v.optional(keptCustomValidator),
   encryptedCustomCredentials: v.optional(v.string()),
   publicationSavedAt: v.optional(v.number()),
-  perDay: v.number(),
-  orgPerDay: v.number(),
+  /** What publishing a report costs, in whole US dollars, by its licence's tier. None saved yet is the defaults (`DEFAULT_PRICES`). */
+  prices: v.optional(pricesValidator),
+  // Free activations a day, from before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
+  perDay: v.optional(v.number()),
+  orgPerDay: v.optional(v.number()),
   metadataModelId: v.string(),
   metadataEffort: v.optional(effortValidator),
   checks: checksValidator,
@@ -57,6 +62,11 @@ export const reportSettingsFields = {
 // details, its checks' answers and its reviewers' decisions are on a row of their own, read when it is opened.
 
 const literals = <T extends string>(values: readonly T[]) => v.union(...values.map((value) => v.literal(value)));
+
+/** What pays for a report: the workspace's publication balance, with a card for the rest, or a card alone. */
+export const payWithValidator = literals(PAY_WITH);
+/** A report's licence: one of the Creative Commons ones by name, or the author's own (`ownLicence`). */
+export const licenceValidator = v.union(literals(LICENCE_NAMES), v.object({ name: v.string(), url: v.string() }));
 
 export const checkResultValidator = v.object({
   checkId: v.string(),
@@ -88,16 +98,17 @@ export const metadataValidator = v.object({
   type: v.string(),
   language: v.string(),
   date: v.string(),
-  licence: v.literal("CC BY 4.0"),
-  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
+  licence: licenceValidator,
+  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles), kind: v.optional(literals(PERSON_KINDS)) })), DETAIL_CAPS.authors),
   abstract: v.string(),
   topics: capped(v.array(v.object({ id: v.string(), name: v.string(), score: v.number() })), DETAIL_CAPS.topics),
   keywords: capped(v.array(v.string()), DETAIL_CAPS.keywords),
   sdgs: capped(v.array(v.string()), DETAIL_CAPS.sdgs),
   studyDesigns: capped(v.array(v.string()), DETAIL_CAPS.studyDesigns),
   countries: capped(v.array(v.string()), DETAIL_CAPS.countries),
-  funding: capped(v.array(v.object({ funder: v.object({ id: v.union(v.string(), v.null()), name: v.string() }), awards: capped(v.array(v.string()), DETAIL_CAPS.awards) })), DETAIL_CAPS.funding),
+  funding: capped(v.array(v.object({ funder: v.object({ id: v.union(v.string(), v.null()), name: v.string(), ror: v.optional(v.string()) }), awards: capped(v.array(v.string()), DETAIL_CAPS.awards) })), DETAIL_CAPS.funding),
   references: capped(v.array(v.string()), DETAIL_CAPS.references),
+  citations: capped(v.optional(v.array(v.object({ text: v.string(), doi: v.optional(v.string()) }))), DETAIL_CAPS.references),
   relations: capped(v.array(v.object({ kind: literals(RELATION_KINDS.map((kind) => kind.id)), target: v.string() })), DETAIL_CAPS.relations),
 });
 
@@ -109,6 +120,8 @@ export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
 export const pdfTroubleValidator = v.union(v.literal("unopened"), v.literal("textless"), v.literal("unread"));
+/** Who puts the byline on a report's PDF: its author, on the cover, or Openscholar, on a last page it adds. */
+export const bylineByValidator = v.union(v.literal("self"), v.literal("added"));
 export const pdfValidator = v.object({
   file: v.id("_storage"),
   name: v.string(),
@@ -121,6 +134,14 @@ export const pdfValidator = v.object({
   text: v.optional(v.id("_storage")),
   /** It couldn't be opened as a PDF, it holds no text (a scan), or its details couldn't be read from it: the author is told which. */
   trouble: v.optional(pdfTroubleValidator),
+  /** Its text doesn't carry the report's byline word for word, which the byline check looks for: said at the upload, before the checks. */
+  lacksByline: v.optional(v.boolean()),
+  /** Who its author said adds the byline, chosen at the upload. "added" with `lacksByline` is a page that couldn't be added. A PDF from before the choice has none. */
+  bylineBy: v.optional(bylineByValidator),
+  /** Its last page is the one Openscholar added, which says the report's details: written again when the checks read them. */
+  stamped: v.optional(v.boolean()),
+  /** Its details are the ones the report had before this PDF replaced another: the author may have them read from this one instead. */
+  kept: v.optional(v.boolean()),
 });
 
 export const reportFields = {
@@ -138,6 +159,15 @@ export const reportFields = {
   /** The series' name its byline prints, kept from the same moment: its page, citations and registrations keep it,
    * so renaming the series names only reports signed after. A report signed before this was kept has none (seriesOf). */
   seriesName: v.optional(v.string()),
+  /** The licence its author chose when signing, which the agreement and byline name: it never changes after. A report
+   * signed before authors chose has none, and is CC BY 4.0 (`licenceOf`). */
+  licence: v.optional(licenceValidator),
+  /** The promotion code applied to what a card pays for it: chosen with the licence, and open to change until it is activated. */
+  voucher: v.optional(v.string()),
+  /** The share of what a card pays that the code took off when it was last quoted, 0 to 1: for showing the bill. The charge is always Autumn's own sum. */
+  voucherOff: v.optional(v.number()),
+  /** What pays for it, chosen with the licence and open to change until it is activated. None is the balance while it holds something. */
+  payWith: v.optional(payWithValidator),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */
@@ -146,6 +176,11 @@ export const reportFields = {
   flagged: v.optional(v.boolean()),
   /** Its author asked a person to look at a report its checks failed. */
   asked: v.optional(v.boolean()),
+  /**
+   * Taken back from its checks (ready to activate, or waiting for a reviewer) with nothing changed since: it can go
+   * back to them as they were, approval and all, without running them again. A new PDF or a change to its details ends it.
+   */
+  reopened: v.optional(v.boolean()),
   /** Where its waiting changes stand, when it is live with some. */
   changes: v.optional(changeStageValidator),
   /** Its title as its details have it, for lists. */
@@ -158,7 +193,7 @@ export const reportFields = {
   run: v.optional(v.object({ id: v.string(), at: v.number(), /** It reads changes to a live report, which stays as it is meanwhile. */ changes: v.optional(v.boolean()) })),
   pdf: v.optional(pdfValidator),
   /** A picture of the PDF's first page, and when it was made. */
-  cover: v.optional(v.object({ file: v.id("_storage"), at: v.number() })),
+  cover: v.optional(v.object({ file: v.id("_storage"), at: v.number(), /** Its width over its height, which its frame takes before it loads. A cover from before this has none (migrations/coverShapes). */ shape: v.optional(v.number()) })),
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
@@ -231,6 +266,8 @@ export const reportRowValidator = v.object({
   /** Who signed it. */
   signer: v.string(),
   coverUrl: v.union(v.string(), v.null()),
+  /** The cover's width over its height, when known. */
+  coverShape: v.optional(v.number()),
   /** Whether the person may change it, or only see it. */
   mine: v.boolean(),
 });
@@ -266,7 +303,7 @@ export const adminReportValidator = v.object({
   agreementVersion: v.number(),
   checksVersion: v.optional(v.number()),
   run: v.optional(v.object({ at: v.number(), changes: v.boolean() })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
@@ -281,10 +318,10 @@ export const adminReportValidator = v.object({
   emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author"), v.literal("admins")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
 });
-export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
+export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), licence: licenceValidator, doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
-export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), updatedAt: v.number() });
+export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), coverShape: v.optional(v.number()), updatedAt: v.number() });
 export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
 
 /** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */

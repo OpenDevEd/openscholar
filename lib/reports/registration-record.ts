@@ -3,7 +3,7 @@
 // field of a report's details that either registrar takes (plans/registrar-metadata).
 import { CREDIT_ROLES, type CreditRole } from "@opendeved/doi-sync-core";
 import { SDGS, STUDY_DESIGNS } from "../openalex/vocabulary";
-import { doiIn, type Metadata, type RelationKind } from "./report";
+import { LICENCES, doiIn, isAuthor, personName, type Metadata, type RelationKind, wholeDate } from "./report";
 import type { Series } from "./settings";
 
 /**
@@ -11,11 +11,7 @@ import type { Series } from "./settings";
  * the words such names carry. One it misses is filed as a person ("Organization, World Health"), and a person it
  * catches keeps their name whole, which reads right either way. Ask on the details form when either matters.
  */
-const BODY = /\b(organi[sz]ation|universit[yé]|institut[eo]?|minist(ry|ère|erio)|foundation|bank|agency|council|committee|commission|department|cent(er|re)|network|association|society|programme|consortium|collaboration|authority|ltd|inc|gmbh|llc)\b/i;
-const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
 
-/** A report's licence as Zenodo's vocabulary names it. */
-const LICENSE_ID: Record<Metadata["licence"], string> = { "CC BY 4.0": "cc-by-4.0" };
 
 /** How Crossref names each kind of link a report's details hold, with the words its record shows beside the link. */
 const RELATION: Record<RelationKind, { type: "isSupplementedBy" | "hasVersion"; description: string }> = {
@@ -31,6 +27,8 @@ export const openAlexKey = (id: string) => id.replace(/^https?:\/\/openalex\.org
 /** What OpenAlex says of the funders and institutions a report names, by `openAlexKey`: Funder Registry DOIs and RORs. */
 export type RegistryIds = {
   funders: Record<string, { doi?: string | undefined; ror?: string | undefined }>;
+  /** Funder Registry DOIs ROR gives, by ROR key, for the funders known only to ROR. */
+  rorFunders?: Record<string, string>;
   institutions: Record<string, string>;
 };
 const NO_IDS: RegistryIds = { funders: {}, institutions: {} };
@@ -51,10 +49,9 @@ const placeOf = (code: string) =>
 
 /** A person's name as the registrars keep one: family name, then given names. A single word is a family name. A body keeps its name as it is. */
 function creator(author: Metadata["authors"][number], institutions: RegistryIds["institutions"]) {
-  if (!author.orcid && (BODY.test(author.name) || ACRONYM.test(author.name))) return { type: "organizational" as const, name: author.name.trim(), creatorType: "author" };
-  const words = author.name.trim().split(/\s+/);
-  const familyName = words.at(-1)!;
-  const givenName = words.slice(0, -1).join(" ");
+  const parts = personName(author.name, author.orcid);
+  if (!parts) return { type: "organizational" as const, name: author.name.trim(), creatorType: author.kind ?? "author" };
+  const { family: familyName, given: givenName } = parts;
   const roles = author.roles.flatMap((role) => creditId(role) ?? []);
   const affiliations = author.affiliations
     .filter((affiliation) => affiliation.name.trim())
@@ -66,7 +63,7 @@ function creator(author: Metadata["authors"][number], institutions: RegistryIds[
   return {
     type: "personal" as const,
     name: [familyName, givenName].filter(Boolean).join(", "),
-    creatorType: "author",
+    creatorType: author.kind ?? "author",
     ...(givenName && { givenName }),
     familyName,
     ...(affiliations.length && { affiliations }),
@@ -102,8 +99,10 @@ export function registrationRecord(
     ...(m.language && { language: m.language }),
     publisher: "Openscholar",
     institution: series.name,
-    // The licence its author agreed to publish under, as Zenodo names it: the same wherever the report is registered.
-    license: LICENSE_ID[m.licence],
+    // The licence its author agreed to publish under, as Zenodo names it, or the author's own by name and address: the
+    // same wherever the report is registered. Openscholar keeps every report free to read, whatever its licence.
+    ...(typeof m.licence === "string" ? { license: LICENCES[m.licence].zenodo } : { customLicense: { title: m.licence.name, url: m.licence.url } }),
+    freeToRead: true,
     copyright: `© ${m.date.slice(0, 4)} The authors`,
     creators: m.authors.filter((author) => author.name.trim()).map((author) => creator(author, ids.institutions)),
     tags: m.keywords,
@@ -118,12 +117,15 @@ export function registrationRecord(
     locations: m.countries.map(placeOf),
     funding: m.funding.map((f) => {
       const known = f.funder.id ? ids.funders[openAlexKey(f.funder.id)] : undefined;
+      // The ROR ID it was picked or read with, else the one OpenAlex gives its funder now.
+      const ror = rorKey(f.funder.ror) ?? rorKey(known?.ror);
       // OpenAlex has given the DOI bare and documents it as an address: either way it goes in once, behind one resolver.
-      const registryDoi = doiIn(known?.doi ?? "");
-      const ror = rorKey(known?.ror);
+      // A funder only ROR knows takes the Funder Registry ID ROR lists for it, where it lists one.
+      const registryDoi = doiIn(known?.doi ?? "") ?? (ror ? doiIn(ids.rorFunders?.[ror] ?? "") : null);
       return { funderName: f.funder.name, ...(registryDoi && { funderIdentifier: `https://doi.org/${registryDoi}` }), ...(ror && { funderRor: ror }), awards: f.awards };
     }),
-    references: m.references,
+    // Each work cited by its DOI, or as its reference list writes it when it has none.
+    references: m.citations ? m.citations.map((c) => c.doi ?? c.text.trim()).filter(Boolean) : m.references,
     relations: m.relations.map((relation) => {
       const doi = doiIn(relation.target);
       return { ...RELATION[relation.kind], identifierType: doi ? ("doi" as const) : ("uri" as const), identifier: doi ?? relation.target.trim() };
@@ -147,7 +149,7 @@ export function registrationRecord(
 const ZENODO_ITEM_TYPE: Record<string, string> = {
   article: "JournalArticle", review: "JournalArticle", editorial: "JournalArticle", "book-review": "JournalArticle", "data-paper": "JournalArticle", "software-paper": "JournalArticle",
   dataset: "Dataset", "book-chapter": "BookSection", "reference-entry": "EncyclopediaArticle", "conference-paper": "ConferencePaper", "conference-abstract": "ConferencePaper",
-  dissertation: "Thesis", preprint: "Preprint", book: "Book", report: "Report", letter: "Letter", standard: "Standard", software: "ComputerProgram",
+  dissertation: "Thesis", preprint: "Preprint", book: "Book", report: "Report", presentation: "Presentation", letter: "Letter", standard: "Standard", software: "ComputerProgram",
   "peer-review": "Document", "supplementary-materials": "Document", erratum: "Document", retraction: "Document", libguides: "Document", paratext: "Document", other: "Document",
 };
 
@@ -155,7 +157,8 @@ const ZENODO_ITEM_TYPE: Record<string, string> = {
 export function zenodoRecord<R extends ReturnType<typeof registrationRecord>>(record: R, m: Metadata): R {
   // A thesis names the university that awarded it: its first author's first institution, never Openscholar (the
   // publisher, which doi-sync-core falls back to). Without one, a dissertation stays a report.
-  const university = m.authors[0]?.affiliations[0]?.name;
+  const university = m.authors.find(isAuthor)?.affiliations[0]?.name;
   const itemType = ZENODO_ITEM_TYPE[m.type] === "Thesis" && !university ? "Report" : (ZENODO_ITEM_TYPE[m.type] ?? "Report");
-  return { ...record, itemType, ...(itemType === "Thesis" && { institution: university }) };
+  // Zenodo takes only a whole date, where Crossref takes a year or a month as the report states it.
+  return { ...record, publicationDate: wholeDate(record.publicationDate), itemType, ...(itemType === "Thesis" && { institution: university }) };
 }

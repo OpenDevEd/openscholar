@@ -34,7 +34,6 @@ const brandRows = [
       shortName: "saved-library",
       baseUrl: "https://saved-library.libraries.example.test",
       tagline: "Evidence for better decisions",
-      fundingPartners: [{ id: "fp_1", name: "Jacobs Foundation" }],
       assets: {
         logoLight: "https://assets.example.test/logo-light.svg",
         favicon: "https://assets.example.test/favicon.svg",
@@ -179,15 +178,13 @@ describe("sectionProblems", () => {
     expect(sectionProblems(draft, "institutions")).toEqual([]);
   });
 
-  it("flags a missing name or short name and an unnamed funding partner", () => {
+  it("flags a missing name or short name", () => {
     const draft = savedDraft();
     draft.identity.name = "  ";
     draft.identity.shortName = " ";
-    draft.identity.fundingPartners.push({ id: "fp_2", name: "" });
     expect(sectionProblems(draft, "identity")).toEqual([
       "nameMissing",
       "shortNameMissing",
-      "partnerName",
     ]);
   });
 
@@ -246,7 +243,6 @@ describe("changedSectionRows", () => {
           shortName: "saved-library",
           baseUrl: "https://saved-library.libraries.example.test",
           tagline: "Evidence for better decisions",
-          fundingPartners: [{ id: "fp_1", name: "Jacobs Foundation" }],
           assets: {
             logoLight: "https://assets.example.test/logo-light.svg",
             favicon: "https://assets.example.test/favicon.svg",

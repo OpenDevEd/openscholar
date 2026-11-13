@@ -81,7 +81,6 @@ import { FilterName } from "@/components/paper-card/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -92,7 +91,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { readProfileAuthor } from "@/app/actions/authors";
-import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
+import {PublicationCover, PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
@@ -518,16 +517,7 @@ export default function AuthorPage({
                           })
                         }
                       />
-                      <Avatar className="h-14 w-10 shrink-0 rounded-sm border border-border-subtle">
-                        <AvatarImage
-                          src={paper.cover}
-                          alt=""
-                          className="object-cover"
-                        />
-                        <AvatarFallback className="rounded-none">
-                          <FileText className="size-4 text-muted-foreground" />
-                        </AvatarFallback>
-                      </Avatar>
+                      <PublicationCover publication={paper} className="w-10 shrink-0 self-start" />
                       <span className="min-w-0">
                         <span className="block text-sm font-medium">
                           {paper.title}

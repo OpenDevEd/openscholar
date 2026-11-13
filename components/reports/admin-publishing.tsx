@@ -2,6 +2,7 @@
 
 // Settings > Admin > Publishing (plans/publish-reports): the reports reviewers work on, and the series' settings.
 
+import { useState } from "react";
 import { useMutation } from "convex/react";
 import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useTranslations } from "next-intl";
@@ -12,7 +13,7 @@ import { Submissions } from "@/components/reports/admin-submissions";
 import { DetailsStep } from "@/components/reports/details-step";
 import { Enter, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, FileText, PublishIcon } from "@/components/icons";
+import { ChevronLeft, FileText, PublishIcon, TriangleAlert } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -42,12 +43,32 @@ export function AdminPublishing() {
   const { data: waiting } = useProtectedQuery(api.reports.review.page, { page: 1, show: "review" });
   const { data: editing } = useProtectedQuery(api.reports.review.get, nav.edit && nav.report ? { key: nav.report } : "skip");
   const editDetails = useMutation(api.reports.review.editDetails);
+  // The report whose details a reviewer has typed into here. When its author takes it back meanwhile (to change its
+  // details or its PDF), the form can't be kept: the page says so instead of dropping what was typed without a word.
+  const [typed, setTyped] = useState<{ key: string; lost: boolean } | null>(null);
+  if (typed && !(nav.edit && nav.report === typed.key)) setTyped(null);
 
   // A reviewer edits a checked report's details in the form its author fills in. It is a screen of its own, with
   // the way back to the report at its head and nothing of the list around it.
   if (nav.edit && nav.report) {
     if (editing === undefined) return <Enter ready={false}>{null}</Enter>;
     const editable = editing?.metadata && editing.step === "done" && !editing.correction ? editing : null;
+    if (typed && !typed.lost && !editable) setTyped({ ...typed, lost: true });
+    if (typed?.lost) {
+      return (
+        <Enter ready>
+          <div className="space-y-5">
+            <Button variant="ghost" size="sm" className="-ms-2.5 text-muted-foreground" onClick={() => up("edit")}>
+              <ChevronLeft /> {t("backToReport")}
+            </Button>
+            <p role="alert" className="flex items-start gap-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+              {t("editLost", { key: typed.key })}
+            </p>
+          </div>
+        </Enter>
+      );
+    }
     if (editable) {
       const live = editable.status === "live";
       return (
@@ -58,8 +79,11 @@ export function AdminPublishing() {
             </Button>
             <DetailsStep
               key={editable.key}
+              writing={editable.pdf?.trouble === "textless" ? undefined : { key: editable.key }}
+              registrars={editable.registration}
               initial={editable.metadata!}
               version={editable.updatedAt}
+              onTouched={() => setTyped({ key: editable.key, lost: false })}
               words={{
                 title: t("editTitle"),
                 intro: t(live ? "editIntroLive" : "editIntroNotLive", { key: editable.key }),

@@ -23,11 +23,24 @@ describe("a citation file", () => {
   });
   it("names a report's series from its paper, as the page's Cite downloads and the file routes build it", () => {
     const paper = { id: "R100018", title: "Rainwater", type: "report", authorships: [], primary_location: { source: { display_name: "Openscholar Reports", type: "repository" } } } as unknown as PaperResult;
+    // A presentation is cited as a report in the series, keeping its number.
+    expect(citationFile(paperToCitationData({ ...paper, type: "presentation" } as unknown as PaperResult)!, "bibtex").text).toContain("number = {R100018}");
     const data = paperToCitationData(paper)!;
     expect(citationFile(data, "ris").text).toContain("T2  - Openscholar Reports");
     expect(citationFile(data, "bibtex").text).toMatch(/series = \{Openscholar \{?Reports\}?\}/);
     // Its number in the series, which BibTeX reads only from its own field.
     expect(citationFile(data, "bibtex").text).toContain("number = {R100018}");
+  });
+
+  it("cites a report's authors by surname and initials, as its Crossref record splits them, and keeps others' names whole", () => {
+    const people = [{ author: { display_name: "Diego Ramírez" } }, { author: { display_name: "Ana Maria Torres" } }];
+    const report = { id: "R100556", title: "Agua segura", type: "report", publication_year: 2026, authorships: people, primary_location: { source: { display_name: "Openscholar Reports", type: "repository" } } } as unknown as PaperResult;
+    expect(formatCitation(paperToCitationData(report)!, "en", "apa").text).toMatch(/^Ramírez, D\., & Torres, A\. M\./);
+    // A person with an ORCID iD whose name looks like a body's, as the Crossref record has them.
+    const banked = { ...report, authorships: [{ author: { display_name: "John Bank", orcid: "https://orcid.org/0000-0002-1825-0097" } }] } as unknown as PaperResult;
+    expect(formatCitation(paperToCitationData(banked)!, "en", "apa").text).toMatch(/^Bank, J\./);
+    const work = { ...report, id: "W1", primary_location: { source: { display_name: "A Journal", type: "journal" } } } as unknown as PaperResult;
+    expect(formatCitation(paperToCitationData(work)!, "en", "apa").text).toMatch(/^Diego Ramírez, & Ana Maria Torres/);
   });
 
   it("cites a dissertation with its first author's university, or as a report without one, as Zenodo files it", () => {

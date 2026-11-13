@@ -155,8 +155,7 @@ export function FilterSidebar({
           </Tooltip>
         </div>
 
-        {/* Scrollable content with hidden scrollbar */}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {children}
         </div>
       </motion.aside>

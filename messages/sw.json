@@ -196,21 +196,6 @@
     "anotherPlan": "mpango mwingine",
     "onDate": "tarehe {date}",
     "connections": "Miunganisho",
-    "localeLabels": {
-      "enUS": "Kiingereza (Marekani)",
-      "enGB": "Kiingereza (Uingereza)",
-      "zh": "Kichina",
-      "fr": "Kifaransa",
-      "hi": "Kihindi",
-      "ja": "Kijapani",
-      "ar": "Kiarabu",
-      "sw": "Kiswahili",
-      "pt": "Kireno",
-      "es": "Kihispania",
-      "de": "Kijerumani",
-      "af": "Kiafrikaans",
-      "zu": "Kizulu"
-    },
     "you": "Wewe",
     "calendarToday": "Leo, {date}",
     "calendarSelected": "{date}, imechaguliwa",
@@ -350,6 +335,7 @@
     "password": "Nenosiri la Crossref",
     "prefix": "Kiambishi awali cha DOI",
     "registrant": "Msajili",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "Jina la mwasilishaji",
     "email": "Barua pepe ya mwasilishaji",
     "namespace": "Nafasi ya majina ya DOI",
@@ -435,7 +421,16 @@
     "topUpDue": "Inadaiwa sasa",
     "topUpBalanceNow": "Salio",
     "topUpBalanceAfter": "Baada ya",
-    "seePlans": "Tazama mipango"
+    "seePlans": "Tazama mipango",
+    "publication": {
+      "title": "Salio la uchapishaji",
+      "hint": "Hulipia ripoti unazochapisha kwenye Openscholar Reports.",
+      "every": "{interval, select, hour {Kila saa} day {Kila siku} week {Kila wiki} month {Kila mwezi} quarter {Kila miezi mitatu} semi_annual {Kila miezi sita} other {Kila mwaka}}",
+      "backTo": "Hurudi kuwa {amount} tarehe {date}",
+      "kept": "{amount} zimehifadhiwa hadi zitumike",
+      "publish": "Chapisha",
+      "noLimit": "Bila kikomo"
+    }
   },
   "errors": {
     "unexpectedIssue": "Kumetokea tatizo lisilotarajiwa. Tafadhali jaribu tena, au rudi kwenye ukurasa thabiti.",
@@ -681,6 +676,7 @@
     "uploadFailed": "Upakiaji umeshindwa",
     "uploadFailedDescription": "Haikuweza kupakia {format}. Tafadhali jaribu tena.",
     "accountChanged": "Akaunti yako imebadilika. Jaribu tena.",
+    "couldntCopy": "Haikuweza kunakiliwa",
     "copyFailedDescription": "Kivinjari chako hakikuturuhusu kunakili. Chagua maandishi na uyanakili mwenyewe.",
     "validationFailed": "Uthibitishaji umeshindwa",
     "entityCreated": "{entity} imeundwa",
@@ -1253,19 +1249,20 @@
     "reviewed": "Imekaguliwa"
   },
   "saveToLibrary": {
-    "save": "Hifadhi",
-    "saved": "Imehifadhiwa",
-    "saveToLibrary": "Hifadhi kwenye maktaba",
+    "save": "Ongeza kwenye maktaba",
+    "saved": "Iko kwenye maktaba",
+    "saveToLibrary": "Ongeza kwenye maktaba",
     "removeFromLibrary": "Ondoa kwenye maktaba",
     "addToCollection": "Ongeza kwenye mkusanyiko",
     "newCollection": "Mkusanyiko mpya",
     "removed": "Imeondolewa kwenye maktaba",
     "undo": "Tendua",
-    "saveError": "Imeshindwa kuhifadhi makala",
+    "saveError": "Imeshindwa kuongeza makala kwenye maktaba",
     "removeError": "Imeshindwa kuondoa makala",
     "restoreError": "Imeshindwa kurudisha makala",
     "collectionError": "Imeshindwa kubadilisha mkusanyiko",
-    "newCollectionWithPaper": "Mkusanyiko mpya wenye makala hii"
+    "newCollectionWithPaper": "Mkusanyiko mpya wenye makala hii",
+    "finishSaving": "Maliza kuongeza"
   },
   "rating": {
     "noRating": "Hakuna ukadiriaji",
@@ -1412,8 +1409,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Tunathamini faragha yako",
-    "bannerDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar inavyotumiwa na kuiboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi.",
-    "dialogDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar inavyotumiwa na kuiboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi. Unaweza kubadilisha chaguo lako wakati wowote.",
+    "bannerDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar na jumuiya zake zinavyotumiwa na kuziboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi.",
+    "dialogDescription": "Sisi na watoa huduma wetu wa uchambuzi, PostHog na Google, tunatumia vidakuzi kuelewa jinsi Openscholar na jumuiya zake zinavyotumiwa na kuziboresha. Ukikataa, tunahesabu tu ziara, bila vidakuzi. Unaweza kubadilisha chaguo lako wakati wowote.",
     "acceptAll": "Kubali yote",
     "rejectNonEssential": "Kataa visivyo vya lazima",
     "preferencesTitle": "Mapendeleo ya vidakuzi",
@@ -1440,7 +1437,11 @@
     "upgradeSuccess": "Uboreshaji umefanikiwa",
     "upgradeSuccessCredits": "Imeboreshwa hadi {plan} — krediti {credits} zimeongezwa",
     "totalCharge": "Jumla inayolipwa sasa",
-    "paymentMethod": "Njia ya malipo"
+    "paymentMethod": "Njia ya malipo",
+    "anotherCard": "Kadi nyingine",
+    "anotherCardNote": "Ukurasa wa Stripe unafunguka na kadi zako zilizohifadhiwa na nafasi ya kadi mpya.",
+    "manageBilling": "Simamia malipo",
+    "toPayment": "Endelea kwenye malipo"
   },
   "libraryPage": {
     "title": "Maktaba",
@@ -1465,7 +1466,7 @@
     "ratingFilter": "Ukadiriaji",
     "loadMore": "Pakia zaidi",
     "emptyLibraryTitle": "Maktaba hii ni tupu",
-    "emptyLibraryDescription": "Hifadhi makala kutoka kwa matokeo ya utafutaji ili kujenga maktaba hii.",
+    "emptyLibraryDescription": "Ongeza makala kutoka kwa matokeo ya utafutaji ili kujenga maktaba hii.",
     "emptyLibraryCta": "Tafuta makala",
     "noResultsTitle": "Hakuna makala zinazolingana na utafutaji au vichujio vyako",
     "clearFilters": "Futa vichujio",
@@ -1860,7 +1861,6 @@
       "notificationSchedule": "Chagua siku, saa na saa za eneo za muhtasari zilizo sahihi.",
       "nameMissing": "Ipe jumuiya jina.",
       "shortNameMissing": "Ipe jumuiya jina fupi.",
-      "partnerName": "Kila mshirika wa ufadhili anahitaji jina.",
       "badColour": "Mojawapo ya rangi si sahihi.",
       "institutionName": "Kila taasisi inahitaji jina.",
       "linkLabel": "Kila kiungo kinahitaji lebo.",
@@ -1942,13 +1942,6 @@
       "searchTitlePlaceholder": "Utafiti na ushahidi kuhusu kukabiliana na tabianchi",
       "descriptionLabel": "Maelezo",
       "descriptionHint": "Yanaonyeshwa kwenye ukurasa wa mwanzo na kwenye matokeo ya utafutaji.",
-      "partnersHeading": "Washirika wa ufadhili",
-      "partnersHint": "Yanaonyeshwa kwenye ukurasa wa mwanzo.",
-      "addPartner": "Ongeza mshirika",
-      "noPartners": "Bado hakuna washirika wa ufadhili.",
-      "removePartner": "Ondoa mshirika",
-      "partnerName": "Jina la mshirika",
-      "partnerPlaceholder": "Jina la mshirika",
       "shareImageLabel": "Picha ya kushiriki",
       "shareImageHint": "Hutumika jumuiya inaposhirikiwa kwenye mitandao ya kijamii. PNG, JPG au WEBP.",
       "showNameLabel": "Jina kando ya nembo",
@@ -2138,6 +2131,7 @@
       },
       "socialError": "Tumia anwani kamili inayoanza na https://.",
       "fundersHeading": "Wafadhili",
+      "fundersHint": "Wanaonyeshwa kwenye sehemu ya chini na kwenye kila rekodi.",
       "fundersEmpty": "Bado hakuna wafadhili.",
       "addFunder": "Ongeza mfadhili",
       "removeFunder": "Ondoa mfadhili",
@@ -4678,13 +4672,11 @@
     "communities": "Jumuiya",
     "explore": "Gundua",
     "authors": "Waandishi",
-    "workspacesCard": "Nafasi kazi",
     "account": "Akaunti",
     "close": "Funga",
     "switchFrom": "Nafasi kazi: {name}. Badilisha nafasi kazi",
     "runningLabel": "{label}, {what}, {done} kati ya {total}",
     "doneOf": "{done} kati ya {total}",
-    "planFor": "{plan} kwa {workspace}",
     "planAndCredits": "Mpango na krediti",
     "theme": "Mandhari",
     "light": "Angavu",
@@ -4692,7 +4684,6 @@
     "auto": "Otomatiki",
     "signOut": "Toka",
     "signOutFailed": "Imeshindwa kutoka. Angalia muunganisho wako kisha ujaribu tena.",
-    "personal": "Binafsi",
     "admin": "Msimamizi",
     "member": "Mwanachama",
     "members": "{count, plural, one {mwanachama #} other {wanachama #}}",
@@ -4704,7 +4695,6 @@
     "decline": "Kataa",
     "join": "Jiunge",
     "newOrganization": "Shirika jipya",
-    "workspaceSettings": "Mipangilio ya nafasi kazi",
     "invitationGone": "Mwaliko huu hauko wazi tena.",
     "couldntJoin": "Imeshindwa kujiunga na shirika",
     "couldntDecline": "Imeshindwa kukataa mwaliko",
@@ -5643,6 +5633,7 @@
     "keepInvitation": "Weka mwaliko",
     "declineInvitation2": "Kataa mwaliko",
     "previewCover": "Hakiki jalada la {title}",
+    "noPdf": "Hakuna PDF",
     "preview": "Hakiki {title}",
     "declineBody": "Hutapata ufikiaji wa {name}. Jumuiya zako nyingine hazibadiliki.",
     "owner": "Mmiliki",
@@ -6168,6 +6159,7 @@
     },
     "admin": {
       "backToReport": "Rudi kwenye ripoti",
+      "editLost": "Mwandishi alichukua tena {key} ili kuibadilisha ulipokuwa ukiihariri, kwa hiyo ulichoandika hakikuhifadhiwa. Ifungue tena ukaguzi wake ukimalizika.",
       "editTitle": "Hariri maelezo",
       "editIntroLive": "{key} imechapishwa. Ukihifadhi, mabadiliko yako yanachapishwa mara moja bila ukaguzi, na ripoti inasajiliwa upya.",
       "editIntroNotLive": "{key} bado haijachapishwa. Ukihifadhi, mabadiliko yako yanatumika mara moja bila ukaguzi.",
@@ -6209,7 +6201,9 @@
       "places": "Maeneo yaliyochunguzwa",
       "studyDesign": "Muundo wa utafiti",
       "seeChanges": "Tazama mabadiliko yako",
-      "correct": "Sahihisha maelezo"
+      "correct": "Sahihisha maelezo",
+      "takeDownTitle": "Kuiondoa",
+      "openDoi": "Fungua DOI {doi}"
     },
     "stages": {
       "draft": "Rasimu",
@@ -6257,9 +6251,10 @@
       "action": {
         "openPage": "Fungua ukurasa wake",
         "open": "Fungua",
-        "activate": "Washa",
+        "activate": "Lipa",
         "carryOn": "Endelea",
-        "seeFailed": "Tazama kilichoshindwa"
+        "seeFailed": "Tazama kilichoshindwa",
+        "manage": "Fungua katika Chapisha"
       },
       "seeChanges": "Tazama mabadiliko yako",
       "correct": "Sahihisha maelezo"
@@ -6331,7 +6326,6 @@
       },
       "which": "Ripoti zipi",
       "pagerItems": "ripoti",
-      "approvedToast": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
       "sentAgain": "Imetumwa tena",
       "noMatch": "Hakuna ripoti inayolingana",
       "noReports": "Bado hakuna ripoti",
@@ -6348,7 +6342,7 @@
       "openPage": "Fungua ukurasa wake",
       "openPageLabel": "Fungua ukurasa wa {key}",
       "done": {
-        "approve": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
+        "approve": "Imeidhinishwa. Sasa inaweza kuwashwa.",
         "reinstate": "Imerejeshwa. Imechapishwa tena.",
         "withdraw": "Imeondolewa",
         "decline": "Imekataliwa"
@@ -6364,6 +6358,7 @@
         "humanReview": "Ukaguzi wa binadamu umewashwa, kwa hiyo mabadiliko yanasubiri mkaguzi."
       },
       "approving": "Kuidhinisha kunamruhusu mwandishi wake kuiwasha, na inachapishwa mara tu anapoiwasha.",
+      "approvingOrg": "Kuidhinisha humruhusu msimamizi wa {organization} kuiwasha, na huchapishwa anapofanya hivyo.",
       "standing": {
         "failedAsked": "Ukaguzi ulishindwa. {approving}",
         "failed": "Ukaguzi ulishindwa, kwa hiyo ripoti iko kwa mwandishi ili airekebishe. Bado unaweza kuamua. {approving}",
@@ -6435,9 +6430,10 @@
       "enterSeriesName": "Andika jina la mfululizo.",
       "enterByline": "Andika mstari wa utambulisho.",
       "bylineNeedsDoi": "Mstari wa utambulisho unahitaji {doi} ndani yake, ambayo inakuwa DOI ya kila ripoti.",
+      "bylineNeedsLicence": "Mstari unahitaji {licence}, ambayo huwa leseni ya kila ripoti.",
       "notIssn": "Hii si ISSN. Inaonekana kama 2049-3630, na tarakimu yake ya mwisho inakagua zilizobaki.",
       "byline": "Mstari wa utambulisho",
-      "bylineHint": "{series}, {issn} na {doi} hujazwa kwa kila ripoti",
+      "bylineHint": "{series}, {issn}, {doi} na {licence} hujazwa kwa kila ripoti",
       "bylineSaved": "Mstari wa utambulisho umehifadhiwa",
       "registration": "Usajili wa DOI",
       "zenodoSandbox": "Mazingira ya majaribio ya Zenodo",
@@ -6460,32 +6456,6 @@
       "changed": "Yalibadilishwa {date}",
       "asWritten": "Kama yalivyoandikwa mara ya kwanza",
       "edit": "Hariri",
-      "limits": "Miwasho ya bure",
-      "limitsPager": "miwasho ya bure",
-      "personal": "Eneo la kazi la mtu binafsi",
-      "personalHint": "Miwasho kwa siku isiyogharimu chochote. Bado kadi iliyohifadhiwa inahitajika.",
-      "personalLabel": "Miwasho ya bure kwa siku katika eneo la kazi la mtu mwenyewe",
-      "limitSaved": "Miwasho ya bure imehifadhiwa",
-      "organization": "Eneo la kazi la shirika",
-      "organizationHint": "Miwasho kwa siku isiyogharimu chochote, inayoshirikiwa na wanachama wake.",
-      "organizationLabel": "Miwasho ya bure kwa siku katika eneo la kazi la shirika",
-      "goneAccount": "Akaunti ambayo haipo tena",
-      "goneOrganization": "Shirika ambalo halipo tena",
-      "person": "Mtu",
-      "organisation": "Shirika",
-      "perDayLabel": "Miwasho ya bure kwa siku ya {name}",
-      "aDay": "bure kwa siku",
-      "backToPeople": "Rudi kwenye idadi ya watu",
-      "backToOrganizations": "Rudi kwenye idadi ya mashirika",
-      "removeLimit": "Ondoa miwasho ya bure ya {name}",
-      "alreadyLimited": "{name} tayari ana idadi yake: {count} bure kwa siku.",
-      "people": "Watu",
-      "organisations": "Mashirika",
-      "giveLimit": "Mpe mtu au shirika miwasho yake ya bure",
-      "pickerPlaceholder": "Jina la shirika, au barua pepe ya mtu",
-      "pickerEmpty": "Hakuna akaunti au shirika linalolingana",
-      "limitMax": "Kikomo kinafika hadi {max} kwa siku",
-      "limitWhole": "Kikomo ni namba kamili kutoka 0 hadi {max}",
       "builtIn": "Iliyojengwa ndani",
       "modelGone": "Modeli yake haipatikani tena",
       "passesAt": "Inapita kwa uhakika wa {percent}",
@@ -6531,25 +6501,36 @@
       "agreementLabel": "Makubaliano, kwa Markdown",
       "agreementSaved": "Makubaliano toleo {version}",
       "saveVersion": "Hifadhi kama toleo {version}",
-      "price": "Bei",
-      "priceHint": "Gharama ya uwashaji baada ya ile ya bure: bei ya mpango wa Report activation katika Autumn.",
-      "priceHintNone": "Autumn haina mpango wa Report activation, kwa hiyo miwasho ya bure pekee ndiyo inapita.",
-      "notOnSale": "Haiuzwi"
+      "priceOne": "CC BY na CC BY-SA",
+      "priceHint": "Gharama ya kuchapisha ripoti chini ya CC BY au CC BY-SA, kwa dola za Marekani.",
+      "balances": "Salio",
+      "balancesHint": "Kila nafasi ya kazi ina salio la uchapishaji kwenye Autumn, kwa dola, ambalo hulipa bei hizi kabla ya kadi. Mpe mtu au shirika salio huko, mara moja au linalojazwa kila siku, wiki, mwezi au mwaka. Kipengele kwenye mpango hulitoa kwa kila nafasi ya kazi iliyo kwenye mpango huo.",
+      "openAutumn": "Fungua Autumn",
+      "priceThree": "NC, ND na leseni za mwandishi",
+      "priceThreeHint": "Gharama ya kuchapisha ripoti chini ya leseni ya NC au ND, au leseni ya mwandishi mwenyewe, kwa dola za Marekani.",
+      "prices": "Bei"
     },
     "flow": {
       "steps": {
+        "prepare": "Andaa",
         "agreement": "Makubaliano",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Maelezo",
         "checks": "Ukaguzi",
-        "live": "Imechapishwa"
+        "live": "Imechapishwa",
+        "sealed": "Imefungwa baada ya makubaliano kutiwa saini.",
+        "paying": "Malipo yake yanaendelea, kwa hiyo hatua zake haziwezi kufunguliwa sasa. Benki ikiyakataa, zitafunguka tena.",
+        "liveNow": "Iko hewani. Badilisha maelezo yake kwa {action}.",
+        "closed": "Mkaguzi aliiondoa, kwa hiyo haiwezi kubadilishwa.",
+        "running": "Ukaguzi wake unaendelea. Hatua zitafunguka tena ukimalizika.",
+        "notYours": "Ni mtu aliyeanzisha ripoti hii pekee anayeweza kuibadilisha."
       },
       "publish": "Chapisha",
       "newReport": "Ripoti mpya",
       "yourReports": "Ripoti zako",
       "discarded": "Ripoti imeachwa",
-      "discardFailed": "Ripoti haikuweza kuachwa",
+      "discardFailed": "Ripoti haikuweza kuachwa.",
       "closedTitle": "Uchapishaji umefungwa kwa sasa",
       "closedWithReports": "Ripoti mpya haziwezi kuanzishwa kwa sasa. Ripoti zako zilizopo zinabaki kama zilivyo.",
       "closedNoReports": "Ripoti mpya haziwezi kuanzishwa kwa sasa. Rudi baadaye.",
@@ -6559,29 +6540,29 @@
       "elsewhereTitle": "Ripoti hii iko katika eneo jingine la kazi",
       "missingTitle": "Ripoti hii haipo hapa",
       "offNotice": "Uchapishaji umezimwa kwa ripoti mpya kwa sasa. Unaweza kuendelea kufanyia kazi hii.",
-      "stepFailed": "Hatua hiyo haikuweza kufunguliwa",
-      "checksFailed": "Ukaguzi haukuweza kuendeshwa",
+      "stepFailed": "Hatua hiyo haikuweza kufunguliwa.",
+      "checksFailed": "Ukaguzi haukuweza kuendeshwa.",
       "saveFailed": "Mabadiliko yako hayakuweza kuhifadhiwa",
       "changesLive": "Mabadiliko yako yamechapishwa",
       "changesWithReviewer": "Mabadiliko yako yako kwa mkaguzi",
       "agreementTitle": "Makubaliano ya uchapishaji na {series}",
       "version": "Toleo {version}",
-      "agreementIntro": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0. Kusaini kunahifadhi DOI yako.",
-      "agreementShared": "Unabaki na hakimiliki na unachapisha chini ya CC BY 4.0. Kusaini kunahifadhi DOI yako. Ripoti hii ni ya eneo hili la kazi: wanachama wake wanaweza kuiona, na wewe na wasimamizi wake mnaifanyia kazi.",
+      "agreementIntro": "Unabaki na hakimiliki na unachagua leseni, ambayo haiwezi kubadilishwa baada ya kutia saini. Kutia saini kunahifadhi DOI yako.",
+      "agreementShared": "Unabaki na hakimiliki na unachagua leseni, ambayo haiwezi kubadilishwa baada ya kutia saini. Kutia saini kunahifadhi DOI yako. Ripoti hii ni ya eneo hili la kazi: wanachama wake wanaweza kuiona, na wewe na wasimamizi wake mnaifanyia kazi.",
       "signedBy": "Inasainiwa na",
-      "signForAll": "Ninasaini kwa niaba ya waandishi wote waliokubali",
-      "agree": "Ninakubali makubaliano haya",
+      "agree": "Ninakubali makubaliano haya, kwa niaba yangu na ya waandishi wenza wote, ambao wote wamekubali",
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
-      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye visanduku.",
+      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye kisanduku.",
+      "agreementInEnglish": "Makubaliano yenyewe yameandikwa kwa Kiingereza.",
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
         "personalClosed": "Mpango wako haujumuishi uchapishaji. Hamia mpango unaoujumuisha.",
         "workspace": "Mpango wa eneo hili la kazi unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
         "workspaceClosed": "Mpango wa eneo hili la kazi haujumuishi uchapishaji. Hamia mpango unaoujumuisha."
       },
-      "signFailed": "Makubaliano hayakuweza kusainiwa",
-      "sign": "Saini na uhifadhi DOI",
+      "signFailed": "Makubaliano hayakuweza kusainiwa.",
+      "sign": "Tia saini na uhifadhi DOI",
       "signIn": "Ingia ili uchapishe",
       "doiReserved": "DOI yako imehifadhiwa",
       "doiReservedBody": "Inakaa na ripoti yako, na inachapishwa ripoti inapochapishwa.",
@@ -6591,15 +6572,17 @@
       "doiCopied": "DOI imenakiliwa",
       "uploadPdf": "Pakia PDF",
       "textless": "PDF hii haina maandishi, kama ilivyo kwa skani. Ukaguzi hauwezi kupata mstari wa utambulisho ndani yake. Hamisha ripoti kama PDF yenye maandishi na uipakie, au jaza maelezo kwa mkono.",
+      "textlessAdded": "PDF hii haina maandishi, kama ilivyo skani, kwa hiyo ukaguzi hauwezi kusoma ripoti yako ndani yake. Mstari uko kwenye ukurasa tulioongeza. Hamisha ripoti kama PDF yenye maandishi yake na uipakie, au jaza maelezo kwa mkono.",
       "unreadPdf": "Openscholar haikuweza kusoma maelezo kutoka PDF hii. Yajaze kwa mkono.",
       "uploadAnother": "Pakia PDF nyingine",
       "uploadLost": "Upakiaji haukufika. Jaribu tena.",
-      "choosePdf": "Chagua PDF",
+      "notPdf": "{name} si PDF. Hifadhi au hamisha ripoti yako kama PDF, kisha chagua faili hiyo.",
       "emptyFile": "Faili hiyo ni tupu. Chagua PDF tena.",
-      "tooBig": "PDF ni kubwa kuliko MB {max}",
+      "tooBig": "PDF inazidi MB {max}. Chagua ndogo zaidi.",
       "offline": "PDF haikuweza kupakiwa. Angalia muunganisho wako, kisha uichague tena.",
-      "uploadFailed": "PDF haikuweza kupakiwa. Jaribu tena.",
-      "uploadIntro": "Weka maandishi yafuatayo, neno kwa neno, kwenye jalada au jalada la ndani kabla ya kupakia. Ukaguzi wetu unatafuta mstari huu.",
+      "notSent": "PDF haikuweza kutumwa kwetu.",
+      "uploadFailed": "PDF imetufikia, lakini seva haikuiongeza kwenye ripoti yako.",
+      "uploadIntro": "Kila ripoti katika mfululizo huu ina mstari huu ndani ya PDF yake, kama maandishi. Ukaguzi wetu huutafuta.",
       "copyByline": "Nakili mstari wa utambulisho",
       "bylineCopied": "Mstari wa utambulisho umenakiliwa",
       "uploading": "Inapakia {name}",
@@ -6608,6 +6591,13 @@
       "drop": "Dondosha PDF hapa, au uichague",
       "dropHint": "PDF moja, hadi MB {max}",
       "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
+      "lacksByline": "{name} haina mstari ulio hapo juu. Ongeza mstari na upakie PDF tena, au tuache tuuongeze.",
+      "keptDetails": "Haya ni maelezo uliyokuwa nayo kabla ya kubadilisha PDF.",
+      "readAgain": "Yasome kutoka PDF hii badala yake",
+      "readAgainTitle": "Soma maelezo kutoka PDF hii?",
+      "readAgainBody": "Maelezo yanayoonekana sasa yatabadilishwa na ya PDF hii, pamoja na chochote ulichoandika ndani yake.",
+      "readAgainKeep": "Baki na maelezo haya",
+      "readAgainFailed": "Maelezo hayakuweza kusomwa tena.",
       "stuck": "Kusoma {name} kunachukua muda mrefu kuliko inavyopaswa. Ipakie tena.",
       "replaces": "Kupakia tena kunabadilisha {name}",
       "check": {
@@ -6617,11 +6607,12 @@
         "failed": "Imeshindwa",
         "flagged": "Imewekewa alama",
         "unclear": "Haieleweki",
-        "sure": "Uhakika wa {percent} kwamba inapita",
+        "sure": "{percent}",
         "foundIn": "Imepatikana katika {where}:",
         "foundAs": "Imepatikana kama",
         "said": {
-          "notPublished": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
+          "notPublished": "Haipo katika Openscholar Reports, OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
+          "notPublishedElsewhere": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "unfinished": "Ukaguzi huu haukuweza kukamilika.",
           "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
         },
@@ -6644,7 +6635,7 @@
           }
         }
       },
-      "activateFailed": "Haikuweza kuwashwa",
+      "activateFailed": "Haikuweza kuwashwa.",
       "running": "Inaendesha ukaguzi",
       "ofTotal": "{done} kati ya {total}",
       "runningHint": "Kutafuta nakala za awali huchukua sekunde chache. Unaweza kuondoka kwenye ukurasa huu: ukaguzi unaendelea.",
@@ -6655,13 +6646,16 @@
       "readyPassed": "Ripoti yako ilipita ukaguzi wake. Iwashe ili kuchapisha DOI yake na kufungua ukurasa wake.",
       "waiting": "Inasubiri ukaguzi",
       "inReview": "Inakaguliwa",
-      "waitingFlagged": "Ukaguzi uliiwekea alama ripoti yako, kwa hiyo mkaguzi ataiangalia. Unaweza kuiwasha baada ya kuidhinishwa, na utapokea barua pepe.",
-      "waitingPassed": "Ripoti yako ilipita ukaguzi wake. Unaweza kuiwasha baada ya mkaguzi kuiidhinisha, na utapokea barua pepe.",
+      "waitingFlagged": "Ukaguzi mmoja uliiwekea alama ripoti yako, kwa hiyo mkaguzi huiangalia kabla haijachapishwa. Utapokea barua pepe, na inakusubiri chini ya Chapisha.",
+      "reviewTakes": "Ukaguzi huchukua hadi siku tatu za kazi.",
+      "waitingPassed": "Ripoti yako ilipita ukaguzi wake. Sasa mkaguzi huiidhinisha kabla haijachapishwa. Utapokea barua pepe, na inakusubiri chini ya Chapisha.",
       "withdrawn": "Imeondolewa",
       "notPublished": "Haijachapishwa",
       "declined": "Imekataliwa",
       "withdrawnBody": "Mkaguzi aliiondoa ripoti hii. Ukurasa wake sasa unasema hivyo.",
       "declinedBody": "Mkaguzi aliikataa ripoti hii.",
+      "declinedFix": "Unaweza kubadilisha maelezo au kupakia PDF mpya, kisha kuendesha ukaguzi tena.",
+      "activatingNow": "Ripoti yako inawashwa. Hii huchukua sekunde chache.",
       "notYet": "Bado haijachapishwa",
       "aCheckFailed": "Ukaguzi ulishindwa",
       "failedAsked": "Uliomba ukaguzi wa binadamu. Unaweza kubadilisha maelezo au kupakia PDF mpya ili kuendesha ukaguzi tena.",
@@ -6673,14 +6667,19 @@
       "changeDetails": "Badilisha maelezo",
       "uploadNew": "Pakia PDF mpya",
       "publishAnother": "Chapisha nyingine",
-      "activate": "Washa",
+      "activate": "Lipa na uwashe DOI",
       "needsApproval": "Mkaguzi lazima aiidhinishe kwanza",
       "untitled": "Ripoti isiyo na kichwa",
       "startedBy": "{name} alianzisha ripoti hii. Ni yeye tu na wasimamizi wa eneo la kazi wanaoweza kuibadilisha.",
       "startedBySomeone": "Mtu katika eneo hili la kazi alianzisha ripoti hii. Ni yeye tu na wasimamizi wa eneo la kazi wanaoweza kuibadilisha.",
       "openPage": "Fungua ukurasa wake",
+      "takeDown": "Ili ripoti iondolewe, tuandikie kwa <mail>{email}</mail> ukitaja ufunguo wake, {key}. Tunajibu ndani ya siku tatu za kazi. Ukurasa wake na DOI yake hubaki, na husema kuwa ripoti iliondolewa.",
+      "waitingIn": "{count, plural, one {Ripoti # katika {name} iko tayari uiwashe.} other {Ripoti # katika {name} ziko tayari uziwashe.}}",
+      "waitingOwn": "{count, plural, one {Ripoti # katika nafasi yako binafsi iko tayari uiwashe.} other {Ripoti # katika nafasi yako binafsi ziko tayari uziwashe.}}",
+      "waitingOpen": "{count, plural, one {Ifungue} other {Zifungue}}",
+      "registering": "Ukurasa uko wazi sasa na unaweza kushirikiwa. DOI huanza kufanya kazi ikishasajiliwa, kwa kawaida ndani ya dakika chache.",
       "sentToReviewer": "Imetumwa kwa mkaguzi",
-      "requestFailed": "Ombi halikuweza kutumwa",
+      "requestFailed": "Ombi halikuweza kutumwa.",
       "reviewIntro": "Mkaguzi anasoma ripoti yako na matokeo ya ukaguzi. Omba ikiwa unaamini ukaguzi ulikosea.",
       "reviewQuestion": "Ukaguzi ulikosea nini?",
       "cancel": "Ghairi",
@@ -6705,7 +6704,7 @@
       "discardBody": "Ripoti yako inabaki imechapishwa kama ilivyo sasa. Mabadiliko uliyofanya yanaachwa.",
       "keepThem": "Yabaki",
       "changesDiscarded": "Mabadiliko yameachwa",
-      "changesDiscardFailed": "Mabadiliko hayakuweza kuachwa",
+      "changesDiscardFailed": "Mabadiliko hayakuweza kuachwa.",
       "discard": "Acha",
       "pages": "{count, plural, one {ukurasa #} other {kurasa #}}",
       "agreementVersion": "Makubaliano toleo {version}",
@@ -6723,16 +6722,12 @@
         "onlyAdmin": "Msimamizi pekee ndiye anayeweza kuiwasha",
         "notForSale": "Kuwasha hakuwezi kulipiwa kwa sasa",
         "payTitle": "Lipa {price} kuwasha {key}",
-        "freeTitle": "Washa {key}",
         "orgCardCharged": "Kadi ya {organization} inatozwa.",
-        "orgCardNothing": "Hakuna kinachotozwa kwenye kadi ya {organization}.",
-        "payConfirm": "Lipa na uwashe",
         "dueNow": "Inayolipwa sasa",
         "doiNow": "DOI yake sasa",
         "after": "Baadaye",
         "reserved": "Imehifadhiwa",
         "live": "Hewani",
-        "activationLine": "Kuwasha",
         "codeLine": "Msimbo {code}",
         "promo": {
           "add": "Ongeza msimbo wa punguzo",
@@ -6742,34 +6737,135 @@
           "off": "Punguzo la {percent}%",
           "failed": "Msimbo huo haukuweza kukaguliwa. Jaribu tena.",
           "unknownCode": "{code} si msimbo tunaoujua, au umeshatumika wote.",
-          "nothingOff": "{code} haipunguzi chochote kwenye uwashaji.",
-          "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu."
+          "nothingOff": "{code} haipunguzi bei ya kuchapisha ripoti.",
+          "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu.",
+          "applyFirst": "Tumia msimbo, au uufute, ili kuwasha."
         },
         "card": {
           "bankAsked": "Benki yako imeomba kuthibitisha malipo",
-          "goesLive": "Itaenda hewani mara malipo yakithibitishwa.",
+          "goesLive": "Inakuwa hewani mara malipo yanapofanyika.",
           "refused": "Benki yako haikuthibitisha malipo ya mwisho, kwa hivyo hakuna kilichotozwa.",
-          "free": "Bure",
-          "freeLeft": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo",
-          "freeLeftNoCard": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo. Bado kadi iliyohifadhiwa inahitajika.",
-          "add": "Ongeza njia ya kulipa ili kuwasha",
-          "costs": "Kila uwashaji unagharimu {price}.",
-          "costsOrg": "Kila uwashaji unagharimu {price}, unaotozwa {organization}.",
-          "needed": "Kadi iliyohifadhiwa inahitajika ili kuwasha.",
-          "orgCard": "Kadi ya {organization}",
-          "yourCard": "Kadi yako",
           "confirm": "Thibitisha malipo",
-          "change": "Badilisha",
-          "addButton": "Ongeza njia ya kulipa",
-          "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
-          "credit": "Salio {amount}"
+          "toPayment": "Endelea kwenye malipo",
+          "unfinished": "Malipo hayajakamilika",
+          "cancel": "Ghairi malipo",
+          "cancelFailed": "Malipo hayakuweza kughairiwa. Jaribu tena."
         },
-        "creditLine": "Salio la akaunti",
-        "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
-        "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa.",
-        "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena.",
-        "noFreeLeft": "Hakuna uwashaji wa bure uliobaki leo. Iwashe tena ili uilipie.",
-        "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake."
+        "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Jaribu tena, au lipa kwa njia nyingine.",
+        "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake.",
+        "kept": "Kilicholipwa kwa ripoti hii kimeenda kwenye salio lako la uchapishaji. Ripoti ijayo utakayowasha itakitumia.",
+        "keptOrg": "Kilicholipwa kwa ripoti hii kimeenda kwenye salio la uchapishaji la {organization}. Ripoti ijayo itakayowashwa huko itakitumia.",
+        "balanceLine": "Salio la uchapishaji",
+        "onStripe": "Ukurasa wa Stripe unafunguka kwa ajili ya malipo.",
+        "changed": "Kinachodaiwa kimebadilika tangu ukurasa huu ukisome. Kikague, kisha uwashe tena.",
+        "toStripe": "Endelea kwenye malipo"
+      },
+      "back": "Rudi",
+      "next": "Ifuatayo",
+      "bylineFirst": "PDF yako ina mstari huu",
+      "bylineFirstBody": "Kila ripoti katika mfululizo huu ina mstari huu ndani ya PDF yake, kama maandishi. Ukaguzi wetu huutafuta mara unapopakia.",
+      "nextUpload": "Pakia PDF",
+      "nextDetails": "Kagua maelezo",
+      "problem": {
+        "outOfStep": "Ukurasa huu na seva viko kwenye matoleo tofauti. Pakia upya ukurasa, kisha jaribu tena.",
+        "retry": "Jaribu tena. Likiendelea kutokea, <link>ripoti tatizo</link>.",
+        "retryQuote": "Jaribu tena. Likiendelea kutokea, <link>ripoti tatizo</link> na utaje {reference}."
+      },
+      "bylineBy": {
+        "label": "Nani anaongeza mstari",
+        "choose": "Chagua nani anaongeza mstari ili kuendelea.",
+        "chooseFirst": "Chagua kwanza nani anaongeza mstari",
+        "failed": "Hatukuweza kuongeza ukurasa kwenye {name}. Ongeza mstari mwenyewe na upakie PDF tena.",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "Nitauongeza mwenyewe",
+          "body": "Weka mstari, neno kwa neno, kwenye jalada au jalada la ndani la PDF yako kabla ya kuipakia."
+        },
+        "added": {
+          "title": "Niongezeeni",
+          "body": "Tunaongeza ukurasa wa mwisho wenye mstari huu na maelezo ya ripoti yako."
+        }
+      },
+      "overview": {
+        "title": "Kuchapisha ripoti kwa {series}",
+        "intro": "Takriban dakika tano mwanzo hadi mwisho. Hiki ndicho kila hatua inakuomba.",
+        "introReviewed": "Takriban dakika tano za muda wako. Kisha mkaguzi huidhinisha ripoti kabla haijachapishwa, na utapokea barua pepe.",
+        "start": "Tia saini makubaliano",
+        "agreement": {
+          "title": "Tia saini makubaliano ya uchapishaji",
+          "body": "Unabaki na hakimiliki na unachagua leseni."
+        },
+        "doi": {
+          "title": "Pata DOI yako",
+          "body": "Huhifadhiwa mara tu unapotia saini. Huanza kutumika pamoja na ripoti."
+        },
+        "pdf": {
+          "title": "Pakia PDF yako",
+          "body": "Ikiwa na mstari unaotaja mfululizo na DOI. Uongeze mwenyewe, au tunauongeza kwenye ukurasa wa mwisho."
+        },
+        "details": {
+          "title": "Kagua maelezo",
+          "body": "Yanasomwa kwa ajili yako kutoka PDF: kichwa, waandishi, ORCID iD, taasisi na wafadhili."
+        },
+        "checks": {
+          "title": "Ukaguzi wa kiotomatiki",
+          "body": "Takriban dakika moja. Hutafuta mstari huo na chochote kilichochapishwa awali."
+        },
+        "activate": {
+          "title": "Washa",
+          "bodyPrices": "{price} chini ya CC BY au CC BY-SA, {priceOfThree} chini ya leseni nyingine. Hulipwa kutoka salio lako la uchapishaji au kwa kadi. DOI husajiliwa na ripoti huwa hewani.",
+          "bodyCard": "{price} chini ya CC BY au CC BY-SA, {priceOfThree} chini ya leseni nyingine, hulipwa kwa kadi. Msimbo wa vocha unaweza kupunguza au kugharamia. DOI husajiliwa na ripoti huwa hewani."
+        }
+      },
+      "licence": {
+        "label": "Leseni",
+        "by": "Yeyote anaweza kuishiriki na kuibadilisha, akikutaja.",
+        "bySa": "Kama CC BY, na wanachotengeneza wengine kutoka kwayo hubaki na leseni hii.",
+        "other": "Leseni nyingine",
+        "otherBody": "Si ya kibiashara, bila kazi zitokanazo, au yako mwenyewe.",
+        "which": "Leseni ipi",
+        "own": "Leseni yangu mwenyewe",
+        "ownName": "Jina lake",
+        "ownUrl": "Anwani ya wavuti ya maandishi yake",
+        "ownNeeded": "Ipe leseni yako jina kwa herufi za Kilatini na anwani ya wavuti ya maandishi yake.",
+        "help": {
+          "title": "Leseni",
+          "about": "Kuhusu leseni",
+          "by": "Yeyote anayeitumia tena anakutaja.",
+          "sa": "Wanachotengeneza wengine kutoka kwayo hubaki na leseni ileile.",
+          "nc": "Hakuna anayeweza kuitumia kibiashara bila kukuomba.",
+          "nd": "Wengine hawawezi kushiriki matoleo yaliyobadilishwa.",
+          "mining": "Zote zinamruhusu yeyote kusoma, kupakua na kushiriki ripoti kama ilivyo, na kuchimba data kutoka maandishi yake, ila si kibiashara chini ya NC. Makubaliano yanaruhusu Openscholar kuichapisha na kuihifadhi chini ya yoyote kati yake.",
+          "compare": "Kila leseni inaruhusu nini",
+          "sentTo": "Hutumwa kwa",
+          "crossref": "Husajili DOI",
+          "zenodo": "Huhifadhi nakala",
+          "openscholar": "Huonyesha ripoti"
+        }
+      },
+      "payment": {
+        "payWith": "Lipa kwa",
+        "balance": "Salio la uchapishaji",
+        "card": "Kadi",
+        "byCard": "Malipo kwa kadi",
+        "due": "Kinachodaiwa wakati wa kuwasha",
+        "later": "Hakuna kinachotozwa hadi ripoti iwashwe, na bado unaweza kubadilisha namna ya kulipa.",
+        "code": "Msimbo {code}",
+        "dueNow": "Kinachodaiwa sasa",
+        "title": "Malipo",
+        "sign": "Soma na utie saini",
+        "noLimit": "Bila kikomo",
+        "credit": "Salio la akaunti",
+        "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako."
+      },
+      "activateFree": "Washa DOI",
+      "paid": {
+        "balance": "{amount} zimelipwa kutoka kwenye salio",
+        "balanceLeft": "{amount} zimelipwa kutoka kwenye salio, zimebaki {left}",
+        "card": "{amount} zimelipwa kwa kadi",
+        "code": "{code} imegharamia bei",
+        "codeRest": "{code} imegharamia kilichobaki",
+        "credit": "{amount} zimelipwa kutoka kwenye salio la akaunti"
       }
     },
     "meta": {
@@ -6785,14 +6881,11 @@
       "name": "Jina",
       "moveUp": "Sogeza juu",
       "moveDown": "Sogeza chini",
-      "removeAuthor": "Ondoa mwandishi",
+      "removeAuthor": "Ondoa mtu",
       "moveUpLabel": "Sogeza {name} juu",
       "moveDownLabel": "Sogeza {name} chini",
       "author": "Mwandishi",
-      "roles": "Majukumu ya mchangiaji",
-      "roleCount": "{count, plural, one {jukumu #} other {majukumu #}}",
-      "findRole": "Tafuta jukumu",
-      "noRole": "Hakuna jukumu kama hilo",
+      "noContribution": "Hakuna mchango kama huo. Kuhariri au kutafsiri ripoti ni jukumu: lichague chini ya Jukumu.",
       "corresponding": "Mwandishi wa mawasiliano",
       "orcidFound": "Imepatikana kwenye ORCID kwa jina lake na {institution}",
       "correctTitle": "Sahihisha maelezo",
@@ -6808,11 +6901,17 @@
       "type": "Aina",
       "language": "Lugha",
       "date": "Tarehe ya kuchapishwa",
+      "dateYear": "Mwaka",
+      "dateMonth": "Mwezi",
+      "dateDay": "Siku",
+      "noMonth": "Bila mwezi",
+      "noDay": "Bila siku",
+      "yearInvalid": "Andika mwaka kwa tarakimu nne.",
       "future": "Tarehe ya ripoti haiwezi kuwa ya baadaye.",
       "licence": "Leseni",
-      "authors": "Waandishi",
-      "authorsPager": "waandishi",
-      "addAuthor": "Ongeza mwandishi",
+      "authors": "Watu",
+      "authorsPager": "watu",
+      "addPerson": "Ongeza mtu",
       "abstract": "Muhtasari",
       "subjects": "Somo",
       "topics": "Mada",
@@ -6846,6 +6945,9 @@
       "addGrant": "Ongeza namba ya ruzuku kwa {name}",
       "references": "Marejeo",
       "referencesPager": "marejeo",
+      "editReference": "Hariri rejeo",
+      "editReferenceLabel": "Hariri rejeo {number}",
+      "referenceLabel": "Rejeo {number}",
       "removeReference": "Ondoa rejeo",
       "addReference": "Ongeza rejeo kwa DOI",
       "doiPlaceholder": "Ongeza DOI inayonukuliwa",
@@ -6867,8 +6969,331 @@
       "cancel": "Ghairi",
       "sendForReview": "Kagua mabadiliko na utume kwa ukaguzi",
       "checkAndPublish": "Kagua mabadiliko na uchapishe",
-      "runChecks": "Endesha ukaguzi",
-      "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400."
+      "runChecks": "Wasilisha",
+      "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400.",
+      "back": "Rudi",
+      "backToChecks": "Rudi kwenye ukaguzi",
+      "role": "Jukumu",
+      "orcidLabel": "ORCID iD",
+      "contributions": "Michango",
+      "contributionsPlaceholder": "Kile mtu huyu alifanya",
+      "contributionCount": "{count, plural, one {mchango #} other {michango #}}",
+      "findContribution": "Tafuta mchango",
+      "writeAbstract": "Andika kutoka kwenye PDF",
+      "replaceAbstractTitle": "Badilisha muhtasari?",
+      "replaceAbstractBody": "Muhtasari mpya unaandikwa kutoka kwenye PDF na kuchukua nafasi ya ule ulio kwenye kisanduku.",
+      "keepAbstract": "Ubaki",
+      "replaceAbstract": "Badilisha",
+      "noAbstract": "PDF yako haina muhtasari uliochapishwa. Andika mmoja, au uandikiwe kutoka kwenye PDF.",
+      "abstractFailed": "Muhtasari haukuweza kuandikwa. Jaribu tena.",
+      "addReferences": "Ongeza marejeleo",
+      "referencesPlaceholder": "Bandika marejeleo au DOI, moja kila mstari",
+      "uploadReferences": "Pakia faili",
+      "uploadReferencesLabel": "Pakia faili ya marejeleo",
+      "referenceFormats": "BibTeX, RIS au maandishi ya kawaida",
+      "noReferencesFound": "Hakuna marejeleo yaliyopatikana humo.",
+      "referencesListed": "Yote hayo tayari yamo kwenye orodha.",
+      "referencesAdded": "{count, plural, one {Rejeleo # limeongezwa} other {Marejeleo # yameongezwa}}",
+      "undo": "Tendua",
+      "referencesTooBig": "Faili hiyo ni kubwa kuliko MB 2. Orodha ya marejeleo ni ndogo zaidi ya hapo.",
+      "openItsDoi": "Fungua DOI yake",
+      "openReferenceDoi": "Fungua DOI ya rejeleo {number}"
+    },
+    "kinds": {
+      "author": "Mwandishi",
+      "editor": "Mhariri",
+      "chair": "Mwenyekiti",
+      "translator": "Mfasiri",
+      "reviewer": "Mkaguzi",
+      "review-assistant": "Msaidizi wa ukaguzi",
+      "reviewer-external": "Mkaguzi (wa nje)",
+      "stats-reviewer": "Mkaguzi (takwimu)",
+      "reader": "Msomaji",
+      "other": "Mwingine"
+    },
+    "roleDetails": {
+      "conceptualization": "Alitoa mawazo na kuweka malengo",
+      "dataCuration": "Alipanga, alisafisha na kutunza data",
+      "formalAnalysis": "Alifanya takwimu au uchambuzi rasmi mwingine",
+      "fundingAcquisition": "Alipata fedha za mradi",
+      "investigation": "Alifanya utafiti na kukusanya ushahidi",
+      "methodology": "Alibuni mbinu au miundo",
+      "projectAdministration": "Alisimamia na kuratibu mradi",
+      "resources": "Alitoa vifaa, sampuli, zana au kompyuta",
+      "software": "Aliandika au kujaribu msimbo",
+      "supervision": "Aliongoza na kuelekeza timu",
+      "validation": "Alihakikisha matokeo yanaweza kurudiwa",
+      "visualization": "Alitengeneza michoro na uwasilishaji wa data",
+      "writingOriginalDraft": "Aliandika rasimu ya kwanza",
+      "writingReviewEditing": "Alipitia na kusahihisha maandishi"
+    },
+    "help": {
+      "aboutLabel": "Kuhusu: {title}",
+      "sentTo": "Hutumwa kwa",
+      "does": {
+        "crossref": "Husajili DOI",
+        "zenodo": "Huhifadhi nakala",
+        "openscholar": "Huonyesha ripoti"
+      },
+      "sent": "{name}, hupokea hiki: {does}",
+      "notSent": "{name}, haipokei hiki: {does}",
+      "filled": {
+        "pdf": "Imesomwa kutoka kwenye PDF yako",
+        "judged": "Imekadiriwa kutoka kwenye PDF yako",
+        "matched": "Imesomwa kutoka kwenye PDF yako, kisha ikatafutwa",
+        "classified": "Imependekezwa na OpenAlex",
+        "author": "Huanza kama Mwandishi",
+        "fixed": "Huwekwa na Openscholar",
+        "reserved": "Huhifadhiwa unaposaini"
+      },
+      "entry": {
+        "list": "Huchaguliwa kwenye orodha",
+        "typed": "Huandikwa kwa uhuru",
+        "either": "Kwenye orodha, au huandikwa",
+        "pasted": "Hubandikwa au hupakiwa",
+        "toggle": "Imewashwa au imezimwa",
+        "chosen": "Uamuzi wako"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "Aina za kazi za OpenAlex",
+          "detail": "Orodha ambayo kichaguzi hiki huonyesha"
+        },
+        "zenodoTypes": {
+          "name": "Aina za rasilimali za Zenodo",
+          "detail": "Kila aina inakuwa nini kwenye Zenodo"
+        },
+        "crossrefReports": {
+          "name": "Ripoti kwenye Crossref",
+          "detail": "Rekodi ambayo Crossref huhifadhi"
+        },
+        "iso639": {
+          "name": "Misimbo ya lugha ya ISO 639",
+          "detail": "Misimbo ambayo OpenAlex hutumia"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "Creative Commons Attribution 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Wachangiaji kwenye Crossref",
+          "detail": "Jinsi Crossref inavyorekodi watu"
+        },
+        "crossrefRoles": {
+          "name": "Majukumu ya wachangiaji ya Crossref",
+          "detail": "Orodha ambayo kichaguzi hiki huonyesha"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "iD ni nini"
+        },
+        "orcidRegister": {
+          "name": "Pata iD",
+          "detail": "Bure, inachukua dakika moja"
+        },
+        "openalexInstitutions": {
+          "name": "Taasisi za OpenAlex",
+          "detail": "Hutafutwa kwanza"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "Hutafutwa kwa zile ambazo OpenAlex haina"
+        },
+        "rorAdd": {
+          "name": "Iombe ROR iongeze shirika",
+          "detail": "Kwa shirika lisilo kwenye orodha yoyote"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "Mpangilio wa majukumu ya wachangiaji wa NISO"
+        },
+        "crossrefAbstracts": {
+          "name": "Muhtasari kwenye Crossref",
+          "detail": "Jinsi Crossref huhifadhi muhtasari"
+        },
+        "openalexTopics": {
+          "name": "Mada za OpenAlex",
+          "detail": "Orodha ambayo kichaguzi hiki hutafuta"
+        },
+        "sdgs": {
+          "name": "Malengo 17",
+          "detail": "Umoja wa Mataifa"
+        },
+        "openalexDesigns": {
+          "name": "Miundo ya tafiti ya OpenAlex",
+          "detail": "Orodha ambayo kichaguzi hiki huonyesha"
+        },
+        "iso3166": {
+          "name": "Misimbo ya nchi ya ISO 3166",
+          "detail": "Nchi zilizo kwenye kichaguzi hiki"
+        },
+        "openalexFunders": {
+          "name": "Wafadhili wa OpenAlex",
+          "detail": "Hutafutwa kwanza"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "Hutafutwa pia, kwa serikali na wakfu"
+        },
+        "funderRegistry": {
+          "name": "Funder Registry ya Crossref",
+          "detail": "Vitambulisho ambavyo Crossref hutumia kuwatambua wafadhili"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "DOI ni nini"
+        },
+        "crossrefReferences": {
+          "name": "Marejeleo kwenye Crossref",
+          "detail": "Jinsi manukuu yanavyohesabiwa kutokana nayo"
+        },
+        "crossrefRelations": {
+          "name": "Mahusiano kwenye Crossref",
+          "detail": "Jinsi Crossref inavyounganisha kazi"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "ISSN ni nini"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "Kichwa",
+          "about": "Kichwa cha ripoti kama kilivyochapishwa kwenye jalada lake."
+        },
+        "subtitle": {
+          "title": "Kichwa kidogo",
+          "about": "Mstari ulio chini ya kichwa, ikiwa jalada lina mmoja.",
+          "note": "Huwa tupu ikiwa PDF haina kimoja."
+        },
+        "type": {
+          "title": "Aina",
+          "about": "Aina ya kazi hii.",
+          "note": "Crossref husajili kila Openscholar Report kama ripoti. Zenodo na Openscholar hutumia aina iliyochaguliwa hapa."
+        },
+        "language": {
+          "title": "Lugha",
+          "about": "Lugha ambayo ripoti imeandikwa."
+        },
+        "date": {
+          "title": "Tarehe ya kuchapishwa",
+          "about": "Ripoti ilichapishwa lini: mwaka, mwezi au siku, kwa usahihi ambao PDF inaeleza, na si zaidi ya leo.",
+          "note": "Crossref huihifadhi kwa usahihi ilionao. Zenodo huchukua tarehe kamili, hivyo mwaka au mwezi hutumwa kama siku yake ya kwanza. PDF isiyo na tarehe hupewa ya leo."
+        },
+        "licence": {
+          "title": "Leseni",
+          "about": "Kila Openscholar Report huchapishwa chini ya CC BY 4.0, kama makubaliano uliyosaini yanavyosema."
+        },
+        "authors": {
+          "title": "Waandishi",
+          "about": "Kila mtu ambaye ripoti inampa sifa, kwa mpangilio wa nukuu yake.",
+          "note": "Waandishi wa PDF wameshajazwa. Ongeza hapa wahariri, wafasiri na wengine, na uweke majukumu yao."
+        },
+        "name": {
+          "title": "Jina",
+          "about": "Jina kama ripoti inavyolichapisha. Jina kamili la shirika pia linafaa.",
+          "note": "Jina la mtu hufika Crossref na Zenodo kama jina la ukoo, kisha majina mengine: neno la mwisho huchukuliwa kuwa jina la ukoo. Jina la shirika, lenye neno kama Department, Ministry au University, hutumwa lote."
+        },
+        "kind": {
+          "title": "Jukumu",
+          "about": "Mtu huyu ni nani kwa ripoti hii. Watu wengi ni waandishi.",
+          "note": "Waandishi pekee ndio hutajwa katika nukuu ya ripoti. Wengine wote huorodheshwa pamoja na jukumu lao chini ya Michango kwenye ukurasa wa ripoti, na Crossref na Zenodo hupokea jukumu la kila mtu."
+        },
+        "orcid": {
+          "title": "ORCID iD",
+          "about": "Namba ya bure inayotofautisha watafiti wenye jina moja.",
+          "note": "Ikiwa PDF haina, ORCID hutafutwa mtu mmoja mwenye jina hili hasa katika moja ya taasisi hizi."
+        },
+        "affiliations": {
+          "title": "Taasisi",
+          "about": "Mahali mtu huyu alipofanya kazi ripoti ilipoandikwa.",
+          "note": "Taasisi yenye kitambulisho cha ROR hutumwa nacho, ili Crossref na Zenodo wajue ni ipi. Iliyoandikwa kwa mkono hutumwa kwa jina pekee."
+        },
+        "contributions": {
+          "title": "Michango",
+          "about": "Kile mtu huyu alifanya kwa kazi hii, kwa majukumu 14 ya CRediT.",
+          "note": "Hujazwa tu PDF ikiwa na taarifa ya michango. Kuacha tupu ni sawa."
+        },
+        "corresponding": {
+          "title": "Mwandishi wa mawasiliano",
+          "about": "Mtu ambaye wasomaji humwandikia kuhusu ripoti.",
+          "note": "Huwashwa tu PDF ikimwonyesha mmoja."
+        },
+        "abstract": {
+          "title": "Muhtasari",
+          "about": "Muhtasari au ufupisho ambao PDF yako imechapisha, ulionakiliwa kama ulivyo.",
+          "note": "PDF isipochapisha kimojawapo, Andika kutoka kwenye PDF huandaa rasimu ili uikague na kuibadilisha."
+        },
+        "topics": {
+          "title": "Mada",
+          "about": "Ripoti inahusu nini, kwa mada za OpenAlex.",
+          "note": "Kiainishi cha OpenAlex husoma kichwa na muhtasari. Upau kwenye mada huonyesha kilikuwa na uhakika kiasi gani. Mada unazoongeza hazina upau."
+        },
+        "keywords": {
+          "title": "Maneno muhimu",
+          "about": "Maneno yako mwenyewe kuhusu ripoti inahusu nini.",
+          "note": "Maneno muhimu ya PDF. Isipoorodhesha yoyote, hadi matano kutoka kwa kiainishi cha OpenAlex."
+        },
+        "sdgs": {
+          "title": "Malengo ya Maendeleo Endelevu",
+          "about": "Malengo ya Umoja wa Mataifa ambayo ripoti inayashughulikia kwa kina.",
+          "note": "Hujazwa yasiyozidi matatu. Ongeza au ondoa yoyote."
+        },
+        "design": {
+          "title": "Muundo wa utafiti",
+          "about": "Jinsi utafiti ulivyofanywa.",
+          "note": "Hujazwa tu PDF ikiweka wazi. Zenodo huuonyesha kama dokezo la mbinu."
+        },
+        "places": {
+          "title": "Maeneo yaliyochunguzwa",
+          "about": "Nchi na kanda ambazo ripoti inazihusu, si mahali waandishi wake wanapofanya kazi."
+        },
+        "funding": {
+          "title": "Ufadhili",
+          "about": "Nani alilipia kazi hii, pamoja na namba za ruzuku kama zilivyochapishwa.",
+          "note": "Wafadhili hutafutwa kwenye OpenAlex na ROR. Anayepatikana huko hutumwa na kitambulisho chake cha ROR, na cha Funder Registry ikiwa anacho. Aliyeandikwa kwa mkono hutumwa kwa jina pekee."
+        },
+        "references": {
+          "title": "Marejeleo",
+          "about": "Kazi ambazo ripoti hii inanukuu, kama orodha yake ya marejeleo inavyoziandika.",
+          "note": "Bandika orodha, au ipakie kama faili ya BibTeX, RIS au maandishi ya kawaida. Kila DOI iliyochapishwa kwenye PDF imeshajazwa, na Crossref huunganisha kila rejeleo lenye DOI na kazi inayonukuliwa."
+        },
+        "links": {
+          "title": "Data, msimbo na matoleo",
+          "about": "Mahali data, msimbo, matoleo mengine na nyongeza za ripoti zilipo.",
+          "note": "Kila moja ni anwani ya wavuti au DOI."
+        },
+        "agreement": {
+          "title": "Makubaliano ya uchapishaji",
+          "about": "Kile wewe na Openscholar mnakubaliana kabla ripoti yako haijachapishwa.",
+          "note": "Hakimiliki inabaki kwako. Kuweka alama kwenye kisanduku ni kukubali kwa niaba yako na ya kila mwandishi mwenza, kwa hiyo hakikisha kwanza wamekubali. Makubaliano yaliyosainiwa hayawezi kubadilishwa."
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "Kiungo cha kudumu cha ripoti yako kinachofanya kazi popote ukurasa wake utakapohamishwa.",
+          "note": "Huhifadhiwa unaposaini, ili uweze kuichapisha kwenye PDF yako. Hufanya kazi ripoti yako ikiwa hewani."
+        },
+        "byline": {
+          "title": "Mstari wa mfululizo",
+          "about": "Mstari ambao kila ripoti ya mfululizo huu huchapisha, wenye jina la mfululizo, ISSN yake na DOI ya ripoti.",
+          "note": "Lazima uwe maandishi kwenye PDF, si picha, kwa sababu ukaguzi huutafuta. Chagua Niongezeeni na Openscholar huongeza ukurasa wa mwisho wenye mstari huo."
+        },
+        "checks": {
+          "title": "Ukaguzi",
+          "about": "Kile Openscholar hukagua kabla ripoti haijawa hewani, kama mstari wa mfululizo kwenye PDF na ikiwa kazi tayari imechapishwa.",
+          "note": "Kila ukaguzi husema ulitafuta nini, na nini cha kurekebisha ukishindwa. Ukiwa na uhakika kwamba ukaguzi umekosea, omba mtu aukague."
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "Namba inayotambulisha mfululizo, kama ya jarida.",
+          "note": "Inasubiri hadi mfululizo usajiliwe. DOI ya ripoti yako hufanya kazi bila hiyo."
+        },
+        "activation": {
+          "title": "Kuwezesha",
+          "about": "Kuwezesha hufanya ripoti yako iwe ya umma: ukurasa wake hufunguka, DOI yake huanza kufanya kazi, na husajiliwa.",
+          "note": "Kinachodaiwa hulipwa kwanza: kutoka kwenye salio la uchapishaji la eneo lako la kazi, kwa kadi, au vyote viwili. Msimbo wa vocha hupunguza kile kadi inacholipa."
+        }
+      }
     }
   },
   "people": {
@@ -6951,6 +7376,7 @@
       "preprint": "Chapisho la awali",
       "book": "Kitabu",
       "report": "Ripoti",
+      "presentation": "Wasilisho",
       "review": "Makala ya mapitio",
       "reference-entry": "Kipengele cha marejeo",
       "conference-abstract": "Muhtasari wa mkutano",

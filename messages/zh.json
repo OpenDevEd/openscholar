@@ -196,21 +196,6 @@
     "anotherPlan": "其他计划",
     "onDate": "于{date}",
     "connections": "连接",
-    "localeLabels": {
-      "enUS": "英语（美国）",
-      "enGB": "英语（英国）",
-      "zh": "中文",
-      "fr": "法语",
-      "hi": "印地语",
-      "ja": "日语",
-      "ar": "阿拉伯语",
-      "sw": "斯瓦希里语",
-      "pt": "葡萄牙语",
-      "es": "西班牙语",
-      "de": "德语",
-      "af": "南非荷兰语",
-      "zu": "祖鲁语"
-    },
     "you": "你",
     "calendarToday": "今天，{date}",
     "calendarSelected": "{date}，已选择",
@@ -350,6 +335,7 @@
     "password": "Crossref 密码",
     "prefix": "DOI 前缀",
     "registrant": "注册机构",
+    "registrantHint": "Crossref fills this in from the prefix when you save.",
     "depositorName": "提交者姓名",
     "email": "提交者邮箱",
     "namespace": "DOI 命名空间",
@@ -434,7 +420,16 @@
     "chargesLabel": "条扣费",
     "paymentFailedEnds": "{amount} 的付款失败。如未付款，{plan} 将于 {date} 结束。",
     "fixPayment": "处理付款",
-    "seePlans": "查看方案"
+    "seePlans": "查看方案",
+    "publication": {
+      "title": "出版余额",
+      "hint": "用于支付你在 Openscholar Reports 上发布的报告。",
+      "every": "{interval, select, hour {每小时} day {每天} week {每周} month {每月} quarter {每三个月} semi_annual {每六个月} other {每年}}",
+      "backTo": "{date}恢复为 {amount}",
+      "kept": "{amount} 保留至使用",
+      "publish": "发布",
+      "noLimit": "不限次数"
+    }
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",
@@ -680,6 +675,7 @@
     "uploadFailed": "上传失败",
     "uploadFailedDescription": "无法上传 {format}。请重试。",
     "accountChanged": "您的账户已更改。请重试。",
+    "couldntCopy": "无法复制",
     "copyFailedDescription": "你的浏览器不允许复制。请选中文字后自行复制。",
     "validationFailed": "验证失败",
     "entityCreated": "{entity} 已创建",
@@ -1252,19 +1248,20 @@
     "reviewed": "已审核"
   },
   "saveToLibrary": {
-    "save": "保存",
-    "saved": "已保存",
-    "saveToLibrary": "保存到文献库",
+    "save": "加入文献库",
+    "saved": "已在文献库",
+    "saveToLibrary": "加入文献库",
     "removeFromLibrary": "从文献库中移除",
     "addToCollection": "添加到合集",
     "newCollection": "新建合集",
     "removed": "已从文献库中移除",
     "undo": "撤销",
-    "saveError": "无法保存该论文",
+    "saveError": "无法将该论文加入文献库",
     "removeError": "无法移除该论文",
     "restoreError": "无法恢复该论文",
     "collectionError": "无法更改合集",
-    "newCollectionWithPaper": "用这篇论文新建集合"
+    "newCollectionWithPaper": "用这篇论文新建集合",
+    "finishSaving": "完成添加"
   },
   "rating": {
     "noRating": "无评分",
@@ -1411,8 +1408,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "我们重视您的隐私",
-    "bannerDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。",
-    "dialogDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。您可以随时更改选择。",
+    "bannerDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 及其社区的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。",
+    "dialogDescription": "我们和分析服务提供商 PostHog 与 Google 使用 Cookie 了解 Openscholar 及其社区的使用情况并加以改进。如果您拒绝，我们只统计访问量，不使用 Cookie。您可以随时更改选择。",
     "acceptAll": "接受全部",
     "rejectNonEssential": "拒绝非必要",
     "preferencesTitle": "Cookie 偏好设置",
@@ -1439,7 +1436,11 @@
     "upgradeSuccess": "升级成功",
     "upgradeSuccessCredits": "已升级到{plan} — 已添加{credits}积分",
     "totalCharge": "现在应付总额",
-    "paymentMethod": "支付方式"
+    "paymentMethod": "支付方式",
+    "anotherCard": "其他银行卡",
+    "anotherCardNote": "将打开 Stripe 页面，可选择已保存的银行卡，也可输入新卡。",
+    "manageBilling": "管理账单",
+    "toPayment": "继续付款"
   },
   "libraryPage": {
     "title": "文献库",
@@ -1464,7 +1465,7 @@
     "ratingFilter": "按最低评分筛选",
     "loadMore": "加载更多",
     "emptyLibraryTitle": "此文献库为空",
-    "emptyLibraryDescription": "从搜索结果中保存论文，建立这个文库。",
+    "emptyLibraryDescription": "从搜索结果中添加论文，建立这个文库。",
     "emptyLibraryCta": "搜索论文",
     "noResultsTitle": "没有符合您搜索或筛选条件的论文",
     "clearFilters": "清除筛选",
@@ -1859,7 +1860,6 @@
       "notificationSchedule": "请选择有效的摘要日、时间和时区。",
       "nameMissing": "请为文献社区填写名称。",
       "shortNameMissing": "请为文献社区填写简称。",
-      "partnerName": "每个资助方合作伙伴都需要名称。",
       "badColour": "其中一个颜色无效。",
       "institutionName": "每个机构都需要名称。",
       "linkLabel": "每个链接都需要标签。",
@@ -1941,13 +1941,6 @@
       "searchTitlePlaceholder": "气候适应研究与证据",
       "descriptionLabel": "描述",
       "descriptionHint": "显示在首页和搜索结果中。",
-      "partnersHeading": "资助方合作伙伴",
-      "partnersHint": "显示在首页。",
-      "addPartner": "添加合作伙伴",
-      "noPartners": "还没有资助方合作伙伴。",
-      "removePartner": "移除合作伙伴",
-      "partnerName": "合作伙伴名称",
-      "partnerPlaceholder": "合作伙伴名称",
       "shareImageLabel": "分享图片",
       "shareImageHint": "文献社区在社交媒体上分享时使用。PNG、JPG 或 WEBP。",
       "showNameLabel": "徽标旁的名称",
@@ -2137,6 +2130,7 @@
       },
       "socialError": "请使用以 https:// 开头的完整地址。",
       "fundersHeading": "资助方",
+      "fundersHint": "显示在页脚和每条记录上。",
       "fundersEmpty": "还没有资助方。",
       "addFunder": "添加资助方",
       "removeFunder": "移除资助方",
@@ -4677,13 +4671,11 @@
     "communities": "社区",
     "explore": "探索",
     "authors": "作者",
-    "workspacesCard": "工作区",
     "account": "账户",
     "close": "关闭",
     "switchFrom": "工作区：{name}。切换工作区",
     "runningLabel": "{label}，{what}，{done}/{total}",
     "doneOf": "{done}/{total}",
-    "planFor": "{workspace} 的 {plan}",
     "planAndCredits": "套餐和积分",
     "theme": "主题",
     "light": "浅色",
@@ -4691,7 +4683,6 @@
     "auto": "自动",
     "signOut": "退出登录",
     "signOutFailed": "无法退出登录。请检查网络连接后重试。",
-    "personal": "个人",
     "admin": "管理员",
     "member": "成员",
     "members": "{count, plural, other {# 名成员}}",
@@ -4703,7 +4694,6 @@
     "decline": "拒绝",
     "join": "加入",
     "newOrganization": "新建组织",
-    "workspaceSettings": "工作区设置",
     "invitationGone": "此邀请已失效。",
     "couldntJoin": "无法加入组织",
     "couldntDecline": "无法拒绝邀请",
@@ -5642,6 +5632,7 @@
     "keepInvitation": "保留邀请",
     "declineInvitation2": "拒绝邀请",
     "previewCover": "预览 {title} 的封面",
+    "noPdf": "无 PDF",
     "preview": "预览 {title}",
     "declineBody": "您将无法访问 {name}。您的其他文献社区不受影响。",
     "owner": "所有者",
@@ -6167,6 +6158,7 @@
     },
     "admin": {
       "backToReport": "返回报告",
+      "editLost": "在您编辑期间，作者已收回 {key} 进行修改，因此您输入的内容未保留。待其检查完成后请重新打开。",
       "editTitle": "编辑信息",
       "editIntroLive": "{key} 已上线。保存后，您的修改会立即上线，不经检查，报告会重新注册。",
       "editIntroNotLive": "{key} 尚未上线。保存后，您的修改会立即生效，不经检查。",
@@ -6208,7 +6200,9 @@
       "places": "研究地点",
       "studyDesign": "研究设计",
       "seeChanges": "查看您的修改",
-      "correct": "更正信息"
+      "correct": "更正信息",
+      "takeDownTitle": "撤下报告",
+      "openDoi": "打开 DOI {doi}"
     },
     "stages": {
       "draft": "草稿",
@@ -6256,9 +6250,10 @@
       "action": {
         "openPage": "打开其页面",
         "open": "打开",
-        "activate": "激活",
+        "activate": "付款",
         "carryOn": "继续",
-        "seeFailed": "查看失败原因"
+        "seeFailed": "查看失败原因",
+        "manage": "在“发布”中打开"
       },
       "seeChanges": "查看您的修改",
       "correct": "更正信息"
@@ -6330,7 +6325,6 @@
       },
       "which": "哪些报告",
       "pagerItems": "份报告",
-      "approvedToast": "已批准。作者现在可以激活它。",
       "sentAgain": "已重新发送",
       "noMatch": "没有匹配的报告",
       "noReports": "还没有报告",
@@ -6347,7 +6341,7 @@
       "openPage": "打开其页面",
       "openPageLabel": "打开 {key} 的页面",
       "done": {
-        "approve": "已批准。作者现在可以激活它。",
+        "approve": "已批准。现在可以激活了。",
         "reinstate": "已恢复，重新上线。",
         "withdraw": "已撤回",
         "decline": "已拒绝"
@@ -6363,6 +6357,7 @@
         "humanReview": "人工审核已开启，因此修改需等待审核人。"
       },
       "approving": "批准后，作者即可激活它，激活时即上线。",
+      "approvingOrg": "批准后，{organization} 的管理员即可激活它，激活后即上线。",
       "standing": {
         "failedAsked": "有一项检查未通过。{approving}",
         "failed": "有一项检查未通过，因此报告已退回作者修正。您仍然可以作出决定。{approving}",
@@ -6434,9 +6429,10 @@
       "enterSeriesName": "请输入系列名称。",
       "enterByline": "请输入署名行。",
       "bylineNeedsDoi": "署名行需要包含 {doi}，它会变成每份报告的 DOI。",
+      "bylineNeedsLicence": "署名行需要包含 {licence}，它会成为每份报告的许可。",
       "notIssn": "这不是 ISSN。ISSN 形如 2049-3630，最后一位用于校验其余数字。",
       "byline": "署名",
-      "bylineHint": "每份报告都会填入 {series}、{issn} 和 {doi}",
+      "bylineHint": "{series}、{issn}、{doi} 和 {licence} 会为每份报告填入",
       "bylineSaved": "署名已保存",
       "registration": "DOI 注册",
       "zenodoSandbox": "Zenodo 测试环境",
@@ -6459,32 +6455,6 @@
       "changed": "于 {date} 修改",
       "asWritten": "最初版本",
       "edit": "编辑",
-      "limits": "免费激活",
-      "limitsPager": "免费激活",
-      "personal": "个人自己的工作区",
-      "personalHint": "每天不收费的激活次数。仍需保存一张卡。",
-      "personalLabel": "个人工作区每天的免费激活次数",
-      "limitSaved": "免费激活已保存",
-      "organization": "机构的工作区",
-      "organizationHint": "每天不收费的激活次数，由成员共享。",
-      "organizationLabel": "组织工作区每天的免费激活次数",
-      "goneAccount": "已不存在的账户",
-      "goneOrganization": "已不存在的机构",
-      "person": "个人",
-      "organisation": "机构",
-      "perDayLabel": "{name} 每天的免费激活次数",
-      "aDay": "次免费/天",
-      "backToPeople": "恢复为个人的次数",
-      "backToOrganizations": "恢复为组织的次数",
-      "removeLimit": "移除 {name} 的免费激活",
-      "alreadyLimited": "{name} 已有自己的次数：每天免费 {count} 次。",
-      "people": "个人",
-      "organisations": "机构",
-      "giveLimit": "为个人或组织单独设置免费激活",
-      "pickerPlaceholder": "机构名称或个人邮箱",
-      "pickerEmpty": "没有匹配的账户或机构",
-      "limitMax": "限额最多为每天 {max} 份",
-      "limitWhole": "限额是 0 到 {max} 之间的整数",
       "builtIn": "内置",
       "modelGone": "其模型已不再提供",
       "passesAt": "把握达到 {percent} 即通过",
@@ -6530,25 +6500,36 @@
       "agreementLabel": "协议（Markdown）",
       "agreementSaved": "协议第 {version} 版",
       "saveVersion": "另存为第 {version} 版",
-      "price": "价格",
-      "priceHint": "超出免费次数后每次激活的费用：Autumn 中 Report activation 方案的价格。",
-      "priceHintNone": "Autumn 中没有 Report activation 方案，因此只有免费激活可以进行。",
-      "notOnSale": "未开售"
+      "priceOne": "CC BY 和 CC BY-SA",
+      "priceHint": "以 CC BY 或 CC BY-SA 发布一份报告的费用，以美元计。",
+      "balances": "余额",
+      "balancesHint": "每个工作区在 Autumn 中都有一笔以美元计的出版余额，会先于银行卡支付这些费用。可在那里为个人或组织发放余额，一次性发放，或每天、每周、每月、每年补充。套餐中的一项会发放给该套餐下的每个工作区。",
+      "openAutumn": "打开 Autumn",
+      "priceThree": "NC、ND 和自有许可",
+      "priceThreeHint": "以 NC 或 ND 许可，或作者自有许可发布一份报告的费用，以美元计。",
+      "prices": "价格"
     },
     "flow": {
       "steps": {
+        "prepare": "准备",
         "agreement": "协议",
         "doi": "DOI",
         "upload": "PDF",
         "details": "信息",
         "checks": "检查",
-        "live": "上线"
+        "live": "上线",
+        "sealed": "协议签署后即锁定。",
+        "paying": "付款正在处理中，因此现在无法打开这些步骤。如果银行拒绝付款，它们会重新开放。",
+        "liveNow": "已上线。请通过“{action}”更改详情。",
+        "closed": "审核人员已将其撤下，因此无法更改。",
+        "running": "检查正在运行。完成后这些步骤会重新开放。",
+        "notYours": "只有开始这份报告的人才能更改它。"
       },
       "publish": "发布",
       "newReport": "新报告",
       "yourReports": "您的报告",
       "discarded": "报告已放弃",
-      "discardFailed": "无法放弃报告",
+      "discardFailed": "无法放弃报告。",
       "closedTitle": "发布功能暂时关闭",
       "closedWithReports": "目前无法开始新的报告。您已有的报告保持不变。",
       "closedNoReports": "目前无法开始新的报告。请稍后再来。",
@@ -6558,28 +6539,28 @@
       "elsewhereTitle": "此报告在另一个工作区",
       "missingTitle": "此报告不在这里",
       "offNotice": "发布功能暂时不接受新报告。您可以继续处理这份。",
-      "stepFailed": "无法打开该步骤",
-      "checksFailed": "检查无法运行",
+      "stepFailed": "无法打开该步骤。",
+      "checksFailed": "检查无法运行。",
       "saveFailed": "无法保存您的修改",
       "changesLive": "您的修改已上线",
       "changesWithReviewer": "您的修改正在由审核人处理",
       "agreementTitle": "与{series}的出版协议",
       "version": "第 {version} 版",
-      "agreementIntro": "您保留版权，以 CC BY 4.0 许可发布。签署即预留您的 DOI。",
-      "agreementShared": "您保留版权，以 CC BY 4.0 许可发布。签署即预留您的 DOI。此报告属于本工作区：成员都能看到，您和工作区管理员负责处理。",
+      "agreementIntro": "版权仍归你所有，许可由你选择，签署后不能更改。签署即预留你的 DOI。",
+      "agreementShared": "版权仍归你所有，许可由你选择，签署后不能更改。签署即预留你的 DOI。此报告属于本工作区：成员都能看到，您和工作区管理员负责处理。",
       "signedBy": "签署人",
-      "signForAll": "我代表已同意的全体作者签署",
-      "agree": "我同意此协议",
+      "agree": "我代表本人及全体合著者同意此协议，全体合著者均已同意",
       "untouched": "您已为 <mono>{key}</mono> 预留了 DOI，但尚未上传其 PDF。",
       "continueWith": "继续处理它",
       "agreementChanged": "此页面打开期间协议已更改。请重新阅读，然后勾选方框。",
+      "agreementInEnglish": "协议本身以英文撰写。",
       "limit": {
         "personal": "你的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
         "personalClosed": "你的方案不包含发布。请换一个包含发布的方案。",
         "workspace": "此工作区的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
         "workspaceClosed": "此工作区的方案不包含发布。请换一个包含发布的方案。"
       },
-      "signFailed": "无法签署协议",
+      "signFailed": "无法签署协议。",
       "sign": "签署并预留 DOI",
       "signIn": "登录以发布",
       "doiReserved": "您的 DOI 已预留",
@@ -6590,15 +6571,17 @@
       "doiCopied": "DOI 已复制",
       "uploadPdf": "上传 PDF",
       "textless": "此 PDF 不含文字，像扫描件一样。检查无法在其中找到署名。请将报告导出为带文字的 PDF 再上传，或手动填写信息。",
+      "textlessAdded": "这个 PDF 不含文字，就像扫描件一样，因此检查无法从中读取您的报告。署名在我们添加的那一页上。请将报告导出为带文字的 PDF 再上传，或手动填写详情。",
       "unreadPdf": "Openscholar 无法从此 PDF 读取信息。请手动填写。",
       "uploadAnother": "上传另一个 PDF",
       "uploadLost": "上传未送达。请重试。",
-      "choosePdf": "请选择 PDF",
+      "notPdf": "{name} 不是 PDF。请将报告保存或导出为 PDF，然后选择该文件。",
       "emptyFile": "该文件为空。请重新选择 PDF。",
-      "tooBig": "PDF 超过 {max} MB",
+      "tooBig": "PDF 超过 {max} MB。请选择较小的文件。",
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
-      "uploadFailed": "无法上传 PDF。请重试。",
-      "uploadIntro": "上传前，请将以下文字原样放在封面或封二上。我们的检查会查找这一行。",
+      "notSent": "PDF 未能发送给我们。",
+      "uploadFailed": "我们收到了 PDF，但服务器没有把它添加到您的报告中。",
+      "uploadIntro": "本系列的每份报告都在 PDF 中以文字形式带有这行署名。我们的检查会查找它。",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
       "uploading": "正在上传 {name}",
@@ -6607,6 +6590,13 @@
       "drop": "将 PDF 拖到这里，或选择文件",
       "dropHint": "一个 PDF，最大 {max} MB",
       "unopenedPdf": "无法将 {name} 作为 PDF 打开。如果它设有密码，请先移除密码，再重新另存为 PDF 后上传。",
+      "lacksByline": "{name} 没有上面这行署名。请添加后重新上传 PDF，或由我们来添加。",
+      "keptDetails": "这些是您替换 PDF 之前的信息。",
+      "readAgain": "改为从此 PDF 读取",
+      "readAgainTitle": "从此 PDF 读取信息？",
+      "readAgainBody": "当前显示的信息将被此 PDF 的信息替换，您在其中输入的内容也会一并替换。",
+      "readAgainKeep": "保留这些信息",
+      "readAgainFailed": "无法重新读取信息。",
       "stuck": "读取 {name} 用时过长。请重新上传。",
       "replaces": "重新上传将替换 {name}",
       "check": {
@@ -6616,11 +6606,12 @@
         "failed": "未通过",
         "flagged": "已标记",
         "unclear": "不确定",
-        "sure": "有 {percent} 把握通过",
+        "sure": "{percent}",
         "foundIn": "在{where}中找到：",
         "foundAs": "找到为",
         "said": {
-          "notPublished": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
+          "notPublished": "不在 Openscholar Reports、OpenAlex、Openscholar 索引或我们的社区中。",
+          "notPublishedElsewhere": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
           "unfinished": "此项检查未能完成。",
           "bylineFound": "PDF 文本中逐字包含这一行。"
         },
@@ -6643,7 +6634,7 @@
           }
         }
       },
-      "activateFailed": "无法激活",
+      "activateFailed": "无法激活。",
       "running": "正在运行检查",
       "ofTotal": "{done}/{total}",
       "runningHint": "查找早期版本需要几秒钟。您可以离开此页面，检查会继续进行。",
@@ -6654,13 +6645,16 @@
       "readyPassed": "您的报告已通过检查。激活它即可让 DOI 上线并打开其页面。",
       "waiting": "等待审核",
       "inReview": "审核中",
-      "waitingFlagged": "有一项检查标记了您的报告，因此会由审核人查看。批准后您即可激活，我们会通过邮件通知您。",
-      "waitingPassed": "您的报告已通过检查。审核人批准后您即可激活，我们会通过邮件通知您。",
+      "waitingFlagged": "有一项检查标记了您的报告，因此审核人会先查看，之后才能上线。我们会通过邮件通知您，报告在“发布”中等您。",
+      "reviewTakes": "审核最多需要三个工作日。",
+      "waitingPassed": "您的报告已通过检查。现在由审核人批准后才能上线。我们会通过邮件通知您，报告在“发布”中等您。",
       "withdrawn": "已撤回",
       "notPublished": "未发布",
       "declined": "已拒绝",
       "withdrawnBody": "审核人撤回了此报告。它的页面现在已注明。",
       "declinedBody": "审核人拒绝了此报告。",
+      "declinedFix": "您可以修改详情或上传新的 PDF，然后重新运行检查。",
+      "activatingNow": "正在激活您的报告，需要几秒钟。",
       "notYet": "尚未发布",
       "aCheckFailed": "有一项检查未通过",
       "failedAsked": "您已请求人工审核。您也可以修改信息或上传新的 PDF，然后重新运行检查。",
@@ -6672,14 +6666,19 @@
       "changeDetails": "修改信息",
       "uploadNew": "上传新的 PDF",
       "publishAnother": "再发布一份",
-      "activate": "激活",
+      "activate": "付款并激活 DOI",
       "needsApproval": "需要先由审核人批准",
       "untitled": "无标题报告",
       "startedBy": "{name}开始了此报告。只有此人和工作区管理员可以修改它。",
       "startedBySomeone": "此工作区中的某人开始了此报告。只有此人和工作区管理员可以修改它。",
       "openPage": "打开其页面",
+      "takeDown": "如需撤下报告，请写信至 <mail>{email}</mail> 并注明其编号 {key}。我们会在三个工作日内答复。报告的页面和 DOI 会保留，并注明该报告已撤回。",
+      "waitingIn": "{name} 中有 {count} 份报告等待您激活。",
+      "waitingOwn": "您自己的工作区中有 {count} 份报告等待您激活。",
+      "waitingOpen": "打开",
+      "registering": "页面现已开放，可以分享。DOI 在登记完成后生效，通常只需几分钟。",
       "sentToReviewer": "已发送给审核人",
-      "requestFailed": "无法发送请求",
+      "requestFailed": "无法发送请求。",
       "reviewIntro": "审核人会阅读您的报告和检查结果。如果您认为某项检查有误，请提出申请。",
       "reviewQuestion": "检查哪里出错了？",
       "cancel": "取消",
@@ -6704,7 +6703,7 @@
       "discardBody": "您的报告保持当前状态上线。您所做的修改将被放弃。",
       "keepThem": "保留",
       "changesDiscarded": "修改已放弃",
-      "changesDiscardFailed": "无法放弃修改",
+      "changesDiscardFailed": "无法放弃修改。",
       "discard": "放弃",
       "pages": "{count, plural, other {# 页}}",
       "agreementVersion": "协议 v{version}",
@@ -6722,16 +6721,12 @@
         "onlyAdmin": "只有管理员可以激活",
         "notForSale": "目前无法付费激活",
         "payTitle": "支付 {price} 激活 {key}",
-        "freeTitle": "激活 {key}",
         "orgCardCharged": "将从 {organization} 的卡中扣款。",
-        "orgCardNothing": "不会从 {organization} 的卡中扣款。",
-        "payConfirm": "付款并激活",
         "dueNow": "应付金额",
         "doiNow": "DOI 当前",
         "after": "之后",
         "reserved": "已预留",
         "live": "已上线",
-        "activationLine": "激活",
         "codeLine": "优惠码 {code}",
         "promo": {
           "add": "添加优惠码",
@@ -6741,34 +6736,135 @@
           "off": "减 {percent}%",
           "failed": "无法验证该优惠码，请重试。",
           "unknownCode": "{code} 不是我们认识的代码，或已用完。",
-          "nothingOff": "{code} 不能减免激活费用。",
-          "codeTooLong": "这个代码太长，不可能是我们的代码。"
+          "nothingOff": "{code} 不能减免发布报告的费用。",
+          "codeTooLong": "这个代码太长，不可能是我们的代码。",
+          "applyFirst": "请使用该优惠码或将其清除，然后再激活。"
         },
         "card": {
           "bankAsked": "你的银行要求确认这笔付款",
-          "goesLive": "付款确认后即会上线。",
+          "goesLive": "付款完成后立即上线。",
           "refused": "你的银行没有确认上一笔付款，因此没有扣款。",
-          "free": "免费",
-          "freeLeft": "今天还剩 {count} 次免费激活",
-          "freeLeftNoCard": "今天还剩 {count} 次免费激活。仍需保存一张卡。",
-          "add": "添加付款方式后即可激活",
-          "costs": "每次激活收费 {price}。",
-          "costsOrg": "每次激活收费 {price}，由 {organization} 支付。",
-          "needed": "需要保存一张卡才能激活。",
-          "orgCard": "{organization} 的卡",
-          "yourCard": "你的卡",
           "confirm": "确认付款",
-          "change": "更换",
-          "addButton": "添加付款方式",
-          "stripeFailed": "无法打开 Stripe 页面",
-          "credit": "余额 {amount}"
+          "toPayment": "继续付款",
+          "unfinished": "付款尚未完成",
+          "cancel": "取消付款",
+          "cancelFailed": "无法取消付款。请重试。"
         },
-        "creditLine": "账户余额抵扣",
-        "refunded": "为激活它支付的 {amount} 已退款。",
-        "refunding": "为激活它支付的 {amount} 正在退款。",
-        "declined": "你的卡被拒绝了，没有扣款。请更换卡片后重试。",
-        "noFreeLeft": "今天已没有免费激活次数。再次激活即可付费。",
-        "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。"
+        "declined": "你的银行卡被拒绝。未扣款。请重试，或换一种方式支付。",
+        "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。",
+        "kept": "为这份报告支付的金额已转入你的出版余额。你激活的下一份报告会使用它。",
+        "keptOrg": "为这份报告支付的金额已转入 {organization} 的出版余额。那里激活的下一份报告会使用它。",
+        "balanceLine": "出版余额",
+        "onStripe": "将打开 Stripe 页面进行付款。",
+        "changed": "应付金额在本页面读取后发生了变化。请核对后再次激活。",
+        "toStripe": "继续付款"
+      },
+      "back": "返回",
+      "next": "下一步",
+      "bylineFirst": "您的 PDF 带有这行署名",
+      "bylineFirstBody": "本系列的每份报告都在 PDF 中以文字形式带有这行署名。您上传后，我们的检查会查找它。",
+      "nextUpload": "上传 PDF",
+      "nextDetails": "核对信息",
+      "problem": {
+        "outOfStep": "此页面与服务器的版本不一致。请刷新页面后重试。",
+        "retry": "请重试。如果仍然出现，请<link>报告问题</link>。",
+        "retryQuote": "请重试。如果仍然出现，请<link>报告问题</link>并注明 {reference}。"
+      },
+      "bylineBy": {
+        "label": "由谁添加署名",
+        "choose": "请选择由谁添加署名以继续。",
+        "chooseFirst": "请先选择由谁添加署名",
+        "failed": "我们无法在 {name} 中添加该页。请自行添加署名并重新上传 PDF。",
+        "addFailed": "The page couldn't be added. Try again.",
+        "self": {
+          "title": "我自己添加",
+          "body": "上传前，请将这行署名原样放在 PDF 的封面或封二上。"
+        },
+        "added": {
+          "title": "请替我添加",
+          "body": "我们会添加最后一页，写上这行署名和您报告的详情。"
+        }
+      },
+      "overview": {
+        "title": "通过 {series} 发布报告",
+        "intro": "从开始到结束大约五分钟。以下是每一步需要您做的事。",
+        "introReviewed": "大约占用您五分钟。之后由审核人批准，报告才能上线，我们会通过邮件通知您。",
+        "start": "签署协议",
+        "agreement": {
+          "title": "签署发布协议",
+          "body": "版权仍归你所有，许可由你选择。"
+        },
+        "doi": {
+          "title": "获取您的 DOI",
+          "body": "签署时即预留，随报告一同生效。"
+        },
+        "pdf": {
+          "title": "上传您的 PDF",
+          "body": "须有一行署名，写明系列名称和 DOI。您可以自行添加，或由我们加在最后一页。"
+        },
+        "details": {
+          "title": "核对信息",
+          "body": "为您从 PDF 中读取：标题、作者、ORCID iD、机构和资助方。"
+        },
+        "checks": {
+          "title": "自动检查",
+          "body": "大约一分钟。检查会查找这行署名以及任何已发表的内容。"
+        },
+        "activate": {
+          "title": "激活",
+          "bodyPrices": "CC BY 或 CC BY-SA 为 {price}，其他许可为 {priceOfThree}。用出版余额或银行卡支付。DOI 完成登记，报告上线。",
+          "bodyCard": "CC BY 或 CC BY-SA 为 {price}，其他许可为 {priceOfThree}，用银行卡支付。优惠码可以减免部分或全部费用。DOI 完成登记，报告上线。"
+        }
+      },
+      "licence": {
+        "label": "许可",
+        "by": "任何人都可以分享和改编，但须署你的名。",
+        "bySa": "与 CC BY 相同，他人据此创作的作品沿用此许可。",
+        "other": "其他许可",
+        "otherBody": "非商业、禁止演绎，或你自己的许可。",
+        "which": "选择许可",
+        "own": "我自己的许可",
+        "ownName": "名称",
+        "ownUrl": "许可文本的网址",
+        "ownNeeded": "请用拉丁字母填写许可的名称，并填写其文本的网址。",
+        "help": {
+          "title": "许可",
+          "about": "关于许可",
+          "by": "任何再利用者都须署你的名。",
+          "sa": "他人据此创作的作品沿用相同许可。",
+          "nc": "未经你同意，任何人不得用于商业用途。",
+          "nd": "他人不得分享修改后的版本。",
+          "mining": "所有许可都允许任何人按原样阅读、下载和分享报告，并从其文本中挖掘数据，但在 NC 下不得用于商业目的。协议允许 Openscholar 在其中任何一种许可下发布和存档报告。",
+          "compare": "各许可允许的内容",
+          "sentTo": "发送给",
+          "crossref": "登记 DOI",
+          "zenodo": "存档一份副本",
+          "openscholar": "展示报告"
+        }
+      },
+      "payment": {
+        "payWith": "支付方式",
+        "balance": "出版余额",
+        "card": "银行卡",
+        "byCard": "用卡支付",
+        "due": "激活时应付",
+        "later": "报告激活前不会扣款，支付方式仍可更改。",
+        "code": "优惠码 {code}",
+        "dueNow": "现在应付",
+        "title": "付款",
+        "sign": "阅读并签署",
+        "noLimit": "不限次数",
+        "credit": "账户余额抵扣",
+        "least": "银行卡至少支付 {least}，因此 {spare} 会留在余额中。"
+      },
+      "activateFree": "激活 DOI",
+      "paid": {
+        "balance": "从余额支付 {amount}",
+        "balanceLeft": "从余额支付 {amount}，剩余 {left}",
+        "card": "用银行卡支付 {amount}",
+        "code": "{code} 已抵扣全部费用",
+        "codeRest": "{code} 已抵扣剩余费用",
+        "credit": "用账户余额抵扣 {amount}"
       }
     },
     "meta": {
@@ -6784,14 +6880,11 @@
       "name": "姓名",
       "moveUp": "上移",
       "moveDown": "下移",
-      "removeAuthor": "移除作者",
+      "removeAuthor": "移除人员",
       "moveUpLabel": "上移{name}",
       "moveDownLabel": "下移{name}",
       "author": "作者",
-      "roles": "贡献者角色",
-      "roleCount": "{count, plural, other {# 个角色}}",
-      "findRole": "查找角色",
-      "noRole": "没有此角色",
+      "noContribution": "没有这样的贡献。编辑或翻译报告属于角色：请在“角色”中选择。",
       "corresponding": "通讯作者",
       "orcidFound": "通过姓名和 {institution} 在 ORCID 上找到",
       "correctTitle": "更正信息",
@@ -6807,11 +6900,17 @@
       "type": "类型",
       "language": "语言",
       "date": "发布日期",
+      "dateYear": "年",
+      "dateMonth": "月",
+      "dateDay": "日",
+      "noMonth": "不填月份",
+      "noDay": "不填日期",
+      "yearInvalid": "请以四位数字填写年份。",
       "future": "报告日期不能晚于今天。",
       "licence": "许可",
-      "authors": "作者",
-      "authorsPager": "位作者",
-      "addAuthor": "添加作者",
+      "authors": "人员",
+      "authorsPager": "位人员",
+      "addPerson": "添加人员",
       "abstract": "摘要",
       "subjects": "主题领域",
       "topics": "主题",
@@ -6845,6 +6944,9 @@
       "addGrant": "为{name}添加资助编号",
       "references": "参考文献",
       "referencesPager": "条参考文献",
+      "editReference": "编辑参考文献",
+      "editReferenceLabel": "编辑参考文献 {number}",
+      "referenceLabel": "参考文献 {number}",
       "removeReference": "移除参考文献",
       "addReference": "通过 DOI 添加参考文献",
       "doiPlaceholder": "添加它引用的 DOI",
@@ -6866,8 +6968,331 @@
       "cancel": "取消",
       "sendForReview": "检查修改并提交审核",
       "checkAndPublish": "检查并发布修改",
-      "runChecks": "运行检查",
-      "tooEarly": "报告日期不能早于 1400 年。"
+      "runChecks": "提交",
+      "tooEarly": "报告日期不能早于 1400 年。",
+      "back": "返回",
+      "backToChecks": "返回检查",
+      "role": "角色",
+      "orcidLabel": "ORCID 标识符",
+      "contributions": "贡献",
+      "contributionsPlaceholder": "此人做了什么",
+      "contributionCount": "{count, plural, other {# 项贡献}}",
+      "findContribution": "查找贡献",
+      "writeAbstract": "根据 PDF 撰写",
+      "replaceAbstractTitle": "替换摘要？",
+      "replaceAbstractBody": "将根据 PDF 撰写新的摘要，替换框中现有的摘要。",
+      "keepAbstract": "保留",
+      "replaceAbstract": "替换",
+      "noAbstract": "你的 PDF 没有印出摘要。可以自己输入，或让系统根据 PDF 撰写一篇。",
+      "abstractFailed": "未能撰写摘要。请重试。",
+      "addReferences": "添加参考文献",
+      "referencesPlaceholder": "粘贴参考文献或 DOI，每行一条",
+      "uploadReferences": "上传文件",
+      "uploadReferencesLabel": "上传参考文献文件",
+      "referenceFormats": "BibTeX、RIS 或纯文本",
+      "noReferencesFound": "其中没有找到参考文献。",
+      "referencesListed": "这些都已在列表中。",
+      "referencesAdded": "{count, plural, other {已添加 # 条参考文献}}",
+      "undo": "撤销",
+      "referencesTooBig": "该文件超过 2 MB。参考文献列表要小得多。",
+      "openItsDoi": "打开其 DOI",
+      "openReferenceDoi": "打开第 {number} 条参考文献的 DOI"
+    },
+    "kinds": {
+      "author": "作者",
+      "editor": "编者",
+      "chair": "主席",
+      "translator": "译者",
+      "reviewer": "审稿人",
+      "review-assistant": "审稿助理",
+      "reviewer-external": "审稿人（外部）",
+      "stats-reviewer": "审稿人（统计）",
+      "reader": "审读人",
+      "other": "其他"
+    },
+    "roleDetails": {
+      "conceptualization": "提出想法并确定目标",
+      "dataCuration": "整理、清洗并保管数据",
+      "formalAnalysis": "进行统计或其他形式化分析",
+      "fundingAcquisition": "争取到项目经费",
+      "investigation": "开展研究并收集证据",
+      "methodology": "设计方法或模型",
+      "projectAdministration": "管理并协调项目",
+      "resources": "提供材料、样本、工具或计算资源",
+      "software": "编写或测试代码",
+      "supervision": "领导并指导团队",
+      "validation": "核实结果可以重现",
+      "visualization": "制作图表和数据展示",
+      "writingOriginalDraft": "撰写初稿",
+      "writingReviewEditing": "审阅并修改文本"
+    },
+    "help": {
+      "aboutLabel": "关于：{title}",
+      "sentTo": "发送至",
+      "does": {
+        "crossref": "注册 DOI",
+        "zenodo": "存档一份副本",
+        "openscholar": "展示报告"
+      },
+      "sent": "{name}，会收到：{does}",
+      "notSent": "{name}，不会收到：{does}",
+      "filled": {
+        "pdf": "从你的 PDF 读取",
+        "judged": "根据你的 PDF 判断",
+        "matched": "从你的 PDF 读取后查询",
+        "classified": "由 OpenAlex 推荐",
+        "author": "默认为作者",
+        "fixed": "由 Openscholar 设定",
+        "reserved": "签署时预留"
+      },
+      "entry": {
+        "list": "从列表中选择",
+        "typed": "自由输入",
+        "either": "从列表选择或输入",
+        "pasted": "粘贴或上传",
+        "toggle": "开或关",
+        "chosen": "由你选择"
+      },
+      "sources": {
+        "openalexWorkTypes": {
+          "name": "OpenAlex 作品类型",
+          "detail": "此选择器显示的列表"
+        },
+        "zenodoTypes": {
+          "name": "Zenodo 资源类型",
+          "detail": "每种类型在 Zenodo 上对应什么"
+        },
+        "crossrefReports": {
+          "name": "Crossref 报告",
+          "detail": "Crossref 保存的记录"
+        },
+        "iso639": {
+          "name": "ISO 639 语言代码",
+          "detail": "OpenAlex 使用的代码"
+        },
+        "ccBy": {
+          "name": "CC BY 4.0",
+          "detail": "知识共享署名 4.0"
+        },
+        "crossrefContributors": {
+          "name": "Crossref 贡献者",
+          "detail": "Crossref 如何记录人员"
+        },
+        "crossrefRoles": {
+          "name": "Crossref 贡献者角色",
+          "detail": "此选择器显示的列表"
+        },
+        "orcid": {
+          "name": "ORCID",
+          "detail": "什么是 ORCID 标识符"
+        },
+        "orcidRegister": {
+          "name": "获取标识符",
+          "detail": "免费，一分钟即可"
+        },
+        "openalexInstitutions": {
+          "name": "OpenAlex 机构",
+          "detail": "首先搜索"
+        },
+        "ror": {
+          "name": "Research Organization Registry",
+          "detail": "搜索 OpenAlex 中没有的机构"
+        },
+        "rorAdd": {
+          "name": "请 ROR 添加机构",
+          "detail": "适用于两个列表中都没有的机构"
+        },
+        "credit": {
+          "name": "CRediT",
+          "detail": "NISO 的贡献者角色分类"
+        },
+        "crossrefAbstracts": {
+          "name": "Crossref 摘要",
+          "detail": "Crossref 如何保存摘要"
+        },
+        "openalexTopics": {
+          "name": "OpenAlex 主题",
+          "detail": "此选择器搜索的列表"
+        },
+        "sdgs": {
+          "name": "17 个目标",
+          "detail": "联合国"
+        },
+        "openalexDesigns": {
+          "name": "OpenAlex 研究设计",
+          "detail": "此选择器显示的列表"
+        },
+        "iso3166": {
+          "name": "ISO 3166 国家代码",
+          "detail": "此选择器列出的国家"
+        },
+        "openalexFunders": {
+          "name": "OpenAlex 资助方",
+          "detail": "首先搜索"
+        },
+        "rorFunders": {
+          "name": "Research Organization Registry",
+          "detail": "也会搜索，用于政府和基金会"
+        },
+        "funderRegistry": {
+          "name": "Crossref 资助方注册库",
+          "detail": "Crossref 用来识别资助方的标识符"
+        },
+        "doi": {
+          "name": "DOI",
+          "detail": "什么是 DOI"
+        },
+        "crossrefReferences": {
+          "name": "Crossref 参考文献",
+          "detail": "如何据此统计引用"
+        },
+        "crossrefRelations": {
+          "name": "Crossref 关系",
+          "detail": "Crossref 如何把作品互相关联"
+        },
+        "issn": {
+          "name": "ISSN",
+          "detail": "什么是 ISSN"
+        }
+      },
+      "parts": {
+        "title": {
+          "title": "标题",
+          "about": "报告封面上印的标题。"
+        },
+        "subtitle": {
+          "title": "副标题",
+          "about": "标题下方的那一行，如果封面上有的话。",
+          "note": "PDF 没有印出时为空。"
+        },
+        "type": {
+          "title": "类型",
+          "about": "作品的种类。",
+          "note": "Crossref 把每份 Openscholar Report 都登记为报告。Zenodo 和 Openscholar 使用这里选择的类型。"
+        },
+        "language": {
+          "title": "语言",
+          "about": "报告所用的语言。"
+        },
+        "date": {
+          "title": "发布日期",
+          "about": "报告发布的时间：年份、月份或具体日期，与 PDF 写明的精确程度一致，最晚为今天。",
+          "note": "Crossref 按原有精度保存。Zenodo 需要完整日期，因此年份或月份会以其第一天提交。PDF 没有写明日期时使用今天。"
+        },
+        "licence": {
+          "title": "许可",
+          "about": "每份 Openscholar Report 都按 CC BY 4.0 发布，正如你签署的协议所写。"
+        },
+        "authors": {
+          "title": "作者",
+          "about": "报告署名的所有人，按引用中的顺序排列。",
+          "note": "PDF 中的作者已填好。在这里添加编者、译者等人员，并设置他们的角色。"
+        },
+        "name": {
+          "title": "姓名",
+          "about": "报告上印的姓名。也可以填写机构的全称。",
+          "note": "个人姓名以先姓、后名的方式发送给 Crossref 和 Zenodo：最后一个词被视为姓。机构名称（含有 Department、Ministry 或 University 等词）会完整发送。"
+        },
+        "kind": {
+          "title": "角色",
+          "about": "此人对报告而言是什么身份。大多数人是作者。",
+          "note": "只有作者会出现在报告的引用中。其他人员会连同其角色列在报告页面的“贡献”下，Crossref 和 Zenodo 也会收到每个人的角色。"
+        },
+        "orcid": {
+          "title": "ORCID 标识符",
+          "about": "一个免费编号，用来区分同名的研究人员。",
+          "note": "PDF 没有印出时，会在 ORCID 中查找在这些机构之一、与此姓名完全相同的唯一一人。"
+        },
+        "affiliations": {
+          "title": "所属机构",
+          "about": "撰写报告时此人的工作单位。",
+          "note": "有 ROR 标识符的机构会连同标识符一起发送，让 Crossref 和 Zenodo 知道是哪一家。手动输入的机构只发送名称。"
+        },
+        "contributions": {
+          "title": "贡献",
+          "about": "此人为这项工作做了什么，按 CRediT 的 14 种角色描述。",
+          "note": "仅当 PDF 有贡献声明时才会填写。留空也没关系。"
+        },
+        "corresponding": {
+          "title": "通讯作者",
+          "about": "读者就报告联系的人。",
+          "note": "仅当 PDF 标明通讯作者时才开启。"
+        },
+        "abstract": {
+          "title": "摘要",
+          "about": "你的 PDF 印出的摘要或概要，原样复制。",
+          "note": "PDF 两者都没有时，“根据 PDF 撰写”会起草一篇，供你检查和修改。"
+        },
+        "topics": {
+          "title": "主题",
+          "about": "报告的内容，用 OpenAlex 的主题表示。",
+          "note": "OpenAlex 的分类器会读取标题和摘要。主题上的条形显示其把握程度。你添加的主题没有条形。"
+        },
+        "keywords": {
+          "title": "关键词",
+          "about": "你自己描述报告内容的词语。",
+          "note": "PDF 中的关键词。PDF 没有列出时，取 OpenAlex 分类器给出的最多五个。"
+        },
+        "sdgs": {
+          "title": "可持续发展目标",
+          "about": "报告实质性涉及的联合国目标。",
+          "note": "最多填写三个。可随意添加或删除。"
+        },
+        "design": {
+          "title": "研究设计",
+          "about": "研究是如何进行的。",
+          "note": "仅当 PDF 写得清楚时才会填写。Zenodo 会把它显示为方法说明。"
+        },
+        "places": {
+          "title": "研究地点",
+          "about": "报告所涉及的国家和地区，而不是作者工作的地方。"
+        },
+        "funding": {
+          "title": "资助",
+          "about": "谁资助了这项工作，以及印出的资助编号。",
+          "note": "会在 OpenAlex 和 ROR 中查找资助方。在那里找到的资助方会连同 ROR 标识符一起发送，如有资助方注册库标识符也会一起发送。手动输入的资助方只发送名称。"
+        },
+        "references": {
+          "title": "参考文献",
+          "about": "本报告引用的作品，按其参考文献列表的写法。",
+          "note": "粘贴列表，或以 BibTeX、RIS 或纯文本文件上传。PDF 印出的每个 DOI 都已填好，Crossref 会把每条带 DOI 的参考文献与所引作品关联。"
+        },
+        "links": {
+          "title": "数据、代码和版本",
+          "about": "报告的数据、代码、其他版本和补充材料所在的位置。",
+          "note": "每项都是网址或 DOI。"
+        },
+        "agreement": {
+          "title": "出版协议",
+          "about": "在报告发布前，你和 Openscholar 达成一致的内容。",
+          "note": "你保留版权。勾选此框即代表你和每位合著者同意，请先确认他们已经同意。签署后的协议不能更改。"
+        },
+        "doi": {
+          "title": "DOI",
+          "about": "指向你的报告的永久链接，无论页面迁到哪里都能使用。",
+          "note": "签署时即会预留，方便你印在 PDF 中。报告上线后即可使用。"
+        },
+        "byline": {
+          "title": "系列行",
+          "about": "本系列每份报告都会印出的一行，写明系列名称、ISSN 和报告的 DOI。",
+          "note": "它必须是 PDF 中的文字而不是图片，因为检查会查找它。选择“请替我添加”，Openscholar 会添加包含该行的最后一页。"
+        },
+        "checks": {
+          "title": "检查",
+          "about": "报告上线前 Openscholar 检查的内容，例如 PDF 中的系列行，以及该作品是否已经发表。",
+          "note": "每项检查都会说明它查找了什么，失败时应修改什么。如果你确定某项检查有误，可以请人复核。"
+        },
+        "issn": {
+          "title": "ISSN",
+          "about": "标识该系列的编号，就像期刊的编号一样。",
+          "note": "在系列完成注册前处于待定状态。你的报告的 DOI 不受影响。"
+        },
+        "activation": {
+          "title": "激活",
+          "about": "激活会让你的报告公开：页面开放，DOI 开始生效，并完成注册。",
+          "note": "先支付应付金额：从工作区的出版余额、银行卡，或两者一起支付。优惠码可以减少银行卡支付的金额。"
+        }
+      }
     }
   },
   "people": {
@@ -6950,6 +7375,7 @@
       "preprint": "预印本",
       "book": "书籍",
       "report": "报告",
+      "presentation": "演示文稿",
       "review": "综述",
       "reference-entry": "参考条目",
       "conference-abstract": "会议摘要",

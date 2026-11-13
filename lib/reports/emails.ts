@@ -28,10 +28,10 @@ export type MailFacts = {
   archive: string;
   /** What changed, for the email that says a reviewer edited the details or that the author's changes are live. */
   edited?: string;
-  /** For the organisation's admins: their addresses, its name, and where its pages are (`/o/<slug>`). */
-  admins?: { emails: string[]; organization: string; prefix: string };
-  /** An activation's refund, in US dollars: what went back to the card, and to the account's credit. */
-  refund?: { card: number; credit: number };
+  /** Where the report's workspace's pages are: `/o/<slug>` for an organisation's, empty for a person's own. */
+  prefix: string;
+  /** For the organisation's admins: their addresses and its name. */
+  admins?: { emails: string[]; organization: string };
 };
 
 type Row = readonly [string, string];
@@ -51,25 +51,19 @@ const failedIn = (results: CheckResult[] | undefined, none: string, told: boolea
 // Every link opens the thing its email is about: the report's dialog for a reviewer, and for its author the report
 // on Publish where its next step is, or its own page once it's live.
 const reviewLink = (r: MailFacts, origin: string): Row => ["Open it", `${origin}/settings/admin/publishing?report=${r.key}`];
-const publishLink = (label: string, r: MailFacts, origin: string): Row => [label, `${origin}/publish?report=${r.key}`];
+// Under the report's workspace, so an organisation's report opens there, not one step away in the person's own.
+const publishLink = (label: string, r: MailFacts, origin: string): Row => [label, `${origin}${r.prefix}/publish?report=${r.key}`];
+/** Who makes the report's DOI live: in an organisation one of its admins, not necessarily the author being written to. */
+const activating = (r: MailFacts) => (r.admins ? `An admin of ${r.admins.organization} activates it to make its DOI live` : "Activate it to make its DOI live");
 const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/papers/${r.key}`];
 const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's note", note]] : []);
 /** Replies to an author's email reach the team's inbox. */
 const QUESTIONS: Row = ["Questions", "Reply to this email."];
-const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-/** What an activation's refund says: where the money went back to, and why. */
-const refundRows = (r: MailFacts, origin: string): Row[] => [
-  [
-    "Refunded",
-    [
-      r.refund?.card ? `${usd(r.refund.card)} to the card it was paid with. Banks take 5 to 10 days to show it.` : "",
-      r.refund?.credit ? `${usd(r.refund.credit)} back to the account's credit, which the next payment uses first.` : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  ],
-  ["Why", "The report changed while the bank confirmed the payment, so it didn't go live and nothing was bought."],
-  ["The report", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
+/** What a payment for a report that then couldn't go live says: where what it bought is now, and why. */
+const keptRows = (r: MailFacts, origin: string): Row[] => [
+  ["Why", "The report couldn't go live when its payment went through, for example because it had changed, been declined, or whoever paid no longer had access."],
+  ["What you paid", `It stays in ${r.admins ? `${r.admins.organization}'s` : "your"} publication balance. The next report activated is paid from it, and nothing more is charged.`],
+  publishLink("The report", r, origin),
   QUESTIONS,
 ];
 const changesRows = (told: boolean) => (r: MailFacts, origin: string): Row[] => [
@@ -133,18 +127,18 @@ const EVENTS = {
     rows: (r, origin) => [
       ["Started by", `${r.signer}${r.authorEmail ? ` <${r.authorEmail}>` : ""}`],
       ["What happens next", `It passed its checks. An admin of ${r.admins?.organization ?? "the organisation"} activates it to make its DOI live.`],
-      ["Activate it", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
+      publishLink("Activate it", r, origin),
     ],
   },
-  "refunded-admins": { to: "admins", label: "Activation refunded", heading: "An activation was refunded", rows: refundRows },
+  "kept-admins": { to: "admins", label: "Payment kept", heading: "What you paid for a report is kept for the next one", rows: keptRows },
   // To the report's author.
-  refunded: { to: "author", label: "Activation refunded", heading: "Your activation was refunded", rows: refundRows },
-  approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink("Activate it to make its DOI live", r, origin)] },
+  kept: { to: "author", label: "Payment kept", heading: "What you paid for a report is kept for your next one", rows: keptRows },
+  approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink(activating(r), r, origin)] },
   released: {
     to: "author",
     label: "Ready to activate",
     heading: "Your report can be activated now",
-    rows: (r, origin) => [["What changed", "Reports no longer wait for a reviewer, and yours passed its checks."], publishLink("Activate it to make its DOI live", r, origin)],
+    rows: (r, origin) => [["What changed", "Reports no longer wait for a reviewer, and yours passed its checks."], publishLink(activating(r), r, origin)],
   },
   declined: { to: "author", label: "Declined", heading: "A reviewer declined your report", rows: (r, origin) => [...noteOf(r.note), publishLink("Your report and what its checks said", r, origin), QUESTIONS] },
   withdrawn: {

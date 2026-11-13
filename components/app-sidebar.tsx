@@ -5,8 +5,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebarStore } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
+import { focusContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { PanelLeft } from "@/components/icons";
+import { HamburgerMenu } from "@/components/icons";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { SidebarContent } from "@/components/workspaces/rail";
@@ -48,7 +49,7 @@ export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace 
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setOpen}>
-        <SheetContent side="left" showCloseButton={false} className="w-20 gap-0 bg-sidebar p-0">
+        <SheetContent side="left" showCloseButton={false} onOpenAutoFocus={focusContent} className="w-20 gap-0 bg-sidebar p-0">
           <SheetTitle className="sr-only">{tLabels("navigation")}</SheetTitle>
           <Suspense fallback={null}>
             <SidebarContent firstWorkspace={firstWorkspace} onClose={() => setOpen(false)} />
@@ -68,13 +69,11 @@ export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace 
 }
 
 export function MobileSidebarTrigger() {
-  const isMobile = useIsMobile();
   const t = useTranslations("accessibility");
   const isOpen = useSidebarStore((s) => s.isOpen);
   const setOpen = useSidebarStore((s) => s.setOpen);
 
-  if (!isMobile) return null;
-
+  // Its only place is the phone's bar, which the stylesheet shows and hides: it is there from the bar's first frame.
   return (
     <motion.div
       tabIndex={-1}
@@ -90,7 +89,8 @@ export function MobileSidebarTrigger() {
         aria-expanded={isOpen}
         className="lg:hidden"
       >
-        <PanelLeft className="h-5 w-5" />
+        {/* The three lines everyone reads as "menu": two phone walkers didn't take the panel icon for one. */}
+        <HamburgerMenu className="h-6 w-6" />
       </Button>
     </motion.div>
   );

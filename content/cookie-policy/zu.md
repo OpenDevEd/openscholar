@@ -12,7 +12,7 @@ Uma usesha ku-openscholar.ai, amafayela amancane edatha abizwa ngokuthi ama-cook
 | `NEXT_LOCALE` | Ikhumbula ulimi lwakho | Unyaka o-1 |
 | `__cf_bm`, `_cfuvid` | I-Cloudflare iwasebenzisela ukuvikela iwebhusayithi ekuxhumaneni okuzenzakalelayo | Imizuzu engu-30, noma uze uvale isiphequluli sakho |
 
-Ukukhetha kwakho kwama-cookie kuhlala ku-cookie ebizwa ngokuthi openscholar_consent. Izilungiselelo zokubonisa, njengamaphaneli avuliwe, zihlala kusitoreji sendawo sesiphequluli sakho.
+Ukukhetha kwakho kwama-cookie kuhlala ku-cookie ebizwa ngokuthi openscholar_consent. Isethelwe i-openscholar.ai, ngakho ukukhetha okufanayo kusebenza kuyo yonke iwebhusayithi ye-Openscholar nakuwo wonke umphakathi onekheli le-openscholar.ai. Izilungiselelo zokubonisa, njengamaphaneli avuliwe, zihlala kusitoreji sendawo sesiphequluli sakho.
 
 ## Ama-cookie okusebenza nokuhlaziya (akukhethwa)
 

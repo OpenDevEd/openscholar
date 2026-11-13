@@ -117,9 +117,14 @@ export function CookieConsentBanner() {
     setMounted(true);
   }, []);
 
+  // An answer given in another tab, on openscholar.ai or on a community, reaches this one as a consent update
+  // (instrumentation-client.ts), and the banner goes with it.
   useEffect(() => {
     if (!mounted) return;
-    setShowBanner(shouldShowBanner());
+    const update = () => setShowBanner(shouldShowBanner());
+    update();
+    window.addEventListener(CONSENT_UPDATED_EVENT, update);
+    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, update);
   }, [mounted, shouldShowBanner]);
 
   useEffect(() => {

@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
@@ -23,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { PublicationBalanceRow } from "@/components/billing/publication-balance-row";
 import { SeatStepper } from "@/components/billing/seat-stepper";
 import { PaymentReceived, TopUpBundles, useTopUps } from "@/components/billing/top-up-bundles";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
@@ -684,7 +686,9 @@ export function WorkspaceBilling() {
   const [picked, setPicked] = useState<number>();
   // Autumn's figure for the seats picked, read before the confirmation opens; the change is for the seats it was read for.
   const [review, setReview] = useState<(SeatPreview & { seats: number }) | null>(null);
-  if (!organization || !account || !catalog || !spending.ready || counts === undefined) return <Enter ready={false}>{null}</Enter>;
+  // Whether reports can be published, so the organisation's activations for them are worth a row, as on a person's page.
+  const publishing = useQuery(api.reports.settings.open, {});
+  if (!organization || !account || !catalog || !spending.ready || counts === undefined || publishing === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
   const plan = findPlan(catalog, planId);
@@ -780,6 +784,7 @@ export function WorkspaceBilling() {
                 </div>
               </div>
             ) : null}
+            {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} /> : null}
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">

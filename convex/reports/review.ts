@@ -10,7 +10,7 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, isAuthor, licenceOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { becameReady, notify } from "./mail";
@@ -33,7 +33,7 @@ const said = (note: string | undefined) => note?.trim().slice(0, REVIEW_TEXT_MAX
 async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof adminRowValidator>> {
   const { key, doi, step, status, approved, flagged, asked, changes, note, registration, deposit, archive, updatedAt } = report;
   // Its first author, with where they work, as the list names a report's people.
-  const first = (await detailsOf(ctx, report._id)).metadata?.authors[0];
+  const first = (await detailsOf(ctx, report._id)).metadata?.authors.find(isAuthor);
   return {
     key, doi, step, status, registration, deposit, archive, updatedAt,
     ...(approved && { approved }),
@@ -44,7 +44,7 @@ async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof 
     ...((report.title ?? report.pdf?.name) && { title: report.title ?? report.pdf?.name }),
     withdrawn: report.withdrawnAt !== undefined,
     signer: report.signedBy.name,
-    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
+    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
     ...(report.pdf && { pdfAt: report.pdf.at }),
     ...(first?.name && { first: { name: first.name, ...(first.affiliations[0]?.country && { country: first.affiliations[0].country }) } }),
   };
@@ -130,7 +130,7 @@ export const get = query({
       agreementVersion: report.agreementVersion,
       ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
       ...(report.run && { run: { at: report.run.at, changes: report.run.changes === true } }),
-      ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+      ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
       ...(details.metadata && { metadata: details.metadata }),
       ...(details.results && { results: details.results }),
       ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),
@@ -263,7 +263,7 @@ export const editDetails = mutation({
     // is never overwritten by it.
     if (report.run) throw createError("CONFLICT", "This report's checks are running on a change right now. Try again in a moment.");
     if (report.updatedAt !== seenAt) throw createError("CONFLICT", "This report changed since you opened it. Open it again to edit it as it stands.");
-    const kept = checkedDetails(metadata);
+    const kept = checkedDetails(metadata, licenceOf(report));
     if (JSON.stringify(details.metadata) === JSON.stringify(kept)) throw createError("VALIDATION_ERROR", "Nothing was changed.");
     const changed = changesOf(details.metadata, kept).map((change) => change.label).join(", ");
     if (report.status === "live") await applyChanges(ctx, report, details, { metadata: kept, results: details.results ?? [], checksVersion: report.checksVersion ?? (await reportSettings(ctx)).checksVersion });
