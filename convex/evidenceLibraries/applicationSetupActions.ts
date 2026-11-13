@@ -21,6 +21,7 @@ import {
 } from "./runtimeConfiguration";
 import {
   optionalPlatformBrandAssets,
+  communitiesAnnounceToIndexNow,
   optionalPlatformEmbeddingKey,
   optionalPlatformMailService,
   optionalRuntimeEnvironment,
@@ -178,6 +179,7 @@ export const runApplicationSetup = internalAction({
         mail: optionalPlatformMailService(invalidData),
         brand: optionalPlatformBrandAssets(invalidData),
         embeddingApiKey: optionalPlatformEmbeddingKey(),
+        indexNow: communitiesAnnounceToIndexNow(),
         zoteroGroups: prepared.zoteroGroups,
         aiProviderKey: prepared.aiProviderApiKey,
         openAlexApiKey: prepared.openAlexEncryptedApiKey,

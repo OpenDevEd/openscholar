@@ -64,6 +64,8 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
   mail: PlatformMailService | undefined;
   brand: PlatformBrandAssets | undefined;
   embeddingApiKey: string | undefined;
+  /** Whether the community tells IndexNow search engines about changed records: the live deployment's setting. */
+  indexNow?: boolean;
   zoteroGroups: {
     groupId: string;
     encryptedApiKey: string;
@@ -138,6 +140,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       mail: input.mail,
       brand: input.brand,
       embeddingApiKey: input.embeddingApiKey,
+      indexNow: input.indexNow,
       team: input.team,
       publication: input.publicationProviders
         ? buildPublicationConfiguration(

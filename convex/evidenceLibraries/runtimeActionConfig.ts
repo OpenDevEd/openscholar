@@ -25,6 +25,12 @@ export function optionalRuntimeEnvironment(name: string): string | undefined {
   return process.env[name]?.trim() || undefined;
 }
 
+/**
+ * Whether this deployment's communities tell IndexNow search engines when a record is published, changed or taken
+ * down. On for the live deployment only (`EL_INDEXNOW=true`): a test community must not announce itself.
+ */
+export const communitiesAnnounceToIndexNow = () => process.env.EL_INDEXNOW === "true";
+
 export function requirePositiveRuntimeInteger(
   name: string,
   createError: ErrorFactory,

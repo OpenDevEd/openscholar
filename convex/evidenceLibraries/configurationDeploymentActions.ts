@@ -37,6 +37,7 @@ import {
 } from "./readinessClient";
 import {
   optionalPlatformBrandAssets,
+  communitiesAnnounceToIndexNow,
   optionalPlatformEmbeddingKey,
   optionalPlatformMailService,
   PlatformEmbeddingKeyMissingError,
@@ -452,6 +453,7 @@ export const runConfigurationDeployment = internalAction({
           mail: optionalPlatformMailService(invalidConfiguration),
           brand: optionalPlatformBrandAssets(invalidConfiguration),
           embeddingApiKey: optionalPlatformEmbeddingKey(),
+          indexNow: communitiesAnnounceToIndexNow(),
           zoteroGroups: prepared.zoteroGroups,
           aiProviderKey: prepared.aiProviderKey,
           openAlexApiKey: prepared.openAlexApiKey,
