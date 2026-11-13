@@ -203,9 +203,11 @@ export function SetupView({
   // What one paper costs at most on the model Screen all runs on: a job holds that much for each of its papers when it starts.
   const { data: price } = useProtectedQuery(api.screening.queries.estimate, inWorkspace(workspaceId, { papers: 1 }));
   const perPaper = price?.credits;
-  // An untouched range ends on the last paper the credits cover (on the first, when they cover none), so what the
-  // page first offers is the most the person can start.
-  const untouched: [number, number] = [1, Math.max(1, Math.min(top, perPaper ? Math.floor(balance / perPaper) : top))];
+  // What the workspace's plan takes in one screening, which the server refuses a job over: null for any number.
+  const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
+  // An untouched range ends on the last paper the credits cover and the plan takes in one job (on the first, when the
+  // credits cover none), so what the page first offers is the most the person can start.
+  const untouched: [number, number] = [1, Math.max(1, Math.min(top, perPaper ? Math.floor(balance / perPaper) : top, limits?.request_papers ?? top))];
   const range = chosen ?? untouched;
   const setRange = (change: SetStateAction<[number, number]>) => setChosen((current) => (typeof change === "function" ? change(current ?? untouched) : change));
   const [first, last] =
@@ -363,7 +365,7 @@ export function SetupView({
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows. What each Evidence Library
   // lists comes from the libraries themselves and can take seconds: the form waits for it only when it opens on a library.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.librariesKnown && (libraries.loaded || (kind !== "evidenceLibrary" && destIn !== "library")) &&(!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && perPaper !== undefined && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.librariesKnown && (libraries.loaded || (kind !== "evidenceLibrary" && destIn !== "library")) &&(!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && perPaper !== undefined && limits !== undefined && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
