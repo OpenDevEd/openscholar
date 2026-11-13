@@ -7291,7 +7291,7 @@
         "activation": {
           "title": "Ativação",
           "about": "Ativar torna o seu relatório público: a página abre, o DOI começa a funcionar e fica registado.",
-          "note": "O que é devido é pago primeiro: com o saldo de publicação do seu espaço de trabalho, com cartão, ou ambos. Um código promocional reduz o que o cartão paga."
+          "note": "O que é devido é pago primeiro: com o saldo de publicação do seu espaço de trabalho, com cartão, ou ambos. Um código promocional reduz o que o cartão paga. Um pagamento com cartão é mostrado primeiro para confirmar, e aí pode pagá-lo com outro cartão."
         }
       }
     }

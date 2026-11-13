@@ -7290,7 +7290,7 @@
         "activation": {
           "title": "Activating",
           "about": "Activating makes your report public: its page opens, its DOI starts working, and it's registered.",
-          "note": "What's due is paid first: from your workspace's publication balance, by card, or both. A voucher code lowers what the card pays."
+          "note": "What's due is paid first: from your workspace's publication balance, by card, or both. A voucher code lowers what the card pays. A card payment is shown for you to confirm first, and you can pay it with another card there."
         }
       }
     }
