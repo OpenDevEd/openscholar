@@ -190,23 +190,30 @@ export const PAY_WITH = ["balance", "card"] as const;
 export type PayWith = (typeof PAY_WITH)[number];
 /** The least a card buys of the balance, in US dollars: Stripe takes no payment under about 50 cents, and a code can halve what is bought. */
 export const BOUGHT_MIN = 1;
-const cents = (dollars: number) => Math.round(dollars * 100) / 100;
+/** Dollars to the cent, half a cent going up, whatever binary arithmetic made of it (2.835 can come out a hair under). */
+export const cents = (dollars: number) => Math.round(dollars * 100 + 1e-7) / 100;
 /**
  * What a price comes to, in US dollars: what the balance pays, what is bought by card, what a code takes off that,
  * and what is due. With the balance, it pays what it holds, to the cent, and a card buys the rest; by card, the
  * balance is left as it is. A card buys at least `BOUGHT_MIN`: with less than that missing, the balance pays that
- * much less and keeps the difference (`spare`). `balance` null is one with no limit.
+ * much less and keeps the difference (`spare`). A code's share comes off what is bought as Autumn quotes and bills
+ * it: what is due is rounded to the cent, half a cent going up, and the code's part is the rest. `balance` null is
+ * one with no limit.
+ * ponytail: on half a cent (half off $5.67), Stripe's own page, which a customer with no saved card pays on, rounds
+ * the other way and takes a cent less than is shown here. Reckoning each way of paying by its own rounding would
+ * tie this to two services' habits for a cent in the person's favour.
  * ponytail: a code that takes more than half off what is bought, and less than all of it, could leave under Stripe's
  * minimum to pay on the least a card buys. None we give out does; one that did needs the floor raised to that
  * minimum over the share the code leaves.
  */
 export function payment({ price, balance, payWith, off }: { price: number; balance: number | null; payWith: PayWith; /** The share of what is bought that a code takes off, 0 to 1. */ off: number }) {
-  // What the balance surely holds, in whole cents: a fraction of a cent is never counted on.
-  const held = balance === null ? price : Math.min(Math.max(Math.floor(balance * 100 + 1e-6) / 100, 0), price);
+  // What the balance surely holds, in whole cents: a fraction of a cent is never counted on, or the price would be
+  // that fraction short once the rest is bought. The 1e-9 forgives only what binary arithmetic makes of 4.33 * 100.
+  const held = balance === null ? price : Math.min(Math.max(Math.floor(balance * 100 + 1e-9) / 100, 0), price);
   const short = cents(price - held);
   const bought = payWith === "card" ? price : short === 0 ? 0 : Math.min(price, Math.max(short, BOUGHT_MIN));
-  const discount = cents(bought * off);
-  return { fromBalance: cents(price - bought), bought, spare: payWith === "card" ? 0 : cents(bought - short), discount, due: cents(bought - discount) };
+  const due = cents(bought * (1 - off));
+  return { fromBalance: cents(price - bought), bought, spare: payWith === "card" ? 0 : cents(bought - short), discount: cents(bought - due), due };
 }
 
 /**

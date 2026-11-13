@@ -74,7 +74,8 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
         dropped = true;
         throw new TypeError("fetch failed");
       }
-      return Response.json({ total: Math.max(0, due - credit), line_items: [{ total: due }] });
+      // As Autumn quotes: its lines unrounded, and what is to pay rounded to the cent, half a cent going up.
+      return Response.json({ total: Math.round(Math.max(0, due - credit) * 100 + 1e-7) / 100, line_items: [{ total: due }] });
     }
     if (path === "balances.check") {
       asked.push({ path, feature_id: body.feature_id, required_balance: body.required_balance, lock_id: body.lock?.lock_id });
@@ -107,7 +108,8 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
         if (invoices.length === 0) invoices.push({ plan_ids: [TOP_UP], total: due, currency: "usd", created_at: Date.now(), hosted_invoice_url: "https://invoice.stripe.example/pay", ...lost });
         throw new TypeError("fetch failed");
       }
-      return Response.json({ payment_url: null, ...(due > 0 && { invoice: { status: "paid", stripe_id: "in_bought", total: due, currency: "usd" } }) });
+      // As Autumn bills a saved card: what it quoted.
+      return Response.json({ payment_url: null, ...(due > 0 && { invoice: { status: "paid", stripe_id: "in_bought", total: Math.round(due * 100 + 1e-7) / 100, currency: "usd" } }) });
     }
     if (path === "balances.update") {
       asked.push({ path, balance_id: body.balance_id, add_to_balance: body.add_to_balance });
@@ -210,6 +212,27 @@ describe("activating a report", () => {
     expect(Object.values(autumn.holds()).reduce((sum, held) => sum + held, 0)).toBe(0);
     expect(await activations(world)).toMatchObject([{ state: "live", payWith: "balance", price: 10, bought: 5.5, charge: { invoice: "in_bought", total: 5.5 } }]);
     expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 4.5, byCredit: 0, byCard: 5.5, code: null } });
+  });
+
+  it("on half a cent, charges what Autumn quotes, which is what the page reckoned, and nothing above it", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // $5.67 is bought at half off, $2.835: Autumn quotes and bills $2.84.
+    const autumn = autumnStub({ kept: 4.33, card: true });
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, code: "HALFOFF", expect: 2.83 })).rejects.toMatchObject(refused("CONFLICT"));
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, code: "HALFOFF", expect: 2.84 })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(await activations(world)).toMatchObject([{ state: "live", bought: 5.67, code: "HALFOFF", charge: { total: 2.84 } }]);
+  });
+
+  it("reads a code's share from the quote's unrounded lines, so it holds for whatever is bought next", async () => {
+    const world = await setup();
+    autumnStub({});
+    // Half off $1.01 is 50.5 cents: Autumn's total says 51, its line 50.5. A share read from the total would be 49.5%.
+    const { off } = await world.author.action(api.reports.activation.quoteCode, { workspaceId: world.own, code: "HALFOFF", amount: 1.01 });
+    vi.unstubAllGlobals();
+    expect(off).toBeCloseTo(0.5, 10);
   });
 
   it("by card, buys the whole price and leaves the balance as it was", async () => {
