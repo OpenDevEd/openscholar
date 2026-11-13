@@ -94,7 +94,7 @@ export function Bill({ licence, price, balance, payWith, code, credit = 0, actio
       {/* The least a card buys can be more than is missing: said, so the bill adds up to what the balance shows. */}
       <AutoHeight>{sum.spare > 0 ? <p className="pt-2 text-xs text-pretty text-muted-foreground">{t("least", { least: inSentence(money(BOUGHT_MIN)), spare: inSentence(money(sum.spare)) })}</p> : null}</AutoHeight>
       {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
-      {action ? <div className="mt-3 flex justify-end">{action}</div> : null}
+      {action ? <div className="@container/action mt-3 flex justify-end">{action}</div> : null}
     </div>
   );
 }

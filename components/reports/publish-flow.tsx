@@ -1798,9 +1798,9 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     voucher={vouchers ? <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} /> : null}
                     action={(withAmount) => (
                       // What pressing it does, in a "?" beside it: people asked what Activate would do before they pressed.
-                      // It opens above, where it leaves the button in sight.
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <FieldHelp field="activation" side="top" />
+                      // It opens above the two, where it leaves the button in sight. In a bill too narrow for both
+                      // (a phone at large text) the "?" takes the line above the button, which then has the width.
+                      <FieldHelp field="activation" side="top" around="flex min-w-0 items-center justify-end gap-1.5 @max-[11rem]/action:flex-wrap">
                         {shut ? (
                           // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
                           <TooltipHint label={shut}>
@@ -1814,7 +1814,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                           // it; beside the bill, it does.
                           <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={withAmount && due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? activateNow : () => setPaying(true)} />
                         )}
-                      </span>
+                      </FieldHelp>
                     )}
                   />
                   {/* The bill stays under the cover, where it has been since the report was signed: here with what is chosen now. */}
@@ -2012,10 +2012,11 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
   return (
     // Room around it for the buttons' focus rings, which its height animation would clip (WebKit has no clip margin).
     <AutoHeight className="-mx-3 -my-1">
-      <div className="px-3 py-1">
+      <div className="@container/code px-3 py-1">
         {applied ? (
-          <div className="flex items-center gap-2 text-sm">
-            <Tag className="size-4 text-muted-foreground" />
+          // Too narrow for one line (a phone at large text), what it takes off and the way to remove it go under the code.
+          <div className="flex items-center gap-2 text-sm @max-[11rem]/code:flex-wrap">
+            <Tag className="size-4 shrink-0 text-muted-foreground" />
             <span className="font-mono font-medium">{applied.code}</span>
             <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
             <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
