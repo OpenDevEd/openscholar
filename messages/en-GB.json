@@ -1436,7 +1436,11 @@
     "upgradeSuccess": "Upgrade successful",
     "upgradeSuccessCredits": "Upgraded to {plan} — {credits} credits added",
     "totalCharge": "Total due now",
-    "paymentMethod": "Payment method"
+    "paymentMethod": "Payment method",
+    "anotherCard": "Another card",
+    "anotherCardNote": "Stripe's page opens with your saved cards and room for a new one.",
+    "manageBilling": "Manage billing",
+    "toPayment": "Continue to payment"
   },
   "libraryPage": {
     "title": "Library",
@@ -6750,10 +6754,8 @@
         "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place.",
         "kept": "What was paid for this report went to your publication balance. The next report you activate uses it.",
         "keptOrg": "What was paid for this report went to {organization}'s publication balance. The next report activated there uses it.",
-        "keptNote": "If a reviewer declines the report before the payment goes through, what you paid stays in your publication balance and pays for your next report.",
-        "keptNoteOrg": "If a reviewer declines the report before the payment goes through, what was paid stays in {organization}'s publication balance and pays for its next report.",
         "balanceLine": "Publication balance",
-        "onStripe": "Stripe's page opens for the payment, then comes back here.",
+        "onStripe": "Stripe's page opens for the payment.",
         "changed": "What is due changed since this page read it. Check it, then activate again.",
         "toStripe": "Continue to payment"
       },

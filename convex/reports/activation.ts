@@ -236,6 +236,9 @@ async function putLive(ctx: MutationCtx, report: Doc<"reports">) {
   await register(ctx, report);
   await notify(ctx, report._id, "live");
   await notify(ctx, report._id, "live-author");
+  // Saved to the library of the workspace it was published in, as its own step: a save that is refused (its owner
+  // has left the workspace since) never holds a report back.
+  await ctx.scheduler.runAfter(0, internal.reports.saved.keep, { reportId: report._id });
 }
 
 /** The page offered to pay from a balance that isn't what it was any more: spent since, or reset. */
@@ -603,9 +606,11 @@ export const activate = action({
     locale: v.optional(v.string()),
     /** The saved card the page showed, by its last four digits; null for none, which sends the payment to Stripe's page. */
     card: v.optional(v.union(v.string(), v.null())),
+    /** Paid this once with a card other than the saved one: on Stripe's page, which offers the saved cards and takes a new one. */
+    otherCard: v.optional(v.boolean()),
   },
   returns: v.union(v.object({ live: v.literal(true) }), v.object({ url: v.string() })),
-  handler: async (ctx, { workspaceId, key, payWith, code: typed, price, expect, locale, card }): Promise<{ live: true } | { url: string }> => {
+  handler: async (ctx, { workspaceId, key, payWith, code: typed, price, expect, locale, card, otherCard }): Promise<{ live: true } | { url: string }> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
@@ -651,7 +656,14 @@ export const activate = action({
           const cardless = !customer.payment_method?.card;
           // A card saved or removed since the page read the account: the person was told another way of paying (Stripe's
           // page, or that card), and is never charged by one they weren't shown. What the account's credit covers charges no card.
-          if (card !== undefined && quoted.total > 0.005 && (customer.payment_method?.card?.last4 ?? null) !== card) return await changed(CARD_CHANGED);
+          // What the account's credit takes off the invoice: its lines less what is due.
+          const credit = Math.max(0, cents(linesOf(quoted) - quoted.total));
+          // Stripe's page takes a payment whole and doesn't draw on the account's credit: it would ask for more than
+          // the page showed. The page doesn't offer it then; one that did read the credit before it arrived.
+          if (otherCard && !cardless && credit > 0) return await changed("The account's credit isn't used on Stripe's page. Pay with the saved card, or change it under Manage billing.");
+          // Someone who asked for Stripe's page chooses the card there, whichever is saved by now.
+          const elsewhere = otherCard === true && !cardless && quoted.total > 0.005;
+          if (!elsewhere && card !== undefined && quoted.total > 0.005 && (customer.payment_method?.card?.last4 ?? null) !== card) return await changed(CARD_CHANGED);
           // Nothing for a card to pay, before any credit: a code took it all off. Autumn is told so (`unbilled`), or it
           // would send a customer with no card to Stripe's page for $0.
           const free = linesOf(quoted) <= 0.005;
@@ -659,7 +671,7 @@ export const activate = action({
           // it takes its admin's, who is the one activating.
           if (cardless && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
           // With no saved card and something to pay, Autumn answers Stripe's page for it, which comes back to the report.
-          const charged = await autumn.attach({ customerId: first.customerId, planId: PUBLICATION_TOP_UP_PLAN, quantity: dollars(bought), code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), checkout: { locale }, ...(cardless && free && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
+          const charged = await autumn.attach({ customerId: first.customerId, planId: PUBLICATION_TOP_UP_PLAN, quantity: dollars(bought), code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), checkout: { locale, saved: elsewhere }, ...(cardless && free && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
           // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code,
           // isn't held up by an invoice left open.
           if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);
@@ -675,8 +687,6 @@ export const activate = action({
             throw createError("CONFLICT", STILL_PAYING);
           }
           // Bought: the dollars are in the balance now, and this report's to spend.
-          // What the account's credit took off the invoice: its lines less what was due.
-          const credit = Math.max(0, cents(linesOf(quoted) - quoted.total));
           if (await spendPaid(ctx, first.customerId, activationId, { payWith, price }, { ...done.charge, ...(credit > 0 && { credit }) })) return { live: true as const };
           throw createError("CONFLICT", KEPT);
         } catch (error) {

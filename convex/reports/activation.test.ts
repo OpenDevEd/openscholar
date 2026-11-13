@@ -65,7 +65,7 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
     if (url.startsWith("https://api.stripe.com")) return Response.json({ id: "in_late", status: "paid", total: stripeTotal, amount_due: Math.max(0, stripeTotal - credit * 100), currency: "usd", payments: { data: [] } });
     const path = url.split("/v1/")[1]!;
     const key = (init?.headers as Record<string, string> | undefined)?.["Idempotency-Key"];
-    const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; email?: string; feature_id?: string; required_balance?: number; lock?: { lock_id: string }; lock_id?: string; action?: string; discounts?: Array<{ promotion_code: string }>; invoice_mode?: unknown; customize?: { items?: Array<{ price?: { amount: number; billing_units: number } }> }; feature_quantities?: Array<{ feature_id: string; quantity: number }>; balance_id?: string; add_to_balance?: number };
+    const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; email?: string; feature_id?: string; required_balance?: number; lock?: { lock_id: string }; lock_id?: string; action?: string; discounts?: Array<{ promotion_code: string }>; invoice_mode?: unknown; redirect_mode?: string; checkout_session_params?: { saved_payment_method_options?: unknown }; customize?: { items?: Array<{ price?: { amount: number; billing_units: number } }> }; feature_quantities?: Array<{ feature_id: string; quantity: number }>; balance_id?: string; add_to_balance?: number };
     const quantity = body.feature_quantities?.[0]?.quantity ?? 0;
     const due = quantity * (1 - (OFF[body.discounts?.[0]?.promotion_code ?? ""] ?? 0));
     if (path === "billing.preview_attach") {
@@ -99,9 +99,9 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
       return Response.json({ success: true });
     }
     if (path === "billing.attach") {
-      asked.push({ path, quantity, priced: body.customize?.items?.[0]?.price, discounts: body.discounts, invoice_mode: body.invoice_mode });
-      // Something to pay and no card: Stripe's page, and nothing given until it is paid.
-      if (!card && !body.invoice_mode) return Response.json({ payment_url: CHECKOUT });
+      asked.push({ path, quantity, priced: body.customize?.items?.[0]?.price, discounts: body.discounts, invoice_mode: body.invoice_mode, redirect: body.redirect_mode, saved: body.checkout_session_params?.saved_payment_method_options });
+      // Something to pay and no card, or Stripe's page asked for by name: Stripe's page, and nothing given until it is paid.
+      if ((!card || body.redirect_mode === "always") && !body.invoice_mode) return Response.json({ payment_url: CHECKOUT });
       if (!keys.has(key!)) add(quantity);
       keys.add(key!);
       if (lost) {
@@ -233,6 +233,40 @@ describe("activating a report", () => {
     const { off } = await world.author.action(api.reports.activation.quoteCode, { workspaceId: world.own, code: "HALFOFF", amount: 1.01 });
     vi.unstubAllGlobals();
     expect(off).toBeCloseTo(0.5, 10);
+  });
+
+  it("sends the payment to Stripe's page, with the saved cards offered there, when another card is asked for", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ kept: 4, card: true });
+    // The saved card is 4242: asked to pay with another, nothing is charged to it.
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, expect: 6, card: "4242", otherCard: true })).toEqual({ url: CHECKOUT });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ quantity: 6, redirect: "always", saved: { allow_redisplay_filters: ["always", "limited", "unspecified"] } }]);
+    expect(autumn.holds()).toEqual({ given: 4 });
+    expect(await activations(world)).toMatchObject([{ state: "pending", payWith: "balance", bought: 6 }]);
+    expect(await row(world.t, key)).toMatchObject({ status: "passed" });
+  });
+
+  it("refuses another card while the account's credit pays part: Stripe's page would ask for all of it", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ card: true, credit: 4 });
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 6, card: "4242", otherCard: true })).rejects.toMatchObject(refused("CONFLICT"));
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    expect(await activations(world)).toEqual([]);
+  });
+
+  it("saves a report that goes live to the library of the workspace it was published in", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    autumnStub({ kept: 10 });
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10 })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+    const saved = await world.t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_paperKey", (q) => q.eq("paperKey", `report:${key}`)).take(5));
+    expect(saved).toMatchObject([{ workspaceId: world.own, paperKey: `report:${key}` }]);
   });
 
   it("by card, buys the whole price and leaves the balance as it was", async () => {

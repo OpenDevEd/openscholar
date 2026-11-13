@@ -1436,7 +1436,11 @@
     "upgradeSuccess": "升级成功",
     "upgradeSuccessCredits": "已升级到{plan} — 已添加{credits}积分",
     "totalCharge": "现在应付总额",
-    "paymentMethod": "支付方式"
+    "paymentMethod": "支付方式",
+    "anotherCard": "其他银行卡",
+    "anotherCardNote": "将打开 Stripe 页面，可选择已保存的银行卡，也可输入新卡。",
+    "manageBilling": "管理账单",
+    "toPayment": "继续付款"
   },
   "libraryPage": {
     "title": "文献库",
@@ -6750,10 +6754,8 @@
         "paused": "发布暂时暂停，目前无法上线。你的报告会保留其位置。",
         "kept": "为这份报告支付的金额已转入你的出版余额。你激活的下一份报告会使用它。",
         "keptOrg": "为这份报告支付的金额已转入 {organization} 的出版余额。那里激活的下一份报告会使用它。",
-        "keptNote": "如果审核人员在付款完成前拒绝了报告，你支付的金额会留在你的出版余额中，用于支付你的下一份报告。",
-        "keptNoteOrg": "如果审核人员在付款完成前拒绝了报告，已支付的金额会留在 {organization} 的出版余额中，用于支付那里的下一份报告。",
         "balanceLine": "出版余额",
-        "onStripe": "将打开 Stripe 页面完成付款，然后返回这里。",
+        "onStripe": "将打开 Stripe 页面进行付款。",
         "changed": "应付金额在本页面读取后发生了变化。请核对后再次激活。",
         "toStripe": "继续付款"
       },

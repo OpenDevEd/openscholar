@@ -1436,7 +1436,11 @@
     "upgradeSuccess": "Mise à niveau réussie",
     "upgradeSuccessCredits": "Mise à niveau vers {plan} — {credits} crédits ajoutés",
     "totalCharge": "Total a payer maintenant",
-    "paymentMethod": "Moyen de paiement"
+    "paymentMethod": "Moyen de paiement",
+    "anotherCard": "Une autre carte",
+    "anotherCardNote": "La page de Stripe s'ouvre avec vos cartes enregistrées et permet d'en saisir une nouvelle.",
+    "manageBilling": "Gérer la facturation",
+    "toPayment": "Continuer vers le paiement"
   },
   "libraryPage": {
     "title": "Bibliothèque",
@@ -6750,10 +6754,8 @@
         "paused": "La publication est en pause pour le moment : rien ne peut être mis en ligne. Votre rapport garde sa place.",
         "kept": "Ce qui a été payé pour ce rapport est allé à votre solde de publication. Le prochain rapport que vous activez l’utilise.",
         "keptOrg": "Ce qui a été payé pour ce rapport est allé au solde de publication de {organization}. Le prochain rapport activé là-bas l’utilise.",
-        "keptNote": "Si un relecteur refuse le rapport avant que le paiement n’aboutisse, ce que vous avez payé reste dans votre solde de publication et paie votre prochain rapport.",
-        "keptNoteOrg": "Si un relecteur refuse le rapport avant que le paiement n’aboutisse, ce qui a été payé reste dans le solde de publication de {organization} et paie son prochain rapport.",
         "balanceLine": "Solde de publication",
-        "onStripe": "La page de Stripe s’ouvre pour le paiement, puis revient ici.",
+        "onStripe": "La page de Stripe s'ouvre pour le paiement.",
         "changed": "Le montant dû a changé depuis que cette page l’a lu. Vérifiez-le, puis activez à nouveau.",
         "toStripe": "Continuer vers le paiement"
       },

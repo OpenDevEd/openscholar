@@ -38,9 +38,12 @@ function RollingMoney({ value }: { value: number }) {
 }
 
 /** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
-export function PayWithSwitch({ balance, payWith, onPayWith, className }: { balance: Balance; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
+export function PayWithSwitch({ balance, payWith, onPayWith, card, className }: { balance: Balance; payWith: PayWith; onPayWith: (payWith: PayWith) => void; /** The saved card a charge goes to: its last digits ride on the Card choice. */ card?: { last4: string } | null; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
+  // Only where its column has the room: in a narrower one they would push the Card choice onto a second row.
+  // ui-rules-allow: dot-separator -- the masked digits of a card number
+  const digits = card ? <span className="hidden tabular-nums @min-[26rem]/pay:inline">{`\u2022\u2022\u2022\u2022 ${card.last4}`}</span> : undefined;
   if (balance.balance !== 0)
     return (
       <Segmented
@@ -53,7 +56,7 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
         className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
         options={[
           { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
-          { id: "card", label: t("card"), icon: CreditCard },
+          { id: "card", label: t("card"), icon: CreditCard, detail: digits },
         ]}
       />
     );
@@ -62,6 +65,7 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
     <p className="flex h-9 items-center gap-2 text-sm font-medium">
       <CreditCard className="size-4 text-muted-foreground" />
       {t("byCard")}
+      {digits ? <span className="font-normal text-muted-foreground">{digits}</span> : null}
     </p>
   );
 }
@@ -70,7 +74,7 @@ export function PayWithSwitch({ balance, payWith, onPayWith, className }: { bala
  * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
  * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
  */
-export function Bill({ licence, price, balance, payWith, code, credit = 0, action, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; balance: Balance; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Credit on the account at Stripe, in dollars, which a charge is paid from before the card. */ credit?: number; /** The button that pays, where the report is activated, under what is due. */ action?: ReactNode; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+export function Bill({ licence, price, balance, payWith, code, credit = 0, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; balance: Balance; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Credit on the account at Stripe, in dollars, which a charge is paid from before the card. */ credit?: number; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
   const sum = payment({ price, balance: balance.balance, payWith: balance.balance === 0 ? "card" : payWith, off: code?.off ?? 0 });
@@ -86,7 +90,7 @@ export function Bill({ licence, price, balance, payWith, code, credit = 0, actio
         </dl>
       </AutoHeight>
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
-        <span className="font-medium">{t(now || action ? "dueNow" : "due")}</span>
+        <span className="font-medium">{t(now ? "dueNow" : "due")}</span>
         <bdi dir="ltr" className="text-lg/6 font-semibold">
           <RollingMoney value={Math.round((sum.due - fromCredit) * 100) / 100} />
         </bdi>
@@ -94,57 +98,6 @@ export function Bill({ licence, price, balance, payWith, code, credit = 0, actio
       {/* The least a card buys can be more than is missing: said, so the bill adds up to what the balance shows. */}
       <AutoHeight>{sum.spare > 0 ? <p className="pt-2 text-xs text-pretty text-muted-foreground">{t("least", { least: inSentence(money(BOUGHT_MIN)), spare: inSentence(money(sum.spare)) })}</p> : null}</AutoHeight>
       {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
-      {action ? <div className="@container/action mt-3 flex justify-end">{action}</div> : null}
-    </div>
-  );
-}
-
-/** Whether a card pays anything, before any code: where a code has something to lower. */
-export const buysByCard = ({ price, balance, payWith }: { price: number; balance: Balance; payWith: PayWith }) => payment({ price, balance: balance.balance, payWith: balance.balance === 0 ? "card" : payWith, off: 0 }).bought > 0;
-
-/**
- * The choices in one bar, where the report is activated: what pays and a code, with the button that pays. On a wide
- * page the bill is under the cover beside the steps, where it has been since the report was signed, so the button
- * carries what is due; on a narrow one the bill is here, over the button.
- */
-export function PaymentChoice({
-  licence,
-  price,
-  balance,
-  payWith,
-  onPayWith,
-  code,
-  credit,
-  voucher,
-  action,
-  disabled = false,
-}: {
-  licence: string;
-  price: number;
-  balance: Balance;
-  payWith: PayWith;
-  onPayWith: (payWith: PayWith) => void;
-  code: { code: string; off: number } | null;
-  /** Credit on the account at Stripe, in dollars. */
-  credit?: number;
-  /** The field a code goes in, shown while a card pays something. */
-  voucher?: ReactNode;
-  /** The button that pays, with what is due on it where the bill isn't beside it. */
-  action: (withAmount: boolean) => ReactNode;
-  disabled?: boolean;
-}) {
-  const t = useTranslations("publishReports.flow.payment");
-  return (
-    <div inert={disabled || undefined} className={cn("grid gap-x-6 gap-y-3 rounded-2xl bg-inset/60 p-3 transition-opacity @lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] @3xl:grid-cols-[minmax(0,1fr)_auto]", disabled && "opacity-60")}>
-      <div className="min-w-0 space-y-2">
-        {balance.balance !== 0 ? <p className="ps-1 text-xs font-medium text-muted-foreground">{t("payWith")}</p> : null}
-        <PayWithSwitch balance={balance} payWith={payWith} onPayWith={onPayWith} className="bg-background" />
-        {/* A code lowers what the card pays: with nothing for a card to pay, there is nothing for one to do, so its
-            field is put away. A code applied is kept, and is back when a card pays again. */}
-        <AutoHeight>{voucher && buysByCard({ price, balance, payWith }) ? <div className="ps-1 pt-1">{voucher}</div> : null}</AutoHeight>
-      </div>
-      <Bill boxed className="self-start @3xl:hidden" licence={licence} price={price} balance={balance} payWith={payWith} code={code} credit={credit} action={action(false)} />
-      <div className="hidden items-end justify-end @3xl:flex">{action(true)}</div>
     </div>
   );
 }

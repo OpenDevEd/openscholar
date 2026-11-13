@@ -20,6 +20,25 @@ import { reportSettings } from "./settings";
 const COPIES_PER_STEP = 8;
 
 /**
+ * Saves a report that has just gone live to the library of the workspace it was published in, as its owner pressing
+ * Add to library on its page would. Scheduled by the write that makes it live.
+ */
+export const keep = internalMutation({
+  args: { reportId: v.id("reports") },
+  returns: v.null(),
+  handler: async (ctx, { reportId }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (!report || report.status !== "live") return null;
+    const { metadata } = await detailsOf(ctx, reportId);
+    if (!metadata) return null;
+    const { series } = await reportSettings(ctx);
+    const work = reportPaper({ key: report.key, doi: report.doi, pdfUrl: report.pdf ? "its own address" : null, updatedAt: report.updatedAt }, metadata, seriesOf(report, series));
+    await ctx.runMutation(internal.library.mutations.saveRead, { userId: report.ownerId, workspaceId: report.workspaceId, paper: { ...trimPaperData(work), paperData: JSON.stringify(work) }, author: "user" });
+    return null;
+  },
+});
+
+/**
  * Rewrites a report's saved copies from the report as it stands: a live one's details, as saving it now would keep
  * them; a withdrawn one's title says so, and its PDF is no longer offered. Each step takes one page and schedules
  * the next, however many workspaces saved it. A person's rating and their collections are theirs and stay.

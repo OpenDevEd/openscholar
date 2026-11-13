@@ -37,7 +37,7 @@ import { useChangeLabel, useCheckWords } from "@/components/reports/words";
 import { Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
-import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
+import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,12 +55,13 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
-import { Bill, PayWithSwitch, PaymentChoice } from "@/components/reports/payment-choice";
+import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
+import { reportPaper } from "@/lib/reports/report-paper";
 import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -798,7 +799,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} paid={terms?.paid ?? null} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={basics.open ? onAnother : undefined} onCorrect={onCorrect} />
+            <LiveReport report={report} series={basics.series} paid={terms?.paid ?? null} fresh={fresh?.key === report.key && fresh.step === "live"} onCorrect={onCorrect} />
           ) : (
             <Checks
               beside={beside}
@@ -808,9 +809,9 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
               terms={terms}
-              onActivate={(payWith, code, price, expect) => {
+              onActivate={(payWith, code, price, expect, otherCard) => {
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect, locale, card: terms?.card?.last4 ?? null }).then(
+                return activate({ ...here, key: report.key, payWith, ...(code && { code }), price, expect, locale, card: terms?.card?.last4 ?? null, ...(otherCard && { otherCard }) }).then(
                   (done) => {
                     // The payment is made on Stripe's page, or confirmed at the bank: both come back here.
                     if ("url" in done) {
@@ -1660,7 +1661,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ beside = null, rows, report, humanReview, terms, onActivate, onChoose, onQuote, onCancelPayment, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What the report costs and what pays for it; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, paid as chosen, with the code applied to a card's part, and the price and what is due as they were shown, in US dollars. */ onActivate?: (payWith: PayWith, code: string | undefined, price: number, expect: number) => Promise<void>; /** Keeps with the report what pays, or the code applied (null takes it off). */ onChoose?: (choice: { payWith?: PayWith; voucher?: Quote | null }) => void; /** The share a code takes off `amount` dollars a card would buy. */ onQuote?: (code: string, amount: number) => Promise<Quote>; /** Gives up a payment still to be made. */ onCancelPayment?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ beside = null, rows, report, humanReview, terms, onActivate, onChoose, onQuote, onCancelPayment, onFix, onDetails, onRequestReview, onAnother }: { /** The place under the cover, on a wide page: the bill stays there until the report is live. */ beside?: HTMLDivElement | null; rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What the report costs and what pays for it; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, paid as chosen, with the code applied to a card's part, and the price and what is due as they were shown, in US dollars. */ onActivate?: (payWith: PayWith, code: string | undefined, price: number, expect: number, /** Paid this once on Stripe's page, with a card other than the saved one. */ otherCard?: boolean) => Promise<void>; /** Keeps with the report what pays, or the code applied (null takes it off). */ onChoose?: (choice: { payWith?: PayWith; voucher?: Quote | null }) => void; /** The share a code takes off `amount` dollars a card would buy. */ onQuote?: (code: string, amount: number) => Promise<Quote>; /** Gives up a payment still to be made. */ onCancelPayment?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1685,6 +1686,18 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
+  // Stripe's portal, where the workspace's cards are added, removed and made the default: the person's own, or the organisation's.
+  const openPortal = useAction(api.billing.actions.openPortal);
+  const workspaceId = useWorkspace();
+  // It comes back to this report, not to Plan and credits.
+  const appToast = useAppToast();
+  // The card is read again as the dialog opens: one changed in Stripe's portal a moment ago shows, and is the one charged.
+  const refreshMine = useAction(api.billing.accounts.refreshMine);
+  const askToPay = () => {
+    void refreshMine(organization && workspaceId ? { workspaceId } : {}).catch(() => {});
+    setPaying(true);
+  };
+  const manageBilling = () => void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${window.location.pathname}${window.location.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
   // What pays and the code are kept with the report, so the bill reads the same on every step and after a reload.
   const payWith: PayWith = terms ? payWithOf(terms) : "card";
   const code = terms?.voucher ?? null;
@@ -1705,12 +1718,12 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const fromCredit = Math.min(credit, subtotal);
   /** What a card is charged, in cents: nothing when the balance, a code or the account's credit covers it all. */
   const due = subtotal - fromCredit;
-  const activateNow = () =>
+  const activateNow = (otherCard = false) =>
     start(async () => {
       say(null);
       try {
         // The code goes with it only where a card buys something for it to lower.
-        await onActivate?.(payWith, sum.bought > 0 ? code?.code : undefined, price, due / 100);
+        await onActivate?.(payWith, sum.bought > 0 ? code?.code : undefined, price, due / 100, otherCard);
       } catch (error) {
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
@@ -1783,44 +1796,28 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
               <Problem className="pb-3 ps-1">{problem}</Problem>
               {stage === "ready" && admin && terms && !pending ? (
-                // An admin's Activate sits with how the report is paid: from the balance or by card, with a code, and
-                // what that leaves due. Only the licence, which set the price, is fixed.
-                <div className="mb-4">
-                  <PaymentChoice
-                    licence={licenceName(report.licence)}
-                    price={price}
-                    balance={terms}
-                    payWith={payWith}
-                    onPayWith={(next) => onChoose?.({ payWith: next })}
-                    code={code}
-                    credit={terms.credit}
-                    disabled={activating}
-                    voucher={vouchers ? <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} /> : null}
-                    action={(withAmount) => (
-                      // What pressing it does, in a "?" beside it: people asked what Activate would do before they pressed.
-                      // It opens above the two, where it leaves the button in sight. In a bill too narrow for both
-                      // (a phone at large text) the "?" takes the line above the button, which then has the width.
-                      <FieldHelp field="activation" side="top" around="flex min-w-0 items-center justify-end gap-1.5 @max-[11rem]/action:flex-wrap">
-                        {shut ? (
-                          // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
-                          <TooltipHint label={shut}>
-                            <span tabIndex={0}>
-                              <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                            </span>
-                          </TooltipHint>
-                        ) : (
-                          // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
-                          // something due, it pays. Under the bill it carries no amount, the total being right above
-                          // it; beside the bill, it does.
-                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={withAmount && due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? activateNow : () => setPaying(true)} />
-                        )}
-                      </FieldHelp>
-                    )}
-                  />
-                  {/* The bill stays under the cover, where it has been since the report was signed: here with what is chosen now. */}
+                // How the report is paid, laid out as where its licence was chosen: what pays and a code under a
+                // heading, with the bill under the cover. Activate is with the step's other buttons, where Next is on
+                // every step before it. Only the licence, which set the price, is fixed.
+                <section className="mb-7" inert={activating || undefined}>
+                  <h3 className={SECTION}>{t("payment.title")}</h3>
+                  <div className="@container/pay flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <PayWithSwitch balance={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} card={card} />
+                    {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
+                        applied is kept, and is back when a card pays again. */}
+                    <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
+                      {vouchers ? (
+                        <div className="px-3 py-1">
+                          <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
+                        </div>
+                      ) : null}
+                    </AutoHeight>
+                  </div>
+                  {/* The bill: under the cover on a wide page, where it has been since the report was signed, and here on a narrow one. */}
+                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />
                   {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
-                  {terms.refused ? <p className="mt-1.5 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
-                </div>
+                  {terms.refused ? <p className="mt-2 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
+                </section>
               ) : admin && pending && stage !== "live" ? (
                 // A payment still to be made, on Stripe's page or at the bank: the way back to it, and the way out of it.
                 // Wherever the report stands: declined meanwhile, the payment still holds it and the workspace's others.
@@ -1885,6 +1882,24 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                         <Plus /> {t("publishAnother")}
                       </Button>
                     ) : null}
+                    {stage === "ready" && admin && terms && !pending ? (
+                      // What pressing it does, in a "?" beside it: people asked what Activate would do before they
+                      // pressed. It opens above the two, where it leaves the button in sight.
+                      <FieldHelp field="activation" side="top" around="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                        {shut ? (
+                          // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
+                          <TooltipHint label={shut}>
+                            <span tabIndex={0}>
+                              <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                            </span>
+                          </TooltipHint>
+                        ) : (
+                          // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
+                          // something due, it pays, and says how much.
+                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? () => activateNow() : askToPay} />
+                        )}
+                      </FieldHelp>
+                    ) : null}
                     {stage === "ready" && !admin ? (
                       <TooltipHint label={t("activation.onlyAdmin")}>
                         <span tabIndex={0}>
@@ -1917,8 +1932,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           open={paying}
           onOpenChange={setPaying}
           title={t("activation.payTitle", { price: dollars(due), key: report.key })}
-          // Who pays and where, then what becomes of what was paid if the report is declined while the payment goes through.
-          description={[!card ? t("activation.onStripe") : organization ? t("activation.orgCardCharged", { organization }) : null, organization ? t("activation.keptNoteOrg", { organization }) : t("activation.keptNote")].filter(Boolean).join(" ")}
+          // Who pays and where, in a few words: an organisation's card, or Stripe's page with no card saved.
+          description={!card ? t("activation.onStripe") : organization ? t("activation.orgCardCharged", { organization }) : undefined}
           confirmLabel={t(card ? "activate" : "activation.toStripe")}
           totalLabel={t("activation.dueNow")}
           labels={{ from: t("activation.doiNow"), to: t("activation.after") }}
@@ -1929,6 +1944,18 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           }}
           cardBrand={card?.brand}
           cardLast4={card?.last4}
+          toTone="success"
+          onManageBilling={manageBilling}
+          // This once on Stripe's page, which offers the saved cards and takes a new one: the saved card is left as it is.
+          onOtherCard={
+            // Not while the account's credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
+            card && fromCredit === 0
+              ? () => {
+                  setPaying(false);
+                  activateNow(true);
+                }
+              : undefined
+          }
           preview={{
             currency: "USD",
             immediateChargeCents: due,
@@ -2015,7 +2042,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
       <div className="@container/code px-3 py-1">
         {applied ? (
           // Too narrow for one line (a phone at large text), what it takes off and the way to remove it go under the code.
-          <div className="flex items-center gap-2 text-sm @max-[11rem]/code:flex-wrap">
+          <div className="flex min-h-[calc(2.25rem+2px)] items-center gap-2 text-sm @max-[11rem]/code:flex-wrap">
             <Tag className="size-4 shrink-0 text-muted-foreground" />
             <span className="font-mono font-medium">{applied.code}</span>
             <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
@@ -2047,7 +2074,8 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
                 aria-describedby={wrong ? wrongId : undefined}
                 className="font-mono placeholder:font-sans"
               />
-              <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+              {/* A code typed and not yet applied: Apply stands out as what to press next, in place of a line saying so. */}
+              <Button type="submit" variant={typed.trim() ? "default" : "outline"} className="shrink-0" disabled={!typed.trim() || checking}>
                 {t("apply")}
               </Button>
               {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
@@ -2070,17 +2098,15 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
               <p id={wrongId} role="alert" className="text-xs text-destructive">
                 {wrong}
               </p>
-            ) : typed.trim() ? (
-              // Said under the field, not only in Activate's tooltip: a touch screen shows no tooltip on a disabled button.
-              // Out of sight while the code is being checked, its line kept so nothing moves: Apply was just pressed,
-              // and being told to press it read as a failure.
-              <p className={cn("text-xs text-muted-foreground", checking && "invisible")}>{t("applyFirst")}</p>
             ) : null}
           </form>
         ) : (
-          <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground max-sm:h-auto max-sm:min-h-8 max-sm:max-w-full max-sm:whitespace-normal max-sm:text-start" onClick={() => setOpen(true)}>
-            <Tag /> {t("add")}
-          </Button>
+          // As tall as the field it opens into and the code it ends as, so neither moves what is under or beside it.
+          <div className="flex min-h-[calc(2.25rem+2px)] items-center">
+            <Button variant="ghost" size="sm" className="-ms-1.5 text-muted-foreground max-sm:h-auto max-sm:min-h-8 max-sm:max-w-full max-sm:whitespace-normal max-sm:text-start" onClick={() => setOpen(true)}>
+              <Tag /> {t("add")}
+            </Button>
+          </div>
         )}
       </div>
     </AutoHeight>
@@ -2342,12 +2368,13 @@ function PaidChips({ paid }: { paid: Terms["paid"] }) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, paid, fresh, onAnother, onCorrect }: { report: Report; /** What it was paid with, for whoever may pay for it. */ paid: Terms["paid"]; fresh: boolean; /** None while publishing is off. */ onAnother?: () => void; onCorrect: () => void }) {
+function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; /** What it was paid with, for whoever may pay for it. */ paid: Terms["paid"]; fresh: boolean; onCorrect: () => void }) {
+  // The report as the app's papers are, for saving it: the same as its own page saves.
+  const paper = report.metadata ? reportPaper({ key: report.key, doi: report.doi, pdfUrl: `/papers/${report.key}/report.pdf`, updatedAt: report.updatedAt }, report.metadata, series) : null;
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
   const tToast = useTranslations("toast");
   const format = useFormatter();
-  const tAdded = useTranslations("addedPapers");
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
@@ -2399,24 +2426,12 @@ function LiveReport({ report, paid, fresh, onAnother, onCorrect }: { report: Rep
       </motion.div>
       {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
-        {onAnother ? (
-          <Button variant="outline" onClick={onAnother}>
-            <Plus /> {t("publishAnother")}
-          </Button>
-        ) : null}
-        <Button variant="outline" onClick={onCorrect}>
+        <Button variant="outline" size="sm" onClick={onCorrect}>
           <PenLine /> {t("correct")}
         </Button>
-        {/* The app's own Add to community list, opened from a named button: a community takes the report by its DOI. */}
-        <CommunityControl
-          paper={{ id: report.key, title: report.metadata?.title ?? "", doi: report.doi }}
-          trigger={(icon) => (
-            <Button variant="outline">
-              {icon} {tAdded("addToCommunity")}
-            </Button>
-          )}
-        />
-        <Button asChild>
+        {/* The app's own three, as on the report's page: save to the library, add to a collection, add to a community. */}
+        {paper ? <SaveControl paper={paper} named /> : null}
+        <Button asChild size="sm">
           <Link href={`/papers/${report.key}`}>
             {t("openPage")} <ArrowUpRight />
           </Link>

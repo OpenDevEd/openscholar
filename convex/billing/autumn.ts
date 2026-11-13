@@ -167,10 +167,13 @@ const STRIPE_LOCALES: Record<string, string> = { "en-US": "en", "en-GB": "en-GB"
  * Pay, Link or Amazon Pay (the user's choice, 2026-11-12): the Stripe account's card-only payment method configuration
  * (STRIPE_CARD_ONLY_CONFIG, one per Stripe account), or without it cards with Link hidden.
  */
-function checkoutParams(locale: string | undefined) {
+function checkoutParams({ locale, saved }: { locale?: string; saved?: boolean }) {
   const only = process.env.STRIPE_CARD_ONLY_CONFIG;
   const methods = only ? { payment_method_configuration: only } : { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } };
-  return { ...methods, locale: STRIPE_LOCALES[locale ?? ""] ?? "auto" };
+  // The customer's saved cards, offered beside a new one: Stripe's page lists those that carry a name, an email and a
+  // country, as the ones saved through its own pages do (docs.stripe.com/payments/existing-customers).
+  const cards = saved ? { saved_payment_method_options: { allow_redisplay_filters: ["always", "limited", "unspecified"] } } : {};
+  return { ...methods, ...cards, locale: STRIPE_LOCALES[locale ?? ""] ?? "auto" };
 }
 
 async function call<T>(
@@ -355,14 +358,14 @@ export const autumn = {
      * A report's payment made on Stripe's checkout (a customer with no card on file): a typed card only, in the
      * person's language. Plans keep Stripe's default page.
      */
-    checkout?: { locale?: string };
+    checkout?: { locale?: string; /** Always there, with the customer's saved cards to choose from: someone paying this once with a card other than their saved one. */ saved?: boolean };
   }) {
     return call<AutumnCharge>(
       "billing.attach",
       {
         customer_id: args.customerId,
         plan_id: args.planId,
-        redirect_mode: "if_required",
+        redirect_mode: args.checkout?.saved ? "always" : "if_required",
         ...licenseQuantities(args.seats),
         ...(args.credits
           ? { feature_quantities: [{ feature_id: "credits", quantity: args.credits }] }
@@ -372,7 +375,7 @@ export const autumn = {
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
         ...(args.unbilled ? { invoice_mode: { enabled: true, enable_plan_immediately: true, finalize: true } } : {}),
         // Used only when Autumn sends the person to Stripe's checkout: a customer with no card on file.
-        ...(args.checkout ? { checkout_session_params: checkoutParams(args.checkout.locale) } : {}),
+        ...(args.checkout ? { checkout_session_params: checkoutParams(args.checkout) } : {}),
         ...promotion(args.code),
       },
       args.idempotencyKey,

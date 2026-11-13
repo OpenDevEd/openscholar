@@ -1437,7 +1437,11 @@
     "upgradeSuccess": "Uboreshaji umefanikiwa",
     "upgradeSuccessCredits": "Imeboreshwa hadi {plan} — krediti {credits} zimeongezwa",
     "totalCharge": "Jumla inayolipwa sasa",
-    "paymentMethod": "Njia ya malipo"
+    "paymentMethod": "Njia ya malipo",
+    "anotherCard": "Kadi nyingine",
+    "anotherCardNote": "Ukurasa wa Stripe unafunguka na kadi zako zilizohifadhiwa na nafasi ya kadi mpya.",
+    "manageBilling": "Simamia malipo",
+    "toPayment": "Endelea kwenye malipo"
   },
   "libraryPage": {
     "title": "Maktaba",
@@ -6751,10 +6755,8 @@
         "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake.",
         "kept": "Kilicholipwa kwa ripoti hii kimeenda kwenye salio lako la uchapishaji. Ripoti ijayo utakayowasha itakitumia.",
         "keptOrg": "Kilicholipwa kwa ripoti hii kimeenda kwenye salio la uchapishaji la {organization}. Ripoti ijayo itakayowashwa huko itakitumia.",
-        "keptNote": "Mkaguzi akiikataa ripoti kabla malipo hayajakamilika, ulicholipa kinabaki kwenye salio lako la uchapishaji na kinalipia ripoti yako ijayo.",
-        "keptNoteOrg": "Mkaguzi akiikataa ripoti kabla malipo hayajakamilika, kilicholipwa kinabaki kwenye salio la uchapishaji la {organization} na kinalipia ripoti ijayo ya huko.",
         "balanceLine": "Salio la uchapishaji",
-        "onStripe": "Ukurasa wa Stripe hufunguka kwa malipo, kisha hurudi hapa.",
+        "onStripe": "Ukurasa wa Stripe unafunguka kwa ajili ya malipo.",
         "changed": "Kinachodaiwa kimebadilika tangu ukurasa huu ukisome. Kikague, kisha uwashe tena.",
         "toStripe": "Endelea kwenye malipo"
       },

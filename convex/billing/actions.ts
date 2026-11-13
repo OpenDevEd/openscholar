@@ -197,14 +197,16 @@ export const buyCredits = action({
 
 /** Stripe's portal for invoices and payment methods: the person's own, or in `workspaceId` its organization's, which its admins manage. */
 export const openPortal = action({
-  args: { workspaceId: v.optional(v.id("workspaces")) },
+  args: { workspaceId: v.optional(v.id("workspaces")), /** A page of this site to come back to, as a path: the report being paid for. The billing page otherwise. */ back: v.optional(v.string()) },
   returns: v.string(),
-  handler: async (ctx, { workspaceId }): Promise<string> => {
+  handler: async (ctx, { workspaceId, back }): Promise<string> => {
     await refuseApps(ctx);
     const user = await requireUser(ctx);
-    if (!workspaceId) return (await autumn.portal(user._id, billingUrl())).url;
+    // Only a path of our own: an address from elsewhere is never where Stripe sends someone back to.
+    const returnTo = back && /^\/(?!\/)[^\s]*$/.test(back) && back.length <= 500 ? `${requireAppUrl()}${back}` : null;
+    if (!workspaceId) return (await autumn.portal(user._id, returnTo ?? billingUrl())).url;
     const organization = await organizationAdminOf(ctx, workspaceId);
-    return (await autumn.portal(workspaceId, `${requireAppUrl()}/o/${organization.slug}/settings/billing`)).url;
+    return (await autumn.portal(workspaceId, returnTo ?? `${requireAppUrl()}/o/${organization.slug}/settings/billing`)).url;
   },
 });
 
