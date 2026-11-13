@@ -194,6 +194,8 @@ const entryKey = () => historyOf()?.currentEntry?.key ?? "";
  * signed goes with it for a few seconds. Written as the page is left, read as the next one opens.
  */
 let followed: { key: string; until: number } | null = null;
+/** As many of the person's workspaces as the agreement offers and reads the day of: the first page, whatever the rail has loaded since. */
+const OFFERED = 20;
 /** The minute a page's reads of a workspace's day are asked for, so they aren't read again on every draw. */
 const thisMinute = () => Math.floor(Date.now() / 60_000) * 60_000;
 
@@ -389,6 +391,8 @@ export function PublishFlow() {
       convex.watchQuery(api.reports.flow.counts, at),
       convex.watchQuery(api.reports.flow.waitingElsewhere, at),
       convex.watchQuery(api.reports.flow.starts, { ...at, now: thisMinute() }),
+      // The next page asks for the minute it opens in, which is the next one when the move crosses it.
+      convex.watchQuery(api.reports.flow.starts, { ...at, now: thisMinute() + 60_000 }),
       convex.watchQuery(api.reports.flow.get, { ...at, key }),
       convex.watchQuery(api.reports.activation.terms, { ...at, key }),
     ];
@@ -1038,22 +1042,26 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // The workspace the report is to belong to: the page's, until another of the person's is picked here. What the
   // others' days and balances hold is read with the step, so picking one changes the payment at once.
   // The first page of them, with the page's own, which someone in more than a page of them may be past.
-  const first = useWorkspaces().list;
+  const first = useWorkspaces().list?.slice(0, OFFERED);
   const current = useCurrentWorkspace();
   const list = first && current && !first.some((workspace) => workspace.workspaceId === current.workspaceId) ? [...first, current] : first;
   const slug = useWorkspaceSlug();
   const [into, setInto] = useState<Id<"workspaces"> | null>(null);
-  const away = into !== null && into !== pageWorkspace;
-  const workspaceId = away ? into : pageWorkspace;
-  const chosen = away ? list?.find((workspace) => workspace.workspaceId === into) : undefined;
+  // One picked and then left, as when a membership is taken away meanwhile, is picked no longer: the page's own is back.
+  const chosen = into !== null && into !== pageWorkspace ? list?.find((workspace) => workspace.workspaceId === into) : undefined;
+  const away = chosen !== undefined;
+  const workspaceId = chosen ? chosen.workspaceId : pageWorkspace;
   const [now] = useState(thisMinute);
   const others = here && pageWorkspace ? (list ?? []).filter((workspace) => workspace.workspaceId !== pageWorkspace).map((workspace) => workspace.workspaceId) : [];
   const asked = others.join(" ");
   const elsewhere = useQueries(useMemo(() => Object.fromEntries(asked.split(" ").filter(Boolean).map((id) => [id, { query: api.reports.flow.starts, args: { workspaceId: id as Id<"workspaces">, now } }])), [asked, now]));
-  const there = away ? (elsewhere[into] as Starts | Error | undefined) : undefined;
+  const there = chosen ? (elsewhere[chosen.workspaceId] as Starts | Error | undefined) : undefined;
   // Until the picked workspace's day is read, the page's stays up, and nothing in it can be pressed.
   const settling = away && (there === undefined || there instanceof Error);
   const starts = away && !settling ? (there as Starts) : here;
+  // What is said of the workspace's day (a DOI reserved there, a day used up) waits for that read: until then the
+  // day on screen is the page's own, and its reserved DOI is not the picked workspace's to continue.
+  const day = settling ? null : starts;
   // Signed for another workspace, the step waits for that workspace's page as it waited for the signing.
   const [leaving, setLeaving] = useState(false);
   const signedFor = (key: string) => {
@@ -1070,7 +1078,10 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
   const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
   // A promotion code, quoted here and kept with the report when it is signed, for what a card pays to activate it.
-  const [voucher, setVoucher] = useState<Quote | null>(null);
+  const [quoted, setQuoted] = useState<(Quote & { for?: Id<"workspaces"> }) | null>(null);
+  // A code is quoted for one workspace's customer, so it counts only for the workspace it was asked for: with another
+  // picked it is asked again, and an answer that comes back after the pick is not the new workspace's either.
+  const voucher: Quote | null = quoted && quoted.for === workspaceId ? { code: quoted.code, off: quoted.off } : null;
   const [typedCode, setTypedCode] = useState("");
   const quoteCode = useAction(api.reports.activation.quoteCode);
   // How the report is to be paid: from the balance while it holds something, unless the author picks the card. Kept
@@ -1104,10 +1115,10 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
   // whatever the day has left.
   // The same in a few words, for beside the workspace picked: one line that never wraps.
-  const shut = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`shut.${starts.perDay > 0 ? "used" : starts.kind === "personal" ? "ownClosed" : "closed"}`) : null;
+  const shut = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`shut.${day.perDay > 0 ? "used" : day.kind === "personal" ? "ownClosed" : "closed"}`) : null;
   // The plans of the workspace picked, which isn't always the page's.
   const plans = workspaceHref(away ? chosen?.slug : slug, "/pricing");
-  const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
+  const blocked = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`limit.${day.kind === "personal" ? "personal" : "workspace"}${day.perDay === 0 ? "Closed" : ""}`, { count: day.perDay }) : null;
   return (
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
@@ -1125,7 +1136,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
-          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut && !settling ? { why: shut, plans } : null} />
+          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut ? { why: shut, plans } : null} />
         </section>
       ) : null}
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
@@ -1141,7 +1152,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
               <AutoHeight>
                 {bought > 0 ? (
                   <div className="px-3 py-1">
-                    <PromoCode applied={voucher} onApply={setVoucher} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off }))} typed={typedCode} onTyped={setTypedCode} />
+                    <PromoCode applied={voucher} onApply={setQuoted} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off, for: workspaceId }))} typed={typedCode} onTyped={setTypedCode} />
                   </div>
                 ) : null}
               </AutoHeight>
@@ -1167,13 +1178,13 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         </label>
       </div>
       {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
-      {starts?.untouched && starts.untouched !== signed ? (
+      {day?.untouched && day.untouched !== signed ? (
         // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
         <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
           <span className="min-w-0 flex-1 basis-56">
-            {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
+            {t.rich("untouched", { key: day.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
           </span>
-          <Button size="sm" variant="outline" disabled={leaving} onClick={() => signedFor(starts.untouched!)}>
+          <Button size="sm" variant="outline" disabled={leaving} onClick={() => signedFor(day.untouched!)}>
             {t("continueWith")} <ArrowUpRight />
           </Button>
         </p>
