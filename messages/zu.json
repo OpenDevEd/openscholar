@@ -1436,7 +1436,11 @@
     "upgradeSuccess": "Ukuthuthukiswa kuphumelele",
     "upgradeSuccessCredits": "Kuthuthukiswe kwaba ku-{plan} — kungezwe amakhredithi angu-{credits}",
     "totalCharge": "Okufanele manje ngokuphelele",
-    "paymentMethod": "Indlela yokukhokha"
+    "paymentMethod": "Indlela yokukhokha",
+    "anotherCard": "Elinye ikhadi",
+    "anotherCardNote": "Ikhasi le-Stripe livuleka namakhadi akho alondoloziwe nendawo yelisha.",
+    "manageBilling": "Phatha ukukhokha",
+    "toPayment": "Qhubekela enkokhelweni"
   },
   "libraryPage": {
     "title": "Umtapo wolwazi",
@@ -6750,10 +6754,8 @@
         "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo.",
         "kept": "Okukhokhelwe lo mbiko kuye ebhalansini yakho yokushicilela. Umbiko olandelayo owuvulayo uzokusebenzisa.",
         "keptOrg": "Okukhokhelwe lo mbiko kuye ebhalansini yokushicilela ye-{organization}. Umbiko olandelayo ovulwa lapho uzokusebenzisa.",
-        "keptNote": "Uma umbuyekezi enqaba umbiko ngaphambi kokuthi inkokhelo iphumelele, okukhokhile kuhlala ebhalansini yakho yokushicilela futhi kukhokhela umbiko wakho olandelayo.",
-        "keptNoteOrg": "Uma umbuyekezi enqaba umbiko ngaphambi kokuthi inkokhelo iphumelele, okukhokhiwe kuhlala ebhalansini yokushicilela ye-{organization} futhi kukhokhela umbiko olandelayo lapho.",
         "balanceLine": "Ibhalansi yokushicilela",
-        "onStripe": "Ikhasi le-Stripe liyavuleka ukuze kukhokhwe, bese libuyela lapha.",
+        "onStripe": "Ikhasi le-Stripe livulekela inkokhelo.",
         "changed": "Okukweletwayo kushintshile selokhu leli khasi lakufunda. Kuhlole, bese uvula futhi.",
         "toStripe": "Qhubekela enkokhelweni"
       },

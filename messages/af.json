@@ -1437,7 +1437,11 @@
     "upgradeSuccess": "Opgradering suksesvol",
     "upgradeSuccessCredits": "Opgegradeer na {plan} — {credits} krediete bygevoeg",
     "totalCharge": "Totaal nou verskuldig",
-    "paymentMethod": "Betaalmetode"
+    "paymentMethod": "Betaalmetode",
+    "anotherCard": "’n Ander kaart",
+    "anotherCardNote": "Stripe se bladsy open met jou gestoorde kaarte en plek vir ’n nuwe een.",
+    "manageBilling": "Bestuur fakturering",
+    "toPayment": "Gaan voort na betaling"
   },
   "libraryPage": {
     "title": "Biblioteek",
@@ -6751,10 +6755,8 @@
         "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek.",
         "kept": "Wat vir hierdie verslag betaal is, het na jou publikasiebalans gegaan. Die volgende verslag wat jy aktiveer, gebruik dit.",
         "keptOrg": "Wat vir hierdie verslag betaal is, het na {organization} se publikasiebalans gegaan. Die volgende verslag wat daar geaktiveer word, gebruik dit.",
-        "keptNote": "As ’n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly wat jy betaal het in jou publikasiebalans en betaal dit jou volgende verslag.",
-        "keptNoteOrg": "As ’n beoordelaar die verslag afkeur voordat die betaling deurgaan, bly wat betaal is in {organization} se publikasiebalans en betaal dit die volgende verslag daar.",
         "balanceLine": "Publikasiebalans",
-        "onStripe": "Stripe se bladsy maak oop vir die betaling en kom dan hierheen terug.",
+        "onStripe": "Stripe se bladsy open vir die betaling.",
         "changed": "Wat verskuldig is, het verander sedert hierdie bladsy dit gelees het. Gaan dit na en aktiveer weer.",
         "toStripe": "Gaan voort na betaling"
       },
