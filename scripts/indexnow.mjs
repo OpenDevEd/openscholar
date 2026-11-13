@@ -22,7 +22,10 @@ async function addressesOf(address) {
   if (!isSitemap(address)) return [address];
   const response = await fetch(address, { headers: { "User-Agent": "openscholar-indexnow/1.0" } });
   if (!response.ok) throw new Error(`${address} answered ${response.status}`);
-  const listed = [...(await response.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1].replaceAll("&amp;", "&"));
+  // A sitemap may name its tags with a prefix (`<sm:loc>`).
+  const listed = [...(await response.text()).matchAll(/<(?:\w+:)?loc>\s*([^<\s]+)\s*<\/(?:\w+:)?loc>/g)].map((match) => match[1].replaceAll("&amp;", "&"));
+  // Nothing found is a sitemap this can't read, never a quiet success.
+  if (!listed.length) throw new Error(`${address} lists no addresses`);
   return (await Promise.all(listed.map(addressesOf))).flat();
 }
 

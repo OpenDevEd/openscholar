@@ -114,7 +114,7 @@ describe("public route auth matrix", () => {
     // The IndexNow key, which a search engine fetches with no cookies to check a list of addresses is ours.
     files.push(...readdirSync(join(__dirname, "../public")).filter((name) => name.endsWith(".txt")).map((name) => `/${name}`));
     expect(files.filter((path) => !isPublicFile(path))).toEqual([]);
-    const pages = [...routes.filter(({ kind }) => kind === "page").map(({ path }) => path), "/papers/sitemap.xml", "/papers/W1/a-title", "/wp-login.php", "/papers/doi", "/question-stage/missing.php"];
+    const pages = [...routes.filter(({ kind }) => kind === "page").map(({ path }) => path), "/papers/sitemap.xml", "/papers/W1/a-title", "/wp-login.php", "/00000000000000000000000000000000.txt", "/papers/doi", "/question-stage/missing.php"];
     expect(pages.filter(isPublicFile)).toEqual([]);
   });
 });
