@@ -2876,6 +2876,10 @@
 				"redirects": {
 					"default": true,
 					"type": "boolean"
+				},
+				"indexNow": {
+					"default": false,
+					"type": "boolean"
 				}
 			},
 			"additionalProperties": false
