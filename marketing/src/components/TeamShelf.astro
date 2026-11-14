@@ -5,7 +5,7 @@
 import { SHELF } from "../data/team.mjs";
 ---
 <section class="research" id="research" aria-labelledby="shelf-h">
-  <div class="sh-copy"><h2 id="shelf-h">Research by the team</h2><p class="lead">Reports and articles by people on this page.</p></div>
+  <div class="sh-copy"><h2 id="shelf-h">Research by the team</h2></div>
   <div class="panel shelf"><div class="lane"><div class="run">{[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{SHELF.map((b) => <li><a href={b.url} rel="noopener" tabindex={copy ? -1 : undefined} aria-label={`${b.title}, ${b.year}`}><img src={`/img/team/pub-${b.cover}.avif`} width="150" height="200" alt="" loading="lazy" decoding="async" /><span class="cap"><b>{b.title}</b><em>{b.year}</em></span></a></li>)}</ul>)}</div></div></div>
 </section>
 <script>
@@ -31,7 +31,7 @@ import { SHELF } from "../data/team.mjs";
 <style>
   .research { padding-top: clamp(8px, 1vw, 16px); }
   /* The heading stands on the page, at the page's edge like the others, with the lit shelf as the panel under it. */
-  .sh-copy { display: grid; gap: 10px; margin-bottom: clamp(24px, 3vw, 40px); padding-inline: var(--edge); } .sh-copy .lead { color: var(--t2); }
+  .sh-copy { margin-bottom: clamp(24px, 3vw, 40px); padding-inline: var(--edge); }
   .shelf { --bg: #020614; container-type: inline-size; height: clamp(420px, 41cqw, 512px); background: url(/img/art-shelf.avif) 50% 100% / 100% auto no-repeat, #020614; }
   /* The covers come out of the dark at one side of the panel and go back into it at the other. */
   .lane { position: absolute; left: 0; right: 0; bottom: 15.6cqw; -webkit-mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); }

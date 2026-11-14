@@ -26,7 +26,7 @@ export const ORGS = {
 // colour of the place's picture (public/img/art-place-*), so a panel in that colour meets the picture without an edge.
 // `side` is where the faces sit beside the pin on the globe, in pixels, so neighbours never cover each other.
 export const PLACES = [
-  { id: "london", name: "London", cc: "gb", lon: -0.13, lat: 51.51, tz: "Europe/London", bg: "#051535", glow: "#9cc8ff", side: [4, -46] },
+  { id: "london", name: "United Kingdom", cc: "gb", lon: -0.13, lat: 51.51, tz: "Europe/London", bg: "#051535", glow: "#9cc8ff", side: [4, -46] },
   { id: "morocco", name: "Morocco", cc: "ma", lon: -6.84, lat: 34.02, tz: "Africa/Casablanca", bg: "#540218", glow: "#ff9a8b", side: [-58, -4] },
   { id: "nigeria", name: "Nigeria", cc: "ng", lon: 7.49, lat: 9.06, tz: "Africa/Lagos", bg: "#013627", glow: "#6ee7b7", side: [-44, 34] },
   { id: "kenya", name: "Kenya", cc: "ke", lon: 36.82, lat: -1.29, tz: "Africa/Nairobi", bg: "#3d0e00", glow: "#ffb347", side: [50, -30] },

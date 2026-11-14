@@ -7,8 +7,8 @@ import { ORGS, PLACE, PLACES, flag } from "../data/team.mjs";
 const { people, whole = false, lazy = false } = Astro.props;
 ---
 <ul class="tg" data-team-grid>
-  {people.map((m) => <li><a class="who" href={`/about/${m.slug}/`} aria-label={`${m.name}, ${m.role}, ${ORGS[m.org].short}, ${PLACE[m.place].name}`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
-  {whole && <li><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
+  {people.map((m, i) => <li data-in style={`--d:${(i % 5) * 60}ms`}><a class="who" href={`/about/${m.slug}/`} aria-label={`${m.name}, ${m.role}, ${ORGS[m.org].short}, ${PLACE[m.place].name}`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
+  {whole && <li data-in style={`--d:${(people.length % 5) * 60}ms`}><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
 </ul>
 <script>
   // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
@@ -34,9 +34,9 @@ const { people, whole = false, lazy = false } = Astro.props;
   .world > img { position: absolute; left: 50%; top: 44%; width: 104%; max-width: none; translate: -50% -50%; transition: scale .9s var(--ease), rotate .9s var(--ease); }
   .flags { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; flex-wrap: wrap; gap: 5px; } .flags img { width: 20px; height: 15px; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
   @media (hover: hover) { .who:hover .world { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px #050a1d; } .who:hover .world > img { scale: 1.06; rotate: 8deg; } }
-  /* Each card rises into place as it scrolls into view, where the browser can tie motion to the scroll. The timeline has its
-     own rule: folded into the shorthand by the minifier, browsers reject it. */
-  @supports (animation-timeline: view()) { li { animation: tg-in linear both; animation-range: entry 0% entry 70%; } li { animation-timeline: view(); } @keyframes tg-in { from { opacity: 0; translate: 0 40px; scale: .96; } } }
+  /* Each card rises in once as it arrives, a row from left to right (the site's own entrance, [data-in] in global.css). A
+     page come back to has been seen, so its cards are simply there, and a frame travelling back lands on one. */
+  :global(html.back) li[data-in] { opacity: 1; transform: none; }
   /* Ten cards fill rows of five and rows of two. Between those widths, where five would be too small and two too large,
      each card lies on its side, picture left and words right, two to a row. */
   @media (min-width: 701px) and (max-width: 860px) {
