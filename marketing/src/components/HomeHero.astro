@@ -17,9 +17,11 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((s) => s[4
      still: data saver, a 2G connection, or a level this visit already settled on (the key is earth.js's MEMORY). The day map
      is the smaller one, which every level starts on (src/planet/earth.js). -->
 <script is:inline set:html={EARTH_PRELOAD_JS} />
-<link rel="preload" as="image" href="/img/sky-plate.avif" />
+<link rel="preload" as="image" href="/img/sky-plate.avif" fetchpriority="high" />
 <section class="bleed sky" data-orbit data-placement="hero">
-  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
+  {/* The sky is the largest thing in the first view, so it is fetched first: at a picture's usual low priority it waited
+      behind some twenty files, and on slow 4G arrived three seconds late. */}
+  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" fetchpriority="high" onload="this.dataset.loaded = ''" />
   {skies.map((src, g) => <img class={`stars s${g}`} src={src} width="2560" height="820" alt="" />)}
   <div class="inner say">
     <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
@@ -107,9 +109,13 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((s) => s[4
     const watch = Earth.monitor((next) => { if (!level) return; if (!next) rest(); else { level = next; planet.setLevel(next); remember(); } });
     // The level is worked out, and the planet's WebGL set up, only once the page has painted: on a weak GPU both hold up the
     // page, and before the first paint that left it blank.
+    let sharp = false;
     const start = async () => {
       level = (() => { let saved = -1; try { saved = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} return Earth.startLevel(saved); })();
-      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", onLost: () => rest(true) });
+      // The full-size day map (513 KB, and 33 MB as a texture) only shows where the planet is drawn larger than the smaller
+      // map is sharp to, about 650 device pixels across: a Retina laptop, not a phone or an ordinary screen.
+      sharp = 2 * R * Math.min(devicePixelRatio || 1, 2) > 652;
+      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", sharp, onLost: () => rest(true) });
       // Without a shader the still stands in, as it does without WebGL.
       if (planet) await planet.textures.catch((error) => { if (!error?.shader) throw error; planet = null; });
       if (!planet) rest();
@@ -117,8 +123,9 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((s) => s[4
     };
     // Searching hands over to the app's first frame: its sky, its stars, and the words typed rising out of the box to be the headline. The planet just keeps turning, and the address says how far it had got and when, so the app's carries on from there. The browser can't animate between two sites, so nothing can be seen to change when the page does.
     const HAND_MS = 620, HAND_GO_MS = 480; let leaving = null, handed = [];
-    // The app's images, on hand for when it's needed.
-    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : ["earth-day-2048", ...(level <= 2 ? [] : ["earth-day"]), "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
+    // The app's images, on hand for when it's needed: the ones this planet is using, so not the full-size day map where it
+    // is too small for it (the app fetches that one itself if it draws the planet larger).
+    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : ["earth-day-2048", ...(level <= 2 || !sharp ? [] : ["earth-day"]), "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
     const fade = (el, delay = 0, move = 0) => { if (el) handed.push(el.animate([{ opacity: getComputedStyle(el).opacity, translate: "0 0" }, { opacity: 0, translate: `0 ${move}px` }], { duration: 340, delay, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" })); };
     // A search from anywhere on the page, with or without a phone's keyboard up, first closes the keyboard and brings the hero
     // back to the top, so the hand-over measures and starts from the hero exactly where the app will draw it. A search from
