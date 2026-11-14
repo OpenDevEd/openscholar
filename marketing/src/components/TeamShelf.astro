@@ -15,9 +15,6 @@ import { SHELF } from "../data/team.mjs";
   // the row was scrolled to. Nothing jumps either way.
   const run = document.querySelector(".shelf .run"), calm = matchMedia("(prefers-reduced-motion: reduce)");
   if (run) {
-    // The covers wait until the shelf is near, then all load: left to the browser, one further along the strip would load
-    // only as it slid into the panel, and appear from one frame to the next.
-    new IntersectionObserver(([near], io) => { if (!near.isIntersecting) return; io.disconnect(); for (const img of run.querySelectorAll("img")) img.loading = "eager"; }, { rootMargin: "800px" }).observe(run);
     const inset = () => parseFloat(getComputedStyle(run).paddingLeft);
     run.addEventListener("focusin", (e) => {
       if (!e.target.matches(":focus-visible")) return;
