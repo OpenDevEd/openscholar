@@ -6,7 +6,7 @@ import { SHELF } from "../data/team.mjs";
 ---
 <section class="research" id="research" aria-labelledby="shelf-h">
   <div class="sh-copy"><h2 id="shelf-h">Research by the team</h2></div>
-  <div class="panel shelf"><div class="lane"><div class="run">{[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{SHELF.map((b) => <li><a href={b.url} rel="noopener" tabindex={copy ? -1 : undefined} aria-label={`${b.title}, ${b.year}`}><img src={`/img/team/pub-${b.cover}.avif`} width="150" height="200" alt="" loading="lazy" decoding="async" /><span class="cap"><b>{b.title}</b><em>{b.year}</em></span></a></li>)}</ul>)}</div></div></div>
+  <div class="panel shelf"><div class="lane"><div class="run">{[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{SHELF.map((b) => <li><a href={b.url} tabindex={copy ? -1 : undefined} aria-label={`${b.title}, ${b.year}`}><img src={`/img/team/pub-${b.cover}.avif`} width="150" height="200" alt="" loading="lazy" decoding="async" /><span class="cap"><b>{b.title}</b><em>{b.year}</em></span></a></li>)}</ul>)}</div></div></div>
 </section>
 <script>
   // Reached with the keyboard, the shelf stops being a moving strip and becomes a row that scrolls, from exactly where the

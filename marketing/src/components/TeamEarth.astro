@@ -38,7 +38,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   </div>
   {/* Every place is open in the markup, so the page reads without scripts. This shuts them as the page is read, before the
       first paint: all of them where they stand side by side, all but the first where they are a list, which keeps its height. */}
-  <script is:inline>(() => { const wide = matchMedia("(min-width: 1080px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); el.querySelector(".pl-head").setAttribute("aria-expanded", String(on)); el.querySelector(".pl-who").inert = !on; }); })();</script>
+  <script is:inline>(() => { const wide = matchMedia("(min-width: 1080px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); const head = el.querySelector(".pl-head"); head.setAttribute("aria-expanded", String(on)); head.setAttribute("aria-disabled", String(on)); el.querySelector(".pl-who").inert = !on; }); })();</script>
   <script is:inline set:html={CLOCK_JS} />
 </section>
 <script>
@@ -95,7 +95,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     const frame = (now = performance.now()) => { paint(now); drawArcs(now); };
     const select = (i) => {
       focus = i; const to = i < 0 ? ALL : facing(P[i]); goal = to + Math.round((spin - to) / TAU) * TAU;
-      panels.forEach((el, k) => { el.classList.toggle("open", k === i); heads[k].setAttribute("aria-expanded", String(k === i)); el.querySelector(".pl-who").inert = k !== i; });
+      panels.forEach((el, k) => { el.classList.toggle("open", k === i); heads[k].setAttribute("aria-expanded", String(k === i)); heads[k].setAttribute("aria-disabled", String(k === i)); el.querySelector(".pl-who").inert = k !== i; });
       pins.forEach((el, k) => el.classList.toggle("here", k === i)); root.classList.toggle("some", i >= 0);
       if (still()) { spin = goal; vel = 0; frame(); } else { dirty = true; run(); }
     };
@@ -145,7 +145,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       el.addEventListener("pointerenter", () => { clearTimeout(intent); intent = setTimeout(() => { if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }, 140); }); el.addEventListener("pointerleave", () => clearTimeout(intent));
     }
     // A finger on the list ends the tour, so a row about to be tapped never slides away.
-    if (!hover.matches) band.addEventListener("pointerdown", () => { pinned = true; }, { passive: true });
+    band.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") pinned = true; }, { passive: true });
     for (const b of $$("[data-go]")) b.addEventListener("click", () => { pinned = true; select(Number(b.dataset.go)); });
     for (const el of [band, globe]) { el.addEventListener("pointerenter", () => { if (hover.matches) held = true; }); el.addEventListener("pointerleave", () => { held = false; }); }
     // Dragging turns the globe by hand, with a mouse only, so a finger still scrolls the page.
