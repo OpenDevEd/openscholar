@@ -4,10 +4,10 @@
 :root { --edge: 0px; } @media (max-width: 700px) { :root { --edge: clamp(10px, 2.4vw, 24px); } }
 /* The footer keeps the same edges on these pages. */
 :root .foot .f-in { padding-inline: calc(var(--gap) + var(--edge)); }
-/* A person's frame travels between their card and the head of their own page (src/scripts/travel.js). Both are drawn the
-   same, so the move is one picture changing size and place, above the rest of the page as it changes. It moves for as long
-   as the page does and on the same curve, so it never lands before the page it belongs to. The picture it left as is gone
-   by half way, so it lands as what it is arriving at. */
+/* Between these pages the page itself fades, as between any two pages of the site. A person's frame travels between their
+   card and the head of their own page (src/scripts/travel.js). Both are drawn the same, so the move is one picture
+   changing size and place, above the page as it fades. It takes twice as long as the fade, so it lands on a page that is
+   already there. The picture it left as is gone by half way, so it lands as what it is arriving at. */
 ::view-transition-group(portrait) { z-index: 1; animation-duration: .5s; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
 ::view-transition-old(portrait), ::view-transition-new(portrait) { height: 100%; animation-duration: .3s; }
 /* While the arriving frame's photo is still on its way (html.waiting, src/scripts/travel.js), the picture that left stays
@@ -16,15 +16,6 @@
 html.waiting::view-transition-old(portrait) { animation: about-hold 1.2s both; }
 html.waiting::view-transition-new(portrait) { animation: none; opacity: 0; }
 @keyframes about-hold { from, to { opacity: 1; } }
-/* The page itself doesn't cross-fade, which would lay one page over the other as a veil. The arriving page comes down over
-   the one being left, solid. Going back, the page being left lifts away off the one underneath. The arriving page's edge
-   is aimed past the window's foot, so it is still moving fast as it leaves and no strip of the old page lingers. */
-::view-transition-old(root) { animation: none; }
-::view-transition-new(root) { animation: about-down .5s cubic-bezier(.65, 0, .35, 1) both; }
-html:active-view-transition-type(back)::view-transition-old(root) { z-index: 1; animation: about-up .5s cubic-bezier(.65, 0, .35, 1) both; }
-html:active-view-transition-type(back)::view-transition-new(root) { animation: none; }
-@keyframes about-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 -18% 0); } }
-@keyframes about-up { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 100% 0); } }
 /* A link to a service, wherever one stands on a coloured panel: a round button with the service's own mark, which takes
    that service's colour (--brand) under the pointer and names itself beneath. The colour arrives as fast as the name, so
    the name never lands on a button that hasn't filled. */

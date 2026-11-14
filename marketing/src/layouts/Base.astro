@@ -52,7 +52,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       width the last page's header had on screen, measured as that page was left, and glides to its own.
       While a page is still arriving, leaving it again is a plain cut, not another animated move: one that interrupted the
       first would show this page whole for a few frames before taking it away. That holds for the first 350 ms, by which
-      time the arriving page covers the window and there is nothing left to jump, and for as long as a portrait is still
+      time the arriving page has faded in and there is nothing left to jump, and for as long as a portrait is still
       waiting for its photo (html.waiting, src/scripts/travel.js), which an interruption would leave as an empty frame. */}
   <script is:inline>{
     const bar = () => document.querySelector(".bar"), html = document.documentElement;

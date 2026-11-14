@@ -60,12 +60,10 @@
   });
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
   // Either only when the page being left sent its half, or the frame would fade in alone on top of that page. Any page the
-  // transition brings in is marked (moved): that move is its entrance, so nothing on it makes one of its own. Going back,
-  // the page is uncovered, not laid over; where the browser can't tell back from forward, a seen page is taken as back.
+  // transition brings in is marked (moved): that move is its entrance, so nothing on it makes one of its own.
   addEventListener("pagereveal", (e) => {
     const back = seen(), html = document.documentElement; if (!e.viewTransition) return;
     html.classList.add("moved");
-    if (back || (!window.navigation && html.classList.contains("back"))) e.viewTransition.types?.add("back");
     // A frame was sent, and this page has nowhere on screen for it to land (a page loaded afresh may not be scrolled back to
     // its card yet): the move is cut short, as the frame would otherwise fade out alone where it left.
     const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug && !carry(slug, e.viewTransition)) e.viewTransition.skipTransition();
