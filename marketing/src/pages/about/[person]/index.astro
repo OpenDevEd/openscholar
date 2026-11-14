@@ -31,7 +31,7 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   {/* The first paint waits for the portrait frame, so the frame is there for the page transition to bring in. */}
   <Fragment slot="head"><script type="application/ld+json" set:html={JSON.stringify(person)} /><link rel="expect" href="#face" blocking="render" /><script is:inline set:html={TRAVEL_JS} /></Fragment>
   <section class="bleed ph" style={`--bg:${p.bg};--glow:${p.glow}`}>
-    <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 1140px) 50vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" /><i class="glint"></i></div>
+    <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 700px) 50vw, (max-width: 1140px) 100vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" /><i class="glint"></i></div>
     <div class="inner ph-in">
       <a class="back" href="/about/" data-back><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
       <div class="ph-face" id="face"><Portrait person={m} eager clock /></div>
@@ -77,7 +77,7 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   .org { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 17px; color: rgb(255 255 255 / .78); transition: color .15s var(--ease); } .org :global(svg) { opacity: .7; transition: translate .25s var(--ease), opacity .15s var(--ease); } .org:hover { color: #fff; } .org:hover :global(svg) { translate: 2px -2px; opacity: 1; }
   /* Where else to find them. Each service is a round button (.svc, in about.css); any other page is a pill with its name. */
   .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-  .site { display: inline-flex; align-items: center; gap: 9px; height: 52px; padding-inline: 16px 18px; border-radius: 999px; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); font-size: 15px; white-space: nowrap; transition: background .25s var(--ease), color .25s var(--ease), translate .3s var(--ease); } .site :global(svg) { flex: none; } .site :global(svg:last-child) { opacity: .7; } @media (hover: hover) { .site:hover { background: #fff; color: var(--ink); translate: 0 -4px; } }
+  .site { display: inline-flex; align-items: center; gap: 9px; height: 52px; padding-inline: 16px 18px; border-radius: 999px; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); font-size: 15px; white-space: nowrap; transition: background .25s var(--ease), color .25s var(--ease), translate .3s var(--ease); } .site :global(svg) { flex: none; } .site :global(svg:last-child) { opacity: .7; } .site:focus-visible { background: #fff; color: var(--ink); translate: 0 -4px; } @media (hover: hover) { .site:hover { background: #fff; color: var(--ink); translate: 0 -4px; } }
   /* What they say about themselves carries on down the name's column, beside the foot of the hanging frame: the first
      sentence large, the rest as text. Everything after it is a section of its own, back at the page's edge, and as far from the one before it as
      the sections of the About page are from each other. */

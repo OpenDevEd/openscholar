@@ -23,12 +23,15 @@ const { people, whole = false, lazy = false } = Astro.props;
   /* A card is as tall as its row, and the role takes what is spare, so the organisation's name is level across the row
      whether a role takes one line or two. */
   li { display: grid; } .who { display: grid; grid-template-rows: auto auto 1fr auto; align-content: start; }
-  b { margin-top: 14px; font-weight: 500; font-size: 18px; line-height: 1.25; letter-spacing: -.01em; } em { font-style: normal; font-size: 15px; line-height: 1.35; color: var(--t2); } small { margin-top: 6px; font-size: 14px; color: var(--t3); }
+  b { margin-top: 14px; font-weight: 500; font-size: 18px; line-height: 1.25; letter-spacing: -.01em; } em { font-style: normal; font-size: 15px; line-height: 1.35; color: var(--t2); text-wrap: balance; } small { margin-top: 6px; font-size: 14px; color: var(--t3); }
   /* The card lifts and leans with the pointer, and comes back slowly. */
   .who :global(.pf) { transition: transform .7s var(--ease), translate .4s var(--ease), box-shadow .4s var(--ease); }
   @media (hover: hover) { .who:hover :global(.pf) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } .who:hover :global(.pf)::before { opacity: 1; } .who:hover :global(.pf-who) { scale: 1.05; } .who:hover :global(.pf-art) { scale: 1.1; } }
-  /* A card about to travel to its person's page (src/scripts/travel.js) is set flat at once: no lift, no lean, no light. */
-  .who :global(.pf[data-going]) { translate: none; transition: none; } .who :global(.pf[data-going]) > :global(img) { scale: none; transition: none; } .who :global(.pf[data-going])::before { opacity: 0; transition: none; }
+  /* The keyboard gets the pointer's lift, and its ring goes round the frame, which has the frame's corners. */
+  .who:focus-visible { outline: none; } .who:focus-visible :global(.pf), .who:focus-visible .world { translate: 0 -6px; outline: 3px solid var(--brand-ink); outline-offset: 3px; }
+  /* A card about to travel to its person's page (src/scripts/travel.js) is set flat at once: no lift, no lean, no light,
+     no ring. */
+  .who :global(.pf[data-going]) { translate: none; outline: none; transition: none; } .who :global(.pf[data-going]) > :global(img) { scale: none; transition: none; } .who :global(.pf[data-going])::before { opacity: 0; transition: none; }
   /* The whole team: the planet in the same frame as a person, with the flags of the places along its foot. */
   .world { position: relative; display: block; aspect-ratio: 8 / 9; overflow: hidden; border-radius: 22px; background: radial-gradient(ellipse 80% 60% at 50% 40%, #142a66, transparent 72%), var(--night); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: translate .4s var(--ease), box-shadow .4s var(--ease); }
   .world > img { position: absolute; left: 50%; top: 44%; width: 104%; max-width: none; translate: -50% -50%; transition: scale .9s var(--ease), rotate .9s var(--ease); }
