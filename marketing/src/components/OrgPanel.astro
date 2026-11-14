@@ -29,6 +29,7 @@ const { id, except, h = 3 } = Astro.props, Tag = `h${h}`, o = ORGS[id], people =
   .faces { display: flex; } .faces li + li { margin-left: -8px; } .faces a { display: block; border-radius: 50%; background: var(--at); box-shadow: 0 0 0 3px var(--bg); transition: translate .3s var(--ease), box-shadow .3s var(--ease); } @media (hover: hover) { .faces a:hover { position: relative; translate: 0 -5px; box-shadow: 0 0 0 2px #fff; } } .faces img { width: 52px; height: 52px; border-radius: 50%; }
   .go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; } .soc { display: flex; gap: 10px; }
   /* Narrow: the words above, the picture below them. */
-  @media (max-width: 900px) { .og { padding-bottom: 0; } .og-art { order: 2; position: relative; width: calc(100% + 2 * var(--pad)); height: auto; margin: 8px calc(-1 * var(--pad)) 0; aspect-ratio: 16 / 9; } .og-art img { object-fit: cover; object-position: 100% 100%; } .og-in { max-width: none; } }
+  @media (min-width: 761px) and (max-width: 900px) { .og-in { max-width: 360px; } }
+  @media (max-width: 760px) { .og { padding-bottom: 0; } .og-art { order: 2; position: relative; width: calc(100% + 2 * var(--pad)); height: auto; margin: 8px calc(-1 * var(--pad)) 0; aspect-ratio: 16 / 9; } .og-art img { object-fit: cover; object-position: 100% 100%; } .og-in { max-width: none; } }
   @media (max-width: 420px) { .faces img { width: 44px; height: 44px; } }
 </style>
