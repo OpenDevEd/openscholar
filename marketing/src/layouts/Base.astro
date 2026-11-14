@@ -197,8 +197,6 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
   /* Five links, the two on the right and the button need 1024 px between them; below that the links go into the menu. */
   @media (max-width: 1023px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
-  /* In the narrowest windows that show every link, the links stand a little closer, so the row stays inside the bar. */
-  @media (min-width: 1024px) and (max-width: 1099px) { .lk { padding-inline: 7px; } .signin { padding-inline: 6px; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
   @media (max-width: 900px) { .f-in { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { columns: 150px; column-gap: 24px; } .foot nav:not(.belt) > div { margin-bottom: 28px; } .belt { padding-block: 16px; } .belt img { filter: saturate(1.5); width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }

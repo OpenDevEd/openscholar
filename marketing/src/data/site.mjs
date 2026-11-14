@@ -32,12 +32,6 @@ export const NAV = [
     { href: "/evidence-communities/#map", title: "Maps of your field", text: "Who's working on what, and where", icon: "globe", color: "#38bdf8", field: "night", art: "thread", img: "c-map-laptop-dark" },
     { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
   ], live: true },
-  { id: "teams", href: "/teams/", label: "Teams", rows: [
-    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "team-merge", img: "screen-laptop-light" },
-    { href: "/teams/#activity", title: "See who did what", text: "A record of the changes, with a name beside each", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },
-    { href: "/teams/#publish", title: "Review before you publish", text: "Creators submit, editors decide", icon: "check", color: "#34d399", field: "emerald", art: "gates", img: "c-search-laptop-light" },
-    { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#7da7e6", field: "night", art: "team-merge" },
-  ] },
   { id: "publish", href: "/publithon/", label: "Publish", rows: [
     { href: "/publithon/#publish", title: "From PDF to DOI", text: "Sign, upload, check, and your report is live", icon: "pen", color: "#fbbf24", field: "night", art: "pub-rise" },
     { href: "/publithon/#doi", title: "What a DOI gives your work", text: "A permanent link, cited in one paste", icon: "thread", color: "#38bdf8", field: "night", art: "pub-rise", img: "r-page-laptop-light" },
