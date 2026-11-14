@@ -11,7 +11,7 @@ import { APP } from "../../data/site.mjs";
 // The steps are /publish's own (publishReports.flow.overview), in the order the app takes them. Each has a glass
 // emblem of the icon its step has in the app's step trail (PenLine, Hash, FileUp, FileText, ShieldCheck, BadgeCheck).
 const steps = [
-  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and publish under CC BY 4.0."],
+  ["sign", "#3b82f6", "Sign the agreement", "You keep the copyright and choose the license."],
   ["doi", "#38bdf8", "Get your DOI", "Reserved the moment you sign. It goes live with the report."],
   ["upload", "#22d3ee", "Upload your PDF", "With one line naming the series and the DOI. We can add it for you."],
   ["details", "#34d399", "Check the details", "Title, authors, ORCID iDs, institutions and funders, read from the PDF."],
@@ -29,7 +29,7 @@ const chores = [
   [["Host the file", "Keep the PDF online, so the DOI always leads somewhere"], ["Its own page", "With the PDF to read and cite"]],
 ];
 const faq = [
-  ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright, and it's published under CC BY 4.0."],
+  ["What can I publish?", "Your own finished work as a PDF: a report, a working paper, a policy brief or a study. You keep the copyright and choose its license: CC BY, CC BY-SA or another."],
   ["What if it's already published?", "Suggest it to a community instead. Every upload is checked against work that's already published."],
   ["What does AI do here?", "It reads the title, authors, institutions and funders from your PDF, so you don't type them in. You check them and change anything before the report goes live."],
   ["Does anyone review my report first?", "No. Automatic checks look for the series line with your DOI and for anything published before, and once they pass, you activate your report and it goes live straight away."],

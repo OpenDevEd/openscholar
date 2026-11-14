@@ -1,7 +1,7 @@
 "use client";
 
 import { FadeRow } from "@/components/ui/fade-row";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode, type SetStateAction } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { AiIcon, Asterisk, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Lock, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
@@ -161,9 +161,10 @@ export function SetupView({
   const kept = picked ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
   // A set with no papers is never the one picked, even one a job ran on that has emptied since.
   const source = kept && kept.count > 0 ? kept : lists[kind].rows.find((row) => row.count > 0);
-  // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
-  const [scope, setScope] = useState<"all" | "page" | "range">(handoffId ? "all" : again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
-  const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
+  // A search starts on a range, opened from its results page too; run again, on the job's own papers.
+  const [scope, setScope] = useState<"all" | "page" | "range">(handoffId ? "all" : again?.first ? "range" : again?.set && again.set.kind !== "search" ? "all" : "range");
+  // The range as the person set it. Untouched, it runs from the first paper to the last the credits cover.
+  const [chosen, setChosen] = useState<[number, number] | null>(again?.first && again.last ? [again.first, again.through ?? again.last] : null);
   // Untouched, the questions are the selected search's own: the ones its results page screens with.
   const [edited, setEdited] = useState<Question[] | null>(again ? questionsOf(again) : null);
   // A search's are its own; a hand-off's, the yes or no questions it brought.
@@ -197,6 +198,18 @@ export function SetupView({
   // A range can reach the last paper: one job takes however many.
   const top = source?.count ?? 0;
   const page = source?.kind === "search" ? (source.search.page ?? 1) : 1;
+  const spend = useSpendable();
+  const { balance } = spend;
+  // What one paper costs at most on the model Screen all runs on: a job holds that much for each of its papers when it starts.
+  const { data: price } = useProtectedQuery(api.screening.queries.estimate, inWorkspace(workspaceId, { papers: 1 }));
+  const perPaper = price?.credits;
+  // What the workspace's plan takes in one screening, which the server refuses a job over: null for any number.
+  const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
+  // An untouched range ends on the last paper the credits cover and the plan takes in one job (on the first, when the
+  // credits cover none), so what the page first offers is the most the person can start.
+  const untouched: [number, number] = [1, Math.max(1, Math.min(top, perPaper ? Math.floor(balance / perPaper) : top, limits?.request_papers ?? top))];
+  const range = chosen ?? untouched;
+  const setRange = (change: SetStateAction<[number, number]>) => setChosen((current) => (typeof change === "function" ? change(current ?? untouched) : change));
   const [first, last] =
     scope === "all" ? [1, top] : scope === "page" && source?.kind === "search" ? [(page - 1) * ITEMS_PER_PAGE + 1, Math.min(page * ITEMS_PER_PAGE, top)] : [Math.min(range[0], top), Math.min(range[1], top)];
   const papers = top ? last - first + 1 : 0;
@@ -245,34 +258,31 @@ export function SetupView({
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
-  const spend = useSpendable();
   const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, {}));
-  const { balance } = spend;
-  // The most these papers cost on the model Screen all runs on: what the job holds when it starts.
-  const { data: estimate } = useProtectedQuery(api.screening.queries.estimate, inWorkspace(workspaceId, { papers }));
-  // Until the figure for these papers arrives, nothing can start.
-  const credits = estimate?.credits ?? 0;
-  const enough = estimate !== undefined && credits <= balance;
+  // The most these papers cost: what the job holds when it starts. Until the price arrives, nothing can start.
+  const credits = papers * (perPaper ?? 0);
+  const enough = perPaper !== undefined && credits <= balance;
   // The server reads the saved search, so edits still being saved would be screened without.
   const { pending: savingEdits } = useResearchStatus();
   const screen = useWorkspaceAction(api.screening.start.screen);
   const { execute: generateQuestions, isConfigured: canGenerate } = useGenerateScreeningQuestions();
 
   /** How much of the set each kind had picked, as the person left it. */
-  const leftAt = useRef<Partial<Record<Kind, { scope: typeof scope; range: [number, number] }>>>({});
+  const leftAt = useRef<Partial<Record<Kind, { scope: typeof scope; range: [number, number] | null }>>>({});
   /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers, or on the ones it had when picked again. */
-  const choose = (next: Source, was?: { scope: typeof scope; range: [number, number] }) => {
+  const choose = (next: Source, was?: { scope: typeof scope; range: [number, number] | null }) => {
     picks.current++;
     setPickedOf((all) => ({ ...all, [next.kind]: next }));
-    setRange(was?.range ?? [1, Math.min(300, next.count)]);
-    if (was) setScope(was.scope);
+    setChosen(was?.range ?? null);
+    // A set not picked before starts as its kind does, whatever the last one was left on.
+    setScope(was?.scope ?? (next.kind === "search" ? "range" : "all"));
     // A search picked again, coming back from another kind, keeps the questions as the person left them.
     setEdited(next.kind === "search" && !was ? null : questions);
   };
   const pick = (next: Kind) => {
     // The set this kind shows is kept as picked, the one a job run again started on too, and how much of it.
     if (source) setPickedOf((all) => ({ ...all, [kind]: source }));
-    leftAt.current[kind] = { scope, range };
+    leftAt.current[kind] = { scope, range: chosen };
     setKind(next);
     // Back on a kind, its set is as the person left it; a kind not picked from yet starts on its first.
     const before = pickedOf[next];
@@ -283,7 +293,7 @@ export function SetupView({
     // for the last set don't land here, and the set that arrives starts on its first papers, as choose() does.
     else {
       picks.current++;
-      setRange([1, 300]);
+      setChosen(null);
       setEdited(next === "search" ? null : questions);
     }
     setScope(next === "search" ? "range" : "all");
@@ -355,7 +365,7 @@ export function SetupView({
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows. What each Evidence Library
   // lists comes from the libraries themselves and can take seconds: the form waits for it only when it opens on a library.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.librariesKnown && (libraries.loaded || (kind !== "evidenceLibrary" && destIn !== "library")) &&(!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.librariesKnown && (libraries.loaded || (kind !== "evidenceLibrary" && destIn !== "library")) &&(!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && perPaper !== undefined && limits !== undefined && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
@@ -778,7 +788,7 @@ export function SetupView({
             ) : null}
           </div>
           {/* A search's papers can cost less than the estimate: its page's answers are reused and its rating filter drops papers. The server checks what's left. */}
-          <Button disabled={busy || unscored || estimate === undefined || (!enough && source?.kind !== "search") || papers < 1 || Boolean(savingEdits)} onClick={start}>
+          <Button disabled={busy || unscored || perPaper === undefined || (!enough && source?.kind !== "search") || papers < 1 || Boolean(savingEdits)} onClick={start}>
             {busy ? t("readingPapers") : t("screenPapers", { count: papers })}
           </Button>
         </div>

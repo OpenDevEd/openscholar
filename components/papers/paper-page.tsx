@@ -229,8 +229,9 @@ function DoiLine({ doi }: { doi: string }) {
       <span className="inline-flex h-5 items-center rounded bg-inset px-1.5 text-[11px] font-semibold text-muted-foreground">DOI</span>
       <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
       <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
+        {/* Each press decides the tick: a refused copy after one that worked takes it away. */}
         <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
-          if (await copyText(`https://doi.org/${doi}`, { copied: t("doiCopied"), failed: t("doiCopyFailed"), select: tToast("copyFailedDescription") })) setCopied(true);
+          setCopied(await copyText(`https://doi.org/${doi}`, { copied: t("doiCopied"), failed: t("doiCopyFailed"), select: tToast("copyFailedDescription") }));
         }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
       </TooltipHint>
     </p>

@@ -7054,7 +7054,6 @@
         "matched": "Lu dans votre PDF, puis recherché",
         "classified": "Proposé par OpenAlex",
         "author": "Auteur par défaut",
-        "fixed": "Fixé par Openscholar",
         "reserved": "Réservé à la signature"
       },
       "entry": {
@@ -7082,9 +7081,9 @@
           "name": "Codes de langue ISO 639",
           "detail": "Les codes qu’utilise OpenAlex"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "Creative Commons Attribution 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "Ce que chaque licence permet"
         },
         "crossrefContributors": {
           "name": "Contributeurs Crossref",
@@ -7193,7 +7192,7 @@
         },
         "licence": {
           "title": "Licence",
-          "about": "Chaque Openscholar Report est publié sous CC BY 4.0, comme le dit l’accord que vous avez signé."
+          "about": "La licence que vous avez choisie en signant l’accord. Elle ne peut plus changer."
         },
         "authors": {
           "title": "Auteurs",

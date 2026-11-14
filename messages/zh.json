@@ -7054,7 +7054,6 @@
         "matched": "从你的 PDF 读取后查询",
         "classified": "由 OpenAlex 推荐",
         "author": "默认为作者",
-        "fixed": "由 Openscholar 设定",
         "reserved": "签署时预留"
       },
       "entry": {
@@ -7082,9 +7081,9 @@
           "name": "ISO 639 语言代码",
           "detail": "OpenAlex 使用的代码"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "知识共享署名 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "各许可允许的内容"
         },
         "crossrefContributors": {
           "name": "Crossref 贡献者",
@@ -7193,7 +7192,7 @@
         },
         "licence": {
           "title": "许可",
-          "about": "每份 Openscholar Report 都按 CC BY 4.0 发布，正如你签署的协议所写。"
+          "about": "你签署协议时选择的许可。现在不能更改。"
         },
         "authors": {
           "title": "作者",
