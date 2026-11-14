@@ -10,6 +10,9 @@
    already there. The picture it left as is gone by half way, so it lands as what it is arriving at. */
 ::view-transition-group(portrait) { z-index: 1; animation-duration: .5s; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
 ::view-transition-old(portrait), ::view-transition-new(portrait) { height: 100%; animation-duration: .3s; }
+/* Landing on a small round face (in a place's list, beside an organisation), the frame that left stays the picture until
+   the move has nearly shrunk to the face: the face's own picture is small, and would be soft drawn large. */
+html:active-view-transition-type(to-face)::view-transition-old(portrait), html:active-view-transition-type(to-face)::view-transition-new(portrait) { animation-delay: .2s; }
 /* While the arriving frame's photo is still on its way (html.waiting, src/scripts/travel.js), the picture that left stays
    whole and the arriving one stays out of sight. They change over when the photo is in. The hold also keeps the move open
    for a little over a second on a slow line, so the person is never taken away and brought back. */

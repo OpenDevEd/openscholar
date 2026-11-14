@@ -33,7 +33,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       <button type="button" class="pl-head" data-place={i} aria-expanded="true" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
       <span class="pl-faces" aria-hidden="true">{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="34" height="34" alt="" />)}</span>
       <Clock tz={p.tz} />
-      <ul class="pl-who" id={`pl-${p.id}`}>{p.people.map((m) => <li><a href={`/about/${m.slug}/`}><img src={`/img/team/${m.key}-face.avif`} width="44" height="44" alt="" /><span><b>{m.name}</b><em>{m.role}</em></span><Arrow /></a></li>)}</ul>
+      <ul class="pl-who" id={`pl-${p.id}`}>{p.people.map((m) => <li><a href={`/about/${m.slug}/`}><img src={`/img/team/${m.key}-face.avif`} width="44" height="44" alt="" data-portrait={m.slug} /><span><b>{m.name}</b><em>{m.role}</em></span><Arrow /></a></li>)}</ul>
     </div>)}</div>
   </div>
   {/* Every place is open in the markup, so the page reads without scripts. This shuts them as the page is read, before the
