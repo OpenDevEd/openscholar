@@ -8,7 +8,7 @@ const { people, whole = false, lazy = false } = Astro.props;
 ---
 <ul class="tg" data-team-grid data-in>
   {people.map((m, i) => <li style={`--d:${i * 50}ms`}><a class="who" href={`/about/${m.slug}/`} aria-label={`${m.name}, ${m.role}, ${ORGS[m.org].short}, ${PLACE[m.place].name}`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
-  {whole && <li style={`--d:${people.length * 50}ms`}><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
+  {whole && <li style={`--d:${people.length * 50}ms`}><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em><small>{Object.values(ORGS).map((o) => o.short).join(" and ")}</small></a></li>}
 </ul>
 <script>
   // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
