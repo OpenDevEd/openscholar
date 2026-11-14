@@ -13,7 +13,7 @@ const { id, except, h = 3 } = Astro.props, Tag = `h${h}`, o = ORGS[id], people =
 <div class="ogc"><article class="panel og" style={`--bg:${o.bg};--glow:${o.glow}`} aria-label={o.name}>
   <div class="og-art" aria-hidden="true"><img src={`/img/art-${o.art}.avif`} srcset={`/img/art-${o.art}-960.avif 960w, /img/art-${o.art}.avif 1672w`} sizes="(max-width: 900px) 100vw, 760px" width="1672" height="941" alt="" loading="lazy" decoding="async" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" /></div>
   <div class="og-in">
-    <Tag class="og-h"><a class="logo" href={o.url} aria-label={o.name}><img src={`/img/team/${o.logo}-light.avif`} width={Math.round(o.tall * o.ratio)} height={o.tall} style={`height:${o.tall}px`} alt="" loading="lazy" /></a></Tag>
+    <Tag class="og-h"><a class="logo" href={o.url} aria-label={o.name}><img src={`/img/team/${o.logo}-light.avif`} width={Math.round(o.tall * o.ratio)} height={o.tall} style={`height:${o.tall}px`} alt="" loading="lazy" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" /></a></Tag>
     <p>{o.line}</p>
     <ul class="base" aria-label="Offices">{o.base.map(([cc, city]) => <li><img src={flag(cc)} width="20" height="15" alt="" />{city}</li>)}</ul>
     {people.length > 0 && <ul class="faces" aria-label={`People from ${o.name}`}>{people.map((m) => <li><a href={`/about/${m.slug}/`} aria-label={m.name} style={`--at:${PLACE[m.place].bg}`}><img src={`/img/team/${m.key}-face.avif`} width="52" height="52" alt="" loading="lazy" /></a></li>)}</ul>}
@@ -26,8 +26,9 @@ const { id, except, h = 3 } = Astro.props, Tag = `h${h}`, o = ORGS[id], people =
   /* The picture stands at the right, its empty left half under the words. */
   .og-art { position: absolute; right: 0; bottom: 0; z-index: -1; height: 100%; aspect-ratio: 1672 / 941; max-width: none; } .og-art img { width: 100%; height: 100%; transform-origin: 75% 100%; transition: scale 1.6s var(--ease), opacity .6s var(--ease); } :global(html.js) .og-art img:not([data-loaded]) { opacity: 0; } @media (hover: hover) { .og:hover .og-art img { scale: 1.04; } }
   .og-in { display: grid; gap: 20px; justify-items: start; align-content: center; max-width: 440px; }
-  /* The logo is the panel's heading, for anyone moving through the page by its headings. */
-  .og-h { font: inherit; letter-spacing: inherit; } .logo img { width: auto; }
+  /* The logo is the panel's heading, for anyone moving through the page by its headings. Like the picture, it fades in
+     when it lands. */
+  .og-h { font: inherit; letter-spacing: inherit; } .logo img { width: auto; transition: opacity .5s var(--ease); } :global(html.js) .logo img:not([data-loaded]) { opacity: 0; }
   /* Where two panels stand side by side, the pair gives both logos a box as tall as the taller one (--logo-box), so every
      row under them is level. A panel on its own has none. */
   .logo { display: grid; align-items: center; height: var(--logo-box, auto); } .og p { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; color: rgb(255 255 255 / .88); }
