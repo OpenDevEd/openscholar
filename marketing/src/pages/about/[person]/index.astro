@@ -92,9 +92,10 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   :global(html.js:not(.back):not(.moved)) .ph-face { animation: ph-up .8s var(--ease) both; }
   /* The frame waits for its photo, so it never rises in as an empty box with the person arriving after it. */
   :global(html.js:not(.back):not(.moved)) .ph-face:has(:global(.pf-who:not([data-landed]))) { animation-play-state: paused; }
-  /* A page come back to has been seen, and a page brought in by the page transition has had its entrance (.moved, set in
-     src/scripts/travel.js): on neither does anything make an entrance of its own. */
-  :global(html:is(.back, .moved)) :is(.ph-art, .back, .ph-copy > *, .bio, .quote) { animation: none; }
+  /* A page come back to has been seen: nothing on it makes an entrance again. A page the page transition brought in makes
+     the entrance every other page's hero makes, all but the frame above (.moved, set in src/scripts/travel.js): the
+     picture travelling to it is its entrance. */
+  :global(html.back) :is(.ph-art, .back, .ph-copy > *, .bio, .quote) { animation: none; }
   .bio, .quote { margin-left: calc(var(--face) + var(--gutter)); min-height: var(--hang); }
   .bio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; max-width: 836px; } .bio :global(a), figcaption a { text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; transition: text-decoration-color .15s var(--ease); } .bio :global(a):hover, figcaption a:hover { text-decoration-color: currentColor; }
   .first { font-size: clamp(24px, 2.9vw, 38px); line-height: 1.2; letter-spacing: -.025em; text-wrap: balance; } .first.long { font-size: clamp(20px, 1.9vw, 25px); line-height: 1.35; letter-spacing: -.015em; text-wrap: pretty; }

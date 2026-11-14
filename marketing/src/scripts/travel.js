@@ -70,8 +70,8 @@
   });
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the picture that left, of the
   // person just left. Either only when the page being left sent its half, or the frame would fade in alone on top of that
-  // page. Any page the transition brings in is marked (moved): that move is its entrance, so nothing on it makes one of its
-  // own.
+  // page. Any page the transition brings in is marked (moved), so the frame at a person's head doesn't rise in under the
+  // picture travelling to it. Everything else makes its entrance as on any other page.
   addEventListener("pagereveal", (e) => {
     const back = seen(), html = document.documentElement; if (!e.viewTransition) return;
     html.classList.add("moved");

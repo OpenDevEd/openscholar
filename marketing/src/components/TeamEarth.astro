@@ -90,7 +90,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const home = () => wide.matches ? aim({ lon: 14, lat: 16 }) : [facing({ lon: -18, lat: 12 }), AY];
     // The sun starts behind the planet's upper edge, a crescent with the cities lit, and comes round to the day side.
     const NIGHT = [-.72, .5, -.48], DAY = [-.42, .46, .78], DAWN_MS = 3000;
-    let W = 0, H = 0, R = 0, cx = 0, cy = 0, skyTop = 0, skyFoot = 0, dpr = 1, spin = 0, vel = 0, goal = 0, tilt = AY, tiltVel = 0, turning = false, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0, frozen = false, tick = 0, arcAt = 0;
+    let W = 0, H = 0, R = 0, cx = 0, cy = 0, skyTop = 0, skyFoot = 0, skyEnd = 0, dpr = 1, spin = 0, vel = 0, goal = 0, tilt = AY, tiltVel = 0, turning = false, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0, frozen = false, tick = 0, arcAt = 0;
     // Nothing moves by itself for a visitor who asked for less motion, or where the planet can't be drawn or can't keep up.
     const still = () => calm.matches || !planet || frozen;
     const layout = () => ({ R, cx, cy, rx: R, ry: 1, tilt: 0, narrow: W < 500 });
@@ -100,7 +100,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const size = () => {
       // Laid-out sizes, not what's on screen: the globe arrives scaled down, and this runs while it does.
       const near = wide.matches; W = globe.offsetWidth; H = globe.offsetHeight; R = near ? W / 1.5 : W * .39; cx = near ? W : W / 2; cy = H / 2;
-      roll = near ? 0 : AX; ca = Math.cos(roll); sa = Math.sin(roll); skyTop = near ? 104 : -Infinity; skyFoot = near ? band.offsetTop - globe.offsetTop - 34 : Infinity;
+      roll = near ? 0 : AX; ca = Math.cos(roll); sa = Math.sin(roll); skyTop = near ? 104 : -Infinity; skyFoot = near ? band.offsetTop - globe.offsetTop - 34 : Infinity; skyEnd = near ? W - 90 : Infinity;
       dpr = Math.min(devicePixelRatio || 1, 2); ac.width = Math.round(W * dpr); ac.height = Math.round(H * dpr); bulb(); planet?.resize(W, H, layout()); dirty = true;
       // The headline is told where the planet is from its own corner, so its letters can end at the planet's edge.
       const words = $(".ah-copy"), head = words.querySelector("h1"); head.style.setProperty("--ex", `${globe.offsetLeft + cx - words.offsetLeft - head.offsetLeft}px`); head.style.setProperty("--ey", `${globe.offsetTop + cy - words.offsetTop - head.offsetTop}px`); head.style.setProperty("--er", `${near ? R : 0}px`);
@@ -109,7 +109,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const sun = (e) => { const v = NIGHT.map((a, i) => a + (DAY[i] - a) * e), n = Math.hypot(...v); return v.map((x) => x / n); };
     // A pin is put in its place with `translate`, not `transform`: its entrance grows it with `scale`, which then grows it
     // from the pin itself. With `transform` the growth was measured from the box's corner, and every pin flew in from there.
-    const place = () => P.forEach((p, i) => { const [x, y, z] = at(p, spin), px = cx + x * R, py = cy - y * R; pins[i].style.translate = `${px.toFixed(1)}px ${py.toFixed(1)}px`; pins[i].classList.toggle("back", z < .1 || px > W - 90 || py < skyTop || py > skyFoot); });
+    const place = () => P.forEach((p, i) => { const [x, y, z] = at(p, spin), px = cx + x * R, py = cy - y * R; pins[i].style.translate = `${px.toFixed(1)}px ${py.toFixed(1)}px`; pins[i].classList.toggle("back", z < .1 || px > skyEnd || py < skyTop || py > skyFoot); });
     // Links of light: each a great circle lifted off the surface, hidden where the planet is in front of it, with a point of
     // light running along it. The focused place's links stay bright and the rest dim, easing over time, not per frame.
     const lit = LINKS.map(() => .8), glow = document.createElement("canvas");
@@ -173,7 +173,6 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
       planet.setLevel(next); dirty = true;
     });
     // Without WebGL, or on a data saver, the still Earth stands in, fading in once it has arrived, and the places below still open.
-    // The dark planet comes back first, so the still fades in over it and the box is never empty while the picture is fetched.
     const rest = () => { planet = null; root.classList.remove("lit"); const img = $("[data-still]"); img.onload = img.onerror = () => root.classList.add("lit"); root.classList.add("resting"); img.src = "/img/earth-still.avif"; select(Math.max(0, focus)); };
     const start = async () => {
       size(); let level = -1; try { level = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} level = Earth.startLevel(level);
@@ -227,18 +226,16 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
   /* The line that names the place the Earth is on, and the headline's two set lines, are for a wide window (below). */
   .where, .ah-copy h1 br { display: none; }
-  /* The words come in as they do on every other page's hero. */
-  .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }
+  /* The words come in as they do on every other page's hero, however the page was reached. */
+  .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } .ah-copy > :nth-child(3) { animation-delay: .12s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }
   /* The hand only where the globe can be turned by hand: not once it rests as a still, has been stopped for being slow, or
      for a visitor who asked for less motion. */
   .ah:is(:global(.resting), :global(.frozen)) .ah-globe { cursor: default; } @media (prefers-reduced-motion: reduce) { .ah .ah-globe { cursor: default; } }
   .ah-globe { grid-area: globe; position: relative; width: 100%; aspect-ratio: 1; touch-action: pan-y; user-select: none; cursor: grab; animation: ah-in 1.4s .1s var(--ease) both; } .ah-globe:global(.grab) { cursor: grabbing; } @keyframes ah-in { from { opacity: 0; transform: translateY(36px) scale(.94); } }
-  /* A dark planet holds the place until the real one has its maps, so nothing appears out of nowhere. */
-  .ah-globe::before { content: ""; position: absolute; inset: 11%; border-radius: 50%; background: radial-gradient(circle at 30% 26%, #16306c, #0a1840 50%, #050a1d); box-shadow: 0 0 70px rgb(90 150 255 / .2); transition: opacity 1.2s var(--ease); } .ah:global(.lit) .ah-globe::before { opacity: 0; }
   /* The still Earth is a picture with clear sky around its planet, which is 64% of its width. It is laid out larger than
      the globe's box, so its planet is nearly the size of the drawn one, with room left for the glow on its rim. */
   .earth, .arcs, .still { position: absolute; inset: 0; width: 100%; height: 100%; } .earth { opacity: 0; transition: opacity 1.2s var(--ease); } .ah:global(.lit) .earth { opacity: 1; } .arcs { pointer-events: none; }
-  .still { inset: -7%; width: 114%; height: 114%; object-fit: cover; pointer-events: none; } img.still:not([src]) { display: none; } [data-still] { transition: opacity 1.2s var(--ease); } .ah:not(:global(.lit)) [data-still] { opacity: 0; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
+  .still { inset: -7%; width: 114%; max-width: none; height: 114%; object-fit: cover; pointer-events: none; } img.still:not([src]) { display: none; } [data-still] { transition: opacity 1.2s var(--ease); } .ah:not(:global(.lit)) [data-still] { opacity: 0; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
   .pins { position: absolute; inset: 0; pointer-events: none; }
   .pin { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: opacity .35s var(--ease), visibility 0s; } .pin:global(.back) { opacity: 0; visibility: hidden; transition: opacity .25s var(--ease), visibility 0s .25s; }
   /* The pins wait until the planet has placed them, then light up one after another as the sun comes round. */
@@ -283,7 +280,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
      keep the left half and the places stand in front of its foot. The box is wider than the planet's half by the whole
      reach of the glow on its rim (half the planet's radius), so the glow is never cut off at the box's edge. */
   @media (min-width: 1080px) {
-    .ah { background: radial-gradient(circle at 100% 50%, #142a66 48vw, transparent 64vw), var(--night); }
+    .ah { background: var(--night); }
     .ah-in { --row: clamp(420px, 46vw, 528px); grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--row) auto; grid-template-areas: "copy" "band"; }
     .ah-copy { position: relative; z-index: 1; max-width: calc(52vw - var(--gap) - var(--edge) - max(0px, 50vw - 640px)); }
 
@@ -306,13 +303,16 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     .ah-copy h1 br { display: inline; } .ah-copy .lead { margin-top: 22px; }
     /* A dot and its faces never ride in on the turning Earth: they go out as it starts to turn and come back, where they
        belong, once it has stopped. Turned by hand they stay on, as the hand is what moves them. */
-    .ah:global(.turning) .pin { opacity: 0; transition: opacity .12s var(--ease); }
-    .ah-globe { grid-area: auto; position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; aspect-ratio: auto; }
-    .ah-globe::before { inset: auto; left: 33.33%; top: 50%; width: 133.33%; aspect-ratio: 1; translate: 0 -50%; }
-    .still { inset: auto; left: -4.17%; top: 50%; width: 208.33%; max-width: none; height: auto; aspect-ratio: 1; translate: 0 -50%; }
+    .ah:global(.turning) .pin { opacity: 0; transition: opacity .12s var(--ease); } .ah:global(.turning) .stack { pointer-events: none; }
+    /* Close up the Earth comes in as the home page's does: nothing stands in for it while its maps load, and it fades in
+       out of the sky once they have, with the glow behind it. The box itself makes no entrance: moved or scaled, its
+       straight edges would show across the planet. */
+    .ah-globe { grid-area: auto; position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; aspect-ratio: auto; animation: none; }
+    .ah-globe::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 100% 50%, #142a66 48vw, transparent 64vw); opacity: 0; transition: opacity 1.2s var(--ease); pointer-events: none; } .ah:global(.lit) .ah-globe::before, :global(html:not(.has-js)) .ah-globe::before { opacity: 1; }
+    .still { inset: auto; left: -4.17%; top: 50%; width: 208.33%; height: auto; aspect-ratio: 1; translate: 0 -50%; }
   }
   /* A page come back to has been seen: nothing makes its entrance again. */
-  :global(html:is(.back, .moved)) :is(.pl, .ah-copy > *, .ah-globe) { animation: none; } :global(html.back) .ah:global(.lit) .pin { animation: none; }
+  :global(html.back) :is(.pl, .ah-copy > *, .ah-globe) { animation: none; } :global(html.back) .ah:global(.lit) .pin { animation: none; }
   /* Without scripts nothing can open a place, so they are all open, as a grid of cards. */
   :global(html:not(.has-js)) .band { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); height: auto; } :global(html:not(.has-js)) .pl { height: 236px; }
   /* Narrower: words, globe, then the places as a list, the open one tall. A place is always open there, so the list's height
