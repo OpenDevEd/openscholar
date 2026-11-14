@@ -366,15 +366,16 @@ void main(){
       get every() { return spec.every; },
       setLevel: function (next) { level = Math.max(1, Math.min(TOP, next)); apply(); },
       resize: function (w, h, l) { width = w; height = h; layout = l; apply(); },
-      /** One frame: `t` the turn, `sun` a unit vector, `shadow` the ring's shadow on it, `wave` 0 to 1 or 0, `lift` px, and
-       *  `lean` the planet's two angles (sideways, then towards the eye) where they aren't the hero's own. */
+      /** One frame: `t` the turn, `sun` a unit vector, `shadow` the ring's shadow on it, `wave` 0 to 1 or 0, `lift` px,
+       *  `grow` the planet's size as a share of its own where that isn't 1, and `lean` its two angles (sideways, then
+       *  towards the eye) where they aren't the hero's own. */
       draw: function (u) {
         current = current || ready.program(spec.lite) || ready.program(!spec.lite);
         if (!current) return false;
         var U = current.U;
         gl.useProgram(current.program);
         gl.uniform2f(U.c, layout.cx * d, canvas.height - (layout.cy + (u.lift || 0)) * d);
-        gl.uniform1f(U.r, layout.R * d);
+        gl.uniform1f(U.r, layout.R * d * (u.grow || 1));
         gl.uniform2f(U.ln, u.lean ? u.lean[0] : 0.4, u.lean ? u.lean[1] : 0.22);
         gl.uniform1f(U.t, u.t);
         gl.uniform1f(U.sd, u.shadow);

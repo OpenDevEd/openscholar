@@ -62,7 +62,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
   const root = document.querySelector("[data-team-earth]");
   if (root) {
     const Earth = window.questionStageEarth, $ = (s) => root.querySelector(s), $$ = (s) => [...root.querySelectorAll(s)];
-    const globe = $(".ah-globe"), cv = $(".earth"), ac = $(".arcs"), ink = ac.getContext("2d"), pins = $$(".pin"), band = $(".band"), panels = $$(".pl"), heads = $$(".pl-head");
+    const globe = $(".ah-globe"), head = $(".ah-copy h1"), cv = $(".earth"), ac = $(".arcs"), ink = ac.getContext("2d"), pins = $$(".pin"), band = $(".band"), panels = $$(".pl"), heads = $$(".pl-head");
     const calm = matchMedia("(prefers-reduced-motion: reduce)"), wide = matchMedia("(min-width: 1080px)"), hover = matchMedia("(hover: hover)");
     const marks = $$("[data-at]");
     const P = JSON.parse(root.dataset.places), LINKS = JSON.parse(root.dataset.links), RAD = Math.PI / 180, TAU = Math.PI * 2;
@@ -90,7 +90,11 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const home = () => wide.matches ? aim({ lon: 14, lat: 16 }) : [facing({ lon: -18, lat: 12 }), AY];
     // The sun starts behind the planet's upper edge, a crescent with the cities lit, and comes round to the day side.
     const NIGHT = [-.72, .5, -.48], DAY = [-.42, .46, .78], DAWN_MS = 3000;
-    let W = 0, H = 0, R = 0, cx = 0, cy = 0, skyTop = 0, skyFoot = 0, skyEnd = 0, dpr = 1, spin = 0, vel = 0, goal = 0, tilt = AY, tiltVel = 0, turning = false, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0, frozen = false, tick = 0, arcAt = 0;
+    // Close up the Earth arrives as the globes on the other pages do, rising and growing into place over the same time on
+    // the site's curve, but drawn inside its own canvas: moving its box would show the box's straight edges across the
+    // planet. `far` is how far it still is from arrived, 1 to 0. The dots and the links come on once it has.
+    const ARRIVE_MS = 1400, RISE = .07, GROW = .06, far = (now) => !wide.matches || still() ? 0 : (1 - Math.min(1, (now - born) / ARRIVE_MS)) ** 5;
+    let W = 0, H = 0, R = 0, cx = 0, cy = 0, skyTop = 0, skyFoot = 0, skyEnd = 0, headX = 0, headY = 0, edged = -1, dpr = 1, spin = 0, vel = 0, goal = 0, tilt = AY, tiltVel = 0, turning = false, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0, frozen = false, tick = 0, arcAt = 0;
     // Nothing moves by itself for a visitor who asked for less motion, or where the planet can't be drawn or can't keep up.
     const still = () => calm.matches || !planet || frozen;
     const layout = () => ({ R, cx, cy, rx: R, ry: 1, tilt: 0, narrow: W < 500 });
@@ -102,8 +106,8 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
       const near = wide.matches; W = globe.offsetWidth; H = globe.offsetHeight; R = near ? W / 1.5 : W * .39; cx = near ? W : W / 2; cy = H / 2;
       roll = near ? 0 : AX; ca = Math.cos(roll); sa = Math.sin(roll); skyTop = near ? 104 : -Infinity; skyFoot = near ? band.offsetTop - globe.offsetTop - 34 : Infinity; skyEnd = near ? W - 90 : Infinity;
       dpr = Math.min(devicePixelRatio || 1, 2); ac.width = Math.round(W * dpr); ac.height = Math.round(H * dpr); bulb(); planet?.resize(W, H, layout()); dirty = true;
-      // The headline is told where the planet is from its own corner, so its letters can end at the planet's edge.
-      const words = $(".ah-copy"), head = words.querySelector("h1"); head.style.setProperty("--ex", `${globe.offsetLeft + cx - words.offsetLeft - head.offsetLeft}px`); head.style.setProperty("--ey", `${globe.offsetTop + cy - words.offsetTop - head.offsetTop}px`); head.style.setProperty("--er", `${near ? R : 0}px`);
+      // Where the planet's centre is from the headline's own corner. The next frame drawn tells the headline (paint).
+      const words = head.parentElement; headX = globe.offsetLeft + cx - words.offsetLeft - head.offsetLeft; headY = globe.offsetTop + cy - words.offsetTop - head.offsetTop; edged = -1;
     };
     const dawn = (now) => { const k = still() ? 1 : Math.min(1, Math.max(0, (now - born - 250) / DAWN_MS)); return k * k * (3 - 2 * k); };
     const sun = (e) => { const v = NIGHT.map((a, i) => a + (DAY[i] - a) * e), n = Math.hypot(...v); return v.map((x) => x / n); };
@@ -133,7 +137,12 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
         const [hx, hy, ok] = pt(f); if (ok) { ink.globalAlpha = alpha; ink.drawImage(glow, hx - 16 * dpr, hy - 16 * dpr); ink.globalAlpha = 1; }
       });
     };
-    const paint = (now) => { planet?.draw({ t: spin / .05, sun: sun(dawn(now)), shadow: 0, lean: [roll, pitch] }); place(); dirty = false; };
+    const paint = (now) => {
+      const f = far(now); planet?.draw({ t: spin / .05, sun: sun(dawn(now)), shadow: 0, lean: [roll, pitch], lift: RISE * H * f, grow: 1 - GROW * f });
+      // The headline is told where the planet's edge is, so its letters end there: as the Earth arrives, its edge comes across them.
+      if (f !== edged) { edged = f; head.style.setProperty("--ex", `${headX}px`); head.style.setProperty("--ey", `${headY + RISE * H * f}px`); head.style.setProperty("--er", `${wide.matches ? R * (1 - GROW * f) : 0}px`); }
+      place(); dirty = false;
+    };
     const frame = (now = performance.now()) => { paint(now); drawArcs(now); };
     const select = (i) => {
       focus = i; const [to, lean] = i < 0 ? home() : wide.matches ? aim(P[i]) : [facing(P[i]), AY]; goal = to + Math.round((spin - to) / TAU) * TAU; tilt = lean;
@@ -176,8 +185,8 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const rest = () => { planet = null; root.classList.remove("lit"); const img = $("[data-still]"); img.onload = img.onerror = () => root.classList.add("lit"); root.classList.add("resting"); img.src = "/img/earth-still.avif"; select(Math.max(0, focus)); };
     const start = async () => {
       size(); let level = -1; try { level = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} level = Earth.startLevel(level);
-      // The small globe turns into place as it arrives. Close up, the Earth starts where it belongs.
-      [goal, tilt] = home(); spin = wide.matches ? goal : goal - .5; pitch = tilt;
+      // The Earth turns into place as it arrives, on the spring that turns it to a place. Close up its dots are off until it has.
+      [goal, tilt] = home(); spin = goal - .5; pitch = tilt;
       // Close up the planet is large enough for the full-size day map to show.
       if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level: Math.min(level, 4), base: "/img/earth-", sharp: wide.matches, onLost: rest });
       if (planet) await planet.textures.catch(() => { planet = null; });
@@ -304,9 +313,9 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     /* A dot and its faces never ride in on the turning Earth: they go out as it starts to turn and come back, where they
        belong, once it has stopped. Turned by hand they stay on, as the hand is what moves them. */
     .ah:global(.turning) .pin { opacity: 0; transition: opacity .12s var(--ease); } .ah:global(.turning) .stack { pointer-events: none; }
-    /* Close up the Earth comes in as the home page's does: nothing stands in for it while its maps load, and it fades in
-       out of the sky once they have, with the glow behind it. The box itself makes no entrance: moved or scaled, its
-       straight edges would show across the planet. */
+    /* Close up nothing stands in for the Earth while its maps load. Once they have, it fades in out of the sky with the
+       glow behind it, and the script brings it up into place inside its canvas (`far`). The box itself makes no entrance:
+       moved or scaled, its straight edges would show across the planet. */
     .ah-globe { grid-area: auto; position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; aspect-ratio: auto; animation: none; }
     .ah-globe::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 100% 50%, #142a66 48vw, transparent 64vw); opacity: 0; transition: opacity 1.2s var(--ease); pointer-events: none; } .ah:global(.lit) .ah-globe::before, :global(html:not(.has-js)) .ah-globe::before { opacity: 1; }
     .still { inset: auto; left: -4.17%; top: 50%; width: 208.33%; height: auto; aspect-ratio: 1; translate: 0 -50%; }
