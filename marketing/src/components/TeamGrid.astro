@@ -32,7 +32,8 @@ const { people, whole = false, lazy = false } = Astro.props;
   /* The whole team: the planet in the same frame as a person, with the flags of the places along its foot. */
   .world { position: relative; display: block; aspect-ratio: 8 / 9; overflow: hidden; border-radius: 22px; background: radial-gradient(ellipse 80% 60% at 50% 40%, #142a66, transparent 72%), var(--night); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: translate .4s var(--ease), box-shadow .4s var(--ease); }
   .world > img { position: absolute; left: 50%; top: 44%; width: 104%; max-width: none; translate: -50% -50%; transition: scale .9s var(--ease), rotate .9s var(--ease); }
-  .flags { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; flex-wrap: wrap; gap: 5px; } .flags img { width: 20px; height: 15px; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
+  /* The flags share one row whatever the card's width: each gives up a little rather than one dropping to a row of its own. */
+  .flags { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; gap: 5px; } .flags img { flex: 0 1 20px; min-width: 0; height: auto; aspect-ratio: 4 / 3; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
   @media (hover: hover) { .who:hover .world { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px #050a1d; } .who:hover .world > img { scale: 1.06; rotate: 8deg; } }
   /* Each card rises in once as it arrives, a row from left to right (the site's own entrance, [data-in] in global.css). A
      page come back to has been seen, so its cards are simply there, and a frame travelling back lands on one. */
@@ -43,5 +44,5 @@ const { people, whole = false, lazy = false } = Astro.props;
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
     .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
   }
-  @media (max-width: 700px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } .flags img { width: 16px; height: 12px; } }
+  @media (max-width: 700px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } }
 </style>

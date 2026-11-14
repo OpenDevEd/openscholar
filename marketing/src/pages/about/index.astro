@@ -42,4 +42,6 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
   .seal { position: absolute; grid-area: 1 / 1 / 2 / 2; left: 50%; top: 100%; z-index: 2; display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(#171c2b, #0b0f1a); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .1), 0 0 0 6px #fff, 0 20px 40px -14px rgb(4 7 16 / .6); translate: -50% calc(-50% + var(--gap) / 2); }
   .seal img { animation: seal 9s ease-in-out infinite alternate; } @keyframes seal { from { rotate: -8deg; } to { rotate: 8deg; } } .orgs:global(.away) .seal img { animation-play-state: paused; }
   @media (max-width: 900px) { .seal { width: 64px; height: 64px; } .seal img { width: 34px; height: 34px; } }
+  /* On a phone the second organisation's logo starts under the middle of the seam, so the mark stands to the right of it. */
+  @media (max-width: 700px) { .seal { left: auto; right: 28px; translate: 0 calc(-50% + var(--gap) / 2); } }
 </style>
