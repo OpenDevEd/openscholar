@@ -39,7 +39,7 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
      (1180 px up), one above the other under that. The mark is placed from the first panel's edge, so it is on the seam
      whatever size either panel has. Both of the grid area's end lines are
      given: left to themselves they are the foot of the whole pair. */
-  .pair { position: relative; display: grid; gap: var(--gap); }
+  .pair { position: relative; display: grid; gap: var(--gap); container-type: inline-size; }
   /* The two are the same height wherever the picture stands beside the words, whichever has more to say. */
   @media (min-width: 761px) { .pair { grid-auto-rows: 1fr; } }
   @media (min-width: 1180px) { .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -48,6 +48,7 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
   @media (max-width: 900px) { .seal { width: 64px; height: 64px; } .seal img { width: 34px; height: 34px; } }
   /* On a phone the second organisation's logo starts under the middle of the seam, so the mark stands to the right of it. */
   @media (max-width: 700px) { .seal { left: auto; right: 28px; translate: 0 calc(-50% + var(--gap) / 2); } }
-  /* Side by side, the seam is upright and the mark stands half way down it. */
-  @media (min-width: 1180px) { .seal { left: 100%; top: 50%; translate: calc(-50% + var(--gap) / 2) -50%; } }
+  /* Side by side, the seam is upright. The mark stands on it where the two pictures begin, under the words and buttons of
+     both: a panel is half the pair less half the gap, its picture 9/21 of that tall, and the mark's top touches that line. */
+  @media (min-width: 1180px) { .seal { left: 100%; top: calc(100% - (50cqw - var(--gap) / 2) * 9 / 21 + 48px); translate: calc(-50% + var(--gap) / 2) -50%; } }
 </style>
