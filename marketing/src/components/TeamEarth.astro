@@ -230,7 +230,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   @media (max-width: 1079px) {
     .ah { padding-bottom: clamp(24px, 4vw, 40px); }
     .ah-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "globe" "band"; justify-items: center; } .ah-copy { justify-items: center; padding-bottom: 0; text-align: center; }
-    .ah-globe { width: min(100%, 560px); margin-block: -8px -28px; cursor: default; } .stack, .wire { display: none; } .pin:global(.here) .dot { scale: 1.25; }
+    .ah-globe { width: min(100%, 560px); margin-block: -8px -28px; } .stack, .wire { display: none; } .pin:global(.here) .dot { scale: 1.25; }
     .band { flex-direction: column; gap: 6px; width: 100%; height: auto; margin-top: 0; }
     .pl { flex: none; height: 56px; border-radius: 16px; transition: height .6s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { height: 236px; } .pl::after { background: linear-gradient(90deg, var(--bg) 30%, transparent 78%); opacity: .9; transition: opacity .4s var(--ease); } .pl:global(.open)::after { opacity: 0; }
     .pl-art { left: auto; right: 0; width: min(100%, 560px); object-position: 100% 60%; opacity: .45; -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px); mask-image: linear-gradient(90deg, transparent, #000 120px); transition: opacity .4s var(--ease), filter .5s var(--ease), object-position .6s var(--ease); } .pl:global(.open) .pl-art { object-position: 100% 100%; opacity: 1; }
