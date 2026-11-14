@@ -14,7 +14,7 @@ const { people, whole = false, lazy = false } = Astro.props;
   // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
   if (matchMedia("(hover: hover)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) for (const card of document.querySelectorAll("[data-team-grid] .who")) {
     const frame = card.querySelector(".pf"); if (!frame) continue;
-    card.addEventListener("pointermove", (e) => { const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
+    card.addEventListener("pointermove", (e) => { if ("going" in frame.dataset) return; const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
     card.addEventListener("pointerleave", () => { frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty"); });
   }
 </script>

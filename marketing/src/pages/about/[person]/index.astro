@@ -67,8 +67,8 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   /* On a window wider than the picture can reach from its edge, the model stays near the page and fades out on its right too. */
   @media (min-width: 1760px) { .ph-art { right: calc(50% - 720px); -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); } }
   .ph-in { display: grid; grid-template-columns: var(--face) minmax(0, 1fr); grid-template-areas: "face back" "face copy"; grid-template-rows: auto 1fr; column-gap: var(--gutter); align-items: start; padding-inline: calc(var(--gap) + var(--edge)); }
-  /* The frame is drawn exactly as on the person's card, so it can travel here from it. Carried over from the card, or on a
-     page come back to, it is simply there; arriving any other way it rises in with the name beside it. */
+  /* The frame is drawn exactly as on the person's card, so it can travel here from it. On a page the transition brings in, or one
+     come back to, it is simply there; on a direct visit it rises in with the name beside it. */
   .ph-face { grid-area: face; margin-bottom: calc(-1 * var(--hang)); } .ph-face :global(.pf) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2), 0 20px 32px -22px color-mix(in srgb, var(--bg) 45%, transparent); }
   .back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 8px; height: 40px; margin: -12px 0 12px -12px; padding-inline: 12px 14px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); animation: ph-up .8s var(--ease) both; } .back svg { transition: translate .25s var(--ease); } .back:hover { background: rgb(255 255 255 / .1); color: #fff; } .back:hover svg { translate: -3px 0; }
   .ph-copy { grid-area: copy; display: grid; justify-items: start; max-width: 680px; } .ph-copy > * { animation: ph-up .8s var(--ease) both; } .ph-copy > :nth-child(1) { animation-delay: .06s; } .ph-copy > :nth-child(2) { animation-delay: .12s; } .ph-copy > :nth-child(3) { animation-delay: .18s; } .ph-copy > :nth-child(4) { animation-delay: .24s; } @keyframes ph-up { from { opacity: 0; transform: translateY(18px); } }
@@ -84,9 +84,9 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   .pb { display: grid; gap: calc(clamp(56px, 7vw, 96px) + var(--gap)); padding: 24px var(--edge) clamp(56px, 7vw, 96px); }
   /* It rises in after the name and the links above it, never before them. */
   :global(.js) .bio, :global(.js) .quote { animation: ph-up .8s var(--ease) .3s both; }
-  :global(html.js:not(.carried):not(.back):not(.moved)) .ph-face { animation: ph-up .8s var(--ease) both; }
+  :global(html.js:not(.back):not(.moved)) .ph-face { animation: ph-up .8s var(--ease) both; }
   /* The frame waits for its photo, so it never rises in as an empty box with the person arriving after it. */
-  :global(html.js:not(.carried):not(.back):not(.moved)) .ph-face:has(:global(.pf-who:not([data-landed]))) { animation-play-state: paused; }
+  :global(html.js:not(.back):not(.moved)) .ph-face:has(:global(.pf-who:not([data-landed]))) { animation-play-state: paused; }
   /* A page come back to has been seen, and a page brought in by the page transition has had its entrance (.moved, set in
      src/scripts/travel.js): on neither does anything make an entrance of its own. */
   :global(html:is(.back, .moved)) :is(.ph-art, .back, .ph-copy > *, .bio, .quote) { animation: none; }

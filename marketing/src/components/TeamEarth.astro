@@ -126,7 +126,8 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       planet.setLevel(next); dirty = true;
     });
     // Without WebGL, or on a data saver, the still Earth stands in, fading in once it has arrived, and the places below still open.
-    const rest = () => { planet = null; const img = $("[data-still]"); img.onload = img.onerror = () => root.classList.add("lit"); root.classList.add("resting"); img.src = "/img/earth-still.avif"; select(Math.max(0, focus)); };
+    // The dark planet comes back first, so the still fades in over it and the box is never empty while the picture is fetched.
+    const rest = () => { planet = null; root.classList.remove("lit"); const img = $("[data-still]"); img.onload = img.onerror = () => root.classList.add("lit"); root.classList.add("resting"); img.src = "/img/earth-still.avif"; select(Math.max(0, focus)); };
     const start = async () => {
       size(); let level = -1; try { level = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} level = Earth.startLevel(level);
       if (level) planet = Earth.renderer({ canvas: cv, width: W, height: W, layout: layout(), level: Math.min(level, 4), base: "/img/earth-", sharp: false, onLost: rest });

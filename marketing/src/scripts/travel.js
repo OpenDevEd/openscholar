@@ -35,15 +35,17 @@
     return was && !!a?.from && a.entry.index < a.from.index && a;
   };
   seen();
+  // A page kept by the browser and shown again has been seen too, and its load's own record can't say so.
+  addEventListener("pageshow", (e) => { if (e.persisted) document.documentElement.classList.add("back"); });
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
-  // Either only when the page being left sent its half, or the frame would fade in alone on top of that page. A page whose
-  // frame was carried in is marked, so the frame makes no entrance of its own, and so is any page the transition brings in,
-  // as that move is its entrance. Going back, the page is uncovered, not laid over.
+  // Either only when the page being left sent its half, or the frame would fade in alone on top of that page. Any page the
+  // transition brings in is marked (moved): that move is its entrance, so nothing on it makes one of its own. Going back,
+  // the page is uncovered, not laid over; where the browser can't tell back from forward, a seen page is taken as back.
   addEventListener("pagereveal", (e) => {
-    const back = seen(); if (!e.viewTransition) return;
-    document.documentElement.classList.add("moved");
-    if (back) e.viewTransition.types?.add("back");
-    const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug && carry(slug, e.viewTransition)) document.documentElement.classList.add("carried");
+    const back = seen(), html = document.documentElement; if (!e.viewTransition) return;
+    html.classList.add("moved");
+    if (back || (!window.navigation && html.classList.contains("back"))) e.viewTransition.types?.add("back");
+    const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug) carry(slug, e.viewTransition);
   });
   // The way back on a person's page goes back, when the About page is where the visitor came from, so they return to the
   // card they opened and the portrait travels home.
