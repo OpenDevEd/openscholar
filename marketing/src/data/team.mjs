@@ -40,7 +40,9 @@ export const PLACE = Object.fromEntries(PLACES.map((p) => [p.id, p]));
 export const LINKS = [["london", "morocco"], ["london", "nigeria"], ["london", "kenya"], ["london", "canada"], ["london", "united-states"], ["morocco", "nigeria"], ["morocco", "united-states"], ["nigeria", "kenya"], ["nigeria", "south-africa"], ["kenya", "tanzania"], ["tanzania", "south-africa"], ["united-states", "canada"]];
 
 const ek = (quote) => ({ quote, source: "https://www.ekitabu.com/team" });
-const ode = (key) => PUBLIC[key];
+// A publication whose DOI does not resolve is left out: team-public.json marks it `unresolved` and keeps the DOI that failed
+// (checked at doi.org on 13 Nov 2026), so it comes back by clearing the mark once the DOI is registered.
+const ode = (key) => ({ ...PUBLIC[key], pubs: PUBLIC[key].pubs.filter((b) => !b.unresolved) });
 export const TEAM = [
   { key: "bjorn", slug: "bjorn-hassler", name: "Björn Haßler", suffix: "PhD", role: "Director", org: "ode", place: "london", ...ode("bjorn"),
     links: [["linkedin", "https://www.linkedin.com/in/bjoernhassler/"], ["x", "https://twitter.com/bjoernhassler"], ["github", "https://github.com/bjohas"], ["orcid", "https://orcid.org/0000-0002-5277-9947"], ["scholar", "https://scholar.google.com/citations?user=Rj291kMAAAAJ"], ["instagram", "https://www.instagram.com/bjoernhassler/"], ["web", "http://www.bjohas.de/", "bjohas.de"]] },
@@ -63,10 +65,8 @@ export const TEAM = [
   { key: "eunice", slug: "eunice-jengo", name: "Eunice Jengo", role: "PhD Student", org: "ode", place: "tanzania", ...ode("eunice"),
     links: [] },
 ];
-// Every publication with a cover, once, newest first: the shelf on the About page. Each publication's link was checked on
-// 13 Nov 2026: one whose DOI doesn't resolve is marked `unresolved`, links to its record in the Evidence Library instead,
-// and is left off the shelf.
-export const SHELF = [...new Map(TEAM.flatMap((m) => m.pubs ?? []).filter((b) => b.cover && !b.unresolved).map((b) => [b.id, b])).values()].sort((a, b) => b.year - a.year);
+// Every publication with a cover, once, newest first: the shelf on the About page.
+export const SHELF = [...new Map(TEAM.flatMap((m) => m.pubs ?? []).filter((b) => b.cover).map((b) => [b.id, b])).values()].sort((a, b) => b.year - a.year);
 export const peopleIn = (place) => TEAM.filter((m) => m.place === place);
 export const flag = (cc) => `/img/flags/${cc}.svg`;
 export const LINK_NAMES = { linkedin: "LinkedIn", x: "X", github: "GitHub", orcid: "ORCID", scholar: "Google Scholar", instagram: "Instagram", zotero: "Zotero", facebook: "Facebook" };
