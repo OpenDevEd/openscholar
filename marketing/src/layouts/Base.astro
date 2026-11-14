@@ -46,6 +46,9 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   <script type="speculationrules" set:html={JSON.stringify({ prerender: [{ where: { href_matches: "/*" }, eagerness: "moderate" }] })} />
   <script is:inline>document.documentElement.classList.add("has-js"); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
   <script type="application/ld+json" set:html={JSON.stringify(ENTITY)} />
+  {/* The header is narrower once a page has been scrolled. Between two pages it travels as one piece, so the arriving page
+      starts it at the width it left at, and it eases to its own width once the move is over. */}
+  <script is:inline>addEventListener("pageswap", () => { try { sessionStorage.setItem("bar", document.querySelector(".top")?.classList.contains("stuck") ? "1" : ""); } catch {} }); addEventListener("pagereveal", (e) => { const top = document.querySelector(".top"); if (!e.viewTransition || !top) return; let was = ""; try { was = sessionStorage.getItem("bar"); } catch {} document.documentElement.dataset.carry = ""; top.classList.toggle("stuck", was === "1"); e.viewTransition.finished.finally(() => { delete document.documentElement.dataset.carry; dispatchEvent(new Event("scroll")); }); });</script>
   <slot name="head" />
 </head>
 <body style={`background-color:${top}`}>

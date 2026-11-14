@@ -3,7 +3,8 @@ const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [..
 const top = $(".top"), mega = $("[data-mega]"), nav = $(".nav"), pill = $(".pill"), fine = matchMedia("(hover: hover) and (pointer: fine)").matches, still = matchMedia("(prefers-reduced-motion: reduce)");
 
 // The bar turns to glass once the page has moved under it.
-const mark = () => top.classList.toggle("stuck", scrollY > 24);
+// While a page transition carries the header over (Base.astro), its width is left as it arrived.
+const mark = () => { if (!("carry" in document.documentElement.dataset)) top.classList.toggle("stuck", scrollY > 24); };
 addEventListener("scroll", mark, { passive: true }); mark();
 
 // The header follows the page: the section you're reading takes the name's place, and its bar along the capsule's edge fills as you go.

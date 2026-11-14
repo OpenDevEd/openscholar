@@ -7,10 +7,11 @@ import { PLACE, flag } from "../data/team.mjs";
 const { person: m, eager = false, clock = false } = Astro.props, p = PLACE[m.place];
 ---
 <span class="pf" data-portrait={m.slug} style={`--bg:${p.bg};--glow:${p.glow}`}>
-  <img class="pf-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} onload="this.dataset.landed = ''" />
-  <img class="pf-who" src={`/img/team/${m.key}.avif`} width="480" height="600" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : undefined} onload="this.dataset.landed = ''" />
+  <img class="pf-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} onload="this.dataset.landed = ''" onerror="this.dataset.landed = ''" />
+  <img class="pf-who" src={`/img/team/${m.key}.avif`} width="480" height="600" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : undefined} onload="this.dataset.landed = ''" onerror="this.dataset.landed = ''" />
   {/* A picture the browser already holds is marked as the page is read, so it is in the first frame; one still on its way
-      fades in when it lands. Neither ever appears from one frame to the next. */}
+      fades in when it lands. Neither ever appears from one frame to the next. One that fails counts as landed, so the
+      other still shows. */}
   <script is:inline>for (const img of document.currentScript.parentElement.querySelectorAll("img")) if (img.complete) img.dataset.landed = "";</script>
   <span class="pf-at"><img src={flag(p.cc)} width="20" height="15" alt="" />{p.name}{clock && <Clock tz={p.tz} />}</span>
 </span>
@@ -18,8 +19,9 @@ const { person: m, eager = false, clock = false } = Astro.props, p = PLACE[m.pla
   .pf { position: relative; display: block; aspect-ratio: 8 / 9; overflow: hidden; border-radius: 22px; isolation: isolate; color: #fff; background: radial-gradient(ellipse 85% 60% at 50% 34%, color-mix(in srgb, var(--glow) 38%, transparent), transparent 72%), var(--base, var(--bg)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transform: perspective(900px) rotateX(calc(var(--ty, 0) * -9deg)) rotateY(calc(var(--tx, 0) * 11deg)); }
   /* Light from the pointer crosses the frame as it tilts (TeamGrid sets --tx and --ty, each from -.5 to .5). */
   .pf::before { content: ""; position: absolute; inset: 0; z-index: 2; background: radial-gradient(circle at calc(50% + var(--tx, 0) * 100%) calc(50% + var(--ty, 0) * 100%), rgb(255 255 255 / .24), transparent 58%); mix-blend-mode: screen; opacity: 0; transition: opacity .35s var(--ease); pointer-events: none; }
-  /* The place's glass model stands behind the shoulders, its empty left half off the frame. */
-  .pf-art { position: absolute; left: 50%; bottom: 13%; z-index: -1; width: auto; height: 74%; max-width: none; translate: calc(-71% - var(--tx, 0) * 16px) calc(var(--ty, 0) * -8px); -webkit-mask-image: linear-gradient(transparent 6%, #000 36%); mask-image: linear-gradient(transparent 6%, #000 36%); transform-origin: 71% 100%; transition: scale .9s var(--ease); }
+  /* The place's glass model stands behind the shoulders, its empty left half off the frame. It fades out at its top and at
+     its right, where the picture ends just short of the frame. */
+  .pf-art { position: absolute; left: 50%; bottom: 13%; z-index: -1; width: auto; height: 74%; max-width: none; translate: calc(-71% - var(--tx, 0) * 16px) calc(var(--ty, 0) * -8px); -webkit-mask-image: linear-gradient(transparent 6%, #000 36%), linear-gradient(to left, transparent, #000 12%); -webkit-mask-composite: source-in; mask-image: linear-gradient(transparent 6%, #000 36%), linear-gradient(to left, transparent, #000 12%); mask-composite: intersect; transform-origin: 71% 100%; transition: scale .9s var(--ease); }
   .pf-who { position: absolute; inset: 0 0 auto; width: 100%; height: auto; translate: calc(var(--tx, 0) * 10px) calc(var(--ty, 0) * 6px); transform-origin: 50% 70%; transition: scale .7s var(--ease); }
   :global(.js) .pf > img:not([data-landed]) { opacity: 0; } .pf > img { transition: opacity .35s var(--ease), scale .9s var(--ease), translate .4s var(--ease); }
   /* The place waits for its person, so a card is never a city with nobody in it. */

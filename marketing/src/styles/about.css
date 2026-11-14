@@ -1,9 +1,17 @@
-/* The About pages keep one left edge and one right edge for everything that stands on the page: the header's own edges on a
-   wide screen, so the headline, the row of places, every card and every panel line up with it and with each other. On a
-   narrower screen, where panels reach the window's edge, text and cards step in a little. Only what sits inside a panel is
-   inset further. */
-.strip { --edge: 0px; } @media (max-width: 1079px) { .strip { --edge: clamp(10px, 2.4vw, 24px); } }
+/* The About pages keep one left edge and one right edge for everything that stands on the page: the header's own edges, so
+   the headline, the row of places, every card and every panel line up with it and with each other. Only what sits inside a
+   panel is inset further. On a phone, where panels nearly reach the window's edge, text and cards step in a little. */
+.strip { --edge: 0px; } @media (max-width: 700px) { .strip { --edge: clamp(10px, 2.4vw, 24px); } }
 /* A person's frame travels between their card and the head of their own page (src/scripts/travel.js). Both are drawn the
-   same, so the move is one picture changing size and place, above the rest of the page as it changes. */
+   same, so the move is one picture changing size and place, above the rest of the page as it changes. The picture it left
+   as is gone by half way, so it lands as what it is arriving at. */
 ::view-transition-group(portrait) { z-index: 1; animation-duration: .6s; animation-timing-function: cubic-bezier(.22, 1, .36, 1); }
-::view-transition-old(portrait), ::view-transition-new(portrait) { height: 100%; }
+::view-transition-old(portrait), ::view-transition-new(portrait) { height: 100%; animation-duration: .3s; }
+/* The page itself doesn't cross-fade, which would lay one page over the other as a veil. The arriving page comes down over
+   the one being left, solid. Going back, the page being left lifts away off the one underneath. */
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) { animation: about-down .55s cubic-bezier(.22, 1, .36, 1) both; }
+html:active-view-transition-type(back)::view-transition-old(root) { z-index: 1; animation: about-up .55s cubic-bezier(.22, 1, .36, 1) both; }
+html:active-view-transition-type(back)::view-transition-new(root) { animation: none; }
+@keyframes about-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes about-up { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 100% 0); } }

@@ -3,6 +3,8 @@
 // its publication. The list keeps the height of a full page while you page through it, so the buttons under it never move,
 // and slides to its new height when a filter leaves fewer.
 const { pubs } = Astro.props, PER = 6;
+// What one of each kind is called on its row, where the source's word differs from the filter's.
+const ONE = { "Journal Article": "Journal article", "Conference Paper": "Conference paper", "Book Section": "Book section", "Computer Program": "Software" };
 const KINDS = { "Report": "Reports", "Journal Article": "Journal articles", "Conference Paper": "Conference papers", "Book Section": "Book sections", "Book": "Books", "Computer Program": "Software", "Presentation": "Presentations" };
 const sorted = [...pubs].sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
 const kinds = [...new Set(sorted.map((b) => b.type))].map((k) => [k, sorted.filter((b) => b.type === k).length]).sort((a, b) => b[1] - a[1]);
@@ -15,7 +17,7 @@ const shown = Math.min(sorted.length, PER);
   </header>
   <ol class="tiles" style={`--rows2:${Math.ceil(shown / 2)};--rows1:${shown}`}>{sorted.map((b, i) => <li data-kind={b.type} hidden={i >= PER}><a href={b.url} rel="noopener">
     {b.cover ? <img class="cv" src={`/img/team/pub-${b.cover}.avif`} width="60" height="80" alt="" decoding="async" /> : <i class="cv none"></i>}
-    <span class="tx"><span class="meta"><span class="ty">{b.type}</span><span class="yr">{b.year}</span></span><b>{b.title}</b><em>{b.by}</em></span>
+    <span class="tx"><span class="meta"><span class="ty">{ONE[b.type] ?? b.type}</span><span class="yr">{b.year}</span></span><b>{b.title}</b><em>{b.by}</em></span>
   </a></li>)}</ol>
   {sorted.length > PER && <footer class="pager"><span data-range aria-live="polite">1 to {PER} of {sorted.length}</span>
     <button type="button" data-step="-1" aria-label="Earlier publications" disabled><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
@@ -25,21 +27,30 @@ const shown = Math.min(sorted.length, PER);
 <script>
   for (const root of document.querySelectorAll("[data-pubs]")) {
     const per = Number(root.dataset.per), list = root.querySelector(".tiles"), items = [...list.children], pager = root.querySelector(".pager"), range = root.querySelector("[data-range]"), steps = [...root.querySelectorAll("[data-step]")], picks = [...root.querySelectorAll("[data-pick]")], calm = matchMedia("(prefers-reduced-motion: reduce)");
-    let kind = "", page = 0;
+    let kind = "", page = 0, target = null, timers = [];
+    // Ends a change that is still playing: every row is at once where it was going. A new change then starts from there.
+    const settle = () => { if (!target) return; timers.forEach(clearTimeout); timers = []; for (const li of items) { for (const a of li.getAnimations()) a.cancel(); li.hidden = !target.includes(li); li.style.order = ""; } target = null; };
     const show = () => {
+      settle();
       const set = items.filter((li) => !kind || li.dataset.kind === kind), pages = Math.ceil(set.length / per); page = Math.max(0, Math.min(page, pages - 1));
-      const from = page * per, now = set.slice(from, from + per), full = Math.min(set.length, per);
-      for (const li of items) li.hidden = !now.includes(li);
+      const from = page * per, now = set.slice(from, from + per), full = Math.min(set.length, per), out = items.filter((li) => !li.hidden);
       // A full page's height for this filter, whichever page is showing.
       list.style.setProperty("--rows2", Math.ceil(full / 2)); list.style.setProperty("--rows1", full);
       // A step button that reaches the end is switched off: if it had the keyboard, the other one takes it.
       if (pager) { const had = steps.find((s) => s === document.activeElement); range.textContent = `${from + 1} to ${from + now.length} of ${set.length}`; steps[0].disabled = page === 0; steps[1].disabled = page >= pages - 1; pager.classList.toggle("off", pages < 2); if (had?.disabled) steps.find((s) => !s.disabled)?.focus(); }
-      if (!calm.matches) now.forEach((li, i) => li.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 380, delay: i * 35, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "backwards" }));
+      target = now; if (calm.matches) return settle();
+      // Each row gives way to the one taking its place, one row after another, so the list is never empty on the way. A row
+      // and its successor share a place in the grid by sharing an order.
+      const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+      for (let k = 0; k < per; k++) {
+        const old = out[k], next = now[k]; if (old === next) continue; if (old) old.style.order = k; if (next) next.style.order = k;
+        at(k * 45, () => old?.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(-6px)" }], { duration: 110, easing: "ease-in", fill: "forwards" }));
+        at(k * 45 + 110, () => { if (old) old.hidden = true; if (next) { next.hidden = false; next.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: "cubic-bezier(.22, 1, .36, 1)" }); } });
+      }
+      at(per * 45 + 440, settle);
     };
-    // The rows on show fade out before the next ones come in, so the list is never blank in between.
-    const swap = () => { const out = items.filter((li) => !li.hidden); if (calm.matches || !out.length) return show(); Promise.all(out.map((li) => li.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-in", fill: "forwards" }).finished)).then(() => { for (const li of out) for (const a of li.getAnimations()) a.cancel(); show(); }); };
-    for (const b of steps) b.addEventListener("click", () => { page += Number(b.dataset.step); swap(); });
-    for (const b of picks) b.addEventListener("click", () => { if (kind === b.dataset.pick) return; kind = b.dataset.pick; page = 0; picks.forEach((k) => k.setAttribute("aria-pressed", String(k === b))); swap(); });
+    for (const b of steps) b.addEventListener("click", () => { page += Number(b.dataset.step); show(); });
+    for (const b of picks) b.addEventListener("click", () => { if (kind === b.dataset.pick) return; kind = b.dataset.pick; page = 0; picks.forEach((k) => k.setAttribute("aria-pressed", String(k === b))); show(); });
   }
 </script>
 <style>
@@ -49,19 +60,19 @@ const shown = Math.min(sorted.length, PER);
   .kinds i { font: 400 13px/1 var(--mono); font-style: normal; color: var(--t3); }
   /* Two columns of rows, every row the same height, so a page of six is always the same size. */
   .tiles { --row: 108px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--row); column-gap: clamp(32px, 4vw, 64px); height: calc(var(--rows2) * var(--row)); overflow: clip; overflow-clip-margin: 24px; transition: height .5s var(--ease); }
-  .tiles li { border-top: 1px solid var(--line); } .tiles a { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 18px; align-items: center; height: 100%; }
+  .tiles li { border-top: 1px solid var(--line); } .tiles a { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 18px; align-items: start; height: 100%; padding-top: 14px; }
   .cv { width: 60px; height: 80px; border-radius: 4px; object-fit: cover; object-position: 50% 0; box-shadow: 0 0 0 1px var(--line), 0 10px 16px -10px rgb(0 0 0 / .45); transform-origin: 50% 100%; transition: translate .35s var(--ease), rotate .35s var(--ease), box-shadow .35s var(--ease); } .tiles a:hover .cv { translate: 0 -3px; rotate: -2.5deg; box-shadow: 0 0 0 1px var(--line), 0 16px 22px -10px rgb(0 0 0 / .5); }
-  /* No cover: a plain page with a few lines on it. */
-  .cv.none { display: block; background: linear-gradient(var(--line2), var(--line2)) 11px 16px / 26px 2px no-repeat, linear-gradient(var(--line), var(--line)) 11px 28px / 38px 2px no-repeat, linear-gradient(var(--line), var(--line)) 11px 36px / 38px 2px no-repeat, linear-gradient(var(--line), var(--line)) 11px 44px / 22px 2px no-repeat, var(--soft); }
+  /* No cover: a page in the person's own colour (--bg, from their page) with a few lines on it. */
+  .cv.none { display: block; background: linear-gradient(rgb(255 255 255 / .55), rgb(255 255 255 / .55)) 11px 16px / 26px 2px no-repeat, linear-gradient(rgb(255 255 255 / .3), rgb(255 255 255 / .3)) 11px 28px / 38px 2px no-repeat, linear-gradient(rgb(255 255 255 / .3), rgb(255 255 255 / .3)) 11px 36px / 38px 2px no-repeat, linear-gradient(rgb(255 255 255 / .3), rgb(255 255 255 / .3)) 11px 44px / 22px 2px no-repeat, var(--bg, var(--night)); }
   .tx { display: grid; gap: 4px; min-width: 0; } .meta { display: flex; align-items: center; gap: 10px; } .ty { font-size: 13px; line-height: 1.2; color: var(--t2); } .yr { font: 400 13px/1.2 var(--mono); color: var(--t3); }
   .tx b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-weight: 500; font-size: 16px; line-height: 1.3; } .tiles a:hover b { text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; }
   .tx em { overflow: hidden; font-style: normal; font-size: 14px; line-height: 1.3; white-space: nowrap; text-overflow: ellipsis; color: var(--t3); }
   /* Which six of how many, and the way to the others. With one page the row keeps its place, empty. */
-  .pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); } .pager span { margin-right: auto; font: 400 14px/1 var(--mono); color: var(--t3); transition: opacity .2s var(--ease), visibility 0s; } .pager:global(.off) > :is(*, :disabled) { opacity: 0; visibility: hidden; transition: opacity .2s var(--ease), visibility 0s .2s; }
+  .pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); } .pager span { margin-right: auto; font: 400 14px/1 var(--mono); color: var(--t3); transition: opacity .2s var(--ease), visibility 0s; } .pager:global(.off) > :is(*, :disabled) { opacity: 0; visibility: hidden; transition: opacity .2s var(--ease), visibility 0s .2s; }
   .pager button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; box-shadow: inset 0 0 0 1px var(--line2); transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), opacity .2s var(--ease), visibility 0s; } .pager button:not(:disabled):hover { background: var(--ink); color: #fff; box-shadow: none; } .pager button:disabled { opacity: .35; cursor: default; }
   /* Without scripts every publication is listed. */
   :global(html:not(.has-js)) .tiles { height: auto; } :global(html:not(.has-js)) .tiles li[hidden] { display: block; } :global(html:not(.has-js)) :is(.kinds, .pager) { display: none; }
   @media (max-width: 760px) { .tiles { grid-template-columns: minmax(0, 1fr); height: calc(var(--rows1) * var(--row)); } }
-  /* On a phone the filter fills the width, so two lines of it read as one control. */
-  @media (max-width: 600px) { .kinds { width: 100%; } .kinds button { flex: 1 0 auto; justify-content: center; height: 44px; } }
+  /* Where the filter no longer fits beside the heading it fills the width, so two lines of it read as one control. */
+  @media (max-width: 760px) { .kinds { width: 100%; } .kinds button { flex: 1 0 auto; justify-content: center; height: 44px; } }
 </style>
