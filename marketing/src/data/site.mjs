@@ -6,6 +6,10 @@ export const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY ?? "0x4AAAAAAF1
 // Analytics, the same PostHog project and Google property as the app. A local copy sends nothing (lib/posthog-options.ts).
 export const POSTHOG_KEY = process.env.POSTHOG_KEY ?? "phc_9MBX1GmcLFij9i2EOaZkrlcMU92ZaHpNqF5bGQf05Xj";
 export const GA_ID = process.env.GA_ID ?? "G-KL62MG5H1G";
+// Asks for the planet's four maps as a page arrives, not once its script has run, unless the planet will be the still: data
+// saver, a 2G connection, or a level this visit already settled on (the key is src/planet/earth.js's MEMORY). The home hero
+// and the About page's globe both run it.
+export const EARTH_PRELOAD_JS = '(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const n of ["day-2048", "night", "clouds", "water"]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = "/img/earth-" + n + ".avif"; document.head.append(k); } })();';
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 // Live Evidence Communities, shown in the home hero and the menu.
 export const COMMUNITIES = [

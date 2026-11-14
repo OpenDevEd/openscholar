@@ -5,10 +5,13 @@
 import sharp from "sharp"; import { readFileSync } from "node:fs";
 const from = process.argv[2], out = new URL("../public/img/team/", import.meta.url).pathname, faces = JSON.parse(readFileSync(`${from}/faces.json`, "utf8"));
 // The face is 38% of the frame's height and sits 40% down it. A photo cropped tighter than that fills the frame's width, and
-// one whose head touches its top edge starts at the frame's top, so no cut edge of a photo ever shows inside the frame.
+// one whose head touches its top edge starts at the frame's top, so no cut edge of a photo ever shows inside the frame. Tall
+// hair or a headwrap moves the frame up until it clears the top of the head.
 const FACE = .38, EYE = .4;
 for (const [key, f] of Object.entries(faces)) {
-  const H = Math.min(f.fh / FACE, f.w / .8), W = H * .8, left = Math.round(Math.min(Math.max(f.fx - W / 2, 0), f.w - W)), top = Math.round(Math.max(f.fy - EYE * H, 0)), w = Math.round(W), h = Math.round(Math.min(H, f.h - top));
+  const { data: alpha, info } = await sharp(`${from}/${key}.png`).extractChannel("alpha").raw().toBuffer({ resolveWithObject: true });
+  const crown = Math.floor(alpha.findIndex((v) => v > 60) / info.width);
+  const H = Math.min(f.fh / FACE, f.w / .8), W = H * .8, left = Math.round(Math.min(Math.max(f.fx - W / 2, 0), f.w - W)), top = Math.round(Math.max(Math.min(f.fy - EYE * H, crown - .03 * H), 0)), w = Math.round(W), h = Math.round(Math.min(H, f.h - top));
   const cut = await sharp(`${from}/${key}.png`).extract({ left, top, width: Math.min(w, f.w - left), height: h }).extend({ bottom: Math.round(H) - h, background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
   const a = await sharp(cut).resize(480, 600, { fit: "fill" }).avif({ quality: 58, effort: 7 }).toFile(`${out}${key}.avif`);
   const side = Math.round(Math.min(f.fh * 1.7, f.w, f.h)), fl = Math.round(Math.min(Math.max(f.fx - side / 2, 0), f.w - side)), ft = Math.round(Math.min(Math.max(f.fy - side * .54, 0), f.h - side));

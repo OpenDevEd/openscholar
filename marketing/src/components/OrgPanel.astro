@@ -27,4 +27,5 @@ const { id, except } = Astro.props, o = ORGS[id], people = TEAM.filter((m) => m.
   .go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 4px; } .soc { display: flex; gap: 2px; } .soc a { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); } .soc a:hover { background: rgb(255 255 255 / .14); color: #fff; }
   /* Narrow: the words above, the picture below them. */
   @media (max-width: 900px) { .og { padding-bottom: 0; } .og-art { order: 2; position: relative; width: calc(100% + 2 * var(--pad)); height: auto; margin: 8px calc(-1 * var(--pad)) 0; aspect-ratio: 16 / 9; } .og-art img { object-fit: cover; object-position: 100% 100%; } .og-in { max-width: none; } }
+  @media (max-width: 420px) { .faces img { width: 44px; height: 44px; } }
 </style>

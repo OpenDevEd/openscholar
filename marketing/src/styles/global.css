@@ -4,6 +4,8 @@
 @font-face { font-family: "Ubuntu Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans"); size-adjust: 101.5%; ascent-override: 91.8%; descent-override: 18.6%; line-gap-override: 0%; }
 @font-face { font-family: "Ubuntu Mono"; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-mono-latin-400-normal.woff2) format("woff2"); }
 @view-transition { navigation: auto; }
+/* Between pages the header is one piece that changes width, above the page as it cross-fades, never two capsules at once. */
+.top { view-transition-name: top; } ::view-transition-group(top) { z-index: 2; }
 :root {
   color-scheme: light;
   --ink: #171717; --t2: #525252; --t3: #6a6a6a; --line: rgb(0 0 0 / .1); --line2: rgb(0 0 0 / .18); --soft: #f5f5f5;

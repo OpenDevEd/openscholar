@@ -14,9 +14,10 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
 ---
 <section class="bleed ah" id="places" data-team-earth data-places={JSON.stringify(places.map(({ lon, lat }) => ({ lon, lat })))} data-links={JSON.stringify(links)}>
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
-  <svg class="stars" viewBox="0 0 2560 900" width="2560" height="900" aria-hidden="true" fill="#e6eaf5">{[0, 1, 2].map((g) => <g class={`s${g}`}>{stars.filter((_, i) => i % 3 === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</g>)}</svg>
+  {/* Three skies, each its own picture, so each can twinkle as a whole without the others being painted again. */}
+  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 900" width="2560" height="900" aria-hidden="true" fill="#e6eaf5">{stars.filter((_, i) => i % 3 === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
   <div class="inner ah-in">
-    <div class="ah-copy"><h1>The people behind Openscholar</h1><p class="lead">One team working across Africa, Europe and North America, from two organisations.</p></div>
+    <div class="ah-copy"><h1>The people behind Openscholar</h1><p class="lead">One team working across Africa, Europe and North&nbsp;America, from two organisations.</p></div>
     <div class="ah-globe">
       <noscript><img class="still" src="/img/earth-still.avif" width="1024" height="1024" alt="" /></noscript>
       <img class="still" data-still alt="" decoding="async" />
@@ -27,7 +28,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
         <button type="button" class="stack" data-go={i} aria-label={`${p.name}: ${p.people.map((m) => m.name).join(", ")}`}>{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="40" height="40" alt="" />)}</button>
       </div>; })}</div>
     </div>
-    <div class="band" aria-label="Where the team is">{places.map((p, i) => <div class="pl open" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
+    <div class="band" role="group" aria-label="Where the team is">{places.map((p, i) => <div class="pl open" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
       <img class="pl-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" decoding="async" />
       <button type="button" class="pl-head" data-place={i} aria-expanded="true" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
       <span class="pl-faces" aria-hidden="true">{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="34" height="34" alt="" />)}</span>
@@ -37,7 +38,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   </div>
   {/* Every place is open in the markup, so the page reads without scripts. This shuts them as the page is read, before the
       first paint: all of them where they stand side by side, all but the first where they are a list, which keeps its height. */}
-  <script is:inline>(() => { const wide = matchMedia("(min-width: 1180px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); el.querySelector(".pl-head").setAttribute("aria-expanded", String(on)); el.querySelector(".pl-who").inert = !on; }); })();</script>
+  <script is:inline>(() => { const wide = matchMedia("(min-width: 1080px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); el.querySelector(".pl-head").setAttribute("aria-expanded", String(on)); el.querySelector(".pl-who").inert = !on; }); })();</script>
   <script is:inline set:html={CLOCK_JS} />
 </section>
 <script>
@@ -46,7 +47,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   if (root) {
     const Earth = window.questionStageEarth, $ = (s) => root.querySelector(s), $$ = (s) => [...root.querySelectorAll(s)];
     const globe = $(".ah-globe"), cv = $(".earth"), ac = $(".arcs"), ink = ac.getContext("2d"), pins = $$(".pin"), band = $(".band"), panels = $$(".pl"), heads = $$(".pl-head");
-    const calm = matchMedia("(prefers-reduced-motion: reduce)"), wide = matchMedia("(min-width: 1180px)"), hover = matchMedia("(hover: hover)");
+    const calm = matchMedia("(prefers-reduced-motion: reduce)"), wide = matchMedia("(min-width: 1080px)"), hover = matchMedia("(hover: hover)");
     const P = JSON.parse(root.dataset.places), LINKS = JSON.parse(root.dataset.links), RAD = Math.PI / 180, TAU = Math.PI * 2;
     // The planet's lean, as its shader has it (src/planet/earth.js). A place on the map goes through the same two turns to
     // reach the screen, so a pin sits on the very pixel the shader draws that place on.
@@ -69,10 +70,11 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     const place = () => P.forEach((p, i) => { const [x, y, z] = at(p, spin); pins[i].style.transform = `translate3d(${(W / 2 + x * R).toFixed(1)}px,${(W / 2 - y * R).toFixed(1)}px,0)`; pins[i].classList.toggle("back", z < .1); });
     // Links of light: each a great circle lifted off the surface, hidden where the planet is in front of it, with a point of
     // light running along it. The focused place's links stay bright and the rest dim.
+    const lit = LINKS.map(() => .8);
     const drawArcs = (now) => {
       const S = ac.width, c = S / 2, r = R * dpr, grow = still() ? 1 : Math.min(1, (now - born - 1500) / 1600); ink.clearRect(0, 0, S, S); if (grow <= 0) return; ink.lineCap = "round";
       LINKS.forEach(([a, b], k) => {
-        const A = at(P[a], spin), B = at(P[b], spin), w = Math.acos(Math.min(1, A[0] * B[0] + A[1] * B[1] + A[2] * B[2])), sw = Math.sin(w), lift = .04 + .22 * w, alpha = focus < 0 ? .8 : a === focus || b === focus ? 1 : .2;
+        const A = at(P[a], spin), B = at(P[b], spin), w = Math.acos(Math.min(1, A[0] * B[0] + A[1] * B[1] + A[2] * B[2])), sw = Math.sin(w), lift = .04 + .22 * w, want = focus < 0 ? .8 : a === focus || b === focus ? 1 : .2, alpha = lit[k] = still() ? want : lit[k] + (want - lit[k]) * .12;
         const pt = (f) => { const s0 = Math.sin((1 - f) * w) / sw, s1 = Math.sin(f * w) / sw, h = 1 + Math.sin(f * Math.PI) * lift, x = (A[0] * s0 + B[0] * s1) * h, y = (A[1] * s0 + B[1] * s1) * h, z = (A[2] * s0 + B[2] * s1) * h; return [c + x * r, c - y * r, z > 0 || (z > -.3 && x * x + y * y > 1)]; };
         const N = 40, end = Math.round(N * grow); let on = false; ink.beginPath();
         for (let i = 0; i <= end; i++) { const [x, y, ok] = pt(i / N); if (!ok) { on = false; continue; } if (on) ink.lineTo(x, y); else ink.moveTo(x, y); on = true; }
@@ -95,17 +97,20 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     };
     // The tour: everyone, then each place in turn, for as long as nobody has picked one and the pointer and the keyboard are
     // elsewhere. In one column a place is always open, so the list keeps its height.
-    const tour = (now) => { if (pinned || held || drag || root.contains(document.activeElement)) { nextAt = 0; return; } if (!nextAt) nextAt = now + (focus < 0 ? DAWN_MS + 1600 : 2600); if (now < nextAt) return; const n = focus + 1; select(n < P.length ? n : wide.matches ? -1 : 0); nextAt = now + (focus < 0 ? 3400 : 4600); };
-    const run = () => { if (!raf && seen && !still() && !document.hidden) raf = requestAnimationFrame(loop); };
+    const tour = (now) => { if (pinned || held || drag || root.contains(document.activeElement)) { nextAt = 0; return; } if (!nextAt) nextAt = now + (focus < 0 && now - born < DAWN_MS ? DAWN_MS + 200 : 2600); if (now < nextAt) return; const n = focus + 1; select(n < P.length ? n : wide.matches ? -1 : 0); nextAt = now + (focus < 0 ? 3400 : 4600); };
+    const run = () => { if (!raf && born && seen && !still() && !document.hidden) raf = requestAnimationFrame(loop); };
     const loop = (now) => {
       raf = 0; run(); if (scrolling) return;
       const dt = Math.min(.05, (now - last) / 1000); last = now;
       // A spring carries the globe to where it's going, so a new pick mid-turn just moves the goal.
       if (!drag) { const k = 5.2, a = (goal - spin) * k * k - 2 * k * vel; vel += a * dt; spin += vel * dt; }
       // The planet is only drawn while it turns or the sun is coming up; at rest only the light on the links moves.
-      if (dirty || drag || now - born < DAWN_MS + 400 || Math.abs(goal - spin) > 2e-4 || Math.abs(vel) > 2e-4) paint(now);
+      if (dirty || drag || now - born < DAWN_MS + 400 || Math.abs(goal - spin) > 2e-4 || Math.abs(vel) > 2e-4) { paint(now); if (now - born > 1000) watch(now, planet.level, 4); }
       drawArcs(now); tour(now);
     };
+    // The planet starts at a guessed quality. Its own monitor (earth.js) then watches the frames that draw it and steps the
+    // quality down or up, as on the home page, and the level is remembered for the visit.
+    const watch = Earth.monitor((next) => { if (!next || !planet) return; planet.setLevel(next); try { sessionStorage.setItem(Earth.memory, String(next)); } catch {} });
     // Without WebGL, or on a data saver, the still Earth stands in and the places below still open.
     const rest = () => { planet = null; $("[data-still]").src = "/img/earth-still.avif"; root.classList.add("resting", "lit"); select(Math.max(0, focus)); };
     const start = async () => {
@@ -115,7 +120,15 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       if (!planet) return rest();
       born = last = performance.now(); if (calm.matches) spin = goal; root.classList.add("lit"); select(focus); frame(); run();
     };
-    for (const b of heads) { const i = Number(b.dataset.place); b.addEventListener("click", () => { pinned = true; select(i); }); b.parentElement.addEventListener("pointerenter", () => { if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }); }
+    for (const b of heads) {
+      const i = Number(b.dataset.place), el = b.parentElement; let intent = 0;
+      // In one column, opening a place shuts the one above it. The picked row is held where it was tapped while that happens.
+      b.addEventListener("click", () => { pinned = true; const y0 = el.getBoundingClientRect().top, t0 = performance.now(); select(i); if (wide.matches) return; const hold = () => { scrollBy(0, el.getBoundingClientRect().top - y0); if (performance.now() - t0 < 650) requestAnimationFrame(hold); }; requestAnimationFrame(hold); });
+      // A pointer resting on a place opens it. One only passing over the band on its way elsewhere opens nothing.
+      el.addEventListener("pointerenter", () => { clearTimeout(intent); intent = setTimeout(() => { if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }, 140); }); el.addEventListener("pointerleave", () => clearTimeout(intent));
+    }
+    // A finger on the list ends the tour, so a row about to be tapped never slides away.
+    if (!hover.matches) band.addEventListener("pointerdown", () => { pinned = true; }, { passive: true });
     for (const b of $$("[data-go]")) b.addEventListener("click", () => { pinned = true; select(Number(b.dataset.go)); });
     for (const el of [band, globe]) { el.addEventListener("pointerenter", () => { if (hover.matches) held = true; }); el.addEventListener("pointerleave", () => { held = false; }); }
     // Dragging turns the globe by hand, with a mouse only, so a finger still scrolls the page.
@@ -123,8 +136,9 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     globe.addEventListener("pointermove", (e) => { if (drag) spin = goal = drag.s + (e.clientX - drag.x) * .006; });
     const drop = () => { drag = null; globe.classList.remove("grab"); }; globe.addEventListener("pointerup", drop); globe.addEventListener("pointercancel", drop);
     new ResizeObserver(() => { if (!W || Math.abs(globe.clientWidth - W) < 1) return; size(); if (still()) frame(); }).observe(globe);
-    new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); run(); }, { threshold: .05 }).observe(globe);
-    document.addEventListener("visibilitychange", () => { last = performance.now(); run(); });
+    // Back in view, or back on the tab, the tour waits its full time again before it moves on.
+    new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); nextAt = 0; run(); }, { threshold: .05 }).observe(globe);
+    document.addEventListener("visibilitychange", () => { last = performance.now(); nextAt = 0; run(); });
     wide.addEventListener("change", () => select(focus < 0 && !wide.matches ? 0 : focus));
     calm.addEventListener("change", () => { if (calm.matches) { spin = goal; frame(); } else run(); });
     // On a phone nothing is drawn while the page is moving under a finger: drawing then is what makes scrolling stutter.
@@ -136,9 +150,9 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
 <style>
   .ah { background: radial-gradient(ellipse 620px 440px at calc(50% + 330px) 400px, #142a66, transparent 72%), var(--night); padding-block: clamp(104px, 8.4vw, 128px) clamp(16px, 2vw, 24px); }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; opacity: .7; pointer-events: none; -webkit-mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); -webkit-mask-composite: source-in; mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); mask-composite: intersect; }
-  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); } .stars g { animation: twinkle 5s ease-in-out infinite alternate; } .stars .s1 { animation-duration: 7s; animation-delay: -2s; } .stars .s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } }
+  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); animation: twinkle 5s ease-in-out infinite alternate; } .stars.s1 { animation-duration: 7s; animation-delay: -2s; } .stars.s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } }
   /* The sky is one picture 2560 px wide. On a wider window it fades out at both ends, so it never stops at an edge. */
-  .ah-in { padding-inline: calc(var(--gap) + var(--edge)); display: grid; grid-template-columns: minmax(0, 1fr) 590px; grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
+  .ah-in { padding-inline: calc(var(--gap) + var(--edge)); display: grid; grid-template-columns: minmax(0, 1fr) clamp(420px, 46vw, 528px); grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
   /* The words come in as they do on every other page's hero. */
   .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }
@@ -161,7 +175,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .stack:hover, .pin:global(.here) .stack { scale: 1.22; box-shadow: inset 0 0 0 1.5px var(--glow), 0 0 0 5px color-mix(in srgb, var(--glow) 22%, transparent), 0 14px 34px -8px color-mix(in srgb, var(--glow) 70%, transparent); } .ah:global(.some) .pin:not(.here) .stack:not(:hover) { scale: .88; }
   /* The places, side by side under the globe: each a slice of its own glass model. The one in focus opens to the whole model,
      the time there and its people, each a link to their page. The band keeps its size; only the split between places moves. */
-  .band { grid-area: band; position: relative; z-index: 2; display: flex; gap: 8px; height: 288px; margin-top: -36px; }
+  .band { grid-area: band; position: relative; z-index: 2; display: flex; gap: 8px; height: 260px; margin-top: -36px; }
   .pl { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; border-radius: 22px; isolation: isolate; background: var(--bg); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 30px 50px -30px #000; transition: flex-grow .75s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { flex-grow: 4.4; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent), 0 30px 60px -28px color-mix(in srgb, var(--glow) 45%, #000); }
   :global(.js) .pl { animation: pl-in .9s var(--ease) calc(.25s + var(--i) * 70ms) both; } @keyframes pl-in { from { opacity: 0; translate: 0 40px; } }
   /* One picture for both: as a place opens, more of it shows, from a slice of the model's middle out to the whole of it. */
@@ -171,7 +185,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .fl { flex: none; width: 24px; height: 18px; margin-top: 4px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .22); }
   .pl-head b { font-weight: 500; font-size: 24px; line-height: 1.1; letter-spacing: -.02em; white-space: nowrap; }
   /* What only an open place shows fades in once there is room for it, and goes at once when the place shuts. */
-  .pl-head b, .pl :global(.tm), .pl-who { opacity: 0; transition: opacity .15s var(--ease); } .pl:global(.open) :is(.pl-head b, .pl-who), .pl:global(.open) :global(.tm) { opacity: 1; transition: opacity .5s var(--ease) .3s; }
+  .pl-head b, .pl :global(.tm), .pl-who { opacity: 0; transition: opacity .15s var(--ease); } .pl:global(.open) :is(.pl-head b, .pl-who), .pl:global(.open) :global(.tm) { opacity: 1; transition: opacity .35s var(--ease) .12s; }
   .pl :global(.tm) { position: absolute; left: 50px; top: 50px; justify-content: flex-start; width: auto; color: rgb(255 255 255 / .82); pointer-events: none; }
   .pl-faces { position: absolute; left: 14px; bottom: 14px; display: flex; pointer-events: none; transition: opacity .3s var(--ease) .2s; } .pl:global(.open) .pl-faces { opacity: 0; transition-delay: 0s; }
   .pl-faces img { width: 34px; height: 34px; max-width: none; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 70%, #000); } .pl-faces img + img { margin-left: -9px; }
@@ -182,7 +196,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   :global(html:not(.has-js)) .band { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); height: auto; } :global(html:not(.has-js)) .pl { height: 236px; }
   /* Narrower: words, globe, then the places as a list, the open one tall. A place is always open there, so the list's height
      never changes, and each row names its place, with its people and the time on the right. */
-  @media (max-width: 1179px) {
+  @media (max-width: 1079px) {
     .ah { padding-bottom: clamp(24px, 4vw, 40px); }
     .ah-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "globe" "band"; justify-items: center; } .ah-copy { justify-items: center; padding-bottom: 0; text-align: center; }
     .ah-globe { width: min(100%, 560px); margin-block: -8px -28px; cursor: default; } .stack, .wire { display: none; } .pin:global(.here) .dot { scale: 1.25; }

@@ -21,6 +21,8 @@ const services = m.links.filter(([kind]) => kind in LINK_NAMES), sites = m.links
 const person = { "@context": "https://schema.org", "@type": "Person", name: m.name, jobTitle: m.role, url: `https://openscholar.ai/about/${m.slug}/`, image: `https://openscholar.ai/img/team/${m.key}.avif`, worksFor: { "@type": "Organization", name: org.name, url: org.url }, sameAs: [...m.links.map((l) => l[1]), m.source] };
 // A bio opens on its first sentence, set large, and the rest follows as text.
 const cut = m.bio ? m.bio[0].indexOf(". ") + 1 : 0, opening = m.bio && (cut ? m.bio[0].slice(0, cut) : m.bio[0]), rest = m.bio ? [cut ? m.bio[0].slice(cut + 1) : "", ...m.bio.slice(1)].filter(Boolean) : [];
+// A long opening sentence is set smaller, so it never becomes a wall of display type.
+const long = opening && opening.replace(/<[^>]+>/g, "").length > 110;
 const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>`;
 ---
 <Base top={p.bg} title={`${m.name}: Openscholar`} description={`${m.name}, ${m.role} at ${org.name}, part of the team behind Openscholar.`}>
@@ -28,7 +30,7 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   <section class="bleed ph" style={`--bg:${p.bg};--glow:${p.glow}`}>
     <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 1000px) 100vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" /><i class="glint"></i></div>
     <div class="inner ph-in">
-      <a class="back" href="/about/"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
+      <a class="back" href="/about/" data-back><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
       <div class="ph-face"><Portrait person={m} eager clock /></div>
       <div class="ph-copy">
         <h1>{m.name}{m.suffix && <small>{m.suffix}</small>}</h1>
@@ -42,9 +44,9 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
     </div>
     <script is:inline set:html={CLOCK_JS} />
   </section>
-  <div class="pb">
+  <div class="pb" style={`--bg:${p.bg}`}>
     {m.quote ? <figure class="quote"><svg class="qm" viewBox="0 0 48 36" width="56" height="42" aria-hidden="true"><path fill="currentColor" d="M0 36V21.6C0 9.2 6.6 1.8 19.2 0l1.6 5.4C13.6 7 10.6 10.6 10.2 16h9v20Zm27.2 0V21.6C27.2 9.2 33.8 1.8 46.4 0L48 5.4C40.8 7 37.8 10.6 37.4 16h9v20Z" /></svg><blockquote>{m.quote}</blockquote><figcaption>From <a href={m.source}>{org.host}/team</a></figcaption></figure>
-      : <section class="bio"><p class="first" set:html={opening} />{rest.length > 0 && <div class="rest">{rest.map((text) => <p set:html={text} />)}</div>}<p class="src">From <a href={m.source}>{org.host}</a></p></section>}
+      : <section class="bio"><p class:list={["first", { long }]} set:html={opening} />{rest.length > 0 && <div class="rest">{rest.map((text) => <p set:html={text} />)}</div>}<p class="src">From <a href={m.source}>{org.host}</a></p></section>}
     {pubs.length > 0 && <Publications pubs={pubs} />}
   </div>
   <div class="works"><OrgPanel id={m.org} except={m.key} /></div>
@@ -54,18 +56,18 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
 <style>
   /* The head of the page: the person's frame on the page's left edge, the way back and their name beside its top, and their
      place's glass model on the right. The frame hangs below the head, over the white page, so the head only clips sideways. */
-  .ph, .pb { --hang: 64px; } .ph { overflow: visible; overflow-x: clip; background: var(--bg); padding-block: clamp(104px, 8.4vw, 128px) 0; }
+  .ph, .pb { --hang: 64px; --face: clamp(240px, 32vw, 320px); --gutter: clamp(32px, 4vw, 56px); } .ph { overflow: visible; overflow-x: clip; background: var(--bg); padding-block: clamp(104px, 8.4vw, 128px) 0; }
   .ph-art { position: absolute; right: 0; bottom: 0; z-index: -1; height: 88%; aspect-ratio: 1672 / 941; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%), linear-gradient(transparent, #000 24%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 34%, #000 60%), linear-gradient(transparent, #000 24%); mask-composite: intersect; animation: ph-art 1.4s .1s var(--ease) both; } .ph-art img { width: 100%; height: 100%; transform-origin: 70% 100%; animation: ph-breathe 24s ease-in-out infinite alternate; } @keyframes ph-art { from { opacity: 0; transform: translateX(28px); } } @keyframes ph-breathe { to { transform: scale(1.05); } }
   /* A band of light crosses the glass once the page is in, and again now and then. */
-  .glint { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 46%, rgb(255 255 255 / .22) 50%, transparent 54%); background-size: 300% 100%; mix-blend-mode: overlay; animation: glint 9s 1.2s var(--ease) infinite; } @keyframes glint { from { background-position: 130% 0; } 30%, to { background-position: -30% 0; } }
+  .glint { position: absolute; inset: 0 auto 0 0; width: 300%; background: linear-gradient(105deg, transparent 46%, rgb(255 255 255 / .22) 50%, transparent 54%); mix-blend-mode: overlay; animation: glint 9s 1.2s var(--ease) infinite; } @keyframes glint { from { translate: -86.7% 0; } 30%, to { translate: 20% 0; } }
   /* On a window wider than the picture can reach from its edge, the model stays near the page and fades out on its right too. */
-  @media (min-width: 1760px) { .ph-art { right: calc(50% - 880px); -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); } }
-  .ph-in { display: grid; grid-template-columns: 320px minmax(0, 1fr); grid-template-areas: "face back" "face copy"; grid-template-rows: auto 1fr; column-gap: clamp(32px, 4vw, 56px); align-items: start; padding-inline: calc(var(--gap) + var(--edge)); }
+  @media (min-width: 1760px) { .ph-art { right: calc(50% - 720px); -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); } }
+  .ph-in { display: grid; grid-template-columns: var(--face) minmax(0, 1fr); grid-template-areas: "face back" "face copy"; grid-template-rows: auto 1fr; column-gap: var(--gutter); align-items: start; padding-inline: calc(var(--gap) + var(--edge)); }
   /* The frame is drawn exactly as on the person's card, so it can travel here from it. It isn't animated in: it is either
      carried over from the card or simply there. */
   .ph-face { grid-area: face; margin-bottom: calc(-1 * var(--hang)); } .ph-face :global(.pf) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2), 0 40px 60px -30px rgb(0 0 0 / .7); }
-  .back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 8px; height: 40px; margin: 0 0 12px -12px; padding-inline: 12px 14px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); animation: ph-up .8s var(--ease) both; } .back svg { transition: translate .25s var(--ease); } .back:hover { background: rgb(255 255 255 / .1); color: #fff; } .back:hover svg { translate: -3px 0; }
-  .ph-copy { grid-area: copy; display: grid; justify-items: start; max-width: 520px; padding-bottom: 36px; } .ph-copy > * { animation: ph-up .8s var(--ease) both; } .ph-copy > :nth-child(1) { animation-delay: .04s; } .ph-copy > :nth-child(2) { animation-delay: .08s; } .ph-copy > :nth-child(3) { animation-delay: .12s; } .ph-copy > :nth-child(4) { animation-delay: .16s; } @keyframes ph-up { from { opacity: 0; transform: translateY(18px); } }
+  .back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 8px; height: 40px; margin: -12px 0 12px -12px; padding-inline: 12px 14px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); animation: ph-up .8s var(--ease) both; } .back svg { transition: translate .25s var(--ease); } .back:hover { background: rgb(255 255 255 / .1); color: #fff; } .back:hover svg { translate: -3px 0; }
+  .ph-copy { grid-area: copy; display: grid; justify-items: start; max-width: 680px; } .ph-copy > * { animation: ph-up .8s var(--ease) both; } .ph-copy > :nth-child(1) { animation-delay: .04s; } .ph-copy > :nth-child(2) { animation-delay: .08s; } .ph-copy > :nth-child(3) { animation-delay: .12s; } .ph-copy > :nth-child(4) { animation-delay: .16s; } @keyframes ph-up { from { opacity: 0; transform: translateY(18px); } }
   .ph-copy h1 { font-size: clamp(40px, 4.8vw, 68px); line-height: 1; letter-spacing: -.04em; } .ph-copy h1 small { margin-left: .4em; font-size: .34em; font-weight: 400; letter-spacing: 0; color: rgb(255 255 255 / .66); }
   .role { margin-top: 16px; font-size: clamp(19px, 1.7vw, 23px); line-height: 1.25; letter-spacing: -.01em; }
   .org { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 17px; color: rgb(255 255 255 / .78); transition: color .15s var(--ease); } .org :global(svg) { opacity: .7; transition: translate .25s var(--ease), opacity .15s var(--ease); } .org:hover { color: #fff; } .org:hover :global(svg) { translate: 2px -2px; opacity: 1; }
@@ -76,18 +78,22 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   .svc { width: 48px; } .svc:hover, .svc:focus-visible { background: var(--brand); translate: 0 -4px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3), 0 14px 24px -10px rgb(0 0 0 / .6); }
   .svc::after { content: attr(data-label); position: absolute; top: calc(100% + 10px); left: 50%; z-index: 2; padding: 5px 9px; border-radius: 8px; background: #10141f; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); font: 400 13px/1.2 var(--mono); white-space: nowrap; color: #fff; translate: -50% -4px; opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); } .svc:hover::after, .svc:focus-visible::after { opacity: 1; translate: -50% 0; }
   .site { display: inline-flex; gap: 9px; padding-inline: 16px 18px; font-size: 15px; white-space: nowrap; } .site :global(svg) { flex: none; } .site :global(svg:last-child) { opacity: .7; } .site:hover { background: #fff; color: var(--ink); translate: 0 -4px; }
-  /* What they say about themselves: the first sentence large, the rest as text. It starts clear of the hanging frame. */
-  .pb { display: grid; gap: clamp(48px, 6vw, 80px); padding: calc(var(--hang) + clamp(32px, 4vw, 56px)) var(--edge) clamp(56px, 7vw, 96px); }
-  .bio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; } .bio :global(a), figcaption a { text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; transition: text-decoration-color .15s var(--ease); } .bio :global(a):hover, figcaption a:hover { text-decoration-color: currentColor; }
-  .first { max-width: 26em; font-size: clamp(24px, 2.9vw, 38px); line-height: 1.2; letter-spacing: -.025em; text-wrap: balance; }
-  .rest { display: grid; gap: 1em; max-width: 44em; font-size: clamp(17px, 1.4vw, 19px); line-height: 1.6; color: var(--t2); } .rest :global(a) { color: var(--ink); }
+  /* What they say about themselves carries on down the name's column, beside the foot of the hanging frame: the first
+     sentence large, the rest as text. Everything after it is a section of its own, back at the page's edge. */
+  .pb { display: grid; gap: clamp(48px, 6vw, 80px); padding: clamp(40px, 4vw, 56px) var(--edge) clamp(56px, 7vw, 96px); }
+  .bio, .quote { margin-left: calc(var(--face) + var(--gutter)); min-height: var(--hang); }
+  .bio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; max-width: 836px; } .bio :global(a), figcaption a { text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; transition: text-decoration-color .15s var(--ease); } .bio :global(a):hover, figcaption a:hover { text-decoration-color: currentColor; }
+  .first { font-size: clamp(24px, 2.9vw, 38px); line-height: 1.2; letter-spacing: -.025em; text-wrap: balance; } .first.long { font-size: clamp(20px, 1.9vw, 25px); line-height: 1.35; letter-spacing: -.015em; }
+  .rest { display: grid; gap: 1em; font-size: clamp(17px, 1.4vw, 19px); line-height: 1.6; color: var(--t2); } .rest :global(a) { color: var(--ink); }
   .src, figcaption { font-size: 14px; line-height: 1.4; color: var(--t3); }
-  .quote { display: grid; gap: 20px; max-width: 34em; } .qm { color: var(--brand); } blockquote { font-size: clamp(26px, 3.2vw, 44px); line-height: 1.16; letter-spacing: -.028em; text-wrap: balance; }
-  .more { padding: clamp(64px, 8vw, 112px) var(--edge) clamp(56px, 7vw, 96px); } .more h2 { margin-bottom: clamp(24px, 3vw, 40px); }
-  /* Narrower: the way back at the top, the frame, then the words, and the glass model as a quiet backdrop along the foot. */
-  @media (max-width: 1000px) {
-    .ph, .pb { --hang: 0px; } .ph { padding-bottom: clamp(32px, 5vw, 48px); } .ph-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "back" "face" "copy"; grid-template-rows: none; justify-items: center; row-gap: 4px; } .back { margin-left: -12px; } .ph-face { width: min(100%, 280px); margin-bottom: 20px; } .ph-copy { justify-items: center; padding-bottom: 0; text-align: center; } .links { justify-content: center; }
-    .ph-art { left: 0; height: auto; aspect-ratio: auto; top: 30%; opacity: .32; -webkit-mask-image: linear-gradient(transparent, #000 40%); mask-image: linear-gradient(transparent, #000 40%); } .ph-art img { object-fit: cover; object-position: 78% 100%; } .glint { display: none; }
-    .pb { padding-top: clamp(40px, 6vw, 56px); }
+  /* The quote mark takes the place's own deep colour: orange is kept for light and for things to press. */
+  .quote { display: grid; gap: 20px; } .qm { color: var(--bg); } blockquote { max-width: 20em; font-size: clamp(26px, 3.2vw, 44px); line-height: 1.16; letter-spacing: -.028em; text-wrap: balance; }
+  .more { padding: clamp(56px, 7vw, 96px) var(--edge); } .more h2 { margin-bottom: clamp(24px, 3vw, 40px); }
+  /* Under 1000 px the glass model becomes a quiet backdrop along the foot of the head. */
+  @media (max-width: 1000px) { .ph-art { left: 0; height: auto; aspect-ratio: auto; top: 30%; opacity: .32; -webkit-mask-image: linear-gradient(transparent, #000 40%); mask-image: linear-gradient(transparent, #000 40%); } .ph-art img { object-fit: cover; object-position: 78% 100%; } .glint { display: none; } }
+  /* On a phone: the way back at the top, the frame, then the words, all in one column, and nothing hangs. */
+  @media (max-width: 760px) {
+    .ph, .pb { --hang: 0px; } .ph { padding-bottom: clamp(32px, 5vw, 48px); } .ph-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "back" "face" "copy"; grid-template-rows: none; justify-items: center; row-gap: 4px; } .back { margin-top: 0; margin-left: -12px; } .ph-face { width: min(100%, 280px); margin-bottom: 20px; } .ph-copy { justify-items: center; text-align: center; } .links { justify-content: center; }
+    .bio, .quote { margin-left: 0; min-height: 0; }
   }
 </style>

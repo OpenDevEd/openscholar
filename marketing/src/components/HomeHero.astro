@@ -1,7 +1,7 @@
 ---
 // A living Earth under OpenScholar's search box, with the communities as glass satellites you can catch as they go round, named in the strip below. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
 import AskBar from "./AskBar.astro";
-import { COMMUNITIES } from "../data/site.mjs";
+import { COMMUNITIES, EARTH_PRELOAD_JS } from "../data/site.mjs";
 const HEAD = "Ask the world's research anything".split(" ");
 // The segments of the ring's spark tail, moved by src/planet/earth.js.
 const SPARK = Array.from({ length: 8 });
@@ -13,7 +13,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
 <!-- The planet's four maps are fetched as the page arrives, not once its script has run, unless the planet will be the
      still: data saver, a 2G connection, or a level this visit already settled on (the key is earth.js's MEMORY). The day map
      is the smaller one, which every level starts on (src/planet/earth.js). -->
-<script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const n of ["day-2048", "night", "clouds", "water"]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = `/img/earth-${n}.avif`; document.head.append(k); } })();</script>
+<script is:inline set:html={EARTH_PRELOAD_JS} />
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
 <section class="bleed sky" data-orbit data-placement="hero">
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />

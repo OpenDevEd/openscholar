@@ -21,7 +21,9 @@ const { person: m, eager = false, clock = false } = Astro.props, p = PLACE[m.pla
   /* The place's glass model stands behind the shoulders, its empty left half off the frame. */
   .pf-art { position: absolute; left: 50%; bottom: 13%; z-index: -1; width: auto; height: 74%; max-width: none; translate: calc(-71% - var(--tx, 0) * 16px) calc(var(--ty, 0) * -8px); -webkit-mask-image: linear-gradient(transparent 6%, #000 36%); mask-image: linear-gradient(transparent 6%, #000 36%); transform-origin: 71% 100%; transition: scale .9s var(--ease); }
   .pf-who { position: absolute; inset: 0 0 auto; width: 100%; height: auto; translate: calc(var(--tx, 0) * 10px) calc(var(--ty, 0) * 6px); transform-origin: 50% 70%; transition: scale .7s var(--ease); }
-  :global(.js) .pf > img:not([data-landed]) { opacity: 0; } .pf > img { transition: opacity .35s var(--ease), scale .9s var(--ease); }
+  :global(.js) .pf > img:not([data-landed]) { opacity: 0; } .pf > img { transition: opacity .35s var(--ease), scale .9s var(--ease), translate .4s var(--ease); }
+  /* The place waits for its person, so a card is never a city with nobody in it. */
+  :global(.js) .pf:has(> .pf-who:not([data-landed])) > .pf-art { opacity: 0; }
   /* A tight photo ends at the shoulders, so the frame's foot fades into its colour and no cut edge shows. */
   .pf::after { content: ""; position: absolute; inset: 58% 0 0; background: linear-gradient(transparent, var(--base, var(--bg)) 46%); }
   .pf-at { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 1; display: flex; align-items: center; gap: 8px; font-size: 14px; white-space: nowrap; } .pf-at img { flex: none; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); } .pf-at :global(.tm) { margin-left: auto; color: rgb(255 255 255 / .8); }
