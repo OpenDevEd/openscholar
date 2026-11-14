@@ -7,11 +7,11 @@ import { PLACE, flag } from "../data/team.mjs";
 const { person: m, eager = false, clock = false } = Astro.props, p = PLACE[m.place];
 ---
 <span class="pf" data-portrait={m.slug} style={`--bg:${p.bg};--glow:${p.glow}`}>
-  <img class="pf-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} onload="this.dataset.in = ''" />
-  <img class="pf-who" src={`/img/team/${m.key}.avif`} width="480" height="600" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : undefined} onload="this.dataset.in = ''" />
+  <img class="pf-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} onload="this.dataset.landed = ''" />
+  <img class="pf-who" src={`/img/team/${m.key}.avif`} width="480" height="600" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : undefined} onload="this.dataset.landed = ''" />
   {/* A picture the browser already holds is marked as the page is read, so it is in the first frame; one still on its way
       fades in when it lands. Neither ever appears from one frame to the next. */}
-  <script is:inline>for (const img of document.currentScript.parentElement.querySelectorAll("img")) if (img.complete) img.dataset.in = "";</script>
+  <script is:inline>for (const img of document.currentScript.parentElement.querySelectorAll("img")) if (img.complete) img.dataset.landed = "";</script>
   <span class="pf-at"><img src={flag(p.cc)} width="20" height="15" alt="" />{p.name}{clock && <Clock tz={p.tz} />}</span>
 </span>
 <style>
@@ -21,7 +21,7 @@ const { person: m, eager = false, clock = false } = Astro.props, p = PLACE[m.pla
   /* The place's glass model stands behind the shoulders, its empty left half off the frame. */
   .pf-art { position: absolute; left: 50%; bottom: 13%; z-index: -1; width: auto; height: 74%; max-width: none; translate: calc(-71% - var(--tx, 0) * 16px) calc(var(--ty, 0) * -8px); -webkit-mask-image: linear-gradient(transparent 6%, #000 36%); mask-image: linear-gradient(transparent 6%, #000 36%); transform-origin: 71% 100%; transition: scale .9s var(--ease); }
   .pf-who { position: absolute; inset: 0 0 auto; width: 100%; height: auto; translate: calc(var(--tx, 0) * 10px) calc(var(--ty, 0) * 6px); transform-origin: 50% 70%; transition: scale .7s var(--ease); }
-  :global(.js) .pf > img:not([data-in]) { opacity: 0; } .pf > img { transition: opacity .35s var(--ease), scale .9s var(--ease); }
+  :global(.js) .pf > img:not([data-landed]) { opacity: 0; } .pf > img { transition: opacity .35s var(--ease), scale .9s var(--ease); }
   /* A tight photo ends at the shoulders, so the frame's foot fades into its colour and no cut edge shows. */
   .pf::after { content: ""; position: absolute; inset: 58% 0 0; background: linear-gradient(transparent, var(--base, var(--bg)) 46%); }
   .pf-at { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 1; display: flex; align-items: center; gap: 8px; font-size: 14px; white-space: nowrap; } .pf-at img { flex: none; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); } .pf-at :global(.tm) { margin-left: auto; color: rgb(255 255 255 / .8); }
