@@ -22,7 +22,7 @@
     if (!e.viewTransition || !e.activation) return;
     const to = person(e.activation.entry.url), here = person(location.href);
     if (to) left(carry(to, e.viewTransition, true) ? to : "");
-    else if (here && new URL(e.activation.entry.url).pathname === "/about/" && e.activation.navigationType === "traverse" && e.activation.entry.index < navigation.currentEntry.index && left() === here) left(carry(here, e.viewTransition, true) ? here : "");
+    else if (here && new URL(e.activation.entry.url).pathname === "/about/" && e.activation.navigationType === "traverse" && e.activation.entry.index < (window.navigation?.currentEntry?.index ?? Infinity) && left() === here) left(carry(here, e.viewTransition, true) ? here : "");
   });
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
   // Either only when the page being left sent its half, or the frame would fade in alone on top of that page.
