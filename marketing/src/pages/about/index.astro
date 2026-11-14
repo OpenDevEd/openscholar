@@ -15,7 +15,9 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
 ---
 <Base top="#070b1a" title="About: Openscholar" description="The people who make Openscholar, where they work, and the two organisations behind it.">
   {/* The planet's maps are asked for as the page arrives, as on the home page, so the globe is there sooner. */}
-  <Fragment slot="head"><script is:inline set:html={EARTH_PRELOAD_JS} /><script is:inline set:html={TRAVEL_JS} /></Fragment>
+  {/* The first frame waits until the cards are read (the section after them has begun), so a portrait coming back always
+      has its card to land on. */}
+  <Fragment slot="head"><link rel="expect" href="#research" blocking="render" /><script is:inline set:html={EARTH_PRELOAD_JS} /><script is:inline set:html={TRAVEL_JS} /></Fragment>
   <TeamEarth />
   <section class="team" id="team" aria-labelledby="team-h">
     <h2 id="team-h">The team</h2>

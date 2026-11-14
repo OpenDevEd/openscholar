@@ -3,8 +3,7 @@ const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [..
 const top = $(".top"), mega = $("[data-mega]"), nav = $(".nav"), pill = $(".pill"), fine = matchMedia("(hover: hover) and (pointer: fine)").matches, still = matchMedia("(prefers-reduced-motion: reduce)");
 
 // The bar turns to glass once the page has moved under it.
-// While a page transition carries the header over (Base.astro), its width is left as it arrived.
-const mark = () => { if (!("carry" in document.documentElement.dataset)) top.classList.toggle("stuck", scrollY > 24); };
+const mark = () => top.classList.toggle("stuck", scrollY > 24);
 addEventListener("scroll", mark, { passive: true }); mark();
 
 // The header follows the page: the section you're reading takes the name's place, and its bar along the capsule's edge fills as you go.
@@ -47,6 +46,15 @@ addEventListener("keydown", (e) => { if (e.key === "Escape" && current) { const 
 const menu = $(".menu");
 addEventListener("click", (e) => { if (menu?.open && (!menu.contains(e.target) || e.target.closest(".sheet a"))) menu.open = false; });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && menu?.open) { menu.open = false; $("summary", menu).focus(); } });
+
+// A page the browser keeps for Back is put away with its menus shut and nothing fading, so it never comes back with one closing.
+addEventListener("pagehide", () => {
+  const fading = [mega, pill, $(".scrim")].filter(Boolean);
+  clearTimeout(openTimer); clearTimeout(closeTimer); if (menu) menu.open = false;
+  for (const el of fading) el.style.transition = "none";
+  close(); for (const el of fading) getComputedStyle(el).opacity;
+  for (const el of fading) el.style.transition = "";
+});
 
 // The hero's stars, the communities' laptop and the closing ribbons only move while they're on screen.
 for (const el of $$("[data-orbit], .p-lap, .close, .ah, .research, .orgs, .ph")) new IntersectionObserver(([e]) => el.classList.toggle("away", !e.isIntersecting)).observe(el);

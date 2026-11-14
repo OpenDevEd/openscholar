@@ -161,8 +161,10 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     calm.addEventListener("change", () => { if (calm.matches) { spin = goal; frame(); } else run(); });
     // On a phone nothing is drawn while the page is moving under a finger: drawing then is what makes scrolling stutter.
     if (!hover.matches) addEventListener("scroll", () => { clearTimeout(scrolling); scrolling = setTimeout(() => { scrolling = 0; last = performance.now(); }, 140); }, { passive: true });
-    // Set up once the page has painted, so a weak GPU never holds the first paint.
-    requestAnimationFrame(() => setTimeout(() => start().catch(rest), 0));
+    // Set up once the page has painted, so a weak GPU never holds the first paint, and once a page move that brought it in
+    // is over (html[data-moving], Base.astro): the move is drawn on the same thread as this set-up.
+    const begin = () => "moving" in document.documentElement.dataset ? setTimeout(begin, 80) : start().catch(rest);
+    requestAnimationFrame(() => setTimeout(begin, 0));
   }
 </script>
 <style>

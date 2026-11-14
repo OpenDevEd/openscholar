@@ -16,6 +16,10 @@ const { people, whole = false, lazy = false } = Astro.props;
     const frame = card.querySelector(".pf"); if (!frame) continue;
     card.addEventListener("pointermove", (e) => { if ("going" in frame.dataset || e.buttons) return; const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
     for (const settle of ["pointerleave", "pointerdown"]) card.addEventListener(settle, () => { frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty"); });
+    // Between letting the button go and the page changing, a clicked card would start to lift again. It stays flat until it
+    // leaves (data-going, which src/scripts/travel.js also sets), or until the pointer does if nothing came of the click.
+    card.addEventListener("click", (e) => { if (!e.button && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) frame.dataset.going = ""; });
+    card.addEventListener("pointerleave", () => delete frame.dataset.going);
   }
 </script>
 <style>

@@ -8,8 +8,10 @@
   const left = (slug) => { try { if (slug === undefined) return sessionStorage.getItem("about.left"); sessionStorage.setItem("about.left", slug); } catch {} return ""; };
   const carry = (slug, move, leaving) => {
     const frame = slug && document.querySelector(`[data-portrait="${slug}"]`); if (!frame) return false;
+    // Only a frame that is in the window and can be seen travels. A card still hidden by its row's entrance would appear from
+    // nothing, and one below the window would fly out of it.
+    const r = frame.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight || frame.checkVisibility?.({ opacityProperty: true }) === false) return false;
     if (leaving) {
-      const r = frame.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return false;
       // A card under the pointer is lifted, tilted and lit. It is set flat first, so the picture that leaves is the one that arrives.
       frame.dataset.going = ""; frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty");
     } else {
@@ -19,12 +21,13 @@
       // the way.
       const who = frame.querySelector(".pf-who"), html = document.documentElement; frame.dataset.arriving = "";
       if (who && !("landed" in who.dataset)) {
-        const landed = new MutationObserver(() => { landed.disconnect(); html.classList.remove("waiting"); });
-        html.classList.add("waiting"); landed.observe(who, { attributes: true, attributeFilter: ["data-landed"] });
-        move.finished.finally(() => { landed.disconnect(); html.classList.remove("waiting"); });
+        const over = () => { landed.disconnect(); if (html.waitsFor === move) html.classList.remove("waiting"); }, landed = new MutationObserver(over);
+        html.waitsFor = move; html.classList.add("waiting"); landed.observe(who, { attributes: true, attributeFilter: ["data-landed"] }); move.finished.finally(over);
       }
     }
-    frame.style.viewTransitionName = "portrait"; move.finished.finally(() => { frame.style.viewTransitionName = ""; delete frame.dataset.going; delete frame.dataset.arriving; });
+    // What a move set, it clears, unless a later move has taken the frame over since.
+    frame.move = move; frame.style.viewTransitionName = "portrait";
+    move.finished.finally(() => { if (frame.move !== move) return; frame.style.viewTransitionName = ""; delete frame.dataset.going; delete frame.dataset.arriving; });
     return true;
   };
   // Leaving for a person's page: their card here, if it is on screen. Leaving a person's page: the frame at its head, but only
@@ -63,7 +66,9 @@
     const back = seen(), html = document.documentElement; if (!e.viewTransition) return;
     html.classList.add("moved");
     if (back || (!window.navigation && html.classList.contains("back"))) e.viewTransition.types?.add("back");
-    const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug) carry(slug, e.viewTransition);
+    // A frame was sent, and this page has nowhere on screen for it to land (a page loaded afresh may not be scrolled back to
+    // its card yet): the move is cut short, as the frame would otherwise fade out alone where it left.
+    const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug && !carry(slug, e.viewTransition)) e.viewTransition.skipTransition();
   });
   // The way back on a person's page goes back, when the About page is where the visitor came from, so they return to the
   // card they opened and the portrait travels home.
