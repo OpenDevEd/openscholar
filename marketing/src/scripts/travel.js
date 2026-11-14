@@ -1,8 +1,8 @@
 // Between the About pages, one picture of a person travels: the one in the link that opened their page (their card in the
 // team list, their face in a place's list or beside an organisation), to the frame at the head of their page, and back to
 // the same one. It is named for the browser's page transition only for that one move, so nobody else's picture moves with
-// it, and only when both ends of the move are on screen. This runs in the head, before the first paint, where the browser
-// looks for the arriving page's half of the move.
+// it, and only when there is a picture in the window for it to land on. This runs in the head, before the first paint,
+// where the browser looks for the arriving page's half of the move.
 (() => {
   const person = (url) => new URL(url).pathname.match(/^\/about\/([^/]+)\/$/)?.[1];
   // Every picture of a person on this page that can travel, in the page's own order: on their own page the first is the
@@ -13,14 +13,19 @@
   // The picture in the link that was last clicked: the one that leaves.
   let clicked = null;
   const carry = (frame, move, leaving) => {
-    if (!frame) return false;
-    // Only a picture that is in the window and can be seen travels. A card still hidden by its row's entrance or a face in a
-    // place that is shut would appear from nothing, and one below the window would fly out of it.
-    const r = frame.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight || frame.checkVisibility?.({ opacityProperty: true }) === false) return false;
+    // Only a picture that can be seen travels: a card still hidden by its row's entrance, or a face in a place that is
+    // shut, would appear from nothing.
+    if (!frame || frame.checkVisibility?.({ opacityProperty: true }) === false) return false;
+    const r = frame.getBoundingClientRect(), above = r.bottom < 0, out = above || r.top > innerHeight;
     if (leaving) {
       // A card under the pointer is lifted, tilted and lit. It is set flat first, so the picture that leaves is the one that arrives.
       frame.dataset.going = ""; frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty");
+      // One the visitor has scrolled away from still leaves: from the window's edge, where it would come into view.
+      if (out) frame.style.translate = `0 ${above ? -r.bottom : innerHeight - r.top}px`;
     } else {
+      // An arriving picture has to be in the window: a page loaded afresh may not be scrolled back to it yet, and the
+      // picture would fly to where it isn't.
+      if (out) return false;
       // The frame that arrives may not have its photo yet: a browser often has to ask for a picture again on a new page.
       // Until it is in, the picture that travels stays the one that left, whole (html.waiting, about.css), and the two
       // change over only then. The photo doesn't fade in by itself meanwhile (data-arriving), so the person never dims on
@@ -35,7 +40,7 @@
     }
     // What a move set, it clears, unless a later move has taken the frame over since.
     frame.move = move; frame.style.viewTransitionName = "portrait";
-    move.finished.finally(() => { if (frame.move !== move) return; frame.style.viewTransitionName = ""; delete frame.dataset.going; delete frame.dataset.arriving; });
+    move.finished.finally(() => { if (frame.move !== move) return; frame.style.viewTransitionName = frame.style.translate = ""; delete frame.dataset.going; delete frame.dataset.arriving; });
     return true;
   };
   // Leaving for a person's page: their picture in the link that was clicked, or without a click (the browser's Forward) the
@@ -75,10 +80,13 @@
   addEventListener("pagereveal", (e) => {
     const back = seen(), html = document.documentElement; if (!e.viewTransition) return;
     html.classList.add("moved");
-    // A picture was sent, and this page has nowhere on screen for it to land (a page loaded afresh may not be scrolled back
-    // to it yet, or its place may be shut): the move is cut short, as the picture would otherwise fade out alone where it left.
+    // Back on the About page the picture lands where it left from. If that one can't take it (the page was loaded afresh,
+    // and the place it was listed in is shut again), another of the person's pictures does. With nowhere on screen to
+    // land, the move is cut short, as the picture would otherwise fade out alone where it left.
     const here = person(location.href), slug = here ?? (back && person(back.from.url)), [was, n] = left().split(":");
-    if (slug && was === slug && !carry(frames(slug)[here ? 0 : +n], e.viewTransition)) e.viewTransition.skipTransition();
+    if (!slug || was !== slug) return;
+    const all = frames(slug);
+    if (![all[here ? 0 : +n], ...(here ? [] : all)].some((frame) => carry(frame, e.viewTransition))) e.viewTransition.skipTransition();
   });
   // The way back on a person's page goes back, when the About page is where the visitor came from, so they return to the
   // link they opened and the picture travels home.
