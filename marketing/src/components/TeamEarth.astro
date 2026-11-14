@@ -44,7 +44,7 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     </div>
     <div class="band" role="group" aria-label="Where the team is">{places.map((p, i) => <div class="pl open" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
       <img class="pl-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" decoding="async" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" />
-      <button type="button" class="pl-head" data-place={i} aria-expanded="true" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
+      <button type="button" class="pl-head" data-place={i} aria-expanded="true" aria-disabled="true" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
       <span class="pl-faces" aria-hidden="true">{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="34" height="34" alt="" data-portrait={m.slug} />)}</span>
       <Clock tz={p.tz} />
       <ul class="pl-who" id={`pl-${p.id}`}>{p.people.map((m) => <li><a href={`/about/${m.slug}/`}><img src={`/img/team/${m.key}-face.avif`} width="44" height="44" alt="" data-portrait={m.slug} /><span><b>{m.name}</b><em>{m.role}</em></span><Arrow /></a></li>)}</ul>
@@ -335,7 +335,8 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
   @property --sunk { syntax: "<length>"; inherits: false; initial-value: 0px; }
   /* A page come back to has been seen: nothing makes its entrance again. */
   :global(html.back) :is(.pl, .ah-copy > *) { animation: none; } :global(html.back) .ah:global(.lit) .pin { animation: none; } @media (max-width: 1079px) { :global(html.back) .ah-globe { animation: none; } }
-  /* Without scripts nothing can open a place, so they are all open, as a grid of cards. */
+  /* Without scripts nothing can open a place, so they are all open, as a grid of cards, and each one's name button is
+     marked unavailable in the page itself, as an open place's is. */
   :global(html:not(.has-js)) .band { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); height: auto; } :global(html:not(.has-js)) .pl { height: 236px; }
   /* Narrower: words, globe, then the places as a list, the open one tall. A place is always open there, so the list's height
      never changes, and each row names its place, with its people and the time on the right. */

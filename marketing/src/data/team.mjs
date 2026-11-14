@@ -1,6 +1,6 @@
 // The people behind Openscholar and where they work. Everything here is already public: names, roles, bios and publications
 // from opendeved.net/team/<person> (src/data/team-public.json holds the long text) and ekitabu.com/team, links from those
-// pages, ORCID, GitHub, LinkedIn and Google Scholar. Hassan Mansour's photo is the one on his Google Scholar profile. Mock: nobody has agreed to be listed yet.
+// pages, ORCID, GitHub, LinkedIn and Google Scholar. Hassan Mansour's photo is the one on his Google Scholar profile.
 import PUBLIC from "./team-public.json";
 
 // `tall` is how tall each logo is drawn, in px: the two wordmarks differ in how much of their picture they fill, so they are
