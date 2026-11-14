@@ -15,6 +15,9 @@ import { SHELF } from "../data/team.mjs";
   // the row was scrolled to. Nothing jumps either way.
   const run = document.querySelector(".shelf .run"), calm = matchMedia("(prefers-reduced-motion: reduce)");
   if (run) {
+    // The covers wait until the shelf is near, then all load: left to the browser, one further along the strip would load
+    // only as it slid into the panel, and appear from one frame to the next.
+    new IntersectionObserver(([near], io) => { if (!near.isIntersecting) return; io.disconnect(); for (const img of run.querySelectorAll("img")) img.loading = "eager"; }, { rootMargin: "800px" }).observe(run);
     const inset = () => parseFloat(getComputedStyle(run).paddingLeft);
     run.addEventListener("focusin", (e) => {
       if (!e.target.matches(":focus-visible")) return;
@@ -30,10 +33,12 @@ import { SHELF } from "../data/team.mjs";
   }
 </script>
 <style>
-  .research { padding-top: clamp(8px, 1vw, 16px); }
+  /* The section is the box the shelf measures itself by (cqw): a box can't measure by itself, and the section is as wide as
+     the panel. */
+  .research { container-type: inline-size; padding-top: clamp(8px, 1vw, 16px); }
   /* The heading stands on the page, at the page's edge like the others, with the lit shelf as the panel under it. */
   .sh-copy { margin-bottom: clamp(24px, 3vw, 40px); padding-inline: var(--edge); }
-  .shelf { --bg: #020614; --w: 100cqw; --sink: 5.6cqw; container-type: inline-size; height: clamp(340px, 41cqw, 512px); background: linear-gradient(to top, #020614, transparent) 50% 100% / 100% 5cqw no-repeat, url(/img/art-shelf.avif) 50% calc(100% + var(--sink)) / var(--w) auto no-repeat, #020614; }
+  .shelf { --bg: #020614; --w: 100cqw; --sink: 5.6cqw; height: clamp(340px, 41cqw, 512px); background: linear-gradient(to top, #020614, transparent) 50% 100% / 100% 5cqw no-repeat, url(/img/art-shelf.avif) 50% calc(100% + var(--sink)) / var(--w) auto no-repeat, #020614; }
   /* The covers come out of the dark at one side of the panel and go back into it at the other. */
   .lane { position: absolute; left: 0; right: 0; bottom: calc(var(--w) * .156 - var(--sink)); -webkit-mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); }
   /* They pass slowly along the shelf, and hold still under the pointer. The room above them is for a cover's lift and its

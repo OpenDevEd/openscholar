@@ -28,7 +28,7 @@ const { people, whole = false, lazy = false } = Astro.props;
   .who :global(.pf) { transition: transform .7s var(--ease), translate .4s var(--ease), box-shadow .4s var(--ease); }
   @media (hover: hover) { .who:hover :global(.pf) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } .who:hover :global(.pf)::before { opacity: 1; } .who:hover :global(.pf-who) { scale: 1.05; } .who:hover :global(.pf-art) { scale: 1.1; } }
   /* A card about to travel to its person's page (src/scripts/travel.js) is set flat at once: no lift, no lean, no light. */
-  .who :global(.pf[data-going]) { translate: none; transition: none; } .who :global(.pf[data-going]) > :global(img) { scale: none; transition: none; } .who :global(.pf[data-going])::before { opacity: 0; }
+  .who :global(.pf[data-going]) { translate: none; transition: none; } .who :global(.pf[data-going]) > :global(img) { scale: none; transition: none; } .who :global(.pf[data-going])::before { opacity: 0; transition: none; }
   /* The whole team: the planet in the same frame as a person, with the flags of the places along its foot. */
   .world { position: relative; display: block; aspect-ratio: 8 / 9; overflow: hidden; border-radius: 22px; background: radial-gradient(ellipse 80% 60% at 50% 40%, #142a66, transparent 72%), var(--night); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: translate .4s var(--ease), box-shadow .4s var(--ease); }
   .world > img { position: absolute; left: 50%; top: 44%; width: 104%; max-width: none; translate: -50% -50%; transition: scale .9s var(--ease), rotate .9s var(--ease); }
@@ -46,6 +46,8 @@ const { people, whole = false, lazy = false } = Astro.props;
   @media (min-width: 701px) and (max-width: 860px) {
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
     .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
+    /* Every role keeps room for two lines, so names in a row stand level whether a role takes one line or two. */
+    .who > em { min-height: calc(2 * 1.35em); }
     /* The frame is narrow here, so the longest place name is set a size smaller to stay inside it. */
     .who :global(.pf-at) { left: 10px; right: 10px; bottom: 10px; gap: 6px; font-size: 13px; }
   }

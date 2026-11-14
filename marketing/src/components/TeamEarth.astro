@@ -78,8 +78,8 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       LINKS.forEach(([a, b], k) => {
         const A = at(P[a], spin), B = at(P[b], spin), w = Math.acos(Math.min(1, A[0] * B[0] + A[1] * B[1] + A[2] * B[2])), sw = Math.sin(w), lift = .04 + .22 * w, want = focus < 0 ? .8 : a === focus || b === focus ? 1 : .2;
         // A link goes out as either of its ends turns out of sight, so none hangs off the edge of the globe going nowhere.
-        const shown = Math.min(1, Math.max(0, (Math.min(A[2], B[2]) + .15) / .25)); lit[k] = still() ? want : lit[k] + (want - lit[k]) * ease; const alpha = lit[k] * shown; if (!alpha) return;
-        const pt = (f) => { const s0 = Math.sin((1 - f) * w) / sw, s1 = Math.sin(f * w) / sw, h = 1 + Math.sin(f * Math.PI) * lift, x = (A[0] * s0 + B[0] * s1) * h, y = (A[1] * s0 + B[1] * s1) * h, z = (A[2] * s0 + B[2] * s1) * h; return [c + x * r, c - y * r, z > 0 || (z > -.3 && x * x + y * y > 1)]; };
+        const shown = Math.min(1, Math.max(0, (Math.min(A[2], B[2]) - .05) / .2)); lit[k] = still() ? want : lit[k] + (want - lit[k]) * ease; const alpha = lit[k] * shown; if (!alpha) return;
+        const pt = (f) => { const s0 = Math.sin((1 - f) * w) / sw, s1 = Math.sin(f * w) / sw, h = 1 + Math.sin(f * Math.PI) * lift, x = (A[0] * s0 + B[0] * s1) * h, y = (A[1] * s0 + B[1] * s1) * h, z = (A[2] * s0 + B[2] * s1) * h; return [c + x * r, c - y * r, z > 0 || (z > -.1 && x * x + y * y > 1)]; };
         const N = 40, end = Math.round(N * grow); let on = false; ink.beginPath();
         for (let i = 0; i <= end; i++) { const [x, y, ok] = pt(i / N); if (!ok) { on = false; continue; } if (on) ink.lineTo(x, y); else ink.moveTo(x, y); on = true; }
         ink.strokeStyle = `rgba(255,176,104,${alpha * .62})`; ink.lineWidth = 1.4 * dpr; ink.stroke();
@@ -161,7 +161,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     // On a phone nothing is drawn while the page is moving under a finger: drawing then is what makes scrolling stutter.
     if (!hover.matches) addEventListener("scroll", () => { clearTimeout(scrolling); scrolling = setTimeout(() => { scrolling = 0; last = performance.now(); }, 140); }, { passive: true });
     // Set up once the page has painted, so a weak GPU never holds the first paint.
-    requestAnimationFrame(() => setTimeout(start, 0));
+    requestAnimationFrame(() => setTimeout(() => start().catch(rest), 0));
   }
 </script>
 <style>
@@ -196,8 +196,11 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .pl { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; border-radius: 22px; isolation: isolate; background: var(--bg); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 30px 50px -30px #000; transition: flex-grow .75s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { flex-grow: 4.4; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent), 0 30px 60px -28px color-mix(in srgb, var(--glow) 45%, #000); }
   :global(.js) .pl { animation: pl-in .9s var(--ease) calc(.25s + var(--i) * 70ms) both; } @keyframes pl-in { from { opacity: 0; translate: 0 40px; } }
   /* One picture for both: as a place opens, more of it shows, from a slice of the model's middle out to the whole of it. */
-  .pl-art { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 72% 100%; transition: filter .5s var(--ease); filter: saturate(.9) brightness(.82); } .pl:global(.open) .pl-art, .pl:hover .pl-art { filter: none; }
+  .pl-art { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 72% 100%; transition: filter .5s var(--ease); filter: saturate(.9) brightness(.82); } .pl:global(.open) .pl-art, .pl:hover .pl-art { filter: none; }
   .pl::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(rgb(0 0 0 / .34), transparent 34%); pointer-events: none; }
+  /* An open place's people stand on its picture, not on boxes: the picture's own colour deepens under them, from the
+     corner they stand in, and thins out towards the model. */
+  .pl::before { content: ""; position: absolute; left: 0; bottom: 0; z-index: -1; width: min(100%, 470px); height: 66%; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 94%, transparent) 42%, transparent); -webkit-mask-image: linear-gradient(transparent, #000 46%); mask-image: linear-gradient(transparent, #000 46%); opacity: 0; transition: opacity .35s var(--ease); pointer-events: none; } .pl:global(.open)::before { opacity: 1; }
   .pl-head { position: absolute; inset: 0; display: flex; align-items: flex-start; gap: 10px; padding: 18px 16px; text-align: left; } .pl:global(.open) .pl-head { cursor: default; }
   .fl { flex: none; width: 24px; height: 18px; margin-top: 4px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .22); }
   /* The panel clips anything outside it, so the keyboard's ring is drawn just inside. */
@@ -208,7 +211,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .pl :global(.tm) { position: absolute; left: 50px; top: 50px; justify-content: flex-start; width: auto; color: rgb(255 255 255 / .82); pointer-events: none; }
   .pl-faces { position: absolute; left: 16px; bottom: 16px; display: flex; pointer-events: none; transition: opacity .3s var(--ease) .2s; } .pl:global(.open) .pl-faces { opacity: 0; transition-delay: 0s; }
   .pl-faces img { width: 34px; height: 34px; max-width: none; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 70%, #000); } .pl-faces img + img { margin-left: -9px; }
-  .pl-who { position: absolute; left: 8px; bottom: 8px; display: grid; gap: 2px; width: 272px; } .pl-who a { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 15px; background: color-mix(in srgb, var(--bg) 84%, transparent); transition: background-color .2s var(--ease); } .pl-who a:hover { background: rgb(255 255 255 / .16); }
+  .pl-who { position: absolute; left: 8px; bottom: 8px; display: grid; gap: 2px; width: 272px; } .pl-who a { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 15px; transition: background-color .2s var(--ease); } .pl-who a:hover { background: rgb(255 255 255 / .12); }
   .pl-who a > img { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 1px rgb(255 255 255 / .22); } .pl-who a > span { display: grid; flex: 1; min-width: 0; } .pl-who b { font-weight: 500; font-size: 15px; line-height: 1.3; } .pl-who em { font-style: normal; font-size: 13px; line-height: 1.3; color: rgb(255 255 255 / .74); }
   .pl-who a :global(i) { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 9px; color: rgb(255 255 255 / .7); transition: background-color .2s var(--ease), color .2s var(--ease), translate .25s var(--ease); } .pl-who a:hover :global(i) { background: var(--brand); color: var(--brand-on); translate: 2px 0; }
   /* A page come back to has been seen: nothing makes its entrance again. */
@@ -229,7 +232,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   }
   /* On a tablet the globe and the list stand side by side under the words, which start on the page's left edge as they do
      on a wide screen and as a person's page does at these widths. */
-  @media (min-width: 761px) and (max-width: 1079px) { .ah-in { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "copy copy" "globe band"; column-gap: 24px; row-gap: 20px; } .ah-globe { width: 100%; margin-block: 0; } .ah-copy { justify-self: start; justify-items: start; text-align: left; } }
+  @media (min-width: 701px) and (max-width: 1079px) { .ah-in { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "copy copy" "globe band"; column-gap: 24px; row-gap: 20px; } .ah-globe { width: 100%; margin-block: 0; } .ah-copy { justify-self: start; justify-items: start; text-align: left; } }
   @media (max-width: 560px) { .ah-globe { width: min(100%, 400px); } .pl-who { width: min(272px, 100% - 16px); } }
   @media (max-width: 350px) { .pl-faces { display: none; } }
 </style>

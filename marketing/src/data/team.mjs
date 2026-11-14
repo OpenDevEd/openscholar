@@ -3,18 +3,19 @@
 // pages, ORCID, GitHub, LinkedIn and Google Scholar. Hassan Mansour's photo is the one on his Google Scholar profile. Mock: nobody has agreed to be listed yet.
 import PUBLIC from "./team-public.json";
 
-// `logo` names each organisation's own mark as drawn for a dark panel (public/img/team/<logo>-light.avif): OpenDevEd's own
+// `tall` is how tall each logo is drawn, in px: the two wordmarks differ in how much of their picture they fill, so they are
+// sized to read as equals. `logo` names each organisation's own mark as drawn for a dark panel (public/img/team/<logo>-light.avif): OpenDevEd's own
 // light version, and eKitabu's with its black ink turned white. `art` is its picture (public/img/art-org-*) and `bg` that
 // picture's flat colour.
 export const ORGS = {
   ode: {
-    name: "Open Development & Education", short: "OpenDevEd", url: "https://www.opendeved.net", host: "opendeved.net", logo: "org-ode", ratio: 720 / 169, art: "org-research", bg: "#011e5e", glow: "#8fb8ff",
+    name: "Open Development & Education", short: "OpenDevEd", url: "https://www.opendeved.net", host: "opendeved.net", logo: "org-ode", ratio: 720 / 169, tall: 58, art: "org-research", bg: "#011e5e", glow: "#8fb8ff",
     line: "A multinational and multicultural research team, working with an emphasis on equitable teams.",
     base: [["gb", "London"]],
     links: [["linkedin", "https://linkedin.com/company/opendeved"], ["x", "https://twitter.com/OpenDevEd"], ["github", "https://github.com/OpenDevEd"]],
   },
   ekitabu: {
-    name: "eKitabu", short: "eKitabu", url: "https://www.ekitabu.com", host: "ekitabu.com", logo: "org-ekitabu", ratio: 720 / 140, art: "org-books", bg: "#450109", glow: "#ff9a8b",
+    name: "eKitabu", short: "eKitabu", url: "https://www.ekitabu.com", host: "ekitabu.com", logo: "org-ekitabu", ratio: 720 / 140, tall: 42, art: "org-books", bg: "#450109", glow: "#ff9a8b",
     line: "Publishing stories of change, and building inclusive education across Africa, since 2012.",
     base: [["ke", "Nairobi"], ["rw", "Kigali"], ["mw", "Lilongwe"]],
     links: [["linkedin", "https://www.linkedin.com/company/ekitabu"], ["x", "https://x.com/eKitabu"], ["instagram", "https://www.instagram.com/eKitabu"], ["facebook", "https://www.facebook.com/eKitabu"]],
@@ -72,4 +73,4 @@ export const flag = (cc) => `/img/flags/${cc}.svg`;
 export const LINK_NAMES = { linkedin: "LinkedIn", x: "X", github: "GitHub", orcid: "ORCID", scholar: "Google Scholar", instagram: "Instagram", zotero: "Zotero", facebook: "Facebook" };
 // Fills every [data-tz] element with the time in its zone and whether it's day there. It runs as the page is read, before
 // the first paint, so no time ever appears late, and again every 15 seconds.
-export const CLOCK_JS = `(() => { const set = () => { for (const el of document.querySelectorAll("[data-tz]")) { const p = new Intl.DateTimeFormat("en-GB", { timeZone: el.dataset.tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date()), h = p.find((x) => x.type === "hour").value, m = p.find((x) => x.type === "minute").value; el.querySelector("time").textContent = h + ":" + m; el.dataset.day = h >= 6 && h < 18 ? "1" : "0"; } }; set(); setInterval(set, 15000); })();`;
+export const CLOCK_JS = `(() => { const set = () => { for (const el of document.querySelectorAll("[data-tz]")) { const p = new Intl.DateTimeFormat("en-GB", { timeZone: el.dataset.tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date()), h = p.find((x) => x.type === "hour").value, m = p.find((x) => x.type === "minute").value; const at = el.querySelector("time"); at.textContent = at.dateTime = h + ":" + m; el.dataset.day = h >= 6 && h < 18 ? "1" : "0"; } }; set(); setInterval(set, 15000); })();`;

@@ -37,9 +37,11 @@
   seen();
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
   // Either only when the page being left sent its half, or the frame would fade in alone on top of that page. A page whose
-  // frame was carried in is marked, so the frame makes no entrance of its own. Going back, the page is uncovered, not laid over.
+  // frame was carried in is marked, so the frame makes no entrance of its own, and so is any page the transition brings in,
+  // as that move is its entrance. Going back, the page is uncovered, not laid over.
   addEventListener("pagereveal", (e) => {
     const back = seen(); if (!e.viewTransition) return;
+    document.documentElement.classList.add("moved");
     if (back) e.viewTransition.types?.add("back");
     const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug && carry(slug, e.viewTransition)) document.documentElement.classList.add("carried");
   });
