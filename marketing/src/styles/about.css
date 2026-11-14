@@ -10,6 +10,12 @@
    by half way, so it lands as what it is arriving at. */
 ::view-transition-group(portrait) { z-index: 1; animation-duration: .5s; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
 ::view-transition-old(portrait), ::view-transition-new(portrait) { height: 100%; animation-duration: .3s; }
+/* While the arriving frame's photo is still on its way (html.waiting, src/scripts/travel.js), the picture that left stays
+   whole and the arriving one stays out of sight. They change over when the photo is in. The hold also keeps the move open
+   for a little over a second on a slow line, so the person is never taken away and brought back. */
+html.waiting::view-transition-old(portrait) { animation: about-hold 1.2s both; }
+html.waiting::view-transition-new(portrait) { animation: none; opacity: 0; }
+@keyframes about-hold { from, to { opacity: 1; } }
 /* The page itself doesn't cross-fade, which would lay one page over the other as a veil. The arriving page comes down over
    the one being left, solid. Going back, the page being left lifts away off the one underneath. The arriving page's edge
    is aimed past the window's foot, so it is still moving fast as it leaves and no strip of the old page lingers. */
@@ -26,5 +32,6 @@ html:active-view-transition-type(back)::view-transition-new(root) { animation: n
 .svc:focus-visible { background: var(--brand); translate: 0 -4px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3), 0 14px 24px -10px rgb(0 0 0 / .6); }
 .svc::after { content: attr(data-label); position: absolute; top: calc(100% + 10px); left: 50%; z-index: 2; padding: 5px 9px; border-radius: 8px; background: #10141f; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); font: 400 13px/1.2 var(--mono); white-space: nowrap; color: #fff; translate: -50% -4px; opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); }
 .svc:focus-visible::after { opacity: 1; translate: -50% 0; }
-/* Under a pointer only: on a touch screen a tapped button would otherwise stay raised and named. */
-@media (hover: hover) { .svc:hover { background: var(--brand); translate: 0 -4px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3), 0 14px 24px -10px rgb(0 0 0 / .6); } .svc:hover::after { opacity: 1; translate: -50% 0; } }
+/* Under a pointer only: on a touch screen a tapped button would otherwise stay raised and named. And not on a page the
+   browser kept and has just shown again, until the pointer moves (html.cold, src/scripts/travel.js). */
+@media (hover: hover) { html:not(.cold) .svc:hover { background: var(--brand); translate: 0 -4px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3), 0 14px 24px -10px rgb(0 0 0 / .6); } html:not(.cold) .svc:hover::after { opacity: 1; translate: -50% 0; } }

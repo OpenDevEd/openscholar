@@ -109,6 +109,9 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   .top { position: sticky; top: max(10px, env(safe-area-inset-top)); z-index: 50; max-width: 1280px; height: 64px; margin: max(10px, env(safe-area-inset-top)) auto calc(-64px - max(10px, env(safe-area-inset-top))); padding-inline: var(--gap); color: #fff; }
   .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(#171c2b, #0b0f1a); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 7 16 / .7); transition: width .4s var(--ease); }
   .stuck .bar { width: min(100%, 1180px); }
+  /* While a page move carries the last page's header state over (the script in the head), the bar takes that width at
+     once. Gliding to it would show the header's words twice, as the page that left fades out over the one arriving. */
+  :global(html[data-carry]) .bar { transition: none; }
   /* Light from the pointer catches the capsule's edge. */
   .bar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(180px circle at var(--bx, 50%) 50%, rgb(255 222 186 / .9), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; } .bar:hover::before { opacity: 1; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; }

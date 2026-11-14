@@ -14,8 +14,8 @@ const { people, whole = false, lazy = false } = Astro.props;
   // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
   if (matchMedia("(hover: hover)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) for (const card of document.querySelectorAll("[data-team-grid] .who")) {
     const frame = card.querySelector(".pf"); if (!frame) continue;
-    card.addEventListener("pointermove", (e) => { if ("going" in frame.dataset) return; const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
-    card.addEventListener("pointerleave", () => { frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty"); });
+    card.addEventListener("pointermove", (e) => { if ("going" in frame.dataset || e.buttons) return; const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
+    for (const settle of ["pointerleave", "pointerdown"]) card.addEventListener(settle, () => { frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty"); });
   }
 </script>
 <style>
@@ -24,9 +24,13 @@ const { people, whole = false, lazy = false } = Astro.props;
      whether a role takes one line or two. */
   li { display: grid; } .who { display: grid; grid-template-rows: auto auto 1fr auto; align-content: start; }
   b { margin-top: 14px; font-weight: 500; font-size: 18px; line-height: 1.25; letter-spacing: -.01em; } em { font-style: normal; font-size: 15px; line-height: 1.35; color: var(--t2); text-wrap: balance; } small { margin-top: 6px; font-size: 14px; color: var(--t3); }
-  /* The card lifts and leans with the pointer, and comes back slowly. */
+  /* The card lifts and leans with the pointer, and comes back slowly. Not on a page the browser kept and has just shown
+     again, until the pointer moves (html.cold, src/scripts/travel.js): there the card last clicked still counts as hovered. */
   .who :global(.pf) { transition: transform .7s var(--ease), translate .4s var(--ease), box-shadow .4s var(--ease); }
-  @media (hover: hover) { .who:hover :global(.pf) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } .who:hover :global(.pf)::before { opacity: 1; } .who:hover :global(.pf-who) { scale: 1.05; } .who:hover :global(.pf-art) { scale: 1.1; } }
+  @media (hover: hover) { :global(html:not(.cold)) .who:hover :global(.pf) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } :global(html:not(.cold)) .who:hover :global(.pf)::before { opacity: 1; } :global(html:not(.cold)) .who:hover :global(.pf-who) { scale: 1.05; } :global(html:not(.cold)) .who:hover :global(.pf-art) { scale: 1.1; } }
+  /* Pressed, a card comes down flat at once, while the button is still down, so it takes off for its person's page from
+     rest and not with a jolt. */
+  @media (hover: hover) { :global(html:not(.cold)) .who:active :global(.pf) { translate: none; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition-duration: .08s; } :global(html:not(.cold)) .who:active :global(.pf)::before { opacity: 0; transition-duration: .08s; } :global(html:not(.cold)) .who:active :global(.pf) > :global(img) { scale: none; transition-duration: .08s; } }
   /* The keyboard gets the pointer's lift, and its ring goes round the frame, which has the frame's corners. */
   .who:focus-visible { outline: none; } .who:focus-visible :global(.pf), .who:focus-visible .world { translate: 0 -6px; outline: 3px solid var(--brand-ink); outline-offset: 3px; }
   /* A card about to travel to its person's page (src/scripts/travel.js) is set flat at once: no lift, no lean, no light,
@@ -37,7 +41,7 @@ const { people, whole = false, lazy = false } = Astro.props;
   .world > img { position: absolute; left: 50%; top: 44%; width: 104%; max-width: none; translate: -50% -50%; transition: scale .9s var(--ease), rotate .9s var(--ease), opacity .5s var(--ease); } :global(html.js) .world > img:not([data-loaded]) { opacity: 0; }
   /* The flags share one row whatever the card's width: each gives up a little rather than one dropping to a row of its own. */
   .flags { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; gap: 5px; } .flags img { flex: 0 1 20px; min-width: 0; height: auto; aspect-ratio: 4 / 3; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
-  @media (hover: hover) { .who:hover .world { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px #050a1d; } .who:hover .world > img { scale: 1.06; rotate: 8deg; } }
+  @media (hover: hover) { :global(html:not(.cold)) .who:hover .world { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px #050a1d; } :global(html:not(.cold)) .who:hover .world > img { scale: 1.06; rotate: 8deg; } }
   /* The grid arrives once, as one move: when its top comes into view (the site's [data-in], global.css) its cards rise in
      one after another in reading order, the rows below the window too, so a visitor who stops at the heading never looks at
      an empty row. A page come back to has been seen, so its cards are simply there, and a frame travelling back lands on one. */

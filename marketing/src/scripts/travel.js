@@ -12,8 +12,19 @@
       const r = frame.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return false;
       // A card under the pointer is lifted, tilted and lit. It is set flat first, so the picture that leaves is the one that arrives.
       frame.dataset.going = ""; frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty");
+    } else {
+      // The frame that arrives may not have its photo yet: a browser often has to ask for a picture again on a new page.
+      // Until it is in, the picture that travels stays the one that left, whole (html.waiting, about.css), and the two
+      // change over only then. The photo doesn't fade in by itself meanwhile (data-arriving), so the person never dims on
+      // the way.
+      const who = frame.querySelector(".pf-who"), html = document.documentElement; frame.dataset.arriving = "";
+      if (who && !("landed" in who.dataset)) {
+        const landed = new MutationObserver(() => { landed.disconnect(); html.classList.remove("waiting"); });
+        html.classList.add("waiting"); landed.observe(who, { attributes: true, attributeFilter: ["data-landed"] });
+        move.finished.finally(() => { landed.disconnect(); html.classList.remove("waiting"); });
+      }
     }
-    frame.style.viewTransitionName = "portrait"; move.finished.finally(() => { frame.style.viewTransitionName = ""; delete frame.dataset.going; });
+    frame.style.viewTransitionName = "portrait"; move.finished.finally(() => { frame.style.viewTransitionName = ""; delete frame.dataset.going; delete frame.dataset.arriving; });
     return true;
   };
   // Leaving for a person's page: their card here, if it is on screen. Leaving a person's page: the frame at its head, but only
@@ -35,8 +46,15 @@
     return was && !!a?.from && a.entry.index < a.from.index && a;
   };
   seen();
-  // A page kept by the browser and shown again has been seen too, and its load's own record can't say so.
-  addEventListener("pageshow", (e) => { if (e.persisted) document.documentElement.classList.add("back"); });
+  // A page kept by the browser and shown again has been seen too, and its load's own record can't say so. It also comes
+  // back with the browser still holding the pointer where it was when the page was left: the card that was clicked counts
+  // as hovered, and would lift and light up again by itself once its portrait had landed. So such a page is cold until the
+  // pointer really moves, and the hover looks on these pages wait for that (html.cold).
+  addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    const html = document.documentElement; html.classList.add("back", "cold");
+    addEventListener("pointermove", () => html.classList.remove("cold"), { once: true });
+  });
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
   // Either only when the page being left sent its half, or the frame would fade in alone on top of that page. Any page the
   // transition brings in is marked (moved): that move is its entrance, so nothing on it makes one of its own. Going back,
