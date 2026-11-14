@@ -12,8 +12,6 @@ import Close from "../../components/Close.astro";
 import Arrow from "../../components/Arrow.astro";
 import { ORGS, TEAM } from "../../data/team.mjs";
 import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
-import markFile from "../../data/mark.svg?raw";
-const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 ---
 <Base top="#070b1a" title="About: Openscholar" description="The people who make Openscholar, where they work, and the two organisations behind it.">
   {/* The planet's maps are asked for as the page arrives, as on the home page, so the globe is there sooner. */}
@@ -29,7 +27,7 @@ const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
     <div class="pair">
       {Object.keys(ORGS).map((id) => <OrgPanel id={id} />)}
       {/* Where the two meet: the mark of what they make together. */}
-      <span class="seal" aria-hidden="true"><svg viewBox="0 0 64 64" width="44" height="44" set:html={MARK} /></span>
+      <span class="seal" aria-hidden="true"><img src="/favicon-dark.svg" width="44" height="44" alt="" loading="lazy" /></span>
     </div>
   </section>
   <Close title="Talk to the team"><a slot="action" class="btn" href="/contact/">Get in touch<Arrow /></a></Close>
@@ -40,6 +38,6 @@ const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
   /* The two organisations one above the other, with Openscholar's mark on the seam between them. */
   .pair { position: relative; display: grid; gap: var(--gap); }
   .seal { position: absolute; left: 50%; top: 50%; z-index: 2; display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(#171c2b, #0b0f1a); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .1), 0 0 0 6px #fff, 0 20px 40px -14px rgb(4 7 16 / .6); translate: -50% -50%; }
-  .seal svg { overflow: visible; animation: seal 9s ease-in-out infinite alternate; } @keyframes seal { from { rotate: -8deg; } to { rotate: 8deg; } }
-  @media (max-width: 900px) { .seal { width: 64px; height: 64px; } .seal svg { width: 34px; height: 34px; } }
+  .seal img { animation: seal 9s ease-in-out infinite alternate; } @keyframes seal { from { rotate: -8deg; } to { rotate: 8deg; } }
+  @media (max-width: 900px) { .seal { width: 64px; height: 64px; } .seal img { width: 34px; height: 34px; } }
 </style>

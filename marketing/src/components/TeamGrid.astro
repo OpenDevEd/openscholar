@@ -7,7 +7,7 @@ const { people, whole = false } = Astro.props;
 ---
 <ul class="tg" data-team-grid>
   {people.map((m) => <li><a class="who" href={`/about/${m.slug}/`}><Portrait person={m} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
-  {whole && <li><a class="who" href="/about/"><span class="world"><img src="/img/earth-still.avif" width="1024" height="1024" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
+  {whole && <li><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
 </ul>
 <script>
   // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
