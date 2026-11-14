@@ -37,8 +37,8 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
   .orgs { padding-block: clamp(56px, 7vw, 96px); } .orgs h2 { margin-bottom: clamp(24px, 3vw, 40px); padding-inline: var(--edge); }
   /* The two organisations with Openscholar's mark on the seam between them: side by side as equals where there is room
      (1180 px up), one above the other under that. The mark is placed from the first panel's edge, so it is on the seam
-     whatever size either panel has. Both of the grid area's end lines are
-     given: left to themselves they are the foot of the whole pair. */
+     whatever size either panel has. Both of its grid area's end lines are given: left to themselves they are the foot of
+     the whole pair. The pair is a container so the mark can measure a panel (cqw). */
   .pair { position: relative; display: grid; gap: var(--gap); container-type: inline-size; }
   /* The two are the same height wherever the picture stands beside the words, whichever has more to say. */
   @media (min-width: 761px) { .pair { grid-auto-rows: 1fr; } }
@@ -49,7 +49,7 @@ import { EARTH_PRELOAD_JS } from "../../data/site.mjs";
   /* On a phone the second organisation's logo starts under the middle of the seam, so the mark stands to the right of it. */
   @media (max-width: 700px) { .seal { left: auto; right: 28px; translate: 0 calc(-50% + var(--gap) / 2); } }
   /* Side by side, the seam is upright. The mark stands on it where the two pictures begin, under the words and buttons of
-     both: a panel is half the pair less half the gap, its picture 9/21 of that tall, and the mark's top touches that line. It casts no shadow there: one would fall down the
-     white of the seam. */
+     both: a panel is half the pair less half the gap, its picture 9/21 of that tall, and the mark's top touches that
+     line. It casts no shadow there: one would fall down the white of the seam. */
   @media (min-width: 1180px) { .seal { left: 100%; top: calc(100% - (50cqw - var(--gap) / 2) * 9 / 21 + 48px); translate: calc(-50% + var(--gap) / 2) -50%; box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .1), 0 0 0 6px #fff; } }
 </style>
