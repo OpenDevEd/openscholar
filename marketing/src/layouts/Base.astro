@@ -80,6 +80,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       {/* A link is the current page when it leads to this page, whichever part of it: Product leads to /#product, on the home page. */}
       <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href.split("#")[0] ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
+        <a class="signin" href="/about/" aria-current={path.startsWith("/about/") ? "page" : undefined}><span class="roll" data-t="About"><span>About</span></span></a>
         <a class="signin" href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a>
         <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
         <a class="go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span></a>
@@ -136,12 +137,12 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   /* The section you're reading sits beside the name, in space that opens once there is one. */
   .name { white-space: nowrap; } .slot { display: flex; align-items: baseline; gap: 8px; width: 112px; margin-left: -2px; overflow: hidden; opacity: 0; font-size: 15px; font-weight: 400; letter-spacing: 0; white-space: nowrap; color: rgb(255 255 255 / .82); transition: opacity .3s var(--ease); } .slot i { font-style: normal; opacity: .4; } .has-sec .slot { opacity: 1; }
   .nav { position: relative; display: flex; gap: 2px; font-size: 15px; color: rgb(255 255 255 / .82); }
-  .lk { position: relative; z-index: 1; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; transition: color .15s var(--ease); } .lk:hover, .lk.on { color: #fff; } .lk[aria-current] { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
+  .lk { position: relative; z-index: 1; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; transition: color .15s var(--ease); } .lk:hover, .lk.on { color: #fff; } .lk[aria-current], .signin[aria-current] { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
   .chev { opacity: .6; transition: rotate .25s var(--ease); } .lk.on .chev { rotate: 180deg; }
   .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(255 255 255 / .12); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .3s var(--ease), width .3s var(--ease), opacity .18s var(--ease); pointer-events: none; }
   .end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
   /* The search button keeps asking real questions. */
-  .signin { display: inline-flex; align-items: center; height: 40px; font-size: 15px; padding-inline: 10px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
+  .signin { display: inline-flex; align-items: center; height: 40px; font-size: 15px; padding-inline: 10px; border-radius: 11px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
   .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; }
   .go::before { content: ""; position: absolute; z-index: -2; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, var(--brand-deep), var(--brand-bright), #fff1e0, var(--brand-bright), var(--brand-deep)); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
   .go::after { content: ""; position: absolute; z-index: -1; inset: 2px; border-radius: 10px; background: #fff; }
@@ -192,6 +193,8 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
   /* Five links, the two on the right and the button need 1024 px between them; below that the links go into the menu. */
   @media (max-width: 1023px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
+  /* In the narrowest windows that show every link, the links stand a little closer, so the row stays inside the bar. */
+  @media (min-width: 1024px) and (max-width: 1099px) { .lk { padding-inline: 7px; } .signin { padding-inline: 6px; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
   @media (max-width: 900px) { .f-in { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { columns: 150px; column-gap: 24px; } .foot nav:not(.belt) > div { margin-bottom: 28px; } .belt { padding-block: 16px; } .belt img { filter: saturate(1.5); width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }
