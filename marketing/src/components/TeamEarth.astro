@@ -206,5 +206,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     .pl-head { align-items: center; height: 56px; padding: 0 14px; } .fl { margin-top: 0; } .pl-head b { opacity: 1; font-size: 17px; letter-spacing: -.01em; }
     .pl :global(.tm) { left: auto; right: 14px; top: 21px; opacity: 1; } .pl-faces { left: auto; right: 92px; top: 11px; bottom: auto; }
   }
+  /* On a tablet the globe and the list stand side by side under the words, so the hero uses the width it has. */
+  @media (min-width: 761px) and (max-width: 1079px) { .ah-in { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "copy copy" "globe band"; column-gap: 24px; row-gap: 20px; } .ah-globe, .band { width: 100%; } .ah-globe { margin-block: 0; } }
   @media (max-width: 560px) { .ah-globe { width: min(100%, 400px); } .pl-who { width: min(272px, 100% - 20px); } }
 </style>

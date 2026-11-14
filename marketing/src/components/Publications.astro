@@ -43,7 +43,7 @@ const shown = Math.min(sorted.length, PER);
   }
 </script>
 <style>
-  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; margin-bottom: clamp(20px, 2.4vw, 32px); }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; margin-bottom: clamp(24px, 3vw, 40px); }
   /* The filter, shaped like the site's other switches. */
   .kinds { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-radius: 13px; background: var(--soft); } .kinds button { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 14px; border-radius: 10px; font-size: 15px; white-space: nowrap; color: var(--t2); transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease); } .kinds button:not([aria-pressed="true"]):hover { color: var(--ink); } .kinds [aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgb(12 16 28 / .14), 0 0 0 1px var(--line); }
   .kinds i { font: 400 13px/1 var(--mono); font-style: normal; color: var(--t3); }
