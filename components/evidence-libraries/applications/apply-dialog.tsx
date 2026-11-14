@@ -240,11 +240,12 @@ function ApplyForm({ community, previous, onSent }: { community: AppliedCommunit
 
 function Can({ icon: Icon, title, children }: { icon: ComponentType<{ className?: string }>; title: string; children: ReactNode }) {
   return (
-    // A row beside its icon on a phone, so the message and the buttons stay in view; a column of three from sm.
-    <li className="flex gap-2.5 rounded-lg bg-inset px-3 py-2 sm:block sm:p-3">
+    // A row beside its icon on a phone, so the message and the buttons stay in view; a column of three from sm. At large
+    // text on a phone the icon goes above, as the header's does, so a long word keeps its line.
+    <li className="flex gap-2.5 rounded-lg bg-inset px-3 py-2 sm:block sm:p-3 max-sm:@max-[17rem]:block">
       <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-foreground sm:mt-2">{title}</p>
+      <div className="min-w-0 max-sm:@max-[17rem]:wrap-anywhere">
+        <p className="text-xs font-medium text-foreground sm:mt-2 max-sm:@max-[17rem]:mt-2">{title}</p>
         <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{children}</p>
       </div>
     </li>
