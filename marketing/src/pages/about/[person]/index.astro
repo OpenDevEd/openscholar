@@ -31,7 +31,7 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   {/* The first paint waits for the portrait frame, so the frame is there for the page transition to bring in. */}
   <Fragment slot="head"><script type="application/ld+json" set:html={JSON.stringify(person)} /><link rel="expect" href="#face" blocking="render" /><script is:inline set:html={TRAVEL_JS} /></Fragment>
   <section class="bleed ph" style={`--bg:${p.bg};--glow:${p.glow}`}>
-    <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 700px) 50vw, (max-width: 1140px) 100vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" /><i class="glint"></i></div>
+    <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 700px) 50vw, (max-width: 1140px) 100vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" /><script is:inline>{ const art = document.currentScript.previousElementSibling; if (art.complete) art.dataset.loaded = ""; }</script><i class="glint"></i></div>
     <div class="inner ph-in">
       <a class="back" href="/about/" data-back><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
       <div class="ph-face" id="face"><Portrait person={m} eager clock /></div>
@@ -61,6 +61,9 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
      place's glass model on the right. The frame hangs below the head, over the white page, so the head only clips sideways. */
   .ph, .pb { --hang: 64px; --face: clamp(240px, 32vw, 320px); --gutter: clamp(32px, 4vw, 56px); } .ph { overflow: visible; overflow-x: clip; background: var(--bg); padding-block: clamp(104px, 8.4vw, 128px) 0; }
   .ph-art { position: absolute; right: 0; bottom: 0; z-index: -1; height: 88%; aspect-ratio: 1672 / 941; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%), linear-gradient(transparent, #000 24%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 34%, #000 60%), linear-gradient(transparent, #000 24%); mask-composite: intersect; animation: ph-art 1.4s .1s var(--ease) both; } .ph-art img { width: 100%; height: 100%; transform-origin: 70% 100%; animation: ph-breathe 24s ease-in-out infinite alternate; } @keyframes ph-art { from { opacity: 0; transform: translateX(28px); } } @keyframes ph-breathe { to { transform: scale(1.05); } }
+  /* The model fades in when its picture lands (one the browser already holds is marked as the page is read, so it is there
+     from the first frame), and no light crosses the glass before there is glass. */
+  .ph-art img { transition: opacity .8s var(--ease); } :global(html.js) .ph-art img:not([data-loaded]) { opacity: 0; } :global(html.js) .ph-art:has(img:not([data-loaded])) .glint { display: none; }
   /* A band of light crosses the glass once the page is in, and again now and then. */
   .glint { position: absolute; inset: 0 auto 0 0; width: 300%; background: linear-gradient(105deg, transparent 46%, rgb(255 255 255 / .22) 50%, transparent 54%); mix-blend-mode: overlay; animation: glint 9s 1.2s var(--ease) infinite; } @keyframes glint { from { translate: -86.7% 0; } 30%, to { translate: 20% 0; } }
   .ph:global(.away) :is(.ph-art img, .glint) { animation-play-state: paused; }

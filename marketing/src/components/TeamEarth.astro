@@ -29,7 +29,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       </div>; })}</div>
     </div>
     <div class="band" role="group" aria-label="Where the team is">{places.map((p, i) => <div class="pl open" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
-      <img class="pl-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" decoding="async" />
+      <img class="pl-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" decoding="async" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" />
       <button type="button" class="pl-head" data-place={i} aria-expanded="true" aria-controls={`pl-${p.id}`} aria-label={p.name}><img class="fl" src={flag(p.cc)} width="24" height="18" alt="" /><b>{p.name}</b></button>
       <span class="pl-faces" aria-hidden="true">{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="34" height="34" alt="" />)}</span>
       <Clock tz={p.tz} />
@@ -38,7 +38,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   </div>
   {/* Every place is open in the markup, so the page reads without scripts. This shuts them as the page is read, before the
       first paint: all of them where they stand side by side, all but the first where they are a list, which keeps its height. */}
-  <script is:inline>(() => { const wide = matchMedia("(min-width: 1080px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); const head = el.querySelector(".pl-head"); head.setAttribute("aria-expanded", String(on)); head.setAttribute("aria-disabled", String(on)); el.querySelector(".pl-who").inert = !on; }); })();</script>
+  <script is:inline>(() => { const wide = matchMedia("(min-width: 1080px)").matches; document.querySelectorAll("[data-pl]").forEach((el, i) => { const on = !wide && i === 0; el.classList.toggle("open", on); const head = el.querySelector(".pl-head"); head.setAttribute("aria-expanded", String(on)); head.setAttribute("aria-disabled", String(on)); el.querySelector(".pl-who").inert = !on; const art = el.querySelector(".pl-art"); if (art.complete) art.dataset.loaded = ""; }); })();</script>
   <script is:inline set:html={CLOCK_JS} />
 </section>
 <script>
@@ -197,7 +197,10 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .pl { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; border-radius: 22px; isolation: isolate; background: var(--bg); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 30px 50px -30px #000; transition: flex-grow .75s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { flex-grow: 4.4; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent), 0 30px 60px -28px color-mix(in srgb, var(--glow) 45%, #000); }
   :global(.js) .pl { animation: pl-in .9s var(--ease) calc(.25s + var(--i) * 70ms) both; } @keyframes pl-in { from { opacity: 0; translate: 0 40px; } }
   /* One picture for both: as a place opens, more of it shows, from a slice of the model's middle out to the whole of it. */
-  .pl-art { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 72% 100%; transition: filter .5s var(--ease); filter: saturate(.9) brightness(.82); } .pl:global(.open) .pl-art, .pl:hover .pl-art { filter: none; }
+  .pl-art { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 72% 100%; transition: opacity .6s var(--ease), filter .5s var(--ease); filter: saturate(.9) brightness(.82); }
+  /* A place's picture fades in when it lands: one the browser already holds is marked as the page is read, so it is there
+     from the first frame. */
+  :global(html.js) .pl .pl-art:not([data-loaded]) { opacity: 0; } .pl:global(.open) .pl-art, .pl:hover .pl-art { filter: none; }
   .pl::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(rgb(0 0 0 / .34), transparent 34%); pointer-events: none; }
   /* An open place's people stand on its picture, not on boxes: the picture's own colour deepens under them, from the
      corner they stand in, and thins out towards the model. */
