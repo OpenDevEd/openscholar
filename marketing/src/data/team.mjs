@@ -41,9 +41,9 @@ export const PLACE = Object.fromEntries(PLACES.map((p) => [p.id, p]));
 export const LINKS = [["london", "morocco"], ["london", "nigeria"], ["london", "kenya"], ["london", "canada"], ["london", "united-states"], ["morocco", "nigeria"], ["morocco", "united-states"], ["nigeria", "kenya"], ["nigeria", "south-africa"], ["kenya", "tanzania"], ["tanzania", "south-africa"], ["united-states", "canada"]];
 
 const ek = (quote) => ({ quote, source: "https://www.ekitabu.com/team" });
-// A publication whose DOI does not resolve is left out: team-public.json marks it `unresolved` and keeps the DOI that failed
-// (checked at doi.org on 13 Nov 2026), so it comes back by clearing the mark once the DOI is registered.
-const ode = (key) => ({ ...PUBLIC[key], pubs: PUBLIC[key].pubs.filter((b) => !b.unresolved) });
+// team-public.json only holds publications whose link opens. Four that their organisation lists were left out because their
+// DOIs answered 404 at doi.org on 14 Nov 2026: 10.53832/opendeved.1159, .0275 and .1122, and 10.5281/zenodo.4557508.
+const ode = (key) => PUBLIC[key];
 export const TEAM = [
   { key: "bjorn", slug: "bjorn-hassler", name: "Björn Haßler", suffix: "PhD", role: "Director", org: "ode", place: "london", ...ode("bjorn"),
     links: [["linkedin", "https://www.linkedin.com/in/bjoernhassler/"], ["x", "https://twitter.com/bjoernhassler"], ["github", "https://github.com/bjohas"], ["orcid", "https://orcid.org/0000-0002-5277-9947"], ["scholar", "https://scholar.google.com/citations?user=Rj291kMAAAAJ"], ["instagram", "https://www.instagram.com/bjoernhassler/"], ["web", "http://www.bjohas.de/", "bjohas.de"]] },

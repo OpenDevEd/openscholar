@@ -69,17 +69,6 @@
     "cover": ""
    },
    {
-    "id": "JP7R627E",
-    "type": "Report",
-    "by": "Smart Africa Alliance, Hassan, M., Grace, M., Waziri, N., & Haßler, B.",
-    "year": "2024",
-    "title": "Outil d’évaluation de la littératie numérique",
-    "url": "https://docs.opendeved.net/lib/JP7R627E",
-    "cover": "",
-    "unresolved": true,
-    "doi": "https://doi.org/10.53832/opendeved.1122"
-   },
-   {
     "id": "3HP47CXD",
     "type": "Report",
     "by": "Haßler, B., Zhang, W., Eso, O., Villavicencio Peralta, X. A., Jengo, E., Clarin, F., Sharma, T., Noble, A., & Mwangi, D.",
@@ -87,17 +76,6 @@
     "title": "Predictive models for classroom conditions in Tanzania – A literature review with a focus on Artificial Intelligence",
     "url": "https://doi.org/10.53832/opendeved.1133",
     "cover": "3HP47CXD"
-   },
-   {
-    "id": "3WHQDAGN",
-    "type": "Report",
-    "by": "Haßler, B., Eso, O., Zhang, W., Lester, J., Touiyate, A., & Mansour, H.",
-    "year": "2024",
-    "title": "Predictive models for classroom conditions in Tanzania: The contribution of Artificial Intelligence",
-    "url": "https://docs.opendeved.net/lib/3WHQDAGN",
-    "cover": "3WHQDAGN",
-    "unresolved": true,
-    "doi": "https://doi.org/10.53832/opendeved.1159"
    },
    {
     "id": "FRNQSG3T",
@@ -190,17 +168,6 @@
     "cover": "KGWBCB4D"
    },
    {
-    "id": "DABFT2LD",
-    "type": "Conference Paper",
-    "by": "Haßler, B.",
-    "year": "2022",
-    "title": "Commonwealth Collaboration to Build Back Better",
-    "url": "https://docs.opendeved.net/lib/DABFT2LD",
-    "cover": "DABFT2LD",
-    "unresolved": true,
-    "doi": "https://doi.org/10.53832/opendeved.0275"
-   },
-   {
     "id": "UEHRQHHH",
     "type": "Book Section",
     "by": "Castillo, N., Adam, T., & Haßler, B.",
@@ -253,17 +220,6 @@
     "title": "A mixed-methods evidence assessment for emergent fields of knowledge",
     "url": "https://doi.org/10.53832/edtechhub.0003",
     "cover": ""
-   },
-   {
-    "id": "BKEP82PS",
-    "type": "Report",
-    "by": "Haßler, B., Adam, T., Allier-Gagneur, Z., Blower, T., Brugha, M., Damani, K., Hennessy, S., Hollow, D., Jordan, K., Martin, K., Megha-Bongnkar, G., Murphy, M., & Walker, H.",
-    "year": "2021",
-    "title": "Methodology for literature reviews",
-    "url": "https://docs.opendeved.net/lib/BKEP82PS",
-    "cover": "BKEP82PS",
-    "unresolved": true,
-    "doi": "https://doi.org/10.5281/zenodo.4557508"
    },
    {
     "id": "HT9D5C8E",
@@ -364,17 +320,6 @@
     "cover": ""
    },
    {
-    "id": "BKEP82PS",
-    "type": "Report",
-    "by": "Haßler, B., Adam, T., Allier-Gagneur, Z., Blower, T., Brugha, M., Damani, K., Hennessy, S., Hollow, D., Jordan, K., Martin, K., Megha-Bongnkar, G., Murphy, M., & Walker, H.",
-    "year": "2021",
-    "title": "Methodology for literature reviews",
-    "url": "https://docs.opendeved.net/lib/BKEP82PS",
-    "cover": "BKEP82PS",
-    "unresolved": true,
-    "doi": "https://doi.org/10.5281/zenodo.4557508"
-   },
-   {
     "id": "6CYM9BIT",
     "type": "Report",
     "by": "Adam, T., El-Serafy, Y., Podea, M., Haßler, B., & Open Development & Education.",
@@ -428,17 +373,6 @@
   ],
   "pubs": [
    {
-    "id": "JP7R627E",
-    "type": "Report",
-    "by": "Smart Africa Alliance, Hassan, M., Grace, M., Waziri, N., & Haßler, B.",
-    "year": "2024",
-    "title": "Outil d’évaluation de la littératie numérique",
-    "url": "https://docs.opendeved.net/lib/JP7R627E",
-    "cover": "",
-    "unresolved": true,
-    "doi": "https://doi.org/10.53832/opendeved.1122"
-   },
-   {
     "id": "TATPHGK2",
     "type": "Report",
     "by": "Macharia, G., Waziri, N., Martin, A., Omboto, C., & Mansour, H.",
@@ -490,17 +424,6 @@
     "title": "OpenDevEd/OpenAlex-SDK",
     "url": "https://github.com/OpenDevEd/OpenAlex-SDK",
     "cover": ""
-   },
-   {
-    "id": "3WHQDAGN",
-    "type": "Report",
-    "by": "Haßler, B., Eso, O., Zhang, W., Lester, J., Touiyate, A., & Mansour, H.",
-    "year": "2024",
-    "title": "Predictive models for classroom conditions in Tanzania: The contribution of Artificial Intelligence",
-    "url": "https://docs.opendeved.net/lib/3WHQDAGN",
-    "cover": "3WHQDAGN",
-    "unresolved": true,
-    "doi": "https://doi.org/10.53832/opendeved.1159"
    },
    {
     "id": "P527M7BW",
