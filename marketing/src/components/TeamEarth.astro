@@ -5,8 +5,7 @@
 import Arrow from "./Arrow.astro";
 import Clock from "./Clock.astro";
 import sharp from "sharp";
-import Portrait from "./Portrait.astro";
-import { PLACES, PLACE, TEAM, LINKS, CLOCK_JS, peopleIn, flag } from "../data/team.mjs";
+import { PLACES, LINKS, CLOCK_JS, peopleIn, flag } from "../data/team.mjs";
 const places = PLACES.map((p) => ({ ...p, people: peopleIn(p.id) })).filter((p) => p.people.length);
 const at = Object.fromEntries(places.map((p, i) => [p.id, i]));
 const links = LINKS.filter(([a, b]) => a in at && b in at).map(([a, b]) => [at[a], at[b]]);
@@ -24,33 +23,17 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
   {skies.map((src, g) => <img class={`stars s${g}`} src={src} width="2560" height="900" alt="" />)}
   <div class="inner ah-in">
-    {/* MOCK: three ways to do the hero's top-left on a wide window, picked with ?words=1, 2 or 3 in the address (1 without
-        one) or the switch at the window's foot. Narrower windows keep the headline and the sentence. Once one is chosen
-        the other two and the switch go. Everything marked data-at follows the place the Earth is on (-1 is nobody). */}
-    <script is:inline>{ const w = new URLSearchParams(location.search).get("words"); document.currentScript.closest("[data-team-earth]").dataset.words = ["1", "2", "3"].includes(w) ? w : "1"; }</script>
+    {/* On a wide window the headline is large enough for its first line to run under the Earth's edge, and it runs on into a
+        line that names the place the Earth is on ("around the world" with nobody picked). Each of those lines is marked
+        data-at and follows the place in focus (-1 is nobody). The people of a place are listed on its card below. */}
     <div class="ah-copy">
-      <h1><span>The people</span> <span class="slot" aria-hidden="true">{[null, ...places].map((p, k) => <span class:list={["faces", { on: !k }]} data-at={k - 1}>{(p ? p.people : TEAM.slice(0, 2)).map((m) => <img src={`/img/team/${m.key}-face.avif`} width="64" height="64" alt="" />)}</span>)}</span> <span class="t2">behind Openscholar</span></h1>
+      <h1>The people behind <br />Openscholar</h1>
+      <div class="where" aria-hidden="true">
+        <p class="on" data-at="-1">around the world</p>
+        {places.map((p, i) => <p data-at={i} style={`--glow:${p.glow}`}><span>in{/^United/.test(p.name) ? " the" : ""}</span> <img class="fl" src={flag(p.cc)} width="48" height="36" alt="" /><b>{p.name}</b></p>)}
+      </div>
       <p class="lead">One team working across Africa, Europe and North&nbsp;America, from two organisations.</p>
-      {/* 1. Who is there: the headline runs on into the place the Earth is on, and its people stand under it. */}
-      <div class="who">
-        <div class="who-pl on" data-at="-1"><p class="who-in">around the world</p><p class="who-rest">One team working across Africa, Europe and North&nbsp;America, from two organisations.</p></div>
-        {places.map((p, i) => <div class="who-pl" data-at={i} style={`--bg:${p.bg};--glow:${p.glow}`} inert>
-          <p class="who-in"><span>in{/^United/.test(p.name) ? " the" : ""}</span> <img class="fl" src={flag(p.cc)} width="48" height="36" alt="" /><b>{p.name}</b></p>
-          <ul class="who-list">{p.people.map((m) => <li><a href={`/about/${m.slug}/`}><img src={`/img/team/${m.key}-face.avif`} width="60" height="60" alt="" data-portrait={m.slug} /><span><b>{m.name}</b><em>{m.role}</em></span><Arrow /></a></li>)}</ul>
-        </div>)}
-      </div>
-      {/* 2. The cast: everyone as a hand of portraits. Pointing at one names them and turns the Earth to where they work. */}
-      <div class="cast">
-        <ul class="fan">{TEAM.map((m, k) => <li style={`--k:${k}`} data-at={at[m.place]}><a href={`/about/${m.slug}/`} aria-label={`${m.name}, ${m.role}, ${PLACE[m.place].name}`} data-name={m.name} data-role={`${m.role}, ${PLACE[m.place].name}`} data-go-to={at[m.place]}><Portrait person={m} /></a></li>)}</ul>
-        <p class="cast-cap"><span class="cc-rest">One team working across Africa, Europe and North&nbsp;America, from two organisations.</span><span class="cc-who" aria-hidden="true"><b></b><em></em></span></p>
-      </div>
-      {/* 3. Faces in the words: the people of the place the Earth is on stand in the headline, and the line under it names the place. */}
-      <div class="cap">
-        <p class="cap-i on" data-at="-1">One team working across Africa, Europe and North&nbsp;America, from two organisations.</p>
-        {places.map((p, i) => <p class="cap-i cap-pl" data-at={i}><img class="fl" src={flag(p.cc)} width="32" height="24" alt="" /><b>{p.name}</b><Clock tz={p.tz} /></p>)}
-      </div>
     </div>
-    <nav class="mock-switch" aria-label="Mock: top-left concept"><span>Top left</span>{[["1", "Who is there"], ["2", "The cast"], ["3", "Faces in the words"]].map(([n, t]) => <a href={`?words=${n}`} data-w={n}>{n}. {t}</a>)}</nav>
     <div class="ah-globe">
       <noscript><img class="still" src="/img/earth-still.avif" width="1024" height="1024" alt="" /></noscript>
       <img class="still" data-still alt="" decoding="async" />
@@ -81,7 +64,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const Earth = window.questionStageEarth, $ = (s) => root.querySelector(s), $$ = (s) => [...root.querySelectorAll(s)];
     const globe = $(".ah-globe"), cv = $(".earth"), ac = $(".arcs"), ink = ac.getContext("2d"), pins = $$(".pin"), band = $(".band"), panels = $$(".pl"), heads = $$(".pl-head");
     const calm = matchMedia("(prefers-reduced-motion: reduce)"), wide = matchMedia("(min-width: 1080px)"), hover = matchMedia("(hover: hover)");
-    const marks = $$("[data-at]"), cap = $(".cast-cap");
+    const marks = $$("[data-at]");
     const P = JSON.parse(root.dataset.places), LINKS = JSON.parse(root.dataset.links), RAD = Math.PI / 180, TAU = Math.PI * 2;
     // The planet's lean, as its shader has it (src/planet/earth.js). A place on the map goes through the same two turns to
     // reach the screen, so a pin sits on the very pixel the shader draws that place on.
@@ -107,7 +90,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const home = () => wide.matches ? aim({ lon: 14, lat: 16 }) : [facing({ lon: -18, lat: 12 }), AY];
     // The sun starts behind the planet's upper edge, a crescent with the cities lit, and comes round to the day side.
     const NIGHT = [-.72, .5, -.48], DAY = [-.42, .46, .78], DAWN_MS = 3000;
-    let W = 0, H = 0, R = 0, cx = 0, cy = 0, skyTop = 0, skyFoot = 0, dpr = 1, spin = 0, vel = 0, goal = 0, tilt = AY, tiltVel = 0, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0, frozen = false, tick = 0, arcAt = 0;
+    let W = 0, H = 0, R = 0, cx = 0, cy = 0, skyTop = 0, skyFoot = 0, dpr = 1, spin = 0, vel = 0, goal = 0, tilt = AY, tiltVel = 0, turning = false, focus = wide.matches ? -1 : 0, pinned = false, held = false, drag = null, planet = null, raf = 0, last = 0, seen = false, dirty = true, born = 0, nextAt = 0, scrolling = 0, frozen = false, tick = 0, arcAt = 0;
     // Nothing moves by itself for a visitor who asked for less motion, or where the planet can't be drawn or can't keep up.
     const still = () => calm.matches || !planet || frozen;
     const layout = () => ({ R, cx, cy, rx: R, ry: 1, tilt: 0, narrow: W < 500 });
@@ -115,13 +98,18 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     // on its right edge and room on the left for the glow on its rim. Close up, a pin only shows in the sky between
     // the header and the row of places.
     const size = () => {
-      const near = wide.matches, box = globe.getBoundingClientRect(); W = box.width; H = box.height; R = near ? W / 1.5 : W * .39; cx = near ? W : W / 2; cy = H / 2;
-      roll = near ? 0 : AX; ca = Math.cos(roll); sa = Math.sin(roll); skyTop = near ? 104 : -Infinity; skyFoot = near ? band.getBoundingClientRect().top - box.top - 34 : Infinity;
+      // Laid-out sizes, not what's on screen: the globe arrives scaled down, and this runs while it does.
+      const near = wide.matches; W = globe.offsetWidth; H = globe.offsetHeight; R = near ? W / 1.5 : W * .39; cx = near ? W : W / 2; cy = H / 2;
+      roll = near ? 0 : AX; ca = Math.cos(roll); sa = Math.sin(roll); skyTop = near ? 104 : -Infinity; skyFoot = near ? band.offsetTop - globe.offsetTop - 34 : Infinity;
       dpr = Math.min(devicePixelRatio || 1, 2); ac.width = Math.round(W * dpr); ac.height = Math.round(H * dpr); bulb(); planet?.resize(W, H, layout()); dirty = true;
+      // The headline is told where the planet is from its own corner, so its letters can end at the planet's edge.
+      const words = $(".ah-copy"), head = words.querySelector("h1"); head.style.setProperty("--ex", `${globe.offsetLeft + cx - words.offsetLeft - head.offsetLeft}px`); head.style.setProperty("--ey", `${globe.offsetTop + cy - words.offsetTop - head.offsetTop}px`); head.style.setProperty("--er", `${near ? R : 0}px`);
     };
     const dawn = (now) => { const k = still() ? 1 : Math.min(1, Math.max(0, (now - born - 250) / DAWN_MS)); return k * k * (3 - 2 * k); };
     const sun = (e) => { const v = NIGHT.map((a, i) => a + (DAY[i] - a) * e), n = Math.hypot(...v); return v.map((x) => x / n); };
-    const place = () => P.forEach((p, i) => { const [x, y, z] = at(p, spin), px = cx + x * R, py = cy - y * R; pins[i].style.transform = `translate3d(${px.toFixed(1)}px,${py.toFixed(1)}px,0)`; pins[i].classList.toggle("back", z < .1 || px > W - 90 || py < skyTop || py > skyFoot); });
+    // A pin is put in its place with `translate`, not `transform`: its entrance grows it with `scale`, which then grows it
+    // from the pin itself. With `transform` the growth was measured from the box's corner, and every pin flew in from there.
+    const place = () => P.forEach((p, i) => { const [x, y, z] = at(p, spin), px = cx + x * R, py = cy - y * R; pins[i].style.translate = `${px.toFixed(1)}px ${py.toFixed(1)}px`; pins[i].classList.toggle("back", z < .1 || px > W - 90 || py < skyTop || py > skyFoot); });
     // Links of light: each a great circle lifted off the surface, hidden where the planet is in front of it, with a point of
     // light running along it. The focused place's links stay bright and the rest dim, easing over time, not per frame.
     const lit = LINKS.map(() => .8), glow = document.createElement("canvas");
@@ -151,7 +139,9 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
       focus = i; const [to, lean] = i < 0 ? home() : wide.matches ? aim(P[i]) : [facing(P[i]), AY]; goal = to + Math.round((spin - to) / TAU) * TAU; tilt = lean;
       panels.forEach((el, k) => { el.classList.toggle("open", k === i); heads[k].setAttribute("aria-expanded", String(k === i)); heads[k].setAttribute("aria-disabled", String(k === i)); el.querySelector(".pl-who").inert = k !== i; });
       pins.forEach((el, k) => el.classList.toggle("here", k === i)); root.classList.toggle("some", i >= 0);
-      for (const el of marks) { const on = Number(el.dataset.at) === i; el.classList.toggle("on", on); if (el.classList.contains("who-pl")) el.inert = !on; }
+      // What stands beside the Earth follows it: the block for this place shows, and from the first place on it comes in
+      // with a move of its own.
+      for (const el of marks) el.classList.toggle("on", Number(el.dataset.at) === i); if (i >= 0) root.classList.add("turned");
       if (still()) { spin = goal; pitch = tilt; vel = tiltVel = 0; frame(); } else { dirty = true; run(); }
     };
     // The tour: everyone, then each place in turn, for as long as nobody has picked one and the pointer and the keyboard are
@@ -163,6 +153,8 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
       const dt = Math.min(.05, (now - last) / 1000); last = now;
       // A spring carries the globe to where it's going, so a new pick mid-turn just moves the goal.
       if (!drag) { const k = 5.2, a = (goal - spin) * k * k - 2 * k * vel, b = (tilt - pitch) * k * k - 2 * k * tiltVel; vel += a * dt; spin += vel * dt; tiltVel += b * dt; pitch += tiltVel * dt; }
+      // Close up, the dots and faces are off while the Earth turns by itself, and come back once it is where it was going.
+      const turns = wide.matches && !drag && (Math.abs(goal - spin) > .012 || Math.abs(tilt - pitch) > .012); if (turns !== turning) root.classList.toggle("turning", turning = turns);
       // The planet is only drawn while it turns or the sun is coming up; at rest only the light on the links moves. The
       // monitor is told of every display frame of a turn, and a slow device then draws every second one (the level's own
       // pace), with the pins and links kept in step with the planet.
@@ -185,7 +177,8 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     const rest = () => { planet = null; root.classList.remove("lit"); const img = $("[data-still]"); img.onload = img.onerror = () => root.classList.add("lit"); root.classList.add("resting"); img.src = "/img/earth-still.avif"; select(Math.max(0, focus)); };
     const start = async () => {
       size(); let level = -1; try { level = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} level = Earth.startLevel(level);
-      [goal, tilt] = home(); spin = goal - .5; pitch = tilt;
+      // The small globe turns into place as it arrives. Close up, the Earth starts where it belongs.
+      [goal, tilt] = home(); spin = wide.matches ? goal : goal - .5; pitch = tilt;
       // Close up the planet is large enough for the full-size day map to show.
       if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level: Math.min(level, 4), base: "/img/earth-", sharp: wide.matches, onLost: rest });
       if (planet) await planet.textures.catch(() => { planet = null; });
@@ -202,13 +195,6 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
       // A pointer resting on a place opens it. One only passing over the band on its way elsewhere opens nothing.
       el.addEventListener("pointerenter", () => { clearTimeout(intent); intent = setTimeout(() => { if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }, 140); }); el.addEventListener("pointerleave", () => clearTimeout(intent));
     }
-    // MOCK, the cast: pointing at a portrait names the person under the hand and turns the Earth to where they work.
-    for (const a of $$(".fan a")) {
-      let intent = 0; const name = () => { cap.querySelector("b").textContent = a.dataset.name; cap.querySelector("em").textContent = a.dataset.role; cap.classList.add("named"); }, quiet = () => { clearTimeout(intent); cap.classList.toggle("named", false); };
-      a.addEventListener("pointerenter", () => { name(); clearTimeout(intent); intent = setTimeout(() => { const i = Number(a.dataset.goTo); if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }, 140); });
-      a.addEventListener("focus", name); a.addEventListener("pointerleave", quiet); a.addEventListener("blur", quiet);
-    }
-    for (const a of $$(".mock-switch a")) a.toggleAttribute("aria-current", a.dataset.w === root.dataset.words);
     // A finger on the list ends the tour, so a row about to be tapped never slides away.
     band.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") pinned = true; }, { passive: true });
     for (const b of $$("[data-go]")) b.addEventListener("click", () => { pinned = true; select(Number(b.dataset.go)); });
@@ -239,8 +225,8 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
   /* The sky is one picture 2560 px wide. On a wider window it fades out at both ends, so it never stops at an edge. */
   .ah-in { padding-inline: calc(var(--gap) + var(--edge)); display: grid; grid-template-columns: minmax(0, 1fr) clamp(420px, 46vw, 528px); grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
-  /* MOCK: the three top-left concepts only show on a wide window (below). */
-  .who, .cast, .cap, .slot, .mock-switch { display: none; }
+  /* The line that names the place the Earth is on, and the headline's two set lines, are for a wide window (below). */
+  .where, .ah-copy h1 br { display: none; }
   /* The words come in as they do on every other page's hero. */
   .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }
   /* The hand only where the globe can be turned by hand: not once it rests as a still, has been stopped for being slow, or
@@ -301,51 +287,26 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     .ah-in { --row: clamp(420px, 46vw, 528px); grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--row) auto; grid-template-areas: "copy" "band"; }
     .ah-copy { position: relative; z-index: 1; max-width: calc(52vw - var(--gap) - var(--edge) - max(0px, 50vw - 640px)); }
 
-    /* MOCK: the three top-left concepts. Each replaces the sentence under the headline. */
-    .ah[data-words] .lead { display: none; }
-    .mock-switch { position: fixed; z-index: 60; left: 16px; bottom: 16px; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 14px; background: #10141f; box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 18px 40px -16px #000; font-size: 13px; color: rgb(255 255 255 / .7); } .mock-switch span { padding-inline: 8px 6px; } .mock-switch a { padding: 7px 10px; border-radius: 9px; color: #fff; } .mock-switch a:hover { background: rgb(255 255 255 / .1); } .mock-switch a[aria-current] { background: #fff; color: var(--ink); }
-    /* What follows the Earth is stacked in one place: the one for the place in focus shows, the rest wait unseen. */
-    :is(.who, .cap, .slot) > * { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity .18s var(--ease), visibility 0s .18s, translate .5s var(--ease), scale .5s var(--ease); }
-    :is(.who, .cap, .slot) > :global(.on) { opacity: 1; visibility: visible; transition: opacity .45s var(--ease) .14s, translate .6s var(--ease) .1s, scale .6s var(--ease) .1s; }
-
-    /* 1. Who is there. The headline runs on into a third line that names the place the Earth is on, with its flag, and the
-       people in that place stand under it. */
-    .ah[data-words="1"] .ah-copy { gap: 0; --hs: clamp(44px, 4.15vw, 60px); }
-    .ah[data-words="1"] h1 { font-size: var(--hs); line-height: 1.06; max-width: 9em; }
-    .ah[data-words="1"] .who { display: grid; min-height: calc(var(--hs) * 1.06 + 196px); align-items: start; }
-    .who-pl { display: grid; gap: 22px; align-content: start; translate: 0 12px; } .who-pl:global(.on) { translate: none; }
-    .who-in { display: flex; align-items: center; gap: .22em; font-weight: 500; font-size: var(--hs); line-height: 1.06; letter-spacing: -.04em; white-space: nowrap; } .who-in span { color: rgb(255 255 255 / .58); } .who-in b { font-weight: 500; color: color-mix(in srgb, var(--glow, #fff) 55%, #fff); }
-    .who-in .fl { width: .7em; height: .525em; margin: .06em .04em 0 .06em; border-radius: .1em; }
-    .who-pl[data-at="-1"] .who-in { color: rgb(255 255 255 / .58); } .who-rest { max-width: 23em; font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; color: rgb(255 255 255 / .84); }
-    .who-list { display: grid; gap: 2px; width: min(100%, 430px); margin-left: -10px; }
-    .who-list a { display: flex; align-items: center; gap: 16px; padding: 10px; border-radius: 20px; transition: background-color .2s var(--ease); } :global(html:not(.cold)) .who-list a:hover, .who-list a:focus-visible { background: rgb(255 255 255 / .1); }
-    .who-list a > img { flex: none; width: 60px; height: 60px; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 1px rgb(255 255 255 / .22); } .who-list a > span { display: grid; flex: 1; } .who-list b { font-weight: 500; font-size: 22px; line-height: 1.25; letter-spacing: -.01em; } .who-list em { font-style: normal; font-size: 15px; line-height: 1.35; color: rgb(255 255 255 / .74); }
-    .who-list a :global(i) { display: grid; place-items: center; flex: none; width: 36px; height: 36px; margin-left: 8px; border-radius: 11px; color: rgb(255 255 255 / .86); transition: background-color .2s var(--ease), color .2s var(--ease), translate .25s var(--ease); } :global(html:not(.cold)) .who-list a:hover :global(i), .who-list a:focus-visible :global(i) { background: var(--brand); color: var(--brand-on); translate: 2px 0; }
-    /* The people are named on the left, so a place below only shows itself, and keeps its faces when it opens. */
-    .ah[data-words="1"] .band .pl-who, .ah[data-words="1"] .band .pl::before { display: none; } .ah[data-words="1"] .pl:global(.open) .pl-faces { opacity: 1; }
-
-    /* 2. The cast. Everyone as a hand of portraits under the headline. The people of the place the Earth is on stand up out
-       of the hand; the one under the pointer comes forward and is named beneath. */
-    .ah[data-words="2"] .cast { display: grid; gap: 18px; } .ah[data-words="2"] h1 { font-size: clamp(44px, 4.6vw, 66px); }
-    .fan { --cw: clamp(80px, 6.9vw, 100px); display: flex; padding: 56px 0 0 22px; }
-    .fan li { --o: calc(var(--k) - 4.5); --y: calc(var(--o) * var(--o) * 1.1px); position: relative; flex: none; width: var(--cw); margin-left: calc(var(--cw) * -.47); rotate: calc(var(--o) * 1.7deg); translate: 0 var(--y); transform-origin: 50% 200%; transition: translate .35s var(--ease), rotate .35s var(--ease), scale .35s var(--ease); } .fan li:first-child { margin-left: 0; }
-    .fan a { display: block; border-radius: 15px; box-shadow: -12px 0 20px -12px rgb(3 6 18 / .85), 0 18px 28px -18px #000, 0 0 0 1px rgb(7 11 26 / .6); }
-    .fan :global(.pf) { border-radius: 15px; transform: none; } .fan :global(.pf-at) { display: none; }
-    /* The people of the place the Earth is on stand up out of the hand, ringed in the place's light. */
-    .fan li:global(.on) { translate: 0 calc(var(--y) - 22px); z-index: 2; } .fan li:global(.on) a { box-shadow: 0 0 0 2px var(--ring, #fff), 0 20px 34px -16px #000; }
-    :global(html:not(.cold)) .fan li:hover, .fan li:focus-within { translate: 0 calc(var(--y) - 30px); rotate: 0deg; scale: 1.16; z-index: 3; }
-    .cast-cap { position: relative; max-width: 23em; min-height: 3em; font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; color: rgb(255 255 255 / .84); }
-    .cc-rest, .cc-who { transition: opacity .15s var(--ease); } .cc-who { position: absolute; inset: 0; display: grid; align-content: start; opacity: 0; } .cc-who b { font-weight: 500; font-size: 24px; line-height: 1.2; letter-spacing: -.01em; color: #fff; } .cc-who em { font-style: normal; font-size: 16px; color: rgb(255 255 255 / .74); }
-    .cast-cap:global(.named) .cc-rest { opacity: 0; } .cast-cap:global(.named) .cc-who { opacity: 1; }
-
-    /* 3. Faces in the words. The people of the place the Earth is on stand inside the headline, and the line under it names
-       the place and gives the time there. */
-    .ah[data-words="3"] h1 { font-size: clamp(52px, 4.9vw, 70px); line-height: 1.08; } .ah[data-words="3"] .t2 { display: block; }
-    .ah[data-words="3"] .slot { display: inline-grid; place-items: center start; vertical-align: middle; width: 1.52em; height: .92em; margin-left: .1em; translate: 0 -.07em; }
-    .slot .faces { display: flex; scale: .7; } .slot .faces:global(.on) { scale: 1; }
-    .slot img { width: .88em; height: .88em; max-width: none; border-radius: 50%; background: #142a66; box-shadow: 0 0 0 .035em #0a1024, 0 0 0 .06em rgb(255 255 255 / .4); } .slot img + img { margin-left: -.24em; }
-    .ah[data-words="3"] .cap { display: grid; min-height: 3em; align-items: start; } .cap-i { max-width: 23em; font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; color: rgb(255 255 255 / .84); }
-    .cap-pl { display: flex; align-items: center; gap: 12px; font-size: 26px; line-height: 1.2; color: #fff; translate: 0 8px; } .cap-pl:global(.on) { translate: none; } .cap-pl b { font-weight: 500; letter-spacing: -.015em; } .cap-pl .fl { width: 32px; height: 24px; margin-top: 2px; border-radius: 5px; } .cap-pl :global(.tm) { justify-content: flex-start; width: 86px; margin-left: 4px; font-size: 16px; color: rgb(255 255 255 / .74); }
+    /* The headline stands on two lines, large enough for the end of the first to run under the Earth's edge. The script tells
+       it where the planet's centre is from its own corner and how wide the planet is (--ex, --ey, --er), and the letters
+       fade out where the planet begins, as if it stood in front of them. Past 1920 wide the page stops growing while the
+       planet's edge keeps moving right, so the letters grow a little to keep reaching it. */
+    .ah-copy { gap: 0; }
+    .ah-copy h1 { font-size: calc(clamp(74px, 7.05vw, 88.5px) + max(0px, (100vw - 1920px) * .0017)); line-height: .98; letter-spacing: -.045em; white-space: nowrap; -webkit-mask-image: radial-gradient(circle at var(--ex, 9999px) var(--ey, 0px), transparent calc(var(--er, 0px) - 2px), #000 calc(var(--er, 0px) + 12px)); mask-image: radial-gradient(circle at var(--ex, 9999px) var(--ey, 0px), transparent calc(var(--er, 0px) - 2px), #000 calc(var(--er, 0px) + 12px)); }
+    /* Under it a line names the place the Earth is on, with its flag, in that place's own light ("around the world" with
+       nobody picked). The lines share one place: the one for the place in focus shows, the one it replaces leaves upwards
+       and the new one comes up from below. That only starts once the Earth has turned to a place (.turned), so nothing
+       plays over the hero's own entrance. */
+    .where { display: grid; margin-top: .26em; font-weight: 500; font-size: clamp(34px, 3.3vw, 46px); line-height: 1.1; letter-spacing: -.035em; white-space: nowrap; }
+    .where p { grid-area: 1 / 1; display: flex; align-items: center; gap: .22em; opacity: 0; visibility: hidden; translate: 0 -8px; transition: opacity .2s var(--ease), translate .3s var(--ease), visibility 0s .3s; }
+    .where p:global(.on) { opacity: 1; visibility: visible; translate: none; transition: none; }
+    .ah:global(.turned) .where p:global(.on) { animation: where-in .6s var(--ease) .08s backwards; } @keyframes where-in { from { opacity: 0; translate: 0 14px; } }
+    .where span, .where p[data-at="-1"] { color: rgb(255 255 255 / .56); } .where b { font-weight: 500; color: color-mix(in srgb, var(--glow) 60%, #fff); }
+    .where .fl { width: .7em; height: .525em; margin: .06em .04em 0 .06em; border-radius: .1em; }
+    .ah-copy h1 br { display: inline; } .ah-copy .lead { margin-top: 22px; }
+    /* A dot and its faces never ride in on the turning Earth: they go out as it starts to turn and come back, where they
+       belong, once it has stopped. Turned by hand they stay on, as the hand is what moves them. */
+    .ah:global(.turning) .pin { opacity: 0; transition: opacity .12s var(--ease); }
     .ah-globe { grid-area: auto; position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; aspect-ratio: auto; }
     .ah-globe::before { inset: auto; left: 33.33%; top: 50%; width: 133.33%; aspect-ratio: 1; translate: 0 -50%; }
     .still { inset: auto; left: -4.17%; top: 50%; width: 208.33%; max-width: none; height: auto; aspect-ratio: 1; translate: 0 -50%; }
