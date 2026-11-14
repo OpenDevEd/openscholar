@@ -20,8 +20,8 @@ const shown = Math.min(sorted.length, PER);
     <span class="tx"><span class="meta"><span class="ty">{ONE[b.type] ?? b.type}</span><span class="yr">{b.year}</span></span><b>{b.title}</b><em>{b.by}</em></span>
   </a></li>)}</ol>
   {sorted.length > PER && <footer class="pager"><span data-range aria-live="polite">1 to {PER} of {sorted.length}</span>
-    <button type="button" data-step="-1" aria-label="Earlier publications" disabled><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
-    <button type="button" data-step="1" aria-label="More publications"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    <button type="button" data-step="-1" aria-label="Newer publications" disabled><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
+    <button type="button" data-step="1" aria-label="Older publications"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
   </footer>}
 </section>
 <script>

@@ -2,12 +2,12 @@
 // The team as cards. Each opens that person's page. On a person's page the last card is the way to the whole team on the
 // globe (`whole`), which also fills the place their own card would have taken.
 import Portrait from "./Portrait.astro";
-import { ORGS, PLACES, flag } from "../data/team.mjs";
+import { ORGS, PLACE, PLACES, flag } from "../data/team.mjs";
 // `lazy` leaves the photos until the grid is near, for a grid at the foot of a long page.
 const { people, whole = false, lazy = false } = Astro.props;
 ---
 <ul class="tg" data-team-grid>
-  {people.map((m) => <li><a class="who" href={`/about/${m.slug}/`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
+  {people.map((m) => <li><a class="who" href={`/about/${m.slug}/`} aria-label={`${m.name}, ${m.role}, ${ORGS[m.org].short}, ${PLACE[m.place].name}`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
   {whole && <li><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
 </ul>
 <script>
