@@ -1,6 +1,6 @@
 // The people behind Openscholar and where they work. Everything here is already public: names, roles, bios and publications
 // from opendeved.net/team/<person> (src/data/team-public.json holds the long text) and ekitabu.com/team, links from those
-// pages, ORCID, GitHub and LinkedIn. Mock: nobody has agreed to be listed yet.
+// pages, ORCID, GitHub, LinkedIn and Google Scholar. Hassan Mansour's photo is the one on his Google Scholar profile. Mock: nobody has agreed to be listed yet.
 import PUBLIC from "./team-public.json";
 
 // `logo` names each organisation's own mark as drawn for a dark panel (public/img/team/<logo>-light.avif): OpenDevEd's own
@@ -43,9 +43,9 @@ const ek = (quote) => ({ quote, source: "https://www.ekitabu.com/team" });
 const ode = (key) => PUBLIC[key];
 export const TEAM = [
   { key: "bjorn", slug: "bjorn-hassler", name: "Björn Haßler", suffix: "PhD", role: "Director", org: "ode", place: "london", ...ode("bjorn"),
-    links: [["linkedin", "https://www.linkedin.com/in/bjoernhassler/"], ["x", "https://twitter.com/bjoernhassler"], ["github", "https://github.com/bjohas"], ["orcid", "https://orcid.org/0000-0002-5277-9947"], ["instagram", "https://www.instagram.com/bjoernhassler/"], ["web", "http://www.bjohas.de/", "bjohas.de"]] },
+    links: [["linkedin", "https://www.linkedin.com/in/bjoernhassler/"], ["x", "https://twitter.com/bjoernhassler"], ["github", "https://github.com/bjohas"], ["orcid", "https://orcid.org/0000-0002-5277-9947"], ["scholar", "https://scholar.google.com/citations?user=Rj291kMAAAAJ"], ["instagram", "https://www.instagram.com/bjoernhassler/"], ["web", "http://www.bjohas.de/", "bjohas.de"]] },
   { key: "taskeen", slug: "taskeen-adam", name: "Taskeen Adam", suffix: "PhD", role: "Co-Director", org: "ode", place: "canada", ...ode("taskeen"),
-    links: [["linkedin", "https://www.linkedin.com/in/taskeen-adam-2027a150/"], ["x", "https://twitter.com/Taskeeeners"], ["orcid", "https://orcid.org/0000-0003-2467-5726"], ["zotero", "https://www.zotero.org/taskeenadam"], ["web", "https://edtechhub.org/team/taskeen-adam", "EdTech Hub"]] },
+    links: [["linkedin", "https://www.linkedin.com/in/taskeen-adam-2027a150/"], ["x", "https://twitter.com/Taskeeeners"], ["orcid", "https://orcid.org/0000-0003-2467-5726"], ["scholar", "https://scholar.google.com/citations?user=YTrmT8kAAAAJ"], ["zotero", "https://www.zotero.org/taskeenadam"], ["web", "https://edtechhub.org/team/taskeen-adam", "EdTech Hub"]] },
   { key: "will", slug: "will-clurman", name: "Will Clurman", role: "Co-Founder & CEO", org: "ekitabu", place: "kenya", ...ek("Delivery motivates me and keeps me curious about how we, through our work, can include all children in quality education."),
     links: [["linkedin", "https://www.linkedin.com/in/willclurman/"]] },
   { key: "matt", slug: "matt-utterback", name: "Matt Utterback", role: "Co-Founder", org: "ekitabu", place: "united-states", ...ek("As a company leader, I hope to open the world of learning, leaving no one behind. I’m most proud of building and growing our talented team."),
@@ -53,7 +53,7 @@ export const TEAM = [
   { key: "nafisa", slug: "nafisa-waziri", name: "Nafisa Waziri", suffix: "PhD", role: "Senior Portfolio Manager", org: "ode", place: "nigeria", ...ode("nafisa"),
     links: [["linkedin", "https://www.linkedin.com/in/nafisa-waziri-a1956349/"], ["orcid", "https://orcid.org/0000-0003-1698-8968"]] },
   { key: "hassan", slug: "hassan-mansour", name: "Hassan Mansour", role: "Technology & Innovation Manager", org: "ode", place: "morocco", ...ode("hassan"),
-    links: [["linkedin", "https://www.linkedin.com/in/hassan-mansour-b176021a1/"], ["github", "https://github.com/suzuya1331"]] },
+    links: [["linkedin", "https://www.linkedin.com/in/hassan-mansour-b176021a1/"], ["github", "https://github.com/suzuya1331"], ["scholar", "https://scholar.google.com/citations?user=1U3jYj8AAAAJ"]] },
   { key: "mohammed", slug: "mohammed-charrad", name: "Mohammed Charrad", role: "Technology Analyst", org: "ode", place: "morocco", ...ode("mohammed"),
     links: [["github", "https://github.com/sickerine"]] },
   { key: "allan", slug: "allan-onyango", name: "Allan Onyango", role: "Senior Manager, Finance and Administration", org: "ekitabu", place: "kenya", ...ek("During my six year tenure at eKitabu, we have created a family of experts that strives for excellence in standards and quality service."),
@@ -69,7 +69,7 @@ export const TEAM = [
 export const SHELF = [...new Map(TEAM.flatMap((m) => m.pubs ?? []).filter((b) => b.cover && !b.unresolved).map((b) => [b.id, b])).values()].sort((a, b) => b.year - a.year);
 export const peopleIn = (place) => TEAM.filter((m) => m.place === place);
 export const flag = (cc) => `/img/flags/${cc}.svg`;
-export const LINK_NAMES = { linkedin: "LinkedIn", x: "X", github: "GitHub", orcid: "ORCID", instagram: "Instagram", zotero: "Zotero", facebook: "Facebook" };
+export const LINK_NAMES = { linkedin: "LinkedIn", x: "X", github: "GitHub", orcid: "ORCID", scholar: "Google Scholar", instagram: "Instagram", zotero: "Zotero", facebook: "Facebook" };
 // Fills every [data-tz] element with the time in its zone and whether it's day there. It runs as the page is read, before
 // the first paint, so no time ever appears late, and again every 15 seconds.
 export const CLOCK_JS = `(() => { const set = () => { for (const el of document.querySelectorAll("[data-tz]")) { const p = new Intl.DateTimeFormat("en-GB", { timeZone: el.dataset.tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date()), h = p.find((x) => x.type === "hour").value, m = p.find((x) => x.type === "minute").value; el.querySelector("time").textContent = h + ":" + m; el.dataset.day = h >= 6 && h < 18 ? "1" : "0"; } }; set(); setInterval(set, 15000); })();`;
