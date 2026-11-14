@@ -14,7 +14,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
 ---
 <section class="bleed ah" id="places" data-team-earth data-places={JSON.stringify(places.map(({ lon, lat }) => ({ lon, lat })))} data-links={JSON.stringify(links)}>
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
-  <svg class="stars" viewBox="0 0 2560 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" fill="#e6eaf5">{[0, 1, 2].map((g) => <g class={`s${g}`}>{stars.filter((_, i) => i % 3 === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</g>)}</svg>
+  <svg class="stars" viewBox="0 0 2560 900" width="2560" height="900" aria-hidden="true" fill="#e6eaf5">{[0, 1, 2].map((g) => <g class={`s${g}`}>{stars.filter((_, i) => i % 3 === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</g>)}</svg>
   <div class="inner ah-in">
     <div class="ah-copy"><h1>The people behind Openscholar</h1><p class="lead">One team working across Africa, Europe and North America, from two organisations.</p></div>
     <div class="ah-globe">
@@ -134,10 +134,11 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   }
 </script>
 <style>
-  .ah { background: radial-gradient(ellipse 44% 46% at 72% 34%, #142a66, transparent 72%), var(--night); padding-block: clamp(104px, 8.4vw, 128px) clamp(16px, 2vw, 24px); }
-  .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; opacity: .7; pointer-events: none; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
-  .stars { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; } .stars g { animation: twinkle 5s ease-in-out infinite alternate; } .stars .s1 { animation-duration: 7s; animation-delay: -2s; } .stars .s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } }
-  .ah-in { display: grid; grid-template-columns: minmax(0, 1fr) 590px; grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
+  .ah { background: radial-gradient(ellipse 620px 440px at calc(50% + 330px) 400px, #142a66, transparent 72%), var(--night); padding-block: clamp(104px, 8.4vw, 128px) clamp(16px, 2vw, 24px); }
+  .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; opacity: .7; pointer-events: none; -webkit-mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); -webkit-mask-composite: source-in; mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); mask-composite: intersect; }
+  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); } .stars g { animation: twinkle 5s ease-in-out infinite alternate; } .stars .s1 { animation-duration: 7s; animation-delay: -2s; } .stars .s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } }
+  /* The sky is one picture 2560 px wide. On a wider window it fades out at both ends, so it never stops at an edge. */
+  .ah-in { padding-inline: calc(var(--gap) + var(--edge)); display: grid; grid-template-columns: minmax(0, 1fr) 590px; grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
   /* The words come in as they do on every other page's hero. */
   .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }

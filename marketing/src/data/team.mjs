@@ -63,8 +63,10 @@ export const TEAM = [
   { key: "eunice", slug: "eunice-jengo", name: "Eunice Jengo", role: "PhD Student", org: "ode", place: "tanzania", ...ode("eunice"),
     links: [] },
 ];
-// Every publication with a cover, once, newest first: the shelf on the About page.
-export const SHELF = [...new Map(TEAM.flatMap((m) => m.pubs ?? []).filter((b) => b.cover).map((b) => [b.id, b])).values()].sort((a, b) => b.year - a.year);
+// Every publication with a cover, once, newest first: the shelf on the About page. Each publication's link was checked on
+// 13 Nov 2026: one whose DOI doesn't resolve is marked `unresolved`, links to its record in the Evidence Library instead,
+// and is left off the shelf.
+export const SHELF = [...new Map(TEAM.flatMap((m) => m.pubs ?? []).filter((b) => b.cover && !b.unresolved).map((b) => [b.id, b])).values()].sort((a, b) => b.year - a.year);
 export const peopleIn = (place) => TEAM.filter((m) => m.place === place);
 export const flag = (cc) => `/img/flags/${cc}.svg`;
 export const LINK_NAMES = { linkedin: "LinkedIn", x: "X", github: "GitHub", orcid: "ORCID", instagram: "Instagram", zotero: "Zotero", facebook: "Facebook" };

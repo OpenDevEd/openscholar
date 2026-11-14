@@ -1,6 +1,8 @@
 ---
 // Who makes Openscholar and where they are: the globe with the team on it over a row of the places they work in, everyone
 // as a card that opens their own page, what they've published on a shelf, and the two organisations they work for.
+import "../../styles/about.css";
+import TRAVEL_JS from "../../scripts/travel.js?raw";
 import Base from "../../layouts/Base.astro";
 import TeamEarth from "../../components/TeamEarth.astro";
 import TeamGrid from "../../components/TeamGrid.astro";
@@ -14,7 +16,7 @@ const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 ---
 <Base top="#070b1a" title="About: Openscholar" description="The people who make Openscholar, where they work, and the two organisations behind it.">
   {/* The planet's maps are asked for as the page arrives, as on the home page, so the globe is there sooner. */}
-  <Fragment slot="head">{["day-2048", "night", "clouds", "water"].map((n) => <link rel="preload" as="image" href={`/img/earth-${n}.avif`} />)}</Fragment>
+  <Fragment slot="head">{["day-2048", "night", "clouds", "water"].map((n) => <link rel="preload" as="image" href={`/img/earth-${n}.avif`} />)}<script is:inline set:html={TRAVEL_JS} /></Fragment>
   <TeamEarth />
   <section class="team" id="team" aria-labelledby="team-h">
     <h2 id="team-h">The team</h2>
@@ -32,8 +34,8 @@ const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
   <Close title="Talk to the team"><a slot="action" class="btn" href="/contact/">Get in touch<Arrow /></a></Close>
 </Base>
 <style>
-  .team { padding: clamp(56px, 7vw, 96px) var(--pad) clamp(48px, 6vw, 80px); } .team h2 { margin-bottom: clamp(24px, 3vw, 40px); }
-  .orgs { padding-block: clamp(56px, 7vw, 96px); } .orgs h2 { margin-bottom: clamp(24px, 3vw, 40px); padding-inline: var(--pad); }
+  .team { padding: clamp(56px, 7vw, 96px) var(--edge) clamp(48px, 6vw, 80px); } .team h2 { margin-bottom: clamp(24px, 3vw, 40px); }
+  .orgs { padding-block: clamp(56px, 7vw, 96px); } .orgs h2 { margin-bottom: clamp(24px, 3vw, 40px); padding-inline: var(--edge); }
   /* The two organisations one above the other, with Openscholar's mark on the seam between them. */
   .pair { position: relative; display: grid; gap: var(--gap); }
   .seal { position: absolute; left: 50%; top: 50%; z-index: 2; display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(#171c2b, #0b0f1a); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .1), 0 0 0 6px #fff, 0 20px 40px -14px rgb(4 7 16 / .6); translate: -50% -50%; }
