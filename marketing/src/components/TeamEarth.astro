@@ -4,6 +4,7 @@
 // glass model of itself: the one the globe is on opens to show who is there. Dragging turns the globe by hand.
 import Arrow from "./Arrow.astro";
 import Clock from "./Clock.astro";
+import sharp from "sharp";
 import { PLACES, LINKS, CLOCK_JS, peopleIn, flag } from "../data/team.mjs";
 const places = PLACES.map((p) => ({ ...p, people: peopleIn(p.id) })).filter((p) => p.people.length);
 const at = Object.fromEntries(places.map((p, i) => [p.id, i]));
@@ -11,11 +12,16 @@ const links = LINKS.filter(([a, b]) => a in at && b in at).map(([a, b]) => [at[a
 // Stars fixed in size and place, so they never shift between loads.
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(7);
 const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1), +(rng() * 900).toFixed(1), +(i < 8 ? 1.5 : .5 + rng() * .6).toFixed(2), +(i < 8 ? .9 : .2 + rng() * .5).toFixed(2)]);
+// Three skies, so each can twinkle as a whole out of step with the others. Each is drawn here, once, as a picture the size
+// it is laid out at, with its fade at both ends drawn in: the sky is 2560 px wide, and on a wider window it never stops at
+// an edge. A browser keeps a picture that fades as a whole at the picture's own size, where a drawing is kept at the
+// screen's density: three drawn skies on a Retina screen held about 100 MB for specks that look the same, which left too
+// little room to redraw the places as they open, so they blinked.
+const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base64,${(await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 900" width="2560" height="900" fill="#e6eaf5"><linearGradient id="f"><stop stop-color="#000"/><stop offset=".15625" stop-color="#fff"/><stop offset=".84375" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient><mask id="m"><rect width="2560" height="900" fill="url(#f)"/></mask><g mask="url(#m)">${stars.filter((_, i) => i % 3 === g).map(([x, y, r, o]) => `<circle cx="${x}" cy="${y}" r="${r}" opacity="${o}"/>`).join("")}</g></svg>`)).webp({ lossless: true }).toBuffer()).toString("base64")}`));
 ---
 <section class="bleed ah" id="places" data-team-earth data-places={JSON.stringify(places.map(({ lon, lat }) => ({ lon, lat })))} data-links={JSON.stringify(links)}>
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
-  {/* Three skies, each its own picture, so each can twinkle as a whole without the others being painted again. */}
-  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 900" width="2560" height="900" aria-hidden="true" fill="#e6eaf5">{stars.filter((_, i) => i % 3 === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
+  {skies.map((src, g) => <img class={`stars s${g}`} src={src} width="2560" height="900" alt="" />)}
   <div class="inner ah-in">
     <div class="ah-copy"><h1>The people behind Openscholar</h1><p class="lead">One team working across Africa, Europe and North&nbsp;America, from two organisations.</p></div>
     <div class="ah-globe">
@@ -170,7 +176,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
 <style>
   .ah { background: radial-gradient(ellipse 620px 440px at calc(50% + 330px) 400px, #142a66, transparent 72%), var(--night); padding-block: clamp(104px, 8.4vw, 128px) clamp(24px, 4vw, 56px); }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; opacity: .7; transition: opacity 1.2s var(--ease); pointer-events: none; -webkit-mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); -webkit-mask-composite: source-in; mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); mask-composite: intersect; } :global(.js) .plate:not([data-loaded]) { opacity: 0; }
-  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); animation: twinkle 5s ease-in-out infinite alternate; } .stars.s1 { animation-duration: 7s; animation-delay: -2s; } .stars.s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } } .ah:global(.away) .stars { animation-play-state: paused; }
+  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; animation: twinkle 5s ease-in-out infinite alternate; } .stars.s1 { animation-duration: 7s; animation-delay: -2s; } .stars.s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } } .ah:global(.away) .stars { animation-play-state: paused; }
   /* The sky is one picture 2560 px wide. On a wider window it fades out at both ends, so it never stops at an edge. */
   .ah-in { padding-inline: calc(var(--gap) + var(--edge)); display: grid; grid-template-columns: minmax(0, 1fr) clamp(420px, 46vw, 528px); grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
