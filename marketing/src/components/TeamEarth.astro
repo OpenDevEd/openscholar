@@ -186,10 +186,21 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
      for a visitor who asked for less motion. */
   .ah:is(:global(.resting), :global(.frozen)) .ah-globe { cursor: default; } @media (prefers-reduced-motion: reduce) { .ah .ah-globe { cursor: default; } }
   .ah-globe { grid-area: globe; position: relative; width: 100%; aspect-ratio: 1; touch-action: pan-y; user-select: none; cursor: grab; animation: ah-in 1.4s .1s var(--ease) both; } .ah-globe:global(.grab) { cursor: grabbing; } @keyframes ah-in { from { opacity: 0; transform: translateY(36px) scale(.94); } }
+  /* On a wide window the Earth is the hero's picture. It fills the right half of the page, from under the header to behind
+     the row of places, with its right edge on the page's right edge, at a size that keeps every pinned place clear of the
+     header above and of the places below. The words keep the left half and stand in front of it. */
+  @media (min-width: 1080px) {
+    .ah { background: radial-gradient(ellipse 790px 560px at calc(50% + 351px) 365px, #142a66, transparent 72%), var(--night); }
+    .ah-in { --row: clamp(420px, 46vw, 528px); --s: clamp(588px, 56.1vw - 18px, 700px); position: relative; grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--row) auto; grid-template-areas: "copy" "band"; }
+    .ah-copy { position: relative; z-index: 1; max-width: calc(100% - var(--s) * .78 + 40px); }
+    .ah-globe { grid-area: auto; position: absolute; top: calc(var(--row) * .462 - var(--s) / 2); right: calc(var(--gap) + var(--edge) - var(--s) * .11); width: var(--s); }
+  }
   /* A dark planet holds the place until the real one has its maps, so nothing appears out of nowhere. */
   .ah-globe::before { content: ""; position: absolute; inset: 11%; border-radius: 50%; background: radial-gradient(circle at 30% 26%, #16306c, #0a1840 50%, #050a1d); box-shadow: 0 0 70px rgb(90 150 255 / .2); transition: opacity 1.2s var(--ease); } .ah:global(.lit) .ah-globe::before { opacity: 0; }
+  /* The still Earth is a picture with clear sky around its planet, which is 64% of its width. It is laid out larger than
+     the globe's box, so its planet is nearly the size of the drawn one, with room left for the glow on its rim. */
   .earth, .arcs, .still { position: absolute; inset: 0; width: 100%; height: 100%; } .earth { opacity: 0; transition: opacity 1.2s var(--ease); } .ah:global(.lit) .earth { opacity: 1; } .arcs { pointer-events: none; }
-  .still { inset: 11%; width: 78%; height: 78%; border-radius: 50%; object-fit: cover; } img.still:not([src]) { display: none; } [data-still] { transition: opacity 1.2s var(--ease); } .ah:not(:global(.lit)) [data-still] { opacity: 0; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
+  .still { inset: -7%; width: 114%; height: 114%; object-fit: cover; pointer-events: none; } img.still:not([src]) { display: none; } [data-still] { transition: opacity 1.2s var(--ease); } .ah:not(:global(.lit)) [data-still] { opacity: 0; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
   .pins { position: absolute; inset: 0; pointer-events: none; }
   .pin { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: opacity .35s var(--ease), visibility 0s; } .pin:global(.back) { opacity: 0; visibility: hidden; transition: opacity .25s var(--ease), visibility 0s .25s; }
   /* The pins wait until the planet has placed them, then light up one after another as the sun comes round. */

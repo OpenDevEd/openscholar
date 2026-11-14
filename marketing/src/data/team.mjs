@@ -27,14 +27,14 @@ export const ORGS = {
 // colour of the place's picture (public/img/art-place-*), so a panel in that colour meets the picture without an edge.
 // `side` is where the faces sit beside the pin on the globe, in pixels, so neighbours never cover each other.
 export const PLACES = [
-  { id: "london", name: "United Kingdom", cc: "gb", lon: -0.13, lat: 51.51, tz: "Europe/London", bg: "#051535", glow: "#9cc8ff", side: [4, -46] },
+  { id: "london", name: "United Kingdom", cc: "gb", lon: -0.13, lat: 51.51, tz: "Europe/London", bg: "#051535", glow: "#9cc8ff", side: [46, -28] },
   { id: "morocco", name: "Morocco", cc: "ma", lon: -6.84, lat: 34.02, tz: "Africa/Casablanca", bg: "#540218", glow: "#ff9a8b", side: [-58, -4] },
   { id: "nigeria", name: "Nigeria", cc: "ng", lon: 7.49, lat: 9.06, tz: "Africa/Lagos", bg: "#013627", glow: "#6ee7b7", side: [-44, 34] },
   { id: "kenya", name: "Kenya", cc: "ke", lon: 36.82, lat: -1.29, tz: "Africa/Nairobi", bg: "#3d0e00", glow: "#ffb347", side: [50, -30] },
   { id: "tanzania", name: "Tanzania", cc: "tz", lon: 39.21, lat: -6.79, tz: "Africa/Dar_es_Salaam", bg: "#013e5b", glow: "#5eead4", side: [58, 16] },
-  { id: "south-africa", name: "South Africa", cc: "za", lon: 28.05, lat: -26.2, tz: "Africa/Johannesburg", bg: "#020917", glow: "#fbbf24", side: [10, 48] },
+  { id: "south-africa", name: "South Africa", cc: "za", lon: 28.05, lat: -26.2, tz: "Africa/Johannesburg", bg: "#020917", glow: "#fbbf24", side: [-54, -16] },
   { id: "united-states", name: "United States", cc: "us", lon: -77.04, lat: 38.91, tz: "America/New_York", bg: "#012676", glow: "#93c5fd", side: [-50, 26] },
-  { id: "canada", name: "Canada", cc: "ca", lon: -75.7, lat: 45.42, tz: "America/Toronto", bg: "#013d3c", glow: "#67e8f9", side: [-30, -40] },
+  { id: "canada", name: "Canada", cc: "ca", lon: -75.7, lat: 45.42, tz: "America/Toronto", bg: "#013d3c", glow: "#67e8f9", side: [-50, 4] },
 ];
 export const PLACE = Object.fromEntries(PLACES.map((p) => [p.id, p]));
 // Links of light between the places, for the globe.
