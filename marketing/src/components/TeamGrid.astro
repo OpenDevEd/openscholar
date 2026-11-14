@@ -31,14 +31,14 @@ const { people, whole = false, lazy = false } = Astro.props;
   /* The card lifts and leans with the pointer, and comes back slowly. Not on a page the browser kept and has just shown
      again, until the pointer moves (html.cold, src/scripts/travel.js): there the card last clicked still counts as hovered. */
   .who :global(.pf) { transition: transform .7s var(--ease), translate .4s var(--ease), box-shadow .4s var(--ease); }
-  @media (hover: hover) { :global(html:not(.cold)) .who:hover :global(.pf) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } :global(html:not(.cold)) .who:hover :global(.pf)::before { opacity: 1; } :global(html:not(.cold)) .who:hover :global(.pf-who) { scale: 1.05; } :global(html:not(.cold)) .who:hover :global(.pf-art) { scale: 1.1; } }
+  @media (hover: hover) { :global(html:not(.cold)) .who:hover :global(.pf:not([data-going])) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } :global(html:not(.cold)) .who:hover :global(.pf:not([data-going]))::before { opacity: 1; } :global(html:not(.cold)) .who:hover :global(.pf:not([data-going]) > .pf-who) { scale: 1.05; } :global(html:not(.cold)) .who:hover :global(.pf:not([data-going]) > .pf-art) { scale: 1.1; } }
   /* Pressed, a card comes down flat at once, while the button is still down, so it takes off for its person's page from
      rest and not with a jolt. */
   @media (hover: hover) { :global(html:not(.cold)) .who:active :global(.pf) { translate: none; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition-duration: .08s; } :global(html:not(.cold)) .who:active :global(.pf)::before { opacity: 0; transition-duration: .08s; } :global(html:not(.cold)) .who:active :global(.pf) > :global(img) { scale: none; transition-duration: .08s; } }
   /* The keyboard gets the pointer's lift, and its ring goes round the frame, which has the frame's corners. */
   .who:focus-visible { outline: none; } .who:focus-visible :global(.pf), .who:focus-visible .world { translate: 0 -6px; outline: 3px solid var(--brand-ink); outline-offset: 3px; }
   /* A card about to travel to its person's page (src/scripts/travel.js) is set flat at once: no lift, no lean, no light,
-     no ring. */
+     no ring. The pointer is still on it, so the hover rules above leave such a card out. */
   .who :global(.pf[data-going]) { translate: none; outline: none; transition: none; } .who :global(.pf[data-going]) > :global(img) { scale: none; transition: none; } .who :global(.pf[data-going])::before { opacity: 0; transition: none; }
   /* The whole team: the planet in the same frame as a person, with the flags of the places along its foot. */
   .world { position: relative; display: block; aspect-ratio: 8 / 9; overflow: hidden; border-radius: 22px; background: radial-gradient(ellipse 80% 60% at 50% 40%, #142a66, transparent 72%), var(--night); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: translate .4s var(--ease), box-shadow .4s var(--ease); }

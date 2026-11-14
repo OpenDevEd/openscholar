@@ -47,20 +47,21 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   <script is:inline>document.documentElement.classList.add("has-js"); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
   <script type="application/ld+json" set:html={JSON.stringify(ENTITY)} />
   {/* The first frame waits for the header, so a page move always has the arriving page's header to draw. */}
-  <link rel="expect" href="#page" blocking="render" />
+  <link rel="expect" href="#top" blocking="render" />
   {/* Between two pages only the arriving page's header is drawn (global.css), so there are never two. It starts at the
       width the last page's header had on screen, measured as that page was left, and glides to its own.
       While a page is still arriving, leaving it again is a plain cut, not another animated move: one that interrupted the
       first would show this page whole for a few frames before taking it away. That holds for the first 350 ms, by which
-      time the arriving page covers the window and there is nothing left to jump. */}
+      time the arriving page covers the window and there is nothing left to jump, and for as long as a portrait is still
+      waiting for its photo (html.waiting, src/scripts/travel.js), which an interruption would leave as an empty frame. */}
   <script is:inline>{
     const bar = () => document.querySelector(".bar"), html = document.documentElement;
     addEventListener("pageswap", () => { try { sessionStorage.setItem("bar", Math.round(bar()?.getBoundingClientRect().width || 0)); } catch {} });
     addEventListener("pagereveal", (e) => {
       const move = e.viewTransition, b = bar(); if (!move) return;
       const hold = document.head.appendChild(Object.assign(document.createElement("style"), { textContent: "@view-transition { navigation: none; }" }));
-      const free = () => hold.remove(), done = () => { free(); if (html.move === move) delete html.dataset.moving; };
-      html.move = move; html.dataset.moving = ""; setTimeout(free, 350); move.finished.finally(done); addEventListener("pagehide", done, { once: true });
+      const done = () => { hold.remove(); if (html.move === move) delete html.dataset.moving; };
+      html.move = move; html.dataset.moving = ""; setTimeout(() => html.classList.contains("waiting") || hold.remove(), 350); move.finished.finally(done); addEventListener("pagehide", done, { once: true });
       let was = 0; try { was = +sessionStorage.getItem("bar"); } catch {}
       if (!b || !was || Math.abs(was - b.getBoundingClientRect().width) < 1) return;
       b.style.transition = "none"; b.style.width = `${was}px`;
@@ -70,7 +71,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   <slot name="head" />
 </head>
 <body style={`background-color:${top}`}>
-  <div class="top">
+  <div class="top" id="top">
     <header class="bar">
       <a class="brand" href="/" aria-label="Openscholar home">
         <svg class="mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" set:html={MARK} />
@@ -99,7 +100,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
     </div>
   </div>
   <div class="scrim" aria-hidden="true"></div>
-  <main class="strip" id="page"><slot /></main>
+  <main class="strip"><slot /></main>
   <footer class="foot" data-foot>
     <nav class="belt" aria-label="Every live community">
       {[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url} tabindex={copy ? -1 : undefined}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" loading="lazy" decoding="async" alt="" /><span>{c.name}</span></a></li>)}</ul>)}
