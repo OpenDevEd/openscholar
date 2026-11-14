@@ -4,11 +4,12 @@
 // other when their page opens or closes.
 import Clock from "./Clock.astro";
 import { PLACE, flag } from "../data/team.mjs";
-const { person: m, eager = false, clock = false } = Astro.props, p = PLACE[m.place];
+// `eager` is for the head of a person's page; `lazy` for cards far down a page, where the photos can wait.
+const { person: m, eager = false, lazy = false, clock = false } = Astro.props, p = PLACE[m.place];
 ---
 <span class="pf" data-portrait={m.slug} style={`--bg:${p.bg};--glow:${p.glow}`}>
-  <img class="pf-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} onload="this.dataset.landed = ''" onerror="this.dataset.landed = ''" />
-  <img class="pf-who" src={`/img/team/${m.key}.avif`} width="480" height="600" alt="" loading={eager ? "eager" : "lazy"} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : undefined} onload="this.dataset.landed = ''" onerror="this.dataset.landed = ''" />
+  <img class="pf-art" src={`/img/art-place-${p.id}-960.avif`} width="960" height="540" alt="" loading={lazy ? "lazy" : undefined} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : "low"} onload="this.dataset.landed = ''" onerror="this.dataset.landed = ''" />
+  <img class="pf-who" src={`/img/team/${m.key}.avif`} width="480" height="600" alt="" loading={lazy ? "lazy" : undefined} decoding={eager ? "sync" : "async"} fetchpriority={eager ? "high" : "low"} onload="this.dataset.landed = ''" onerror="this.dataset.landed = ''" />
   {/* A picture the browser already holds is marked as the page is read, so it is in the first frame; one still on its way
       fades in when it lands. Neither ever appears from one frame to the next. One that fails counts as landed, so the
       other still shows. */}

@@ -25,7 +25,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       <canvas class="arcs" aria-hidden="true"></canvas>
       <div class="pins" aria-hidden="true">{places.map((p, i) => { const [dx, dy] = p.side; return <div class="pin" style={`--i:${i};--dx:${dx}px;--dy:${dy}px;--len:${Math.hypot(dx, dy).toFixed(1)}px;--ang:${(Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1)}deg;--glow:${p.glow};--bg:${p.bg}`}>
         <i class="wire"></i><i class="dot"></i>
-        <button type="button" class="stack" data-go={i} tabindex="-1" aria-label={`${p.name}: ${p.people.map((m) => m.name).join(", ")}`}>{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="40" height="40" alt="" />)}</button>
+        <span class="stack" data-go={i}>{p.people.map((m) => <img src={`/img/team/${m.key}-face.avif`} width="40" height="40" alt="" />)}</span>
       </div>; })}</div>
     </div>
     <div class="band" role="group" aria-label="Where the team is">{places.map((p, i) => <div class="pl open" data-pl={i} style={`--i:${i};--bg:${p.bg};--glow:${p.glow}`}>
@@ -125,14 +125,17 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
       // A new quality resizes the canvas, which empties it, so the planet is drawn again at once.
       planet.setLevel(next); dirty = true;
     });
-    // Without WebGL, or on a data saver, the still Earth stands in and the places below still open.
-    const rest = () => { planet = null; $("[data-still]").src = "/img/earth-still.avif"; root.classList.add("resting", "lit"); select(Math.max(0, focus)); };
+    // Without WebGL, or on a data saver, the still Earth stands in, fading in once it has arrived, and the places below still open.
+    const rest = () => { planet = null; const img = $("[data-still]"); img.onload = img.onerror = () => root.classList.add("lit"); root.classList.add("resting"); img.src = "/img/earth-still.avif"; select(Math.max(0, focus)); };
     const start = async () => {
       size(); let level = -1; try { level = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} level = Earth.startLevel(level);
-      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: W, layout: layout(), level: Math.min(level, 4), base: "/img/earth-", onLost: rest });
+      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: W, layout: layout(), level: Math.min(level, 4), base: "/img/earth-", sharp: false, onLost: rest });
       if (planet) await planet.textures.catch(() => { planet = null; });
       if (!planet) return rest();
-      born = last = performance.now(); if (calm.matches) spin = goal; root.classList.add("lit"); select(focus); frame(); run();
+      born = last = performance.now();
+      // On a page come back to, the sun is already up and the links are already drawn.
+      if (document.documentElement.classList.contains("back")) { born -= DAWN_MS + 1600; spin = goal; }
+      if (calm.matches) spin = goal; root.classList.add("lit"); select(focus); frame(); run();
     };
     for (const b of heads) {
       const i = Number(b.dataset.place), el = b.parentElement; let intent = 0;
@@ -146,7 +149,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     for (const b of $$("[data-go]")) b.addEventListener("click", () => { pinned = true; select(Number(b.dataset.go)); });
     for (const el of [band, globe]) { el.addEventListener("pointerenter", () => { if (hover.matches) held = true; }); el.addEventListener("pointerleave", () => { held = false; }); }
     // Dragging turns the globe by hand, with a mouse only, so a finger still scrolls the page.
-    globe.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.target.closest("button, a") || still()) return; pinned = true; if (wide.matches) select(-1); goal = spin; vel = 0; drag = { x: e.clientX, s: spin }; globe.setPointerCapture(e.pointerId); globe.classList.add("grab"); });
+    globe.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" || e.target.closest("button, a, [data-go]") || still()) return; pinned = true; if (wide.matches) select(-1); goal = spin; vel = 0; drag = { x: e.clientX, s: spin }; globe.setPointerCapture(e.pointerId); globe.classList.add("grab"); });
     globe.addEventListener("pointermove", (e) => { if (drag) spin = goal = drag.s + (e.clientX - drag.x) * .006; });
     const drop = () => { drag = null; globe.classList.remove("grab"); }; globe.addEventListener("pointerup", drop); globe.addEventListener("pointercancel", drop);
     new ResizeObserver(() => { if (!W || Math.abs(globe.clientWidth - W) < 1) return; size(); if (still()) frame(); }).observe(globe);
@@ -164,7 +167,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
 <style>
   .ah { background: radial-gradient(ellipse 620px 440px at calc(50% + 330px) 400px, #142a66, transparent 72%), var(--night); padding-block: clamp(104px, 8.4vw, 128px) clamp(16px, 2vw, 24px); }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; opacity: .7; pointer-events: none; -webkit-mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); -webkit-mask-composite: source-in; mask-image: linear-gradient(#000 70%, transparent), linear-gradient(90deg, transparent 120px, #000 520px, #000 2040px, transparent 2440px); mask-composite: intersect; }
-  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); animation: twinkle 5s ease-in-out infinite alternate; } .stars.s1 { animation-duration: 7s; animation-delay: -2s; } .stars.s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } }
+  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 900px; margin-left: -1280px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); mask-image: linear-gradient(90deg, transparent, #000 400px, #000 2160px, transparent); animation: twinkle 5s ease-in-out infinite alternate; } .stars.s1 { animation-duration: 7s; animation-delay: -2s; } .stars.s2 { animation-duration: 9s; animation-delay: -5s; } @keyframes twinkle { to { opacity: .45; } } .ah:global(.away) .stars { animation-play-state: paused; }
   /* The sky is one picture 2560 px wide. On a wider window it fades out at both ends, so it never stops at an edge. */
   .ah-in { padding-inline: calc(var(--gap) + var(--edge)); display: grid; grid-template-columns: minmax(0, 1fr) clamp(420px, 46vw, 528px); grid-template-areas: "copy globe" "band band"; column-gap: 24px; align-items: center; }
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
@@ -174,7 +177,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   /* A dark planet holds the place until the real one has its maps, so nothing appears out of nowhere. */
   .ah-globe::before { content: ""; position: absolute; inset: 11%; border-radius: 50%; background: radial-gradient(circle at 30% 26%, #16306c, #0a1840 50%, #050a1d); box-shadow: 0 0 70px rgb(90 150 255 / .2); transition: opacity 1.2s var(--ease); } .ah:global(.lit) .ah-globe::before { opacity: 0; }
   .earth, .arcs, .still { position: absolute; inset: 0; width: 100%; height: 100%; } .earth { opacity: 0; transition: opacity 1.2s var(--ease); } .ah:global(.lit) .earth { opacity: 1; } .arcs { pointer-events: none; }
-  .still { inset: 11%; width: 78%; height: 78%; border-radius: 50%; object-fit: cover; } img.still:not([src]) { display: none; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
+  .still { inset: 11%; width: 78%; height: 78%; border-radius: 50%; object-fit: cover; } img.still:not([src]) { display: none; } [data-still] { transition: opacity 1.2s var(--ease); } .ah:not(:global(.lit)) [data-still] { opacity: 0; } .ah:global(.resting) :is(.earth, .arcs, .pins) { display: none; }
   .pins { position: absolute; inset: 0; pointer-events: none; }
   .pin { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: opacity .35s var(--ease), visibility 0s; } .pin:global(.back) { opacity: 0; visibility: hidden; transition: opacity .25s var(--ease), visibility 0s .25s; }
   /* The pins wait until the planet has placed them, then light up one after another as the sun comes round. */
@@ -193,10 +196,12 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .pl { position: relative; flex: 1 1 0; min-width: 0; overflow: hidden; border-radius: 22px; isolation: isolate; background: var(--bg); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 30px 50px -30px #000; transition: flex-grow .75s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { flex-grow: 4.4; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 55%, transparent), 0 30px 60px -28px color-mix(in srgb, var(--glow) 45%, #000); }
   :global(.js) .pl { animation: pl-in .9s var(--ease) calc(.25s + var(--i) * 70ms) both; } @keyframes pl-in { from { opacity: 0; translate: 0 40px; } }
   /* One picture for both: as a place opens, more of it shows, from a slice of the model's middle out to the whole of it. */
-  .pl-art { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 72% 100%; transition: scale 1.2s var(--ease), filter .5s var(--ease); filter: saturate(.9) brightness(.82); } .pl:global(.open) .pl-art, .pl:hover .pl-art { filter: none; } .pl:not(.open):hover .pl-art { scale: 1.06; }
+  .pl-art { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 72% 100%; transition: filter .5s var(--ease); filter: saturate(.9) brightness(.82); } .pl:global(.open) .pl-art, .pl:hover .pl-art { filter: none; }
   .pl::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(rgb(0 0 0 / .34), transparent 34%); pointer-events: none; }
   .pl-head { position: absolute; inset: 0; display: flex; align-items: flex-start; gap: 10px; padding: 18px 16px; text-align: left; } .pl:global(.open) .pl-head { cursor: default; }
   .fl { flex: none; width: 24px; height: 18px; margin-top: 4px; border-radius: 4px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .22); }
+  /* The panel clips anything outside it, so the keyboard's ring is drawn just inside. */
+  .pl-head { border-radius: inherit; } .pl-head:focus-visible { outline-offset: -5px; }
   .pl-head b { font-weight: 500; font-size: 24px; line-height: 1.1; letter-spacing: -.02em; white-space: nowrap; }
   /* What only an open place shows fades in once there is room for it, and goes at once when the place shuts. */
   .pl-head b, .pl :global(.tm), .pl-who { opacity: 0; transition: opacity .15s var(--ease); } .pl:global(.open) :is(.pl-head b, .pl-who), .pl:global(.open) :global(.tm) { opacity: 1; transition: opacity .35s var(--ease) .12s; }
@@ -207,7 +212,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .pl-who a > img { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 1px rgb(255 255 255 / .22); } .pl-who a > span { display: grid; flex: 1; min-width: 0; } .pl-who b { font-weight: 500; font-size: 15px; line-height: 1.3; } .pl-who em { font-style: normal; font-size: 13px; line-height: 1.3; color: rgb(255 255 255 / .74); }
   .pl-who a :global(i) { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 9px; color: rgb(255 255 255 / .7); transition: background-color .2s var(--ease), color .2s var(--ease), translate .25s var(--ease); } .pl-who a:hover :global(i) { background: var(--brand); color: var(--brand-on); translate: 2px 0; }
   /* A page come back to has been seen: nothing makes its entrance again. */
-  :global(html.back) :is(.pl, .ah-copy > *, .ah-globe) { animation: none; }
+  :global(html.back) :is(.pl, .ah-copy > *, .ah-globe) { animation: none; } :global(html.back) .ah:global(.lit) .pin { animation: none; }
   /* Without scripts nothing can open a place, so they are all open, as a grid of cards. */
   :global(html:not(.has-js)) .band { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); height: auto; } :global(html:not(.has-js)) .pl { height: 236px; }
   /* Narrower: words, globe, then the places as a list, the open one tall. A place is always open there, so the list's height
@@ -218,12 +223,13 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     .ah-globe { width: min(100%, 560px); margin-block: -8px -28px; cursor: default; } .stack, .wire { display: none; } .pin:global(.here) .dot { scale: 1.25; }
     .band { flex-direction: column; gap: 6px; width: 100%; height: auto; margin-top: 0; }
     .pl { flex: none; height: 56px; border-radius: 16px; transition: height .6s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { height: 236px; } .pl::after { background: linear-gradient(90deg, var(--bg) 30%, transparent 78%); opacity: .9; transition: opacity .4s var(--ease); } .pl:global(.open)::after { opacity: 0; }
-    .pl-art { left: auto; right: 0; width: min(100%, 560px); object-position: 100% 60%; opacity: .45; -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px); mask-image: linear-gradient(90deg, transparent, #000 120px); transition: opacity .4s var(--ease), filter .5s var(--ease); } .pl:global(.open) .pl-art { object-position: 100% 100%; opacity: 1; }
+    .pl-art { left: auto; right: 0; width: min(100%, 560px); object-position: 100% 60%; opacity: .45; -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px); mask-image: linear-gradient(90deg, transparent, #000 120px); transition: opacity .4s var(--ease), filter .5s var(--ease), object-position .6s var(--ease); } .pl:global(.open) .pl-art { object-position: 100% 100%; opacity: 1; }
     .pl-head { align-items: center; height: 56px; padding: 0 16px; } .fl { margin-top: 0; } .pl-head b { opacity: 1; font-size: 17px; letter-spacing: -.01em; }
     .pl :global(.tm) { left: auto; right: 14px; top: 21px; opacity: 1; } .pl-faces { left: auto; right: 92px; top: 11px; bottom: auto; }
   }
-  /* On a tablet the globe and the list stand side by side under the words, so the hero uses the width it has. */
-  @media (min-width: 761px) and (max-width: 1079px) { .ah-in { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "copy copy" "globe band"; column-gap: 24px; row-gap: 20px; } .ah-globe { width: 100%; margin-block: 0; } }
+  /* On a tablet the globe and the list stand side by side under the words, which start on the page's left edge as they do
+     on a wide screen and as a person's page does at these widths. */
+  @media (min-width: 761px) and (max-width: 1079px) { .ah-in { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "copy copy" "globe band"; column-gap: 24px; row-gap: 20px; } .ah-globe { width: 100%; margin-block: 0; } .ah-copy { justify-items: start; text-align: left; } }
   @media (max-width: 560px) { .ah-globe { width: min(100%, 400px); } .pl-who { width: min(272px, 100% - 16px); } }
   @media (max-width: 350px) { .pl-faces { display: none; } }
 </style>

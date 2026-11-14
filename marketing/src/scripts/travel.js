@@ -17,21 +17,23 @@
     return true;
   };
   // Leaving for a person's page: their card here, if it is on screen. Leaving a person's page: the frame at its head, but only
-  // when going back to the About page that their card left from.
+  // when going back to the About page that their card left from. What left is noted either way.
   addEventListener("pageswap", (e) => {
     if (!e.viewTransition || !e.activation) return;
     const to = person(e.activation.entry.url), here = person(location.href);
     if (to) left(carry(to, e.viewTransition, true) ? to : "");
-    else if (here && new URL(e.activation.entry.url).pathname === "/about/" && e.activation.navigationType === "traverse" && left() === here) carry(here, e.viewTransition, true);
+    else if (here && new URL(e.activation.entry.url).pathname === "/about/" && e.activation.navigationType === "traverse" && e.activation.entry.index < navigation.currentEntry.index && left() === here) left(carry(here, e.viewTransition, true) ? here : "");
   });
   // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
-  // A page come back to has been seen, so it is marked: its entrances don't play again, and it is uncovered, not laid over.
+  // Either only when the page being left sent its half, or the frame would fade in alone on top of that page.
+  // A page reached through the history has been seen, so it is marked (the class says back for forward too): its entrances
+  // don't play again. Going back, it is uncovered, not laid over.
   addEventListener("pagereveal", (e) => {
-    const a = window.navigation?.activation, back = a?.navigationType === "traverse";
-    if (back) document.documentElement.classList.add("back");
+    const a = window.navigation?.activation, seen = a?.navigationType === "traverse", back = seen && !!a.from && a.entry.index < a.from.index;
+    if (seen) document.documentElement.classList.add("back");
     if (!e.viewTransition) return;
     if (back) e.viewTransition.types?.add("back");
-    carry(person(location.href) ?? (back && a.from && person(a.from.url)), e.viewTransition);
+    const slug = person(location.href) ?? (back && person(a.from.url)); if (slug && left() === slug) carry(slug, e.viewTransition);
   });
   // The way back on a person's page goes back, when the About page is where the visitor came from, so they return to the
   // card they opened and the portrait travels home.

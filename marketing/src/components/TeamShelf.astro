@@ -37,7 +37,7 @@ import { SHELF } from "../data/team.mjs";
   .lane { position: absolute; left: 0; right: 0; bottom: 15.6cqw; -webkit-mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); }
   /* They pass slowly along the shelf, and hold still under the pointer. The room above them is for a cover's lift and its
      title, and is inside the strip so that neither is cut off when the strip becomes a row that scrolls. */
-  .run { display: flex; width: max-content; padding-top: 130px; animation: shelf 90s linear infinite; } .run:hover { animation-play-state: paused; } @keyframes shelf { to { transform: translateX(-50%); } }
+  .run { display: flex; width: max-content; padding-top: 130px; animation: shelf 90s linear infinite; } .run:hover, .research:global(.away) .run { animation-play-state: paused; } @keyframes shelf { to { transform: translateX(-50%); } }
   .run ul { display: flex; align-items: flex-end; flex: none; gap: clamp(18px, 2.4cqw, 30px); padding-right: clamp(18px, 2.4cqw, 30px); }
   .run a { position: relative; display: block; transition: translate .35s var(--ease); } .run img { width: clamp(96px, 11.6cqw, 150px); height: auto; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 0; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 -18px 40px -18px rgb(255 170 70 / .5), 0 2px 0 rgb(255 196 120 / .9); transition: box-shadow .35s var(--ease); }
   .run a:hover, .run a:focus-visible { translate: 0 -12px; } .run a:hover img, .run a:focus-visible img { box-shadow: 0 0 0 1px rgb(255 255 255 / .3), 0 -18px 50px -14px rgb(255 170 70 / .8), 0 14px 22px -8px rgb(0 0 0 / .8); }

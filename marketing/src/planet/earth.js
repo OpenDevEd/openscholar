@@ -150,9 +150,10 @@ void main(){
    * Starts compiling the shader for the light levels or the full ones (`light`), and uploads the four maps. Coming from the
    * hero this runs while the new page is still arriving, so the planet's first frame can be drawn the moment the stage is
    * there. `canvas` is only for a browser without WebGL off screen, which has to draw straight to the canvas on the page.
+   * `sharp: false` leaves out the full-size day map, for a planet drawn too small for it to show (the About page's).
    */
   var prepared = null;
-  function prepare(canvas, light, base) {
+  function prepare(canvas, light, base, sharp) {
     base = base || DIR;
     if (prepared && prepared.base === base && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
     // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
@@ -240,7 +241,7 @@ void main(){
     })).then(function () {
       self.loaded = true;
       log("[earth] maps ready at", Math.round(performance.now()) + "ms");
-      if (!light) fetchMap("day").then(function (image) { if (!gl.isContextLost()) upload(0, image); }, function () {});
+      if (!light && sharp !== false) fetchMap("day").then(function (image) { if (!gl.isContextLost()) upload(0, image); }, function () {});
     });
     begin(light);
     log("[earth] context ready at", Math.round(performance.now()) + "ms");
@@ -328,7 +329,7 @@ void main(){
   function renderer(o) {
     var canvas = o.canvas, layout = o.layout, width = o.width, height = o.height;
     var level = Math.max(1, Math.min(TOP, o.level));
-    var ready = prepare(canvas, level <= 2, o.base);
+    var ready = prepare(canvas, level <= 2, o.base, o.sharp);
     if (!ready) return null;
     if (o.onLost) ready.onLost(o.onLost);
     var gl = ready.gl;

@@ -3,10 +3,11 @@
 // globe (`whole`), which also fills the place their own card would have taken.
 import Portrait from "./Portrait.astro";
 import { ORGS, PLACES, flag } from "../data/team.mjs";
-const { people, whole = false } = Astro.props;
+// `lazy` leaves the photos until the grid is near, for a grid at the foot of a long page.
+const { people, whole = false, lazy = false } = Astro.props;
 ---
 <ul class="tg" data-team-grid>
-  {people.map((m) => <li><a class="who" href={`/about/${m.slug}/`}><Portrait person={m} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
+  {people.map((m) => <li><a class="who" href={`/about/${m.slug}/`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
   {whole && <li><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em></a></li>}
 </ul>
 <script>
@@ -38,9 +39,9 @@ const { people, whole = false } = Astro.props;
   @supports (animation-timeline: view()) { li { animation: tg-in linear both; animation-range: entry 0% entry 70%; } li { animation-timeline: view(); } @keyframes tg-in { from { opacity: 0; translate: 0 40px; scale: .96; } } }
   /* Ten cards fill rows of five and rows of two. Between those widths, where five would be too small and two too large,
      each card lies on its side, picture left and words right, two to a row. */
-  @media (min-width: 601px) and (max-width: 860px) {
+  @media (min-width: 701px) and (max-width: 860px) {
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
     .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
   }
-  @media (max-width: 600px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } .flags img { width: 16px; height: 12px; } }
+  @media (max-width: 700px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } .flags img { width: 16px; height: 12px; } }
 </style>
