@@ -91,11 +91,14 @@ if (fine) {
       const t = last.target, spot = t.closest?.(".panel, .spot, [data-spot]");
       if (spot) { const r = spot.getBoundingClientRect(); const x = last.clientX - r.left, y = last.clientY - r.top; spot.style.setProperty("--mx", `${x}px`); spot.style.setProperty("--my", `${y}px`); if (spot.matches("[data-spot]")) { const w = $(".word", spot), wr = w.getBoundingClientRect(); w.style.setProperty("--mx", `${last.clientX - wr.left}px`); w.style.setProperty("--my", `${last.clientY - wr.top}px`); } }
       const tilt = t.closest?.("[data-tilt]");
-      if (tilt) { const r = tilt.getBoundingClientRect(), x = (last.clientX - r.left) / r.width - .5, y = (last.clientY - r.top) / r.height - .5; tilt.style.transform = `perspective(1400px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateZ(0)`; tilt.style.setProperty("--sx", `${(x + .5) * 100}%`); tilt.style.setProperty("--sy", `${(y + .5) * 100}%`); }
+      // Where the pointer is across and down it, -.5 to .5 (--tx, --ty). What leans is its styles' business: a transform
+      // made from the two, with a transition on it, so nothing snaps as the pointer arrives or leaves.
+      if (tilt) { const r = tilt.getBoundingClientRect(); tilt.style.setProperty("--tx", ((last.clientX - r.left) / r.width - .5).toFixed(3)); tilt.style.setProperty("--ty", ((last.clientY - r.top) / r.height - .5).toFixed(3)); }
     });
   }, { passive: true });
-  still.addEventListener("change", () => $$("[data-tilt]").forEach((t) => (t.style.transform = "")));
-  document.addEventListener("pointerout", (e) => { const tilt = e.target.closest?.("[data-tilt]"); if (tilt && !tilt.contains(e.relatedTarget)) tilt.style.transform = ""; });
+  const level = (t) => { t.style.removeProperty("--tx"); t.style.removeProperty("--ty"); };
+  still.addEventListener("change", () => $$("[data-tilt]").forEach(level));
+  document.addEventListener("pointerout", (e) => { const tilt = e.target.closest?.("[data-tilt]"); if (tilt && !tilt.contains(e.relatedTarget)) level(tilt); });
 }
 
 // Move across a device to wipe it between its light and dark screens.
