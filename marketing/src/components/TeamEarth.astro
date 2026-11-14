@@ -121,7 +121,7 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
     const watch = Earth.monitor((next) => {
       if (!planet) return; try { sessionStorage.setItem(Earth.memory, String(next)); } catch {}
       // Too slow at the lowest quality: the globe stops where it was going, and from then on is drawn once for each pick.
-      if (!next) { frozen = true; spin = goal; vel = 0; frame(); return; }
+      if (!next) { frozen = true; root.classList.add("frozen"); spin = goal; vel = 0; frame(); return; }
       // A new quality resizes the canvas, which empties it, so the planet is drawn again at once.
       planet.setLevel(next); dirty = true;
     });
@@ -174,6 +174,9 @@ const stars = Array.from({ length: 170 }, (_, i) => [+(rng() * 2560).toFixed(1),
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
   /* The words come in as they do on every other page's hero. */
   .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }
+  /* The hand only where the globe can be turned by hand: not once it rests as a still, has been stopped for being slow, or
+     for a visitor who asked for less motion. */
+  .ah:is(:global(.resting), :global(.frozen)) .ah-globe { cursor: default; } @media (prefers-reduced-motion: reduce) { .ah .ah-globe { cursor: default; } }
   .ah-globe { grid-area: globe; position: relative; width: 100%; aspect-ratio: 1; touch-action: pan-y; user-select: none; cursor: grab; animation: ah-in 1.4s .1s var(--ease) both; } .ah-globe:global(.grab) { cursor: grabbing; } @keyframes ah-in { from { opacity: 0; transform: translateY(36px) scale(.94); } }
   /* A dark planet holds the place until the real one has its maps, so nothing appears out of nowhere. */
   .ah-globe::before { content: ""; position: absolute; inset: 11%; border-radius: 50%; background: radial-gradient(circle at 30% 26%, #16306c, #0a1840 50%, #050a1d); box-shadow: 0 0 70px rgb(90 150 255 / .2); transition: opacity 1.2s var(--ease); } .ah:global(.lit) .ah-globe::before { opacity: 0; }

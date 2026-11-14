@@ -26,7 +26,7 @@ const { id, except, h = 3 } = Astro.props, Tag = `h${h}`, o = ORGS[id], people =
   /* The logo is the panel's heading, for anyone moving through the page by its headings. */
   .og-h { font: inherit; letter-spacing: inherit; } .logo { display: block; } .logo img { width: auto; } .og p { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; color: rgb(255 255 255 / .88); }
   .base { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; } .base li { display: inline-flex; align-items: center; gap: 8px; } .base img { border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .22); }
-  .faces { display: flex; } .faces li + li { margin-left: -8px; } .faces a { display: block; border-radius: 50%; background: var(--at); box-shadow: 0 0 0 3px var(--bg); transition: translate .3s var(--ease), box-shadow .3s var(--ease); } @media (hover: hover) { .faces a:hover { position: relative; translate: 0 -5px; box-shadow: 0 0 0 2px #fff; } } .faces img { width: 52px; height: 52px; border-radius: 50%; }
+  .faces { display: flex; } .faces li + li { margin-left: -8px; } .faces a { display: block; border-radius: 50%; background: var(--at); box-shadow: 0 0 0 3px var(--bg); transition: translate .3s var(--ease), box-shadow .3s var(--ease); } .faces a:focus-visible { position: relative; translate: 0 -5px; } @media (hover: hover) { .faces a:hover { position: relative; translate: 0 -5px; box-shadow: 0 0 0 2px #fff; } } .faces img { width: 52px; height: 52px; border-radius: 50%; }
   .go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; } .soc { display: flex; gap: 10px; }
   /* Narrow: the words above, the picture below them. */
   @media (min-width: 761px) and (max-width: 900px) { .og-in { max-width: 360px; } }

@@ -45,12 +45,11 @@ const { people, whole = false, lazy = false } = Astro.props;
   :global(.js) .tg[data-in]:global(.in) li { opacity: 1; transform: none; transition: opacity .8s var(--ease) var(--d, 0s), transform .9s var(--ease) var(--d, 0s); }
   :global(html.back) .tg[data-in] li { opacity: 1; transform: none; transition: none; }
   /* Ten cards fill rows of five and rows of two. Between those widths, where five would be too small and two too large,
-     each card lies on its side, picture left and words right, two to a row. */
+     each card lies on its side, picture left and words right, two to a row. The words start a fixed way down the picture, so
+     names in a row stand level whether a role takes one line or two. */
   @media (min-width: 701px) and (max-width: 860px) {
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
-    .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
-    /* Every role keeps room for two lines, so names in a row stand level whether a role takes one line or two. */
-    .who > em { min-height: calc(2 * 1.35em); }
+    .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 38px auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
     /* The frame is narrow here, so the longest place name is set a size smaller to stay inside it. */
     .who :global(.pf-at) { left: 10px; right: 10px; bottom: 10px; gap: 6px; font-size: 13px; }
   }
