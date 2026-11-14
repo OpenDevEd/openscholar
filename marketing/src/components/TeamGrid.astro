@@ -47,11 +47,13 @@ const { people, whole = false, lazy = false } = Astro.props;
   /* Ten cards fill rows of five and rows of two. Between those widths, where five would be too small and two too large,
      each card lies on its side, picture left and words right, two to a row. The words start a fixed way down the picture, so
      names in a row stand level whether a role takes one line or two. */
-  @media (min-width: 701px) and (max-width: 860px) {
+  @media (min-width: 701px) and (max-width: 940px) {
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
     .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 38px auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
     /* The frame is narrow here, so the longest place name is set a size smaller to stay inside it. */
     .who :global(.pf-at) { left: 10px; right: 10px; bottom: 10px; gap: 6px; font-size: 13px; }
   }
+  /* At the narrow end of that range the words' column is too tight for the longest name at full size. */
+  @media (min-width: 701px) and (max-width: 740px) { b { font-size: 16px; } em { font-size: 14px; } }
   @media (max-width: 700px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } }
 </style>

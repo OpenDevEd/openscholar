@@ -80,6 +80,8 @@ const shown = Math.min(sorted.length, PER);
      drawn inside a button, as the buttons stand closer together than the ring is wide. */
   .kinds button:focus-visible { outline-offset: -3px; } .kinds [aria-pressed="true"] { cursor: default; }
   .kinds { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-radius: 13px; background: var(--soft); } .kinds button { display: inline-flex; flex: 1 0 auto; align-items: center; justify-content: center; gap: 8px; height: 38px; padding-inline: 14px; border-radius: 10px; font-size: 15px; white-space: nowrap; color: var(--t2); transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease); } .kinds button:not([aria-pressed="true"]):hover { color: var(--ink); } .kinds [aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgb(12 16 28 / .14), 0 0 0 1px var(--line); }
+  /* Seven choices that no longer fit one row break four and three, not six and one. A finger gets a taller button. */
+  @media (min-width: 761px) and (max-width: 919px) { .kinds:has(> :nth-child(7)) button { flex-basis: calc(25% - 2px); } } @media (pointer: coarse) { .kinds button { height: 44px; } }
   .kinds i { font: 400 13px/1 var(--mono); font-style: normal; color: var(--t3); }
   /* Two columns of rows, every row the same height, so a page of six is always the same size. */
   .pubs { --cg: clamp(32px, 4vw, 64px); }
