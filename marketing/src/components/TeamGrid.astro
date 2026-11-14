@@ -46,6 +46,8 @@ const { people, whole = false, lazy = false } = Astro.props;
   @media (min-width: 701px) and (max-width: 860px) {
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
     .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
+    /* The frame is narrow here, so the longest place name is set a size smaller to stay inside it. */
+    .who :global(.pf-at) { left: 10px; right: 10px; bottom: 10px; gap: 6px; font-size: 13px; }
   }
   @media (max-width: 700px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } }
 </style>
