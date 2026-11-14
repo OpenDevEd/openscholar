@@ -40,7 +40,7 @@ const { people, whole = false } = Astro.props;
      each card lies on its side, picture left and words right, two to a row. */
   @media (min-width: 601px) and (max-width: 860px) {
     .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
-    .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :first-child { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
+    .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
   }
   @media (max-width: 600px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } .flags img { width: 16px; height: 12px; } }
 </style>
