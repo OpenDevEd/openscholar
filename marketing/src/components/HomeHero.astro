@@ -2,6 +2,7 @@
 // A living Earth under OpenScholar's search box, with the communities as glass satellites you can catch as they go round, named in the strip below. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
 import AskBar from "./AskBar.astro";
 import { COMMUNITIES, EARTH_PRELOAD_JS } from "../data/site.mjs";
+import { sky } from "../planet/sky.mjs";
 const HEAD = "Ask the world's research anything".split(" ");
 // The segments of the ring's spark tail, moved by src/planet/earth.js.
 const SPARK = Array.from({ length: 8 });
@@ -9,6 +10,8 @@ const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce bu
 // Stars are fixed in size and place, so they never pop or shift between loads, and none sit behind the headline or the box. They thin out towards the bottom of the sky.
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
 const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).toFixed(1), y = +(rng() * 820).toFixed(1), big = i < 10, small = rng() < .85; return [x, y, +(big ? 1.4 + rng() * .4 : small ? .5 + rng() * .4 : .9 + rng() * .4).toFixed(2), +((big ? .9 : small ? .2 + rng() * .4 : .7) * Math.min(1, (820 - y) / 246)).toFixed(2), i % 3]; }).filter(([x, y, , o]) => o > 0 && (x < 720 || x > 1840 || y < 136 || y > 390));
+// Three skies, so each can twinkle as a whole out of step with the others. Each is a picture (src/planet/sky.mjs says why).
+const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((s) => s[4] === g), 2560, 820)));
 ---
 <!-- The planet's four maps are fetched as the page arrives, not once its script has run, unless the planet will be the
      still: data saver, a 2G connection, or a level this visit already settled on (the key is earth.js's MEMORY). The day map
@@ -17,7 +20,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
 <section class="bleed sky" data-orbit data-placement="hero">
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
-  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
+  {skies.map((src, g) => <img class={`stars s${g}`} src={src} width="2560" height="820" alt="" />)}
   <div class="inner say">
     <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
     <p class="lead">Less time sorting papers, more time on what they mean.</p>
