@@ -298,7 +298,7 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
        fade out where the planet begins, as if it stood in front of them. Past 1920 wide the page stops growing while the
        planet's edge keeps moving right, so the letters grow a little to keep reaching it. */
     .ah-copy { gap: 0; }
-    .ah-copy h1 { font-size: calc(clamp(74px, 7.05vw, 88.5px) + max(0px, (100vw - 1920px) * .0017)); line-height: .98; letter-spacing: -.045em; white-space: nowrap; -webkit-mask-image: radial-gradient(circle at var(--ex, 9999px) var(--ey, 0px), transparent calc(var(--er, 0px) - 2px), #000 calc(var(--er, 0px) + 12px)); mask-image: radial-gradient(circle at var(--ex, 9999px) var(--ey, 0px), transparent calc(var(--er, 0px) - 2px), #000 calc(var(--er, 0px) + 12px)); }
+    .ah-copy h1 { font-size: calc(clamp(74px, 7.05vw, 88.5px) + max(0px, (100vw - 1920px) * .0017)); line-height: .98; letter-spacing: -.045em; white-space: nowrap; -webkit-mask-image: radial-gradient(circle at var(--ex, 9999px) calc(var(--ey, 0px) + var(--sunk, 0px)), transparent calc(var(--er, 0px) - 2px), #000 calc(var(--er, 0px) + 12px)); mask-image: radial-gradient(circle at var(--ex, 9999px) calc(var(--ey, 0px) + var(--sunk, 0px)), transparent calc(var(--er, 0px) - 2px), #000 calc(var(--er, 0px) + 12px)); }
     /* Under it a line names the place the Earth is on, with its flag, in that place's own light ("around the world" with
        nobody picked). The lines share one place: the one for the place in focus shows, the one it replaces leaves upwards
        and the new one comes up from below. That only starts once the Earth has turned to a place (.turned), so nothing
@@ -313,15 +313,30 @@ const skies = await Promise.all([0, 1, 2].map(async (g) => `data:image/webp;base
     /* A dot and its faces never ride in on the turning Earth: they go out as it starts to turn and come back, where they
        belong, once it has stopped. Turned by hand they stay on, as the hand is what moves them. */
     .ah:global(.turning) .pin { opacity: 0; transition: opacity .12s var(--ease); } .ah:global(.turning) .stack { pointer-events: none; }
-    /* Close up nothing stands in for the Earth while its maps load. Once they have, it fades in out of the sky with the
-       glow behind it, and the script brings it up into place inside its canvas (`far`). The box itself makes no entrance:
+    /* Close up nothing stands in for the Earth while its maps load. Once they have, it fades in out of the sky with its
+       glow, and the script brings it up into place inside its canvas (`far`). The box itself makes no entrance:
        moved or scaled, its straight edges would show across the planet. */
     .ah-globe { grid-area: auto; position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; aspect-ratio: auto; animation: none; }
-    .ah-globe::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 100% 50%, #142a66 48vw, transparent 64vw); opacity: 0; transition: opacity 1.2s var(--ease); pointer-events: none; } .ah:global(.lit) .ah-globe::before, :global(html:not(.has-js)) .ah-globe::before { opacity: 1; }
+    /* The glow is the hero's and lies under the sky. Drawn over the stars, which are layers of their own, or on the globe,
+       which sinks as the page scrolls (below), the browser keeps it as a layer at the screen's density: 15 to 20 MB on a
+       Retina laptop, room the places need to redraw as they open, so they blinked. It is a soft haze, so the Earth can
+       sink against it. */
+    .ah::before { content: ""; position: absolute; inset: 0; z-index: -3; background: radial-gradient(circle at 100% 50%, #142a66 48vw, transparent 64vw); opacity: 0; transition: opacity 1.2s var(--ease); pointer-events: none; } .ah:global(.lit)::before, :global(html:not(.has-js)) .ah::before { opacity: 1; }
     .still { inset: auto; left: -4.17%; top: 50%; width: 208.33%; height: auto; aspect-ratio: 1; translate: 0 -50%; }
+    /* Scrolling sinks the Earth into the page, as on the publish and communities pages, with its dots and links. The words
+       and the places stay with the page, and the headline's cover follows the Earth down (--sunk, which the headline's
+       mask adds to where the script says the planet is: the same 190 px). The sky stays too: its stars are layers
+       already, and moving them as well cost the places a blink now and then on a Retina screen short of memory. */
+    @media (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
+      .ah-globe { animation: ah-sink linear both; animation-timeline: scroll(root); animation-range: 0 860px; }
+      .ah-copy h1 { animation: ah-up .8s var(--ease) both, ah-sunk linear both; animation-timeline: auto, scroll(root); animation-range: normal, 0 860px; }
+      :global(html.back) .ah-copy h1 { animation: ah-sunk linear both; animation-timeline: scroll(root); animation-range: 0 860px; }
+      @keyframes ah-sink { to { translate: 0 190px; } } @keyframes ah-sunk { to { --sunk: 190px; } }
+    } }
   }
+  @property --sunk { syntax: "<length>"; inherits: false; initial-value: 0px; }
   /* A page come back to has been seen: nothing makes its entrance again. */
-  :global(html.back) :is(.pl, .ah-copy > *, .ah-globe) { animation: none; } :global(html.back) .ah:global(.lit) .pin { animation: none; }
+  :global(html.back) :is(.pl, .ah-copy > *) { animation: none; } :global(html.back) .ah:global(.lit) .pin { animation: none; } @media (max-width: 1079px) { :global(html.back) .ah-globe { animation: none; } }
   /* Without scripts nothing can open a place, so they are all open, as a grid of cards. */
   :global(html:not(.has-js)) .band { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); height: auto; } :global(html:not(.has-js)) .pl { height: 236px; }
   /* Narrower: words, globe, then the places as a list, the open one tall. A place is always open there, so the list's height
