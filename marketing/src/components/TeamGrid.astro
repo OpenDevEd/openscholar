@@ -1,0 +1,67 @@
+---
+// The team as cards. Each opens that person's page. On a person's page the last card is the way to the whole team on the
+// globe (`whole`), which also fills the place their own card would have taken.
+import Portrait from "./Portrait.astro";
+import { ORGS, PLACE, PLACES, flag } from "../data/team.mjs";
+// `lazy` leaves the photos until the grid is near, for a grid at the foot of a long page.
+const { people, whole = false, lazy = false } = Astro.props;
+---
+<ul class="tg" data-team-grid data-in>
+  {people.map((m, i) => <li style={`--d:${i * 50}ms`}><a class="who" href={`/about/${m.slug}/`} aria-label={`${m.name}, ${m.role}, ${ORGS[m.org].short}, ${PLACE[m.place].name}`}><Portrait person={m} lazy={lazy} /><b>{m.name}</b><em>{m.role}</em><small>{ORGS[m.org].short}</small></a></li>)}
+  {whole && <li style={`--d:${people.length * 50}ms`}><a class="who" href="/about/"><span class="world"><img src="/img/earth-still-520.avif" width="520" height="520" alt="" loading="lazy" decoding="async" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" /><span class="flags">{PLACES.map((p) => <img src={flag(p.cc)} width="20" height="15" alt="" />)}</span></span><b>The whole team</b><em>Where everyone works</em><small>{Object.values(ORGS).map((o) => o.short).join(" and ")}</small></a></li>}
+</ul>
+<script>
+  // A card leans towards the pointer, its person and their place moving a little apart, and settles when the pointer leaves.
+  if (matchMedia("(hover: hover)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) for (const card of document.querySelectorAll("[data-team-grid] .who")) {
+    const frame = card.querySelector(".pf"); if (!frame) continue;
+    card.addEventListener("pointermove", (e) => { if ("going" in frame.dataset || e.buttons) return; const r = frame.getBoundingClientRect(); frame.style.setProperty("--tx", ((e.clientX - r.left) / r.width - .5).toFixed(3)); frame.style.setProperty("--ty", ((e.clientY - r.top) / r.height - .5).toFixed(3)); });
+    for (const settle of ["pointerleave", "pointerdown"]) card.addEventListener(settle, () => { frame.style.removeProperty("--tx"); frame.style.removeProperty("--ty"); });
+    // Between letting the button go and the page changing, a clicked card would start to lift again. It stays flat until it
+    // leaves (data-going, which src/scripts/travel.js also sets), or until the pointer does if nothing came of the click.
+    card.addEventListener("click", (e) => { if (!e.button && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) frame.dataset.going = ""; });
+    card.addEventListener("pointerleave", () => delete frame.dataset.going);
+  }
+</script>
+<style>
+  .tg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 36px 16px; }
+  /* A card is as tall as its row, and the role takes what is spare, so the organisation's name is level across the row
+     whether a role takes one line or two. */
+  li { display: grid; } .who { display: grid; grid-template-rows: auto auto 1fr auto; align-content: start; }
+  b { margin-top: 14px; font-weight: 500; font-size: 18px; line-height: 1.25; letter-spacing: -.01em; } em { font-style: normal; font-size: 15px; line-height: 1.35; color: var(--t2); text-wrap: balance; } small { margin-top: 6px; font-size: 14px; color: var(--t3); }
+  /* The card lifts and leans with the pointer, and comes back slowly. Not on a page the browser kept and has just shown
+     again, until the pointer moves (html.cold, src/scripts/travel.js): there the card last clicked still counts as hovered. */
+  .who :global(.pf) { transition: transform .7s var(--ease), translate .4s var(--ease), box-shadow .4s var(--ease); }
+  @media (hover: hover) { :global(html:not(.cold)) .who:hover :global(.pf:not([data-going])) { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px color-mix(in srgb, var(--bg) 70%, #000); transition-duration: .12s, .4s, .4s; } :global(html:not(.cold)) .who:hover :global(.pf:not([data-going]))::before { opacity: 1; } :global(html:not(.cold)) .who:hover :global(.pf:not([data-going]) > .pf-who) { scale: 1.05; } :global(html:not(.cold)) .who:hover :global(.pf:not([data-going]) > .pf-art) { scale: 1.1; } }
+  /* Pressed, a card comes down flat at once, while the button is still down, so it takes off for its person's page from
+     rest and not with a jolt. */
+  @media (hover: hover) { :global(html:not(.cold)) .who:active :global(.pf) { translate: none; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition-duration: .08s; } :global(html:not(.cold)) .who:active :global(.pf)::before { opacity: 0; transition-duration: .08s; } :global(html:not(.cold)) .who:active :global(.pf) > :global(img) { scale: none; transition-duration: .08s; } }
+  /* The keyboard gets the pointer's lift, and its ring goes round the frame, which has the frame's corners. */
+  .who:focus-visible { outline: none; } .who:focus-visible :global(.pf), .who:focus-visible .world { translate: 0 -6px; outline: 3px solid var(--brand-ink); outline-offset: 3px; }
+  /* A card about to travel to its person's page (src/scripts/travel.js) is set flat at once: no lift, no lean, no light,
+     no ring. The pointer is still on it, so the hover rules above leave such a card out. */
+  .who :global(.pf[data-going]) { translate: none; outline: none; transition: none; } .who :global(.pf[data-going]) > :global(img) { scale: none; transition: none; } .who :global(.pf[data-going])::before { opacity: 0; transition: none; }
+  /* The whole team: the planet in the same frame as a person, with the flags of the places along its foot. */
+  .world { position: relative; display: block; aspect-ratio: 8 / 9; overflow: hidden; border-radius: 22px; background: radial-gradient(ellipse 80% 60% at 50% 40%, #142a66, transparent 72%), var(--night); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: translate .4s var(--ease), box-shadow .4s var(--ease); }
+  .world > img { position: absolute; left: 50%; top: 44%; width: 104%; max-width: none; translate: -50% -50%; transition: scale .9s var(--ease), rotate .9s var(--ease), opacity .5s var(--ease); } :global(html.js) .world > img:not([data-loaded]) { opacity: 0; }
+  /* The flags share one row whatever the card's width: each gives up a little rather than one dropping to a row of its own. */
+  .flags { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; gap: 5px; } .flags img { flex: 0 1 20px; min-width: 0; height: auto; aspect-ratio: 4 / 3; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
+  @media (hover: hover) { :global(html:not(.cold)) .who:hover .world { translate: 0 -6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 44px -24px #050a1d; } :global(html:not(.cold)) .who:hover .world > img { scale: 1.06; rotate: 8deg; } }
+  /* The grid arrives once, as one move: when its top comes into view (the site's [data-in], global.css) its cards rise in
+     one after another in reading order, the rows below the window too, so a visitor who stops at the heading never looks at
+     an empty row. A page come back to has been seen, so its cards are simply there, and a frame travelling back lands on one. */
+  :global(.js) .tg[data-in] { opacity: 1; transform: none; } :global(.js) .tg[data-in] li { opacity: 0; transform: translateY(26px); }
+  :global(.js) .tg[data-in]:global(.in) li { opacity: 1; transform: none; transition: opacity .8s var(--ease) var(--d, 0s), transform .9s var(--ease) var(--d, 0s); }
+  :global(html.back) .tg[data-in] li { opacity: 1; transform: none; transition: none; }
+  /* Ten cards fill rows of five and rows of two. Between those widths, where five would be too small and two too large,
+     each card lies on its side, picture left and words right, two to a row. The words start a fixed way down the picture, so
+     names in a row stand level whether a role takes one line or two. */
+  @media (min-width: 701px) and (max-width: 940px) {
+    .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+    .who { grid-template-columns: 148px minmax(0, 1fr); grid-template-rows: 38px auto auto auto 1fr; column-gap: 18px; } .who > :global(.pf), .who > .world { grid-row: 1 / -1; } .who > b { grid-row: 2; margin-top: 0; } .who > em { grid-row: 3; } .who > small { grid-row: 4; }
+    /* The frame is narrow here, so the longest place name is set a size smaller to stay inside it. */
+    .who :global(.pf-at) { left: 10px; right: 10px; bottom: 10px; gap: 6px; font-size: 13px; }
+  }
+  /* At the narrow end of that range the words' column is too tight for the longest name at full size. */
+  @media (min-width: 701px) and (max-width: 740px) { b { font-size: 16px; } em { font-size: 14px; } }
+  @media (max-width: 700px) { .tg { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 10px; } b { font-size: 16px; } em { font-size: 14px; } }
+</style>

@@ -6,6 +6,10 @@ export const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY ?? "0x4AAAAAAF1
 // Analytics, the same PostHog project and Google property as the app. A local copy sends nothing (lib/posthog-options.ts).
 export const POSTHOG_KEY = process.env.POSTHOG_KEY ?? "phc_9MBX1GmcLFij9i2EOaZkrlcMU92ZaHpNqF5bGQf05Xj";
 export const GA_ID = process.env.GA_ID ?? "G-KL62MG5H1G";
+// Asks for the planet's four maps as a page arrives, not once its script has run, unless the planet will be the still: data
+// saver, a 2G connection, or a level this visit already settled on (the key is src/planet/earth.js's MEMORY). The home hero
+// and the About page's globe both run it.
+export const EARTH_PRELOAD_JS = '(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const n of ["day-2048", "night", "clouds", "water"]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = "/img/earth-" + n + ".avif"; document.head.append(k); } })();';
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 // Live Evidence Communities, shown in the home hero and the menu.
 export const COMMUNITIES = [
@@ -28,12 +32,6 @@ export const NAV = [
     { href: "/evidence-communities/#map", title: "Maps of your field", text: "Who's working on what, and where", icon: "globe", color: "#38bdf8", field: "night", art: "thread", img: "c-map-laptop-dark" },
     { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
   ], live: true },
-  { id: "teams", href: "/teams/", label: "Teams", rows: [
-    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "team-merge", img: "screen-laptop-light" },
-    { href: "/teams/#activity", title: "See who did what", text: "A record of the changes, with a name beside each", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },
-    { href: "/teams/#publish", title: "Review before you publish", text: "Creators submit, editors decide", icon: "check", color: "#34d399", field: "emerald", art: "gates", img: "c-search-laptop-light" },
-    { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#7da7e6", field: "night", art: "team-merge" },
-  ] },
   { id: "publish", href: "/publithon/", label: "Publish", rows: [
     { href: "/publithon/#publish", title: "From PDF to DOI", text: "Sign, upload, check, and your report is live", icon: "pen", color: "#fbbf24", field: "night", art: "pub-rise" },
     { href: "/publithon/#doi", title: "What a DOI gives your work", text: "A permanent link, cited in one paste", icon: "thread", color: "#38bdf8", field: "night", art: "pub-rise", img: "r-page-laptop-light" },
@@ -47,6 +45,7 @@ export const SECTIONS = {
   "/": [["tour", "Tour", "#ff9d36"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fde047"], ["assistant", "Assistant", "#7da7e6"], ["community", "Communities", "#fb7185"]],
   "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
   "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
+  "/about/": [["places", "Places", "#ff9d36"], ["team", "Team", "#38bdf8"], ["research", "Research", "#fbbf24"], ["makers", "Organisations", "#34d399"]],
   "/publithon/": [["publish", "Steps", "#fbbf24"], ["doi", "DOI", "#38bdf8"], ["done", "Done for you", "#7da7e6"], ["ways", "Take part", "#34d399"], ["sponsor", "Sponsor", "#ff9d36"]],
 };
 // Pages written for what people search when they need the product. Each links to the others, and the menu and footer link to them.

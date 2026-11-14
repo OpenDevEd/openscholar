@@ -1,0 +1,13 @@
+---
+// The time in a place now, with the sun or the moon. CLOCK_JS (src/data/team.mjs) fills it in as the page is read.
+import Icon from "./Icon.astro";
+const { tz } = Astro.props;
+---
+<span class="tm" data-tz={tz}><span class="d"><Icon name="sun" size={16} /></span><span class="n"><Icon name="moon" size={16} /></span><span class="sr">Local time </span><time></time></span>
+<style>
+  /* Its width is fixed, so a changing minute never moves what's beside it. */
+  .tm { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; flex: none; width: 70px; font: 400 14px/1 var(--mono); font-variant-numeric: tabular-nums; color: rgb(255 255 255 / .66); }
+  /* Until the script has filled it in (never, with scripts off) it keeps its place and shows nothing. */
+  .tm:not([data-day]) { visibility: hidden; }
+  .d { color: #ffc56e; } .n { color: #9db7ff; } .d, .n { display: none; } .tm[data-day="1"] .d, .tm[data-day="0"] .n { display: grid; }
+</style>

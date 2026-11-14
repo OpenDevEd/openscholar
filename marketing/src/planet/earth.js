@@ -6,7 +6,7 @@
   var IMAGES = ["day", "night", "clouds", "water"];
   var VERTEX = `#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
   var FRAGMENT = `#version 300 es
-precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t, sd, wv, fd; uniform vec3 L, rg;
+precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c, ln; uniform float r, t, sd, wv, fd; uniform vec3 L, rg;
 const float PI = 3.14159265;
 float gs(float x){ return exp(-x * x); }
 vec2 ll(vec3 n, float spin, out vec2 gx, out vec2 gy){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI), v = .5 - lat / PI; float u1 = fract(u), u2 = fract(u + .5) - .5, x1 = dFdx(u1), x2 = dFdx(u2), y1 = dFdy(u1), y2 = dFdy(u2); gx = vec2(abs(x1) < abs(x2) ? x1 : x2, dFdx(v)); gy = vec2(abs(y1) < abs(y2) ? y1 : y2, dFdy(v)); return vec2(u1, v); }
@@ -17,7 +17,7 @@ void main(){
   float ha = clamp(max(h.r, max(h.g, h.b)), 0., 1.);
   float fade = smoothstep(0., fd, gl_FragCoord.y); if (d > 1.) { o = vec4(h, ha) * fade; return; }
   float z = sqrt(1. - d * d); vec3 n0 = vec3(p, z);
-  float ax = .4, ay = .22; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
+  float ax = ln.x, ay = ln.y; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
   vec2 gx, gy, gxc, gyc, uv = ll(n, t * .05, gx, gy), uvc = ll(n, t * .058, gxc, gyc);
   #ifdef LIGHT
   float wet = 0.;
@@ -150,9 +150,10 @@ void main(){
    * Starts compiling the shader for the light levels or the full ones (`light`), and uploads the four maps. Coming from the
    * hero this runs while the new page is still arriving, so the planet's first frame can be drawn the moment the stage is
    * there. `canvas` is only for a browser without WebGL off screen, which has to draw straight to the canvas on the page.
+   * `sharp: false` leaves out the full-size day map, for a planet drawn too small for it to show (the About page's).
    */
   var prepared = null;
-  function prepare(canvas, light, base) {
+  function prepare(canvas, light, base, sharp) {
     base = base || DIR;
     if (prepared && prepared.base === base && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
     // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
@@ -202,7 +203,7 @@ void main(){
       gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
       var u = function (name) { return gl.getUniformLocation(made, name); };
       IMAGES.forEach(function (name, i) { gl.uniform1i(u(name), i); });
-      return (entry.built = { program: made, U: { c: u("c"), r: u("r"), t: u("t"), sd: u("sd"), wv: u("wv"), fd: u("fd"), L: u("L"), rg: u("rg") } });
+      return (entry.built = { program: made, U: { c: u("c"), ln: u("ln"), r: u("r"), t: u("t"), sd: u("sd"), wv: u("wv"), fd: u("fd"), L: u("L"), rg: u("rg") } });
     };
     // Settles once a program can be asked about without waiting.
     var compiled = function (lite) {
@@ -240,7 +241,7 @@ void main(){
     })).then(function () {
       self.loaded = true;
       log("[earth] maps ready at", Math.round(performance.now()) + "ms");
-      if (!light) fetchMap("day").then(function (image) { if (!gl.isContextLost()) upload(0, image); }, function () {});
+      if (!light && sharp !== false) fetchMap("day").then(function (image) { if (!gl.isContextLost()) upload(0, image); }, function () {});
     });
     begin(light);
     log("[earth] context ready at", Math.round(performance.now()) + "ms");
@@ -328,7 +329,7 @@ void main(){
   function renderer(o) {
     var canvas = o.canvas, layout = o.layout, width = o.width, height = o.height;
     var level = Math.max(1, Math.min(TOP, o.level));
-    var ready = prepare(canvas, level <= 2, o.base);
+    var ready = prepare(canvas, level <= 2, o.base, o.sharp);
     if (!ready) return null;
     if (o.onLost) ready.onLost(o.onLost);
     var gl = ready.gl;
@@ -365,14 +366,17 @@ void main(){
       get every() { return spec.every; },
       setLevel: function (next) { level = Math.max(1, Math.min(TOP, next)); apply(); },
       resize: function (w, h, l) { width = w; height = h; layout = l; apply(); },
-      /** One frame: `t` the turn, `sun` a unit vector, `shadow` the ring's shadow on it, `wave` 0 to 1 or 0, `lift` px. */
+      /** One frame: `t` the turn, `sun` a unit vector, `shadow` the ring's shadow on it, `wave` 0 to 1 or 0, `lift` px,
+       *  `grow` the planet's size as a share of its own where that isn't 1, and `lean` its two angles (sideways, then
+       *  towards the eye) where they aren't the hero's own. */
       draw: function (u) {
         current = current || ready.program(spec.lite) || ready.program(!spec.lite);
         if (!current) return false;
         var U = current.U;
         gl.useProgram(current.program);
         gl.uniform2f(U.c, layout.cx * d, canvas.height - (layout.cy + (u.lift || 0)) * d);
-        gl.uniform1f(U.r, layout.R * d);
+        gl.uniform1f(U.r, layout.R * d * (u.grow || 1));
+        gl.uniform2f(U.ln, u.lean ? u.lean[0] : 0.4, u.lean ? u.lean[1] : 0.22);
         gl.uniform1f(U.t, u.t);
         gl.uniform1f(U.sd, u.shadow);
         gl.uniform3f(U.L, u.sun[0], u.sun[1], u.sun[2]);
