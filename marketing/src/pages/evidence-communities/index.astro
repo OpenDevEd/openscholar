@@ -59,7 +59,7 @@ const faq = [
      back. All of it eases in and out. What moves is the wrapper inside each device: the device's own box stays put, so
      the pointer never falls off a screen as it lifts. */
   .stagehand > :global(.dev) :global(.lean) { transition: transform .7s var(--ease), translate .5s var(--ease), scale .5s var(--ease), filter .5s var(--ease); }
-  @media (hover: hover) { .stagehand :global(.dev:hover .lean) { translate: 0 -12px; scale: 1.03; } .stagehand:has(:global(.dev:hover)) :global(.dev:not(:hover) .lean) { scale: .985; filter: brightness(.85); } }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) { .stagehand :global(.dev:hover .lean) { translate: 0 -12px; scale: 1.03; } .stagehand:has(:global(.dev:hover)) :global(.dev:not(:hover) .lean) { scale: .985; filter: brightness(.85); } }
   @keyframes lift { from { opacity: 0; transform: translateY(40px); } } @keyframes from-left { from { opacity: 0; transform: translate(14%, 30px) rotate(-3deg); } } @keyframes from-right { from { opacity: 0; transform: translate(-30%, 30px) rotate(3deg); } }
   /* Scrolling sinks the scene into the next section, the far things furthest: the pavilion, then the tablet, the laptop and
      the phone. The words stay with the page. */
