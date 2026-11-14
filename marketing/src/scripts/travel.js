@@ -17,26 +17,31 @@
     return true;
   };
   // Leaving for a person's page: their card here, if it is on screen. Leaving a person's page: the frame at its head, but only
-  // when going back to the About page that their card left from. What left is noted on every move, so a note from an
-  // earlier one never names a frame on a page that sent nothing.
+  // when going back to the About page that their card left from. What left is noted on every way out, with or without a
+  // transition, so a note from an earlier move never names a frame on a page that sent nothing.
   addEventListener("pageswap", (e) => {
-    if (!e.viewTransition || !e.activation) return;
-    const to = person(e.activation.entry.url), here = person(location.href);
-    if (to) left(carry(to, e.viewTransition, true) ? to : "");
-    else if (here && new URL(e.activation.entry.url).pathname === "/about/" && e.activation.navigationType === "traverse" && e.activation.entry.index < (window.navigation?.currentEntry?.index ?? Infinity) && left() === here) left(carry(here, e.viewTransition, true) ? here : "");
-    else left("");
+    const move = e.viewTransition, to = e.activation?.entry.url, here = person(location.href); let went = "";
+    if (move && to) {
+      if (person(to)) went = person(to);
+      else if (here && new URL(to).pathname === "/about/" && e.activation.navigationType === "traverse" && e.activation.entry.index < (window.navigation?.currentEntry?.index ?? Infinity) && left() === here) went = here;
+    }
+    left(went && carry(went, move, true) ? went : "");
   });
-  // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
-  // Either only when the page being left sent its half, or the frame would fade in alone on top of that page.
   // A page reached through the history has been seen, so it is marked (the class says back for forward too): its entrances
-  // don't play again. Going back, it is uncovered, not laid over. A page whose frame was carried in is marked too, so the
-  // frame makes no entrance of its own.
+  // don't play again. It is marked as the page is read, which every browser does, and again when a kept page is shown.
+  const seen = () => {
+    const a = window.navigation?.activation, was = a ? a.navigationType === "traverse" : performance.getEntriesByType("navigation")[0]?.type === "back_forward";
+    if (was) document.documentElement.classList.add("back");
+    return was && !!a?.from && a.entry.index < a.from.index && a;
+  };
+  seen();
+  // Arriving on a person's page: the frame at its head. Arriving back on the About page: the card of the person just left.
+  // Either only when the page being left sent its half, or the frame would fade in alone on top of that page. A page whose
+  // frame was carried in is marked, so the frame makes no entrance of its own. Going back, the page is uncovered, not laid over.
   addEventListener("pagereveal", (e) => {
-    const a = window.navigation?.activation, seen = a ? a.navigationType === "traverse" : performance.getEntriesByType("navigation")[0]?.type === "back_forward", back = seen && !!a?.from && a.entry.index < a.from.index;
-    if (seen) document.documentElement.classList.add("back");
-    if (!e.viewTransition) return;
+    const back = seen(); if (!e.viewTransition) return;
     if (back) e.viewTransition.types?.add("back");
-    const slug = person(location.href) ?? (back && person(a.from.url)); if (slug && left() === slug && carry(slug, e.viewTransition)) document.documentElement.classList.add("carried");
+    const slug = person(location.href) ?? (back && person(back.from.url)); if (slug && left() === slug && carry(slug, e.viewTransition)) document.documentElement.classList.add("carried");
   });
   // The way back on a person's page goes back, when the About page is where the visitor came from, so they return to the
   // card they opened and the portrait travels home.
