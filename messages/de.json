@@ -395,7 +395,7 @@
         "refund": "Erstattung"
       }
     },
-    "credits": "Credits",
+    "credits": "KI-Credits",
     "refillOn": "+{amount} am {date}",
     "bought": "{amount} gekauft",
     "topUp": "Aufladen",
@@ -4780,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {# Artikel gleichzeitig} other {# Artikel gleichzeitig}}",
       "anyPapersAJob": "Beliebig viele Artikel pro Auftrag",
       "papersAJob": "Bis zu {count, number} Artikel pro Auftrag",
-      "sharedCredits": "Gemeinsame Credits",
+      "sharedCredits": "Gemeinsame KI-Credits",
       "membersDraw": "{count, plural, one {# Mitglied nutzt sie} other {# Mitglieder nutzen sie}}",
       "refillOn": "{amount} am {date}",
       "upToMembers": "Bis zu {count, number} Mitglieder",
@@ -6891,7 +6891,9 @@
         "card": "{amount} mit Karte bezahlt",
         "code": "{code} hat den Preis gedeckt",
         "codeRest": "{code} hat den Rest gedeckt",
-        "credit": "{amount} aus dem Stripe-Guthaben bezahlt"
+        "credit": "{amount} aus dem Stripe-Guthaben bezahlt",
+        "receipt": "Beleg",
+        "receiptFailed": "Der Beleg ließ sich nicht öffnen. Versuchen Sie es erneut."
       },
       "emailUs": "Schreiben Sie uns"
     },

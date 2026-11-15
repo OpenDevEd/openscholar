@@ -2470,9 +2470,27 @@ function Seal({ play }: { play: boolean }) {
  * account's credit and a card paid, and the code that lowered that or covered it. People looked for this here once
  * their report was live.
  */
-function PaidChips({ paid }: { paid: Terms["paid"] }) {
+function PaidChips({ paid, reportKey }: { paid: Terms["paid"]; reportKey: string }) {
   const t = useTranslations("publishReports.flow");
   const dollars = useMoney();
+  const workspaceId = useWorkspace();
+  const receiptOf = useAction(api.reports.activation.receipt);
+  // Stripe's receipt page, read on the press: a tab is opened at once, before Stripe answers, so the browser doesn't
+  // take it for a pop-up and block it.
+  const openReceipt = () => {
+    if (!workspaceId) return;
+    const tab = window.open("", "_blank");
+    void receiptOf({ workspaceId, key: reportKey }).then(
+      (url) => {
+        if (url && tab) tab.location.href = url;
+        else tab?.close();
+      },
+      (error: unknown) => {
+        tab?.close();
+        said(t("paid.receiptFailed"))(error);
+      },
+    );
+  };
   if (!paid) return null;
   const money = (amount: number) => inSentence(dollars(amount));
   return (
@@ -2497,6 +2515,12 @@ function PaidChips({ paid }: { paid: Terms["paid"] }) {
         <StatusChip tone="neutral" icon={Tag}>
           {paid.byCard + paid.byCredit > 0 ? t("payment.code", { code: paid.code }) : t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
         </StatusChip>
+      ) : null}
+      {/* Stripe's receipt, where something was bought: people looked for it here once the report was live. */}
+      {paid.receipt ? (
+        <Button variant="ghost" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={openReceipt}>
+          <FileText className="size-3" /> {t("paid.receipt")} <ArrowUpRight className="size-3" />
+        </Button>
       ) : null}
     </div>
   );
@@ -2553,7 +2577,7 @@ function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report
         </div>
         {/* What it came to, on a line of its own: it arrives with the payment's terms, and what the balance holds since a moment later, so its line opens instead of pushing the buttons below. */}
         <AutoHeight>
-          <PaidChips paid={paid} />
+          <PaidChips paid={paid} reportKey={report.key} />
         </AutoHeight>
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}

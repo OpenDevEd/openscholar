@@ -394,7 +394,7 @@
         "refund": "Refund"
       }
     },
-    "credits": "credits",
+    "credits": "AI credits",
     "refillOn": "+{amount} on {date}",
     "bought": "{amount} bought",
     "topUp": "Top up",
@@ -4779,7 +4779,7 @@
       "papersAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
       "anyPapersAJob": "Any number of papers a job",
       "papersAJob": "Up to {count, number} papers a job",
-      "sharedCredits": "Shared credits",
+      "sharedCredits": "Shared AI credits",
       "membersDraw": "{count, plural, one {# member draws} other {# members draw}} from them",
       "refillOn": "{amount} on {date}",
       "upToMembers": "Up to {count, number} members",
@@ -6890,7 +6890,9 @@
         "card": "Paid {amount} by card",
         "code": "{code} covered the price",
         "codeRest": "{code} covered the rest",
-        "credit": "Paid {amount} from Stripe credit"
+        "credit": "Paid {amount} from Stripe credit",
+        "receipt": "Receipt",
+        "receiptFailed": "The receipt couldn’t be opened. Try again."
       },
       "emailUs": "Email us"
     },

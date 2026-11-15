@@ -395,7 +395,7 @@
         "refund": "Reembolso"
       }
     },
-    "credits": "créditos",
+    "credits": "créditos de IA",
     "refillOn": "+{amount} el {date}",
     "bought": "{amount} comprados",
     "topUp": "Recargar",
@@ -4780,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {# artículo a la vez} other {# artículos a la vez}}",
       "anyPapersAJob": "Cualquier número de artículos por trabajo",
       "papersAJob": "Hasta {count, number} artículos por trabajo",
-      "sharedCredits": "Créditos compartidos",
+      "sharedCredits": "Créditos de IA compartidos",
       "membersDraw": "{count, plural, one {# miembro usa} other {# miembros usan}} de ellos",
       "refillOn": "{amount} el {date}",
       "upToMembers": "Hasta {count, number} miembros",
@@ -6891,7 +6891,9 @@
         "card": "{amount} pagados con tarjeta",
         "code": "{code} cubrió el precio",
         "codeRest": "{code} cubrió el resto",
-        "credit": "{amount} pagados con el saldo a favor en Stripe"
+        "credit": "{amount} pagados con el saldo a favor en Stripe",
+        "receipt": "Recibo",
+        "receiptFailed": "No se pudo abrir el recibo. Inténtalo de nuevo."
       },
       "emailUs": "Escríbenos"
     },

@@ -395,7 +395,7 @@
         "refund": "Rejesho"
       }
     },
-    "credits": "krediti",
+    "credits": "krediti za AI",
     "refillOn": "+{amount} tarehe {date}",
     "bought": "{amount} zimenunuliwa",
     "topUp": "Ongeza salio",
@@ -4780,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {makala # kwa wakati mmoja} other {makala # kwa wakati mmoja}}",
       "anyPapersAJob": "Idadi yoyote ya makala kwa kazi",
       "papersAJob": "Hadi makala {count, number} kwa kazi",
-      "sharedCredits": "Krediti zilizoshirikiwa",
+      "sharedCredits": "Krediti za AI zilizoshirikiwa",
       "membersDraw": "{count, plural, one {Mwanachama # anachukua} other {Wanachama # wanachukua}} kutoka kwazo",
       "refillOn": "{amount} tarehe {date}",
       "upToMembers": "Hadi wanachama {count, number}",
@@ -6891,7 +6891,9 @@
         "card": "{amount} zimelipwa kwa kadi",
         "code": "{code} imegharamia bei",
         "codeRest": "{code} imegharamia kilichobaki",
-        "credit": "{amount} zimelipwa kutoka kwenye salio la Stripe"
+        "credit": "{amount} zimelipwa kutoka kwenye salio la Stripe",
+        "receipt": "Risiti",
+        "receiptFailed": "Risiti haikuweza kufunguliwa. Jaribu tena."
       },
       "emailUs": "Tuandikie"
     },

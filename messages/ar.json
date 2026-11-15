@@ -395,7 +395,7 @@
         "refund": "استرداد"
       }
     },
-    "credits": "أرصدة",
+    "credits": "أرصدة الذكاء الاصطناعي",
     "refillOn": "+{amount} في {date}",
     "bought": "تم شراء {amount}",
     "topUp": "تعبئة الرصيد",
@@ -4780,7 +4780,7 @@
       "papersAtOnce": "{count, plural, zero {لا أوراق} one {# ورقة في الوقت نفسه} two {ورقتان في الوقت نفسه} few {# أوراق في الوقت نفسه} many {# ورقة في الوقت نفسه} other {# ورقة في الوقت نفسه}}",
       "anyPapersAJob": "أي عدد من الأوراق لكل مهمة",
       "papersAJob": "حتى {count, number} ورقة لكل مهمة",
-      "sharedCredits": "الأرصدة المشتركة",
+      "sharedCredits": "أرصدة الذكاء الاصطناعي المشتركة",
       "membersDraw": "{count, plural, zero {لا أعضاء يسحبون منها} one {# عضو يسحب منها} two {عضوان يسحبان منها} few {# أعضاء يسحبون منها} many {# عضوًا يسحب منها} other {# عضو يسحب منها}}",
       "refillOn": "{amount} في {date}",
       "upToMembers": "حتى {count, number} عضو",
@@ -6891,7 +6891,9 @@
         "card": "دُفع {amount} بالبطاقة",
         "code": "غطّى {code} السعر",
         "codeRest": "غطّى {code} الباقي",
-        "credit": "دُفع {amount} من رصيد Stripe"
+        "credit": "دُفع {amount} من رصيد Stripe",
+        "receipt": "الإيصال",
+        "receiptFailed": "تعذّر فتح الإيصال. حاول مرة أخرى."
       },
       "emailUs": "راسلنا"
     },

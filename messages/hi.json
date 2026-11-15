@@ -394,7 +394,7 @@
         "refund": "रिफ़ंड"
       }
     },
-    "credits": "क्रेडिट",
+    "credits": "AI क्रेडिट",
     "refillOn": "{date} को +{amount}",
     "bought": "{amount} खरीदे गए",
     "topUp": "टॉप अप",
@@ -4779,7 +4779,7 @@
       "papersAtOnce": "एक साथ {count, number} पेपर",
       "anyPapersAJob": "हर काम में कितने भी पेपर",
       "papersAJob": "हर काम में {count, number} पेपर तक",
-      "sharedCredits": "साझा क्रेडिट",
+      "sharedCredits": "साझा AI क्रेडिट",
       "membersDraw": "{count, number} सदस्य इनका उपयोग करते हैं",
       "refillOn": "{date} को {amount}",
       "upToMembers": "{count, number} सदस्यों तक",
@@ -6890,7 +6890,9 @@
         "card": "कार्ड से {amount} का भुगतान",
         "code": "{code} ने कीमत चुका दी",
         "codeRest": "{code} ने बाकी रकम चुका दी",
-        "credit": "Stripe क्रेडिट से {amount} का भुगतान"
+        "credit": "Stripe क्रेडिट से {amount} का भुगतान",
+        "receipt": "रसीद",
+        "receiptFailed": "रसीद नहीं खुल सकी। फिर से कोशिश करें।"
       },
       "emailUs": "हमें ईमेल करें"
     },

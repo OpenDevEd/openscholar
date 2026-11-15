@@ -24,7 +24,7 @@ import { readCatalog } from "../billing/catalog";
 import { balancePartsValidator } from "../billing/validators";
 import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
-import { bankPage, chargeOf, checkoutId, checkoutOf, expireCheckout, stripeFunds, voidDeclined, voidInvoice } from "../billing/stripeRest";
+import { bankPage, chargeOf, checkoutId, checkoutOf, expireCheckout, invoicePage, stripeFunds, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/plans";
 import { BOUGHT_MIN, CODE_MAX, PRICE_MAX, cents, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -104,6 +104,8 @@ function paidWith(record: Doc<"reportActivations">, account: Awaited<ReturnType<
     byCard: Math.round((total - byCredit) * 100) / 100,
     code: bought > 0 ? (record.code ?? null) : null,
     left: settled && !account?.publicationUnlimited ? fundsOf(account).balance : null,
+    /** Stripe has an invoice for it, with a receipt: something was bought, by card or Stripe credit. */
+    receipt: !!record.charge?.invoice && record.charge.invoice !== "none",
   };
 }
 
@@ -153,7 +155,7 @@ export const terms = workspaceQuery({
        * that lowered what was bought, and what the balance holds since. Null until it is live, for anyone else, and for
        * a report made live before this was kept.
        */
-      paid: v.union(v.object({ fromBalance: v.number(), byCredit: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), left: v.union(v.number(), v.null()) }), v.null()),
+      paid: v.union(v.object({ fromBalance: v.number(), byCredit: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), left: v.union(v.number(), v.null()), receipt: v.boolean() }), v.null()),
       /** Publishing is switched off where this report's DOI is registered: it can't go live for now. */
       paused: v.boolean(),
     }),
@@ -354,6 +356,31 @@ export const settleCharge = internalMutation({
     const workspace = await ctx.db.get("workspaces", activation.workspaceId);
     await notify(ctx, activation.reportId, workspace?.kind === "organization" ? "kept-admins" : "kept");
     return false;
+  },
+});
+
+/** The invoice a live report was paid on, for whoever may see what it was paid with (its owner and the workspace's admins). */
+export const paidInvoice = internalQuery({
+  args: { actor: actorValidator, key: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { actor, key }) => {
+    const report = await byKey(ctx, key);
+    if (!report || report.workspaceId !== actor.workspaceId || !mayChange(actor, report)) return null;
+    const live = await ctx.db.query("reportActivations").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).order("desc").filter((q) => q.eq(q.field("state"), "live")).first();
+    const invoice = live?.charge?.invoice;
+    return invoice && invoice !== "none" ? invoice : null;
+  },
+});
+
+/** Stripe's page for the receipt of what a live report was paid with; null when nothing was bought for it. */
+export const receipt = action({
+  args: { workspaceId: v.id("workspaces"), key: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { workspaceId, key }): Promise<string | null> => {
+    await refuseApps(ctx);
+    const actor = await actorIn(ctx, workspaceId);
+    const invoice: string | null = await ctx.runQuery(internal.reports.activation.paidInvoice, { actor, key });
+    return invoice ? await invoicePage(invoice) : null;
   },
 });
 
@@ -702,7 +729,7 @@ export const activate = action({
           // it takes its admin's, who is the one activating.
           if (cardless && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
           // With no saved card and something to pay, Autumn answers Stripe's page for it, which comes back to the report.
-          const charged = await autumn.attach({ customerId: first.customerId, planId: PUBLICATION_TOP_UP_PLAN, quantity: dollars(bought), code, idempotencyKey: nameOf(activationId), successUrl: backTo(first.prefix, key, activationId), checkout: { locale, saved: elsewhere }, ...(cardless && free && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
+          const charged = await autumn.attach({ customerId: first.customerId, planId: PUBLICATION_TOP_UP_PLAN, quantity: dollars(bought), code, idempotencyKey: nameOf(activationId), report: key, successUrl: backTo(first.prefix, key, activationId), checkout: { locale, saved: elsewhere }, ...(cardless && free && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(code));
           // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code,
           // isn't held up by an invoice left open.
           if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);

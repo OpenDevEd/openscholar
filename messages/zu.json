@@ -394,7 +394,7 @@
         "refund": "Ukubuyiselwa kwemali"
       }
     },
-    "credits": "amakhredithi",
+    "credits": "amakhredithi e-AI",
     "refillOn": "+{amount} ngo-{date}",
     "bought": "{amount} athengiwe",
     "topUp": "Gcwalisa",
@@ -4779,7 +4779,7 @@
       "papersAtOnce": "{count, plural, one {# iphepha ngesikhathi esisodwa} other {# amaphepha ngesikhathi esisodwa}}",
       "anyPapersAJob": "Noma yimaphi amaphepha ngomsebenzi",
       "papersAJob": "Kuze kube ngu-{count, number} amaphepha ngomsebenzi",
-      "sharedCredits": "Amakhredithi ahlanganyelwe",
+      "sharedCredits": "Amakhredithi e-AI ahlanganyelwe",
       "membersDraw": "{count, plural, one {# ilungu lithatha} other {# amalungu athatha}} kuwo",
       "refillOn": "{amount} ngo-{date}",
       "upToMembers": "Kuze kube ngu-{count, number} amalungu",
@@ -6890,7 +6890,9 @@
         "card": "Kukhokhwe {amount} ngekhadi",
         "code": "I-{code} ikhokhele inani",
         "codeRest": "I-{code} ikhokhele okusele",
-        "credit": "Kukhokhwe {amount} ngesikweletu se-Stripe"
+        "credit": "Kukhokhwe {amount} ngesikweletu se-Stripe",
+        "receipt": "Irisidi",
+        "receiptFailed": "Irisidi ayivulekanga. Zama futhi."
       },
       "emailUs": "Sithumelele i-imeyili"
     },

@@ -16,6 +16,12 @@ async function stripe(path: string, init: { method?: "GET" | "POST"; form?: Reco
   return (await response.json()) as Stripe;
 }
 
+/** Stripe's page for an invoice, where its receipt is read and downloaded. Throws when Stripe refuses or can't be reached. */
+export async function invoicePage(invoice: string): Promise<string | null> {
+  const url = (await stripe(`invoices/${encodeURIComponent(invoice)}`)).hosted_invoice_url;
+  return typeof url === "string" ? url : null;
+}
+
 /** Voids an open invoice, so nothing can be collected on it. Throws when Stripe refuses or can't be reached. */
 export async function voidInvoice(invoice: string) {
   await stripe(`invoices/${encodeURIComponent(invoice)}/void`, { method: "POST" });

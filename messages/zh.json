@@ -394,7 +394,7 @@
         "refund": "退款"
       }
     },
-    "credits": "积分",
+    "credits": "AI 积分",
     "refillOn": "{date} 增加 {amount}",
     "bought": "已购买 {amount}",
     "topUp": "充值",
@@ -4779,7 +4779,7 @@
       "papersAtOnce": "同时处理 {count, number} 篇论文",
       "anyPapersAJob": "每个任务论文数不限",
       "papersAJob": "每个任务最多 {count, number} 篇论文",
-      "sharedCredits": "共享积分",
+      "sharedCredits": "共享 AI 积分",
       "membersDraw": "{count, number} 名成员使用",
       "refillOn": "{date} 补充 {amount}",
       "upToMembers": "最多 {count, number} 名成员",
@@ -6890,7 +6890,9 @@
         "card": "用银行卡支付 {amount}",
         "code": "{code} 已抵扣全部费用",
         "codeRest": "{code} 已抵扣剩余费用",
-        "credit": "用 Stripe 余额抵扣 {amount}"
+        "credit": "用 Stripe 余额抵扣 {amount}",
+        "receipt": "收据",
+        "receiptFailed": "无法打开收据，请重试。"
       },
       "emailUs": "给我们发邮件"
     },

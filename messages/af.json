@@ -395,7 +395,7 @@
         "refund": "Terugbetaling"
       }
     },
-    "credits": "krediete",
+    "credits": "KI-krediete",
     "refillOn": "+{amount} op {date}",
     "bought": "{amount} gekoop",
     "topUp": "Vul aan",
@@ -4780,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {# artikel op een slag} other {# artikels op een slag}}",
       "anyPapersAJob": "Enige aantal artikels per taak",
       "papersAJob": "Tot {count, number} artikels per taak",
-      "sharedCredits": "Gedeelde krediete",
+      "sharedCredits": "Gedeelde KI-krediete",
       "membersDraw": "{count, plural, one {# lid trek} other {# lede trek}} daaruit",
       "refillOn": "{amount} op {date}",
       "upToMembers": "Tot {count, number} lede",
@@ -6891,7 +6891,9 @@
         "card": "{amount} per kaart betaal",
         "code": "{code} het die prys gedek",
         "codeRest": "{code} het die res gedek",
-        "credit": "{amount} uit Stripe-krediet betaal"
+        "credit": "{amount} uit Stripe-krediet betaal",
+        "receipt": "Kwitansie",
+        "receiptFailed": "Die kwitansie kon nie oopgemaak word nie. Probeer weer."
       },
       "emailUs": "E-pos ons"
     },

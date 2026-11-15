@@ -348,6 +348,8 @@ export const autumn = {
     quantity?: { feature: string; amount: number };
     /** A promotion code of an Autumn reward, taken off the charge. */
     code?: string;
+    /** The report a purchase pays for, kept on Stripe's invoice (metadata `report`): Stripe's receipt can't name it, and a finalized invoice takes no memo. */
+    report?: string;
     /**
      * Billed by invoice and given at once, for a purchase quoted at nothing to a customer with no card, after a code or
      * the customer's Stripe credit, which Stripe takes as it finalizes the invoice: Autumn sends a card-less customer to
@@ -377,6 +379,7 @@ export const autumn = {
         // Used only when Autumn sends the person to Stripe's checkout: a customer with no card on file.
         ...(args.checkout ? { checkout_session_params: checkoutParams(args.checkout) } : {}),
         ...promotion(args.code),
+        ...(args.report ? { metadata: { report: args.report } } : {}),
       },
       args.idempotencyKey,
     );

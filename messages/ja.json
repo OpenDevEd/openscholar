@@ -394,7 +394,7 @@
         "refund": "返金"
       }
     },
-    "credits": "クレジット",
+    "credits": "AI クレジット",
     "refillOn": "{date} に +{amount}",
     "bought": "購入分 {amount}",
     "topUp": "追加購入",
@@ -4779,7 +4779,7 @@
       "papersAtOnce": "同時に {count, number} 件の論文",
       "anyPapersAJob": "ジョブあたりの論文数は無制限",
       "papersAJob": "ジョブあたり最大 {count, number} 件の論文",
-      "sharedCredits": "共有クレジット",
+      "sharedCredits": "共有 AI クレジット",
       "membersDraw": "{count, number} 人のメンバーが使用",
       "refillOn": "{date}に {amount}",
       "upToMembers": "最大 {count, number} 人",
@@ -6890,7 +6890,9 @@
         "card": "カードで {amount} を支払い",
         "code": "{code} で全額をまかないました",
         "codeRest": "{code} で残りをまかないました",
-        "credit": "Stripe のクレジットから {amount} を支払い"
+        "credit": "Stripe のクレジットから {amount} を支払い",
+        "receipt": "領収書",
+        "receiptFailed": "領収書を開けませんでした。もう一度お試しください。"
       },
       "emailUs": "メールで連絡"
     },
