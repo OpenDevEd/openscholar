@@ -72,7 +72,7 @@ function Ask({ threadId, stepId, asked }: { threadId: Id<"assistantThreads">; st
           <p className="text-sm font-semibold">{t("askTitle", { count })}</p>
           {/* The community as Add to community lists it: its icon with its owner in the corner, its name, its owner. */}
           <div className="mt-2 flex min-w-0 items-center gap-2.5">
-            <CommunityIcon community={{ faviconUrl: asked.community.faviconUrl, owner: { name: asked.community.owner?.name ?? "", imageUrl: asked.community.owner?.imageUrl ?? null, kind: asked.community.owner?.kind ?? "organization", workspaceId: asked.community.owner?.workspaceId } }} />
+            <CommunityIcon className="self-start" community={{ faviconUrl: asked.community.faviconUrl, owner: { name: asked.community.owner?.name ?? "", imageUrl: asked.community.owner?.imageUrl ?? null, kind: asked.community.owner?.kind ?? "organization", workspaceId: asked.community.owner?.workspaceId } }} />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{asked.community.name}</p>
               {asked.community.owner?.name ? <p className="truncate text-xs text-muted-foreground">{asked.community.owner.name}</p> : null}

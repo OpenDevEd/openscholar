@@ -459,7 +459,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
           {copies.map((copy, index) => (
             <li key={copy.name} className={cn(!all && index >= COPIES_SHOWN && "hidden")}>
               <a href={copy.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-                <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", copy.pdf ? "bg-success/15 ink-success" : "bg-inset text-muted-foreground")}>
+                <span className={cn("flex size-8 shrink-0 items-center justify-center self-start rounded-lg", copy.pdf ? "bg-success/15 ink-success" : "bg-inset text-muted-foreground")}>
                   {copy.pdf ? <FileText aria-hidden className="size-4" /> : copy.kind === "publisher" ? <BookOpen aria-hidden className="size-4" /> : <Library aria-hidden className="size-4" />}
                 </span>
                 <span className="min-w-0 flex-1">

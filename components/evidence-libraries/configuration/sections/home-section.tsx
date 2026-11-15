@@ -676,7 +676,7 @@ function EditorsField({
                   <PhotoPerson name={name} photo={person.photo} onChange={(photo) => update(person.id, { photo })} />
                 ) : (
                   <div className="flex items-center gap-3">
-                    <IdentityAvatar name={name} imageUrl={member?.imageUrl} className="size-9 shrink-0" />
+                    <IdentityAvatar name={name} imageUrl={member?.imageUrl} className="size-9 shrink-0 self-start" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{name}</p>
                       <p className="text-xs text-muted-foreground">

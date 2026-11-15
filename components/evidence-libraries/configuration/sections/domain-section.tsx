@@ -362,7 +362,7 @@ export const DomainSection = memo(function DomainSection({
                   data-domain-host={domain.host}
                 >
                   <header className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
-                    <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                    <div className="grid size-8 shrink-0 place-items-center self-start rounded-lg bg-muted text-muted-foreground">
                       <HugeiconsIcon icon={Globe02Icon} size={17} />
                     </div>
                     <div className="min-w-0 flex-1">

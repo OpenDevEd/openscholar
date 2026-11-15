@@ -34,7 +34,7 @@ export function WorkspacePicker({ value, onChange, disabled = false, except, det
             onClick={() => onChange(workspace.workspaceId)}
             className={cn("flex w-full items-center gap-3 p-3 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-50", on ? "bg-primary/5" : "enabled:hover:bg-muted/50")}
           >
-            <WorkspaceTile workspace={workspace} />
+            <WorkspaceTile workspace={workspace} className="self-start" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{workspace.name}</span>
               <span className="block text-xs tabular-nums text-muted-foreground">{why ?? (detail ? detail(workspace) : t("creditsLeft", { credits: format.number(Math.floor(workspace.credits ?? 0)) }))}</span>

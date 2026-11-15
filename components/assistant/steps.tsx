@@ -124,14 +124,14 @@ function Unqueried({ step, chips, className }: { step: StepItem & { href: string
 const unqueried = (step: StepItem): step is StepItem & { href: string } => !step.subject && step.href !== undefined;
 
 /** A tinted icon square; the tile of the model cards, one size down. */
-export function KindTile({ kind, size = "md", working }: { kind: Kind; size?: "sm" | "md"; working?: boolean }) {
+export function KindTile({ kind, size = "md", working, className }: { kind: Kind; size?: "sm" | "md"; working?: boolean; className?: string }) {
   const { icon: Icon, tint } = KIND[kind];
   const reduceMotion = useReducedMotion();
   return (
     <motion.span
       animate={working && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }}
       transition={working ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
-      className={cn("flex shrink-0 items-center justify-center", size === "sm" ? "size-5 rounded-md" : "size-9 rounded-xl")}
+      className={cn("flex shrink-0 items-center justify-center", size === "sm" ? "size-5 rounded-md" : "size-9 rounded-xl", className)}
       style={{ backgroundColor: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
     >
       <Icon className={size === "sm" ? "size-3" : "size-4"} />

@@ -26,6 +26,13 @@
 // text leaves out the hover card, page and filter the app has for it. A name
 // inside a link, button, hover card or menu item already does something.
 // country-flag: a country printed by name or code has its flag beside it.
+//
+// icon-top: an icon, avatar or cover beside a title with a line under it starts
+// at the title's top. A row that centres its items floats the picture between
+// the lines and moves it when the text wraps. `self-start` on the picture keeps
+// it on the title's line, and changes nothing while the picture is the taller
+// of the two. A picture after the text, such as a chevron, may stay centred.
+// new-el runs the same rule (tools/uiRules.ts); keep them in step.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -268,6 +275,15 @@ const COUNTRY_FLAG = /^Country(Filter)?Flag$/;
 // Attributes whose words people read or hear.
 const SPOKEN = new Set(["placeholder", "aria-label", "aria-description", "title", "alt", "label", "description"]);
 
+// A picture beside text: an icon, an avatar, a cover or an image.
+const PICTURE = /^(img|Image|PaperCover|PublicationCover)$|(Icon|Avatar|Flag|Tile)$/;
+const PICTURE_VALUE = /^(icon|avatar|cover|logo|picture|image)$|(Icon|Avatar|Cover|Logo)$/;
+// Where icons come from: the app's own set re-exports lucide-react's.
+const ICON_MODULE = /^(@\/components\/icons(\/.*)?|lucide-react|@hugeicons\/.+|@solar-icons\/.+)$/;
+// The tags that take a line of their own.
+const BLOCK_TAG = /^(p|div|h[1-6]|ul|ol|dl|section|header|footer)$/;
+/** Whether a class list holds this utility with no variant: `items-center`, not `sm:items-center`. */
+const hasUtility = (list, name) => list.split(/[\s"'`{}()]+/).includes(name);
 const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
@@ -282,6 +298,7 @@ const FIX = {
   coolify: "\"Coolify\" is our hosting tool, not something people see; say what is happening instead.",
   "entity-name": "a name people can act on is bare text; use AuthorHoverCard, InstitutionHoverCard or TopicHoverCard, or a link or filter (see FilterName).",
   "country-flag": "a country is named without its flag; put CountryFlag from components/ui/country-flag before it.",
+  "icon-top": "an icon or picture is centred beside a title with a line under it; put self-start on it (and mt-0.5 on a size-4 icon, to sit on a text-sm line).",
 };
 
 /** Every string in a messages file, with the key that holds it. */
@@ -502,6 +519,64 @@ function check(file) {
   const shownAsText = (node) => renderedInJsx(node) && !screenReaderOnly(node);
   // ponytail: a flag counts within three elements of the name, so a far-off flag can pass; a whole-file check would pass more.
   const missingFlag = (node) => !jsxAround(node).slice(0, 3).some(hasFlag);
+  // The icons this file imports, which are named for what they show (`CreditCard`), not `…Icon`.
+  const icons = new Set(
+    source.statements.flatMap((statement) =>
+      ts.isImportDeclaration(statement) && ICON_MODULE.test(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)
+        ? statement.importClause.namedBindings.elements.map((element) => element.name.text)
+        : [],
+    ),
+  );
+  // A JSX element, or a value passed in to render (`{icon}`, `{subtitle}`), which has no tag or classes of its own.
+  const jsx = (node) => ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+  const opening = (element) => (ts.isJsxElement(element) ? element.openingElement : element);
+  const tagOf = (element) => (jsx(element) ? opening(element).tagName.getText(source) : "");
+  const classesOf = (element) => {
+    const attribute = jsx(element) ? opening(element).attributes.properties.find((property) => ts.isJsxAttribute(property) && property.name.getText(source) === "className") : undefined;
+    return attribute ? classLists(attribute.initializer) : [""];
+  };
+  // What a child can render, through conditions: `a ? <X /> : <Y />` gives both, `a && <X />` gives X, `{icon}` gives itself.
+  const renderable = (node) => {
+    if (jsx(node)) return [node];
+    if (ts.isJsxExpression(node)) return node.expression ? renderable(node.expression) : [];
+    if (ts.isParenthesizedExpression(node)) return renderable(node.expression);
+    if (ts.isConditionalExpression(node)) return [...renderable(node.whenTrue), ...renderable(node.whenFalse)];
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return renderable(node.right);
+    return ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isCallExpression(node) ? [node] : [];
+  };
+  // An element's children, each as what it can render; text renders none.
+  const slots = (element) => (ts.isJsxElement(element) ? element.children.map(renderable).filter((slot) => slot.length > 0) : []);
+  // A picture, a value named for one (`{icon}`, `{avatar}`), or a tile around one picture (`<span className="flex size-9 …"><CreditCard /></span>`).
+  const isPicture = (element) => {
+    if (!jsx(element)) return (ts.isIdentifier(element) || ts.isPropertyAccessExpression(element)) && PICTURE_VALUE.test(lastName(element));
+    const tag = tagOf(element);
+    if (PICTURE.test(tag) || icons.has(tag) || /\.icon$/.test(tag)) return true;
+    const inner = slots(element);
+    return /^[a-z]/.test(tag) && inner.length === 1 && inner[0].every(isPicture);
+  };
+  const takesLine = (element) => BLOCK_TAG.test(tagOf(element)) || classesOf(element).some((list) => ["block", "flex", "grid"].some((name) => hasUtility(list, name)));
+  // Text that runs to a second line: a title with a line under it, stacked by a column or by elements that take a line each.
+  const stacks = (element) => {
+    if (!ts.isJsxElement(element)) return false;
+    const lists = classesOf(element);
+    if (lists.some((list) => hasUtility(list, "truncate"))) return false;
+    const column = lists.some((list) => hasUtility(list, "flex-col") || /(^|\s)space-y-/.test(list));
+    if (!column && lists.some((list) => hasUtility(list, "flex") || hasUtility(list, "inline-flex"))) return false;
+    return slots(element).filter((slot) => column || slot.some(takesLine)).length >= 2;
+  };
+  // A row of a set height can't grow when its text wraps, so the picture can't float off the title's line.
+  const setHeight = (element) =>
+    classesOf(element).every((list) => /(^|[\s"'`])h-(\d|\[)/.test(list)) ||
+    opening(element).attributes.properties.some((property) => ts.isJsxAttribute(property) && property.name.getText(source) === "style" && /\bheight\b/.test(property.initializer?.getText(source) ?? ""));
+  const centresRow = (element) => classesOf(element).some((list) => hasUtility(list, "items-center") && !hasUtility(list, "flex-col")) && !setHeight(element);
+  const anchored = (element) => classesOf(element).every((list) => hasUtility(list, "self-start"));
+  // The picture that leads a centred row whose text after it stacks; a picture after the text, such as a chevron, may stay centred.
+  const floatingPicture = (row) => {
+    const children = slots(row);
+    const at = children.findIndex((slot) => slot.some(isPicture));
+    const pictures = at < 0 ? [] : children[at].filter(isPicture);
+    return pictures.length > 0 && !pictures.every(anchored) && children.slice(at + 1).some((slot) => slot.some(stacks)) ? pictures[0] : undefined;
+  };
   const readsValue = (node) => ts.isPropertyAccessExpression(node) || (ts.isIdentifier(node) && !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node));
   const namesEntity = (node) => (ts.isPropertyAccessExpression(node) ? ENTITY_FIELD.has(node.name.text) && ENTITY_HOLDER.test(lastName(node.expression)) : false) || ENTITY_VARIABLE.test(lastName(node));
   const visit = (node) => {
@@ -526,6 +601,8 @@ function check(file) {
       if (COOLIFY.test(node.text)) report(node, "coolify");
       if (LOADING.test(node.text.trim()) && !screenReaderOnly(node)) report(node, "loading-text");
     }
+    const floating = ts.isJsxElement(node) && centresRow(node) ? floatingPicture(node) : undefined;
+    if (floating) report(floating, "icon-top");
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "AvatarFallback") {
       if (node.children.some(rendersText)) report(node, "initials");
     }
@@ -604,4 +681,4 @@ if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names or countries without flags.");
+console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names, countries without flags or icons centred beside two lines.");

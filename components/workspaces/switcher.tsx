@@ -203,7 +203,7 @@ export function WorkspaceMenu({ current, all, shared, onSwitch, onCreate }: { cu
             <div className="mt-1 space-y-2 border-t border-border/60 px-2 pb-1 pt-2.5">
               <div className="flex items-center gap-2.5">
                 {/* The organization's logo and whoever invited you, as its page shows them. */}
-                <WorkspaceTile workspace={{ kind: "organization", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl }} size="md" />
+                <WorkspaceTile workspace={{ kind: "organization", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl }} size="md" className="self-start" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-semibold leading-tight">{invitation.organization.name}</span>
                   {invitation.invitedBy ? (

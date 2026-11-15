@@ -258,16 +258,17 @@ function Tile() {
 }
 
 /** The community's icon, with who it belongs to on its corner: the organization's logo, or the person's photo. */
-export function CommunityIcon({ community, fadeIn = false }: {
+export function CommunityIcon({ community, fadeIn = false, className }: {
   community: Pick<Community, "faviconUrl" | "owner">;
   /** Fades the icon in once it loads, for a row drawn after the page, such as Your submissions. */
   fadeIn?: boolean;
+  className?: string;
 }) {
   const { owner } = community;
   // The person's own workspaces, with the colours their admins picked, as the switcher has them.
   const known = new Map((useWorkspaces().list ?? []).map((row) => [row.workspaceId as string, row]));
   return (
-    <div className="relative shrink-0">
+    <div className={cn("relative shrink-0", className)}>
       {community.faviconUrl ? <LibraryImage fadeIn={fadeIn} src={community.faviconUrl} className="flex size-8 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
       {/* Its owner as the switcher draws a workspace: its logo, or the mark made for it in its colour; a person's photo. */}
       <span className="absolute -bottom-1 -end-1 flex rounded-[0.35rem] bg-background ring-2 ring-background transition-shadow group-hover/row:ring-muted group-has-[[data-state=open]]/row:ring-muted">

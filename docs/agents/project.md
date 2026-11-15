@@ -58,6 +58,7 @@ supported process changed. Read the page back before claiming success.
   | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
   | A name people can act on uses its hover card, link or filter | `check:ui-rules` (`entity-name`) |
   | A country shows its flag | `check:ui-rules` (`country-flag`) |
+  | An icon or picture beside a title with a line under it sits at the title's top | `check:ui-rules` (`icon-top`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
   | A dialog, sheet, popover or menu opens with its data in it | `npm run verify -- shift` with a `--do` step that opens it |
 

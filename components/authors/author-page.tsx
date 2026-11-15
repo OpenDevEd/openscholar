@@ -312,7 +312,7 @@ export default function AuthorPage({
                 id="sec-profile-details"
               >
                 <div className="flex items-center gap-4 rounded-xl bg-inset p-3">
-                  <AuthorAvatar photo={draft.photo} className="size-16 border border-border-subtle" />
+                  <AuthorAvatar photo={draft.photo} className="size-16 self-start border border-border-subtle" />
                   <div className="min-w-0 flex-1">
                     <p className="mb-2 text-sm font-medium">{t("profilePhoto")}</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -680,7 +680,7 @@ export default function AuthorPage({
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
                   <div>
                     <div className="flex items-center gap-5">
-                      <AuthorAvatar photo={profile.photo} className="size-24 border border-border-subtle sm:size-28" />
+                      <AuthorAvatar photo={profile.photo} className="size-24 self-start border border-border-subtle sm:size-28" />
                       <div className="min-w-0">
                         <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                           {profile.name}
@@ -942,7 +942,7 @@ export default function AuthorPage({
                             catch (error) { toast.error(error instanceof OpenAlexLimitedError ? error.message : t("couldNotLoadThisAuthorS")); }
                           }}
                         >
-                          <AuthorAvatar className="size-9" />
+                          <AuthorAvatar className="size-9 self-start" />
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium">
                               {m.name}

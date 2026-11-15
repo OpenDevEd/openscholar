@@ -244,7 +244,7 @@ export function TeamAccess({
         {list.map((member) => (
           <li key={member.id} className="px-4 py-4 hover:bg-muted">
             <div className="flex flex-wrap items-center gap-3">
-              {member.organization ? <WorkspaceTile workspace={member.organization} size="row" /> : member.invited ? <EmailAvatar /> : <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />}
+              <span className="flex shrink-0 self-start">{member.organization ? <WorkspaceTile workspace={member.organization} size="row" /> : member.invited ? <EmailAvatar /> : <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />}</span>
               {/* At least 10rem for who it is: on a phone the role and its menu go to the next line rather than squeeze the name away. */}
               <div className="min-w-0 flex-[1_1_10rem]">
                 <PersonName name={member.name} you={member.you === true} className="text-sm font-medium" />
@@ -693,7 +693,7 @@ export function TeamAccess({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 px-4 py-4">
-              <WorkspaceTile workspace={organization} size="row" />
+              <WorkspaceTile workspace={organization} size="row" className="self-start" />
               {/* As every team row: on a phone the role goes to the next line rather than squeeze the name away. */}
               <div className="min-w-0 flex-[1_1_10rem]">
                 <p className="truncate text-sm font-medium">{t("everyoneIn", { name: organization.name })}</p>

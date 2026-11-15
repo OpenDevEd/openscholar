@@ -99,7 +99,7 @@ export function PdfUpload() {
   /** A file's row: uploaded, from the draft, or still on its way, from this visit. */
   const fileRow = (key: string, name: string, state: { done: boolean; busy: boolean; error?: string; size?: number }, onRetry: (() => void) | null, onRemove: () => void) => (
     <div key={key} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", state.done ? "text-primary" : state.error ? "text-destructive" : "text-muted-foreground")}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center self-start rounded-lg bg-inset", state.done ? "text-primary" : state.error ? "text-destructive" : "text-muted-foreground")}>
         {state.busy ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
       </span>
       <span className="min-w-0 flex-1 space-y-1">

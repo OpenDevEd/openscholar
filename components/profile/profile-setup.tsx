@@ -121,7 +121,7 @@ function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { pers
           </div>
         </div>
         <header className="flex items-center gap-3">
-          <IdentityAvatar name={person.name} imageUrl={person.imageUrl ?? undefined} className="size-12 shrink-0" />
+          <IdentityAvatar name={person.name} imageUrl={person.imageUrl ?? undefined} className="size-12 shrink-0 self-start" />
           <div className="min-w-0 space-y-0.5">
             <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
             <p className="text-sm text-muted-foreground">{t("intro")}</p>
