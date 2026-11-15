@@ -9,7 +9,6 @@ import { useEffect, type ReactNode } from "react";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { ArrowUpRight, CreditCard, FileText, Wallet } from "@/components/icons";
-import { Button } from "@/components/ui/button";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -199,9 +198,9 @@ export function PaidBill({ licence, price, paid, onReceipt, boxed = false, class
         <p className="pt-2 text-xs text-pretty text-muted-foreground">{paid.left !== null ? t("payment.leftNow", { left: money(paid.left) }) : t("payment.keptNow", { kept: money(kept) })}</p>
       ) : null}
       {paid.receipt ? (
-        <Button variant="link" size="sm" className="mt-1.5 h-auto gap-1 px-0 text-xs" onClick={onReceipt}>
+        <button type="button" onClick={onReceipt} className="mt-2 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-primary underline-offset-2 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring">
           <FileText className="size-3.5" /> {t("paid.receipt")} <ArrowUpRight className="size-3.5" />
-        </Button>
+        </button>
       ) : null}
     </div>
   );
