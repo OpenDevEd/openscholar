@@ -204,9 +204,11 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
       // smooth scroll. Scrolling on every frame to hold the tapped row still shook the whole page in Safari on a phone,
       // which reports where the page is a frame or two late.
       b.addEventListener("click", () => {
-        pinned = true; const was = panels.findIndex((p) => p.classList.contains("open")), open = panels[was]?.offsetHeight ?? 0, top = el.getBoundingClientRect().top - (was >= 0 && was < i ? open - el.offsetHeight : 0);
-        select(i); if (wide.matches || was === i) return;
-        const roof = (document.getElementById("top")?.getBoundingClientRect().bottom ?? 0) + 8, by = top < roof ? top - roof : Math.max(0, Math.min(top - roof, top + open - innerHeight + 8));
+        const was = el.classList.contains("open"); pinned = true; select(i); if (wide.matches || was) return;
+        // Where the place will stand once the others have shut: under `i` shut rows, each as tall as its name button,
+        // whatever height any of them has mid-way now (a second tap can land while the first is still opening).
+        const list = getComputedStyle(band), tall = parseFloat(list.getPropertyValue("--tall")), top = band.getBoundingClientRect().top + i * (b.offsetHeight + parseFloat(list.rowGap));
+        const roof = (document.getElementById("top")?.getBoundingClientRect().bottom ?? 0) + 8, by = top < roof ? top - roof : Math.max(0, Math.min(top - roof, top + tall - innerHeight + 8));
         if (by) scrollBy({ top: by, behavior: calm.matches ? "auto" : "smooth" });
       });
       // A pointer resting on a place opens it. One only passing over the band on its way elsewhere opens nothing.
@@ -356,8 +358,8 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     .ah { padding-bottom: clamp(24px, 4vw, 40px); }
     .ah-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "globe" "band"; justify-items: center; } .ah-copy { justify-items: center; padding-bottom: 0; text-align: center; }
     .ah-globe { width: min(100%, 560px); margin-block: -8px -28px; } .stack, .wire { display: none; } .pin:global(.here) .dot { scale: 1.25; }
-    .band { flex-direction: column; gap: 6px; width: 100%; height: auto; margin-top: 0; }
-    .pl { flex: none; height: 56px; border-radius: 16px; transition: height .6s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { height: 236px; } .pl::after { background: linear-gradient(90deg, var(--bg) 30%, transparent 78%); opacity: .9; transition: opacity .4s var(--ease); } .pl:global(.open)::after { opacity: 0; }
+    .band { --tall: 236px; flex-direction: column; gap: 6px; width: 100%; height: auto; margin-top: 0; }
+    .pl { flex: none; height: 56px; border-radius: 16px; transition: height .6s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { height: var(--tall); } .pl::after { background: linear-gradient(90deg, var(--bg) 30%, transparent 78%); opacity: .9; transition: opacity .4s var(--ease); } .pl:global(.open)::after { opacity: 0; }
     .pl-art { left: auto; right: 0; width: min(100%, 560px); object-position: 100% 60%; opacity: .45; -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px); mask-image: linear-gradient(90deg, transparent, #000 120px); transition: opacity .4s var(--ease), filter .5s var(--ease), object-position .6s var(--ease); } .pl:global(.open) .pl-art { object-position: 100% 100%; opacity: 1; }
     /* A row is narrow, so the picture comes closer to the names and the shade under them holds further across. */
     .pl::before { width: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 94%, transparent) 56%, transparent); }
