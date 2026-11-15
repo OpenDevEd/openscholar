@@ -6881,18 +6881,10 @@
         "emailUs": "Schreiben Sie uns",
         "saveCard": "Karte speichern",
         "codeOff": "{off} auf die {amount}, die eine Karte zahlt",
-        "charged": "Der Karte belastet",
-        "leftNow": "Ihr Publikationsguthaben hält jetzt {left}.",
-        "keptNow": "{kept} davon bleiben in Ihrem Publikationsguthaben."
+        "charged": "Der Karte belastet"
       },
       "activateFree": "DOI aktivieren",
       "paid": {
-        "balance": "{amount} aus dem Guthaben bezahlt",
-        "balanceLeft": "{amount} aus dem Guthaben bezahlt, {left} übrig",
-        "card": "{amount} mit Karte bezahlt",
-        "code": "{code} hat den Preis gedeckt",
-        "codeRest": "{code} hat den Rest gedeckt",
-        "credit": "{amount} aus dem Stripe-Guthaben bezahlt",
         "receipt": "Beleg",
         "receiptFailed": "Der Beleg ließ sich nicht öffnen. Versuchen Sie es erneut."
       },

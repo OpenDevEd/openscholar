@@ -6880,18 +6880,10 @@
         "emailUs": "メールで連絡",
         "saveCard": "カードを保存",
         "codeOff": "カードで支払う {amount} から {off} 引き",
-        "charged": "カードへの請求",
-        "leftNow": "公開残高は現在 {left} です。",
-        "keptNow": "そのうち {kept} は公開残高に残ります。"
+        "charged": "カードへの請求"
       },
       "activateFree": "DOI を有効化",
       "paid": {
-        "balance": "残高から {amount} を支払い",
-        "balanceLeft": "残高から {amount} を支払い、残り {left}",
-        "card": "カードで {amount} を支払い",
-        "code": "{code} で全額をまかないました",
-        "codeRest": "{code} で残りをまかないました",
-        "credit": "Stripe のクレジットから {amount} を支払い",
         "receipt": "領収書",
         "receiptFailed": "領収書を開けませんでした。もう一度お試しください。"
       },

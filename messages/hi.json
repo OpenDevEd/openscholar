@@ -6880,18 +6880,10 @@
         "emailUs": "हमें ईमेल करें",
         "saveCard": "कार्ड सेव करें",
         "codeOff": "कार्ड से चुकाए जाने वाले {amount} पर {off} छूट",
-        "charged": "कार्ड से लिया गया",
-        "leftNow": "आपके प्रकाशन बैलेंस में अब {left} है।",
-        "keptNow": "इसमें से {kept} आपके प्रकाशन बैलेंस में रहता है।"
+        "charged": "कार्ड से लिया गया"
       },
       "activateFree": "DOI सक्रिय करें",
       "paid": {
-        "balance": "शेष से {amount} का भुगतान",
-        "balanceLeft": "शेष से {amount} का भुगतान, {left} बचे",
-        "card": "कार्ड से {amount} का भुगतान",
-        "code": "{code} ने कीमत चुका दी",
-        "codeRest": "{code} ने बाकी रकम चुका दी",
-        "credit": "Stripe क्रेडिट से {amount} का भुगतान",
         "receipt": "रसीद",
         "receiptFailed": "रसीद नहीं खुल सकी। फिर से कोशिश करें।"
       },

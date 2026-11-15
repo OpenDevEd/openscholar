@@ -6880,18 +6880,10 @@
         "emailUs": "Email us",
         "saveCard": "Save a card",
         "codeOff": "{off} off the {amount} a card pays",
-        "charged": "Charged to a card",
-        "leftNow": "Your publication balance holds {left} now.",
-        "keptNow": "{kept} of it stays in your publication balance."
+        "charged": "Charged to a card"
       },
       "activateFree": "Activate the DOI",
       "paid": {
-        "balance": "Paid {amount} from the balance",
-        "balanceLeft": "Paid {amount} from the balance, {left} left",
-        "card": "Paid {amount} by card",
-        "code": "{code} covered the price",
-        "codeRest": "{code} covered the rest",
-        "credit": "Paid {amount} from Stripe credit",
         "receipt": "Receipt",
         "receiptFailed": "The receipt couldn’t be opened. Try again."
       },

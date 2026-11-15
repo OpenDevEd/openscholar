@@ -67,11 +67,9 @@ export function PayWithSwitch({ funds: balance, credited, payWith, onPayWith, cl
   return (
     // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
     // The two forms take each other's place when the balance changes under them, as when another workspace is picked: each fades in.
-    <p className="flex h-9 items-center gap-2 text-sm font-medium animate-in fade-in duration-200 motion-reduce:animate-none">
-      {/* Stripe takes a charge from the workspace's credit there before the card: said where it pays some. */}
-      {credited ? <StripeIcon aria-hidden className="size-4" /> : <CreditCard className="size-4 text-muted-foreground" />}
-      {t(credited ? "byCredit" : "byCard")}
-    </p>
+    // Plain words, not a control: people pressed it when it was set as one. Stripe takes a charge from the workspace's
+    // credit there before the card: said where it pays some.
+    <p className="flex h-9 items-center text-sm text-muted-foreground animate-in fade-in duration-200 motion-reduce:animate-none">{t(credited ? "byCredit" : "byCard")}</p>
   );
 }
 
@@ -156,7 +154,7 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, onSave
 }
 
 /** What a live report was paid with (convex/reports/activation.ts `paidWith`), in US dollars. */
-export type Paid = { fromBalance: number; byCredit: number; byCard: number; code: string | null; left: number | null; receipt: boolean };
+export type Paid = { fromBalance: number; byCredit: number; byCard: number; code: string | null; receipt: boolean };
 
 /**
  * A live report's bill as it was paid, where its bill stood on every step before: its price, what the balance, a code
@@ -166,9 +164,8 @@ export function PaidBill({ licence, price, paid, onReceipt, boxed = false, class
   const t = useTranslations("publishReports.flow");
   const money = useMoney();
   const covered = paid.fromBalance + paid.byCredit + paid.byCard;
-  // What the code took off: the rest of the price. A card that bought past it left the rest in the balance.
+  // What the code took off: the rest of the price.
   const discount = Math.round(Math.max(0, price - covered) * 100) / 100;
-  const kept = Math.round(Math.max(0, covered - price) * 100) / 100;
   return (
     <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
       <dl className="space-y-2">
@@ -194,9 +191,6 @@ export function PaidBill({ licence, price, paid, onReceipt, boxed = false, class
           {money(paid.byCard)}
         </bdi>
       </div>
-      {kept > 0 || paid.left !== null ? (
-        <p className="pt-2 text-xs text-pretty text-muted-foreground">{paid.left !== null ? t("payment.leftNow", { left: money(paid.left) }) : t("payment.keptNow", { kept: money(kept) })}</p>
-      ) : null}
       {paid.receipt ? (
         <button type="button" onClick={onReceipt} className="mt-2 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-primary underline-offset-2 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring">
           <FileText className="size-3.5" /> {t("paid.receipt")} <ArrowUpRight className="size-3.5" />

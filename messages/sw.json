@@ -6881,18 +6881,10 @@
         "emailUs": "Tuandikie",
         "saveCard": "Hifadhi kadi",
         "codeOff": "{off} punguzo kwenye {amount} zinazolipwa na kadi",
-        "charged": "Kilichotozwa kwenye kadi",
-        "leftNow": "Salio lako la uchapishaji sasa lina {left}.",
-        "keptNow": "{kept} zinabaki kwenye salio lako la uchapishaji."
+        "charged": "Kilichotozwa kwenye kadi"
       },
       "activateFree": "Washa DOI",
       "paid": {
-        "balance": "{amount} zimelipwa kutoka kwenye salio",
-        "balanceLeft": "{amount} zimelipwa kutoka kwenye salio, zimebaki {left}",
-        "card": "{amount} zimelipwa kwa kadi",
-        "code": "{code} imegharamia bei",
-        "codeRest": "{code} imegharamia kilichobaki",
-        "credit": "{amount} zimelipwa kutoka kwenye salio la Stripe",
         "receipt": "Risiti",
         "receiptFailed": "Risiti haikuweza kufunguliwa. Jaribu tena."
       },

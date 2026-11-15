@@ -6881,18 +6881,10 @@
         "emailUs": "راسلنا",
         "saveCard": "احفظ بطاقة",
         "codeOff": "{off} من {amount} التي تدفعها البطاقة",
-        "charged": "المخصوم من البطاقة",
-        "leftNow": "رصيد النشر لديك الآن {left}.",
-        "keptNow": "يبقى {kept} منه في رصيد النشر لديك."
+        "charged": "المخصوم من البطاقة"
       },
       "activateFree": "فعّل الـ DOI",
       "paid": {
-        "balance": "دُفع {amount} من الرصيد",
-        "balanceLeft": "دُفع {amount} من الرصيد، والباقي {left}",
-        "card": "دُفع {amount} بالبطاقة",
-        "code": "غطّى {code} السعر",
-        "codeRest": "غطّى {code} الباقي",
-        "credit": "دُفع {amount} من رصيد Stripe",
         "receipt": "الإيصال",
         "receiptFailed": "تعذّر فتح الإيصال. حاول مرة أخرى."
       },

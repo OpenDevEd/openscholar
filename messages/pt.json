@@ -6881,18 +6881,10 @@
         "emailUs": "Escreva para nós",
         "saveCard": "Salvar um cartão",
         "codeOff": "{off} a menos nos {amount} que o cartão paga",
-        "charged": "Cobrado num cartão",
-        "leftNow": "O seu saldo de publicação tem agora {left}.",
-        "keptNow": "{kept} fica no seu saldo de publicação."
+        "charged": "Cobrado num cartão"
       },
       "activateFree": "Ativar o DOI",
       "paid": {
-        "balance": "{amount} pagos com o saldo",
-        "balanceLeft": "{amount} pagos com o saldo, restam {left}",
-        "card": "{amount} pagos com cartão",
-        "code": "{code} cobriu o preço",
-        "codeRest": "{code} cobriu o resto",
-        "credit": "{amount} pagos com o crédito no Stripe",
         "receipt": "Recibo",
         "receiptFailed": "Não foi possível abrir o recibo. Tente novamente."
       },

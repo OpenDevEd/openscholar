@@ -469,8 +469,6 @@ describe("activating a report", () => {
     const { key } = await checked(world, [passed("byline")]);
     const read = (left: number, fetchedAt: number) => world.t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId: world.own, withCard: false, fetchedAt, snapshot: { pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, publication: [{ interval: "month", left, size: 20 }] } });
     const shown = async () => (await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key }))?.balance;
-    /** What the live report's screen says the balance holds since: nothing until a read made after its hold was finished. */
-    const leftSince = async () => (await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key }))?.paid?.left;
     const later = () => vi.advanceTimersByTime(1_000);
     await read(4, Date.now());
     // A card buys the $6 the balance is short of: Autumn has $10 until the report's price is held.
@@ -489,7 +487,6 @@ describe("activating a report", () => {
     // A read begun before the hold was finished, arriving after it.
     await read(10, early + 1);
     expect(await shown()).toBe(4);
-    expect(await leftSince()).toBeNull();
     // Another report's payment opens before the balance is read again: that read is kept back too, so the balance
     // shown is still the one from before this report was paid, and says nothing of what is left since.
     await world.t.run(async (ctx) => {
@@ -501,12 +498,10 @@ describe("activating a report", () => {
     later();
     await read(0, Date.now());
     expect(await shown()).toBe(4);
-    expect(await leftSince()).toBeNull();
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId: waiting, outcome: { kind: "refused" } });
     later();
     await read(0, Date.now());
     expect(await shown()).toBe(0);
-    expect(await leftSince()).toBe(0);
   });
 
   it("refuses a report that is already live before anything is charged", async () => {

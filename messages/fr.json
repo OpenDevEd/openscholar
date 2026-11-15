@@ -6880,18 +6880,10 @@
         "emailUs": "Écrivez-nous",
         "saveCard": "Enregistrer une carte",
         "codeOff": "{off} sur les {amount} que paie la carte",
-        "charged": "Débité sur une carte",
-        "leftNow": "Votre solde de publication contient maintenant {left}.",
-        "keptNow": "{kept} reste dans votre solde de publication."
+        "charged": "Débité sur une carte"
       },
       "activateFree": "Activer le DOI",
       "paid": {
-        "balance": "{amount} payés avec le solde",
-        "balanceLeft": "{amount} payés avec le solde, il reste {left}",
-        "card": "{amount} payés par carte",
-        "code": "{code} a couvert le prix",
-        "codeRest": "{code} a couvert le reste",
-        "credit": "{amount} payés avec le crédit Stripe",
         "receipt": "Reçu",
         "receiptFailed": "Le reçu n’a pas pu s’ouvrir. Réessayez."
       },

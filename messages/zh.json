@@ -6880,18 +6880,10 @@
         "emailUs": "给我们发邮件",
         "saveCard": "保存银行卡",
         "codeOff": "银行卡支付的 {amount} 减 {off}",
-        "charged": "银行卡扣款",
-        "leftNow": "你的发布余额现为 {left}。",
-        "keptNow": "其中 {kept} 留在你的发布余额中。"
+        "charged": "银行卡扣款"
       },
       "activateFree": "激活 DOI",
       "paid": {
-        "balance": "从余额支付 {amount}",
-        "balanceLeft": "从余额支付 {amount}，剩余 {left}",
-        "card": "用银行卡支付 {amount}",
-        "code": "{code} 已抵扣全部费用",
-        "codeRest": "{code} 已抵扣剩余费用",
-        "credit": "用 Stripe 余额抵扣 {amount}",
         "receipt": "收据",
         "receiptFailed": "无法打开收据，请重试。"
       },

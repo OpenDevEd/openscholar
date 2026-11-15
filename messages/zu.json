@@ -6880,18 +6880,10 @@
         "emailUs": "Sithumelele i-imeyili",
         "saveCard": "Gcina ikhadi",
         "codeOff": "{off} kususwe ku-{amount} ekhokhwa yikhadi",
-        "charged": "Okukhokhiswe ekhadini",
-        "leftNow": "Ibhalansi yakho yokushicilela manje inongu-{left}.",
-        "keptNow": "U-{kept} wakho usala kubhalansi yakho yokushicilela."
+        "charged": "Okukhokhiswe ekhadini"
       },
       "activateFree": "Vula i-DOI",
       "paid": {
-        "balance": "Kukhokhwe {amount} ngebhalansi",
-        "balanceLeft": "Kukhokhwe {amount} ngebhalansi, kusele {left}",
-        "card": "Kukhokhwe {amount} ngekhadi",
-        "code": "I-{code} ikhokhele inani",
-        "codeRest": "I-{code} ikhokhele okusele",
-        "credit": "Kukhokhwe {amount} ngesikweletu se-Stripe",
         "receipt": "Irisidi",
         "receiptFailed": "Irisidi ayivulekanga. Zama futhi."
       },

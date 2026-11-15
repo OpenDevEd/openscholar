@@ -88,22 +88,19 @@ const cardValidator = v.object({ brand: v.string(), last4: v.string() });
 
 /**
  * What a live record's report was paid with: the dollars its balance paid, what was paid for the rest after any
- * code, by the account's credit at Stripe and by a card, and that code. `left` is what the balance holds now, once it was read after this record's price was taken
- * from it; null before then, and for a balance with no limit. Null for a record from before these were kept.
+ * code, by the account's credit at Stripe and by a card, that code, and whether Stripe has a receipt for it. Null for
+ * a record from before these were kept.
  */
-function paidWith(record: Doc<"reportActivations">, account: Awaited<ReturnType<typeof readAccount>>) {
+function paidWith(record: Doc<"reportActivations">) {
   if (record.payWith === undefined || record.price === undefined) return null;
   const bought = record.bought ?? 0;
   const total = record.charge?.total ?? 0;
   const byCredit = Math.min(record.charge?.credit ?? 0, total);
-  // The balance's own read, not the account's: a read made while another report is being paid for keeps the balance from before.
-  const settled = record.finishedAt !== undefined && (account?.publicationAt ?? 0) >= record.finishedAt;
   return {
     fromBalance: record.payWith === "card" ? 0 : record.price - bought,
     byCredit,
     byCard: Math.round((total - byCredit) * 100) / 100,
     code: bought > 0 ? (record.code ?? null) : null,
-    left: settled && !account?.publicationUnlimited ? fundsOf(account).balance : null,
     /** Stripe has an invoice for it, with a receipt: something was bought, by card or Stripe credit. */
     receipt: !!record.charge?.invoice && record.charge.invoice !== "none",
   };
@@ -155,7 +152,7 @@ export const terms = workspaceQuery({
        * that lowered what was bought, and what the balance holds since. Null until it is live, for anyone else, and for
        * a report made live before this was kept.
        */
-      paid: v.union(v.object({ fromBalance: v.number(), byCredit: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), left: v.union(v.number(), v.null()), receipt: v.boolean() }), v.null()),
+      paid: v.union(v.object({ fromBalance: v.number(), byCredit: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), receipt: v.boolean() }), v.null()),
       /** Publishing is switched off where this report's DOI is registered: it can't go live for now. */
       paused: v.boolean(),
     }),
@@ -184,7 +181,7 @@ export const terms = workspaceQuery({
       paying: await paymentOf(ctx, report._id),
       refused: last?.state === "refused",
       kept: last?.state === "unused",
-      paid: last?.state === "live" && mayChange(actor, report) ? paidWith(last, account) : null,
+      paid: last?.state === "live" && mayChange(actor, report) ? paidWith(last) : null,
       paused: paused(report, settings.publication),
     };
   },
