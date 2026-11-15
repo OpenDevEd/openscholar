@@ -1168,17 +1168,18 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
       {starts && workspaceId ? (
         <section className="mb-7" inert={busy || !!signed || leaving || settling || undefined}>
-          <h3 className={SECTION}>{t("payment.title")}</h3>
+          {/* With nothing in the balance a card pays: no choice to show, so the section is the voucher's, its field open. */}
+          <h3 className={SECTION}>{t(starts.balance === 0 ? "payment.voucher" : "payment.title")}</h3>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <PayWithSwitch funds={starts} credited={(sum?.fromCredit ?? 0) > 0} payWith={payWith} onPayWith={setPicked} />
+            {starts.balance === 0 ? null : <PayWithSwitch funds={starts} payWith={payWith} onPayWith={setPicked} />}
             {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
                 is kept, and is back when a card pays again. */}
             {/* Another workspace's balance changes how wide the way to pay is: the field slides to its new place. */}
             <motion.div layout="position" transition={{ duration: 0.3, ease: EASE }} className="min-w-0 flex-1 basis-64 sm:max-w-sm">
               <AutoHeight>
                 {bought > 0 ? (
-                  <div className="px-3 py-1">
-                    <PromoCode applied={voucher} onApply={setQuoted} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off, for: workspaceId }))} typed={typedCode} onTyped={setTypedCode} />
+                  <div className={cn("py-1", starts.balance !== 0 && "px-3")}>
+                    <PromoCode fixed={starts.balance === 0} applied={voucher} onApply={setQuoted} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off, for: workspaceId }))} typed={typedCode} onTyped={setTypedCode} />
                   </div>
                 ) : null}
               </AutoHeight>
@@ -1938,15 +1939,17 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 // heading, with the bill under the cover. Activate is with the step's other buttons, where Next is on
                 // every step before it. Only the licence, which set the price, is fixed.
                 <section className="mb-7" inert={activating || undefined}>
-                  <h3 className={SECTION}>{t("payment.title")}</h3>
+                  {/* With nothing in the balance a card pays: no choice to show, so the section is the voucher's, its field
+                      open, and with no code to take either, it has no heading at all. */}
+                  {terms.balance !== 0 || vouchers ? <h3 className={SECTION}>{t(terms.balance === 0 ? "payment.voucher" : "payment.title")}</h3> : null}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <PayWithSwitch funds={terms} credited={sum.fromCredit > 0} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
+                    {terms.balance === 0 ? null : <PayWithSwitch funds={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />}
                     {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
                         applied is kept, and is back when a card pays again. */}
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
                       {vouchers ? (
-                        <div className="px-3 py-1">
-                          <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
+                        <div className={cn("py-1", terms.balance !== 0 && "px-3")}>
+                          <PromoCode fixed={terms.balance === 0} applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
                         </div>
                       ) : null}
                     </AutoHeight>
@@ -2150,9 +2153,10 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }: { /** The field is all the section holds (a card is the only way to pay): it stays open, with no way to shut it. */ fixed?: boolean; applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
   // A code already typed (it came back from Stripe's page in the address) opens the field with it.
-  const [open, setOpen] = useState(typed !== "");
+  const [opened, setOpen] = useState(typed !== "");
+  const open = fixed || opened;
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
   const field = useRef<HTMLInputElement>(null);
@@ -2198,7 +2202,8 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
           >
             <div className="flex gap-2">
               <Input
-                autoFocus={finePointer()}
+                // Opened by a press, it takes the keyboard; there from the start, it leaves the page where it is.
+                autoFocus={!fixed && finePointer()}
                 value={typed}
                 maxLength={100}
                 onChange={(e) => {
@@ -2217,6 +2222,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
                 {t("apply")}
               </Button>
               {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
+              {fixed ? null : (
               <Button
                 type="button"
                 variant="ghost"
@@ -2231,6 +2237,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
               >
                 <X />
               </Button>
+              )}
             </div>
             {wrong ? (
               <p id={wrongId} role="alert" className="text-xs text-destructive">

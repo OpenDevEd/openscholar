@@ -6862,8 +6862,6 @@
         "payWith": "Betaal met",
         "balance": "Publikasiebalans",
         "card": "Kaart",
-        "byCard": "Betaling per kaart",
-        "byCredit": "Stripe-krediet voor die kaart",
         "due": "Verskuldig by aktivering",
         "later": "Niks word gehef voordat die verslag geaktiveer word nie, en hoe jy betaal kan nog verander.",
         "code": "Kode {code}",
@@ -6881,7 +6879,8 @@
         "emailUs": "E-pos ons",
         "saveCard": "Stoor ’n kaart",
         "codeOff": "{off} af van die {amount} wat ’n kaart betaal",
-        "charged": "Op ’n kaart gehef"
+        "charged": "Op ’n kaart gehef",
+        "voucher": "Koepon"
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {

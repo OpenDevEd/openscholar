@@ -6861,8 +6861,6 @@
         "payWith": "Pay with",
         "balance": "Publication balance",
         "card": "Card",
-        "byCard": "Payment by card",
-        "byCredit": "Stripe credit before the card",
         "due": "Due at activation",
         "later": "Nothing is charged until the report is activated, and how you pay can still change.",
         "code": "Code {code}",
@@ -6880,7 +6878,8 @@
         "emailUs": "Email us",
         "saveCard": "Save a card",
         "codeOff": "{off} off the {amount} a card pays",
-        "charged": "Charged to a card"
+        "charged": "Charged to a card",
+        "voucher": "Voucher"
       },
       "activateFree": "Activate the DOI",
       "paid": {

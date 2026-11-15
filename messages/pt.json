@@ -6862,8 +6862,6 @@
         "payWith": "Pagar com",
         "balance": "Saldo de publicação",
         "card": "Cartão",
-        "byCard": "Pagamento com cartão",
-        "byCredit": "Crédito no Stripe antes do cartão",
         "due": "A pagar na ativação",
         "later": "Nada é cobrado até o relatório ser ativado, e a forma de pagar ainda pode mudar.",
         "code": "Código {code}",
@@ -6881,7 +6879,8 @@
         "emailUs": "Escreva para nós",
         "saveCard": "Salvar um cartão",
         "codeOff": "{off} a menos nos {amount} que o cartão paga",
-        "charged": "Cobrado num cartão"
+        "charged": "Cobrado num cartão",
+        "voucher": "Voucher"
       },
       "activateFree": "Ativar o DOI",
       "paid": {

@@ -6862,8 +6862,6 @@
         "payWith": "Bezahlen mit",
         "balance": "Publikationsguthaben",
         "card": "Karte",
-        "byCard": "Zahlung per Karte",
-        "byCredit": "Stripe-Guthaben vor der Karte",
         "due": "Fällig bei Aktivierung",
         "later": "Nichts wird belastet, bis der Bericht aktiviert wird, und die Zahlungsart lässt sich noch ändern.",
         "code": "Code {code}",
@@ -6881,7 +6879,8 @@
         "emailUs": "Schreiben Sie uns",
         "saveCard": "Karte speichern",
         "codeOff": "{off} auf die {amount}, die eine Karte zahlt",
-        "charged": "Der Karte belastet"
+        "charged": "Der Karte belastet",
+        "voucher": "Gutschein"
       },
       "activateFree": "DOI aktivieren",
       "paid": {

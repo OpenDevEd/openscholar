@@ -6861,8 +6861,6 @@
         "payWith": "支払い方法",
         "balance": "出版残高",
         "card": "カード",
-        "byCard": "カードで支払い",
-        "byCredit": "カードより先に Stripe のクレジット",
         "due": "有効化時の支払額",
         "later": "レポートを有効化するまで請求はなく、支払い方法もまだ変更できます。",
         "code": "コード {code}",
@@ -6880,7 +6878,8 @@
         "emailUs": "メールで連絡",
         "saveCard": "カードを保存",
         "codeOff": "カードで支払う {amount} から {off} 引き",
-        "charged": "カードへの請求"
+        "charged": "カードへの請求",
+        "voucher": "クーポン"
       },
       "activateFree": "DOI を有効化",
       "paid": {

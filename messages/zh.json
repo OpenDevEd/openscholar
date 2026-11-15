@@ -6861,8 +6861,6 @@
         "payWith": "支付方式",
         "balance": "出版余额",
         "card": "银行卡",
-        "byCard": "用卡支付",
-        "byCredit": "先用 Stripe 余额再用银行卡",
         "due": "激活时应付",
         "later": "报告激活前不会扣款，支付方式仍可更改。",
         "code": "优惠码 {code}",
@@ -6880,7 +6878,8 @@
         "emailUs": "给我们发邮件",
         "saveCard": "保存银行卡",
         "codeOff": "银行卡支付的 {amount} 减 {off}",
-        "charged": "银行卡扣款"
+        "charged": "银行卡扣款",
+        "voucher": "优惠券"
       },
       "activateFree": "激活 DOI",
       "paid": {

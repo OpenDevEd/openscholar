@@ -43,33 +43,25 @@ function RollingMoney({ value }: { value: number }) {
   return <motion.span className="tabular-nums">{text}</motion.span>;
 }
 
-/** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
-export function PayWithSwitch({ funds: balance, credited, payWith, onPayWith, className }: { funds: Funds; /** The Stripe credit pays some of what a card would: `payment()`'s `fromCredit`. */ credited: boolean; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
+/** What pays: the publication balance or a card, while the balance holds something. With nothing in it a card does, and there is nothing to choose: callers show none. */
+export function PayWithSwitch({ funds: balance, payWith, onPayWith, className }: { funds: Funds; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
-  if (balance.balance !== 0)
-    return (
-      <Segmented
-        size="md"
-        label={t("payWith")}
-        value={payWith}
-        onChange={onPayWith}
-        // On a phone the two don't always fit side by side: the icons go, and past that the card takes a second row, never cut off.
-        // At large text a label wider than the phone wraps inside its segment instead of running off the screen.
-        className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] animate-in fade-in duration-200 motion-reduce:animate-none max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
-        options={[
-          { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
-          // No card is named here: which card pays is chosen in the pay dialog, and naming one would read as the only one.
-          { id: "card", label: t("card"), icon: CreditCard },
-        ]}
-      />
-    );
   return (
-    // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
-    // The two forms take each other's place when the balance changes under them, as when another workspace is picked: each fades in.
-    // Plain words, not a control: people pressed it when it was set as one. Stripe takes a charge from the workspace's
-    // credit there before the card: said where it pays some.
-    <p className="flex h-9 items-center text-sm text-muted-foreground animate-in fade-in duration-200 motion-reduce:animate-none">{t(credited ? "byCredit" : "byCard")}</p>
+    <Segmented
+      size="md"
+      label={t("payWith")}
+      value={payWith}
+      onChange={onPayWith}
+      // On a phone the two don't always fit side by side: the icons go, and past that the card takes a second row, never cut off.
+      // At large text a label wider than the phone wraps inside its segment instead of running off the screen.
+      className={cn("max-w-full shrink flex-wrap rounded-[1.375rem] animate-in fade-in duration-200 motion-reduce:animate-none max-sm:[&_svg]:hidden max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-9 max-sm:[&_button]:max-w-full max-sm:[&_button]:flex-wrap max-sm:[&_button]:whitespace-normal max-sm:[&_button]:py-1.5 max-sm:[&_.truncate]:overflow-visible max-sm:[&_.truncate]:whitespace-normal max-sm:[&_button]:rounded-2xl max-sm:[&>span]:rounded-2xl", className)}
+      options={[
+        { id: "balance", label: t("balance"), icon: Wallet, detail: balance.balance === null ? t("noLimit") : <bdi dir="ltr" className="tabular-nums">{money(balance.balance)}</bdi> },
+        // No card is named here: which card pays is chosen in the pay dialog, and naming one would read as the only one.
+        { id: "card", label: t("card"), icon: CreditCard },
+      ]}
+    />
   );
 }
 

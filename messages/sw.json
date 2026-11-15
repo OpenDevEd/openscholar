@@ -6862,8 +6862,6 @@
         "payWith": "Lipa kwa",
         "balance": "Salio la uchapishaji",
         "card": "Kadi",
-        "byCard": "Malipo kwa kadi",
-        "byCredit": "Salio la Stripe kabla ya kadi",
         "due": "Kinachodaiwa wakati wa kuwasha",
         "later": "Hakuna kinachotozwa hadi ripoti iwashwe, na bado unaweza kubadilisha namna ya kulipa.",
         "code": "Msimbo {code}",
@@ -6881,7 +6879,8 @@
         "emailUs": "Tuandikie",
         "saveCard": "Hifadhi kadi",
         "codeOff": "{off} punguzo kwenye {amount} zinazolipwa na kadi",
-        "charged": "Kilichotozwa kwenye kadi"
+        "charged": "Kilichotozwa kwenye kadi",
+        "voucher": "Vocha"
       },
       "activateFree": "Washa DOI",
       "paid": {

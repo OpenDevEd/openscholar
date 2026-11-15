@@ -6861,8 +6861,6 @@
         "payWith": "Payer avec",
         "balance": "Solde de publication",
         "card": "Carte",
-        "byCard": "Paiement par carte",
-        "byCredit": "Crédit Stripe avant la carte",
         "due": "Dû à l’activation",
         "later": "Rien n’est débité avant l’activation du rapport, et vous pouvez encore changer de mode de paiement.",
         "code": "Code {code}",
@@ -6880,7 +6878,8 @@
         "emailUs": "Écrivez-nous",
         "saveCard": "Enregistrer une carte",
         "codeOff": "{off} sur les {amount} que paie la carte",
-        "charged": "Débité sur une carte"
+        "charged": "Débité sur une carte",
+        "voucher": "Bon de réduction"
       },
       "activateFree": "Activer le DOI",
       "paid": {

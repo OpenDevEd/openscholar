@@ -6861,8 +6861,6 @@
         "payWith": "Khokha nge-",
         "balance": "Ibhalansi yokushicilela",
         "card": "Ikhadi",
-        "byCard": "Ukukhokha ngekhadi",
-        "byCredit": "Isikweletu se-Stripe ngaphambi kwekhadi",
         "due": "Okukweletwayo lapho kuvulwa",
         "later": "Akukho okukhokhiswayo kuze kuvulwe umbiko, futhi indlela okhokha ngayo isengashintsha.",
         "code": "Ikhodi {code}",
@@ -6880,7 +6878,8 @@
         "emailUs": "Sithumelele i-imeyili",
         "saveCard": "Gcina ikhadi",
         "codeOff": "{off} kususwe ku-{amount} ekhokhwa yikhadi",
-        "charged": "Okukhokhiswe ekhadini"
+        "charged": "Okukhokhiswe ekhadini",
+        "voucher": "Ivawusha"
       },
       "activateFree": "Vula i-DOI",
       "paid": {
