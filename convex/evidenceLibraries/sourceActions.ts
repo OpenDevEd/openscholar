@@ -504,16 +504,17 @@ export const addPapers = internalAction({
     userId: v.id("users"),
     role: teamRoleValidator,
     name: v.union(v.string(), v.null()),
+    email: v.union(v.string(), v.null()),
     requestId: v.string(),
     publish: v.boolean(),
     papers: v.array(paperReferenceValidator),
   },
   returns: papersAddedValidator,
-  handler: async (ctx, { libraryId, userId, role, name, requestId, publish, papers }) => {
+  handler: async (ctx, { libraryId, userId, role, name, email, requestId, publish, papers }) => {
     if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Add at most ${ADDED_PAPERS_MAX} papers at once.`);
     const target = await libraryTarget(ctx, libraryId);
     const clerkUserId = await readerOf(ctx, userId);
-    return await asked(libraryId, "papers/add", clerkUserId, () => addLibraryPapers(fetch, target, { requestId, publish, actor: { clerkUserId, name, role }, papers }));
+    return await asked(libraryId, "papers/add", clerkUserId, () => addLibraryPapers(fetch, target, { requestId, publish, actor: { clerkUserId, name, email, role }, papers }));
   },
 });
 

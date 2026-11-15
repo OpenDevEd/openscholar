@@ -676,20 +676,22 @@ const teamRole = v.union(v.literal("owner"), v.literal("editor"), v.literal("cre
 /** The person's role on a community, whichever workspace the reply runs in, and their name for its review queue; refused without one. */
 export const paperSender = internalQuery({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
-  returns: v.object({ role: v.union(teamRole, v.literal("reader")), name: v.union(v.string(), v.null()) }),
+  returns: v.object({ role: v.union(teamRole, v.literal("reader")), name: v.union(v.string(), v.null()), email: v.union(v.string(), v.null()) }),
   handler: async (ctx, { libraryId, ...actor }) => await paperSenderOf(ctx, actor, libraryId),
 });
 
-async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<{ role: "owner" | "editor" | "creator" | "reader"; name: string | null }> {
+async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<{ role: "owner" | "editor" | "creator" | "reader"; name: string | null; email: string | null }> {
   const person = await personOf(ctx, actor.userId);
   const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim() || null;
+  // The community shows it only to the Editors and Owners who decide a paper this person sends (new-el#881).
+  const email = person.email || null;
   const access = await readEvidenceLibraryAccess(await asSignedIn(ctx, person), libraryId, "view");
-  if (access && access.role !== "viewer") return { role: access.role, name };
+  if (access && access.role !== "viewer") return { role: access.role, name, email };
   // Anyone signed in suggests papers to a public community: they go to its review queue (#777).
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   // Public as the directory lists it: running, listed, and its owner's account still active.
   const owner = library?.state === "active" && !library.unlisted ? await libraryOwner(ctx, library) : null;
-  if (owner && ownerActive(owner)) return { role: "reader", name };
+  if (owner && ownerActive(owner)) return { role: "reader", name, email };
   throw createError("FORBIDDEN", "Only the community's team adds papers to it.");
 }
 
@@ -741,7 +743,7 @@ export const addPapersAction = defineChangingAction({
     if (publish && (role === "creator" || role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
   },
   run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
-    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
+    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null; email: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
     if (args.publish && (sender.role === "creator" || sender.role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
     const results = await withLinksFollowed(ctx, actor, args.papers, (papers) => ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, papers, userId: actor.userId, ...sender }));
     // What went on, the person's Your submissions lists: published, or waiting in the review queue.
@@ -784,8 +786,8 @@ export const removeAddedPaperAction = defineChangingAction({
   undoable: false,
   check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
   run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
-    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
-    const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
+    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null; email: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, role: sender.role, name: sender.name });
     // Withdrawn from the queue or taken off the community, a paper they sent is no longer theirs there: their Your submissions says so.
     await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey, outcome });
     return outcome;
