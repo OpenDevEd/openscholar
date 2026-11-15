@@ -371,11 +371,16 @@ describe("stopDecision", () => {
     expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, changed })).toEqual({ block: false });
   });
 
-  it("stays quiet for the rest of the session once the user said not to verify, and only that session", () => {
+  it("stays quiet once the user said not to verify, in that session only", () => {
     const changed = [{ path: "components/search/bar.tsx", mtimeMs: 8_000 }, { path: "components/workspaces/share-dialog.tsx", mtimeMs: 8_000, overlay: true }];
-    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, off: true, changed })).toEqual({ block: false });
-    // Said in an earlier session: a new one checks again.
-    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs: 7_500, lastPassMs: 7_000, off: true, changed })).toEqual({ block: true, files: ["components/search/bar.tsx", "components/workspaces/share-dialog.tsx"] });
+    const blocked = { block: true, files: ["components/search/bar.tsx", "components/workspaces/share-dialog.tsx"] };
+    const stop = (off: { at: number; session?: string | null }, session: string, start = sessionStartMs) => stopDecision({ userFacing, stopHookActive: false, sessionStartMs: start, lastPassMs: null, off, session, changed });
+    expect(stop({ at: 7_000, session: "a" }, "a")).toEqual({ block: false });
+    // Another session open in the same worktree keeps its check.
+    expect(stop({ at: 7_000, session: "a" }, "b")).toEqual(blocked);
+    // An agent that couldn't name its session: the sessions started before it said so.
+    expect(stop({ at: 7_000, session: null }, "a")).toEqual({ block: false });
+    expect(stop({ at: 7_000, session: null }, "b", 7_500)).toEqual(blocked);
   });
 
   it("lets the agent stop once a verify pass is newer than every change", () => {

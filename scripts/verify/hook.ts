@@ -27,7 +27,7 @@ function changedFiles(root: string, baseBranch: string, overlay: RegExp): { path
   return [...names].filter(Boolean).map((name) => ({ path: name, mtimeMs: changedAt(name), overlay: holdsOverlay(name) }));
 }
 
-async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_path?: string | null }> {
+async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_path?: string | null; session_id?: string }> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
   return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
@@ -35,18 +35,20 @@ async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_pat
 
 const sessionStart = (transcript: string | null | undefined) => (transcript && existsSync(transcript) ? statSync(transcript).birthtimeMs : 0);
 
-/** When the last passing check ran and how many overlays it opened. A recorded skip has no count; the user's "don't verify" is `off`. */
-function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: number; off?: boolean } {
-  const { at = null, opened, off } = readJson<{ at: number; opened?: number; off?: boolean }>(file) ?? {};
-  return { lastPassMs: at, lastPassOpened: opened, off };
+/** When the last passing check ran and how many overlays it opened. A recorded skip has no count. */
+function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: number } {
+  const pass = readJson<{ at: number; opened?: number }>(file);
+  return { lastPassMs: pass?.at ?? null, lastPassOpened: pass?.opened };
 }
 
-export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; start: string }) {
+export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; offFile: string; start: string }) {
   const input = await readInput();
   const decision = stopDecision({
     stopHookActive: input.stop_hook_active === true,
     sessionStartMs: sessionStart(input.transcript_path),
     ...lastPass(options.lastPassFile),
+    off: readJson<{ at: number; session?: string | null }>(options.offFile),
+    session: input.session_id,
     changed: changedFiles(options.root, options.baseBranch, options.overlay),
     userFacing: options.userFacing,
   });
