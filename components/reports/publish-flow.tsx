@@ -127,7 +127,7 @@ function KeptBill({ report, terms, humanReview, beside }: { report: Report; term
   const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
   // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
   if (stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
-  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} balance={terms} payWith={payWithOf(terms)} code={terms.voucher} credit={terms.credit} note={t("payment.later")} />, beside);
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} funds={terms} owner={terms.organization} payWith={payWithOf(terms)} code={terms.voucher} note={t("payment.later")} />, beside);
 }
 
 /** What pays for a report: as kept with it, else the balance while it holds something, else a card. */
@@ -1051,6 +1051,9 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const chosen = into !== null && into !== pageWorkspace ? list?.find((workspace) => workspace.workspaceId === into) : undefined;
   const away = chosen !== undefined;
   const workspaceId = chosen ? chosen.workspaceId : pageWorkspace;
+  // Whose Stripe credit the bill names: the organisation that would pay, or null for the person's own.
+  const paying = chosen ?? current;
+  const payer = paying?.kind === "organization" ? paying.name : null;
   const [now] = useState(thisMinute);
   const others = here && pageWorkspace ? (list ?? []).filter((workspace) => workspace.workspaceId !== pageWorkspace).map((workspace) => workspace.workspaceId) : [];
   const asked = others.join(" ");
@@ -1144,7 +1147,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         <section className="mb-7" inert={busy || !!signed || leaving || settling || undefined}>
           <h3 className={SECTION}>{t("payment.title")}</h3>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <PayWithSwitch balance={starts} payWith={payWith} onPayWith={setPicked} />
+            <PayWithSwitch funds={starts} payWith={payWith} onPayWith={setPicked} />
             {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
                 is kept, and is back when a card pays again. */}
             {/* Another workspace's balance changes how wide the way to pay is: the field slides to its new place. */}
@@ -1159,8 +1162,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
             </motion.div>
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
-          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />
-          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />, beside) : null}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} />, beside) : null}
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>
@@ -1794,8 +1797,6 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const charging = !!terms?.paying && !chargeOver;
   /** In US dollars. */
   const price = terms?.price ?? 0;
-  // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
-  const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
   // Stripe's portal, where the workspace's cards are added, removed and made the default: the person's own, or the organisation's.
   const openPortal = useAction(api.billing.actions.openPortal);
@@ -1813,7 +1814,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const payWith: PayWith = terms ? payWithOf(terms) : "card";
   const code = terms?.voucher ?? null;
   // What the report's price comes to: what the balance pays, what a card buys, and what the code takes off that.
-  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0 });
+  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0, credit: terms?.credit ?? 0 });
   /** Where a code can be used: while a card pays something and no payment is waiting. It lowers what the card pays. */
   const vouchers = !!terms && sum.bought > 0 && !pending && !!onQuote;
   // What is typed in the code's field, kept here so paying sees it.
@@ -1825,10 +1826,9 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   if (paying && (!admin || unapplied)) setPaying(false);
   // What went wrong with activating or paying, said above the payment bar.
   const { problem, say, failed } = useProblem();
-  const subtotal = Math.round(sum.due * 100);
-  const fromCredit = Math.min(credit, subtotal);
-  /** What a card is charged, in cents: nothing when the balance, a code or the account's credit covers it all. */
-  const due = subtotal - fromCredit;
+  const fromCredit = Math.round(sum.fromCredit * 100);
+  /** What a card is charged, in cents: nothing when the balance, a code or the Stripe credit covers it all. */
+  const due = Math.round(sum.due * 100);
   const activateNow = (otherCard = false) =>
     start(async () => {
       say(null);
@@ -1913,7 +1913,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 <section className="mb-7" inert={activating || undefined}>
                   <h3 className={SECTION}>{t("payment.title")}</h3>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <PayWithSwitch balance={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
+                    <PayWithSwitch funds={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
                     {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
                         applied is kept, and is back when a card pays again. */}
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
@@ -1925,8 +1925,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     </AutoHeight>
                   </div>
                   {/* The bill: under the cover on a wide page, where it has been since the report was signed, and here on a narrow one. */}
-                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />
-                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
+                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} />
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} />, beside) : null}
                   {terms.refused ? <p className="mt-2 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
                 </section>
               ) : admin && pending && stage !== "live" ? (
@@ -2059,7 +2059,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           onManageBilling={manageBilling}
           // This once on Stripe's page, which offers the saved cards and takes a new one: the saved card is left as it is.
           onOtherCard={
-            // Not while the account's credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
+            // Not while Stripe credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
             card && fromCredit === 0
               ? () => {
                   setPaying(false);

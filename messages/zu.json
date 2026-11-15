@@ -6859,6 +6859,7 @@
         "balance": "Ibhalansi yokushicilela",
         "card": "Ikhadi",
         "byCard": "Ukukhokha ngekhadi",
+        "byCredit": "Isikweletu se-Stripe ngaphambi kwekhadi",
         "due": "Okukweletwayo lapho kuvulwa",
         "later": "Akukho okukhokhiswayo kuze kuvulwe umbiko, futhi indlela okhokha ngayo isengashintsha.",
         "code": "Ikhodi {code}",
@@ -6866,7 +6867,9 @@
         "title": "Inkokhelo",
         "sign": "Funda bese usayina",
         "noLimit": "Akukho mkhawulo",
-        "credit": "Isikweletu se-akhawunti",
+        "credit": "Isikweletu se-Stripe",
+        "creditYours": "Unokungu-<amount></amount> ku-Stripe",
+        "creditTheirs": "I-{owner} inokungu-<amount></amount> ku-Stripe",
         "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho."
       },
       "activateFree": "Vula i-DOI",
@@ -6876,7 +6879,7 @@
         "card": "Kukhokhwe {amount} ngekhadi",
         "code": "I-{code} ikhokhele inani",
         "codeRest": "I-{code} ikhokhele okusele",
-        "credit": "Kukhokhwe {amount} ngesikweletu se-akhawunti"
+        "credit": "Kukhokhwe {amount} ngesikweletu se-Stripe"
       }
     },
     "meta": {

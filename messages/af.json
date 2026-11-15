@@ -6860,6 +6860,7 @@
         "balance": "Publikasiebalans",
         "card": "Kaart",
         "byCard": "Betaling per kaart",
+        "byCredit": "Stripe-krediet voor die kaart",
         "due": "Verskuldig by aktivering",
         "later": "Niks word gehef voordat die verslag geaktiveer word nie, en hoe jy betaal kan nog verander.",
         "code": "Kode {code}",
@@ -6867,7 +6868,9 @@
         "title": "Betaling",
         "sign": "Lees en teken",
         "noLimit": "Geen limiet",
-        "credit": "Rekeningkrediet",
+        "credit": "Stripe-krediet",
+        "creditYours": "Jy het <amount></amount> by Stripe",
+        "creditTheirs": "{owner} het <amount></amount> by Stripe",
         "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans."
       },
       "activateFree": "Aktiveer die DOI",
@@ -6877,7 +6880,7 @@
         "card": "{amount} per kaart betaal",
         "code": "{code} het die prys gedek",
         "codeRest": "{code} het die res gedek",
-        "credit": "{amount} uit rekeningkrediet betaal"
+        "credit": "{amount} uit Stripe-krediet betaal"
       }
     },
     "meta": {

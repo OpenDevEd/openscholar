@@ -6859,6 +6859,7 @@
         "balance": "Solde de publication",
         "card": "Carte",
         "byCard": "Paiement par carte",
+        "byCredit": "Crédit Stripe avant la carte",
         "due": "Dû à l’activation",
         "later": "Rien n’est débité avant l’activation du rapport, et vous pouvez encore changer de mode de paiement.",
         "code": "Code {code}",
@@ -6866,7 +6867,9 @@
         "title": "Paiement",
         "sign": "Lire et signer",
         "noLimit": "Sans limite",
-        "credit": "Crédit du compte",
+        "credit": "Crédit Stripe",
+        "creditYours": "Vous avez <amount></amount> chez Stripe",
+        "creditTheirs": "{owner} a <amount></amount> chez Stripe",
         "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde."
       },
       "activateFree": "Activer le DOI",
@@ -6876,7 +6879,7 @@
         "card": "{amount} payés par carte",
         "code": "{code} a couvert le prix",
         "codeRest": "{code} a couvert le reste",
-        "credit": "{amount} payés avec le crédit du compte"
+        "credit": "{amount} payés avec le crédit Stripe"
       }
     },
     "meta": {

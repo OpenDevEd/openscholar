@@ -6859,6 +6859,7 @@
         "balance": "出版残高",
         "card": "カード",
         "byCard": "カードで支払い",
+        "byCredit": "カードより先に Stripe のクレジット",
         "due": "有効化時の支払額",
         "later": "レポートを有効化するまで請求はなく、支払い方法もまだ変更できます。",
         "code": "コード {code}",
@@ -6866,7 +6867,9 @@
         "title": "支払い",
         "sign": "読んで署名",
         "noLimit": "無制限",
-        "credit": "アカウントのクレジット",
+        "credit": "Stripe のクレジット",
+        "creditYours": "Stripe に <amount></amount> あります",
+        "creditTheirs": "{owner} は Stripe に <amount></amount> あります",
         "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。"
       },
       "activateFree": "DOI を有効化",
@@ -6876,7 +6879,7 @@
         "card": "カードで {amount} を支払い",
         "code": "{code} で全額をまかないました",
         "codeRest": "{code} で残りをまかないました",
-        "credit": "アカウントのクレジットから {amount} を支払い"
+        "credit": "Stripe のクレジットから {amount} を支払い"
       }
     },
     "meta": {

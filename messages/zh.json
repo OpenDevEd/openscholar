@@ -6859,6 +6859,7 @@
         "balance": "出版余额",
         "card": "银行卡",
         "byCard": "用卡支付",
+        "byCredit": "先用 Stripe 余额再用银行卡",
         "due": "激活时应付",
         "later": "报告激活前不会扣款，支付方式仍可更改。",
         "code": "优惠码 {code}",
@@ -6866,7 +6867,9 @@
         "title": "付款",
         "sign": "阅读并签署",
         "noLimit": "不限次数",
-        "credit": "账户余额抵扣",
+        "credit": "Stripe 余额抵扣",
+        "creditYours": "你在 Stripe 有 <amount></amount>",
+        "creditTheirs": "{owner} 在 Stripe 有 <amount></amount>",
         "least": "银行卡至少支付 {least}，因此 {spare} 会留在余额中。"
       },
       "activateFree": "激活 DOI",
@@ -6876,7 +6879,7 @@
         "card": "用银行卡支付 {amount}",
         "code": "{code} 已抵扣全部费用",
         "codeRest": "{code} 已抵扣剩余费用",
-        "credit": "用账户余额抵扣 {amount}"
+        "credit": "用 Stripe 余额抵扣 {amount}"
       }
     },
     "meta": {

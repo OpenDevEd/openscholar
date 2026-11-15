@@ -18,7 +18,7 @@ import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
-import { customerOf, publicationOf, readAccount, refreshAccount } from "../billing/accounts";
+import { customerOf, fundsOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
 import { balancePartsValidator } from "../billing/validators";
@@ -103,7 +103,7 @@ function paidWith(record: Doc<"reportActivations">, account: Awaited<ReturnType<
     byCredit,
     byCard: Math.round((total - byCredit) * 100) / 100,
     code: bought > 0 ? (record.code ?? null) : null,
-    left: settled && !account?.publicationUnlimited ? publicationOf(account).balance : null,
+    left: settled && !account?.publicationUnlimited ? fundsOf(account).balance : null,
   };
 }
 
@@ -168,9 +168,8 @@ export const terms = workspaceQuery({
       admin: actor.role === "admin",
       organization: (await placeOf(ctx, actor.workspaceId)).organization,
       card: account?.card ?? null,
-      credit: account?.credit ?? 0,
       price: priceOf(licenceOf(report), settings.prices),
-      ...publicationOf(account),
+      ...fundsOf(account),
       payWith: report.payWith ?? null,
       voucher: report.voucher ? { code: report.voucher, off: report.voucherOff ?? 0 } : null,
       sells: ((await readCatalog(ctx))?.plans ?? []).some((plan) => plan.id === PUBLICATION_TOP_UP_PLAN),

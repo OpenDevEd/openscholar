@@ -2,7 +2,7 @@
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
 import { v, type Infer } from "convex/values";
-import { publicationOf, readAccount } from "../billing/accounts";
+import { fundsOf, readAccount } from "../billing/accounts";
 import { balancePartsValidator } from "../billing/validators";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -194,7 +194,7 @@ export const startsAction = defineUserQuery({
   path: "reports/flow:starts",
   description:
     "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
-    "`balance` is what the workspace's publication balance holds in US dollars, which pays for a report before a card does, or null for no limit, and `parts` is that balance by part: what refills (by the day, week, month...) with when it is next back to full, and what stays until it is used. What a report costs is in `reports/settings:forAuthors`. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
+    "`balance` is what the workspace's publication balance holds in US dollars, which pays for a report before a card does, or null for no limit, and `parts` is that balance by part: what refills (by the day, week, month...) with when it is next back to full, and what stays until it is used. `credit` is the credit on the workspace's Stripe customer in US dollars, which Stripe takes what a card would pay from first. What a report costs is in `reports/settings:forAuthors`. `now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
   returns: v.object({
     kind: v.union(v.literal("personal"), v.literal("organization")),
@@ -206,10 +206,12 @@ export const startsAction = defineUserQuery({
     balance: v.union(v.number(), v.null()),
     /** That balance by part: what refills, by when, and what stays until used. */
     parts: balancePartsValidator,
+    /** Credit on the workspace's Stripe customer, in US dollars, which Stripe takes a charge from before the card. */
+    credit: v.number(),
   }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
-    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }), ...publicationOf(await readAccount(ctx, workspaceId)) };
+    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }), ...fundsOf(await readAccount(ctx, workspaceId)) };
   },
 });
 export const starts = userQuery(startsAction);

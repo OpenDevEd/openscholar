@@ -6860,6 +6860,7 @@
         "balance": "Salio la uchapishaji",
         "card": "Kadi",
         "byCard": "Malipo kwa kadi",
+        "byCredit": "Salio la Stripe kabla ya kadi",
         "due": "Kinachodaiwa wakati wa kuwasha",
         "later": "Hakuna kinachotozwa hadi ripoti iwashwe, na bado unaweza kubadilisha namna ya kulipa.",
         "code": "Msimbo {code}",
@@ -6867,7 +6868,9 @@
         "title": "Malipo",
         "sign": "Soma na utie saini",
         "noLimit": "Bila kikomo",
-        "credit": "Salio la akaunti",
+        "credit": "Salio la Stripe",
+        "creditYours": "Una <amount></amount> kwenye Stripe",
+        "creditTheirs": "{owner} ina <amount></amount> kwenye Stripe",
         "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako."
       },
       "activateFree": "Washa DOI",
@@ -6877,7 +6880,7 @@
         "card": "{amount} zimelipwa kwa kadi",
         "code": "{code} imegharamia bei",
         "codeRest": "{code} imegharamia kilichobaki",
-        "credit": "{amount} zimelipwa kutoka kwenye salio la akaunti"
+        "credit": "{amount} zimelipwa kutoka kwenye salio la Stripe"
       }
     },
     "meta": {

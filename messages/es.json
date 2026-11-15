@@ -6860,6 +6860,7 @@
         "balance": "Saldo de publicación",
         "card": "Tarjeta",
         "byCard": "Pago con tarjeta",
+        "byCredit": "Saldo en Stripe antes que la tarjeta",
         "due": "A pagar al activar",
         "later": "No se cobra nada hasta que se active el informe, y aún puedes cambiar cómo pagas.",
         "code": "Código {code}",
@@ -6867,7 +6868,9 @@
         "title": "Pago",
         "sign": "Leer y firmar",
         "noLimit": "Sin límite",
-        "credit": "Saldo a favor de la cuenta",
+        "credit": "Saldo a favor en Stripe",
+        "creditYours": "Tienes <amount></amount> en Stripe",
+        "creditTheirs": "{owner} tiene <amount></amount> en Stripe",
         "least": "Una tarjeta paga al menos {least}, así que {spare} se quedan en tu saldo."
       },
       "activateFree": "Activar el DOI",
@@ -6877,7 +6880,7 @@
         "card": "{amount} pagados con tarjeta",
         "code": "{code} cubrió el precio",
         "codeRest": "{code} cubrió el resto",
-        "credit": "{amount} pagados con el saldo a favor de la cuenta"
+        "credit": "{amount} pagados con el saldo a favor en Stripe"
       }
     },
     "meta": {

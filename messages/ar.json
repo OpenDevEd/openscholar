@@ -6860,6 +6860,7 @@
         "balance": "رصيد النشر",
         "card": "بطاقة",
         "byCard": "الدفع بالبطاقة",
+        "byCredit": "رصيد Stripe قبل البطاقة",
         "due": "المستحق عند التفعيل",
         "later": "لا يُخصم شيء حتى يُفعَّل التقرير، وما زال بإمكانك تغيير طريقة الدفع.",
         "code": "الرمز {code}",
@@ -6867,7 +6868,9 @@
         "title": "الدفع",
         "sign": "اقرأ ووقّع",
         "noLimit": "بلا حد",
-        "credit": "رصيد الحساب",
+        "credit": "رصيد Stripe",
+        "creditYours": "لديك <amount></amount> في Stripe",
+        "creditTheirs": "لدى {owner} مبلغ <amount></amount> في Stripe",
         "least": "تدفع البطاقة {least} على الأقل، فيبقى {spare} في رصيدك."
       },
       "activateFree": "فعّل الـ DOI",
@@ -6877,7 +6880,7 @@
         "card": "دُفع {amount} بالبطاقة",
         "code": "غطّى {code} السعر",
         "codeRest": "غطّى {code} الباقي",
-        "credit": "دُفع {amount} من رصيد الحساب"
+        "credit": "دُفع {amount} من رصيد Stripe"
       }
     },
     "meta": {

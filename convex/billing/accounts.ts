@@ -83,10 +83,14 @@ export function partsOf(balance: AutumnBalance | undefined): { publication?: Bal
   return parts.length > 0 ? { publication: parts } : {};
 }
 
-/** The workspace's publication balance as its cached account has it: its parts, and what it holds in US dollars (null for no limit). */
-export function publicationOf(account: { publication?: BalancePart[]; publicationUnlimited?: boolean } | null) {
+/**
+ * What the workspace has to pay for a report with, as its cached account has it: its publication balance by part and
+ * what it holds in US dollars (null for no limit), and the credit on its Stripe customer, which Stripe takes a charge
+ * from before the card. Every screen that shows a report's bill reads it from here.
+ */
+export function fundsOf(account: { publication?: BalancePart[]; publicationUnlimited?: boolean; credit?: number } | null) {
   const parts = account?.publication ?? [];
-  return { parts, balance: account?.publicationUnlimited ? null : parts.reduce((sum, part) => sum + part.left, 0) };
+  return { parts, balance: account?.publicationUnlimited ? null : parts.reduce((sum, part) => sum + part.left, 0), credit: account?.credit ?? 0 };
 }
 
 /** Reads what OpenScholar needs from an Autumn customer. */

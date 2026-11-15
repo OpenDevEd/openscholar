@@ -6860,6 +6860,7 @@
         "balance": "Publikationsguthaben",
         "card": "Karte",
         "byCard": "Zahlung per Karte",
+        "byCredit": "Stripe-Guthaben vor der Karte",
         "due": "Fällig bei Aktivierung",
         "later": "Nichts wird belastet, bis der Bericht aktiviert wird, und die Zahlungsart lässt sich noch ändern.",
         "code": "Code {code}",
@@ -6867,7 +6868,9 @@
         "title": "Zahlung",
         "sign": "Lesen und unterschreiben",
         "noLimit": "Ohne Limit",
-        "credit": "Guthaben des Kontos",
+        "credit": "Stripe-Guthaben",
+        "creditYours": "Sie haben <amount></amount> bei Stripe",
+        "creditTheirs": "{owner} hat <amount></amount> bei Stripe",
         "least": "Eine Karte zahlt mindestens {least}, daher bleiben {spare} in Ihrem Guthaben."
       },
       "activateFree": "DOI aktivieren",
@@ -6877,7 +6880,7 @@
         "card": "{amount} mit Karte bezahlt",
         "code": "{code} hat den Preis gedeckt",
         "codeRest": "{code} hat den Rest gedeckt",
-        "credit": "{amount} aus dem Guthaben des Kontos bezahlt"
+        "credit": "{amount} aus dem Stripe-Guthaben bezahlt"
       }
     },
     "meta": {
