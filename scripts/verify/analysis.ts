@@ -330,7 +330,8 @@ export function stopDecision(input: {
   changed: { path: string; mtimeMs: number; overlay?: boolean }[];
   userFacing: RegExp;
 }): { block: false } | { block: true; files: string[]; unopened?: true } {
-  const off = input.off && (input.off.session ? input.off.session === input.session : input.off.at > input.sessionStartMs);
+  // Without a session id, only a session whose start is known and earlier counts as the one that said it.
+  const off = input.off && (input.off.session ? input.off.session === input.session : input.sessionStartMs > 0 && input.off.at > input.sessionStartMs);
   if (input.stopHookActive || off) return { block: false };
   const since = Math.max(input.sessionStartMs, input.lastPassMs ?? 0);
   const seen = input.changed.filter((file) => input.userFacing.test(file.path));

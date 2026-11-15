@@ -381,6 +381,8 @@ describe("stopDecision", () => {
     // An agent that couldn't name its session: the sessions started before it said so.
     expect(stop({ at: 7_000, session: null }, "a")).toEqual({ block: false });
     expect(stop({ at: 7_000, session: null }, "b", 7_500)).toEqual(blocked);
+    // A stop event whose session start can't be read is not taken for it.
+    expect(stop({ at: 7_000, session: null }, "b", 0)).toEqual(blocked);
   });
 
   it("lets the agent stop once a verify pass is newer than every change", () => {
