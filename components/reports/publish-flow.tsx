@@ -59,7 +59,7 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
 import { StripeIcon } from "@/components/icons/stripe-icon";
-import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
+import { Bill, PaidBill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { WayOnButton, WorkspaceChoice, type WayOn } from "@/components/reports/workspace-choice";
 import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
@@ -117,17 +117,20 @@ const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.dat
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 /**
- * The report's bill under its cover, from the moment it is signed until it is live: what its licence costs, and what
- * that comes to with the way of paying and the code kept with it. Where the report is activated, the checks' own bar
+ * The report's bill under its cover, from the moment it is signed: what its licence costs, and what that comes to with
+ * the way of paying and the code kept with it, and once it is live, what it was paid with. Where the report is activated, the checks' own bar
  * draws it with what is chosen there.
  */
 function KeptBill({ report, terms, humanReview, beside }: { report: Report; terms: Terms; humanReview: boolean; beside: HTMLDivElement }) {
   const t = useTranslations("publishReports.flow");
   const stage = stageOf(report, humanReview);
+  const openReceipt = useReceipt(report.key);
+  // Live, the bill is what was paid, with Stripe's receipt under it, for whoever may see it (its owner and the workspace's admins).
+  if (stage === "live") return terms.paid ? createPortal(<PaidBill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} paid={terms.paid} onReceipt={openReceipt} />, beside) : null;
   // The checks' bar has it, where the report is activated.
   const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
-  // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
-  if (stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
+  // Declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
+  if (stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
   return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} funds={terms} owner={terms.organization} payWith={payWithOf(terms)} code={terms.voucher} note={t("payment.later")} />, beside);
 }
 
@@ -859,7 +862,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} series={basics.series} paid={terms?.paid ?? null} fresh={fresh?.key === report.key && fresh.step === "live"} onCorrect={onCorrect} />
+            <LiveReport report={report} series={basics.series} fresh={fresh?.key === report.key && fresh.step === "live"} onCorrect={onCorrect} />
           ) : (
             <Checks
               beside={beside}
@@ -2465,19 +2468,12 @@ function Seal({ play }: { play: boolean }) {
   );
 }
 
-/**
- * What a live report was paid with, under its other facts: what the balance paid, with what it holds since, what the
- * account's credit and a card paid, and the code that lowered that or covered it. People looked for this here once
- * their report was live.
- */
-function PaidChips({ paid, reportKey }: { paid: Terms["paid"]; reportKey: string }) {
+/** Opens Stripe's receipt for what a live report was paid with, read on the press: a tab opens at once, before Stripe answers, so the browser doesn't take it for a pop-up and block it. */
+function useReceipt(reportKey: string) {
   const t = useTranslations("publishReports.flow");
-  const dollars = useMoney();
   const workspaceId = useWorkspace();
   const receiptOf = useAction(api.reports.activation.receipt);
-  // Stripe's receipt page, read on the press: a tab is opened at once, before Stripe answers, so the browser doesn't
-  // take it for a pop-up and block it.
-  const openReceipt = () => {
+  return () => {
     if (!workspaceId) return;
     const tab = window.open("", "_blank");
     void receiptOf({ workspaceId, key: reportKey }).then(
@@ -2491,43 +2487,10 @@ function PaidChips({ paid, reportKey }: { paid: Terms["paid"]; reportKey: string
       },
     );
   };
-  if (!paid) return null;
-  const money = (amount: number) => inSentence(dollars(amount));
-  return (
-    <div className="flex flex-wrap items-center gap-2 pt-2">
-      {paid.fromBalance > 0 ? (
-        <StatusChip tone="neutral" icon={Wallet}>
-          {paid.left === null ? t("paid.balance", { amount: money(paid.fromBalance) }) : t("paid.balanceLeft", { amount: money(paid.fromBalance), left: money(paid.left) })}
-        </StatusChip>
-      ) : null}
-      {paid.byCredit > 0 ? (
-        <StatusChip tone="neutral" icon={StripeIcon}>
-          {t("paid.credit", { amount: money(paid.byCredit) })}
-        </StatusChip>
-      ) : null}
-      {paid.byCard > 0 ? (
-        <StatusChip tone="neutral" icon={CreditCard}>
-          {t("paid.card", { amount: money(paid.byCard) })}
-        </StatusChip>
-      ) : null}
-      {/* A code that left something to pay is named as the bill named it; one that left nothing covered it. */}
-      {paid.code ? (
-        <StatusChip tone="neutral" icon={Tag}>
-          {paid.byCard + paid.byCredit > 0 ? t("payment.code", { code: paid.code }) : t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
-        </StatusChip>
-      ) : null}
-      {/* Stripe's receipt, where something was bought: people looked for it here once the report was live. */}
-      {paid.receipt ? (
-        <Button variant="ghost" size="sm" className="h-6 gap-1 rounded-full px-2 text-xs" onClick={openReceipt}>
-          <FileText className="size-3" /> {t("paid.receipt")} <ArrowUpRight className="size-3" />
-        </Button>
-      ) : null}
-    </div>
-  );
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; /** What it was paid with, for whoever may pay for it. */ paid: Terms["paid"]; fresh: boolean; onCorrect: () => void }) {
+function LiveReport({ report, series, fresh, onCorrect }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; fresh: boolean; onCorrect: () => void }) {
   // The report as the app's papers are, for saving it: the same as its own page saves.
   const paper = report.metadata ? reportPaper({ key: report.key, doi: report.doi, pdfUrl: `/papers/${report.key}/report.pdf`, updatedAt: report.updatedAt }, report.metadata, series) : null;
   const reduce = useReducedMotion();
@@ -2575,10 +2538,6 @@ function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report
             </StatusChip>
           ) : null}
         </div>
-        {/* What it came to, on a line of its own: it arrives with the payment's terms, and what the balance holds since a moment later, so its line opens instead of pushing the buttons below. */}
-        <AutoHeight>
-          <PaidChips paid={paid} reportKey={report.key} />
-        </AutoHeight>
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
         <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>

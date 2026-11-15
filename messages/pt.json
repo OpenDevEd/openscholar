@@ -6882,7 +6882,10 @@
         "currency": "A conta do Stripe deste espaço de trabalho está em {currency} e os relatórios são pagos em dólares americanos, então um cartão não pode pagar aqui até a mudarmos.",
         "emailUs": "Escreva para nós",
         "saveCard": "Salvar um cartão",
-        "codeOff": "{off} a menos nos {amount} que o cartão paga"
+        "codeOff": "{off} a menos nos {amount} que o cartão paga",
+        "charged": "Cobrado num cartão",
+        "leftNow": "O seu saldo de publicação tem agora {left}.",
+        "keptNow": "{kept} fica no seu saldo de publicação."
       },
       "activateFree": "Ativar o DOI",
       "paid": {

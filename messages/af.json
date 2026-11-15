@@ -6882,7 +6882,10 @@
         "currency": "Hierdie werkruimte se Stripe-rekening is in {currency}, en verslae word in Amerikaanse dollar betaal, so ’n kaart kan hier nie betaal voordat ons dit verander nie.",
         "emailUs": "E-pos ons",
         "saveCard": "Stoor ’n kaart",
-        "codeOff": "{off} af van die {amount} wat ’n kaart betaal"
+        "codeOff": "{off} af van die {amount} wat ’n kaart betaal",
+        "charged": "Op ’n kaart gehef",
+        "leftNow": "Jou publikasiesaldo hou nou {left}.",
+        "keptNow": "{kept} daarvan bly in jou publikasiesaldo."
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {

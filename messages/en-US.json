@@ -6881,7 +6881,10 @@
         "currency": "This workspace’s Stripe account is in {currency}, and reports are paid in US dollars, so a card can’t pay here until we change it.",
         "emailUs": "Email us",
         "saveCard": "Save a card",
-        "codeOff": "{off} off the {amount} a card pays"
+        "codeOff": "{off} off the {amount} a card pays",
+        "charged": "Charged to a card",
+        "leftNow": "Your publication balance holds {left} now.",
+        "keptNow": "{kept} of it stays in your publication balance."
       },
       "activateFree": "Activate the DOI",
       "paid": {

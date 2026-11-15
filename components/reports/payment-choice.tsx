@@ -8,7 +8,8 @@
 import { useEffect, type ReactNode } from "react";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { CreditCard, Wallet } from "@/components/icons";
+import { ArrowUpRight, CreditCard, FileText, Wallet } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -151,6 +152,57 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, onSave
         ) : null}
       </AutoHeight>
       {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
+    </div>
+  );
+}
+
+/** What a live report was paid with (convex/reports/activation.ts `paidWith`), in US dollars. */
+export type Paid = { fromBalance: number; byCredit: number; byCard: number; code: string | null; left: number | null; receipt: boolean };
+
+/**
+ * A live report's bill as it was paid, where its bill stood on every step before: its price, what the balance, a code
+ * and Stripe credit took off it, and what a card was charged, with Stripe's receipt under it when something was bought.
+ */
+export function PaidBill({ licence, price, paid, onReceipt, boxed = false, className }: { licence: string; /** In dollars. */ price: number; paid: Paid; /** Opens Stripe's receipt. */ onReceipt: () => void; boxed?: boolean; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  const money = useMoney();
+  const covered = paid.fromBalance + paid.byCredit + paid.byCard;
+  // What the code took off: the rest of the price. A card that bought past it left the rest in the balance.
+  const discount = Math.round(Math.max(0, price - covered) * 100) / 100;
+  const kept = Math.round(Math.max(0, covered - price) * 100) / 100;
+  return (
+    <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
+      <dl className="space-y-2">
+        <Line label={licence} amount={money(price)} />
+        {paid.fromBalance > 0 ? <Line label={t("payment.balance")} amount={`−${money(paid.fromBalance)}`} off /> : null}
+        {paid.code && discount > 0 ? <Line label={t("payment.code", { code: paid.code })} amount={`−${money(discount)}`} off /> : null}
+        {paid.byCredit > 0 ? (
+          <Line
+            label={
+              <span className="flex min-w-0 items-center gap-1.5">
+                <StripeIcon aria-hidden className="size-3.5 shrink-0" />
+                <span className="truncate">{t("payment.credit")}</span>
+              </span>
+            }
+            amount={`−${money(paid.byCredit)}`}
+            off
+          />
+        ) : null}
+      </dl>
+      <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
+        <span className="font-medium">{t("payment.charged")}</span>
+        <bdi dir="ltr" className="text-lg/6 font-semibold tabular-nums">
+          {money(paid.byCard)}
+        </bdi>
+      </div>
+      {kept > 0 || paid.left !== null ? (
+        <p className="pt-2 text-xs text-pretty text-muted-foreground">{paid.left !== null ? t("payment.leftNow", { left: money(paid.left) }) : t("payment.keptNow", { kept: money(kept) })}</p>
+      ) : null}
+      {paid.receipt ? (
+        <Button variant="link" size="sm" className="mt-1.5 h-auto gap-1 px-0 text-xs" onClick={onReceipt}>
+          <FileText className="size-3.5" /> {t("paid.receipt")} <ArrowUpRight className="size-3.5" />
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -6882,7 +6882,10 @@
         "currency": "Das Stripe-Konto dieses Arbeitsbereichs ist in {currency}, und Berichte werden in US-Dollar bezahlt. Eine Karte kann hier erst zahlen, wenn wir es ändern.",
         "emailUs": "Schreiben Sie uns",
         "saveCard": "Karte speichern",
-        "codeOff": "{off} auf die {amount}, die eine Karte zahlt"
+        "codeOff": "{off} auf die {amount}, die eine Karte zahlt",
+        "charged": "Der Karte belastet",
+        "leftNow": "Ihr Publikationsguthaben hält jetzt {left}.",
+        "keptNow": "{kept} davon bleiben in Ihrem Publikationsguthaben."
       },
       "activateFree": "DOI aktivieren",
       "paid": {

@@ -6881,7 +6881,10 @@
         "currency": "このワークスペースの Stripe アカウントは {currency} 建てで、レポートは米ドルで支払うため、変更するまでここではカードで支払えません。",
         "emailUs": "メールで連絡",
         "saveCard": "カードを保存",
-        "codeOff": "カードで支払う {amount} から {off} 引き"
+        "codeOff": "カードで支払う {amount} から {off} 引き",
+        "charged": "カードへの請求",
+        "leftNow": "公開残高は現在 {left} です。",
+        "keptNow": "そのうち {kept} は公開残高に残ります。"
       },
       "activateFree": "DOI を有効化",
       "paid": {

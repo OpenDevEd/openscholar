@@ -6881,7 +6881,10 @@
         "currency": "此工作区的 Stripe 账户使用 {currency}，而报告以美元支付，所以在我们更改之前这里无法用银行卡支付。",
         "emailUs": "给我们发邮件",
         "saveCard": "保存银行卡",
-        "codeOff": "银行卡支付的 {amount} 减 {off}"
+        "codeOff": "银行卡支付的 {amount} 减 {off}",
+        "charged": "银行卡扣款",
+        "leftNow": "你的发布余额现为 {left}。",
+        "keptNow": "其中 {kept} 留在你的发布余额中。"
       },
       "activateFree": "激活 DOI",
       "paid": {

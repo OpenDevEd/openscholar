@@ -6882,7 +6882,10 @@
         "currency": "Akaunti ya Stripe ya eneo hili la kazi iko katika {currency}, na ripoti hulipwa kwa dola za Marekani, kwa hiyo kadi haiwezi kulipa hapa hadi tuibadilishe.",
         "emailUs": "Tuandikie",
         "saveCard": "Hifadhi kadi",
-        "codeOff": "{off} punguzo kwenye {amount} zinazolipwa na kadi"
+        "codeOff": "{off} punguzo kwenye {amount} zinazolipwa na kadi",
+        "charged": "Kilichotozwa kwenye kadi",
+        "leftNow": "Salio lako la uchapishaji sasa lina {left}.",
+        "keptNow": "{kept} zinabaki kwenye salio lako la uchapishaji."
       },
       "activateFree": "Washa DOI",
       "paid": {

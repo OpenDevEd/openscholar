@@ -6881,7 +6881,10 @@
         "currency": "I-akhawunti ye-Stripe yale ndawo yokusebenza ikwi-{currency}, futhi imibiko ikhokhwa ngamadola aseMelika, ngakho ikhadi alikwazi ukukhokha lapha size siyishintshe.",
         "emailUs": "Sithumelele i-imeyili",
         "saveCard": "Gcina ikhadi",
-        "codeOff": "{off} kususwe ku-{amount} ekhokhwa yikhadi"
+        "codeOff": "{off} kususwe ku-{amount} ekhokhwa yikhadi",
+        "charged": "Okukhokhiswe ekhadini",
+        "leftNow": "Ibhalansi yakho yokushicilela manje inongu-{left}.",
+        "keptNow": "U-{kept} wakho usala kubhalansi yakho yokushicilela."
       },
       "activateFree": "Vula i-DOI",
       "paid": {
