@@ -37,8 +37,8 @@ const sessionStart = (transcript: string | null | undefined) => (transcript && e
 
 /** When the last passing check ran and how many overlays it opened. A recorded skip has no count; the user's "don't verify" is `off`. */
 function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: number; off?: boolean } {
-  const pass = readJson<{ at: number; opened?: number; off?: boolean }>(file);
-  return { lastPassMs: pass?.at ?? null, lastPassOpened: pass?.opened, off: pass?.off };
+  const { at = null, opened, off } = readJson<{ at: number; opened?: number; off?: boolean }>(file) ?? {};
+  return { lastPassMs: at, lastPassOpened: opened, off };
 }
 
 export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; start: string }) {

@@ -342,10 +342,10 @@ async function drive(target: string, values: Values, mode: "shift" | "shot") {
 }
 
 /** Records why no browser check runs. `off` is the user saying not to verify, which quiets the stop hook for the rest of the session. */
-function skip(reason: string, off = false) {
-  if (!reason.trim()) throw new Error(`Say why: npm run verify -- ${off ? "off" : "skip"} "<reason>".`);
-  writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), skipped: reason, ...(off && { off }) });
-  console.log(off ? `Recorded, and the stop hook stays quiet for the rest of this session: ${reason}` : `Recorded: ${reason}`);
+function skip(reason: string, mark: { off?: true } = {}) {
+  if (!reason.trim()) throw new Error('Say why: npm run verify -- skip "<reason>", or off "<the user\'s words>".');
+  writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), skipped: reason, ...mark });
+  console.log(`Recorded: ${reason}`);
 }
 
 const HELP = `Usage: npm run verify -- <command>
@@ -391,7 +391,7 @@ const COMMANDS: Record<string, (values: Values, rest: string[]) => unknown> = {
   shift: (values, rest) => drive(rest[0] ?? "", values, "shift"),
   shot: (values, rest) => drive(rest[0] ?? "", values, "shot"),
   skip: (_, rest) => skip(rest.join(" ")),
-  off: (_, rest) => skip(rest.join(" "), true),
+  off: (_, rest) => skip(rest.join(" "), { off: true }),
   hook: (_, rest) => rest[0] === "stop" && hookStop({ root: ROOT, baseBranch: "origin/dev", userFacing: USER_FACING, overlay: OVERLAY_CODE, lastPassFile: LAST_PASS, start: "npm run verify -- up --prod" }),
 };
 
