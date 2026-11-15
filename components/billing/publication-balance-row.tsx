@@ -16,7 +16,7 @@ import type { BalancePart } from "@/convex/billing/validators";
  * stays until used, and alone it needs no second line. It pays for reports on Openscholar Reports; a card pays what
  * it can't, after any credit at Stripe, which is said here too: the bill of a report names both.
  */
-export function PublicationBalanceRow({ parts, unlimited = false, credit = 0, currency }: { parts: BalancePart[]; /** A balance with no limit: every report is paid from it. */ unlimited?: boolean; /** Credit on the workspace's Stripe customer, in dollars, which a card's part of a report is taken from first. */ credit?: number; /** The Stripe customer's currency when it isn't dollars: a card can't pay for a report then. */ currency?: string }) {
+export function PublicationBalanceRow({ parts, unlimited = false, credit = 0, onSaveCard, currency }: { parts: BalancePart[]; /** A balance with no limit: every report is paid from it. */ unlimited?: boolean; /** Credit on the workspace's Stripe customer, in dollars, which a card's part of a report is taken from first. */ credit?: number; /** No card is saved: the credit pays only on a saved card, so the row says so and offers this, which opens Stripe's page for cards. */ onSaveCard?: () => void; /** The Stripe customer's currency when it isn't dollars: a card can't pay for a report then. */ currency?: string }) {
   const t = useTranslations("billingPage.publication");
   const format = useFormatter();
   const money = useMoney();
@@ -66,7 +66,12 @@ export function PublicationBalanceRow({ parts, unlimited = false, credit = 0, cu
           {credit > 0 ? (
             <span className="inline-flex items-center gap-1.5">
               <StripeIcon aria-hidden className="size-3.5 shrink-0" />
-              {t("stripeCredit", { amount: money(credit) })}
+              {t(onSaveCard ? "stripeCreditNoCard" : "stripeCredit", { amount: money(credit) })}
+              {onSaveCard ? (
+                <button type="button" onClick={onSaveCard} className="ms-1 font-medium text-foreground underline underline-offset-2">
+                  {t("saveCard")}
+                </button>
+              ) : null}
             </span>
           ) : null}
           {currency ? (

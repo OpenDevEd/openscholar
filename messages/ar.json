@@ -431,7 +431,9 @@
       "publish": "انشر",
       "noLimit": "بلا حد",
       "stripeCredit": "رصيد Stripe البالغ {amount} يُستخدم قبل البطاقة",
-      "stripeCurrency": "لا يمكن الدفع بالبطاقة للتقارير ما دام حساب Stripe بعملة {currency}"
+      "stripeCurrency": "لا يمكن الدفع بالبطاقة للتقارير ما دام حساب Stripe بعملة {currency}",
+      "stripeCreditNoCard": "رصيد Stripe البالغ {amount} يُستخدم بعد حفظ بطاقة",
+      "saveCard": "احفظ بطاقة"
     }
   },
   "errors": {
@@ -6879,7 +6881,8 @@
         "leastStripe": "يخصم Stripe من البطاقة {least} على الأقل، لذا يبقى {spare} في رصيدك.",
         "currency": "حساب Stripe لمساحة العمل هذه بعملة {currency}، والتقارير تُدفع بالدولار الأمريكي، لذا لا يمكن الدفع بالبطاقة هنا حتى نغيّره.",
         "emailUs": "راسلنا",
-        "saveCard": "احفظ بطاقة"
+        "saveCard": "احفظ بطاقة",
+        "codeOff": "{off} من {amount} التي تدفعها البطاقة"
       },
       "activateFree": "فعّل الـ DOI",
       "paid": {

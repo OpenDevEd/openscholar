@@ -431,7 +431,9 @@
       "publish": "Veröffentlichen",
       "noLimit": "Ohne Limit",
       "stripeCredit": "Stripe-Guthaben von {amount} zahlt vor der Karte",
-      "stripeCurrency": "Eine Karte kann keine Berichte bezahlen, solange das Stripe-Konto in {currency} ist"
+      "stripeCurrency": "Eine Karte kann keine Berichte bezahlen, solange das Stripe-Konto in {currency} ist",
+      "stripeCreditNoCard": "Stripe-Guthaben von {amount} zahlt, sobald eine Karte gespeichert ist",
+      "saveCard": "Karte speichern"
     }
   },
   "errors": {
@@ -6879,7 +6881,8 @@
         "leastStripe": "Stripe belastet eine Karte mit mindestens {least}, also bleiben {spare} in Ihrem Guthaben.",
         "currency": "Das Stripe-Konto dieses Arbeitsbereichs ist in {currency}, und Berichte werden in US-Dollar bezahlt. Eine Karte kann hier erst zahlen, wenn wir es ändern.",
         "emailUs": "Schreiben Sie uns",
-        "saveCard": "Karte speichern"
+        "saveCard": "Karte speichern",
+        "codeOff": "{off} auf die {amount}, die eine Karte zahlt"
       },
       "activateFree": "DOI aktivieren",
       "paid": {

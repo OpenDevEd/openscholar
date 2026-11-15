@@ -7,7 +7,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { CreditCard, Wallet } from "@/components/icons";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Segmented } from "@/components/settings/parts";
@@ -82,6 +82,7 @@ export function PayWithSwitch({ funds: balance, credited, payWith, onPayWith, cl
 export function Bill({ licence, price, funds, owner, payWith, code, note, onSaveCard, now = false, boxed = false, className }: { /** Opens Stripe's page for the workspace's cards, where one is saved: offered where Stripe credit sits unused for want of one. */ onSaveCard?: () => void; /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; funds: Funds; /** The organisation whose Stripe account the credit is on; null for the person's own. */ owner: string | null; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
+  const format = useFormatter();
   const sum = payment({ price, balance: funds.balance, payWith: funds.balance === 0 ? "card" : payWith, off: code?.off ?? 0, credit: funds.credit, cardSaved: funds.cardSaved });
   const held = <bdi dir="ltr" className="tabular-nums">{money(funds.credit)}</bdi>;
   return (
@@ -90,7 +91,8 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, onSave
         <dl className="space-y-2">
           <Line label={licence} amount={money(price)} />
           {sum.fromBalance > 0 ? <Line label={t("balance")} amount={`−${money(sum.fromBalance)}`} off /> : null}
-          {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} amount={`−${money(sum.discount)}`} off /> : null}
+          {/* A code lowers only what a card buys, never what the balance pays: said under it, as people expected it off the price. */}
+          {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} hint={t("codeOff", { off: format.number(code.off, { style: "percent", maximumFractionDigits: 1 }), amount: money(sum.bought) })} amount={`−${money(sum.discount)}`} off /> : null}
           {sum.fromCredit > 0 ? (
             <Line
               label={

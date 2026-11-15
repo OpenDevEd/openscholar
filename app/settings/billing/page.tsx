@@ -191,7 +191,7 @@ export default function BillingPage() {
                   </div>
                 </div>
               ) : null}
-              {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} credit={account.credit} currency={account.stripeCurrency} /> : null}
+              {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} credit={account.credit} currency={account.stripeCurrency} onSaveCard={account.card ? undefined : () => void updatePayment()} /> : null}
             </div>
             {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>

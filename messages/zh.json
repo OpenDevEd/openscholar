@@ -430,7 +430,9 @@
       "publish": "发布",
       "noLimit": "不限次数",
       "stripeCredit": "Stripe 余额 {amount} 先于银行卡支付",
-      "stripeCurrency": "Stripe 账户使用 {currency} 期间无法用银行卡支付报告"
+      "stripeCurrency": "Stripe 账户使用 {currency} 期间无法用银行卡支付报告",
+      "stripeCreditNoCard": "保存银行卡后，Stripe 余额 {amount} 才能抵扣",
+      "saveCard": "保存银行卡"
     }
   },
   "errors": {
@@ -6878,7 +6880,8 @@
         "leastStripe": "Stripe 对银行卡至少收取 {least}，因此 {spare} 会留在你的余额中。",
         "currency": "此工作区的 Stripe 账户使用 {currency}，而报告以美元支付，所以在我们更改之前这里无法用银行卡支付。",
         "emailUs": "给我们发邮件",
-        "saveCard": "保存银行卡"
+        "saveCard": "保存银行卡",
+        "codeOff": "银行卡支付的 {amount} 减 {off}"
       },
       "activateFree": "激活 DOI",
       "paid": {

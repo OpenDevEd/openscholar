@@ -431,7 +431,9 @@
       "publish": "Chapisha",
       "noLimit": "Bila kikomo",
       "stripeCredit": "Salio la Stripe la {amount} hulipa kabla ya kadi",
-      "stripeCurrency": "Kadi haiwezi kulipia ripoti wakati akaunti ya Stripe iko katika {currency}"
+      "stripeCurrency": "Kadi haiwezi kulipia ripoti wakati akaunti ya Stripe iko katika {currency}",
+      "stripeCreditNoCard": "Salio la Stripe la {amount} hulipa kadi ikishahifadhiwa",
+      "saveCard": "Hifadhi kadi"
     }
   },
   "errors": {
@@ -6879,7 +6881,8 @@
         "leastStripe": "Stripe hutoza kadi angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
         "currency": "Akaunti ya Stripe ya eneo hili la kazi iko katika {currency}, na ripoti hulipwa kwa dola za Marekani, kwa hiyo kadi haiwezi kulipa hapa hadi tuibadilishe.",
         "emailUs": "Tuandikie",
-        "saveCard": "Hifadhi kadi"
+        "saveCard": "Hifadhi kadi",
+        "codeOff": "{off} punguzo kwenye {amount} zinazolipwa na kadi"
       },
       "activateFree": "Washa DOI",
       "paid": {

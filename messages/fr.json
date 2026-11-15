@@ -430,7 +430,9 @@
       "publish": "Publier",
       "noLimit": "Sans limite",
       "stripeCredit": "Le crédit Stripe de {amount} paie avant la carte",
-      "stripeCurrency": "Une carte ne peut pas payer les rapports tant que le compte Stripe est en {currency}"
+      "stripeCurrency": "Une carte ne peut pas payer les rapports tant que le compte Stripe est en {currency}",
+      "stripeCreditNoCard": "Le crédit Stripe de {amount} paie dès qu’une carte est enregistrée",
+      "saveCard": "Enregistrer une carte"
     }
   },
   "errors": {
@@ -6878,7 +6880,8 @@
         "leastStripe": "Stripe débite une carte d’au moins {least}, donc {spare} reste dans votre solde.",
         "currency": "Le compte Stripe de cet espace de travail est en {currency} et les rapports se paient en dollars américains : une carte ne peut pas payer ici tant que nous ne l’avons pas changé.",
         "emailUs": "Écrivez-nous",
-        "saveCard": "Enregistrer une carte"
+        "saveCard": "Enregistrer une carte",
+        "codeOff": "{off} sur les {amount} que paie la carte"
       },
       "activateFree": "Activer le DOI",
       "paid": {

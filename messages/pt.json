@@ -431,7 +431,9 @@
       "publish": "Publicar",
       "noLimit": "Sem limite",
       "stripeCredit": "O crédito de {amount} no Stripe paga antes do cartão",
-      "stripeCurrency": "Um cartão não pode pagar relatórios enquanto a conta do Stripe estiver em {currency}"
+      "stripeCurrency": "Um cartão não pode pagar relatórios enquanto a conta do Stripe estiver em {currency}",
+      "stripeCreditNoCard": "O crédito de {amount} no Stripe paga quando houver um cartão salvo",
+      "saveCard": "Salvar um cartão"
     }
   },
   "errors": {
@@ -6879,7 +6881,8 @@
         "leastStripe": "O Stripe cobra no mínimo {least} de um cartão, então {spare} fica no seu saldo.",
         "currency": "A conta do Stripe deste espaço de trabalho está em {currency} e os relatórios são pagos em dólares americanos, então um cartão não pode pagar aqui até a mudarmos.",
         "emailUs": "Escreva para nós",
-        "saveCard": "Salvar um cartão"
+        "saveCard": "Salvar um cartão",
+        "codeOff": "{off} a menos nos {amount} que o cartão paga"
       },
       "activateFree": "Ativar o DOI",
       "paid": {

@@ -430,7 +430,9 @@
       "publish": "公開",
       "noLimit": "無制限",
       "stripeCredit": "Stripe のクレジット {amount} はカードより先に使われます",
-      "stripeCurrency": "Stripe アカウントが {currency} 建ての間はレポートをカードで支払えません"
+      "stripeCurrency": "Stripe アカウントが {currency} 建ての間はレポートをカードで支払えません",
+      "stripeCreditNoCard": "カードを保存すると Stripe のクレジット {amount} が使われます",
+      "saveCard": "カードを保存"
     }
   },
   "errors": {
@@ -6878,7 +6880,8 @@
         "leastStripe": "Stripe はカードに最低 {least} を請求するため、{spare} は残高に残ります。",
         "currency": "このワークスペースの Stripe アカウントは {currency} 建てで、レポートは米ドルで支払うため、変更するまでここではカードで支払えません。",
         "emailUs": "メールで連絡",
-        "saveCard": "カードを保存"
+        "saveCard": "カードを保存",
+        "codeOff": "カードで支払う {amount} から {off} 引き"
       },
       "activateFree": "DOI を有効化",
       "paid": {

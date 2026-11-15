@@ -431,7 +431,9 @@
       "publish": "Publiseer",
       "noLimit": "Geen limiet",
       "stripeCredit": "Stripe-krediet van {amount} betaal voor ’n kaart",
-      "stripeCurrency": "’n Kaart kan nie vir verslae betaal solank die Stripe-rekening in {currency} is nie"
+      "stripeCurrency": "’n Kaart kan nie vir verslae betaal solank die Stripe-rekening in {currency} is nie",
+      "stripeCreditNoCard": "Stripe-krediet van {amount} betaal sodra ’n kaart gestoor is",
+      "saveCard": "Stoor ’n kaart"
     }
   },
   "errors": {
@@ -6879,7 +6881,8 @@
         "leastStripe": "Stripe hef ’n kaart minstens {least}, so {spare} bly in jou saldo.",
         "currency": "Hierdie werkruimte se Stripe-rekening is in {currency}, en verslae word in Amerikaanse dollar betaal, so ’n kaart kan hier nie betaal voordat ons dit verander nie.",
         "emailUs": "E-pos ons",
-        "saveCard": "Stoor ’n kaart"
+        "saveCard": "Stoor ’n kaart",
+        "codeOff": "{off} af van die {amount} wat ’n kaart betaal"
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {

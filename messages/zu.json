@@ -430,7 +430,9 @@
       "publish": "Shicilela",
       "noLimit": "Akukho mkhawulo",
       "stripeCredit": "Isikweletu se-Stripe esingu-{amount} sikhokha ngaphambi kwekhadi",
-      "stripeCurrency": "Ikhadi alikwazi ukukhokhela imibiko uma i-akhawunti ye-Stripe isekwi-{currency}"
+      "stripeCurrency": "Ikhadi alikwazi ukukhokhela imibiko uma i-akhawunti ye-Stripe isekwi-{currency}",
+      "stripeCreditNoCard": "Isikweletu se-Stripe esingu-{amount} sikhokha uma ikhadi seligciniwe",
+      "saveCard": "Gcina ikhadi"
     }
   },
   "errors": {
@@ -6878,7 +6880,8 @@
         "leastStripe": "I-Stripe ikhokhisa ikhadi okungenani u-{least}, ngakho u-{spare} usala kubhalansi yakho.",
         "currency": "I-akhawunti ye-Stripe yale ndawo yokusebenza ikwi-{currency}, futhi imibiko ikhokhwa ngamadola aseMelika, ngakho ikhadi alikwazi ukukhokha lapha size siyishintshe.",
         "emailUs": "Sithumelele i-imeyili",
-        "saveCard": "Gcina ikhadi"
+        "saveCard": "Gcina ikhadi",
+        "codeOff": "{off} kususwe ku-{amount} ekhokhwa yikhadi"
       },
       "activateFree": "Vula i-DOI",
       "paid": {

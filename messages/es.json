@@ -431,7 +431,9 @@
       "publish": "Publicar",
       "noLimit": "Sin límite",
       "stripeCredit": "El saldo de {amount} en Stripe paga antes que la tarjeta",
-      "stripeCurrency": "Una tarjeta no puede pagar informes mientras la cuenta de Stripe esté en {currency}"
+      "stripeCurrency": "Una tarjeta no puede pagar informes mientras la cuenta de Stripe esté en {currency}",
+      "stripeCreditNoCard": "El saldo de {amount} en Stripe paga cuando haya una tarjeta guardada",
+      "saveCard": "Guardar una tarjeta"
     }
   },
   "errors": {
@@ -6879,7 +6881,8 @@
         "leastStripe": "Stripe cobra al menos {least} a una tarjeta, así que {spare} se queda en tu saldo.",
         "currency": "La cuenta de Stripe de este espacio de trabajo está en {currency} y los informes se pagan en dólares estadounidenses, así que una tarjeta no puede pagar aquí hasta que la cambiemos.",
         "emailUs": "Escríbenos",
-        "saveCard": "Guardar una tarjeta"
+        "saveCard": "Guardar una tarjeta",
+        "codeOff": "{off} menos sobre los {amount} que paga la tarjeta"
       },
       "activateFree": "Activar el DOI",
       "paid": {

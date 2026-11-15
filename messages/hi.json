@@ -430,7 +430,9 @@
       "publish": "प्रकाशित करें",
       "noLimit": "कोई सीमा नहीं",
       "stripeCredit": "{amount} का Stripe क्रेडिट कार्ड से पहले लगता है",
-      "stripeCurrency": "Stripe खाता {currency} में रहने तक कार्ड से रिपोर्ट का भुगतान नहीं हो सकता"
+      "stripeCurrency": "Stripe खाता {currency} में रहने तक कार्ड से रिपोर्ट का भुगतान नहीं हो सकता",
+      "stripeCreditNoCard": "कार्ड सेव होने पर {amount} का Stripe क्रेडिट लगता है",
+      "saveCard": "कार्ड सेव करें"
     }
   },
   "errors": {
@@ -6878,7 +6880,8 @@
         "leastStripe": "Stripe कार्ड से कम से कम {least} लेता है, इसलिए {spare} आपके बैलेंस में रहते हैं।",
         "currency": "इस वर्कस्पेस का Stripe खाता {currency} में है और रिपोर्ट का भुगतान अमेरिकी डॉलर में होता है, इसलिए जब तक हम इसे बदल न दें, यहाँ कार्ड से भुगतान नहीं हो सकता।",
         "emailUs": "हमें ईमेल करें",
-        "saveCard": "कार्ड सेव करें"
+        "saveCard": "कार्ड सेव करें",
+        "codeOff": "कार्ड से चुकाए जाने वाले {amount} पर {off} छूट"
       },
       "activateFree": "DOI सक्रिय करें",
       "paid": {

@@ -430,7 +430,9 @@
       "publish": "Publish",
       "noLimit": "No limit",
       "stripeCredit": "Stripe credit of {amount} pays before a card",
-      "stripeCurrency": "A card can’t pay for reports while the Stripe account is in {currency}"
+      "stripeCurrency": "A card can’t pay for reports while the Stripe account is in {currency}",
+      "stripeCreditNoCard": "Stripe credit of {amount} pays once a card is saved",
+      "saveCard": "Save a card"
     }
   },
   "errors": {
@@ -6878,7 +6880,8 @@
         "leastStripe": "Stripe charges a card at least {least}, so {spare} stays in your balance.",
         "currency": "This workspace’s Stripe account is in {currency}, and reports are paid in US dollars, so a card can’t pay here until we change it.",
         "emailUs": "Email us",
-        "saveCard": "Save a card"
+        "saveCard": "Save a card",
+        "codeOff": "{off} off the {amount} a card pays"
       },
       "activateFree": "Activate the DOI",
       "paid": {
