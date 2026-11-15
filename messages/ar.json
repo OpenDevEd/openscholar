@@ -6724,8 +6724,6 @@
       "changesDiscardFailed": "تعذّر تجاهل التعديلات.",
       "discard": "تجاهل",
       "pages": "{count, plural, zero {# صفحة} one {صفحة واحدة} two {صفحتان} few {# صفحات} many {# صفحة} other {# صفحة}}",
-      "agreementVersion": "الاتفاقية الإصدار {version}",
-      "checksVersion": "الفحوصات الإصدار {version}",
       "yourTitle": "عنوانك",
       "noDoi": "لا يوجد DOI بعد",
       "issn": "ISSN {issn}",
@@ -6898,7 +6896,8 @@
         "receipt": "الإيصال",
         "receiptFailed": "تعذّر فتح الإيصال. حاول مرة أخرى."
       },
-      "emailUs": "راسلنا"
+      "emailUs": "راسلنا",
+      "status": "الحالة"
     },
     "meta": {
       "publish": "نشر | Openscholar",

@@ -6724,8 +6724,6 @@
       "changesDiscardFailed": "Mabadiliko hayakuweza kuachwa.",
       "discard": "Acha",
       "pages": "{count, plural, one {ukurasa #} other {kurasa #}}",
-      "agreementVersion": "Makubaliano toleo {version}",
-      "checksVersion": "Ukaguzi toleo {version}",
       "yourTitle": "Kichwa chako",
       "noDoi": "Bado hakuna DOI",
       "issn": "ISSN {issn}",
@@ -6898,7 +6896,8 @@
         "receipt": "Risiti",
         "receiptFailed": "Risiti haikuweza kufunguliwa. Jaribu tena."
       },
-      "emailUs": "Tuandikie"
+      "emailUs": "Tuandikie",
+      "status": "Hali"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

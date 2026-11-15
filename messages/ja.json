@@ -6723,8 +6723,6 @@
       "changesDiscardFailed": "変更を破棄できませんでした。",
       "discard": "破棄",
       "pages": "{count, plural, other {# ページ}}",
-      "agreementVersion": "契約 v{version}",
-      "checksVersion": "チェック v{version}",
       "yourTitle": "あなたのタイトル",
       "noDoi": "DOI はまだありません",
       "issn": "ISSN {issn}",
@@ -6897,7 +6895,8 @@
         "receipt": "領収書",
         "receiptFailed": "領収書を開けませんでした。もう一度お試しください。"
       },
-      "emailUs": "メールで連絡"
+      "emailUs": "メールで連絡",
+      "status": "状態"
     },
     "meta": {
       "publish": "公開 | Openscholar",

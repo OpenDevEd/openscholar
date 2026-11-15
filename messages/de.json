@@ -6724,8 +6724,6 @@
       "changesDiscardFailed": "Die Änderungen konnten nicht verworfen werden.",
       "discard": "Verwerfen",
       "pages": "{count, plural, one {# Seite} other {# Seiten}}",
-      "agreementVersion": "Vereinbarung v{version}",
-      "checksVersion": "Prüfungen v{version}",
       "yourTitle": "Ihr Titel",
       "noDoi": "Noch kein DOI",
       "issn": "ISSN {issn}",
@@ -6898,7 +6896,8 @@
         "receipt": "Beleg",
         "receiptFailed": "Der Beleg ließ sich nicht öffnen. Versuchen Sie es erneut."
       },
-      "emailUs": "Schreiben Sie uns"
+      "emailUs": "Schreiben Sie uns",
+      "status": "Status"
     },
     "meta": {
       "publish": "Veröffentlichen | Openscholar",

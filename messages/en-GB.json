@@ -6723,8 +6723,6 @@
       "changesDiscardFailed": "The changes couldn't be discarded.",
       "discard": "Discard",
       "pages": "{count, plural, one {# page} other {# pages}}",
-      "agreementVersion": "Agreement v{version}",
-      "checksVersion": "Checks v{version}",
       "yourTitle": "Your title",
       "noDoi": "No DOI yet",
       "issn": "ISSN {issn}",
@@ -6897,7 +6895,8 @@
         "receipt": "Receipt",
         "receiptFailed": "The receipt couldn’t be opened. Try again."
       },
-      "emailUs": "Email us"
+      "emailUs": "Email us",
+      "status": "Status"
     },
     "meta": {
       "publish": "Publish | Openscholar",

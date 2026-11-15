@@ -2655,10 +2655,12 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
   const t = useTranslations("publishReports.flow");
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
-  const facts: Array<{ id: string; icon: typeof Hash; label: string; href?: string }> = [
-    ...(report?.pdf?.pages !== undefined ? [{ id: "pdf", icon: FileText, label: t("pages", { count: report.pdf.pages }) }] : []),
-    ...(report ? [{ id: "agreement", icon: PenLine, label: t("agreementVersion", { version: report.agreementVersion }), href: `/publish/agreements/${report.key}` }] : []),
-    ...(report?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: t("checksVersion", { version: report.checksVersion }) }] : []),
+  // The report's facts, as rows of a label and its value, as the bill under them reads.
+  const facts: Array<{ id: string; label: string; value: ReactNode; href?: string }> = [
+    ...(live ? [{ id: "status", label: t("status"), value: <span className="inline-flex items-center gap-1 font-medium ink-success"><BadgeCheck className="size-3.5" />{t("live")}</span> }] : []),
+    ...(report?.pdf?.pages !== undefined ? [{ id: "pdf", label: t("steps.upload"), value: t("pages", { count: report.pdf.pages }) }] : []),
+    ...(report ? [{ id: "agreement", label: t("steps.agreement"), value: t("version", { version: report.agreementVersion }), href: `/publish/agreements/${report.key}` }] : []),
+    ...(report?.checksVersion ? [{ id: "checks", label: t("steps.checks"), value: t("version", { version: report.checksVersion }) }] : []),
   ];
   return (
     // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it. As the
@@ -2686,27 +2688,25 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
           {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
           <FieldHelp field="issn" />
         </p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {live ? (
-            <StatusChip tone="success" icon={BadgeCheck} className="fade-enter">
-              {t("live")}
-            </StatusChip>
-          ) : null}
-          {facts.map((fact) =>
-            fact.href ? (
-              // The agreement as signed, in a tab of its own to read, save or print.
-              <Link key={fact.id} href={fact.href} target="_blank" rel="noopener noreferrer" className="fade-enter rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">
-                <StatusChip tone="neutral" icon={fact.icon} className="transition-colors hover:text-foreground">
-                  {fact.label}
-                </StatusChip>
-              </Link>
-            ) : (
-              <StatusChip key={fact.id} tone="neutral" icon={fact.icon} className="fade-enter">
-                {fact.label}
-              </StatusChip>
-            ),
-          )}
-        </div>
+        {facts.length > 0 ? (
+          <dl className="mt-4 space-y-1.5 border-t border-border-subtle pt-3 text-sm">
+            {facts.map((fact) => (
+              <div key={fact.id} className="fade-enter flex items-center justify-between gap-3">
+                <dt className="min-w-0 truncate text-muted-foreground">{fact.label}</dt>
+                <dd className="shrink-0 tabular-nums">
+                  {fact.href ? (
+                    // The agreement as signed, in a tab of its own to read, save or print.
+                    <Link href={fact.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 rounded-sm underline-offset-2 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                      {fact.value} <ArrowUpRight className="size-3" />
+                    </Link>
+                  ) : (
+                    fact.value
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
         {/* Where a step shows what it is working out, on a wide page: the agreement's bill. */}
         <div ref={slot} />
       </div>

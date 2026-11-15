@@ -6723,8 +6723,6 @@
       "changesDiscardFailed": "बदलाव छोड़े नहीं जा सके।",
       "discard": "छोड़ें",
       "pages": "{count, plural, one {# पेज} other {# पेज}}",
-      "agreementVersion": "समझौता v{version}",
-      "checksVersion": "जाँचें v{version}",
       "yourTitle": "आपका शीर्षक",
       "noDoi": "अभी कोई DOI नहीं",
       "issn": "ISSN {issn}",
@@ -6897,7 +6895,8 @@
         "receipt": "रसीद",
         "receiptFailed": "रसीद नहीं खुल सकी। फिर से कोशिश करें।"
       },
-      "emailUs": "हमें ईमेल करें"
+      "emailUs": "हमें ईमेल करें",
+      "status": "स्थिति"
     },
     "meta": {
       "publish": "प्रकाशित करें | Openscholar",

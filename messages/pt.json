@@ -6724,8 +6724,6 @@
       "changesDiscardFailed": "Não foi possível descartar as alterações.",
       "discard": "Descartar",
       "pages": "{count, plural, one {# página} other {# páginas}}",
-      "agreementVersion": "Acordo v{version}",
-      "checksVersion": "Verificações v{version}",
       "yourTitle": "O seu título",
       "noDoi": "Ainda sem DOI",
       "issn": "ISSN {issn}",
@@ -6898,7 +6896,8 @@
         "receipt": "Recibo",
         "receiptFailed": "Não foi possível abrir o recibo. Tente novamente."
       },
-      "emailUs": "Escreva para nós"
+      "emailUs": "Escreva para nós",
+      "status": "Estado"
     },
     "meta": {
       "publish": "Publicar | Openscholar",

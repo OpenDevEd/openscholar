@@ -6724,8 +6724,6 @@
       "changesDiscardFailed": "Die wysigings kon nie weggegooi word nie.",
       "discard": "Gooi weg",
       "pages": "{count, plural, one {# bladsy} other {# bladsye}}",
-      "agreementVersion": "Ooreenkoms weergawe {version}",
-      "checksVersion": "Kontroles weergawe {version}",
       "yourTitle": "Jou titel",
       "noDoi": "Nog geen DOI nie",
       "issn": "ISSN {issn}",
@@ -6898,7 +6896,8 @@
         "receipt": "Kwitansie",
         "receiptFailed": "Die kwitansie kon nie oopgemaak word nie. Probeer weer."
       },
-      "emailUs": "E-pos ons"
+      "emailUs": "E-pos ons",
+      "status": "Status"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

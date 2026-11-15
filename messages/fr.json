@@ -6723,8 +6723,6 @@
       "changesDiscardFailed": "Les modifications n'ont pas pu être abandonnées.",
       "discard": "Abandonner",
       "pages": "{count, plural, one {# page} other {# pages}}",
-      "agreementVersion": "Accord v{version}",
-      "checksVersion": "Vérifications v{version}",
       "yourTitle": "Votre titre",
       "noDoi": "Pas encore de DOI",
       "issn": "ISSN {issn}",
@@ -6897,7 +6895,8 @@
         "receipt": "Reçu",
         "receiptFailed": "Le reçu n’a pas pu s’ouvrir. Réessayez."
       },
-      "emailUs": "Écrivez-nous"
+      "emailUs": "Écrivez-nous",
+      "status": "Statut"
     },
     "meta": {
       "publish": "Publier | Openscholar",

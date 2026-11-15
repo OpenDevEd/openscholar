@@ -6723,8 +6723,6 @@
       "changesDiscardFailed": "Izinguquko azikwazanga ukulahlwa.",
       "discard": "Lahla",
       "pages": "{count, plural, one {ikhasi elingu-#} other {amakhasi angu-#}}",
-      "agreementVersion": "Isivumelwano inguqulo {version}",
-      "checksVersion": "Ukuhlolwa inguqulo {version}",
       "yourTitle": "Isihloko sakho",
       "noDoi": "Ayikho i-DOI okwamanje",
       "issn": "ISSN {issn}",
@@ -6897,7 +6895,8 @@
         "receipt": "Irisidi",
         "receiptFailed": "Irisidi ayivulekanga. Zama futhi."
       },
-      "emailUs": "Sithumelele i-imeyili"
+      "emailUs": "Sithumelele i-imeyili",
+      "status": "Isimo"
     },
     "meta": {
       "publish": "Shicilela | Openscholar",

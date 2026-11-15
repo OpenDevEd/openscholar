@@ -6723,8 +6723,6 @@
       "changesDiscardFailed": "无法放弃修改。",
       "discard": "放弃",
       "pages": "{count, plural, other {# 页}}",
-      "agreementVersion": "协议 v{version}",
-      "checksVersion": "检查 v{version}",
       "yourTitle": "您的标题",
       "noDoi": "尚无 DOI",
       "issn": "ISSN {issn}",
@@ -6897,7 +6895,8 @@
         "receipt": "收据",
         "receiptFailed": "无法打开收据，请重试。"
       },
-      "emailUs": "给我们发邮件"
+      "emailUs": "给我们发邮件",
+      "status": "状态"
     },
     "meta": {
       "publish": "发布 | Openscholar",
