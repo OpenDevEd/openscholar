@@ -371,6 +371,13 @@ describe("stopDecision", () => {
     expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, changed })).toEqual({ block: false });
   });
 
+  it("stays quiet for the rest of the session once the user said not to verify, and only that session", () => {
+    const changed = [{ path: "components/search/bar.tsx", mtimeMs: 8_000 }, { path: "components/workspaces/share-dialog.tsx", mtimeMs: 8_000, overlay: true }];
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, off: true, changed })).toEqual({ block: false });
+    // Said in an earlier session: a new one checks again.
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs: 7_500, lastPassMs: 7_000, off: true, changed })).toEqual({ block: true, files: ["components/search/bar.tsx", "components/workspaces/share-dialog.tsx"] });
+  });
+
   it("lets the agent stop once a verify pass is newer than every change", () => {
     expect(
       stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),

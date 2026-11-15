@@ -323,10 +323,12 @@ export function stopDecision(input: {
   lastPassMs: number | null;
   /** How many dialogs, sheets, popovers or menus the last passing check opened. Absent for a recorded skip. */
   lastPassOpened?: number;
+  /** The last record is the user saying not to verify (`verify -- off`); it holds for the rest of the session it was made in. */
+  off?: boolean;
   changed: { path: string; mtimeMs: number; overlay?: boolean }[];
   userFacing: RegExp;
 }): { block: false } | { block: true; files: string[]; unopened?: true } {
-  if (input.stopHookActive) return { block: false };
+  if (input.stopHookActive || (input.off && (input.lastPassMs ?? 0) > input.sessionStartMs)) return { block: false };
   const since = Math.max(input.sessionStartMs, input.lastPassMs ?? 0);
   const seen = input.changed.filter((file) => input.userFacing.test(file.path));
   const files = seen.filter((file) => file.mtimeMs > since).map((file) => file.path);

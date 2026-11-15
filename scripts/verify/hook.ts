@@ -35,10 +35,10 @@ async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_pat
 
 const sessionStart = (transcript: string | null | undefined) => (transcript && existsSync(transcript) ? statSync(transcript).birthtimeMs : 0);
 
-/** When the last passing check ran and how many overlays it opened. A recorded skip has no count. */
-function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: number } {
-  const pass = readJson<{ at: number; opened?: number }>(file);
-  return { lastPassMs: pass?.at ?? null, lastPassOpened: pass?.opened };
+/** When the last passing check ran and how many overlays it opened. A recorded skip has no count; the user's "don't verify" is `off`. */
+function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: number; off?: boolean } {
+  const pass = readJson<{ at: number; opened?: number; off?: boolean }>(file);
+  return { lastPassMs: pass?.at ?? null, lastPassOpened: pass?.opened, off: pass?.off };
 }
 
 export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; start: string }) {
@@ -53,7 +53,13 @@ export async function hookStop(options: { root: string; baseBranch: string; user
   if (decision.block) process.stdout.write(JSON.stringify({ decision: "block", reason: told(decision, options.start) }));
 }
 
-const told = (decision: { files: string[]; unopened?: true }, start: string) => (decision.unopened ? unopened(decision.files) : reason(decision.files, start));
+const told = (decision: { files: string[]; unopened?: true }, start: string) =>
+  [decision.unopened ? unopened(decision.files) : reason(decision.files, start), RESTATE].join(" ");
+
+// Before the steps, so an agent the user told not to verify stops here instead of starting a check.
+const OFF = 'If the user said not to verify, run `npm run verify -- off "<their words>"` and nothing else: the hook stays quiet for the rest of this session.';
+// The user reads only the last message, and this one comes after the reply.
+const RESTATE = "Then end with your reply to the user again in full, since they see only your last message.";
 
 function listed(files: string[]): string {
   const more = files.length > 8 ? `, and ${files.length - 8} more` : "";
@@ -63,6 +69,7 @@ function listed(files: string[]): string {
 function unopened(files: string[]): string {
   return [
     `You changed files that hold a dialog, sheet, popover or menu (${listed(files)}), and the last passing \`npm run verify -- shift\` opened none.`,
+    OFF,
     'Run it again with a --do step that opens each one you changed, such as --do \'click role=button[name="Share"]\'. With the data slowed, anything that pops in after it opens is reported: have it there when it opens by reading it where the trigger is, or fade it in.',
     'If nothing in them changed for a person, record why with `npm run verify -- skip "<reason>"`.',
   ].join(" ");
@@ -71,7 +78,8 @@ function unopened(files: string[]): string {
 function reason(files: string[], start: string): string {
   return [
     `You changed user-facing files (${listed(files)}) and no \`npm run verify -- shift\` has passed since.`,
+    OFF,
     `Start it with \`${start}\` if it isn't running, then run \`npm run verify -- shift <route>\` for each route those files affect, with --do steps for the interactions you changed. Fix what it reports and look at the screenshots it lists.`,
-    'If nothing a person sees changed, or the user said not to test, record why with `npm run verify -- skip "<reason>"`.',
+    'If nothing a person sees changed, record why with `npm run verify -- skip "<reason>"`.',
   ].join(" ");
 }

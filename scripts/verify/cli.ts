@@ -341,10 +341,11 @@ async function drive(target: string, values: Values, mode: "shift" | "shot") {
   else process.exitCode = 1;
 }
 
-function skip(reason: string) {
-  if (!reason.trim()) throw new Error('Say why: npm run verify -- skip "<reason>".');
-  writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), skipped: reason });
-  console.log(`Recorded: ${reason}`);
+/** Records why no browser check runs. `off` is the user saying not to verify, which quiets the stop hook for the rest of the session. */
+function skip(reason: string, off = false) {
+  if (!reason.trim()) throw new Error(`Say why: npm run verify -- ${off ? "off" : "skip"} "<reason>".`);
+  writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), skipped: reason, ...(off && { off }) });
+  console.log(off ? `Recorded, and the stop hook stays quiet for the rest of this session: ${reason}` : `Recorded: ${reason}`);
 }
 
 const HELP = `Usage: npm run verify -- <command>
@@ -358,6 +359,8 @@ const HELP = `Usage: npm run verify -- <command>
                            or page error that dev doesn't have. Writes screenshots.
   shot <path> [options]    Screenshots only (Chromium, no slowdown).
   skip "<reason>"          Record why this change needs no browser check.
+  off "<the user's words>" The user said not to verify: the stop hook stays quiet for the rest of
+                           this session, until a shift passes again.
 
 Options for shift and shot:
   --do "<step>"            Repeat for each action: click <selector>, hover <selector>,
@@ -388,6 +391,7 @@ const COMMANDS: Record<string, (values: Values, rest: string[]) => unknown> = {
   shift: (values, rest) => drive(rest[0] ?? "", values, "shift"),
   shot: (values, rest) => drive(rest[0] ?? "", values, "shot"),
   skip: (_, rest) => skip(rest.join(" ")),
+  off: (_, rest) => skip(rest.join(" "), true),
   hook: (_, rest) => rest[0] === "stop" && hookStop({ root: ROOT, baseBranch: "origin/dev", userFacing: USER_FACING, overlay: OVERLAY_CODE, lastPassFile: LAST_PASS, start: "npm run verify -- up --prod" }),
 };
 
