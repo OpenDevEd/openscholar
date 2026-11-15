@@ -41,13 +41,16 @@ function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: n
   return { lastPassMs: pass?.at ?? null, lastPassOpened: pass?.opened };
 }
 
-export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; offFile: string; start: string }) {
+/** Where a session's "don't verify" is kept: one file each, so two sessions in a worktree keep their own. "unknown" for an agent that can't name its session. */
+export const offFile = (dir: string, session: string | null | undefined) => path.join(dir, `${(session ?? "unknown").replace(/[^\w-]/g, "_")}.json`);
+
+export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; offDir: string; start: string }) {
   const input = await readInput();
   const decision = stopDecision({
     stopHookActive: input.stop_hook_active === true,
     sessionStartMs: sessionStart(input.transcript_path),
     ...lastPass(options.lastPassFile),
-    off: readJson<{ at: number; session?: string | null }>(options.offFile),
+    off: readJson<{ at: number; session?: string | null }>(offFile(options.offDir, input.session_id)) ?? readJson(offFile(options.offDir, null)),
     session: input.session_id,
     changed: changedFiles(options.root, options.baseBranch, options.overlay),
     userFacing: options.userFacing,
