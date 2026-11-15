@@ -54,18 +54,22 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       first would show this page whole for a few frames before taking it away. That holds for the first 350 ms, by which
       time the arriving page has faded in and there is nothing left to jump, and for as long as a portrait is still
       waiting for its photo (html.waiting, src/scripts/travel.js), which an interruption would leave as an empty frame.
+      The cut is made as the page is left (html.held), and a move in progress is noted on the page's own object
+      (html.move), never in the page itself. A style rule taken out as the move ended, as this was first done, made
+      Safari on a phone show the arriving page's words a few frames younger for one frame, so they blinked (iOS 27,
+      3 arrivals in 3; taken out 20 ms later, none in 3). The words' own entrance no longer lets that happen
+      (.rise, global.css), and this keeps the end of a move free of such changes all the same.
       A page left before it had finished arriving is kept by the browser as it stood, half way in, and a busy machine
       shows that for a frame when the page is next brought back. So such a page comes back with a plain cut too, and the
       frame reads as the start of it, not as a flash before a second move. */}
   <script is:inline>{
     const bar = () => document.querySelector(".bar"), html = document.documentElement;
-    addEventListener("pageswap", () => { html.cut = "moving" in html.dataset; try { sessionStorage.setItem("bar", Math.round(bar()?.getBoundingClientRect().width || 0)); } catch {} });
+    addEventListener("pageswap", (e) => { html.cut = !!html.move; if (html.held) e.viewTransition?.skipTransition(); try { sessionStorage.setItem("bar", Math.round(bar()?.getBoundingClientRect().width || 0)); } catch {} });
     addEventListener("pagereveal", (e) => {
       const move = e.viewTransition, b = bar(); if (!move) return;
       if (html.cut) { html.cut = false; move.skipTransition(); return; }
-      const hold = document.head.appendChild(Object.assign(document.createElement("style"), { textContent: "@view-transition { navigation: none; }" }));
-      const done = () => { hold.remove(); if (html.move === move) delete html.dataset.moving; };
-      html.move = move; html.dataset.moving = ""; setTimeout(() => html.classList.contains("waiting") || hold.remove(), 350); move.finished.finally(done); addEventListener("pagehide", done, { once: true });
+      const free = () => { if (html.held === move) html.held = null; }, done = () => { free(); if (html.move === move) html.move = null; };
+      html.move = html.held = move; setTimeout(() => html.classList.contains("waiting") || free(), 350); move.finished.finally(done); addEventListener("pagehide", done, { once: true });
       let was = 0; try { was = +sessionStorage.getItem("bar"); } catch {}
       if (!b || !was || Math.abs(was - b.getBoundingClientRect().width) < 1) return;
       b.style.transition = "none"; b.style.width = `${was}px`;

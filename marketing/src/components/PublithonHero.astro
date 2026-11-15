@@ -18,7 +18,7 @@ const MAPS = { night: "/img/earth-night-band-4096.avif", "night-sharp": "/img/ea
     <canvas class="ph-sky"></canvas>
     <canvas class="ph-air"></canvas>
   </div>
-  <div class="inner ph-copy">
+  <div class="inner ph-copy rises">
     <h1>{HEAD.map((word) => <><span class="wd">{word}</span>{" "}</>)}</h1>
     <p class="lead">At a publithon, researchers publish their own work at the same time, each piece with its own DOI. Bring a finished report or paper, and it goes live under your name for anyone to read and cite.</p>
     <div class="acts"><a class="btn" href={`${APP}/publish`}>Publish your work<Arrow /></a><a class="btn ghost" href="#sponsor">Sponsor a publithon</a></div>
@@ -258,10 +258,9 @@ void main(){
   .ph-copy { position: relative; display: grid; gap: 22px; justify-items: start; }
   .ph-copy h1 { font-size: 128px; line-height: .94; letter-spacing: -.045em; max-width: 7em; text-shadow: 0 2px 40px rgb(7 11 26 / .6); }
   .ph-copy .lead { max-width: 29em; color: rgb(255 255 255 / .88); text-shadow: 0 1px 18px rgb(7 11 26 / .9); }
-  /* The words come in as they do on every other page's hero (IntentHero, TeamHero, Contact): the heading, the
-     paragraph and the buttons each rise 18 px and fade in over .8 s, .06 s apart. */
-  .ph-copy > * { animation: ph-up .8s var(--ease) both; } .ph-copy > :nth-child(2) { animation-delay: .06s; } .ph-copy > :nth-child(3) { animation-delay: .12s; }
-  @keyframes ph-up { from { opacity: 0; transform: translateY(18px); } }
+  /* The words come in as they do on every other page's hero (.rises, global.css): the heading, the paragraph and the
+     buttons each rise 18 px and fade in over .8 s, .06 s apart. */
+  .ph-copy > :nth-child(2) { animation-delay: .06s; } .ph-copy > :nth-child(3) { animation-delay: .12s; }
   .wd { display: inline-block; white-space: nowrap; }
   /* The headline takes the scene's light, as the planet does: a cool white while it is in the planet's shade, and once
      the sun is coming up its warm light crosses the words from the right, the side the sun is on. Both lines share one

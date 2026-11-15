@@ -24,7 +24,7 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     {/* On a wide window the headline is large enough for its first line to run under the Earth's edge, and it runs on into a
         line that names the place the Earth is on ("around the world" with nobody picked). Each of those lines is marked
         data-at and follows the place in focus (-1 is nobody). The people of a place are listed on its card below. */}
-    <div class="ah-copy">
+    <div class="ah-copy rises">
       <h1>The people behind <br />Openscholar</h1>
       <div class="where" aria-hidden="true">
         <p class="on" data-at="-1">around the world</p>
@@ -142,9 +142,12 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
       place(); dirty = false;
     };
     const frame = (now = performance.now()) => { paint(now); drawArcs(now); };
-    const select = (i) => {
+    // Where the places are a list, the tour leaves the list alone (`list` false): it turns the Earth and lights the place's
+    // dot, and the open place only changes when one is picked. A list that opened the next place every few seconds read
+    // as the page scrolling by itself.
+    const select = (i, list = true) => {
       focus = i; const [to, lean] = i < 0 ? home() : wide.matches ? aim(P[i]) : [facing(P[i]), AY]; goal = to + Math.round((spin - to) / TAU) * TAU; tilt = lean;
-      panels.forEach((el, k) => { el.classList.toggle("open", k === i); heads[k].setAttribute("aria-expanded", String(k === i)); heads[k].setAttribute("aria-disabled", String(k === i)); el.querySelector(".pl-who").inert = k !== i; });
+      if (list || wide.matches) panels.forEach((el, k) => { el.classList.toggle("open", k === i); heads[k].setAttribute("aria-expanded", String(k === i)); heads[k].setAttribute("aria-disabled", String(k === i)); el.querySelector(".pl-who").inert = k !== i; });
       pins.forEach((el, k) => el.classList.toggle("here", k === i)); root.classList.toggle("some", i >= 0);
       // What stands beside the Earth follows it: the block for this place shows, and from the first place on it comes in
       // with a move of its own.
@@ -152,8 +155,8 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
       if (still()) { spin = goal; pitch = tilt; vel = tiltVel = 0; frame(); } else { dirty = true; run(); }
     };
     // The tour: everyone, then each place in turn, for as long as nobody has picked one and the pointer and the keyboard are
-    // elsewhere. In one column a place is always open, so the list keeps its height.
-    const tour = (now) => { if (pinned || held || drag || root.contains(document.activeElement)) { nextAt = 0; return; } if (!nextAt) nextAt = now + (focus < 0 && now - born < DAWN_MS ? DAWN_MS + 200 : 2600); if (now < nextAt) return; const n = focus + 1; select(n < P.length ? n : wide.matches ? -1 : 0); nextAt = now + (focus < 0 ? 3400 : 4600); };
+    // elsewhere. In a list a place is always open, so the list keeps its height, and the tour never changes which.
+    const tour = (now) => { if (pinned || held || drag || root.contains(document.activeElement)) { nextAt = 0; return; } if (!nextAt) nextAt = now + (focus < 0 && now - born < DAWN_MS ? DAWN_MS + 200 : 2600); if (now < nextAt) return; const n = focus + 1; select(n < P.length ? n : wide.matches ? -1 : 0, false); nextAt = now + (focus < 0 ? 3400 : 4600); };
     const run = () => { if (!raf && born && seen && !still() && !document.hidden) raf = requestAnimationFrame(loop); };
     const loop = (now) => {
       raf = 0; if (!planet) return; run(); if (scrolling) return;
@@ -196,8 +199,18 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     };
     for (const b of heads) {
       const i = Number(b.dataset.place), el = b.parentElement; let intent = 0;
-      // In one column, opening a place shuts the one above it. The picked row is held where it was tapped while that happens.
-      b.addEventListener("click", () => { pinned = true; const y0 = el.getBoundingClientRect().top, t0 = performance.now(); select(i); if (wide.matches) return; const hold = () => { scrollBy(0, el.getBoundingClientRect().top - y0); if (performance.now() - t0 < 650) requestAnimationFrame(hold); }; requestAnimationFrame(hold); });
+      // In a list, opening a place shuts the one that was open, and a place under that one moves up by the room it gave
+      // up. The page itself moves only when the opened place would end outside the window, once, by the browser's own
+      // smooth scroll. Scrolling on every frame to hold the tapped row still shook the whole page in Safari on a phone,
+      // which reports where the page is a frame or two late.
+      b.addEventListener("click", () => {
+        const was = el.classList.contains("open"); pinned = true; select(i); if (wide.matches || was) return;
+        // Where the place will stand once the others have shut: under `i` shut rows, each as tall as its name button,
+        // whatever height any of them has mid-way now (a second tap can land while the first is still opening).
+        const list = getComputedStyle(band), tall = parseFloat(list.getPropertyValue("--tall")), top = band.getBoundingClientRect().top + i * (b.offsetHeight + parseFloat(list.rowGap));
+        const roof = (document.getElementById("top")?.getBoundingClientRect().bottom ?? 0) + 8, by = top < roof ? top - roof : Math.max(0, Math.min(top - roof, top + tall - innerHeight + 8));
+        if (by) scrollBy({ top: by, behavior: calm.matches ? "auto" : "smooth" });
+      });
       // A pointer resting on a place opens it. One only passing over the band on its way elsewhere opens nothing.
       el.addEventListener("pointerenter", () => { clearTimeout(intent); intent = setTimeout(() => { if (hover.matches && wide.matches && focus !== i) { held = true; select(i); } }, 140); }); el.addEventListener("pointerleave", () => clearTimeout(intent));
     }
@@ -210,7 +223,7 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     globe.addEventListener("pointermove", (e) => { if (drag) spin = goal = drag.s + (e.clientX - drag.x) * (wide.matches ? 1 / R : .006); });
     const drop = () => { drag = null; globe.classList.remove("grab"); }; globe.addEventListener("pointerup", drop); globe.addEventListener("pointercancel", drop);
     // Close up, where a place is aimed depends on the hero's size, so a new size aims again.
-    new ResizeObserver(() => { if (!W || (Math.abs(globe.clientWidth - W) < 1 && Math.abs(globe.clientHeight - H) < 1)) return; size(); if (born) select(focus); else if (still()) frame(); }).observe(globe);
+    new ResizeObserver(() => { if (!W || (Math.abs(globe.clientWidth - W) < 1 && Math.abs(globe.clientHeight - H) < 1)) return; size(); if (born) select(focus, pinned); else if (still()) frame(); }).observe(globe);
     // Back in view, or back on the tab, the tour waits its full time again before it moves on.
     new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); nextAt = 0; run(); }, { threshold: .05 }).observe(globe);
     document.addEventListener("visibilitychange", () => { last = performance.now(); nextAt = 0; run(); });
@@ -219,8 +232,8 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     // On a phone nothing is drawn while the page is moving under a finger: drawing then is what makes scrolling stutter.
     if (!hover.matches) addEventListener("scroll", () => { clearTimeout(scrolling); scrolling = setTimeout(() => { scrolling = 0; last = performance.now(); }, 140); }, { passive: true });
     // Set up once the page has painted, so a weak GPU never holds the first paint, and once a page move that brought it in
-    // is over (html[data-moving], Base.astro): the move is drawn on the same thread as this set-up.
-    const begin = () => "moving" in document.documentElement.dataset ? setTimeout(begin, 80) : start().catch(rest);
+    // is over (html.move, Base.astro): the move is drawn on the same thread as this set-up.
+    const begin = () => document.documentElement.move ? setTimeout(begin, 80) : start().catch(rest);
     requestAnimationFrame(() => setTimeout(begin, 0));
   }
 </script>
@@ -233,8 +246,8 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
   .ah-copy { grid-area: copy; display: grid; gap: 20px; padding-bottom: 40px; } .ah-copy h1 { font-size: clamp(44px, 5.2vw, 78px); line-height: 1; letter-spacing: -.04em; } .ah-copy .lead { max-width: 23em; color: rgb(255 255 255 / .84); }
   /* The line that names the place the Earth is on, and the headline's two set lines, are for a wide window (below). */
   .where, .ah-copy h1 br { display: none; }
-  /* The words come in as they do on every other page's hero, however the page was reached. */
-  .ah-copy > * { animation: ah-up .8s var(--ease) both; } .ah-copy > :nth-child(2) { animation-delay: .06s; } .ah-copy > :nth-child(3) { animation-delay: .12s; } @keyframes ah-up { from { opacity: 0; transform: translateY(18px); } }
+  /* The words come in as they do on every other page's hero, however the page was reached (.rises, global.css). */
+  .ah-copy > :nth-child(2) { animation-delay: .06s; } .ah-copy > :nth-child(3) { animation-delay: .12s; }
   /* The hand only where the globe can be turned by hand: not once it rests as a still, has been stopped for being slow, or
      for a visitor who asked for less motion. */
   .ah:is(:global(.resting), :global(.frozen)) .ah-globe { cursor: default; } @media (prefers-reduced-motion: reduce) { .ah .ah-globe { cursor: default; } }
@@ -324,10 +337,11 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     /* Scrolling sinks the Earth into the page, as on the publish and communities pages, with its dots and links. The words
        and the places stay with the page, and the headline's cover follows the Earth down (--sunk, which the headline's
        mask adds to where the script says the planet is: the same 190 px). The sky stays too: its stars are layers
-       already, and moving them as well cost the places a blink now and then on a Retina screen short of memory. */
-    @media (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
+       already, and moving them as well cost the places a blink now and then on a Retina screen short of memory.
+       Only with a mouse or trackpad, as on those pages: under a finger these moves stuttered (Safari, iOS 27). */
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
       .ah-globe { animation: ah-sink linear both; animation-timeline: scroll(root); animation-range: 0 860px; }
-      .ah-copy h1 { animation: ah-up .8s var(--ease) both, ah-sunk linear both; animation-timeline: auto, scroll(root); animation-range: normal, 0 860px; }
+      .ah-copy h1 { animation: rise .8s var(--ease) both, ah-sunk linear both; animation-timeline: auto, scroll(root); animation-range: normal, 0 860px; }
       :global(html.back) .ah-copy h1 { animation: ah-sunk linear both; animation-timeline: scroll(root); animation-range: 0 860px; }
       @keyframes ah-sink { to { translate: 0 190px; } } @keyframes ah-sunk { to { --sunk: 190px; } }
     } }
@@ -344,8 +358,8 @@ const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((_, i) => 
     .ah { padding-bottom: clamp(24px, 4vw, 40px); }
     .ah-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "globe" "band"; justify-items: center; } .ah-copy { justify-items: center; padding-bottom: 0; text-align: center; }
     .ah-globe { width: min(100%, 560px); margin-block: -8px -28px; } .stack, .wire { display: none; } .pin:global(.here) .dot { scale: 1.25; }
-    .band { flex-direction: column; gap: 6px; width: 100%; height: auto; margin-top: 0; }
-    .pl { flex: none; height: 56px; border-radius: 16px; transition: height .6s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { height: 236px; } .pl::after { background: linear-gradient(90deg, var(--bg) 30%, transparent 78%); opacity: .9; transition: opacity .4s var(--ease); } .pl:global(.open)::after { opacity: 0; }
+    .band { --tall: 236px; flex-direction: column; gap: 6px; width: 100%; height: auto; margin-top: 0; }
+    .pl { flex: none; height: 56px; border-radius: 16px; transition: height .6s var(--ease), box-shadow .4s var(--ease); } .pl:global(.open) { height: var(--tall); } .pl::after { background: linear-gradient(90deg, var(--bg) 30%, transparent 78%); opacity: .9; transition: opacity .4s var(--ease); } .pl:global(.open)::after { opacity: 0; }
     .pl-art { left: auto; right: 0; width: min(100%, 560px); object-position: 100% 60%; opacity: .45; -webkit-mask-image: linear-gradient(90deg, transparent, #000 120px); mask-image: linear-gradient(90deg, transparent, #000 120px); transition: opacity .4s var(--ease), filter .5s var(--ease), object-position .6s var(--ease); } .pl:global(.open) .pl-art { object-position: 100% 100%; opacity: 1; }
     /* A row is narrow, so the picture comes closer to the names and the shade under them holds further across. */
     .pl::before { width: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 94%, transparent) 56%, transparent); }

@@ -8,14 +8,16 @@ const { title, lead, bg, art, screen, theme = "dark", alt, questions } = Astro.p
 <section class="bleed ihero" style={`--bg:${bg}`}>
   <Art name={art} pos="70% 100%" eager />
   <div class="inner iin">
-    <div class="ic"><h1>{title}</h1><p class="lead">{lead}</p>{Astro.slots.has("action") ? <slot name="action" /> : <AskBar id="ask-top" questions={questions} label="Ask your research question" />}</div>
-    <div class="is"><Device class="lap" kind="laptop" name={screen} theme={theme} eager alt={alt} sizes="(max-width: 1100px) 94vw, 680px" /></div>
+    <div class="ic"><h1 class="rise">{title}</h1><p class="lead rise">{lead}</p>{Astro.slots.has("action") ? <slot name="action" /> : <AskBar id="ask-top" questions={questions} label="Ask your research question" />}</div>
+    <div class="is rise"><Device class="lap" kind="laptop" name={screen} theme={theme} eager alt={alt} sizes="(max-width: 1100px) 94vw, 680px" /></div>
   </div>
 </section>
 <style>
   .ihero { background: var(--bg); padding-block: clamp(112px, 9vw, 136px) clamp(40px, 5vw, 72px); } .ihero :global(.art) { z-index: -1; opacity: .75; -webkit-mask-image: linear-gradient(90deg, transparent 18%, #000 60%); mask-image: linear-gradient(90deg, transparent 18%, #000 60%); }
   .iin { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
-  .ic { display: grid; gap: 20px; justify-items: start; } .ic h1 { font-size: clamp(38px, 4.4vw, 64px); line-height: 1.02; letter-spacing: -.03em; text-wrap: balance; } .ic .lead { max-width: 30em; opacity: .9; } .ic :global(.ask) { width: 100%; max-width: 520px; }
-  .ic > * { animation: i-up .8s var(--ease) both; } .ic > :nth-child(2) { animation-delay: .06s; } .ic > :nth-child(3) { animation-delay: .12s; } .is { animation: i-up .9s .16s var(--ease) both; } @keyframes i-up { from { opacity: 0; transform: translateY(18px); } }
+  .ic { display: grid; gap: 20px; justify-items: start; } .ic h1 { font-size: clamp(38px, 4.4vw, 64px); line-height: 1.02; letter-spacing: -.03em; text-wrap: balance; } .ic .lead { max-width: 30em; --shown: .9; } .ic :global(.ask) { width: 100%; max-width: 520px; }
+  /* The heading, the paragraph and the screen come in as on every other page's hero (.rise, global.css). The question
+     box is there from the start. */
+  .ic .lead { animation-delay: .06s; } .is { animation-duration: .9s; animation-delay: .16s; }
   @media (max-width: 1100px) { .ihero :global(.art) { -webkit-mask-image: linear-gradient(transparent 40%, #000 85%); mask-image: linear-gradient(transparent 40%, #000 85%); } .iin { grid-template-columns: minmax(0, 1fr); } .ic { justify-items: center; text-align: center; } .ic :global(.ask) { margin-inline: auto; } }
 </style>
