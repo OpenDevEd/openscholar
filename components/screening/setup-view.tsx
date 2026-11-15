@@ -558,7 +558,7 @@ export function SetupView({
           <div className={cn("space-y-3 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
             {/* On a phone the words take the row beside the icon, and the button or the points go on a line of their own. */}
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:flex">
-              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-success/15 ink-success")}>
+              <span className={cn("flex size-10 shrink-0 items-center justify-center self-start rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-success/15 ink-success")}>
                 <CircleCheck className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
@@ -605,7 +605,7 @@ export function SetupView({
         <Zone label={t("stars")}>
           <div className={cn("@container space-y-4 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
             <div className="flex items-center gap-3">
-              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-primary/15 text-primary")}>
+              <span className={cn("flex size-10 shrink-0 items-center justify-center self-start rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-primary/15 text-primary")}>
                 <Star className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
@@ -674,7 +674,7 @@ export function SetupView({
         >
           {prunable && source ? (
             <label className="mb-3 flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border-subtle px-4 py-2.5">
-              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", prune ? "text-primary" : "text-muted-foreground")}>
+              <span className={cn("flex size-8 shrink-0 items-center justify-center self-start rounded-lg bg-inset", prune ? "text-primary" : "text-muted-foreground")}>
                 <FolderMinus className="size-4" />
               </span>
               <span className="min-w-0 flex-1">

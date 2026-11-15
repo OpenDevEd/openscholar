@@ -22,7 +22,7 @@ import type { OpenAlexMatch } from "./types";
 function RecordRow({ name, detail, id, action }: { name: React.ReactNode; detail: React.ReactNode; id: string; action: React.ReactNode }) {
   return (
     <li className="flex items-center gap-3 px-3 py-2.5">
-      <AuthorAvatar className="size-8 shrink-0" />
+      <AuthorAvatar className="size-8 shrink-0 self-start" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{name}</div>
         <div className="flex h-4 items-center truncate text-xs text-muted-foreground">{detail}</div>

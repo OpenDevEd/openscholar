@@ -107,7 +107,7 @@ export function DeveloperApps({ apps, count }: { apps: AppsPage; count: number }
                     onClick={() => setOpenId(app._id)}
                     className="flex w-full items-center gap-3 p-3 text-start transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                   >
-                    <Tile icon={AppWindow} tint={TINTS[(apps.offset + i) % TINTS.length]!} />
+                    <Tile icon={AppWindow} tint={TINTS[(apps.offset + i) % TINTS.length]!} className="self-start" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold">{app.name}</span>
                       <span className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
@@ -294,7 +294,7 @@ function AppFields({ draft, onChange, kindFixed = false }: { draft: Draft; onCha
       </Field>
       {/* What the sign-in page will say, from what's typed above. */}
       <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-3 py-2.5">
-        <Tile icon={AppWindow} tint={TINTS[0]!} className="size-8" />
+        <Tile icon={AppWindow} tint={TINTS[0]!} className="size-8 self-start" />
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
           <span className="block truncate font-semibold text-foreground">{t("consentLine", { name: draft.name.trim() || t("yourApp") })}</span>
           <span className="block truncate">{t("consentReturn", { host: firstRedirect ? host(firstRedirect) : "…" })}</span>

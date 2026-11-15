@@ -378,7 +378,7 @@ export default function BillingPage() {
                       onMouseLeave={() => setHover(null)}
                       className={cn("flex items-center gap-3 p-3 transition-opacity", hover && hover !== c.kind && "opacity-40")}
                     >
-                      <Tile icon={kind.icon} tint={kind.tint} />
+                      <Tile icon={kind.icon} tint={kind.tint} className="self-start" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
                           {c.jobId ? (

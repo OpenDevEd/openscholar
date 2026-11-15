@@ -88,7 +88,7 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
   return (
     <li className="fade-enter px-4 py-4">
       <div className="flex flex-wrap items-center gap-3">
-        <IdentityAvatar name={applicant.name} imageUrl={applicant.imageUrl} className="size-9" />
+        <IdentityAvatar name={applicant.name} imageUrl={applicant.imageUrl} className="size-9 self-start" />
         <div className="min-w-0 flex-[1_1_10rem]">
           <p className="truncate text-sm font-medium">{applicant.name}</p>
           <p className="truncate text-xs text-muted-foreground">{applicant.email}</p>

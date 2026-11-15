@@ -314,7 +314,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                 </span>
                 <span
                   className={cn(
-                    "relative z-10 flex size-10 items-center justify-center rounded-xl ring-4 ring-background",
+                    "relative z-10 mt-1.5 flex size-10 items-center justify-center self-start rounded-xl ring-4 ring-background",
                     e.here ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
                   )}
                 >

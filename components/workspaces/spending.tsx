@@ -56,7 +56,7 @@ export function MemberSpending({ spending, admin, team, members }: { spending: R
             const near = row.cap !== undefined && row.spent >= row.cap * 0.9;
             return (
               <li key={row.userId} className="flex items-center gap-3 p-3">
-                <IdentityAvatar name={row.name} imageUrl={row.imageUrl} className="size-9" />
+                <IdentityAvatar name={row.name} imageUrl={row.imageUrl} className="size-9 self-start" />
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex items-center justify-between gap-3">
                     <PersonName name={row.name} you={row.you} className="text-sm font-medium" />

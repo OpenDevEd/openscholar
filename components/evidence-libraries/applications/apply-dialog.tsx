@@ -259,7 +259,7 @@ function Sent({ onDone }: { onDone: () => void }) {
   return (
     <div className="p-5">
       <div className="fade-enter flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-full bg-success/15 text-success"><Check className="size-5" /></span>
+        <span className="grid size-10 shrink-0 place-items-center self-start rounded-full bg-success/15 text-success"><Check className="size-5" /></span>
         <div>
           <p className="text-sm font-semibold">{t("sentTitle")}</p>
           <p className="text-xs text-muted-foreground">{t("sentBody")}</p>

@@ -75,12 +75,12 @@ const TILE_BOX = { xxs: "size-4", xs: "size-5", sm: "size-6", md: "size-8", row:
 const TILE_CORNER = { xxs: "rounded-[0.3rem]", xs: "rounded-md", sm: "rounded-md", md: "rounded-lg", row: "rounded-lg", lg: "rounded-xl", xl: "rounded-3xl" } as const;
 
 /** A workspace's picture: your photo for your own, an organization's logo for one. */
-export function WorkspaceTile({ workspace, size = "md" }: { workspace: WorkspaceLook; size?: keyof typeof TILE_BOX }) {
+export function WorkspaceTile({ workspace, size = "md", className }: { workspace: WorkspaceLook; size?: keyof typeof TILE_BOX; className?: string }) {
   const tint = workspaceTint(workspace);
-  if (workspace.kind === "personal") return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} className={TILE_BOX[size]} />;
-  if (workspace.imageUrl) return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} kind="organization" className={cn(TILE_BOX[size], TILE_CORNER[size])} />;
+  if (workspace.kind === "personal") return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} className={cn(TILE_BOX[size], className)} />;
+  if (workspace.imageUrl) return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} kind="organization" className={cn(TILE_BOX[size], TILE_CORNER[size], className)} />;
   // One whose admins uploaded no logo has one made for it, in its colour.
-  return <GeneratedLogo seed={workspace.workspaceId ?? workspace.name} tint={tint} className={cn("shrink-0", TILE_BOX[size], TILE_CORNER[size])} />;
+  return <GeneratedLogo seed={workspace.workspaceId ?? workspace.name} tint={tint} className={cn("shrink-0", TILE_BOX[size], TILE_CORNER[size], className)} />;
 }
 
 /** A seeded number from 0 to 1, the same for the same seed and step. */
