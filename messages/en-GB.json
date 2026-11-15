@@ -428,7 +428,9 @@
       "backTo": "Back to {amount} on {date}",
       "kept": "{amount} kept until used",
       "publish": "Publish",
-      "noLimit": "No limit"
+      "noLimit": "No limit",
+      "stripeCredit": "Stripe credit of {amount} pays before a card",
+      "stripeCurrency": "A card can’t pay for reports while the Stripe account is in {currency}"
     }
   },
   "errors": {
@@ -6557,7 +6559,8 @@
       "shut": {
         "closed": "Its plan doesn't include publishing",
         "ownClosed": "Your plan doesn't include publishing",
-        "used": "No reports left to start today"
+        "used": "No reports left to start today",
+        "currency": "Its Stripe account is in {currency}"
       },
       "limit": {
         "personal": "Your plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
@@ -6870,10 +6873,12 @@
         "credit": "Stripe credit",
         "creditYours": "You have <amount></amount> at Stripe",
         "creditTheirs": "{owner} has <amount></amount> at Stripe",
-        "creditIdle": "Stripe’s payment page can’t use the <amount></amount> of Stripe credit. Save a card and the credit pays first.",
+        "creditIdle": "Stripe’s payment page can’t use the <amount></amount> of Stripe credit. With a card saved, Stripe takes the credit first and the card pays the rest.",
         "least": "A card pays for at least {least}, so {spare} stays in your balance.",
         "leastStripe": "Stripe charges a card at least {least}, so {spare} stays in your balance.",
-        "currency": "This workspace’s Stripe account is in {currency}, and reports are paid in US dollars. Write to habari@openscholar.ai to have it changed."
+        "currency": "This workspace’s Stripe account is in {currency}, and reports are paid in US dollars, so a card can’t pay here until we change it.",
+        "emailUs": "Email us",
+        "saveCard": "Save a card"
       },
       "activateFree": "Activate the DOI",
       "paid": {
@@ -6883,7 +6888,8 @@
         "code": "{code} covered the price",
         "codeRest": "{code} covered the rest",
         "credit": "Paid {amount} from Stripe credit"
-      }
+      },
+      "emailUs": "Email us"
     },
     "meta": {
       "publish": "Publish | Openscholar",

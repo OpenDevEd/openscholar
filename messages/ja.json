@@ -428,7 +428,9 @@
       "backTo": "{date}に{amount}に戻ります",
       "kept": "使うまで残る {amount}",
       "publish": "公開",
-      "noLimit": "無制限"
+      "noLimit": "無制限",
+      "stripeCredit": "Stripe のクレジット {amount} はカードより先に使われます",
+      "stripeCurrency": "Stripe アカウントが {currency} 建ての間はレポートをカードで支払えません"
     }
   },
   "errors": {
@@ -6557,7 +6559,8 @@
       "shut": {
         "closed": "このプランには公開が含まれていません",
         "ownClosed": "ご利用のプランには公開が含まれていません",
-        "used": "今日はもうレポートを開始できません"
+        "used": "今日はもうレポートを開始できません",
+        "currency": "Stripe アカウントが {currency} 建てです"
       },
       "limit": {
         "personal": "ご利用のプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
@@ -6870,10 +6873,12 @@
         "credit": "Stripe のクレジット",
         "creditYours": "Stripe に <amount></amount> あります",
         "creditTheirs": "{owner} は Stripe に <amount></amount> あります",
-        "creditIdle": "Stripe の支払いページでは Stripe のクレジット <amount></amount> を使えません。カードを保存すると、クレジットから先に支払われます。",
+        "creditIdle": "Stripe の支払いページでは Stripe のクレジット <amount></amount> を使えません。カードを保存すると、Stripe はまずクレジットを使い、残りをカードで支払います。",
         "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。",
         "leastStripe": "Stripe はカードに最低 {least} を請求するため、{spare} は残高に残ります。",
-        "currency": "このワークスペースの Stripe アカウントは {currency} 建てですが、レポートは米ドルで支払います。変更するには habari@openscholar.ai までご連絡ください。"
+        "currency": "このワークスペースの Stripe アカウントは {currency} 建てで、レポートは米ドルで支払うため、変更するまでここではカードで支払えません。",
+        "emailUs": "メールで連絡",
+        "saveCard": "カードを保存"
       },
       "activateFree": "DOI を有効化",
       "paid": {
@@ -6883,7 +6888,8 @@
         "code": "{code} で全額をまかないました",
         "codeRest": "{code} で残りをまかないました",
         "credit": "Stripe のクレジットから {amount} を支払い"
-      }
+      },
+      "emailUs": "メールで連絡"
     },
     "meta": {
       "publish": "公開 | Openscholar",

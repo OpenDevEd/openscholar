@@ -429,7 +429,9 @@
       "backTo": "يعود إلى {amount} في {date}",
       "kept": "{amount} محفوظة حتى استخدامها",
       "publish": "انشر",
-      "noLimit": "بلا حد"
+      "noLimit": "بلا حد",
+      "stripeCredit": "رصيد Stripe البالغ {amount} يُستخدم قبل البطاقة",
+      "stripeCurrency": "لا يمكن الدفع بالبطاقة للتقارير ما دام حساب Stripe بعملة {currency}"
     }
   },
   "errors": {
@@ -6558,7 +6560,8 @@
       "shut": {
         "closed": "خطتها لا تتضمن النشر",
         "ownClosed": "لا تتضمن خطتك النشر",
-        "used": "لم يبقَ تقارير يمكن بدؤها اليوم"
+        "used": "لم يبقَ تقارير يمكن بدؤها اليوم",
+        "currency": "حساب Stripe الخاص بها بعملة {currency}"
       },
       "limit": {
         "personal": "تتيح خطتك بدء {count, plural, zero {# تقرير} one {تقرير واحد} two {تقريرين} few {# تقارير} many {# تقريرًا} other {# تقرير}} في اليوم. عُد غدًا، أو انتقل إلى خطة تتيح المزيد.",
@@ -6871,10 +6874,12 @@
         "credit": "رصيد Stripe",
         "creditYours": "لديك <amount></amount> في Stripe",
         "creditTheirs": "لدى {owner} مبلغ <amount></amount> في Stripe",
-        "creditIdle": "لا تستطيع صفحة الدفع في Stripe استخدام رصيد Stripe البالغ <amount></amount>. احفظ بطاقة ليُدفع من الرصيد أولًا.",
+        "creditIdle": "لا تستطيع صفحة الدفع في Stripe استخدام رصيد Stripe البالغ <amount></amount>. مع بطاقة محفوظة، يأخذ Stripe الرصيد أولًا وتدفع البطاقة الباقي.",
         "least": "تدفع البطاقة {least} على الأقل، فيبقى {spare} في رصيدك.",
         "leastStripe": "يخصم Stripe من البطاقة {least} على الأقل، لذا يبقى {spare} في رصيدك.",
-        "currency": "حساب Stripe لمساحة العمل هذه بعملة {currency}، والتقارير تُدفع بالدولار الأمريكي. راسل habari@openscholar.ai لتغييرها."
+        "currency": "حساب Stripe لمساحة العمل هذه بعملة {currency}، والتقارير تُدفع بالدولار الأمريكي، لذا لا يمكن الدفع بالبطاقة هنا حتى نغيّره.",
+        "emailUs": "راسلنا",
+        "saveCard": "احفظ بطاقة"
       },
       "activateFree": "فعّل الـ DOI",
       "paid": {
@@ -6884,7 +6889,8 @@
         "code": "غطّى {code} السعر",
         "codeRest": "غطّى {code} الباقي",
         "credit": "دُفع {amount} من رصيد Stripe"
-      }
+      },
+      "emailUs": "راسلنا"
     },
     "meta": {
       "publish": "نشر | Openscholar",

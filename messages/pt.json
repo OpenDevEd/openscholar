@@ -429,7 +429,9 @@
       "backTo": "Volta a {amount} em {date}",
       "kept": "{amount} guardados até o uso",
       "publish": "Publicar",
-      "noLimit": "Sem limite"
+      "noLimit": "Sem limite",
+      "stripeCredit": "O crédito de {amount} no Stripe paga antes do cartão",
+      "stripeCurrency": "Um cartão não pode pagar relatórios enquanto a conta do Stripe estiver em {currency}"
     }
   },
   "errors": {
@@ -6558,7 +6560,8 @@
       "shut": {
         "closed": "O plano dele não inclui publicação",
         "ownClosed": "O seu plano não inclui publicação",
-        "used": "Não restam relatórios para iniciar hoje"
+        "used": "Não restam relatórios para iniciar hoje",
+        "currency": "A conta do Stripe dele está em {currency}"
       },
       "limit": {
         "personal": "O seu plano permite iniciar {count, plural, one {# relatório} other {# relatórios}} por dia. Volte amanhã ou mude para um plano com mais.",
@@ -6871,10 +6874,12 @@
         "credit": "Crédito no Stripe",
         "creditYours": "Você tem <amount></amount> no Stripe",
         "creditTheirs": "{owner} tem <amount></amount> no Stripe",
-        "creditIdle": "A página de pagamento do Stripe não consegue usar os <amount></amount> de crédito no Stripe. Salve um cartão e o crédito paga primeiro.",
+        "creditIdle": "A página de pagamento do Stripe não consegue usar os <amount></amount> de crédito no Stripe. Com um cartão salvo, o Stripe usa primeiro o crédito e o cartão paga o resto.",
         "least": "Um cartão paga pelo menos {least}, por isso {spare} ficam no seu saldo.",
         "leastStripe": "O Stripe cobra no mínimo {least} de um cartão, então {spare} fica no seu saldo.",
-        "currency": "A conta do Stripe deste espaço de trabalho está em {currency}, e os relatórios são pagos em dólares americanos. Escreva para habari@openscholar.ai para mudá-la."
+        "currency": "A conta do Stripe deste espaço de trabalho está em {currency} e os relatórios são pagos em dólares americanos, então um cartão não pode pagar aqui até a mudarmos.",
+        "emailUs": "Escreva para nós",
+        "saveCard": "Salvar um cartão"
       },
       "activateFree": "Ativar o DOI",
       "paid": {
@@ -6884,7 +6889,8 @@
         "code": "{code} cobriu o preço",
         "codeRest": "{code} cobriu o resto",
         "credit": "{amount} pagos com o crédito no Stripe"
-      }
+      },
+      "emailUs": "Escreva para nós"
     },
     "meta": {
       "publish": "Publicar | Openscholar",

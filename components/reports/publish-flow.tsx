@@ -6,7 +6,7 @@
 // word or a changed setting all land on the page by themselves.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
-import { CONTACT_EMAIL } from "@/lib/billing/contact";
+import { CONTACT_EMAIL, CURRENCY_MAIL as SUPPORT_MAIL } from "@/lib/billing/contact";
 import { useAction, useConvex, useMutation, useQueries, useQuery } from "convex/react";
 import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
@@ -60,7 +60,7 @@ import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
-import { WorkspaceChoice } from "@/components/reports/workspace-choice";
+import { WayOnButton, WorkspaceChoice, type WayOn } from "@/components/reports/workspace-choice";
 import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
@@ -1078,6 +1078,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const [typed, setTyped] = useState<string | null>(null);
   const name = typed ?? user?.fullName ?? "";
   const [busy, start] = useTransition();
+  // The report this step just signed, which the day then counts as reserved and untouched.
+  const [made, setMade] = useState<string | null>(null);
   const { agreement } = basics;
   // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
   const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
@@ -1120,10 +1122,15 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
   // whatever the day has left.
   // The same in a few words, for beside the workspace picked: one line that never wraps.
-  const shut = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`shut.${day.perDay > 0 ? "used" : day.kind === "personal" ? "ownClosed" : "closed"}`) : null;
-  // The plans of the workspace picked, which isn't always the page's.
-  const plans = workspaceHref(away ? chosen?.slug : slug, "/pricing");
-  const blocked = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`limit.${day.kind === "personal" ? "personal" : "workspace"}${day.perDay === 0 ? "Closed" : ""}`, { count: day.perDay }) : null;
+  const dayShut = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`shut.${day.perDay > 0 ? "used" : day.kind === "personal" ? "ownClosed" : "closed"}`) : null;
+  const dayBlocked = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`limit.${day.kind === "personal" ? "personal" : "workspace"}${day.perDay === 0 ? "Closed" : ""}`, { count: day.perDay }) : null;
+  // A workspace whose Stripe account is in another currency can't pay a card's part in dollars: it is said before
+  // signing, where the workspace is picked, so nobody signs for a report it can't make live.
+  const foreign = starts?.currency && (sum?.bought ?? 0) > 0 ? starts.currency : null;
+  const shut = dayShut ?? (foreign ? t("shut.currency", { currency: foreign }) : null);
+  const blocked = dayBlocked ?? (foreign ? t("payment.currency", { currency: foreign }) : null);
+  // The way on: the plans of the workspace picked, which isn't always the page's, or an email to us about its Stripe account.
+  const way: WayOn = dayShut ? { label: t("seePlans"), href: workspaceHref(away ? chosen?.slug : slug, "/pricing") } : { label: t("emailUs"), href: SUPPORT_MAIL };
   return (
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
@@ -1141,7 +1148,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
-          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut ? { why: shut, plans } : null} />
+          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut ? { why: shut, way } : null} />
         </section>
       ) : null}
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
@@ -1183,7 +1190,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         </label>
       </div>
       {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
-      {day?.untouched && day.untouched !== signed ? (
+      {/* Not while signing, nor for the report signed here: the day reads it as reserved the moment it is, before the page moves on to it. */}
+      {day?.untouched && day.untouched !== signed && day.untouched !== made && !busy ? (
         // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
         <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
           <span className="min-w-0 flex-1 basis-56">
@@ -1212,11 +1220,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
-            <Button variant="outline" asChild>
-              <NextLink href={plans}>
-                {t("seePlans")} <ArrowUpRight />
-              </NextLink>
-            </Button>
+            <WayOnButton way={way} />
           </>
         ) : null}
         {starts ? (
@@ -1229,6 +1233,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
                 try {
                   // The licence is the report's from here on; what pays and the code can still change until it is activated.
                   const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, payWith, ...(voucher && { voucher }) });
+                  setMade(key);
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
                   signedFor(key);
@@ -1811,7 +1816,12 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
     void refreshMine(organization && workspaceId ? { workspaceId } : {}).catch(() => {});
     setPaying(true);
   };
-  const manageBilling = () => void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${window.location.pathname}${window.location.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+  // It comes back marked as back from Stripe (`back`), so the page reads the card again: one saved there counts at once.
+  const manageBilling = () => {
+    const here = new URL(window.location.href);
+    here.searchParams.set("back", crypto.randomUUID());
+    void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${here.pathname}${here.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+  };
   // What pays and the code are kept with the report, so the bill reads the same on every step and after a reload.
   const payWith: PayWith = terms ? payWithOf(terms) : "card";
   const code = terms?.voucher ?? null;
@@ -1928,8 +1938,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     </AutoHeight>
                   </div>
                   {/* The bill: under the cover on a wide page, where it has been since the report was signed, and here on a narrow one. */}
-                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} />
-                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} />, beside) : null}
+                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />, beside) : null}
                   {terms.refused ? <p className="mt-2 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
                 </section>
               ) : admin && pending && stage !== "live" ? (

@@ -429,7 +429,9 @@
       "backTo": "Hurudi kuwa {amount} tarehe {date}",
       "kept": "{amount} zimehifadhiwa hadi zitumike",
       "publish": "Chapisha",
-      "noLimit": "Bila kikomo"
+      "noLimit": "Bila kikomo",
+      "stripeCredit": "Salio la Stripe la {amount} hulipa kabla ya kadi",
+      "stripeCurrency": "Kadi haiwezi kulipia ripoti wakati akaunti ya Stripe iko katika {currency}"
     }
   },
   "errors": {
@@ -6558,7 +6560,8 @@
       "shut": {
         "closed": "Mpango wake haujumuishi uchapishaji",
         "ownClosed": "Mpango wako haujumuishi uchapishaji",
-        "used": "Hakuna ripoti zilizobaki za kuanzisha leo"
+        "used": "Hakuna ripoti zilizobaki za kuanzisha leo",
+        "currency": "Akaunti yake ya Stripe iko katika {currency}"
       },
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
@@ -6871,10 +6874,12 @@
         "credit": "Salio la Stripe",
         "creditYours": "Una <amount></amount> kwenye Stripe",
         "creditTheirs": "{owner} ina <amount></amount> kwenye Stripe",
-        "creditIdle": "Ukurasa wa malipo wa Stripe hauwezi kutumia salio la Stripe la <amount></amount>. Hifadhi kadi na salio litalipa kwanza.",
+        "creditIdle": "Ukurasa wa malipo wa Stripe hauwezi kutumia salio la Stripe la <amount></amount>. Ukihifadhi kadi, Stripe hutumia salio kwanza na kadi hulipa kilichobaki.",
         "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
         "leastStripe": "Stripe hutoza kadi angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
-        "currency": "Akaunti ya Stripe ya eneo hili la kazi iko katika {currency}, na ripoti hulipwa kwa dola za Marekani. Andika kwa habari@openscholar.ai ili ibadilishwe."
+        "currency": "Akaunti ya Stripe ya eneo hili la kazi iko katika {currency}, na ripoti hulipwa kwa dola za Marekani, kwa hiyo kadi haiwezi kulipa hapa hadi tuibadilishe.",
+        "emailUs": "Tuandikie",
+        "saveCard": "Hifadhi kadi"
       },
       "activateFree": "Washa DOI",
       "paid": {
@@ -6884,7 +6889,8 @@
         "code": "{code} imegharamia bei",
         "codeRest": "{code} imegharamia kilichobaki",
         "credit": "{amount} zimelipwa kutoka kwenye salio la Stripe"
-      }
+      },
+      "emailUs": "Tuandikie"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

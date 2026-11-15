@@ -429,7 +429,9 @@
       "backTo": "Terug na {amount} op {date}",
       "kept": "{amount} bly tot gebruik",
       "publish": "Publiseer",
-      "noLimit": "Geen limiet"
+      "noLimit": "Geen limiet",
+      "stripeCredit": "Stripe-krediet van {amount} betaal voor ’n kaart",
+      "stripeCurrency": "’n Kaart kan nie vir verslae betaal solank die Stripe-rekening in {currency} is nie"
     }
   },
   "errors": {
@@ -6558,7 +6560,8 @@
       "shut": {
         "closed": "Sy plan sluit publikasie nie in nie",
         "ownClosed": "Jou plan sluit publikasie nie in nie",
-        "used": "Geen verslae oor om vandag te begin nie"
+        "used": "Geen verslae oor om vandag te begin nie",
+        "currency": "Sy Stripe-rekening is in {currency}"
       },
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
@@ -6871,10 +6874,12 @@
         "credit": "Stripe-krediet",
         "creditYours": "Jy het <amount></amount> by Stripe",
         "creditTheirs": "{owner} het <amount></amount> by Stripe",
-        "creditIdle": "Stripe se betaalblad kan nie die <amount></amount> Stripe-krediet gebruik nie. Stoor ’n kaart en die krediet betaal eerste.",
+        "creditIdle": "Stripe se betaalblad kan nie die <amount></amount> Stripe-krediet gebruik nie. Met ’n gestoorde kaart neem Stripe eers die krediet en die kaart betaal die res.",
         "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans.",
         "leastStripe": "Stripe hef ’n kaart minstens {least}, so {spare} bly in jou saldo.",
-        "currency": "Hierdie werkruimte se Stripe-rekening is in {currency}, en verslae word in Amerikaanse dollar betaal. Skryf aan habari@openscholar.ai om dit te laat verander."
+        "currency": "Hierdie werkruimte se Stripe-rekening is in {currency}, en verslae word in Amerikaanse dollar betaal, so ’n kaart kan hier nie betaal voordat ons dit verander nie.",
+        "emailUs": "E-pos ons",
+        "saveCard": "Stoor ’n kaart"
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {
@@ -6884,7 +6889,8 @@
         "code": "{code} het die prys gedek",
         "codeRest": "{code} het die res gedek",
         "credit": "{amount} uit Stripe-krediet betaal"
-      }
+      },
+      "emailUs": "E-pos ons"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

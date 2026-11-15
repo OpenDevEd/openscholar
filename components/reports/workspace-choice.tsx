@@ -22,9 +22,8 @@ import { cn } from "@/lib/utils";
  * organizations. Beside the selector, on one line that never wraps: who will see the report there, or why that
  * workspace starts no report now, with where its plans are.
  */
-export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked }: { workspaces: WorkspaceRow[]; value: Id<"workspaces">; onChange: (workspaceId: Id<"workspaces">) => void; /** How the step names its sections. */ heading: string; /** Why the workspace picked starts no report now, in a few words, said where it was picked: the button it shuts is a screen further down. */ blocked?: { why: string; plans: string } | null }) {
+export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked }: { workspaces: WorkspaceRow[]; value: Id<"workspaces">; onChange: (workspaceId: Id<"workspaces">) => void; /** How the step names its sections. */ heading: string; /** Why the workspace picked can't have a report now, in a few words, said where it was picked: the button it shuts is a screen further down. With the way on: its plans, or an email to us. */ blocked?: { why: string; way: WayOn } | null }) {
   const t = useTranslations("workspaces");
-  const tf = useTranslations("publishReports.flow");
   const option = (workspace: WorkspaceRow) => (
     <SelectItem key={workspace.workspaceId} value={workspace.workspaceId} className="py-1.5 *:[span]:last:min-w-0 *:[span]:last:flex-1 *:[span]:last:gap-2.5">
       <WorkspaceLine workspace={workspace} />
@@ -67,11 +66,7 @@ export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked 
               <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
               {blocked.why}
             </span>
-            <Button size="sm" variant="outline" asChild>
-              <NextLink href={blocked.plans}>
-                {tf("seePlans")} <ArrowUpRight />
-              </NextLink>
-            </Button>
+            <WayOnButton way={blocked.way} size="sm" />
           </p>
         ) : chosen ? (
           <p key={chosen.workspaceId} className="flex min-h-9 items-center gap-2 text-sm text-muted-foreground sm:whitespace-nowrap">
@@ -81,5 +76,26 @@ export function WorkspaceChoice({ workspaces, value, onChange, heading, blocked 
         ) : null}
       </div>
     </>
+  );
+}
+
+/** Where to go when a workspace can't have a report: its plans, or an email to us. */
+export type WayOn = { label: string; href: string };
+
+/** The way on as a button: a page of ours, or the person's own email app. */
+export function WayOnButton({ way, size }: { way: WayOn; size?: "sm" }) {
+  const external = way.href.startsWith("mailto:");
+  return (
+    <Button size={size} variant="outline" asChild>
+      {external ? (
+        <a href={way.href}>
+          {way.label} <ArrowUpRight />
+        </a>
+      ) : (
+        <NextLink href={way.href}>
+          {way.label} <ArrowUpRight />
+        </NextLink>
+      )}
+    </Button>
   );
 }

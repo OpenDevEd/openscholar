@@ -14,6 +14,7 @@ import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import type { BalancePart } from "@/convex/billing/validators";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
+import { CURRENCY_MAIL } from "@/lib/billing/contact";
 import { BOUGHT_MIN, STRIPE_MIN, payment, type PayWith } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +79,7 @@ export function PayWithSwitch({ funds: balance, credited, payWith, onPayWith, cl
  * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
  * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
  */
-export function Bill({ licence, price, funds, owner, payWith, code, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; funds: Funds; /** The organisation whose Stripe account the credit is on; null for the person's own. */ owner: string | null; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+export function Bill({ licence, price, funds, owner, payWith, code, note, onSaveCard, now = false, boxed = false, className }: { /** Opens Stripe's page for the workspace's cards, where one is saved: offered where Stripe credit sits unused for want of one. */ onSaveCard?: () => void; /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; funds: Funds; /** The organisation whose Stripe account the credit is on; null for the person's own. */ owner: string | null; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
   const sum = payment({ price, balance: funds.balance, payWith: funds.balance === 0 ? "card" : payWith, off: code?.off ?? 0, credit: funds.credit, cardSaved: funds.cardSaved });
@@ -118,13 +119,32 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, now = 
         ) : null}
       </AutoHeight>
       {/* A Stripe account in another currency buys nothing priced in dollars: said where a card would pay. */}
-      <AutoHeight>{funds.currency && sum.bought > 0 ? <p className="pt-2 text-xs text-pretty text-destructive">{t("currency", { currency: funds.currency })}</p> : null}</AutoHeight>
+      <AutoHeight>
+        {funds.currency && sum.bought > 0 ? (
+          <p className="pt-2 text-xs text-pretty text-destructive">
+            {t("currency", { currency: funds.currency })}{" "}
+            <a href={CURRENCY_MAIL} className="font-medium underline underline-offset-2">
+              {t("emailUs")}
+            </a>
+          </p>
+        ) : null}
+      </AutoHeight>
       {/* Stripe credit that doesn't cover it all, with no card saved: Stripe's page charges it all and leaves the credit. */}
       <AutoHeight>
         {sum.idle > 0 ? (
           <p className="flex items-start gap-1.5 pt-2 text-xs text-pretty text-muted-foreground">
             <StripeIcon aria-hidden className="mt-0.5 size-3 shrink-0" />
-            <span>{t.rich("creditIdle", { amount: () => <bdi dir="ltr" className="tabular-nums">{money(sum.idle)}</bdi> })}</span>
+            <span>
+              {t.rich("creditIdle", { amount: () => <bdi dir="ltr" className="tabular-nums">{money(sum.idle)}</bdi> })}
+              {onSaveCard ? (
+                <>
+                  {" "}
+                  <button type="button" onClick={onSaveCard} className="font-medium text-foreground underline underline-offset-2">
+                    {t("saveCard")}
+                  </button>
+                </>
+              ) : null}
+            </span>
           </p>
         ) : null}
       </AutoHeight>

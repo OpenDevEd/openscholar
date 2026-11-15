@@ -428,7 +428,9 @@
       "backTo": "Ibuyela ku-{amount} ngo-{date}",
       "kept": "{amount} igcinwa kuze kusetshenziswe",
       "publish": "Shicilela",
-      "noLimit": "Akukho mkhawulo"
+      "noLimit": "Akukho mkhawulo",
+      "stripeCredit": "Isikweletu se-Stripe esingu-{amount} sikhokha ngaphambi kwekhadi",
+      "stripeCurrency": "Ikhadi alikwazi ukukhokhela imibiko uma i-akhawunti ye-Stripe isekwi-{currency}"
     }
   },
   "errors": {
@@ -6557,7 +6559,8 @@
       "shut": {
         "closed": "Uhlelo lwayo alukufaki ukushicilela",
         "ownClosed": "Uhlelo lwakho alukufaki ukushicilela",
-        "used": "Ayisekho imibiko ongayiqala namuhla"
+        "used": "Ayisekho imibiko ongayiqala namuhla",
+        "currency": "I-akhawunti yayo ye-Stripe ikwi-{currency}"
       },
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
@@ -6870,10 +6873,12 @@
         "credit": "Isikweletu se-Stripe",
         "creditYours": "Unokungu-<amount></amount> ku-Stripe",
         "creditTheirs": "I-{owner} inokungu-<amount></amount> ku-Stripe",
-        "creditIdle": "Ikhasi lokukhokha le-Stripe alikwazi ukusebenzisa isikweletu se-Stripe esingu-<amount></amount>. Gcina ikhadi bese isikweletu sikhokha kuqala.",
+        "creditIdle": "Ikhasi lokukhokha le-Stripe alikwazi ukusebenzisa isikweletu se-Stripe esingu-<amount></amount>. Uma ikhadi ligciniwe, i-Stripe ithatha isikweletu kuqala bese ikhadi likhokha okusele.",
         "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho.",
         "leastStripe": "I-Stripe ikhokhisa ikhadi okungenani u-{least}, ngakho u-{spare} usala kubhalansi yakho.",
-        "currency": "I-akhawunti ye-Stripe yale ndawo yokusebenza ikwi-{currency}, futhi imibiko ikhokhwa ngamadola aseMelika. Bhalela ku-habari@openscholar.ai ukuze ishintshwe."
+        "currency": "I-akhawunti ye-Stripe yale ndawo yokusebenza ikwi-{currency}, futhi imibiko ikhokhwa ngamadola aseMelika, ngakho ikhadi alikwazi ukukhokha lapha size siyishintshe.",
+        "emailUs": "Sithumelele i-imeyili",
+        "saveCard": "Gcina ikhadi"
       },
       "activateFree": "Vula i-DOI",
       "paid": {
@@ -6883,7 +6888,8 @@
         "code": "I-{code} ikhokhele inani",
         "codeRest": "I-{code} ikhokhele okusele",
         "credit": "Kukhokhwe {amount} ngesikweletu se-Stripe"
-      }
+      },
+      "emailUs": "Sithumelele i-imeyili"
     },
     "meta": {
       "publish": "Shicilela | Openscholar",

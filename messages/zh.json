@@ -428,7 +428,9 @@
       "backTo": "{date}恢复为 {amount}",
       "kept": "{amount} 保留至使用",
       "publish": "发布",
-      "noLimit": "不限次数"
+      "noLimit": "不限次数",
+      "stripeCredit": "Stripe 余额 {amount} 先于银行卡支付",
+      "stripeCurrency": "Stripe 账户使用 {currency} 期间无法用银行卡支付报告"
     }
   },
   "errors": {
@@ -6557,7 +6559,8 @@
       "shut": {
         "closed": "它的方案不包含发布",
         "ownClosed": "你的方案不包含发布",
-        "used": "今天没有可开始的报告了"
+        "used": "今天没有可开始的报告了",
+        "currency": "它的 Stripe 账户使用 {currency}"
       },
       "limit": {
         "personal": "你的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
@@ -6870,10 +6873,12 @@
         "credit": "Stripe 余额抵扣",
         "creditYours": "你在 Stripe 有 <amount></amount>",
         "creditTheirs": "{owner} 在 Stripe 有 <amount></amount>",
-        "creditIdle": "Stripe 的付款页面无法使用 <amount></amount> 的 Stripe 余额。保存一张银行卡后会先用余额抵扣。",
+        "creditIdle": "Stripe 的付款页面无法使用 <amount></amount> 的 Stripe 余额。保存银行卡后，Stripe 会先用余额，其余由银行卡支付。",
         "least": "银行卡至少支付 {least}，因此 {spare} 会留在余额中。",
         "leastStripe": "Stripe 对银行卡至少收取 {least}，因此 {spare} 会留在你的余额中。",
-        "currency": "此工作区的 Stripe 账户使用 {currency}，而报告以美元支付。请写信至 habari@openscholar.ai 进行更改。"
+        "currency": "此工作区的 Stripe 账户使用 {currency}，而报告以美元支付，所以在我们更改之前这里无法用银行卡支付。",
+        "emailUs": "给我们发邮件",
+        "saveCard": "保存银行卡"
       },
       "activateFree": "激活 DOI",
       "paid": {
@@ -6883,7 +6888,8 @@
         "code": "{code} 已抵扣全部费用",
         "codeRest": "{code} 已抵扣剩余费用",
         "credit": "用 Stripe 余额抵扣 {amount}"
-      }
+      },
+      "emailUs": "给我们发邮件"
     },
     "meta": {
       "publish": "发布 | Openscholar",

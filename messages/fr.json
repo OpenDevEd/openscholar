@@ -428,7 +428,9 @@
       "backTo": "De retour à {amount} le {date}",
       "kept": "{amount} conservés jusqu’à utilisation",
       "publish": "Publier",
-      "noLimit": "Sans limite"
+      "noLimit": "Sans limite",
+      "stripeCredit": "Le crédit Stripe de {amount} paie avant la carte",
+      "stripeCurrency": "Une carte ne peut pas payer les rapports tant que le compte Stripe est en {currency}"
     }
   },
   "errors": {
@@ -6557,7 +6559,8 @@
       "shut": {
         "closed": "Son offre ne comprend pas la publication",
         "ownClosed": "Votre offre ne comprend pas la publication",
-        "used": "Plus de rapport à commencer aujourd'hui"
+        "used": "Plus de rapport à commencer aujourd'hui",
+        "currency": "Son compte Stripe est en {currency}"
       },
       "limit": {
         "personal": "Votre offre permet de commencer {count, plural, one {# rapport} other {# rapports}} par jour. Revenez demain, ou passez à une offre qui en permet plus.",
@@ -6870,10 +6873,12 @@
         "credit": "Crédit Stripe",
         "creditYours": "Vous avez <amount></amount> chez Stripe",
         "creditTheirs": "{owner} a <amount></amount> chez Stripe",
-        "creditIdle": "La page de paiement de Stripe ne peut pas utiliser les <amount></amount> de crédit Stripe. Enregistrez une carte et le crédit paiera en premier.",
+        "creditIdle": "La page de paiement de Stripe ne peut pas utiliser les <amount></amount> de crédit Stripe. Avec une carte enregistrée, Stripe prend d’abord le crédit et la carte paie le reste.",
         "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde.",
         "leastStripe": "Stripe débite une carte d’au moins {least}, donc {spare} reste dans votre solde.",
-        "currency": "Le compte Stripe de cet espace de travail est en {currency}, et les rapports se paient en dollars américains. Écrivez à habari@openscholar.ai pour le faire changer."
+        "currency": "Le compte Stripe de cet espace de travail est en {currency} et les rapports se paient en dollars américains : une carte ne peut pas payer ici tant que nous ne l’avons pas changé.",
+        "emailUs": "Écrivez-nous",
+        "saveCard": "Enregistrer une carte"
       },
       "activateFree": "Activer le DOI",
       "paid": {
@@ -6883,7 +6888,8 @@
         "code": "{code} a couvert le prix",
         "codeRest": "{code} a couvert le reste",
         "credit": "{amount} payés avec le crédit Stripe"
-      }
+      },
+      "emailUs": "Écrivez-nous"
     },
     "meta": {
       "publish": "Publier | Openscholar",

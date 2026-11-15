@@ -429,7 +429,9 @@
       "backTo": "Vuelve a {amount} el {date}",
       "kept": "{amount} guardados hasta usarlos",
       "publish": "Publicar",
-      "noLimit": "Sin límite"
+      "noLimit": "Sin límite",
+      "stripeCredit": "El saldo de {amount} en Stripe paga antes que la tarjeta",
+      "stripeCurrency": "Una tarjeta no puede pagar informes mientras la cuenta de Stripe esté en {currency}"
     }
   },
   "errors": {
@@ -6558,7 +6560,8 @@
       "shut": {
         "closed": "Su plan no incluye publicar",
         "ownClosed": "Tu plan no incluye publicar",
-        "used": "Hoy no quedan informes por empezar"
+        "used": "Hoy no quedan informes por empezar",
+        "currency": "Su cuenta de Stripe está en {currency}"
       },
       "limit": {
         "personal": "Tu plan permite empezar {count, plural, one {# informe} other {# informes}} al día. Vuelve mañana o cámbiate a un plan con más.",
@@ -6871,10 +6874,12 @@
         "credit": "Saldo a favor en Stripe",
         "creditYours": "Tienes <amount></amount> en Stripe",
         "creditTheirs": "{owner} tiene <amount></amount> en Stripe",
-        "creditIdle": "La página de pago de Stripe no puede usar los <amount></amount> de saldo a favor en Stripe. Guarda una tarjeta y el saldo pagará primero.",
+        "creditIdle": "La página de pago de Stripe no puede usar los <amount></amount> de saldo a favor en Stripe. Con una tarjeta guardada, Stripe usa primero el saldo y la tarjeta paga el resto.",
         "least": "Una tarjeta paga al menos {least}, así que {spare} se quedan en tu saldo.",
         "leastStripe": "Stripe cobra al menos {least} a una tarjeta, así que {spare} se queda en tu saldo.",
-        "currency": "La cuenta de Stripe de este espacio de trabajo está en {currency}, y los informes se pagan en dólares estadounidenses. Escribe a habari@openscholar.ai para cambiarla."
+        "currency": "La cuenta de Stripe de este espacio de trabajo está en {currency} y los informes se pagan en dólares estadounidenses, así que una tarjeta no puede pagar aquí hasta que la cambiemos.",
+        "emailUs": "Escríbenos",
+        "saveCard": "Guardar una tarjeta"
       },
       "activateFree": "Activar el DOI",
       "paid": {
@@ -6884,7 +6889,8 @@
         "code": "{code} cubrió el precio",
         "codeRest": "{code} cubrió el resto",
         "credit": "{amount} pagados con el saldo a favor en Stripe"
-      }
+      },
+      "emailUs": "Escríbenos"
     },
     "meta": {
       "publish": "Publicar | Openscholar",
