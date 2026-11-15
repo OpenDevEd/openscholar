@@ -240,7 +240,8 @@ const UPPERCASE_CSS = /text-transform\s*:\s*uppercase/i;
 // same rule (tools/uiRules.ts); keep them in step.
 const GRID_CLASS = /(?:^|[\s:!])!?grid!?(?=$|[\s"'`])/;
 const SCROLL_CLASS = /(?:^|[\s:!])!?overflow(?:-[xy])?-(?:auto|scroll)!?(?=$|[\s"'`])/;
-const COLUMNS_CLASS = /(?:^|[\s:!])!?grid-cols-/;
+// Columns on the grid itself at every width: a variant (sm:, [&>div]:) leaves it unconstrained somewhere.
+const COLUMNS_CLASS = /(?:^|[\s"'`])!?grid-cols-/;
 // shortcut: one class string at a time, so a grid and its overflow split across cn() arguments pass; read the joined list if that happens.
 const scrollsWithoutColumns = (classes) => GRID_CLASS.test(classes) && SCROLL_CLASS.test(classes) && !COLUMNS_CLASS.test(classes);
 const CLASS_HELPERS = new Set(["cn", "cva", "clsx", "cx", "twMerge", "tv", "classNames"]);
