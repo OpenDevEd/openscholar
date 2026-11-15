@@ -33,9 +33,9 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   <section class="bleed ph" style={`--bg:${p.bg};--glow:${p.glow}`}>
     <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 700px) 50vw, (max-width: 1140px) 100vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" /><script is:inline>{ const art = document.currentScript.previousElementSibling; if (art.complete) art.dataset.loaded = ""; }</script><i class="glint"></i></div>
     <div class="inner ph-in">
-      <a class="back" href="/about/" data-back><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
-      <div class="ph-face" id="face"><Portrait person={m} eager clock /></div>
-      <div class="ph-copy">
+      <a class="back rise" href="/about/" data-back><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
+      <div class="ph-face rise" id="face"><Portrait person={m} eager clock /></div>
+      <div class="ph-copy rises">
         <h1>{m.name}{m.suffix && <small>{" "}{m.suffix}</small>}</h1>
         <p class="role">{m.role}</p>
         <a class="org" href={org.url}>{org.name}<Fragment set:html={Out} /></a>
@@ -48,8 +48,8 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
     <script is:inline set:html={CLOCK_JS} />
   </section>
   <div class="pb" style={`--bg:${p.bg}`}>
-    {m.quote ? <figure class="quote"><svg class="qm" viewBox="0 0 48 36" width="56" height="42" aria-hidden="true"><path fill="currentColor" d="M0 36V21.6C0 9.2 6.6 1.8 19.2 0l1.6 5.4C13.6 7 10.6 10.6 10.2 16h9v20Zm27.2 0V21.6C27.2 9.2 33.8 1.8 46.4 0L48 5.4C40.8 7 37.8 10.6 37.4 16h9v20Z" /></svg><blockquote>{m.quote}</blockquote><figcaption>From <a href={m.source}>{org.host}</a></figcaption></figure>
-      : <section class="bio"><p class:list={["first", { long }]} set:html={lead} />{rest.length > 0 && <div class="rest">{rest.map((text) => <p set:html={text} />)}</div>}<p class="src">From <a href={m.source}>{org.host}</a></p></section>}
+    {m.quote ? <figure class="quote rise"><svg class="qm" viewBox="0 0 48 36" width="56" height="42" aria-hidden="true"><path fill="currentColor" d="M0 36V21.6C0 9.2 6.6 1.8 19.2 0l1.6 5.4C13.6 7 10.6 10.6 10.2 16h9v20Zm27.2 0V21.6C27.2 9.2 33.8 1.8 46.4 0L48 5.4C40.8 7 37.8 10.6 37.4 16h9v20Z" /></svg><blockquote>{m.quote}</blockquote><figcaption>From <a href={m.source}>{org.host}</a></figcaption></figure>
+      : <section class="bio rise"><p class:list={["first", { long }]} set:html={lead} />{rest.length > 0 && <div class="rest">{rest.map((text) => <p set:html={text} />)}</div>}<p class="src">From <a href={m.source}>{org.host}</a></p></section>}
     {pubs.length > 0 && <Publications pubs={pubs} />}
   </div>
   <div class="works"><OrgPanel id={m.org} except={m.key} h={2} /></div>
@@ -73,8 +73,8 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
   /* The frame is drawn exactly as on the person's card, so it can travel here from it. On a page the transition brings in, or one
      come back to, it is simply there; on a direct visit it rises in with the name beside it. */
   .ph-face { grid-area: face; margin-bottom: calc(-1 * var(--hang)); } .ph-face :global(.pf) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2), 0 20px 32px -22px color-mix(in srgb, var(--bg) 45%, transparent); }
-  .back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 8px; height: 44px; margin: -14px 0 10px -12px; padding-inline: 12px 14px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); animation: ph-up .8s var(--ease) both; } .back svg { transition: translate .25s var(--ease); } :global(html:not(.cold)) .back:hover, .back:focus-visible { background: rgb(255 255 255 / .1); color: #fff; } :global(html:not(.cold)) .back:hover svg, .back:focus-visible svg { translate: -3px 0; }
-  .ph-copy { grid-area: copy; display: grid; justify-items: start; max-width: 680px; } .ph-copy > * { animation: ph-up .8s var(--ease) both; } .ph-copy > :nth-child(1) { animation-delay: .06s; } .ph-copy > :nth-child(2) { animation-delay: .12s; } .ph-copy > :nth-child(3) { animation-delay: .18s; } .ph-copy > :nth-child(4) { animation-delay: .24s; } @keyframes ph-up { from { opacity: 0; transform: translateY(18px); } }
+  .back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 8px; height: 44px; margin: -14px 0 10px -12px; padding-inline: 12px 14px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); } .back svg { transition: translate .25s var(--ease); } :global(html:not(.cold)) .back:hover, .back:focus-visible { background: rgb(255 255 255 / .1); color: #fff; } :global(html:not(.cold)) .back:hover svg, .back:focus-visible svg { translate: -3px 0; }
+  .ph-copy { grid-area: copy; display: grid; justify-items: start; max-width: 680px; } .ph-copy > :nth-child(1) { animation-delay: .06s; } .ph-copy > :nth-child(2) { animation-delay: .12s; } .ph-copy > :nth-child(3) { animation-delay: .18s; } .ph-copy > :nth-child(4) { animation-delay: .24s; }
   .ph-copy h1 { font-size: clamp(40px, 4.8vw, 68px); line-height: 1; letter-spacing: -.04em; } .ph-copy h1 small { margin-left: .17em; font-size: .34em; font-weight: 400; letter-spacing: 0; color: rgb(255 255 255 / .66); }
   .role { margin-top: 16px; font-size: clamp(19px, 1.7vw, 23px); line-height: 1.25; letter-spacing: -.01em; }
   .org { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 17px; color: rgb(255 255 255 / .78); transition: color .15s var(--ease); } .org :global(svg) { opacity: .7; transition: translate .25s var(--ease), opacity .15s var(--ease); } .org:is(:hover, :focus-visible) { color: #fff; } .org:is(:hover, :focus-visible) :global(svg) { translate: 2px -2px; opacity: 1; }
@@ -88,8 +88,8 @@ const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke=
      the sections of the About page are from each other. */
   .pb { display: grid; gap: calc(clamp(56px, 7vw, 96px) + var(--gap)); padding: 24px var(--edge) clamp(56px, 7vw, 96px); }
   /* It rises in after the name and the links above it, never before them. */
-  :global(.js) .bio, :global(.js) .quote { animation: ph-up .8s var(--ease) .3s both; }
-  :global(html.js:not(.back):not(.moved)) .ph-face { animation: ph-up .8s var(--ease) both; }
+  :is(.bio, .quote, .ph-face) { animation: none; } :global(.js) .bio, :global(.js) .quote { animation: rise .8s var(--ease) .3s both; }
+  :global(html.js:not(.back):not(.moved)) .ph-face { animation: rise .8s var(--ease) both; }
   /* The frame waits for its photo, so it never rises in as an empty box with the person arriving after it. */
   :global(html.js:not(.back):not(.moved)) .ph-face:has(:global(.pf-who:not([data-landed]))) { animation-play-state: paused; }
   /* A page come back to has been seen: nothing on it makes an entrance again. A page the page transition brought in makes

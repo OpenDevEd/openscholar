@@ -11,8 +11,8 @@ const feed = [["Maya Chen", "changed an answer", "#34d399"], ["The assistant", "
 <section class="bleed thero" id="activity">
   <Art name="team-merge" pos="50% 100%" eager />
   <div class="inner tin">
-    <div class="tc"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
-    <div class="ts">
+    <div class="tc rises"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
+    <div class="ts rise">
       <Device class="lap" kind="laptop" name="screen" theme="light" eager alt="A shared screening with its progress, its questions and who ran it" sizes="(max-width: 1100px) 94vw, 640px" />
     </div>
   </div>
@@ -21,9 +21,9 @@ const feed = [["Maya Chen", "changed an answer", "#34d399"], ["The assistant", "
 <style>
   .thero { background: #032630; padding-block: clamp(104px, 8.4vw, 124px) clamp(32px, 4vw, 56px); --g: 3 28 36; } .thero::after { display: none; } .thero :global(.art) { z-index: -2; -webkit-mask-image: linear-gradient(#000 calc(100% - 170px), transparent calc(100% - 110px)); mask-image: linear-gradient(#000 calc(100% - 170px), transparent calc(100% - 110px)); }
   .tin { display: grid; gap: clamp(28px, 3.4vw, 44px); justify-items: center; text-align: center; }
-  .tc { display: grid; gap: 18px; justify-items: center; max-width: 1040px; } .tc h1 { font-size: clamp(40px, 6vw, 88px); line-height: 1; letter-spacing: -.03em; } .tc .lead { max-width: 34em; opacity: .92; }
-  .tc > * { animation: t-up .8s var(--ease) both; } .tc > :nth-child(2) { animation-delay: .06s; } .tc > :nth-child(3) { animation-delay: .12s; } @keyframes t-up { from { opacity: 0; transform: translateY(18px); } }
-  .ts { position: relative; width: 100%; max-width: 1100px; display: grid; justify-items: center; text-align: left; animation: t-up .9s .16s var(--ease) both; } .ts :global(.lap) { width: min(88%, 980px); }
+  .tc { display: grid; gap: 18px; justify-items: center; max-width: 1040px; } .tc h1 { font-size: clamp(40px, 6vw, 88px); line-height: 1; letter-spacing: -.03em; } .tc .lead { max-width: 34em; --shown: .92; }
+  .tc > :nth-child(2) { animation-delay: .06s; } .tc > :nth-child(3) { animation-delay: .12s; }
+  .ts { position: relative; width: 100%; max-width: 1100px; display: grid; justify-items: center; text-align: left; animation-duration: .9s; animation-delay: .16s; } .ts :global(.lap) { width: min(88%, 980px); }
   /* The team's work runs past under the screen in one line, and nothing floats over the product. */
   .ticker { margin-top: clamp(18px, 2.4vw, 32px); overflow: clip; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); } .ticker ol { display: flex; width: max-content; gap: 34px; animation: tick 46s linear infinite; } .ticker:hover ol { animation-play-state: paused; } @keyframes tick { to { transform: translateX(calc(-50% - 17px)); } } .ticker li { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-size: 15px; } .ticker strong { font-weight: 500; } .ticker li > i { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: var(--ink); } .ticker li > i :global(svg), .p :global(svg) { width: 16px; height: 16px; } .p { display: grid; }
   /* Wide screens: the words on the left and the real screen on the right, centred together in the strip, with the ribbons filling the page behind. */
