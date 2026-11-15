@@ -12,17 +12,19 @@ import { autocompleteOptions, autocompleteParameters } from "../../lib/openalex/
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
-import { matchOrcid, matchRor } from "../../lib/people/identifiers";
+import { matchOrcid, matchRor, namedExactly } from "../../lib/people/identifiers";
 import { CREDIT_ROLES, DETAIL_TEXT, LIST_NUMBER, REPORT_TYPES, RELATION_KINDS, doiWithin, referenceFrom, isOrcid, type Affiliation, type Funding, type Metadata, type Topic, dateParts } from "../../lib/reports/report";
 
 /** The model a reading runs on, as the server resolved it, and the effort it reads at. */
 export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
 
-/** OpenAlex's best match for a name among its institutions, with its ROR ID, or its funders; or none. */
+/** The one OpenAlex institution, with its ROR ID, or funder named exactly as printed; or none. */
 async function bestMatch(entity: "institutions" | "funders", name: string) {
   const response = await openAlexFetch(openAlexUrl(`autocomplete/${entity}`, autocompleteParameters(name, entity, "openalex")), { timeoutMs: 12_000 });
   if (!response.ok) throw new Error(`OpenAlex autocomplete ${response.status}`);
-  return autocompleteOptions(await response.json(), { ror: true })[0];
+  // Autocomplete's first answer is often another organisation: "Oxford University" gives Oxford University Hospitals.
+  // shortcut: only its first page (10) is read, so a namesake past it goes unseen; it orders by works, so one rarely is.
+  return namedExactly(autocompleteOptions(await response.json(), { ror: true }), name, (option) => [option.name]);
 }
 
 const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) => item.id) as [string, ...string[]];
@@ -148,7 +150,7 @@ const institution = async (name: string): Promise<Affiliation> => {
   try {
     const best = await bestMatch("institutions", name);
     if (best) return { id: best.id, name: best.name, country: countryOfPlace(best.detail), ...(best.ror && { ror: best.ror }) };
-    // One OpenAlex doesn't know may still be on ROR, when ROR's matcher is sure of it.
+    // One OpenAlex doesn't know by this name may be on ROR under it, as its own name or another ("Oxford University").
     const onRor = await matchRor(name);
     if (onRor) return { id: null, name: onRor.name, country: countryOfPlace(onRor.place), ror: onRor.ror };
   } catch (error) {
@@ -158,9 +160,9 @@ const institution = async (name: string): Promise<Affiliation> => {
 };
 
 /**
- * OpenAlex's funder by its own name, with its ROR ID where OpenAlex knows it; else the organisation ROR's matcher is
- * sure the name is, as many governments and foundations that fund work are on ROR and not among OpenAlex's funders; else
- * null. A name with describing words around it finds nothing in either.
+ * OpenAlex's funder by its own name, with its ROR ID where OpenAlex knows it; else the organisation on ROR with that
+ * name, as many governments and foundations that fund work are on ROR and not among OpenAlex's funders; else null. A
+ * name with describing words around it finds nothing in either.
  */
 const funder = async (name: string): Promise<Funding["funder"] | null> => {
   // Each register asked on its own: OpenAlex busy or down still leaves ROR to find the funder.

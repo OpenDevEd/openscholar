@@ -111,9 +111,26 @@ export async function fundrefOf(ror: string): Promise<string | null> {
   return fundref?.preferred ?? fundref?.all[0] ?? null;
 }
 
-/** The organisation ROR's affiliation matcher is sure a printed affiliation names, or none when it isn't sure. */
+/** An organisation's name as letters alone, "&" read as "and", without a leading "The": "The Data Lab" is "Data Lab". */
+const organisationName = (name: string) => folded(name.replace(/&/g, " and ")).replace(/^the /, "");
+
+/**
+ * The one record among these that carries exactly the name printed; none when none does, or several do (a Ministry
+ * of Health in every country). A registry's best guess is never taken for a name it doesn't carry.
+ */
+export function namedExactly<T>(records: readonly T[], printed: string, namesOf: (record: T) => string[]): T | undefined {
+  const same = records.filter((record) => namesOf(record).some((name) => organisationName(name) === organisationName(printed)));
+  return same.length === 1 ? same[0] : undefined;
+}
+
+/**
+ * The organisation ROR's affiliation matcher picks for a printed name, only when that name is one of its own. The
+ * matcher picks an organisation named anywhere inside the text it's given, so alone it reads "Enugu Schools Data Lab"
+ * as The Data Lab.
+ */
 export async function matchRor(affiliation: string): Promise<RorOrganisation | null> {
   const { items } = await rorGet<{ items: Array<{ chosen: boolean; organization: RorRecord }> }>({ affiliation });
-  const chosen = items.find((item) => item.chosen)?.organization;
-  return chosen ? organisationOf(chosen) : null;
+  const chosen = items.filter((item) => item.chosen).map((item) => item.organization);
+  const named = namedExactly(chosen, affiliation, (record) => record.names.map((n) => n.value));
+  return named ? organisationOf(named) : null;
 }
