@@ -29,8 +29,8 @@ const MATCH_ROWS = 20;
 
 /** A phrase for ORCID's search, with nothing in it that its query language reads. */
 const phrase = (words: string) => `"${words.replace(/["\\]/g, " ").trim()}"`;
-/** A name as letters alone, so Björn Haßler and Bjorn Hassler are the same. */
-const folded = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").replace(/ß/g, "ss").toLowerCase().replace(/[^\p{L} ]/gu, " ").replace(/\s+/g, " ").trim();
+/** A name as letters and digits alone, so Björn Haßler and Bjorn Hassler are the same, and University of Medicine 1 and 2 are not. */
+const folded = (name: string) => name.normalize("NFKD").replace(/\p{M}/gu, "").replace(/ß/g, "ss").toLowerCase().replace(/[^\p{L}\p{N} ]/gu, " ").replace(/\s+/g, " ").trim();
 
 /** People on ORCID for the words typed, best first: those at one of the author's institutions, then everyone else. */
 export async function findOrcidPeople(words: string, institutions: string[] = []) {
@@ -111,7 +111,7 @@ export async function fundrefOf(ror: string): Promise<string | null> {
   return fundref?.preferred ?? fundref?.all[0] ?? null;
 }
 
-/** An organisation's name as letters alone, "&" read as "and", without a leading "The": "The Data Lab" is "Data Lab". */
+/** An organisation's name as letters and digits alone, "&" read as "and", without a leading "The": "The Data Lab" is "Data Lab". */
 const organisationName = (name: string) => folded(name.replace(/&/g, " and ")).replace(/^the /, "");
 
 /**
