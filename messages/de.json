@@ -6526,7 +6526,7 @@
         "live": "Online",
         "sealed": "Gesperrt, sobald die Vereinbarung unterzeichnet ist.",
         "paying": "Die Zahlung läuft, daher lassen sich die Schritte gerade nicht öffnen. Lehnt die Bank sie ab, sind sie wieder offen.",
-        "liveNow": "Er ist live. Ändern Sie die Angaben mit {action}.",
+        "liveNow": "Er ist live. Ändern Sie die Angaben mit dem Stift in seiner Zeile unter Ihren Berichten.",
         "closed": "Eine prüfende Person hat ihn zurückgezogen, daher lässt er sich nicht mehr ändern.",
         "running": "Die Prüfungen laufen. Die Schritte öffnen sich wieder, wenn sie fertig sind.",
         "notYours": "Nur die Person, die diesen Bericht begonnen hat, kann ihn ändern."

@@ -6525,7 +6525,7 @@
         "live": "En ligne",
         "sealed": "Verrouillé une fois l'accord signé.",
         "paying": "Son paiement est en cours, ses étapes ne peuvent donc pas être rouvertes pour l'instant. Si la banque le refuse, elles se rouvrent.",
-        "liveNow": "Il est en ligne. Modifiez ses informations avec {action}.",
+        "liveNow": "Il est en ligne. Modifiez ses informations avec le crayon de sa ligne dans vos rapports.",
         "closed": "Un relecteur l'a retiré, il ne peut donc plus être modifié.",
         "running": "Ses vérifications sont en cours. Les étapes se rouvrent quand elles sont terminées.",
         "notYours": "Seule la personne qui a commencé ce rapport peut le modifier."

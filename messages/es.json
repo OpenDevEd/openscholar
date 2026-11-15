@@ -6526,7 +6526,7 @@
         "live": "Publicado",
         "sealed": "Bloqueado una vez firmado el acuerdo.",
         "paying": "Su pago está en curso, así que sus pasos no se pueden abrir ahora. Si el banco lo rechaza, se abren de nuevo.",
-        "liveNow": "Está publicado. Cambia sus datos con {action}.",
+        "liveNow": "Está publicado. Cambia sus datos con el lápiz de su fila en tus informes.",
         "closed": "Un revisor lo retiró, así que no se puede cambiar.",
         "running": "Sus comprobaciones están en curso. Los pasos se abren de nuevo cuando terminen.",
         "notYours": "Solo la persona que empezó este informe puede cambiarlo."

@@ -862,7 +862,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} series={basics.series} fresh={fresh?.key === report.key && fresh.step === "live"} onCorrect={onCorrect} />
+            <LiveReport report={report} series={basics.series} fresh={fresh?.key === report.key && fresh.step === "live"} />
           ) : (
             <Checks
               beside={beside}
@@ -938,7 +938,7 @@ function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }
         : paying
           ? t("steps.paying")
           : stage === "live"
-            ? t("steps.liveNow", { action: t("correct") })
+            ? t("steps.liveNow")
             : stage === "declined" && report.activatedAt !== undefined
               ? t("steps.closed")
               : null;
@@ -2490,7 +2490,7 @@ function useReceipt(reportKey: string) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, series, fresh, onCorrect }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; fresh: boolean; onCorrect: () => void }) {
+function LiveReport({ report, series, fresh }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; fresh: boolean }) {
   // The report as the app's papers are, for saving it: the same as its own page saves.
   const paper = report.metadata ? reportPaper({ key: report.key, doi: report.doi, pdfUrl: `/papers/${report.key}/report.pdf`, updatedAt: report.updatedAt }, report.metadata, series) : null;
   const reduce = useReducedMotion();
@@ -2543,11 +2543,8 @@ function LiveReport({ report, series, fresh, onCorrect }: { report: Report; /** 
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
         <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
       </motion.div>
-      {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
+      {/* On a phone the three are even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
-        <Button variant="outline" size="sm" onClick={onCorrect}>
-          <PenLine /> {t("correct")}
-        </Button>
         {/* The app's own three, as on the report's page: save to the library, add to a collection, add to a community. */}
         {paper ? <SaveControl paper={paper} named /> : null}
         <Button asChild size="sm">
@@ -2556,7 +2553,6 @@ function LiveReport({ report, series, fresh, onCorrect }: { report: Report; /** 
           </Link>
         </Button>
       </motion.div>
-      <TakeDown reportKey={report.key} className="mt-6 text-center" />
     </div>
   );
 }

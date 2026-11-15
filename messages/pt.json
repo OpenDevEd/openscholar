@@ -6526,7 +6526,7 @@
         "live": "Publicado",
         "sealed": "Bloqueado depois de o acordo ser assinado.",
         "paying": "O pagamento está em andamento, então as etapas não podem ser abertas agora. Se o banco recusar, elas abrem de novo.",
-        "liveNow": "Está publicado. Altere os detalhes com {action}.",
+        "liveNow": "Está publicado. Altere os dados com o lápis na linha dele nos seus relatórios.",
         "closed": "Um revisor o retirou, então ele não pode ser alterado.",
         "running": "As verificações estão em andamento. As etapas abrem de novo quando terminarem.",
         "notYours": "Só a pessoa que começou este relatório pode alterá-lo."

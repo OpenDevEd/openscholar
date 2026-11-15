@@ -6525,7 +6525,7 @@
         "live": "Live",
         "sealed": "Locked once the agreement is signed.",
         "paying": "Its payment is going through, so its steps can't be opened now. If the bank refuses it, they open again.",
-        "liveNow": "It's live. Change its details with {action}.",
+        "liveNow": "It’s live. Change its details with the pencil on its row in your reports.",
         "closed": "A reviewer took it down, so it can't be changed.",
         "running": "Its checks are running. The steps open again when they finish.",
         "notYours": "Only the person who started this report can change it."
