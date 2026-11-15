@@ -5,7 +5,7 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
 import { CONTACT_EMAIL, CURRENCY_MAIL as SUPPORT_MAIL } from "@/lib/billing/contact";
 import { useAction, useConvex, useMutation, useQueries, useQuery } from "convex/react";
 import { createPortal } from "react-dom";
@@ -2503,9 +2503,10 @@ function LiveReport({ report, series, fresh, onCorrect }: { report: Report; /** 
   const url = `https://doi.org/${report.doi}`;
   const passed = report.results?.filter((r) => r.pass).length ?? 0;
   return (
-    <div>
-      {/* Beside the cover, the seal takes the height the cover's column has to spare, so the buttons end on the card's edge. */}
-      <div className="flex flex-col items-center pb-7 pt-3 text-center @3xl:pb-12 @3xl:pt-10">
+    // As tall as the cover's column beside it (`ReportCover`'s `--cover-height`): the seal takes the height it has to
+    // spare, centred, and the DOI, the buttons and the way to take it down end level with the column's foot.
+    <div className="flex flex-col @3xl:min-h-[var(--cover-height,0px)]">
+      <div className="flex flex-col items-center justify-center pb-7 pt-3 text-center @3xl:flex-1 @3xl:pb-12 @3xl:pt-10">
         <Seal play={play} />
         <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.45)}>
           {t("liveTitle")}
@@ -2655,6 +2656,22 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
   const t = useTranslations("publishReports.flow");
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
+  // Its height on the grid it stands in (`--cover-height`), which a screen beside it fills to stand level with it. A
+  // ResizeObserver, as the cover, its facts and its bill grow.
+  const aside = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = aside.current;
+    const grid = element?.parentElement;
+    if (!element || !grid) return;
+    const set = () => grid.style.setProperty("--cover-height", `${element.offsetHeight}px`);
+    set();
+    const observer = new ResizeObserver(set);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      grid.style.removeProperty("--cover-height");
+    };
+  }, []);
   // The report's facts, as rows of a label and its value, as the bill under them reads.
   const facts: Array<{ id: string; label: string; value: ReactNode; href?: string }> = [
     ...(live ? [{ id: "status", label: t("status"), value: <span className="inline-flex items-center gap-1 font-medium ink-success"><BadgeCheck className="size-3.5" />{t("live")}</span> }] : []),
@@ -2665,7 +2682,7 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
   return (
     // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it. As the
     // page scrolls it stays under the page's bar, as far from it as it is from the card's edge.
-    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
+    <aside ref={aside} className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
       <PaperCover
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
