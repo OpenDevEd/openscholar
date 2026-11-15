@@ -1055,6 +1055,17 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // Whose Stripe credit the bill names: the organisation that would pay, or null for the person's own.
   const paying = chosen ?? current;
   const payer = paying?.kind === "organization" ? paying.name : null;
+  // Credit a missing card leaves unused: whoever manages the paying workspace's cards saves one on Stripe's page, which
+  // comes back here, to the workspace's own Publish page, marked so the card is read again.
+  const openPortal = useAction(api.billing.actions.openPortal);
+  const appToast = useAppToast();
+  const saveCard =
+    paying && (paying.kind === "personal" || paying.role === "admin")
+      ? () => {
+          const back = `${workspaceHref(paying.kind === "organization" ? paying.slug : undefined, "/publish")}?report=new&step=agreement&back=${crypto.randomUUID()}`;
+          void openPortal({ ...(paying.kind === "organization" && { workspaceId: paying.workspaceId }), back }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+        }
+      : undefined;
   const [now] = useState(thisMinute);
   const others = here && pageWorkspace ? (list ?? []).filter((workspace) => workspace.workspaceId !== pageWorkspace).map((workspace) => workspace.workspaceId) : [];
   const asked = others.join(" ");
@@ -1171,8 +1182,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
             </motion.div>
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
-          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} />
-          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} />, beside) : null}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>
