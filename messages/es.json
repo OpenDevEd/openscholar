@@ -6871,7 +6871,10 @@
         "credit": "Saldo a favor en Stripe",
         "creditYours": "Tienes <amount></amount> en Stripe",
         "creditTheirs": "{owner} tiene <amount></amount> en Stripe",
-        "least": "Una tarjeta paga al menos {least}, así que {spare} se quedan en tu saldo."
+        "creditIdle": "La página de pago de Stripe no puede usar los <amount></amount> de saldo a favor en Stripe. Guarda una tarjeta y el saldo pagará primero.",
+        "least": "Una tarjeta paga al menos {least}, así que {spare} se quedan en tu saldo.",
+        "leastStripe": "Stripe cobra al menos {least} a una tarjeta, así que {spare} se queda en tu saldo.",
+        "currency": "La cuenta de Stripe de este espacio de trabajo está en {currency}, y los informes se pagan en dólares estadounidenses. Escribe a habari@openscholar.ai para cambiarla."
       },
       "activateFree": "Activar el DOI",
       "paid": {

@@ -25,7 +25,7 @@ import {
 } from "./validators";
 import { PUBLICATION_FEATURE, EVIDENCE_LIBRARIES_FEATURE, REFILL_INTERVALS, type RefillInterval, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
-import { stripeCredit } from "./stripeRest";
+import { stripeFunds } from "./stripeRest";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
@@ -86,11 +86,13 @@ export function partsOf(balance: AutumnBalance | undefined): { publication?: Bal
 /**
  * What the workspace has to pay for a report with, as its cached account has it: its publication balance by part and
  * what it holds in US dollars (null for no limit), and the credit on its Stripe customer, which Stripe takes a charge
- * from before the card. Every screen that shows a report's bill reads it from here.
+ * from before a saved card, whether a card is saved, and the Stripe customer's currency when it isn't US dollars, which
+ * nothing priced in dollars can be bought in: Stripe's own page, where one without a card pays, doesn't use
+ * that credit. Every screen that shows a report's bill reads it from here.
  */
-export function fundsOf(account: { publication?: BalancePart[]; publicationUnlimited?: boolean; credit?: number } | null) {
+export function fundsOf(account: { publication?: BalancePart[]; publicationUnlimited?: boolean; credit?: number; card?: unknown; stripeCurrency?: string } | null) {
   const parts = account?.publication ?? [];
-  return { parts, balance: account?.publicationUnlimited ? null : parts.reduce((sum, part) => sum + part.left, 0), credit: account?.credit ?? 0 };
+  return { parts, balance: account?.publicationUnlimited ? null : parts.reduce((sum, part) => sum + part.left, 0), credit: account?.credit ?? 0, cardSaved: !!account?.card, currency: account?.stripeCurrency ?? null };
 }
 
 /** Reads what OpenScholar needs from an Autumn customer. */
@@ -217,7 +219,7 @@ export const writeSnapshot = internalMutation({
     if (!workspace) return null;
     // A snapshot read before the one cached would bring back an older plan and its limits. Its card can still be the newest read.
     if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) {
-      if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt });
+      if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, credit: snapshot.credit, stripeCurrency: snapshot.stripeCurrency, cardFetchedAt: fetchedAt });
       return null;
     }
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
@@ -229,7 +231,7 @@ export const writeSnapshot = internalMutation({
       ...snapshot,
       ...(paying && { publication: existing.publication, publicationUnlimited: existing.publicationUnlimited }),
       publicationAt: paying ? existing.publicationAt : fetchedAt,
-      ...(withCard ? { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt } : { card: existing?.card, credit: existing?.credit, cardFetchedAt: existing?.cardFetchedAt }),
+      ...(withCard ? { card: snapshot.card, credit: snapshot.credit, stripeCurrency: snapshot.stripeCurrency, cardFetchedAt: fetchedAt } : { card: existing?.card, credit: existing?.credit, stripeCurrency: existing?.stripeCurrency, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,
       firstPaidAt: existing?.firstPaidAt ?? (snapshot.paying ? fetchedAt : undefined),
@@ -323,9 +325,10 @@ export async function refreshAccount(
   let customer = await autumn.customer(customerId, options);
   // A failed payment's invoice is read only while one is due, which is rare.
   if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
-  // The card's read also reads the credit on the Stripe balance, which a purchase is paid from first.
-  const credit = options.card && customer.stripe_id ? await stripeCredit(customer.stripe_id) : undefined;
-  const snapshot = { ...snapshotFromCustomer(customer), ...(credit !== undefined && { credit }) };
+  // The card's read also reads the credit on the Stripe balance, which a purchase is paid from first, and the
+  // currency Stripe has the customer in, when it isn't dollars.
+  const funds = options.card && customer.stripe_id ? await stripeFunds(customer.stripe_id) : undefined;
+  const snapshot = { ...snapshotFromCustomer(customer), ...(funds && { credit: funds.credit, ...(funds.currency && { stripeCurrency: funds.currency }) }) };
   await ctx.runMutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }

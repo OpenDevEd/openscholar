@@ -6870,7 +6870,10 @@
         "credit": "Stripe のクレジット",
         "creditYours": "Stripe に <amount></amount> あります",
         "creditTheirs": "{owner} は Stripe に <amount></amount> あります",
-        "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。"
+        "creditIdle": "Stripe の支払いページでは Stripe のクレジット <amount></amount> を使えません。カードを保存すると、クレジットから先に支払われます。",
+        "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。",
+        "leastStripe": "Stripe はカードに最低 {least} を請求するため、{spare} は残高に残ります。",
+        "currency": "このワークスペースの Stripe アカウントは {currency} 建てですが、レポートは米ドルで支払います。変更するには habari@openscholar.ai までご連絡ください。"
       },
       "activateFree": "DOI を有効化",
       "paid": {

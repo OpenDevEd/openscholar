@@ -6870,7 +6870,10 @@
         "credit": "Crédit Stripe",
         "creditYours": "Vous avez <amount></amount> chez Stripe",
         "creditTheirs": "{owner} a <amount></amount> chez Stripe",
-        "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde."
+        "creditIdle": "La page de paiement de Stripe ne peut pas utiliser les <amount></amount> de crédit Stripe. Enregistrez une carte et le crédit paiera en premier.",
+        "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde.",
+        "leastStripe": "Stripe débite une carte d’au moins {least}, donc {spare} reste dans votre solde.",
+        "currency": "Le compte Stripe de cet espace de travail est en {currency}, et les rapports se paient en dollars américains. Écrivez à habari@openscholar.ai pour le faire changer."
       },
       "activateFree": "Activer le DOI",
       "paid": {

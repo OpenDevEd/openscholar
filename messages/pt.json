@@ -6871,7 +6871,10 @@
         "credit": "Crédito no Stripe",
         "creditYours": "Você tem <amount></amount> no Stripe",
         "creditTheirs": "{owner} tem <amount></amount> no Stripe",
-        "least": "Um cartão paga pelo menos {least}, por isso {spare} ficam no seu saldo."
+        "creditIdle": "A página de pagamento do Stripe não consegue usar os <amount></amount> de crédito no Stripe. Salve um cartão e o crédito paga primeiro.",
+        "least": "Um cartão paga pelo menos {least}, por isso {spare} ficam no seu saldo.",
+        "leastStripe": "O Stripe cobra no mínimo {least} de um cartão, então {spare} fica no seu saldo.",
+        "currency": "A conta do Stripe deste espaço de trabalho está em {currency}, e os relatórios são pagos em dólares americanos. Escreva para habari@openscholar.ai para mudá-la."
       },
       "activateFree": "Ativar o DOI",
       "paid": {

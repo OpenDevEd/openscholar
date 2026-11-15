@@ -6871,7 +6871,10 @@
         "credit": "Salio la Stripe",
         "creditYours": "Una <amount></amount> kwenye Stripe",
         "creditTheirs": "{owner} ina <amount></amount> kwenye Stripe",
-        "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako."
+        "creditIdle": "Ukurasa wa malipo wa Stripe hauwezi kutumia salio la Stripe la <amount></amount>. Hifadhi kadi na salio litalipa kwanza.",
+        "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
+        "leastStripe": "Stripe hutoza kadi angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
+        "currency": "Akaunti ya Stripe ya eneo hili la kazi iko katika {currency}, na ripoti hulipwa kwa dola za Marekani. Andika kwa habari@openscholar.ai ili ibadilishwe."
       },
       "activateFree": "Washa DOI",
       "paid": {

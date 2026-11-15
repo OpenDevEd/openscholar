@@ -349,9 +349,9 @@ export const autumn = {
     /** A promotion code of an Autumn reward, taken off the charge. */
     code?: string;
     /**
-     * Billed by invoice and given at once, for a purchase quoted at nothing to a customer with no card: Autumn sends a
-     * card-less customer to Stripe's page otherwise, even for $0. Only ever with a quote of nothing: anything owed
-     * would be given unpaid.
+     * Billed by invoice and given at once, for a purchase quoted at nothing to a customer with no card, after a code or
+     * the customer's Stripe credit, which Stripe takes as it finalizes the invoice: Autumn sends a card-less customer to
+     * Stripe's page otherwise, which charges it all. Only ever with a quote of nothing: anything owed would be given unpaid.
      */
     unbilled?: boolean;
     /**

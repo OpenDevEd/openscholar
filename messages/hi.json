@@ -6870,7 +6870,10 @@
         "credit": "Stripe क्रेडिट",
         "creditYours": "Stripe पर आपके पास <amount></amount> हैं",
         "creditTheirs": "Stripe पर {owner} के पास <amount></amount> हैं",
-        "least": "कार्ड से कम से कम {least} का भुगतान होता है, इसलिए {spare} आपके शेष में रहते हैं।"
+        "creditIdle": "Stripe का भुगतान पेज <amount></amount> का Stripe क्रेडिट इस्तेमाल नहीं कर सकता। कार्ड सेव करें, तो पहले क्रेडिट से भुगतान होगा।",
+        "least": "कार्ड से कम से कम {least} का भुगतान होता है, इसलिए {spare} आपके शेष में रहते हैं।",
+        "leastStripe": "Stripe कार्ड से कम से कम {least} लेता है, इसलिए {spare} आपके बैलेंस में रहते हैं।",
+        "currency": "इस वर्कस्पेस का Stripe खाता {currency} में है, और रिपोर्ट का भुगतान अमेरिकी डॉलर में होता है। इसे बदलवाने के लिए habari@openscholar.ai पर लिखें।"
       },
       "activateFree": "DOI सक्रिय करें",
       "paid": {

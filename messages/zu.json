@@ -6870,7 +6870,10 @@
         "credit": "Isikweletu se-Stripe",
         "creditYours": "Unokungu-<amount></amount> ku-Stripe",
         "creditTheirs": "I-{owner} inokungu-<amount></amount> ku-Stripe",
-        "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho."
+        "creditIdle": "Ikhasi lokukhokha le-Stripe alikwazi ukusebenzisa isikweletu se-Stripe esingu-<amount></amount>. Gcina ikhadi bese isikweletu sikhokha kuqala.",
+        "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho.",
+        "leastStripe": "I-Stripe ikhokhisa ikhadi okungenani u-{least}, ngakho u-{spare} usala kubhalansi yakho.",
+        "currency": "I-akhawunti ye-Stripe yale ndawo yokusebenza ikwi-{currency}, futhi imibiko ikhokhwa ngamadola aseMelika. Bhalela ku-habari@openscholar.ai ukuze ishintshwe."
       },
       "activateFree": "Vula i-DOI",
       "paid": {

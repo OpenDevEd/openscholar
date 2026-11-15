@@ -6871,7 +6871,10 @@
         "credit": "رصيد Stripe",
         "creditYours": "لديك <amount></amount> في Stripe",
         "creditTheirs": "لدى {owner} مبلغ <amount></amount> في Stripe",
-        "least": "تدفع البطاقة {least} على الأقل، فيبقى {spare} في رصيدك."
+        "creditIdle": "لا تستطيع صفحة الدفع في Stripe استخدام رصيد Stripe البالغ <amount></amount>. احفظ بطاقة ليُدفع من الرصيد أولًا.",
+        "least": "تدفع البطاقة {least} على الأقل، فيبقى {spare} في رصيدك.",
+        "leastStripe": "يخصم Stripe من البطاقة {least} على الأقل، لذا يبقى {spare} في رصيدك.",
+        "currency": "حساب Stripe لمساحة العمل هذه بعملة {currency}، والتقارير تُدفع بالدولار الأمريكي. راسل habari@openscholar.ai لتغييرها."
       },
       "activateFree": "فعّل الـ DOI",
       "paid": {

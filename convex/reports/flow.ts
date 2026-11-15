@@ -208,6 +208,10 @@ export const startsAction = defineUserQuery({
     parts: balancePartsValidator,
     /** Credit on the workspace's Stripe customer, in US dollars, which Stripe takes a charge from before the card. */
     credit: v.number(),
+    /** A card is saved, which Stripe charges after the credit; without one a charge is paid on Stripe's page, which doesn't use the credit. */
+    cardSaved: v.boolean(),
+    /** The currency of the workspace's Stripe customer when it isn't US dollars: nothing priced in dollars can be bought there. */
+    currency: v.union(v.string(), v.null()),
   }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);

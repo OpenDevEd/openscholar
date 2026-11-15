@@ -6870,7 +6870,10 @@
         "credit": "Stripe credit",
         "creditYours": "You have <amount></amount> at Stripe",
         "creditTheirs": "{owner} has <amount></amount> at Stripe",
-        "least": "A card pays for at least {least}, so {spare} stays in your balance."
+        "creditIdle": "Stripe’s payment page can’t use the <amount></amount> of Stripe credit. Save a card and the credit pays first.",
+        "least": "A card pays for at least {least}, so {spare} stays in your balance.",
+        "leastStripe": "Stripe charges a card at least {least}, so {spare} stays in your balance.",
+        "currency": "This workspace’s Stripe account is in {currency}, and reports are paid in US dollars. Write to habari@openscholar.ai to have it changed."
       },
       "activateFree": "Activate the DOI",
       "paid": {

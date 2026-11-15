@@ -35,13 +35,17 @@ export async function voidDeclined(invoice: string) {
 }
 
 /**
- * The credit on a Stripe customer's balance, in US dollars, which Stripe takes an invoice from before the card (a
- * refund of a plan's unused days, say); 0 for none. Undefined when it can't be read.
+ * What a Stripe customer has toward a charge: the credit on its balance in US dollars, which Stripe takes an invoice
+ * from before the card (a refund of a plan's unused days, say), 0 for none; and its currency when that isn't US
+ * dollars, upper case. Such a customer can't buy anything priced in dollars, and its credit is in that currency, so it
+ * isn't counted. Undefined when it can't be read.
  */
-export async function stripeCredit(customer: string): Promise<number | undefined> {
+export async function stripeFunds(customer: string): Promise<{ credit: number; currency?: string } | undefined> {
   try {
-    const balance = (await stripe(`customers/${encodeURIComponent(customer)}`)).balance;
-    return typeof balance === "number" && balance < 0 ? -balance / 100 : 0;
+    const read = await stripe(`customers/${encodeURIComponent(customer)}`);
+    const currency = typeof read.currency === "string" ? read.currency : null;
+    if (currency && currency !== "usd") return { credit: 0, currency: currency.toUpperCase() };
+    return { credit: typeof read.balance === "number" && read.balance < 0 ? -read.balance / 100 : 0 };
   } catch (error) {
     console.error(JSON.stringify({ event: "stripe-credit-unread", customer, error: String(error).slice(0, 400) }));
     return undefined;

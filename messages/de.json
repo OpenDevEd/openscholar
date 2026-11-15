@@ -6871,7 +6871,10 @@
         "credit": "Stripe-Guthaben",
         "creditYours": "Sie haben <amount></amount> bei Stripe",
         "creditTheirs": "{owner} hat <amount></amount> bei Stripe",
-        "least": "Eine Karte zahlt mindestens {least}, daher bleiben {spare} in Ihrem Guthaben."
+        "creditIdle": "Die Zahlungsseite von Stripe kann die <amount></amount> Stripe-Guthaben nicht nutzen. Mit einer gespeicherten Karte zahlt das Guthaben zuerst.",
+        "least": "Eine Karte zahlt mindestens {least}, daher bleiben {spare} in Ihrem Guthaben.",
+        "leastStripe": "Stripe belastet eine Karte mit mindestens {least}, also bleiben {spare} in Ihrem Guthaben.",
+        "currency": "Das Stripe-Konto dieses Arbeitsbereichs ist in {currency}, und Berichte werden in US-Dollar bezahlt. Schreiben Sie an habari@openscholar.ai, um es ändern zu lassen."
       },
       "activateFree": "DOI aktivieren",
       "paid": {

@@ -6871,7 +6871,10 @@
         "credit": "Stripe-krediet",
         "creditYours": "Jy het <amount></amount> by Stripe",
         "creditTheirs": "{owner} het <amount></amount> by Stripe",
-        "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans."
+        "creditIdle": "Stripe se betaalblad kan nie die <amount></amount> Stripe-krediet gebruik nie. Stoor ’n kaart en die krediet betaal eerste.",
+        "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans.",
+        "leastStripe": "Stripe hef ’n kaart minstens {least}, so {spare} bly in jou saldo.",
+        "currency": "Hierdie werkruimte se Stripe-rekening is in {currency}, en verslae word in Amerikaanse dollar betaal. Skryf aan habari@openscholar.ai om dit te laat verander."
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {

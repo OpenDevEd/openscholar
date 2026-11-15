@@ -53,11 +53,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Coins, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { WorkspaceChoice } from "@/components/reports/workspace-choice";
 import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
@@ -112,7 +113,7 @@ function placeOf(report: Report | null, preparing: boolean) {
 const said = (otherwise: string) => (error: unknown) => void toast.error(getErrorMessage(error, otherwise));
 
 /** Why a promotion code or a payment was refused, as the server names it, so the page says it in its own language. */
-const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
+const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string; currency?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 /**
@@ -1097,7 +1098,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
   const priceNow = priceOf(named, basics.prices);
-  const bought = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: 0 }).bought : 0;
+  const sum = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: voucher?.off ?? 0, credit: starts.credit, cardSaved: starts.cardSaved }) : null;
+  const bought = sum?.bought ?? 0;
   // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
   // aren't known until the PDF is read, so a tick only some signers needed let reports with several go unconfirmed.
   // It is for the agreement as it read when it was made. One changed since, while the page was open, is read and
@@ -1147,7 +1149,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         <section className="mb-7" inert={busy || !!signed || leaving || settling || undefined}>
           <h3 className={SECTION}>{t("payment.title")}</h3>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <PayWithSwitch funds={starts} payWith={payWith} onPayWith={setPicked} />
+            <PayWithSwitch funds={starts} credited={(sum?.fromCredit ?? 0) > 0} payWith={payWith} onPayWith={setPicked} />
             {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
                 is kept, and is back when a card pays again. */}
             {/* Another workspace's balance changes how wide the way to pay is: the field slides to its new place. */}
@@ -1814,7 +1816,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const payWith: PayWith = terms ? payWithOf(terms) : "card";
   const code = terms?.voucher ?? null;
   // What the report's price comes to: what the balance pays, what a card buys, and what the code takes off that.
-  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0, credit: terms?.credit ?? 0 });
+  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0, credit: terms?.credit ?? 0, cardSaved: terms?.cardSaved ?? true });
   /** Where a code can be used: while a card pays something and no payment is waiting. It lowers what the card pays. */
   const vouchers = !!terms && sum.bought > 0 && !pending && !!onQuote;
   // What is typed in the code's field, kept here so paying sees it.
@@ -1840,13 +1842,14 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
         else if (refusalOf(error)?.reason === "changed") say(t("activation.changed"));
         else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
+        else if (refusalOf(error)?.reason === "currency") say(t("payment.currency", { currency: refusalOf(error)?.currency ?? "" }));
         else if (reason) say(t(`activation.promo.${reason}`, { code: code?.code ?? "" }));
         else failed(t("activateFailed"))(error);
       }
     });
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
-  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : null;
+  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1913,7 +1916,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 <section className="mb-7" inert={activating || undefined}>
                   <h3 className={SECTION}>{t("payment.title")}</h3>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <PayWithSwitch funds={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
+                    <PayWithSwitch funds={terms} credited={sum.fromCredit > 0} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
                     {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
                         applied is kept, and is back when a card pays again. */}
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
@@ -2459,7 +2462,7 @@ function PaidChips({ paid }: { paid: Terms["paid"] }) {
         </StatusChip>
       ) : null}
       {paid.byCredit > 0 ? (
-        <StatusChip tone="neutral" icon={Coins}>
+        <StatusChip tone="neutral" icon={StripeIcon}>
           {t("paid.credit", { amount: money(paid.byCredit) })}
         </StatusChip>
       ) : null}

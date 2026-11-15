@@ -14,14 +14,15 @@ import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import type { BalancePart } from "@/convex/billing/validators";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
-import { BOUGHT_MIN, payment, type PayWith } from "@/lib/reports/report";
+import { BOUGHT_MIN, STRIPE_MIN, payment, type PayWith } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 /**
  * What a workspace has to pay for a report with, as the server reads it for every step (convex/billing/accounts.ts
- * `fundsOf`): its publication balance in US dollars (null for no limit) and its parts, and the credit on its Stripe customer.
+ * `fundsOf`): its publication balance in US dollars (null for no limit) and its parts, the credit on its Stripe customer,
+ * whether a card is saved, which that credit is taken before, and the Stripe customer's currency when it isn't dollars.
  */
-export type Funds = { balance: number | null; parts: BalancePart[]; credit: number };
+export type Funds = { balance: number | null; parts: BalancePart[]; credit: number; cardSaved: boolean; /** The Stripe customer's currency when it isn't US dollars: nothing can be bought there. */ currency: string | null };
 
 /** An amount that rolls to each new value, as the app's other numbers do. It jumps there when motion is reduced. */
 function RollingMoney({ value }: { value: number }) {
@@ -42,7 +43,7 @@ function RollingMoney({ value }: { value: number }) {
 }
 
 /** What pays: the publication balance or a card, while the balance holds something. With nothing in it, a card does. */
-export function PayWithSwitch({ funds: balance, payWith, onPayWith, className }: { funds: Funds; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
+export function PayWithSwitch({ funds: balance, credited, payWith, onPayWith, className }: { funds: Funds; /** The Stripe credit pays some of what a card would: `payment()`'s `fromCredit`. */ credited: boolean; payWith: PayWith; onPayWith: (payWith: PayWith) => void; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
   if (balance.balance !== 0)
@@ -66,9 +67,9 @@ export function PayWithSwitch({ funds: balance, payWith, onPayWith, className }:
     // Nothing in the balance leaves one way to pay: said, not offered as a choice of one.
     // The two forms take each other's place when the balance changes under them, as when another workspace is picked: each fades in.
     <p className="flex h-9 items-center gap-2 text-sm font-medium animate-in fade-in duration-200 motion-reduce:animate-none">
-      {/* Stripe takes a charge from the workspace's credit there before the card: said where it holds some. */}
-      {balance.credit > 0 ? <StripeIcon aria-hidden className="size-4 text-[#635bff] dark:text-[#8b85ff]" /> : <CreditCard className="size-4 text-muted-foreground" />}
-      {t(balance.credit > 0 ? "byCredit" : "byCard")}
+      {/* Stripe takes a charge from the workspace's credit there before the card: said where it pays some. */}
+      {credited ? <StripeIcon aria-hidden className="size-4" /> : <CreditCard className="size-4 text-muted-foreground" />}
+      {t(credited ? "byCredit" : "byCard")}
     </p>
   );
 }
@@ -80,7 +81,7 @@ export function PayWithSwitch({ funds: balance, payWith, onPayWith, className }:
 export function Bill({ licence, price, funds, owner, payWith, code, note, now = false, boxed = false, className }: { /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; funds: Funds; /** The organisation whose Stripe account the credit is on; null for the person's own. */ owner: string | null; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
-  const sum = payment({ price, balance: funds.balance, payWith: funds.balance === 0 ? "card" : payWith, off: code?.off ?? 0, credit: funds.credit });
+  const sum = payment({ price, balance: funds.balance, payWith: funds.balance === 0 ? "card" : payWith, off: code?.off ?? 0, credit: funds.credit, cardSaved: funds.cardSaved });
   const held = <bdi dir="ltr" className="tabular-nums">{money(funds.credit)}</bdi>;
   return (
     <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
@@ -93,7 +94,7 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, now = 
             <Line
               label={
                 <span className="flex min-w-0 items-center gap-1.5">
-                  <StripeIcon aria-hidden className="size-3.5 shrink-0 text-[#635bff] dark:text-[#8b85ff]" />
+                  <StripeIcon aria-hidden className="size-3.5 shrink-0" />
                   <span className="truncate">{t("credit")}</span>
                 </span>
               }
@@ -110,8 +111,23 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, now = 
           <RollingMoney value={sum.due} />
         </bdi>
       </div>
-      {/* The least a card buys can be more than is missing: said, so the bill adds up to what the balance shows. */}
-      <AutoHeight>{sum.spare > 0 ? <p className="pt-2 text-xs text-pretty text-muted-foreground">{t("least", { least: inSentence(money(BOUGHT_MIN)), spare: inSentence(money(sum.spare)) })}</p> : null}</AutoHeight>
+      {/* The least a card buys, or the least Stripe charges it, can be more than is missing: said, so the bill adds up to what the balance shows. */}
+      <AutoHeight>
+        {sum.spare > 0 ? (
+          <p className="pt-2 text-xs text-pretty text-muted-foreground">{sum.raised ? t("leastStripe", { least: inSentence(money(STRIPE_MIN)), spare: inSentence(money(sum.spare)) }) : t("least", { least: inSentence(money(BOUGHT_MIN)), spare: inSentence(money(sum.spare)) })}</p>
+        ) : null}
+      </AutoHeight>
+      {/* A Stripe account in another currency buys nothing priced in dollars: said where a card would pay. */}
+      <AutoHeight>{funds.currency && sum.bought > 0 ? <p className="pt-2 text-xs text-pretty text-destructive">{t("currency", { currency: funds.currency })}</p> : null}</AutoHeight>
+      {/* Stripe credit that doesn't cover it all, with no card saved: Stripe's page charges it all and leaves the credit. */}
+      <AutoHeight>
+        {sum.idle > 0 ? (
+          <p className="flex items-start gap-1.5 pt-2 text-xs text-pretty text-muted-foreground">
+            <StripeIcon aria-hidden className="mt-0.5 size-3 shrink-0" />
+            <span>{t.rich("creditIdle", { amount: () => <bdi dir="ltr" className="tabular-nums">{money(sum.idle)}</bdi> })}</span>
+          </p>
+        ) : null}
+      </AutoHeight>
       {note ? <p className="mt-2 text-xs text-pretty text-muted-foreground">{note}</p> : null}
     </div>
   );

@@ -24,7 +24,7 @@ import { readCatalog } from "../billing/catalog";
 import { balancePartsValidator } from "../billing/validators";
 import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
-import { bankPage, chargeOf, checkoutId, checkoutOf, expireCheckout, voidDeclined, voidInvoice } from "../billing/stripeRest";
+import { bankPage, chargeOf, checkoutId, checkoutOf, expireCheckout, stripeFunds, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/plans";
 import { BOUGHT_MIN, CODE_MAX, PRICE_MAX, cents, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -123,6 +123,10 @@ export const terms = workspaceQuery({
       card: v.union(cardValidator, v.null()),
       /** Credit on the workspace's Stripe balance, in US dollars, which a charge is paid from first. */
       credit: v.number(),
+      /** A card is saved: Stripe takes the credit before it. Without one a charge is paid on Stripe's page, which doesn't use the credit. */
+      cardSaved: v.boolean(),
+      /** The currency of the workspace's Stripe customer when it isn't US dollars: nothing priced in dollars can be bought there. */
+      currency: v.union(v.string(), v.null()),
       /** What the report costs, in US dollars, by its licence. */
       price: v.number(),
       /** What the workspace's publication balance holds, in US dollars, as last read from Autumn; null for no limit. */
@@ -559,9 +563,17 @@ function codeOf(code: string | undefined) {
   return typed;
 }
 
+/** A purchase refused before anything is bought: the workspace's Stripe customer is in another currency than the dollars reports are priced in. */
+function currencyRefused(currency: string) {
+  return createError("CONFLICT", `This workspace's Stripe account is in ${currency}, and reports are paid in US dollars. Write to habari@openscholar.ai to have it changed.`, { reason: "currency", currency });
+}
+
 /** Autumn's refusal of a promotion code, as the person is told it. */
 function refusedCode<T>(code: string | undefined) {
   return (error: unknown): T => {
+    // A customer Stripe has in another currency, which the account read before this hadn't seen yet.
+    const mismatch = error instanceof AutumnError && /"currency_mismatch"/.test(JSON.stringify(error.body)) ? /pays in ([A-Z]{3})/.exec(JSON.stringify(error.body)) : null;
+    if (mismatch) throw currencyRefused(mismatch[1]!);
     if (code && error instanceof AutumnError && error.status === 400 && /promotion code/i.test(JSON.stringify(error.body))) {
       throw createError("VALIDATION_ERROR", `${code} isn't a code we know, or it has been used up.`, { reason: "unknownCode", code });
     }
@@ -639,33 +651,53 @@ export const activate = action({
           // balance while this one waited, and the card may have been removed since.
           const customer = await autumn.customer(first.customerId, { card: true });
           const held = customer.balances[PUBLICATION_FEATURE];
-          const { bought } = payment({ price, balance: held?.unlimited ? null : (held?.remaining ?? 0), payWith, off: 0 });
+          const cardless = !customer.payment_method?.card;
+          // The Stripe credit, which Stripe takes before the card, and the customer's currency there. Unread, it counts as
+          // none: the quote below still says what is due, and only Stripe's least charge could be sized short.
+          const funds = (customer.stripe_id ? await stripeFunds(customer.stripe_id) : undefined) ?? { credit: 0 };
+          // What a card buys, reckoned as the page reckons it; with a code, again once the quote says the code's share.
+          const size = (off: number) => payment({ price, balance: held?.unlimited ? null : (held?.remaining ?? 0), payWith, off, credit: funds.credit, cardSaved: !cardless }).bought;
+          let bought = size(0);
           if (bought === 0) {
             // The balance covers it: nothing is bought, whatever card or code there is.
             if (await spend(ctx, first.customerId, activationId, price)) return { live: true };
             return await changed(CHANGED);
           }
+          if (funds.currency) throw currencyRefused(funds.currency);
           await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
           // Nothing is bought while a payment of the customer's is open.
           await payableCustomer(first.customerId, {});
-          const quoted = await autumn.previewAttach(first.customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, dollars(bought)).catch(refusedCode<AutumnPreview>(code));
-          // What's due now, after the account's credit: more than the page showed (the balance was spent or reset, a
-          // price changed, the credit went) is never charged without the person seeing it.
-          if (expect !== undefined && quoted.total > expect + 0.005) return await changed(`Activating it now takes ${usd(quoted.total)}, not ${usd(expect)}. Check it and activate again.`);
-          const cardless = !customer.payment_method?.card;
+          const quote = () => autumn.previewAttach(first.customerId, PUBLICATION_TOP_UP_PLAN, false, undefined, code, dollars(bought)).catch(refusedCode<AutumnPreview>(code));
+          let quoted = await quote();
+          const sized = code ? size(1 - linesOf(quoted) / bought) : bought;
+          if (Math.abs(sized - bought) > 0.005) {
+            bought = sized;
+            await ctx.runMutation(internal.reports.activation.buying, { activationId, bought });
+            quoted = await quote();
+          }
+          // What a card pays now. A saved card pays what the Stripe credit leaves. With no card saved: nothing when the
+          // credit covers it all, as an invoice the credit pays; otherwise all of it on Stripe's page, which doesn't use
+          // the credit. More than the page showed (the balance was spent or reset, a price changed, the credit went, a
+          // card was removed) is never charged without the person seeing it.
+          const coveredByCredit = quoted.total <= 0.005;
+          const due = cardless && !coveredByCredit ? linesOf(quoted) : quoted.total;
+          if (expect !== undefined && due > expect + 0.005) return await changed(`Activating it now takes ${usd(due)}, not ${usd(expect)}. Check it and activate again.`);
           // A card saved or removed since the page read the account: the person was told another way of paying (Stripe's
           // page, or that card), and is never charged by one they weren't shown. What the account's credit covers charges no card.
-          // What the account's credit takes off the invoice: its lines less what is due.
-          const credit = Math.max(0, cents(linesOf(quoted) - quoted.total));
+          // What the Stripe credit takes off the invoice: its lines less what is due. None on Stripe's page, which doesn't use it.
+          const credit = cardless && !coveredByCredit ? 0 : Math.max(0, cents(linesOf(quoted) - quoted.total));
           // Stripe's page takes a payment whole and doesn't draw on the account's credit: it would ask for more than
           // the page showed. The page doesn't offer it then; one that did read the credit before it arrived.
           if (otherCard && !cardless && credit > 0) return await changed("The account's credit isn't used on Stripe's page. Pay with the saved card, or change it under Manage billing.");
           // Someone who asked for Stripe's page chooses the card there, whichever is saved by now.
           const elsewhere = otherCard === true && !cardless && quoted.total > 0.005;
           if (!elsewhere && card !== undefined && quoted.total > 0.005 && (customer.payment_method?.card?.last4 ?? null) !== card) return await changed(CARD_CHANGED);
-          // Nothing for a card to pay, before any credit: a code took it all off. Autumn is told so (`unbilled`), or it
-          // would send a customer with no card to Stripe's page for $0.
-          const free = linesOf(quoted) <= 0.005;
+          // Nothing for a card to pay: a code took it all off, or the Stripe credit covers what is left. Autumn is told so
+          // (`unbilled`), and Stripe pays the invoice from the credit as it finalizes it; otherwise Autumn would send a
+          // customer with no card to Stripe's page, which charges it all and leaves the credit as it was.
+          // shortcut: credit spent elsewhere between the quote and this leaves the invoice open with the dollars given; it
+          // needs a second Stripe charge in that same moment, so the open invoice is left for billing to chase.
+          const free = linesOf(quoted) <= 0.005 || coveredByCredit;
           // Autumn bills by invoice only a customer with an email, and an organisation's has none until someone pays:
           // it takes its admin's, who is the one activating.
           if (cardless && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
