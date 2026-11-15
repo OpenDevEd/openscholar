@@ -235,6 +235,14 @@ const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId"
 // "uppercase" passes; and the CSS declaration anywhere.
 const UPPERCASE_CLASS = /(?:^|[\s:!])!?uppercase!?(?=$|[\s"'`])/;
 const UPPERCASE_CSS = /text-transform\s*:\s*uppercase/i;
+// grid-scroll: a grid that scrolls, with no columns of its own. Its one automatic column grows to the widest line
+// that won't wrap, so `truncate` inside never applies and the box scrolls sideways (new-el #880). new-el runs the
+// same rule (tools/uiRules.ts); keep them in step.
+const GRID_CLASS = /(?:^|[\s:!])!?grid!?(?=$|[\s"'`])/;
+const SCROLL_CLASS = /(?:^|[\s:!])!?overflow(?:-[xy])?-(?:auto|scroll)!?(?=$|[\s"'`])/;
+const COLUMNS_CLASS = /(?:^|[\s:!])!?grid-cols-/;
+// shortcut: one class string at a time, so a grid and its overflow split across cn() arguments pass; read the joined list if that happens.
+const scrollsWithoutColumns = (classes) => GRID_CLASS.test(classes) && SCROLL_CLASS.test(classes) && !COLUMNS_CLASS.test(classes);
 const CLASS_HELPERS = new Set(["cn", "cva", "clsx", "cx", "twMerge", "tv", "classNames"]);
 const CLASS_NAMES = /(class(name)?(es|s)?|styles?|variants?|texttransform)$/i;
 // The characters, and the entities JSX text keeps undecoded.
@@ -299,6 +307,7 @@ const FIX = {
   "entity-name": "a name people can act on is bare text; use AuthorHoverCard, InstitutionHoverCard or TopicHoverCard, or a link or filter (see FilterName).",
   "country-flag": "a country is named without its flag; put CountryFlag from components/ui/country-flag before it.",
   "icon-top": "an icon or picture is centred beside a title with a line under it; put self-start on it (and mt-0.5 on a size-4 icon, to sit on a text-sm line).",
+  "grid-scroll": "a scrolling grid with no columns sizes its column to its widest unwrapped line and scrolls sideways; add grid-cols-[minmax(0,1fr)] (or its real columns).",
 };
 
 /** Every string in a messages file, with the key that holds it. */
@@ -598,6 +607,7 @@ function check(file) {
     if (ts.isImportDeclaration(node) && !shared && PRIMITIVE.test(node.moduleSpecifier.text)) report(node, "raw-primitive");
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
+      if (scrollsWithoutColumns(node.text) && classContext(node)) report(node, "grid-scroll");
       if (DOT.test(node.text)) report(node, "dot-separator");
       const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
       if (((whole && LOADING.test(node.text.trim()) && shown(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
@@ -690,4 +700,4 @@ if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names, countries without flags or icons centred beside two lines.");
+console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names, countries without flags, icons centred beside two lines or scrolling grids without columns.");
