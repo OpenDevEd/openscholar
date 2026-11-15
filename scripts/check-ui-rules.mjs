@@ -564,11 +564,20 @@ function check(file) {
     if (!column && lists.some((list) => hasUtility(list, "flex") || hasUtility(list, "inline-flex"))) return false;
     return slots(element).filter((slot) => column || slot.some(takesLine)).length >= 2;
   };
-  // A row of a set height can't grow when its text wraps, so the picture can't float off the title's line.
+  // A row of a set height keeps its text centred however it is aligned, so self-start there would lift the picture off
+  // the text instead; it is left alone. `height: auto` sets nothing.
   const setHeight = (element) =>
     classesOf(element).every((list) => /(^|[\s"'`])h-(\d|\[)/.test(list)) ||
-    opening(element).attributes.properties.some((property) => ts.isJsxAttribute(property) && property.name.getText(source) === "style" && /\bheight\b/.test(property.initializer?.getText(source) ?? ""));
-  const centresRow = (element) => classesOf(element).some((list) => hasUtility(list, "items-center") && !hasUtility(list, "flex-col")) && !setHeight(element);
+    opening(element).attributes.properties.some(
+      (property) => ts.isJsxAttribute(property) && property.name.getText(source) === "style" && /\bheight\s*:(?!\s*["'`]?auto\b)/.test(property.initializer?.getText(source) ?? ""),
+    );
+  // A row that centres its items at any screen size (`items-center`, `sm:items-center`), unless it is a column there.
+  const centresRow = (element) =>
+    classesOf(element).some((list) => {
+      const tokens = list.split(/[\s"'`{}()]+/);
+      const row = !hasUtility(list, "flex-col") || tokens.some((token) => utility(token) === "flex-row");
+      return row && tokens.some((token) => utility(token) === "items-center");
+    }) && !setHeight(element);
   const anchored = (element) => classesOf(element).every((list) => hasUtility(list, "self-start"));
   // The picture that leads a centred row whose text after it stacks; a picture after the text, such as a chevron, may stay centred.
   const floatingPicture = (row) => {
