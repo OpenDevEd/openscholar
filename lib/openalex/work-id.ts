@@ -1,4 +1,4 @@
-import { openalexWork } from "../papers/paper-ref";
+import { openalexWork, reportKey } from "../papers/paper-ref";
 
 /**
  * A paper's OpenAlex ID as the app keeps it, https://openalex.org/W2741809807, from that, the
@@ -20,6 +20,8 @@ export const selectWithIds = (select: string) => (select.split(",").includes("id
  */
 export function appWork<Work extends { id?: string }>(given: Work): Work {
   const work = withPlainJournalName(given);
+  // A report published on Openscholar is its own work, by its R… key, even if a source ever pairs it with OpenAlex's.
+  if (reportKey(work.id ?? "")) return work;
   const openalex = (work as { ids?: { openalex?: unknown } | null }).ids?.openalex;
   // The ID our index knows it by goes with it, for what only our index can do with it.
   return typeof openalex === "string" && openalex ? { ...work, id: openalex, openscholar_id: work.id } : work;

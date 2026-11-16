@@ -7,21 +7,27 @@
 import { v, type Infer } from "convex/values";
 import { abstractFromIndex } from "../../lib/papers/abstract-text";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import type { ActionCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, userAction, userMutation } from "../lib/userActions";
 import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
-import { openalexAddress, openalexWorkOf, ownWork } from "../../lib/papers/paper-ref";
+import { openalexAddress, openalexWorkOf, ownWork, reportKey } from "../../lib/papers/paper-ref";
 import { SEARCH_SOURCE_NAMES, sourceForId } from "../../lib/search/source";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
+import { libraryPaper } from "./validators";
 import { findItem, requirePaperKey } from "./find";
 
-/** The address of the work an ID or key names, OpenAlex's or our index's, which this action reads; null for anything else. */
-const workOf = (id: string) => openalexAddress(openalexWorkOf(id)) ?? (ownWork(id.replace(/^openscholar:/, "")) ? `https://openscholar.ai/${ownWork(id.replace(/^openscholar:/, ""))}` : null);
+/** The address of the work an ID or key names, OpenAlex's, our index's or a report's on Openscholar, which this action reads; null for anything else. */
+const workOf = (id: string) => {
+  const own = ownWork(id.replace(/^openscholar:/, "")) ?? reportKey(id.replace(/^report:/, ""));
+  return openalexAddress(openalexWorkOf(id)) ?? (own ? `https://openscholar.ai/${own}` : null);
+};
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -46,22 +52,30 @@ export const saveAction = defineUserAction({
   },
   run: async (ctx, { userId, workspaceId, author }, { id, rating, collectionId }, call) => {
     const openalexId = workOf(id);
-    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID in the index, such as W2741809807, as results give it, or its key, such as openalex:W2741809807.");
-    const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
-    if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
-    const source = sourceForId(openalexId, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId), source);
-    if (!read) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
-    // The record as the results page holds it: the abstract as text, in place of the index OpenAlex sends.
-    const { abstract_inverted_index: index, ...rest } = read;
-    // Its ID as the source gives it: a paper asked for by our index's ID that OpenAlex knows too goes by OpenAlex's, as it does in results.
-    const work: WorkInput = { ...rest, id: rest.id || openalexId, ...(index ? { abstract: abstractFromIndex(index) } : {}) };
-    const paper = { ...trimPaperData(work), paperData: JSON.stringify(work) };
+    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID in the index, such as W2741809807 or R100001, as results give it, or its key, such as openalex:W2741809807.");
+    const report = reportKey(openalexId);
+    // A report published on Openscholar is its own record, which no index read gives: saved as its page saves it.
+    const paper: Infer<typeof libraryPaper> | null = report ? await ctx.runQuery(internal.reports.saved.copy, { key: report }) : await readPaper(ctx, userId, openalexId);
+    if (!paper) throw createError("NOT_FOUND", "No report published on Openscholar has this key.");
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const saved: Infer<typeof savedByIdValidator> = await ctx.runMutation(internal.library.mutations.saveRead, { userId, workspaceId, paper, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }), author, ...(call?.stepId ? { stepId: call.stepId } : {}), ...(call?.approved ? { approved: true } : {}) });
     return saved;
   },
 });
+
+/** A paper's record read from the index the site searches, as the results page holds it. */
+async function readPaper(ctx: ActionCtx, userId: Id<"users">, openalexId: string) {
+  const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
+  if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
+  const source = sourceForId(openalexId, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
+  const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId), source);
+  if (!read) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
+  // The record as the results page holds it: the abstract as text, in place of the index OpenAlex sends.
+  const { abstract_inverted_index: index, ...rest } = read;
+  // Its ID as the source gives it: a paper asked for by our index's ID that OpenAlex knows too goes by OpenAlex's, as it does in results.
+  const work: WorkInput = { ...rest, id: rest.id || openalexId, ...(index ? { abstract: abstractFromIndex(index) } : {}) };
+  return { ...trimPaperData(work), paperData: JSON.stringify(work) };
+}
 export const save = userAction(saveAction);
 export const saveForAssistant = assistantAction(saveAction);
 

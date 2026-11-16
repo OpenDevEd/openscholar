@@ -177,19 +177,20 @@ export const update = mutation({
     }
     // A price is whole dollars, as the balance that pays it is bought a dollar at a time.
     for (const dollars of Object.values(prices ?? {})) if (!isPrice(dollars)) throw createError("VALIDATION_ERROR", `A price is a whole number of dollars, from 1 to ${PRICE_MAX}.`);
+    const named = series && {
+      ...row.series,
+      ...(series.name !== undefined && { name: text(series.name, "the series' name", SERIES_TEXT_MAX) }),
+      // None until the ISSN centre assigns one: the byline then reads "pending".
+      ...(series.issn !== undefined && { issn: issn(series.issn) }),
+      ...(series.byline !== undefined && { byline: byline(series.byline) }),
+    };
+    // Every report's saved copies name the series and its ISSN (./saved.ts).
+    if (named && (named.name !== row.series.name || named.issn !== row.series.issn)) await ctx.scheduler.runAfter(0, internal.reports.saved.followAll, {});
     await save(ctx, row._id, {
       ...(prices && { prices: { ...(row.prices ?? DEFAULT_PRICES), ...prices } }),
       ...(enabled !== undefined && { enabled }),
       ...(humanReview !== undefined && { humanReview }),
-      ...(series && {
-        series: {
-          ...row.series,
-          ...(series.name !== undefined && { name: text(series.name, "the series' name", SERIES_TEXT_MAX) }),
-          // None until the ISSN centre assigns one: the byline then reads "pending".
-          ...(series.issn !== undefined && { issn: issn(series.issn) }),
-          ...(series.byline !== undefined && { byline: byline(series.byline) }),
-        },
-      }),
+      ...(named && { series: named }),
     });
     return null;
   },

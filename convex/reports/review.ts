@@ -270,6 +270,8 @@ export const editDetails = mutation({
     else {
       await ctx.db.patch("reportDetails", details._id, { metadata: kept });
       await touch(ctx, report, { title: kept.title.trim() });
+      // A withdrawn report's saved copies still carry its details (./saved.ts).
+      await ctx.scheduler.runAfter(0, internal.reports.saved.follow, { reportId: report._id });
     }
     await record(ctx, report._id, reviewer._id, "edit", changed.slice(0, REVIEW_TEXT_MAX));
     await notify(ctx, report._id, "details-edited", { edited: changed.slice(0, REVIEW_TEXT_MAX) });

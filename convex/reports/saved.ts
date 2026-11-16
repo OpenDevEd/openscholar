@@ -2,9 +2,11 @@
 // and a report changes after it is saved: its author corrects it, a reviewer edits or withdraws it. Its copies in
 // every workspace are brought in step here, a page at a time. In a module of its own: the paper it builds reads the
 // topic catalogue, which no other report function should load.
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
-import { internalMutation } from "../lib/functions";
+import type { Doc } from "../_generated/dataModel";
+import { internalMutation, internalQuery, type QueryCtx } from "../lib/functions";
+import { libraryPaper } from "../library/validators";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { trimPaperData } from "../../lib/library/trim-paper-data";
 import { reportPaper } from "../../lib/reports/report-paper";
@@ -28,19 +30,46 @@ export const keep = internalMutation({
   returns: v.null(),
   handler: async (ctx, { reportId }) => {
     const report = await ctx.db.get("reports", reportId);
-    if (!report || report.status !== "live") return null;
-    const { metadata } = await detailsOf(ctx, reportId);
-    if (!metadata) return null;
-    const { series } = await reportSettings(ctx);
-    const work = reportPaper({ key: report.key, doi: report.doi, pdfUrl: report.pdf ? "its own address" : null, updatedAt: report.updatedAt }, metadata, seriesOf(report, series));
-    await ctx.runMutation(internal.library.mutations.saveRead, { userId: report.ownerId, workspaceId: report.workspaceId, paper: { ...trimPaperData(work), paperData: JSON.stringify(work) }, author: "user" });
+    const copy = report?.status === "live" ? await copyOf(ctx, report) : null;
+    if (!copy) return null;
+    await ctx.runMutation(internal.library.mutations.saveRead, { userId: report!.ownerId, workspaceId: report!.workspaceId, paper: copy, author: "user" });
     return null;
   },
 });
 
 /**
- * Rewrites a report's saved copies from the report as it stands: a live one's details, as saving it now would keep
- * them; a withdrawn one's title says so, and its PDF is no longer offered. Each step takes one page and schedules
+ * A report's saved copy as saving it now keeps it, from the report as it stands: a live one's details; a withdrawn
+ * one's title says so, and its PDF is no longer offered. Null for a report that never went live: it has no page, and
+ * nothing may save it.
+ */
+async function copyOf(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof libraryPaper> | null> {
+  if (report.status !== "live" && report.withdrawnAt === undefined) return null;
+  const { metadata } = await detailsOf(ctx, report._id);
+  if (!metadata) return null;
+  const live = report.status === "live";
+  const { series } = await reportSettings(ctx);
+  const paper = reportPaper({ key: report.key, doi: report.doi, pdfUrl: live && report.pdf ? "its own address" : null, updatedAt: report.updatedAt }, metadata, seriesOf(report, series));
+  // ponytail: a withdrawn copy is told apart by its title alone; give library cards a mark of their own if more is wanted.
+  const work = live ? paper : { ...paper, title: `Withdrawn: ${paper.title}`, display_name: `Withdrawn: ${paper.title}`, open_access: { is_oa: false, oa_status: "closed", oa_url: null } };
+  return { ...trimPaperData(work), paper: `report:${report.key}`, paperData: JSON.stringify(work) };
+}
+
+/**
+ * A report's saved copy by its key, which every save of it keeps whatever the page or the assistant sent
+ * (library/mutations.ts `upsertLibraryItem`): the same item, with the same details, however it was saved. Null for a
+ * key that never went live.
+ */
+export const copy = internalQuery({
+  args: { key: v.string() },
+  returns: v.union(libraryPaper, v.null()),
+  handler: async (ctx, { key }) => {
+    const report = await ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
+    return report ? await copyOf(ctx, report) : null;
+  },
+});
+
+/**
+ * Rewrites a report's saved copies from the report as it stands (`copyOf`). Each step takes one page and schedules
  * the next, however many workspaces saved it. A person's rating and their collections are theirs and stay.
  */
 export const follow = internalMutation({
@@ -48,22 +77,32 @@ export const follow = internalMutation({
   returns: v.null(),
   handler: async (ctx, { reportId, cursor = null }) => {
     const report = await ctx.db.get("reports", reportId);
-    if (!report) return null;
-    const { metadata } = await detailsOf(ctx, reportId);
-    // Never live, it has no page and nothing saved it.
-    if (!metadata || (report.status !== "live" && report.withdrawnAt === undefined)) return null;
-    const live = report.status === "live";
-    const { series } = await reportSettings(ctx);
-    const paper = reportPaper({ key: report.key, doi: report.doi, pdfUrl: live && report.pdf ? "its own address" : null, updatedAt: report.updatedAt }, metadata, seriesOf(report, series));
-    // ponytail: a withdrawn copy is told apart by its title alone; give library cards a mark of their own if more is wanted.
-    const work = live ? paper : { ...paper, title: `Withdrawn: ${paper.title}`, display_name: `Withdrawn: ${paper.title}`, open_access: { is_oa: false, oa_status: "closed", oa_url: null } };
-    const { paper: _id, authors = [], ...kept } = trimPaperData(work);
+    const copy = report && (await copyOf(ctx, report));
+    if (!copy) return null;
+    const { paper: _key, crossRefs: _refs, authors = [], ...kept } = copy;
     const named = authors.length > MAX_AUTHORS ? { authors: undefined, authorsUnparsed: authors.join(", ") } : { authors, authorsUnparsed: undefined };
-    const fields = { ...kept, ...named, paperData: JSON.stringify(work), searchableText: [kept.title, kept.abstract, authors.join(", ")].filter(Boolean).join(" ") };
-    const copies = await ctx.db.query("libraryItems").withIndex("by_paperKey", (q) => q.eq("paperKey", `report:${report.key}`)).paginate({ cursor, numItems: COPIES_PER_STEP });
+    const fields = { ...kept, ...named, searchableText: [kept.title, kept.abstract, authors.join(", ")].filter(Boolean).join(" ") };
+    const copies = await ctx.db.query("libraryItems").withIndex("by_paperKey", (q) => q.eq("paperKey", copy.paper)).paginate({ cursor, numItems: COPIES_PER_STEP });
     const now = Date.now();
-    for (const copy of copies.page) await ctx.db.patch("libraryItems", copy._id, { ...fields, updatedAt: now });
+    for (const saved of copies.page) await ctx.db.patch("libraryItems", saved._id, { ...fields, updatedAt: now });
     if (!copies.isDone) await ctx.scheduler.runAfter(0, internal.reports.saved.follow, { reportId, cursor: copies.continueCursor });
+    return null;
+  },
+});
+
+/** Reports one step of `followAll` reads. */
+const REPORTS_PER_STEP = 100;
+
+/** Every published report's saved copies follow the series, after its name or ISSN changed: a page of reports a step. */
+export const followAll = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, { cursor = null }) => {
+    const reports = await ctx.db.query("reports").paginate({ cursor, numItems: REPORTS_PER_STEP });
+    for (const report of reports.page) {
+      if (report.status === "live" || report.withdrawnAt !== undefined) await ctx.scheduler.runAfter(0, internal.reports.saved.follow, { reportId: report._id });
+    }
+    if (!reports.isDone) await ctx.scheduler.runAfter(0, internal.reports.saved.followAll, { cursor: reports.continueCursor });
     return null;
   },
 });

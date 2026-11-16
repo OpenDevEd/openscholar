@@ -142,7 +142,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
       pdfUrl: result.pdfUrl,
     },
     result.stars ?? 0,
-    { preserveRating: true },
+    { preserveRating: true, keepUnpublishedReport: true },
   );
   const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
   if (collection) await addCollectionMembership(ctx, { collection, item: (await ctx.db.get("libraryItems", libraryItemId))! });
