@@ -394,7 +394,7 @@
         "refund": "Remboursement"
       }
     },
-    "credits": "crédits",
+    "credits": "crédits IA",
     "refillOn": "+{amount} le {date}",
     "bought": "{amount} achetés",
     "topUp": "Recharger",
@@ -428,7 +428,11 @@
       "backTo": "De retour à {amount} le {date}",
       "kept": "{amount} conservés jusqu’à utilisation",
       "publish": "Publier",
-      "noLimit": "Sans limite"
+      "noLimit": "Sans limite",
+      "stripeCredit": "Le crédit Stripe de {amount} paie avant la carte",
+      "stripeCurrency": "Une carte ne peut pas payer les rapports tant que le compte Stripe est en {currency}",
+      "stripeCreditNoCard": "Le crédit Stripe de {amount} paie dès qu’une carte est enregistrée",
+      "saveCard": "Enregistrer une carte"
     }
   },
   "errors": {
@@ -4775,7 +4779,7 @@
       "papersAtOnce": "{count, plural, one {# article à la fois} other {# articles à la fois}}",
       "anyPapersAJob": "Autant d'articles que voulu par tâche",
       "papersAJob": "Jusqu'à {count, number} articles par tâche",
-      "sharedCredits": "Crédits partagés",
+      "sharedCredits": "Crédits IA partagés",
       "membersDraw": "{count, plural, one {# membre y puise} other {# membres y puisent}}",
       "refillOn": "{amount} le {date}",
       "upToMembers": "Jusqu'à {count, number} membres",
@@ -6521,7 +6525,7 @@
         "live": "En ligne",
         "sealed": "Verrouillé une fois l'accord signé.",
         "paying": "Son paiement est en cours, ses étapes ne peuvent donc pas être rouvertes pour l'instant. Si la banque le refuse, elles se rouvrent.",
-        "liveNow": "Il est en ligne. Modifiez ses informations avec {action}.",
+        "liveNow": "Il est en ligne. Modifiez ses informations avec le crayon de sa ligne dans vos rapports.",
         "closed": "Un relecteur l'a retiré, il ne peut donc plus être modifié.",
         "running": "Ses vérifications sont en cours. Les étapes se rouvrent quand elles sont terminées.",
         "notYours": "Seule la personne qui a commencé ce rapport peut le modifier."
@@ -6557,7 +6561,8 @@
       "shut": {
         "closed": "Son offre ne comprend pas la publication",
         "ownClosed": "Votre offre ne comprend pas la publication",
-        "used": "Plus de rapport à commencer aujourd'hui"
+        "used": "Plus de rapport à commencer aujourd'hui",
+        "currency": "Son compte Stripe est en {currency}"
       },
       "limit": {
         "personal": "Votre offre permet de commencer {count, plural, one {# rapport} other {# rapports}} par jour. Revenez demain, ou passez à une offre qui en permet plus.",
@@ -6718,8 +6723,6 @@
       "changesDiscardFailed": "Les modifications n'ont pas pu être abandonnées.",
       "discard": "Abandonner",
       "pages": "{count, plural, one {# page} other {# pages}}",
-      "agreementVersion": "Accord v{version}",
-      "checksVersion": "Vérifications v{version}",
       "yourTitle": "Votre titre",
       "noDoi": "Pas encore de DOI",
       "issn": "ISSN {issn}",
@@ -6858,7 +6861,6 @@
         "payWith": "Payer avec",
         "balance": "Solde de publication",
         "card": "Carte",
-        "byCard": "Paiement par carte",
         "due": "Dû à l’activation",
         "later": "Rien n’est débité avant l’activation du rapport, et vous pouvez encore changer de mode de paiement.",
         "code": "Code {code}",
@@ -6866,18 +6868,26 @@
         "title": "Paiement",
         "sign": "Lire et signer",
         "noLimit": "Sans limite",
-        "credit": "Crédit du compte",
-        "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde."
+        "credit": "Crédit Stripe",
+        "creditYours": "Vous avez <amount></amount> chez Stripe",
+        "creditTheirs": "{owner} a <amount></amount> chez Stripe",
+        "creditIdle": "La page de paiement de Stripe ne peut pas utiliser les <amount></amount> de crédit Stripe. Avec une carte enregistrée, Stripe prend d’abord le crédit et la carte paie le reste.",
+        "least": "Une carte paie au moins {least} : {spare} restent donc dans votre solde.",
+        "leastStripe": "Stripe débite une carte d’au moins {least}, donc {spare} reste dans votre solde.",
+        "currency": "Le compte Stripe de cet espace de travail est en {currency} et les rapports se paient en dollars américains : une carte ne peut pas payer ici tant que nous ne l’avons pas changé.",
+        "emailUs": "Écrivez-nous",
+        "saveCard": "Enregistrer une carte",
+        "codeOff": "{off} sur les {amount} que paie la carte",
+        "charged": "Débité sur une carte",
+        "voucher": "Bon de réduction"
       },
       "activateFree": "Activer le DOI",
       "paid": {
-        "balance": "{amount} payés avec le solde",
-        "balanceLeft": "{amount} payés avec le solde, il reste {left}",
-        "card": "{amount} payés par carte",
-        "code": "{code} a couvert le prix",
-        "codeRest": "{code} a couvert le reste",
-        "credit": "{amount} payés avec le crédit du compte"
-      }
+        "receipt": "Reçu",
+        "receiptFailed": "Le reçu n’a pas pu s’ouvrir. Réessayez."
+      },
+      "emailUs": "Écrivez-nous",
+      "status": "Statut"
     },
     "meta": {
       "publish": "Publier | Openscholar",

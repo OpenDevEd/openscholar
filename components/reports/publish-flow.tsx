@@ -5,8 +5,8 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
-import { CONTACT_EMAIL } from "@/lib/billing/contact";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject, useSyncExternalStore } from "react";
+import { CONTACT_EMAIL, CURRENCY_MAIL as SUPPORT_MAIL } from "@/lib/billing/contact";
 import { useAction, useConvex, useMutation, useQueries, useQuery } from "convex/react";
 import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
@@ -53,13 +53,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Coins, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
+import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileCheck2, FileText, FileUp, Hash, ListChecks, Lock, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, Wallet, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
-import { Bill, PayWithSwitch } from "@/components/reports/payment-choice";
-import { WorkspaceChoice } from "@/components/reports/workspace-choice";
+import { StripeIcon } from "@/components/icons/stripe-icon";
+import { Bill, PaidBill, PayWithSwitch } from "@/components/reports/payment-choice";
+import { WayOnButton, WorkspaceChoice, type WayOn } from "@/components/reports/workspace-choice";
 import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
@@ -112,22 +113,25 @@ function placeOf(report: Report | null, preparing: boolean) {
 const said = (otherwise: string) => (error: unknown) => void toast.error(getErrorMessage(error, otherwise));
 
 /** Why a promotion code or a payment was refused, as the server names it, so the page says it in its own language. */
-const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
+const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string; currency?: string } | undefined) : undefined);
 const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
 const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 /**
- * The report's bill under its cover, from the moment it is signed until it is live: what its licence costs, and what
- * that comes to with the way of paying and the code kept with it. Where the report is activated, the checks' own bar
+ * The report's bill under its cover, from the moment it is signed: what its licence costs, and what that comes to with
+ * the way of paying and the code kept with it, and once it is live, what it was paid with. Where the report is activated, the checks' own bar
  * draws it with what is chosen there.
  */
 function KeptBill({ report, terms, humanReview, beside }: { report: Report; terms: Terms; humanReview: boolean; beside: HTMLDivElement }) {
   const t = useTranslations("publishReports.flow");
   const stage = stageOf(report, humanReview);
+  const openReceipt = useReceipt(report.key);
+  // Live, the bill is what was paid, with Stripe's receipt under it, for whoever may see it (its owner and the workspace's admins).
+  if (stage === "live") return terms.paid ? createPortal(<PaidBill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} paid={terms.paid} onReceipt={openReceipt} />, beside) : null;
   // The checks' bar has it, where the report is activated.
   const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
-  // Live or declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
-  if (stage === "live" || stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
-  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} balance={terms} payWith={payWithOf(terms)} code={terms.voucher} credit={terms.credit} note={t("payment.later")} />, beside);
+  // Declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
+  if (stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} funds={terms} owner={terms.organization} payWith={payWithOf(terms)} code={terms.voucher} note={t("payment.later")} />, beside);
 }
 
 /** What pays for a report: as kept with it, else the balance while it holds something, else a card. */
@@ -858,7 +862,7 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
               onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
             />
           ) : live ? (
-            <LiveReport report={report} series={basics.series} paid={terms?.paid ?? null} fresh={fresh?.key === report.key && fresh.step === "live"} onCorrect={onCorrect} />
+            <LiveReport report={report} series={basics.series} fresh={fresh?.key === report.key && fresh.step === "live"} />
           ) : (
             <Checks
               beside={beside}
@@ -934,7 +938,7 @@ function StepTrail({ report, preparing, onPrepare, humanReview, paying, onStep }
         : paying
           ? t("steps.paying")
           : stage === "live"
-            ? t("steps.liveNow", { action: t("correct") })
+            ? t("steps.liveNow")
             : stage === "declined" && report.activatedAt !== undefined
               ? t("steps.closed")
               : null;
@@ -1051,6 +1055,20 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const chosen = into !== null && into !== pageWorkspace ? list?.find((workspace) => workspace.workspaceId === into) : undefined;
   const away = chosen !== undefined;
   const workspaceId = chosen ? chosen.workspaceId : pageWorkspace;
+  // Whose Stripe credit the bill names: the organisation that would pay, or null for the person's own.
+  const paying = chosen ?? current;
+  const payer = paying?.kind === "organization" ? paying.name : null;
+  // Credit a missing card leaves unused: whoever manages the paying workspace's cards saves one on Stripe's page, which
+  // comes back here, to the workspace's own Publish page, marked so the card is read again.
+  const openPortal = useAction(api.billing.actions.openPortal);
+  const appToast = useAppToast();
+  const saveCard =
+    paying && (paying.kind === "personal" || paying.role === "admin")
+      ? () => {
+          const back = `${workspaceHref(paying.kind === "organization" ? paying.slug : undefined, "/publish")}?report=new&step=agreement&back=${crypto.randomUUID()}`;
+          void openPortal({ ...(paying.kind === "organization" && { workspaceId: paying.workspaceId }), back }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+        }
+      : undefined;
   const [now] = useState(thisMinute);
   const others = here && pageWorkspace ? (list ?? []).filter((workspace) => workspace.workspaceId !== pageWorkspace).map((workspace) => workspace.workspaceId) : [];
   const asked = others.join(" ");
@@ -1074,6 +1092,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const [typed, setTyped] = useState<string | null>(null);
   const name = typed ?? user?.fullName ?? "";
   const [busy, start] = useTransition();
+  // The report this step just signed, which the day then counts as reserved and untouched.
+  const [made, setMade] = useState<string | null>(null);
   const { agreement } = basics;
   // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
   const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
@@ -1094,7 +1114,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
   const priceNow = priceOf(named, basics.prices);
-  const bought = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: 0 }).bought : 0;
+  const sum = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: voucher?.off ?? 0, credit: starts.credit, cardSaved: starts.cardSaved }) : null;
+  const bought = sum?.bought ?? 0;
   // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
   // aren't known until the PDF is read, so a tick only some signers needed let reports with several go unconfirmed.
   // It is for the agreement as it read when it was made. One changed since, while the page was open, is read and
@@ -1115,10 +1136,15 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
   // whatever the day has left.
   // The same in a few words, for beside the workspace picked: one line that never wraps.
-  const shut = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`shut.${day.perDay > 0 ? "used" : day.kind === "personal" ? "ownClosed" : "closed"}`) : null;
-  // The plans of the workspace picked, which isn't always the page's.
-  const plans = workspaceHref(away ? chosen?.slug : slug, "/pricing");
-  const blocked = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`limit.${day.kind === "personal" ? "personal" : "workspace"}${day.perDay === 0 ? "Closed" : ""}`, { count: day.perDay }) : null;
+  const dayShut = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`shut.${day.perDay > 0 ? "used" : day.kind === "personal" ? "ownClosed" : "closed"}`) : null;
+  const dayBlocked = day && !day.untouched && day.perDay !== null && day.left === 0 ? t(`limit.${day.kind === "personal" ? "personal" : "workspace"}${day.perDay === 0 ? "Closed" : ""}`, { count: day.perDay }) : null;
+  // A workspace whose Stripe account is in another currency can't pay a card's part in dollars: it is said before
+  // signing, where the workspace is picked, so nobody signs for a report it can't make live.
+  const foreign = starts?.currency && (sum?.bought ?? 0) > 0 ? starts.currency : null;
+  const shut = dayShut ?? (foreign ? t("shut.currency", { currency: foreign }) : null);
+  const blocked = dayBlocked ?? (foreign ? t("payment.currency", { currency: foreign }) : null);
+  // The way on: the plans of the workspace picked, which isn't always the page's, or an email to us about its Stripe account.
+  const way: WayOn = dayShut ? { label: t("seePlans"), href: workspaceHref(away ? chosen?.slug : slug, "/pricing") } : { label: t("emailUs"), href: SUPPORT_MAIL };
   return (
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
@@ -1136,31 +1162,32 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
-          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut ? { why: shut, plans } : null} />
+          <WorkspaceChoice heading={SECTION} workspaces={list} value={workspaceId} onChange={setInto} blocked={shut ? { why: shut, way } : null} />
         </section>
       ) : null}
       {/* For the workspace that would pay: signed out, the licences show their prices and no more. */}
       {starts && workspaceId ? (
         <section className="mb-7" inert={busy || !!signed || leaving || settling || undefined}>
-          <h3 className={SECTION}>{t("payment.title")}</h3>
+          {/* With nothing in the balance a card pays: no choice to show, so the section is the voucher's, its field open. */}
+          <h3 className={SECTION}>{t(starts.balance === 0 ? "payment.voucher" : "payment.title")}</h3>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <PayWithSwitch balance={starts} payWith={payWith} onPayWith={setPicked} />
+            {starts.balance === 0 ? null : <PayWithSwitch funds={starts} payWith={payWith} onPayWith={setPicked} />}
             {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code applied
                 is kept, and is back when a card pays again. */}
             {/* Another workspace's balance changes how wide the way to pay is: the field slides to its new place. */}
             <motion.div layout="position" transition={{ duration: 0.3, ease: EASE }} className="min-w-0 flex-1 basis-64 sm:max-w-sm">
               <AutoHeight>
                 {bought > 0 ? (
-                  <div className="px-3 py-1">
-                    <PromoCode applied={voucher} onApply={setQuoted} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off, for: workspaceId }))} typed={typedCode} onTyped={setTypedCode} />
+                  <div className={cn("py-1", starts.balance !== 0 && "px-3")}>
+                    <PromoCode fixed={starts.balance === 0} applied={voucher} onApply={setQuoted} onQuote={(code) => quoteCode({ workspaceId, code, amount: bought }).then(({ off }) => ({ code: code.trim(), off, for: workspaceId }))} typed={typedCode} onTyped={setTypedCode} />
                   </div>
                 ) : null}
               </AutoHeight>
             </motion.div>
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
-          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />
-          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} balance={starts} payWith={payWith} code={voucher} note={t("payment.later")} />, beside) : null}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>
@@ -1178,7 +1205,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         </label>
       </div>
       {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
-      {day?.untouched && day.untouched !== signed ? (
+      {/* Not while signing, nor for the report signed here: the day reads it as reserved the moment it is, before the page moves on to it. */}
+      {day?.untouched && day.untouched !== signed && day.untouched !== made && !busy ? (
         // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
         <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
           <span className="min-w-0 flex-1 basis-56">
@@ -1207,11 +1235,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
-            <Button variant="outline" asChild>
-              <NextLink href={plans}>
-                {t("seePlans")} <ArrowUpRight />
-              </NextLink>
-            </Button>
+            <WayOnButton way={way} />
           </>
         ) : null}
         {starts ? (
@@ -1224,6 +1248,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
                 try {
                   // The licence is the report's from here on; what pays and the code can still change until it is activated.
                   const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, payWith, ...(voucher && { voucher }) });
+                  setMade(key);
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
                   signedFor(key);
@@ -1794,8 +1819,6 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const charging = !!terms?.paying && !chargeOver;
   /** In US dollars. */
   const price = terms?.price ?? 0;
-  // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
-  const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
   // Stripe's portal, where the workspace's cards are added, removed and made the default: the person's own, or the organisation's.
   const openPortal = useAction(api.billing.actions.openPortal);
@@ -1808,12 +1831,17 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
     void refreshMine(organization && workspaceId ? { workspaceId } : {}).catch(() => {});
     setPaying(true);
   };
-  const manageBilling = () => void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${window.location.pathname}${window.location.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+  // It comes back marked as back from Stripe (`back`), so the page reads the card again: one saved there counts at once.
+  const manageBilling = () => {
+    const here = new URL(window.location.href);
+    here.searchParams.set("back", crypto.randomUUID());
+    void openPortal({ ...(organization && workspaceId ? { workspaceId } : {}), back: `${here.pathname}${here.search}` }).then((url) => window.location.assign(url), appToast.billing.portalFailed);
+  };
   // What pays and the code are kept with the report, so the bill reads the same on every step and after a reload.
   const payWith: PayWith = terms ? payWithOf(terms) : "card";
   const code = terms?.voucher ?? null;
   // What the report's price comes to: what the balance pays, what a card buys, and what the code takes off that.
-  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0 });
+  const sum = payment({ price, balance: terms ? terms.balance : 0, payWith, off: code?.off ?? 0, credit: terms?.credit ?? 0, cardSaved: terms?.cardSaved ?? true });
   /** Where a code can be used: while a card pays something and no payment is waiting. It lowers what the card pays. */
   const vouchers = !!terms && sum.bought > 0 && !pending && !!onQuote;
   // What is typed in the code's field, kept here so paying sees it.
@@ -1825,10 +1853,9 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   if (paying && (!admin || unapplied)) setPaying(false);
   // What went wrong with activating or paying, said above the payment bar.
   const { problem, say, failed } = useProblem();
-  const subtotal = Math.round(sum.due * 100);
-  const fromCredit = Math.min(credit, subtotal);
-  /** What a card is charged, in cents: nothing when the balance, a code or the account's credit covers it all. */
-  const due = subtotal - fromCredit;
+  const fromCredit = Math.round(sum.fromCredit * 100);
+  /** What a card is charged, in cents: nothing when the balance, a code or the Stripe credit covers it all. */
+  const due = Math.round(sum.due * 100);
   const activateNow = (otherCard = false) =>
     start(async () => {
       say(null);
@@ -1840,13 +1867,14 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") say(t("activation.declined"));
         else if (refusalOf(error)?.reason === "changed") say(t("activation.changed"));
         else if (refusalOf(error)?.reason === "paused") say(t("activation.paused"));
+        else if (refusalOf(error)?.reason === "currency") say(t("payment.currency", { currency: refusalOf(error)?.currency ?? "" }));
         else if (reason) say(t(`activation.promo.${reason}`, { code: code?.code ?? "" }));
         else failed(t("activateFailed"))(error);
       }
     });
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
-  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : null;
+  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1911,22 +1939,24 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 // heading, with the bill under the cover. Activate is with the step's other buttons, where Next is on
                 // every step before it. Only the licence, which set the price, is fixed.
                 <section className="mb-7" inert={activating || undefined}>
-                  <h3 className={SECTION}>{t("payment.title")}</h3>
+                  {/* With nothing in the balance a card pays: no choice to show, so the section is the voucher's, its field
+                      open, and with no code to take either, it has no heading at all. */}
+                  {terms.balance !== 0 || vouchers ? <h3 className={SECTION}>{t(terms.balance === 0 ? "payment.voucher" : "payment.title")}</h3> : null}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <PayWithSwitch balance={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />
+                    {terms.balance === 0 ? null : <PayWithSwitch funds={terms} payWith={payWith} onPayWith={(next) => onChoose?.({ payWith: next })} />}
                     {/* A code lowers what the card pays: with nothing for a card to pay, its field is put away. A code
                         applied is kept, and is back when a card pays again. */}
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
                       {vouchers ? (
-                        <div className="px-3 py-1">
-                          <PromoCode applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
+                        <div className={cn("py-1", terms.balance !== 0 && "px-3")}>
+                          <PromoCode fixed={terms.balance === 0} applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
                         </div>
                       ) : null}
                     </AutoHeight>
                   </div>
                   {/* The bill: under the cover on a wide page, where it has been since the report was signed, and here on a narrow one. */}
-                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />
-                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} balance={terms} payWith={payWith} code={code} credit={terms.credit} />, beside) : null}
+                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />, beside) : null}
                   {terms.refused ? <p className="mt-2 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
                 </section>
               ) : admin && pending && stage !== "live" ? (
@@ -2059,7 +2089,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           onManageBilling={manageBilling}
           // This once on Stripe's page, which offers the saved cards and takes a new one: the saved card is left as it is.
           onOtherCard={
-            // Not while the account's credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
+            // Not while Stripe credit pays part: Stripe's page takes a payment whole and wouldn't draw on it.
             card && fromCredit === 0
               ? () => {
                   setPaying(false);
@@ -2123,9 +2153,10 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }: { /** The field is all the section holds (a card is the only way to pay): it stays open, with no way to shut it. */ fixed?: boolean; applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
   // A code already typed (it came back from Stripe's page in the address) opens the field with it.
-  const [open, setOpen] = useState(typed !== "");
+  const [opened, setOpen] = useState(typed !== "");
+  const open = fixed || opened;
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
   const field = useRef<HTMLInputElement>(null);
@@ -2171,7 +2202,8 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
           >
             <div className="flex gap-2">
               <Input
-                autoFocus={finePointer()}
+                // Opened by a press, it takes the keyboard; there from the start, it leaves the page where it is.
+                autoFocus={!fixed && finePointer()}
                 value={typed}
                 maxLength={100}
                 onChange={(e) => {
@@ -2190,6 +2222,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
                 {t("apply")}
               </Button>
               {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
+              {fixed ? null : (
               <Button
                 type="button"
                 variant="ghost"
@@ -2204,6 +2237,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
               >
                 <X />
               </Button>
+              )}
             </div>
             {wrong ? (
               <p id={wrongId} role="alert" className="text-xs text-destructive">
@@ -2441,45 +2475,29 @@ function Seal({ play }: { play: boolean }) {
   );
 }
 
-/**
- * What a live report was paid with, under its other facts: what the balance paid, with what it holds since, what the
- * account's credit and a card paid, and the code that lowered that or covered it. People looked for this here once
- * their report was live.
- */
-function PaidChips({ paid }: { paid: Terms["paid"] }) {
+/** Opens Stripe's receipt for what a live report was paid with, read on the press: a tab opens at once, before Stripe answers, so the browser doesn't take it for a pop-up and block it. */
+function useReceipt(reportKey: string) {
   const t = useTranslations("publishReports.flow");
-  const dollars = useMoney();
-  if (!paid) return null;
-  const money = (amount: number) => inSentence(dollars(amount));
-  return (
-    <div className="flex flex-wrap items-center gap-2 pt-2">
-      {paid.fromBalance > 0 ? (
-        <StatusChip tone="neutral" icon={Wallet}>
-          {paid.left === null ? t("paid.balance", { amount: money(paid.fromBalance) }) : t("paid.balanceLeft", { amount: money(paid.fromBalance), left: money(paid.left) })}
-        </StatusChip>
-      ) : null}
-      {paid.byCredit > 0 ? (
-        <StatusChip tone="neutral" icon={Coins}>
-          {t("paid.credit", { amount: money(paid.byCredit) })}
-        </StatusChip>
-      ) : null}
-      {paid.byCard > 0 ? (
-        <StatusChip tone="neutral" icon={CreditCard}>
-          {t("paid.card", { amount: money(paid.byCard) })}
-        </StatusChip>
-      ) : null}
-      {/* A code that left something to pay is named as the bill named it; one that left nothing covered it. */}
-      {paid.code ? (
-        <StatusChip tone="neutral" icon={Tag}>
-          {paid.byCard + paid.byCredit > 0 ? t("payment.code", { code: paid.code }) : t(paid.fromBalance > 0 ? "paid.codeRest" : "paid.code", { code: paid.code })}
-        </StatusChip>
-      ) : null}
-    </div>
-  );
+  const workspaceId = useWorkspace();
+  const receiptOf = useAction(api.reports.activation.receipt);
+  return () => {
+    if (!workspaceId) return;
+    const tab = window.open("", "_blank");
+    void receiptOf({ workspaceId, key: reportKey }).then(
+      (url) => {
+        if (url && tab) tab.location.href = url;
+        else tab?.close();
+      },
+      (error: unknown) => {
+        tab?.close();
+        said(t("paid.receiptFailed"))(error);
+      },
+    );
+  };
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; /** What it was paid with, for whoever may pay for it. */ paid: Terms["paid"]; fresh: boolean; onCorrect: () => void }) {
+function LiveReport({ report, series, fresh }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; fresh: boolean }) {
   // The report as the app's papers are, for saving it: the same as its own page saves.
   const paper = report.metadata ? reportPaper({ key: report.key, doi: report.doi, pdfUrl: `/papers/${report.key}/report.pdf`, updatedAt: report.updatedAt }, report.metadata, series) : null;
   const reduce = useReducedMotion();
@@ -2492,9 +2510,10 @@ function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report
   const url = `https://doi.org/${report.doi}`;
   const passed = report.results?.filter((r) => r.pass).length ?? 0;
   return (
-    <div>
-      {/* Beside the cover, the seal takes the height the cover's column has to spare, so the buttons end on the card's edge. */}
-      <div className="flex flex-col items-center pb-7 pt-3 text-center @3xl:pb-12 @3xl:pt-10">
+    // As tall as the cover's column beside it (`ReportCover`'s `--cover-height`): the seal takes the height it has to
+    // spare, centred, and the DOI, the buttons and the way to take it down end level with the column's foot.
+    <div className="flex flex-col @3xl:min-h-[var(--cover-height,0px)]">
+      <div className="flex flex-col items-center justify-center pb-7 pt-3 text-center @3xl:flex-1 @3xl:pb-12 @3xl:pt-10">
         <Seal play={play} />
         <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.45)}>
           {t("liveTitle")}
@@ -2527,19 +2546,12 @@ function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report
             </StatusChip>
           ) : null}
         </div>
-        {/* What it came to, on a line of its own: it arrives with the payment's terms, and what the balance holds since a moment later, so its line opens instead of pushing the buttons below. */}
-        <AutoHeight>
-          <PaidChips paid={paid} />
-        </AutoHeight>
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
         <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
       </motion.div>
-      {/* On a phone the four are two even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
+      {/* On a phone the three are even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
-        <Button variant="outline" size="sm" onClick={onCorrect}>
-          <PenLine /> {t("correct")}
-        </Button>
         {/* The app's own three, as on the report's page: save to the library, add to a collection, add to a community. */}
         {paper ? <SaveControl paper={paper} named /> : null}
         <Button asChild size="sm">
@@ -2548,7 +2560,6 @@ function LiveReport({ report, series, paid, fresh, onCorrect }: { report: Report
           </Link>
         </Button>
       </motion.div>
-      <TakeDown reportKey={report.key} className="mt-6 text-center" />
     </div>
   );
 }
@@ -2648,15 +2659,33 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
   const t = useTranslations("publishReports.flow");
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
-  const facts: Array<{ id: string; icon: typeof Hash; label: string; href?: string }> = [
-    ...(report?.pdf?.pages !== undefined ? [{ id: "pdf", icon: FileText, label: t("pages", { count: report.pdf.pages }) }] : []),
-    ...(report ? [{ id: "agreement", icon: PenLine, label: t("agreementVersion", { version: report.agreementVersion }), href: `/publish/agreements/${report.key}` }] : []),
-    ...(report?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: t("checksVersion", { version: report.checksVersion }) }] : []),
+  // Its height on the grid it stands in (`--cover-height`), which a screen beside it fills to stand level with it. A
+  // ResizeObserver, as the cover, its facts and its bill grow.
+  const aside = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = aside.current;
+    const grid = element?.parentElement;
+    if (!element || !grid) return;
+    const set = () => grid.style.setProperty("--cover-height", `${element.offsetHeight}px`);
+    set();
+    const observer = new ResizeObserver(set);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      grid.style.removeProperty("--cover-height");
+    };
+  }, []);
+  // The report's facts, as rows of a label and its value, as the bill under them reads.
+  const facts: Array<{ id: string; label: string; value: ReactNode; href?: string }> = [
+    ...(live ? [{ id: "status", label: t("status"), value: <span className="inline-flex items-center gap-1 font-medium ink-success"><BadgeCheck className="size-3.5" />{t("live")}</span> }] : []),
+    ...(report?.pdf?.pages !== undefined ? [{ id: "pdf", label: t("steps.upload"), value: t("pages", { count: report.pdf.pages }) }] : []),
+    ...(report ? [{ id: "agreement", label: t("steps.agreement"), value: t("version", { version: report.agreementVersion }), href: `/publish/agreements/${report.key}` }] : []),
+    ...(report?.checksVersion ? [{ id: "checks", label: t("steps.checks"), value: t("version", { version: report.checksVersion }) }] : []),
   ];
   return (
     // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it. As the
     // page scrolls it stays under the page's bar, as far from it as it is from the card's edge.
-    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
+    <aside ref={aside} className="flex items-start gap-4 @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
       <PaperCover
         className="w-28 shrink-0 @3xl:w-full"
         {...REPORT_COVER}
@@ -2679,27 +2708,25 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
           {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}
           <FieldHelp field="issn" />
         </p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {live ? (
-            <StatusChip tone="success" icon={BadgeCheck} className="fade-enter">
-              {t("live")}
-            </StatusChip>
-          ) : null}
-          {facts.map((fact) =>
-            fact.href ? (
-              // The agreement as signed, in a tab of its own to read, save or print.
-              <Link key={fact.id} href={fact.href} target="_blank" rel="noopener noreferrer" className="fade-enter rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">
-                <StatusChip tone="neutral" icon={fact.icon} className="transition-colors hover:text-foreground">
-                  {fact.label}
-                </StatusChip>
-              </Link>
-            ) : (
-              <StatusChip key={fact.id} tone="neutral" icon={fact.icon} className="fade-enter">
-                {fact.label}
-              </StatusChip>
-            ),
-          )}
-        </div>
+        {facts.length > 0 ? (
+          <dl className="mt-4 space-y-1.5 border-t border-border-subtle pt-3 text-sm">
+            {facts.map((fact) => (
+              <div key={fact.id} className="fade-enter flex items-center justify-between gap-3">
+                <dt className="min-w-0 truncate text-muted-foreground">{fact.label}</dt>
+                <dd className="shrink-0 tabular-nums">
+                  {fact.href ? (
+                    // The agreement as signed, in a tab of its own to read, save or print.
+                    <Link href={fact.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 rounded-sm underline-offset-2 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                      {fact.value} <ArrowUpRight className="size-3" />
+                    </Link>
+                  ) : (
+                    fact.value
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
         {/* Where a step shows what it is working out, on a wide page: the agreement's bill. */}
         <div ref={slot} />
       </div>

@@ -394,7 +394,7 @@
         "refund": "返金"
       }
     },
-    "credits": "クレジット",
+    "credits": "AI クレジット",
     "refillOn": "{date} に +{amount}",
     "bought": "購入分 {amount}",
     "topUp": "追加購入",
@@ -428,7 +428,11 @@
       "backTo": "{date}に{amount}に戻ります",
       "kept": "使うまで残る {amount}",
       "publish": "公開",
-      "noLimit": "無制限"
+      "noLimit": "無制限",
+      "stripeCredit": "Stripe のクレジット {amount} はカードより先に使われます",
+      "stripeCurrency": "Stripe アカウントが {currency} 建ての間はレポートをカードで支払えません",
+      "stripeCreditNoCard": "カードを保存すると Stripe のクレジット {amount} が使われます",
+      "saveCard": "カードを保存"
     }
   },
   "errors": {
@@ -4775,7 +4779,7 @@
       "papersAtOnce": "同時に {count, number} 件の論文",
       "anyPapersAJob": "ジョブあたりの論文数は無制限",
       "papersAJob": "ジョブあたり最大 {count, number} 件の論文",
-      "sharedCredits": "共有クレジット",
+      "sharedCredits": "共有 AI クレジット",
       "membersDraw": "{count, number} 人のメンバーが使用",
       "refillOn": "{date}に {amount}",
       "upToMembers": "最大 {count, number} 人",
@@ -6521,7 +6525,7 @@
         "live": "公開",
         "sealed": "契約に署名するとロックされます。",
         "paying": "支払いの処理中のため、いまはステップを開けません。銀行に拒否された場合は、また開けるようになります。",
-        "liveNow": "公開中です。詳細は「{action}」から変更できます。",
+        "liveNow": "公開済みです。レポート一覧の行にある鉛筆から詳細を変更できます。",
         "closed": "レビュアーが取り下げたため、変更できません。",
         "running": "チェックを実行中です。終わるとステップをまた開けます。",
         "notYours": "このレポートを変更できるのは、作成を始めた人だけです。"
@@ -6557,7 +6561,8 @@
       "shut": {
         "closed": "このプランには公開が含まれていません",
         "ownClosed": "ご利用のプランには公開が含まれていません",
-        "used": "今日はもうレポートを開始できません"
+        "used": "今日はもうレポートを開始できません",
+        "currency": "Stripe アカウントが {currency} 建てです"
       },
       "limit": {
         "personal": "ご利用のプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
@@ -6718,8 +6723,6 @@
       "changesDiscardFailed": "変更を破棄できませんでした。",
       "discard": "破棄",
       "pages": "{count, plural, other {# ページ}}",
-      "agreementVersion": "契約 v{version}",
-      "checksVersion": "チェック v{version}",
       "yourTitle": "あなたのタイトル",
       "noDoi": "DOI はまだありません",
       "issn": "ISSN {issn}",
@@ -6858,7 +6861,6 @@
         "payWith": "支払い方法",
         "balance": "出版残高",
         "card": "カード",
-        "byCard": "カードで支払い",
         "due": "有効化時の支払額",
         "later": "レポートを有効化するまで請求はなく、支払い方法もまだ変更できます。",
         "code": "コード {code}",
@@ -6866,18 +6868,26 @@
         "title": "支払い",
         "sign": "読んで署名",
         "noLimit": "無制限",
-        "credit": "アカウントのクレジット",
-        "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。"
+        "credit": "Stripe のクレジット",
+        "creditYours": "Stripe に <amount></amount> あります",
+        "creditTheirs": "{owner} は Stripe に <amount></amount> あります",
+        "creditIdle": "Stripe の支払いページでは Stripe のクレジット <amount></amount> を使えません。カードを保存すると、Stripe はまずクレジットを使い、残りをカードで支払います。",
+        "least": "カードでの支払いは {least} 以上のため、{spare} が残高に残ります。",
+        "leastStripe": "Stripe はカードに最低 {least} を請求するため、{spare} は残高に残ります。",
+        "currency": "このワークスペースの Stripe アカウントは {currency} 建てで、レポートは米ドルで支払うため、変更するまでここではカードで支払えません。",
+        "emailUs": "メールで連絡",
+        "saveCard": "カードを保存",
+        "codeOff": "カードで支払う {amount} から {off} 引き",
+        "charged": "カードへの請求",
+        "voucher": "クーポン"
       },
       "activateFree": "DOI を有効化",
       "paid": {
-        "balance": "残高から {amount} を支払い",
-        "balanceLeft": "残高から {amount} を支払い、残り {left}",
-        "card": "カードで {amount} を支払い",
-        "code": "{code} で全額をまかないました",
-        "codeRest": "{code} で残りをまかないました",
-        "credit": "アカウントのクレジットから {amount} を支払い"
-      }
+        "receipt": "領収書",
+        "receiptFailed": "領収書を開けませんでした。もう一度お試しください。"
+      },
+      "emailUs": "メールで連絡",
+      "status": "状態"
     },
     "meta": {
       "publish": "公開 | Openscholar",

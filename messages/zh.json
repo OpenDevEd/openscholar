@@ -394,7 +394,7 @@
         "refund": "退款"
       }
     },
-    "credits": "积分",
+    "credits": "AI 积分",
     "refillOn": "{date} 增加 {amount}",
     "bought": "已购买 {amount}",
     "topUp": "充值",
@@ -428,7 +428,11 @@
       "backTo": "{date}恢复为 {amount}",
       "kept": "{amount} 保留至使用",
       "publish": "发布",
-      "noLimit": "不限次数"
+      "noLimit": "不限次数",
+      "stripeCredit": "Stripe 余额 {amount} 先于银行卡支付",
+      "stripeCurrency": "Stripe 账户使用 {currency} 期间无法用银行卡支付报告",
+      "stripeCreditNoCard": "保存银行卡后，Stripe 余额 {amount} 才能抵扣",
+      "saveCard": "保存银行卡"
     }
   },
   "errors": {
@@ -4775,7 +4779,7 @@
       "papersAtOnce": "同时处理 {count, number} 篇论文",
       "anyPapersAJob": "每个任务论文数不限",
       "papersAJob": "每个任务最多 {count, number} 篇论文",
-      "sharedCredits": "共享积分",
+      "sharedCredits": "共享 AI 积分",
       "membersDraw": "{count, number} 名成员使用",
       "refillOn": "{date} 补充 {amount}",
       "upToMembers": "最多 {count, number} 名成员",
@@ -6521,7 +6525,7 @@
         "live": "上线",
         "sealed": "协议签署后即锁定。",
         "paying": "付款正在处理中，因此现在无法打开这些步骤。如果银行拒绝付款，它们会重新开放。",
-        "liveNow": "已上线。请通过“{action}”更改详情。",
+        "liveNow": "已发布。在你的报告列表中点该行的铅笔即可修改详情。",
         "closed": "审核人员已将其撤下，因此无法更改。",
         "running": "检查正在运行。完成后这些步骤会重新开放。",
         "notYours": "只有开始这份报告的人才能更改它。"
@@ -6557,7 +6561,8 @@
       "shut": {
         "closed": "它的方案不包含发布",
         "ownClosed": "你的方案不包含发布",
-        "used": "今天没有可开始的报告了"
+        "used": "今天没有可开始的报告了",
+        "currency": "它的 Stripe 账户使用 {currency}"
       },
       "limit": {
         "personal": "你的方案每天可以开始 {count} 份报告。请明天再来，或换一个额度更高的方案。",
@@ -6718,8 +6723,6 @@
       "changesDiscardFailed": "无法放弃修改。",
       "discard": "放弃",
       "pages": "{count, plural, other {# 页}}",
-      "agreementVersion": "协议 v{version}",
-      "checksVersion": "检查 v{version}",
       "yourTitle": "您的标题",
       "noDoi": "尚无 DOI",
       "issn": "ISSN {issn}",
@@ -6858,7 +6861,6 @@
         "payWith": "支付方式",
         "balance": "出版余额",
         "card": "银行卡",
-        "byCard": "用卡支付",
         "due": "激活时应付",
         "later": "报告激活前不会扣款，支付方式仍可更改。",
         "code": "优惠码 {code}",
@@ -6866,18 +6868,26 @@
         "title": "付款",
         "sign": "阅读并签署",
         "noLimit": "不限次数",
-        "credit": "账户余额抵扣",
-        "least": "银行卡至少支付 {least}，因此 {spare} 会留在余额中。"
+        "credit": "Stripe 余额抵扣",
+        "creditYours": "你在 Stripe 有 <amount></amount>",
+        "creditTheirs": "{owner} 在 Stripe 有 <amount></amount>",
+        "creditIdle": "Stripe 的付款页面无法使用 <amount></amount> 的 Stripe 余额。保存银行卡后，Stripe 会先用余额，其余由银行卡支付。",
+        "least": "银行卡至少支付 {least}，因此 {spare} 会留在余额中。",
+        "leastStripe": "Stripe 对银行卡至少收取 {least}，因此 {spare} 会留在你的余额中。",
+        "currency": "此工作区的 Stripe 账户使用 {currency}，而报告以美元支付，所以在我们更改之前这里无法用银行卡支付。",
+        "emailUs": "给我们发邮件",
+        "saveCard": "保存银行卡",
+        "codeOff": "银行卡支付的 {amount} 减 {off}",
+        "charged": "银行卡扣款",
+        "voucher": "优惠券"
       },
       "activateFree": "激活 DOI",
       "paid": {
-        "balance": "从余额支付 {amount}",
-        "balanceLeft": "从余额支付 {amount}，剩余 {left}",
-        "card": "用银行卡支付 {amount}",
-        "code": "{code} 已抵扣全部费用",
-        "codeRest": "{code} 已抵扣剩余费用",
-        "credit": "用账户余额抵扣 {amount}"
-      }
+        "receipt": "收据",
+        "receiptFailed": "无法打开收据，请重试。"
+      },
+      "emailUs": "给我们发邮件",
+      "status": "状态"
     },
     "meta": {
       "publish": "发布 | Openscholar",

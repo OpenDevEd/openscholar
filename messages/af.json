@@ -395,7 +395,7 @@
         "refund": "Terugbetaling"
       }
     },
-    "credits": "krediete",
+    "credits": "KI-krediete",
     "refillOn": "+{amount} op {date}",
     "bought": "{amount} gekoop",
     "topUp": "Vul aan",
@@ -429,7 +429,11 @@
       "backTo": "Terug na {amount} op {date}",
       "kept": "{amount} bly tot gebruik",
       "publish": "Publiseer",
-      "noLimit": "Geen limiet"
+      "noLimit": "Geen limiet",
+      "stripeCredit": "Stripe-krediet van {amount} betaal voor ’n kaart",
+      "stripeCurrency": "’n Kaart kan nie vir verslae betaal solank die Stripe-rekening in {currency} is nie",
+      "stripeCreditNoCard": "Stripe-krediet van {amount} betaal sodra ’n kaart gestoor is",
+      "saveCard": "Stoor ’n kaart"
     }
   },
   "errors": {
@@ -4776,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {# artikel op een slag} other {# artikels op een slag}}",
       "anyPapersAJob": "Enige aantal artikels per taak",
       "papersAJob": "Tot {count, number} artikels per taak",
-      "sharedCredits": "Gedeelde krediete",
+      "sharedCredits": "Gedeelde KI-krediete",
       "membersDraw": "{count, plural, one {# lid trek} other {# lede trek}} daaruit",
       "refillOn": "{amount} op {date}",
       "upToMembers": "Tot {count, number} lede",
@@ -6522,7 +6526,7 @@
         "live": "Gepubliseer",
         "sealed": "Gesluit sodra die ooreenkoms onderteken is.",
         "paying": "Die betaling is aan die gang, so die stappe kan nie nou oopgemaak word nie. As die bank dit weier, gaan hulle weer oop.",
-        "liveNow": "Dit is lewendig. Verander die besonderhede met {action}.",
+        "liveNow": "Dit is lewendig. Verander sy besonderhede met die potlood op sy ry in jou verslae.",
         "closed": "’n Beoordelaar het dit afgehaal, so dit kan nie verander word nie.",
         "running": "Die kontroles loop. Die stappe gaan weer oop wanneer hulle klaar is.",
         "notYours": "Net die persoon wat hierdie verslag begin het, kan dit verander."
@@ -6558,7 +6562,8 @@
       "shut": {
         "closed": "Sy plan sluit publikasie nie in nie",
         "ownClosed": "Jou plan sluit publikasie nie in nie",
-        "used": "Geen verslae oor om vandag te begin nie"
+        "used": "Geen verslae oor om vandag te begin nie",
+        "currency": "Sy Stripe-rekening is in {currency}"
       },
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
@@ -6719,8 +6724,6 @@
       "changesDiscardFailed": "Die wysigings kon nie weggegooi word nie.",
       "discard": "Gooi weg",
       "pages": "{count, plural, one {# bladsy} other {# bladsye}}",
-      "agreementVersion": "Ooreenkoms weergawe {version}",
-      "checksVersion": "Kontroles weergawe {version}",
       "yourTitle": "Jou titel",
       "noDoi": "Nog geen DOI nie",
       "issn": "ISSN {issn}",
@@ -6859,7 +6862,6 @@
         "payWith": "Betaal met",
         "balance": "Publikasiebalans",
         "card": "Kaart",
-        "byCard": "Betaling per kaart",
         "due": "Verskuldig by aktivering",
         "later": "Niks word gehef voordat die verslag geaktiveer word nie, en hoe jy betaal kan nog verander.",
         "code": "Kode {code}",
@@ -6867,18 +6869,26 @@
         "title": "Betaling",
         "sign": "Lees en teken",
         "noLimit": "Geen limiet",
-        "credit": "Rekeningkrediet",
-        "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans."
+        "credit": "Stripe-krediet",
+        "creditYours": "Jy het <amount></amount> by Stripe",
+        "creditTheirs": "{owner} het <amount></amount> by Stripe",
+        "creditIdle": "Stripe se betaalblad kan nie die <amount></amount> Stripe-krediet gebruik nie. Met ’n gestoorde kaart neem Stripe eers die krediet en die kaart betaal die res.",
+        "least": "’n Kaart betaal minstens {least}, dus bly {spare} in jou balans.",
+        "leastStripe": "Stripe hef ’n kaart minstens {least}, so {spare} bly in jou saldo.",
+        "currency": "Hierdie werkruimte se Stripe-rekening is in {currency}, en verslae word in Amerikaanse dollar betaal, so ’n kaart kan hier nie betaal voordat ons dit verander nie.",
+        "emailUs": "E-pos ons",
+        "saveCard": "Stoor ’n kaart",
+        "codeOff": "{off} af van die {amount} wat ’n kaart betaal",
+        "charged": "Op ’n kaart gehef",
+        "voucher": "Koepon"
       },
       "activateFree": "Aktiveer die DOI",
       "paid": {
-        "balance": "{amount} uit die balans betaal",
-        "balanceLeft": "{amount} uit die balans betaal, {left} oor",
-        "card": "{amount} per kaart betaal",
-        "code": "{code} het die prys gedek",
-        "codeRest": "{code} het die res gedek",
-        "credit": "{amount} uit rekeningkrediet betaal"
-      }
+        "receipt": "Kwitansie",
+        "receiptFailed": "Die kwitansie kon nie oopgemaak word nie. Probeer weer."
+      },
+      "emailUs": "E-pos ons",
+      "status": "Status"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

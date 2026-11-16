@@ -394,7 +394,7 @@
         "refund": "Refund"
       }
     },
-    "credits": "credits",
+    "credits": "AI credits",
     "refillOn": "+{amount} on {date}",
     "bought": "{amount} bought",
     "topUp": "Top up",
@@ -428,7 +428,11 @@
       "backTo": "Back to {amount} on {date}",
       "kept": "{amount} kept until used",
       "publish": "Publish",
-      "noLimit": "No limit"
+      "noLimit": "No limit",
+      "stripeCredit": "Stripe credit of {amount} pays before a card",
+      "stripeCurrency": "A card can’t pay for reports while the Stripe account is in {currency}",
+      "stripeCreditNoCard": "Stripe credit of {amount} pays once a card is saved",
+      "saveCard": "Save a card"
     }
   },
   "errors": {
@@ -4775,7 +4779,7 @@
       "papersAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
       "anyPapersAJob": "Any number of papers a job",
       "papersAJob": "Up to {count, number} papers a job",
-      "sharedCredits": "Shared credits",
+      "sharedCredits": "Shared AI credits",
       "membersDraw": "{count, plural, one {# member draws} other {# members draw}} from them",
       "refillOn": "{amount} on {date}",
       "upToMembers": "Up to {count, number} members",
@@ -6521,7 +6525,7 @@
         "live": "Live",
         "sealed": "Locked once the agreement is signed.",
         "paying": "Its payment is going through, so its steps can't be opened now. If the bank refuses it, they open again.",
-        "liveNow": "It's live. Change its details with {action}.",
+        "liveNow": "It’s live. Change its details with the pencil on its row in your reports.",
         "closed": "A reviewer took it down, so it can't be changed.",
         "running": "Its checks are running. The steps open again when they finish.",
         "notYours": "Only the person who started this report can change it."
@@ -6557,7 +6561,8 @@
       "shut": {
         "closed": "Its plan doesn't include publishing",
         "ownClosed": "Your plan doesn't include publishing",
-        "used": "No reports left to start today"
+        "used": "No reports left to start today",
+        "currency": "Its Stripe account is in {currency}"
       },
       "limit": {
         "personal": "Your plan starts {count, plural, one {# report} other {# reports}} a day. Come back tomorrow, or move to a plan with more.",
@@ -6718,8 +6723,6 @@
       "changesDiscardFailed": "The changes couldn't be discarded.",
       "discard": "Discard",
       "pages": "{count, plural, one {# page} other {# pages}}",
-      "agreementVersion": "Agreement v{version}",
-      "checksVersion": "Checks v{version}",
       "yourTitle": "Your title",
       "noDoi": "No DOI yet",
       "issn": "ISSN {issn}",
@@ -6858,7 +6861,6 @@
         "payWith": "Pay with",
         "balance": "Publication balance",
         "card": "Card",
-        "byCard": "Payment by card",
         "due": "Due at activation",
         "later": "Nothing is charged until the report is activated, and how you pay can still change.",
         "code": "Code {code}",
@@ -6866,18 +6868,26 @@
         "title": "Payment",
         "sign": "Read and sign",
         "noLimit": "No limit",
-        "credit": "Account credit",
-        "least": "A card pays for at least {least}, so {spare} stays in your balance."
+        "credit": "Stripe credit",
+        "creditYours": "You have <amount></amount> at Stripe",
+        "creditTheirs": "{owner} has <amount></amount> at Stripe",
+        "creditIdle": "Stripe’s payment page can’t use the <amount></amount> of Stripe credit. With a card saved, Stripe takes the credit first and the card pays the rest.",
+        "least": "A card pays for at least {least}, so {spare} stays in your balance.",
+        "leastStripe": "Stripe charges a card at least {least}, so {spare} stays in your balance.",
+        "currency": "This workspace’s Stripe account is in {currency}, and reports are paid in US dollars, so a card can’t pay here until we change it.",
+        "emailUs": "Email us",
+        "saveCard": "Save a card",
+        "codeOff": "{off} off the {amount} a card pays",
+        "charged": "Charged to a card",
+        "voucher": "Voucher"
       },
       "activateFree": "Activate the DOI",
       "paid": {
-        "balance": "Paid {amount} from the balance",
-        "balanceLeft": "Paid {amount} from the balance, {left} left",
-        "card": "Paid {amount} by card",
-        "code": "{code} covered the price",
-        "codeRest": "{code} covered the rest",
-        "credit": "Paid {amount} from account credit"
-      }
+        "receipt": "Receipt",
+        "receiptFailed": "The receipt couldn’t be opened. Try again."
+      },
+      "emailUs": "Email us",
+      "status": "Status"
     },
     "meta": {
       "publish": "Publish | Openscholar",

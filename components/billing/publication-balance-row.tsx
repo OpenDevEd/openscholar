@@ -2,6 +2,7 @@
 
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowRight, Layers, Repeat } from "@/components/icons";
+import { StripeIcon } from "@/components/icons/stripe-icon";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { useMoney } from "@/lib/hooks/use-money";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,9 @@ import type { BalancePart } from "@/convex/billing/validators";
  * The workspace's publication balance, beside its credits, in two lines: what it holds, in dollars, then what that is.
  * A part that refills shows how much of it is left on a meter and when it comes back; what was given once or bought
  * stays until used, and alone it needs no second line. It pays for reports on Openscholar Reports; a card pays what
- * it can't.
+ * it can't, after any credit at Stripe, which is said here too: the bill of a report names both.
  */
-export function PublicationBalanceRow({ parts, unlimited = false }: { parts: BalancePart[]; /** A balance with no limit: every report is paid from it. */ unlimited?: boolean }) {
+export function PublicationBalanceRow({ parts, unlimited = false, credit = 0, onSaveCard, currency }: { parts: BalancePart[]; /** A balance with no limit: every report is paid from it. */ unlimited?: boolean; /** Credit on the workspace's Stripe customer, in dollars, which a card's part of a report is taken from first. */ credit?: number; /** No card is saved: the credit pays only on a saved card, so the row says so and offers this, which opens Stripe's page for cards. */ onSaveCard?: () => void; /** The Stripe customer's currency when it isn't dollars: a card can't pay for a report then. */ currency?: string }) {
   const t = useTranslations("billingPage.publication");
   const format = useFormatter();
   const money = useMoney();
@@ -44,9 +45,9 @@ export function PublicationBalanceRow({ parts, unlimited = false }: { parts: Bal
       </div>
       {/* Each part keeps its words together and wraps whole; on a phone, where large text can outgrow the line, its
           words wrap too. What stays, alone, needs no line: the amount above is all of it. */}
-      {unlimited ? null : parts.length === 0 || refilling.length > 0 ? (
+      {(unlimited ? false : parts.length === 0 || refilling.length > 0) || credit > 0 || currency ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:[&>*]:whitespace-nowrap">
-          {parts.length === 0 ? <span className="!whitespace-normal">{t("hint")}</span> : null}
+          {parts.length === 0 && !unlimited ? <span className="!whitespace-normal">{t("hint")}</span> : null}
           {refilling.map((part) => (
             <span key={part.interval} className="contents">
               <span className="inline-flex items-center gap-2 max-sm:flex-wrap sm:whitespace-nowrap">
@@ -62,7 +63,24 @@ export function PublicationBalanceRow({ parts, unlimited = false }: { parts: Bal
               {part.resetsAt !== undefined ? <span className="sm:whitespace-nowrap">{t("backTo", { amount: money(part.refillsTo ?? part.size), date: format.dateTime(part.resetsAt, { day: "numeric", month: "short" }) })}</span> : null}
             </span>
           ))}
-          {kept ? (
+          {credit > 0 ? (
+            <span className="inline-flex items-center gap-1.5">
+              <StripeIcon aria-hidden className="size-3.5 shrink-0" />
+              {t(onSaveCard ? "stripeCreditNoCard" : "stripeCredit", { amount: money(credit) })}
+              {onSaveCard ? (
+                <button type="button" onClick={onSaveCard} className="ms-1 font-medium text-foreground underline underline-offset-2">
+                  {t("saveCard")}
+                </button>
+              ) : null}
+            </span>
+          ) : null}
+          {currency ? (
+            <span className="inline-flex items-center gap-1.5 text-destructive">
+              <StripeIcon aria-hidden className="size-3.5 shrink-0" />
+              {t("stripeCurrency", { currency })}
+            </span>
+          ) : null}
+          {kept && refilling.length > 0 ? (
             <span className="inline-flex items-center gap-1.5">
               <Layers className="size-3.5 shrink-0" />
               {t("kept", { amount: money(kept.left) })}

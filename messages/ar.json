@@ -395,7 +395,7 @@
         "refund": "استرداد"
       }
     },
-    "credits": "أرصدة",
+    "credits": "أرصدة الذكاء الاصطناعي",
     "refillOn": "+{amount} في {date}",
     "bought": "تم شراء {amount}",
     "topUp": "تعبئة الرصيد",
@@ -429,7 +429,11 @@
       "backTo": "يعود إلى {amount} في {date}",
       "kept": "{amount} محفوظة حتى استخدامها",
       "publish": "انشر",
-      "noLimit": "بلا حد"
+      "noLimit": "بلا حد",
+      "stripeCredit": "رصيد Stripe البالغ {amount} يُستخدم قبل البطاقة",
+      "stripeCurrency": "لا يمكن الدفع بالبطاقة للتقارير ما دام حساب Stripe بعملة {currency}",
+      "stripeCreditNoCard": "رصيد Stripe البالغ {amount} يُستخدم بعد حفظ بطاقة",
+      "saveCard": "احفظ بطاقة"
     }
   },
   "errors": {
@@ -4776,7 +4780,7 @@
       "papersAtOnce": "{count, plural, zero {لا أوراق} one {# ورقة في الوقت نفسه} two {ورقتان في الوقت نفسه} few {# أوراق في الوقت نفسه} many {# ورقة في الوقت نفسه} other {# ورقة في الوقت نفسه}}",
       "anyPapersAJob": "أي عدد من الأوراق لكل مهمة",
       "papersAJob": "حتى {count, number} ورقة لكل مهمة",
-      "sharedCredits": "الأرصدة المشتركة",
+      "sharedCredits": "أرصدة الذكاء الاصطناعي المشتركة",
       "membersDraw": "{count, plural, zero {لا أعضاء يسحبون منها} one {# عضو يسحب منها} two {عضوان يسحبان منها} few {# أعضاء يسحبون منها} many {# عضوًا يسحب منها} other {# عضو يسحب منها}}",
       "refillOn": "{amount} في {date}",
       "upToMembers": "حتى {count, number} عضو",
@@ -6522,7 +6526,7 @@
         "live": "منشور",
         "sealed": "يُقفل بعد توقيع الاتفاقية.",
         "paying": "دفعه قيد المعالجة، لذا لا يمكن فتح خطواته الآن. إذا رفضه البنك، تُفتح من جديد.",
-        "liveNow": "إنه منشور. غيّر تفاصيله عبر {action}.",
+        "liveNow": "إنه منشور. غيّر تفاصيله بالقلم في صفّه ضمن تقاريرك.",
         "closed": "سحبه أحد المراجعين، لذا لا يمكن تغييره.",
         "running": "فحوصه قيد التشغيل. تُفتح الخطوات من جديد عند انتهائها.",
         "notYours": "لا يمكن تغيير هذا التقرير إلا لمن بدأه."
@@ -6558,7 +6562,8 @@
       "shut": {
         "closed": "خطتها لا تتضمن النشر",
         "ownClosed": "لا تتضمن خطتك النشر",
-        "used": "لم يبقَ تقارير يمكن بدؤها اليوم"
+        "used": "لم يبقَ تقارير يمكن بدؤها اليوم",
+        "currency": "حساب Stripe الخاص بها بعملة {currency}"
       },
       "limit": {
         "personal": "تتيح خطتك بدء {count, plural, zero {# تقرير} one {تقرير واحد} two {تقريرين} few {# تقارير} many {# تقريرًا} other {# تقرير}} في اليوم. عُد غدًا، أو انتقل إلى خطة تتيح المزيد.",
@@ -6719,8 +6724,6 @@
       "changesDiscardFailed": "تعذّر تجاهل التعديلات.",
       "discard": "تجاهل",
       "pages": "{count, plural, zero {# صفحة} one {صفحة واحدة} two {صفحتان} few {# صفحات} many {# صفحة} other {# صفحة}}",
-      "agreementVersion": "الاتفاقية الإصدار {version}",
-      "checksVersion": "الفحوصات الإصدار {version}",
       "yourTitle": "عنوانك",
       "noDoi": "لا يوجد DOI بعد",
       "issn": "ISSN {issn}",
@@ -6859,7 +6862,6 @@
         "payWith": "الدفع بـ",
         "balance": "رصيد النشر",
         "card": "بطاقة",
-        "byCard": "الدفع بالبطاقة",
         "due": "المستحق عند التفعيل",
         "later": "لا يُخصم شيء حتى يُفعَّل التقرير، وما زال بإمكانك تغيير طريقة الدفع.",
         "code": "الرمز {code}",
@@ -6867,18 +6869,26 @@
         "title": "الدفع",
         "sign": "اقرأ ووقّع",
         "noLimit": "بلا حد",
-        "credit": "رصيد الحساب",
-        "least": "تدفع البطاقة {least} على الأقل، فيبقى {spare} في رصيدك."
+        "credit": "رصيد Stripe",
+        "creditYours": "لديك <amount></amount> في Stripe",
+        "creditTheirs": "لدى {owner} مبلغ <amount></amount> في Stripe",
+        "creditIdle": "لا تستطيع صفحة الدفع في Stripe استخدام رصيد Stripe البالغ <amount></amount>. مع بطاقة محفوظة، يأخذ Stripe الرصيد أولًا وتدفع البطاقة الباقي.",
+        "least": "تدفع البطاقة {least} على الأقل، فيبقى {spare} في رصيدك.",
+        "leastStripe": "يخصم Stripe من البطاقة {least} على الأقل، لذا يبقى {spare} في رصيدك.",
+        "currency": "حساب Stripe لمساحة العمل هذه بعملة {currency}، والتقارير تُدفع بالدولار الأمريكي، لذا لا يمكن الدفع بالبطاقة هنا حتى نغيّره.",
+        "emailUs": "راسلنا",
+        "saveCard": "احفظ بطاقة",
+        "codeOff": "{off} من {amount} التي تدفعها البطاقة",
+        "charged": "المخصوم من البطاقة",
+        "voucher": "قسيمة"
       },
       "activateFree": "فعّل الـ DOI",
       "paid": {
-        "balance": "دُفع {amount} من الرصيد",
-        "balanceLeft": "دُفع {amount} من الرصيد، والباقي {left}",
-        "card": "دُفع {amount} بالبطاقة",
-        "code": "غطّى {code} السعر",
-        "codeRest": "غطّى {code} الباقي",
-        "credit": "دُفع {amount} من رصيد الحساب"
-      }
+        "receipt": "الإيصال",
+        "receiptFailed": "تعذّر فتح الإيصال. حاول مرة أخرى."
+      },
+      "emailUs": "راسلنا",
+      "status": "الحالة"
     },
     "meta": {
       "publish": "نشر | Openscholar",

@@ -198,6 +198,8 @@ export const PAY_WITH = ["balance", "card"] as const;
 export type PayWith = (typeof PAY_WITH)[number];
 /** The least a card buys of the balance, in US dollars: Stripe takes no payment under about 50 cents, and a code can halve what is bought. */
 export const BOUGHT_MIN = 1;
+/** The least Stripe charges a card, in US dollars: under it, Stripe charges nothing and leaves the amount owed on the customer's balance. */
+export const STRIPE_MIN = 0.5;
 /** Dollars to the cent, half a cent going up, whatever binary arithmetic made of it (2.835 can come out a hair under). */
 export const cents = (dollars: number) => Math.round(dollars * 100 + 1e-7) / 100;
 /**
@@ -205,23 +207,42 @@ export const cents = (dollars: number) => Math.round(dollars * 100 + 1e-7) / 100
  * and what is due. With the balance, it pays what it holds, to the cent, and a card buys the rest; by card, the
  * balance is left as it is. A card buys at least `BOUGHT_MIN`: with less than that missing, the balance pays that
  * much less and keeps the difference (`spare`). A code's share comes off what is bought as Autumn quotes and bills
- * it: what is due is rounded to the cent, half a cent going up, and the code's part is the rest. `balance` null is
- * one with no limit.
+ * it: what is due is rounded to the cent, half a cent going up, and the code's part is the rest. Credit on the
+ * workspace's Stripe customer pays what is left before a saved card does (`fromCredit`). A card that pays something
+ * pays at least `STRIPE_MIN`: it buys that much more (`raised`), which stays in the balance with any other `spare`. With no card saved, what is left
+ * is paid on Stripe's page, which doesn't use the credit: it counts only when it covers all of it, as an invoice Stripe
+ * pays from it, and otherwise sits unused (`idle`). `due` is what a card pays. `balance` null is one with no limit.
  * ponytail: on half a cent (half off $5.67), Stripe's own page, which a customer with no saved card pays on, rounds
  * the other way and takes a cent less than is shown here. Reckoning each way of paying by its own rounding would
  * tie this to two services' habits for a cent in the person's favour.
- * ponytail: a code that takes more than half off what is bought, and less than all of it, could leave under Stripe's
- * minimum to pay on the least a card buys. None we give out does; one that did needs the floor raised to that
- * minimum over the share the code leaves.
  */
-export function payment({ price, balance, payWith, off }: { price: number; balance: number | null; payWith: PayWith; /** The share of what is bought that a code takes off, 0 to 1. */ off: number }) {
+export function payment({ price, balance, payWith, off, credit = 0, cardSaved = true }: { price: number; balance: number | null; payWith: PayWith; /** The share of what is bought that a code takes off, 0 to 1. */ off: number; /** Credit on the workspace's Stripe customer, in dollars, which Stripe takes what is bought from before the card. */ credit?: number; /** A card is saved, which Stripe charges after the credit. */ cardSaved?: boolean }) {
   // What the balance surely holds, in whole cents: a fraction of a cent is never counted on, or the price would be
   // that fraction short once the rest is bought. The 1e-9 forgives only what binary arithmetic makes of 4.33 * 100.
   const held = balance === null ? price : Math.min(Math.max(Math.floor(balance * 100 + 1e-9) / 100, 0), price);
   const short = cents(price - held);
-  const bought = payWith === "card" ? price : short === 0 ? 0 : Math.min(price, Math.max(short, BOUGHT_MIN));
-  const due = cents(bought * (1 - off));
-  return { fromBalance: cents(price - bought), bought, spare: payWith === "card" ? 0 : cents(bought - short), discount: cents(bought - due), due };
+  let bought = payWith === "card" ? price : short === 0 ? 0 : Math.min(price, Math.max(short, BOUGHT_MIN));
+  let owed = cents(bought * (1 - off));
+  const stripeCredit = Math.max(Math.round(credit * 100) / 100, 0);
+  const usable = cardSaved || stripeCredit >= owed;
+  const fromCredit = usable ? Math.min(stripeCredit, owed) : 0;
+  // Stripe charges a card nothing under its minimum: it leaves the amount on the customer's balance, owed on its next
+  // invoice. A card that pays something pays at least that, and what it buys past the price stays in the balance.
+  const raised = owed - fromCredit > 0.005 && owed - fromCredit < STRIPE_MIN - 0.005 && off < 1;
+  if (raised) {
+    bought = Math.ceil(((fromCredit + STRIPE_MIN) / (1 - off)) * 100 - 1e-7) / 100;
+    owed = cents(bought * (1 - off));
+  }
+  return {
+    fromBalance: payWith === "card" ? 0 : cents(Math.max(0, price - bought)),
+    bought,
+    spare: cents(bought - (payWith === "card" ? price : short)),
+    raised,
+    discount: cents(bought - owed),
+    fromCredit,
+    idle: owed > 0 && !usable ? stripeCredit : 0,
+    due: cents(owed - fromCredit),
+  };
 }
 
 /**

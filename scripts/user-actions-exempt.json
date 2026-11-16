@@ -293,6 +293,7 @@
     "reports/checks:run": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
     "reports/activation:activate": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:cancelPayment": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
+    "reports/activation:receipt": "Money: Stripe's receipt for a live report's payment, which the Publish page opens for the workspace that paid. The assistant doesn't publish reports.",
     "reports/activation:quoteCode": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:settle": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
     "reports/activation:terms": "Money: activating a report charges the workspace's card, so it is done on the Publish page, where an admin sees the price and confirms it.",
