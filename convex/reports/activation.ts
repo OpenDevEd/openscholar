@@ -26,7 +26,7 @@ import { isLockNotFound } from "../billing/charge";
 import { holdingPurchaseLock, payableCustomer, unlessDeclined } from "../billing/purchases";
 import { bankPage, chargeOf, checkoutId, checkoutOf, expireCheckout, invoicePage, stripeFunds, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { PUBLICATION_FEATURE, PUBLICATION_TOP_UP_PLAN } from "../../lib/billing/plans";
-import { BOUGHT_MIN, CODE_MAX, PRICE_MAX, cents, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
+import { BOUGHT_MIN, CODE_MAX, PRICE_MAX, STRIPE_MIN, cents, licenceOf, payment, priceOf, stageOf, type PayWith } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { MOVED_ON, byKey, changing, mayChange, paymentOf, touch, voucherValidator } from "./flow";
@@ -89,15 +89,19 @@ const cardValidator = v.object({ brand: v.string(), last4: v.string() });
 /**
  * What a live record's report was paid with: the dollars its balance paid, what was paid for the rest after any
  * code, by the account's credit at Stripe and by a card, that code, and whether Stripe has a receipt for it. Null for
- * a record from before these were kept.
+ * a record from before these were kept. `price` is the price it was paid at; `kept`, what was bought past it to reach
+ * Stripe's least charge, which went to the balance.
  */
 function paidWith(record: Doc<"reportActivations">) {
   if (record.payWith === undefined || record.price === undefined) return null;
   const bought = record.bought ?? 0;
   const total = record.charge?.total ?? 0;
   const byCredit = Math.min(record.charge?.credit ?? 0, total);
+  const fromBalance = record.payWith === "card" ? 0 : cents(Math.max(0, record.price - bought));
   return {
-    fromBalance: record.payWith === "card" ? 0 : record.price - bought,
+    price: record.price,
+    fromBalance,
+    kept: cents(Math.max(0, bought + fromBalance - record.price)),
     byCredit,
     byCard: Math.round((total - byCredit) * 100) / 100,
     code: bought > 0 ? (record.code ?? null) : null,
@@ -152,7 +156,7 @@ export const terms = workspaceQuery({
        * that lowered what was bought, and what the balance holds since. Null until it is live, for anyone else, and for
        * a report made live before this was kept.
        */
-      paid: v.union(v.object({ fromBalance: v.number(), byCredit: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), receipt: v.boolean() }), v.null()),
+      paid: v.union(v.object({ price: v.number(), fromBalance: v.number(), kept: v.number(), byCredit: v.number(), byCard: v.number(), code: v.union(v.string(), v.null()), receipt: v.boolean() }), v.null()),
       /** Publishing is switched off where this report's DOI is registered: it can't go live for now. */
       paused: v.boolean(),
     }),
@@ -706,6 +710,8 @@ export const activate = action({
           const coveredByCredit = quoted.total <= 0.005;
           const due = cardless && !coveredByCredit ? linesOf(quoted) : quoted.total;
           if (expect !== undefined && due > expect + 0.005) return await changed(`Activating it now takes ${usd(due)}, not ${usd(expect)}. Check it and activate again.`);
+          // Under Stripe's least charge, Stripe charges no card and leaves a debt: the credit read above failed or moved.
+          if (due > 0.005 && due < STRIPE_MIN - 0.005) return await changed(CHANGED);
           // A card saved or removed since the page read the account: the person was told another way of paying (Stripe's
           // page, or that card), and is never charged by one they weren't shown. What the account's credit covers charges no card.
           // What the Stripe credit takes off the invoice: its lines less what is due. None on Stripe's page, which doesn't use it.

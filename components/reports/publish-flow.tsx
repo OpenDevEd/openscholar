@@ -126,7 +126,7 @@ function KeptBill({ report, terms, humanReview, beside }: { report: Report; term
   const stage = stageOf(report, humanReview);
   const openReceipt = useReceipt(report.key);
   // Live, the bill is what was paid, with Stripe's receipt under it, for whoever may see it (its owner and the workspace's admins).
-  if (stage === "live") return terms.paid ? createPortal(<PaidBill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} paid={terms.paid} onReceipt={openReceipt} />, beside) : null;
+  if (stage === "live") return terms.paid ? createPortal(<PaidBill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} paid={terms.paid} onReceipt={openReceipt} />, beside) : null;
   // The checks' bar has it, where the report is activated.
   const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
   // Declined, nothing is due; a member who can't pay for it isn't shown what it comes to.

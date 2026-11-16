@@ -146,16 +146,17 @@ export function Bill({ licence, price, funds, owner, payWith, code, note, onSave
 }
 
 /** What a live report was paid with (convex/reports/activation.ts `paidWith`), in US dollars. */
-export type Paid = { fromBalance: number; byCredit: number; byCard: number; code: string | null; receipt: boolean };
+export type Paid = { /** The price it was paid at. */ price: number; fromBalance: number; /** Bought past the price to reach Stripe's least charge, kept in the balance. */ kept: number; byCredit: number; byCard: number; code: string | null; receipt: boolean };
 
 /**
  * A live report's bill as it was paid, where its bill stood on every step before: its price, what the balance, a code
  * and Stripe credit took off it, and what a card was charged, with Stripe's receipt under it when something was bought.
  */
-export function PaidBill({ licence, price, paid, onReceipt, boxed = false, className }: { licence: string; /** In dollars. */ price: number; paid: Paid; /** Opens Stripe's receipt. */ onReceipt: () => void; boxed?: boolean; className?: string }) {
+export function PaidBill({ licence, paid, onReceipt, boxed = false, className }: { licence: string; paid: Paid; /** Opens Stripe's receipt. */ onReceipt: () => void; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow");
   const money = useMoney();
-  const covered = paid.fromBalance + paid.byCredit + paid.byCard;
+  const { price } = paid;
+  const covered = paid.fromBalance + paid.byCredit + paid.byCard - paid.kept;
   // What the code took off: the rest of the price.
   const discount = Math.round(Math.max(0, price - covered) * 100) / 100;
   return (
@@ -176,6 +177,7 @@ export function PaidBill({ licence, price, paid, onReceipt, boxed = false, class
             off
           />
         ) : null}
+        {paid.kept > 0 ? <Line label={t("payment.balance")} amount={`+${money(paid.kept)}`} /> : null}
       </dl>
       <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-border-subtle pt-2.5">
         <span className="font-medium">{t("payment.charged")}</span>

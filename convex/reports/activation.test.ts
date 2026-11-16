@@ -354,6 +354,28 @@ describe("activating a report", () => {
     expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ quantity: 1.2 }]);
   });
 
+  it("says what a card bought past the price to reach Stripe's least charge went to the balance", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ card: true, credit: 9.8, stripeCurrency: "usd" });
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 0.5, card: "4242" })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ quantity: 10.3 }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { price: 10, fromBalance: 0, kept: 0.3, byCredit: 9.8, byCard: 0.5 } });
+  });
+
+  it("charges no card under Stripe's least charge when the credit couldn't be read", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // No Stripe read: sized without the credit, Autumn's quote leaves the card $0.20.
+    const autumn = autumnStub({ card: true, credit: 9.8 });
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 0.5, card: "4242" })).rejects.toMatchObject({ data: expect.objectContaining({ code: "CONFLICT", reason: "changed" }) });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+  });
+
   it("refuses a purchase for a workspace whose Stripe account is in another currency, before anything is bought", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
