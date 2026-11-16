@@ -2,7 +2,7 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { catalogAncestors } from "@/lib/topics/search";
-import { LICENCES, isAuthor, type Metadata } from "./report";
+import { LICENCES, fullTitle, isAuthor, type Metadata } from "./report";
 import type { Series } from "./settings";
 
 type Topic = Metadata["topics"][number];
@@ -27,8 +27,7 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     source: { id: null, display_name: series.name, type: "repository", issn_l: series.issn || null, host_organization_name: "Openscholar" },
   };
   const year = Number(m.date.slice(0, 4));
-  // Our index keeps one title, so a subtitle goes after it, as Crossref joins them for display.
-  const title = m.subtitle.trim() ? `${m.title}: ${m.subtitle.trim()}` : m.title;
+  const title = fullTitle(m);
   return {
     // Named as a paper of our index is (lib/papers/paper-ref.ts), so it is saved and cited by its key.
     id: `https://openscholar.ai/${report.key}`,

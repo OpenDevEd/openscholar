@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { paperIdentityFields } from "../lib/paperRef";
+import { crossRefsValidator, paperIdentityFields } from "../lib/paperRef";
 import { capped, MAX_AUTHORS, MAX_RATERS_KEPT } from "../lib/listCaps";
 
 export const librarySortValidator = v.union(
@@ -95,3 +95,25 @@ export const libraryItemFields = {
 const { workspaceId: _workspace, ...removedItemFields } = libraryItemFields;
 /** A removed paper as it was, apart from which workspace's it was: the removal keeps that. */
 export const removedItemValidator = v.object(removedItemFields);
+
+/** What the library keeps about a paper, apart from its rating. */
+export const libraryPaper = v.object({
+  /** The paper by its key (lib/papers/paper-ref.ts), or by its OpenAlex ID in any form. */
+  paper: v.string(),
+  /** Its OpenAlex ID and DOI where they are known, which find the same paper from another source. */
+  crossRefs: v.optional(crossRefsValidator),
+  title: v.string(),
+  authors: v.optional(v.array(v.string())),
+  authorsUnparsed: v.optional(v.string()),
+  doi: v.optional(v.string()),
+  abstract: v.optional(v.string()),
+  publicationYear: v.optional(v.number()),
+  journal: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
+  workType: v.optional(v.string()),
+  isOpenAccess: v.optional(v.boolean()),
+  oaStatus: v.optional(v.string()),
+  oaUrl: v.optional(v.string()),
+  pdfUrl: v.optional(v.string()),
+  paperData: v.optional(v.string()),
+});

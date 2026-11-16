@@ -1,5 +1,6 @@
 import { paperSubmissionStatus } from "./evidenceLibraries/submissionsHttp";
 import { reportRecords, resolvePapers, searchPapersByTitle } from "./evidenceLibraries/paperLinks";
+import { reports as searchIndexReports } from "./reports/searchIndex";
 import { catalog as topicCatalog, detail as topicDetail, associations as topicAssociations, associationBatch as topicAssociationBatch } from "./topics/serviceHttp";
 import { generate as generateLibraryDigest } from "./evidenceLibraries/digests/service";
 import { replacePublicationAssociations, authorProfileCatalog } from "./authors/serviceHttp";
@@ -50,6 +51,8 @@ http.route({path: "/api/v1/evidence-libraries/papers/resolve", method: "POST", h
 http.route({path: "/api/v1/evidence-libraries/reports/records", method: "POST", handler: reportRecords});
 // A community's reader looks for a paper to suggest by its title, on the index the site searches.
 http.route({path: "/api/v1/evidence-libraries/papers/search", method: "POST", handler: searchPapersByTitle});
+// Openscholar's search engine reads published reports into the search index (#1437).
+http.route({path: "/api/v1/search-index/reports", method: "POST", handler: searchIndexReports});
 // A community's site asks whether it takes applications to join, and whether a reader's waits for an answer.
 http.route({path: "/api/v1/evidence-libraries/join-standing", method: "POST", handler: checkJoinStanding});
 // Clerk webhook for user sync
