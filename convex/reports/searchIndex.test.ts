@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { checked, live, passed, row, setup, type World } from "./reports.test-support";
 
@@ -95,6 +95,15 @@ describe("the search index's feed of reports", () => {
     const next = await page(world, { all: true, cursor: null, limit: 200 });
     expect(next.seriesChangedAt).toBeGreaterThan(before);
     expect(next.items[0]!.record).toMatchObject({ series: { issn: "2049-3630" } });
+  });
+
+  it("gives a report again when Zenodo's DOI for it arrives after it went live", async () => {
+    const world = await setup();
+    const { key } = await live(world, world.author, world.lab);
+    const { after } = await page(world, { after: null, limit: 200 });
+    const report = await row(world.t, key);
+    await world.t.mutation(internal.reports.registration.settle, { reportId: report._id, rev: report.registrationRev ?? 0, provider: "zenodo", outcome: "done", zenodoRecordId: "123456", zenodoDoi: "10.5281/zenodo.123456" });
+    expect((await page(world, { after, limit: 200 })).items).toMatchObject([{ key, zenodoDoi: "10.5281/zenodo.123456" }]);
   });
 
   it("answers only the engine, and only the two requests it sends", async () => {

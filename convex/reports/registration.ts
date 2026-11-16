@@ -126,7 +126,12 @@ export const settle = internalMutation({
     const report = await ctx.db.get("reports", reportId);
     if (!report) return false;
     // Zenodo's record is the report's whichever asking made it: kept even when a newer asking has replaced this one.
-    if (zenodoRecordId && report.zenodoRecordId !== zenodoRecordId) await ctx.db.patch("reports", reportId, { zenodoRecordId, zenodoDraftId: undefined, ...(zenodoDoi && { zenodoDoi }) });
+    if (zenodoRecordId && report.zenodoRecordId !== zenodoRecordId) {
+      const kept = { zenodoRecordId, zenodoDraftId: undefined, ...(zenodoDoi && { zenodoDoi }) };
+      // A DOI Zenodo minted is part of what the search index holds of the report (./searchIndex.ts): it counts as a change.
+      if (zenodoDoi && zenodoDoi !== report.zenodoDoi) await touch(ctx, report, kept);
+      else await ctx.db.patch("reports", reportId, kept);
+    }
     // Asked to register again since this attempt began: this answer is about an older record.
     if (report.registrationRev !== rev || (provider === "crossref" ? report.deposit : report.archive) !== "queued") return false;
     const field = provider === "crossref" ? "deposit" : "archive";
