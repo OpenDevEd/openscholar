@@ -36,7 +36,7 @@ describe("the search index's feed of reports", () => {
       subtitle: "A field trial",
       topics: [{ id: "T10001", name: "Agroforestry", score: 0.9 }, { id: "subfields/1102", name: "Agronomy", score: 0.5 }],
       funding: [{ funder: { id: "https://openalex.org/F4320306076", name: "Wellcome Trust" }, awards: [] }, { funder: { id: null, name: "A local trust", ror: "https://ror.org/00x0x0x00" }, awards: [] }],
-      authors: [{ name: "Chikondi Banda", orcid: "0000-0002-1825-0097", openalexId: null, affiliations: [{ id: "https://openalex.org/I4210087849", name: "University of Rwanda", country: "RW" }], corresponding: true, roles: [] }],
+      authors: [{ name: "Chikondi Banda", orcid: "0000-0002-1825-0097", openalexId: null, affiliations: [{ id: "https://openalex.org/I4210087849", name: "University of Rwanda", country: "RW" }, { id: null, name: "Field station", country: "USA" }], corresponding: true, roles: [] }],
     };
     await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt: (await row(world.t, key)).updatedAt, metadata });
 
@@ -61,7 +61,7 @@ describe("the search index's feed of reports", () => {
       date: report.metadata.date,
       type: "report",
       language: report.metadata.language,
-      authors: [{ name: "Chikondi Banda", orcid: "0000-0002-1825-0097", affiliations: [{ id: "I4210087849", name: "University of Rwanda", country: "RW" }] }],
+      authors: [{ name: "Chikondi Banda", orcid: "0000-0002-1825-0097", affiliations: [{ id: "I4210087849", name: "University of Rwanda", country: "RW" }, { id: null, name: "Field station", country: null }] }],
       topics: ["T10001"],
       sdgs: report.metadata.sdgs,
       funders: ["F4320306076"],
