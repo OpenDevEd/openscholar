@@ -229,7 +229,7 @@ export type PaperAdded = z.infer<typeof addedSchema>["results"][number];
 export async function addLibraryPapers(
   fetchImpl: typeof fetch,
   target: LibraryTarget,
-  request: { requestId: string; publish: boolean; actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" | "reader" }; papers: PaperReference[] },
+  request: { requestId: string; publish: boolean; actor: { clerkUserId: string; name: string | null; email: string | null; role: "owner" | "editor" | "creator" | "reader" }; papers: PaperReference[] },
 ) {
   return (await call(fetchImpl, target, "/api/v1/openscholar/papers", addedSchema, { body: request, timeoutMs: ADD_TIMEOUT_MS })).results;
 }
