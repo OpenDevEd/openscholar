@@ -1,5 +1,6 @@
 import { v, type Infer } from "convex/values";
-import { crossRefsValidator, identityOf } from "../lib/paperRef";
+import { identityOf } from "../lib/paperRef";
+import { libraryPaper } from "./validators";
 import { parsePaperKey, saveablePaper } from "../../lib/papers/paper-ref";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -20,28 +21,6 @@ import { collectionHome, followed, inFollowedCollection, shownOutside } from "./
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerate as rerateCopy, rerateMemberStep, setPersonalRating } from "../ratings";
-
-/** What the library keeps about a paper, apart from its rating. */
-export const libraryPaper = v.object({
-  /** The paper by its key (lib/papers/paper-ref.ts), or by its OpenAlex ID in any form. */
-  paper: v.string(),
-  /** Its OpenAlex ID and DOI where they are known, which find the same paper from another source. */
-  crossRefs: v.optional(crossRefsValidator),
-  title: v.string(),
-  authors: v.optional(v.array(v.string())),
-  authorsUnparsed: v.optional(v.string()),
-  doi: v.optional(v.string()),
-  abstract: v.optional(v.string()),
-  publicationYear: v.optional(v.number()),
-  journal: v.optional(v.string()),
-  citedByCount: v.optional(v.number()),
-  workType: v.optional(v.string()),
-  isOpenAccess: v.optional(v.boolean()),
-  oaStatus: v.optional(v.string()),
-  oaUrl: v.optional(v.string()),
-  pdfUrl: v.optional(v.string()),
-  paperData: v.optional(v.string()),
-});
 
 const ratingArg = v.number();
 /** A paper already in the library, named by its ID alone. `savedAt` says which save it should be: a paper removed and saved afresh has a later one. */
@@ -77,6 +56,9 @@ async function countedWrite<T>(ctx: MutationCtx, { workspaceId }: InWorkspace, c
   return result;
 }
 
+/** What a saved copy keeps of a paper's details: identity, system fields, ownership, dates and ratings are apart. */
+const PAPER_METADATA = Object.keys(libraryPaper.fields).filter((field) => field !== "paper" && field !== "crossRefs");
+
 /**
  * Saves a paper to the workspace's library, or updates the copy already there. A rating sets the
  * writer's own (`preserveRating` keeps one they have already); the paper's rating is its people's
@@ -87,16 +69,24 @@ export async function upsertLibraryItem(
   writer: InWorkspace,
   paper: Infer<typeof libraryPaper>,
   rating?: number,
-  options: { preserveRating?: boolean } = {},
-) {
+  options: { preserveRating?: boolean; keepUnpublishedReport?: boolean } = {},
+): Promise<Id<"libraryItems">> {
   const { userId, workspaceId } = writer;
-  const { paper: named, crossRefs, ...metadata } = paper;
-  const key = requirePaperKey(named);
+  const key = requirePaperKey(paper.paper);
   if (!saveablePaper(key)) throw createError("VALIDATION_ERROR", "An uploaded PDF stays with the job it was uploaded to: it can't be saved to a library.");
+  // A report published on Openscholar is saved as the report has it, whatever was sent (../reports/saved.ts): from its
+  // page, a search result or by its key, it is the same item with the same details. One that never went live has no
+  // details anyone may copy, so a save names it only to move a copy kept already (`keepUnpublishedReport`).
+  const ref = parsePaperKey(key);
+  // Typed here: the generated API's types depend on this module, so inference would loop.
+  const report: Infer<typeof libraryPaper> | null = ref?.source === "report" ? await ctx.runQuery(internal.reports.saved.copy, { key: ref.key }) : null;
+  if (ref?.source === "report" && !report && !options.keepUnpublishedReport) throw createError("NOT_FOUND", "No report published on Openscholar has this key.");
+  const { paper: _named, crossRefs, ...metadata } = report ?? paper;
   const existing = await findItem(ctx, workspaceId, key);
   // Project only metadata: identity, system fields, ownership, dates and ratings never enter this merge.
-  const before = existing ? (Object.fromEntries(Object.keys(libraryPaper.fields).filter((field) => field !== "paper" && field !== "crossRefs").map((field) => [field, existing[field as keyof typeof existing]])) as typeof metadata) : { title: "" };
-  const merged = mergePaperMetadata(before, metadata);
+  const before = existing ? (Object.fromEntries(PAPER_METADATA.map((field) => [field, existing[field as keyof typeof existing]])) as typeof metadata) : { title: "" };
+  // A report's details replace the copy's, as its copies follow it; any other paper's fill in what the copy lacks.
+  const merged = report ? ({ ...Object.fromEntries(PAPER_METADATA.map((field) => [field, undefined])), ...metadata } as typeof metadata) : mergePaperMetadata(before, metadata);
   if (merged.authors && merged.authors.length > MAX_AUTHORS) {
     merged.authorsUnparsed = merged.authors.join(", ");
     merged.authors = undefined;

@@ -118,6 +118,8 @@ export const PERSON_KINDS = ["author", "editor", "chair", "translator", "reviewe
 export type PersonKind = (typeof PERSON_KINDS)[number];
 /** Whether a person is one of the report's authors, as its citation names them. */
 export const isAuthor = (person: { kind?: PersonKind }) => !person.kind || person.kind === "author";
+/** Its one title, as our index keeps one: the subtitle goes after it, as Crossref joins them for display. */
+export const fullTitle = (m: { title: string; subtitle: string }) => (m.subtitle.trim() ? `${m.title}: ${m.subtitle.trim()}` : m.title);
 
 export type Metadata = {
   title: string;

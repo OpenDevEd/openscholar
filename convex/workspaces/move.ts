@@ -22,7 +22,8 @@ import { MAX_LIBRARIES_PER_WORKSPACE, MAX_ORGANIZATION_MEMBERS } from "../lib/qu
 import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
 import { createsIn } from "../organizationFeatures";
 import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
-import { libraryPaper, upsertLibraryItem } from "../library/mutations";
+import { upsertLibraryItem } from "../library/mutations";
+import { libraryPaper } from "../library/validators";
 import { MAKERS, editedWorkspaces, profileMaker } from "../authors/access";
 import { give } from "../sharing/access";
 import { readLibraryRole } from "../evidenceLibraries/access";
@@ -311,7 +312,7 @@ export const moveCollectionPapers = internalMutation({
       if (!item) continue;
       read += JSON.stringify(item).length;
       if (item.workspaceId === workspace._id) continue;
-      const saved = (await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId: by, workspaceId: workspace._id }, paperOf(item))))!;
+      const saved = (await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId: by, workspaceId: workspace._id }, paperOf(item), undefined, { keepUnpublishedReport: true })))!;
       read += 2 * JSON.stringify(saved).length;
       if (!left.has(item.workspaceId)) left.set(item.workspaceId, await ctx.db.get("workspaces", item.workspaceId));
       const source = left.get(item.workspaceId);

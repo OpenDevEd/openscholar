@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { checked, live, passed, row, setup, type World } from "./reports.test-support";
+import { checked, live, passed, refused, row, setup, type World } from "./reports.test-support";
 import { trimPaperData } from "../../lib/library/trim-paper-data";
 import { reportPaper } from "../../lib/reports/report-paper";
 
@@ -160,5 +160,48 @@ describe("a report's page", () => {
     expect(await mine(world.member)).toBeNull();
     expect(await mine(world.stranger)).toBeNull();
     expect(await mine(world.t)).toBeNull();
+  });
+  it("is saved as the report has it, however it is saved, and never before it goes live", async () => {
+    const world = await setup();
+    const waiting = await checked(world, [passed("byline", false)]);
+    const { key } = await live(world, world.author, world.lab);
+    const copies = () => world.t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_paperKey", (q) => q.eq("paperKey", `report:${key}`)).collect());
+    // Details sent with a save are not the report's: the report's own are kept.
+    await world.author.mutation(api.library.mutations.saveToLibrary, { workspaceId: world.own, paper: `https://openscholar.ai/${key}`, title: "Something else", abstract: "Made up", paperData: "{}" });
+    // The assistant saves it by the ID search results give it, as any paper.
+    await world.orgAdmin.action(api.library.papers.save, { workspaceId: world.lab, id: key });
+    const saved = await copies();
+    expect(saved).toHaveLength(2);
+    for (const copy of saved) {
+      expect(copy).toMatchObject({ title: "Shade trees and maize yields", abstract: "We measure maize yields on 640 plots.", pdfUrl: `/papers/${key}/report.pdf` });
+      expect(JSON.parse(copy.paperData!)).toMatchObject({ id: `https://openscholar.ai/${key}`, title: "Shade trees and maize yields" });
+    }
+    // A report that never went live has no details to copy, however it is named.
+    await expect(world.author.mutation(api.library.mutations.saveToLibrary, { workspaceId: world.own, paper: `report:${waiting.key}`, title: "A guess" })).rejects.toMatchObject(refused("NOT_FOUND"));
+    await expect(world.author.action(api.library.papers.save, { workspaceId: world.own, id: waiting.key })).rejects.toMatchObject(refused("NOT_FOUND"));
+    const collectionId = await world.t.run((ctx) => ctx.db.insert("collections", { workspaceId: world.own, createdBy: world.authorId, name: "Reading", sortName: "reading", createdAt: 1, updatedAt: 1, itemCount: 0 }));
+    await expect(world.author.mutation(api.library.mutations.setPaperInCollection, { workspaceId: world.own, paper: { paper: `report:${waiting.key}`, title: "A guess" }, collectionId, inCollection: true })).rejects.toMatchObject({ data: expect.objectContaining({ code: "NOT_FOUND", message: "No report published on Openscholar has this key." }) });
+  });
+
+  it("brings its saved copies in step with a reviewer's edit while withdrawn, and with the series' new ISSN", async () => {
+    vi.useFakeTimers();
+    try {
+      const world = await setup();
+      const { key } = await live(world, world.author, world.lab);
+      await world.orgAdmin.action(api.library.papers.save, { workspaceId: world.lab, id: key });
+      const copy = async () => (await world.t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_paperKey", (q) => q.eq("paperKey", `report:${key}`)).unique()))!;
+      const page = await world.t.query(api.reports.paper.get, { key });
+      if (page?.state !== "live") throw new Error("The report isn't live");
+      await decide(world, key, "withdraw");
+      await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt: (await row(world.t, key)).updatedAt, metadata: { ...page.metadata, title: "Shade trees, retitled" } });
+      await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect((await copy()).title).toBe("Withdrawn: Shade trees, retitled");
+
+      await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630" } });
+      await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(JSON.parse((await copy()).paperData!)).toMatchObject({ primary_location: { source: { issn_l: "2049-3630" } } });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

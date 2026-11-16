@@ -10,7 +10,7 @@ import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
 import { liveReportValidator, metadataValidator, withdrawnReportValidator } from "./validators";
-import { REPORTS_PER_READ, isAuthor, licenceName } from "../../lib/reports/report";
+import { REPORTS_PER_READ, fullTitle, isAuthor, licenceName } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 
@@ -92,7 +92,7 @@ export const record = internalQuery({
     const authors = metadata.authors.filter((author) => isAuthor(author) && author.name.trim());
     return {
       id: `https://openscholar.ai/${key}`,
-      title: metadata.subtitle.trim() ? `${metadata.title}: ${metadata.subtitle.trim()}` : metadata.title,
+      title: fullTitle(metadata),
       authors: authors.slice(0, AUTHORS_LISTED).map((author) => ({
         name: author.name.slice(0, 120),
         ...(author.affiliations.length && { institutions: author.affiliations.slice(0, INSTITUTIONS_LISTED).map((place) => `${place.name.slice(0, 120)}${place.country ? ` (${place.country})` : ""}`) }),
