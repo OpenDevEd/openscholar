@@ -177,7 +177,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
       <div className="space-y-8">
         {/* The same header as your profile: the organization's logo, its name and what it is. */}
         <section className="flex items-center gap-6">
-          <label className={cn("group relative shrink-0 overflow-hidden rounded-3xl", admin && "cursor-pointer")}>
+          <label className={cn("group relative shrink-0 self-start overflow-hidden rounded-3xl", admin && "cursor-pointer")}>
             {logo ? <img src={logo} alt="" className="size-24 object-cover" /> : <WorkspaceTile workspace={organization} size="xl" />}
             {admin ? (
               <>

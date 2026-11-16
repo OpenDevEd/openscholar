@@ -15,13 +15,14 @@ import type { BrowserContext, Page } from "@playwright/test";
 
 import { earlyStep, open, parseStep, type RunOptions } from "./browser.ts";
 import { compare, printShots, report, type Comparison } from "./compare.ts";
-import { hookStop } from "./hook.ts";
+import { hookStop, offFile } from "./hook.ts";
 import { git, listening, members, readJson, runsNext, sleep, stopGroup, withLock, withTimeout, writeJson } from "./util.ts";
 
 const ROOT = git(["rev-parse", "--show-toplevel"], process.cwd());
 const STATE = path.join(ROOT, ".verify");
 const SERVER = path.join(STATE, "server.json");
 const LAST_PASS = path.join(STATE, "last-pass.json");
+const OFF = path.join(STATE, "off");
 const CONVEX_URL = "https://convex.opendev.space";
 const DEV_SITE = "https://dev.openscholar.ai";
 const VERIFY_USER = "verify-agent+clerk_test@example.com";
@@ -330,6 +331,7 @@ function recordPass(comparison: Comparison, built: string, opened: number) {
   if (fingerprint() !== built) return console.log("The code changed during the check, so no pass is recorded. Run `npm run verify -- up --prod`, then check again.");
   const steps = comparison.options.steps.map((step) => step.label);
   writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), target: comparison.target, steps, browsers: comparison.browsers, opened });
+  rmSync(OFF, { recursive: true, force: true });
 }
 
 async function drive(target: string, values: Values, mode: "shift" | "shot") {
@@ -347,6 +349,14 @@ function skip(reason: string) {
   console.log(`Recorded: ${reason}`);
 }
 
+/** The user said not to verify: the stop hook stays quiet in this session (Claude Code names it) until a check passes. */
+function off(words: string) {
+  if (!words.trim()) throw new Error("Give the user's words: npm run verify -- off \"<their words>\".");
+  const session = process.env.CLAUDE_CODE_SESSION_ID ?? null;
+  writeJson(offFile(OFF, session), { at: Date.now(), session, words });
+  console.log(`Recorded: the stop hook stays quiet for the rest of this session. ${words}`);
+}
+
 const HELP = `Usage: npm run verify -- <command>
 
   up [--open] [--prod]     Start this worktree's app (next dev, or a production build with --prod)
@@ -358,6 +368,8 @@ const HELP = `Usage: npm run verify -- <command>
                            or page error that dev doesn't have. Writes screenshots.
   shot <path> [options]    Screenshots only (Chromium, no slowdown).
   skip "<reason>"          Record why this change needs no browser check.
+  off "<the user's words>" The user said not to verify: the stop hook stays quiet for the rest of
+                           this session, until a shift passes again.
 
 Options for shift and shot:
   --do "<step>"            Repeat for each action: click <selector>, hover <selector>,
@@ -388,7 +400,8 @@ const COMMANDS: Record<string, (values: Values, rest: string[]) => unknown> = {
   shift: (values, rest) => drive(rest[0] ?? "", values, "shift"),
   shot: (values, rest) => drive(rest[0] ?? "", values, "shot"),
   skip: (_, rest) => skip(rest.join(" ")),
-  hook: (_, rest) => rest[0] === "stop" && hookStop({ root: ROOT, baseBranch: "origin/dev", userFacing: USER_FACING, overlay: OVERLAY_CODE, lastPassFile: LAST_PASS, start: "npm run verify -- up --prod" }),
+  off: (_, rest) => off(rest.join(" ")),
+  hook: (_, rest) => rest[0] === "stop" && hookStop({ root: ROOT, baseBranch: "origin/dev", userFacing: USER_FACING, overlay: OVERLAY_CODE, lastPassFile: LAST_PASS, offDir: OFF, start: "npm run verify -- up --prod" }),
 };
 
 const OPTIONS = {

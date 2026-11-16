@@ -1,7 +1,8 @@
 ---
 // A living Earth under OpenScholar's search box, with the communities as glass satellites you can catch as they go round, named in the strip below. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
 import AskBar from "./AskBar.astro";
-import { COMMUNITIES } from "../data/site.mjs";
+import { COMMUNITIES, EARTH_PRELOAD_JS } from "../data/site.mjs";
+import { sky } from "../planet/sky.mjs";
 const HEAD = "Ask the world's research anything".split(" ");
 // The segments of the ring's spark tail, moved by src/planet/earth.js.
 const SPARK = Array.from({ length: 8 });
@@ -9,19 +10,23 @@ const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce bu
 // Stars are fixed in size and place, so they never pop or shift between loads, and none sit behind the headline or the box. They thin out towards the bottom of the sky.
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
 const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).toFixed(1), y = +(rng() * 820).toFixed(1), big = i < 10, small = rng() < .85; return [x, y, +(big ? 1.4 + rng() * .4 : small ? .5 + rng() * .4 : .9 + rng() * .4).toFixed(2), +((big ? .9 : small ? .2 + rng() * .4 : .7) * Math.min(1, (820 - y) / 246)).toFixed(2), i % 3]; }).filter(([x, y, , o]) => o > 0 && (x < 720 || x > 1840 || y < 136 || y > 390));
+// Three skies, so each can twinkle as a whole out of step with the others. Each is a picture (src/planet/sky.mjs says why).
+const skies = await Promise.all([0, 1, 2].map((g) => sky(stars.filter((s) => s[4] === g), 2560, 820)));
 ---
 <!-- The planet's four maps are fetched as the page arrives, not once its script has run, unless the planet will be the
      still: data saver, a 2G connection, or a level this visit already settled on (the key is earth.js's MEMORY). The day map
      is the smaller one, which every level starts on (src/planet/earth.js). -->
-<script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const n of ["day-2048", "night", "clouds", "water"]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = `/img/earth-${n}.avif`; document.head.append(k); } })();</script>
-<link rel="preload" as="image" href="/img/sky-plate.avif" />
+<script is:inline set:html={EARTH_PRELOAD_JS} />
+<link rel="preload" as="image" href="/img/sky-plate.avif" fetchpriority="high" />
 <section class="bleed sky" data-orbit data-placement="hero">
-  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
-  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
+  {/* The sky is the largest thing in the first view, so it is fetched first: at a picture's usual low priority it waited
+      behind some twenty files, and on slow 4G arrived three seconds late. */}
+  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" fetchpriority="high" onload="this.dataset.loaded = ''" />
+  {skies.map((src, g) => <img class={`stars s${g}`} src={src} width="2560" height="820" alt="" />)}
   <div class="inner say">
-    <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
-    <p class="lead">Less time sorting papers, more time on what they mean.</p>
-    <div class="halo"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" /></div>
+    <h1 class="rises">{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
+    <p class="lead rise">Less time sorting papers, more time on what they mean.</p>
+    <div class="halo rise"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" /></div>
   </div>
   <div class="space">
     <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg>{SPARK.map(() => <i class="spark" data-spark="back"></i>)}</div>
@@ -104,9 +109,13 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     const watch = Earth.monitor((next) => { if (!level) return; if (!next) rest(); else { level = next; planet.setLevel(next); remember(); } });
     // The level is worked out, and the planet's WebGL set up, only once the page has painted: on a weak GPU both hold up the
     // page, and before the first paint that left it blank.
+    let sharp = false;
     const start = async () => {
       level = (() => { let saved = -1; try { saved = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} return Earth.startLevel(saved); })();
-      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", onLost: () => rest(true) });
+      // The full-size day map (513 KB, and 33 MB as a texture) only shows where the planet is drawn larger than the smaller
+      // map is sharp to, about 650 device pixels across: a Retina laptop, not a phone or an ordinary screen.
+      sharp = 2 * R * Math.min(devicePixelRatio || 1, 2) > 652;
+      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", sharp, onLost: () => rest(true) });
       // Without a shader the still stands in, as it does without WebGL.
       if (planet) await planet.textures.catch((error) => { if (!error?.shader) throw error; planet = null; });
       if (!planet) rest();
@@ -114,8 +123,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     };
     // Searching hands over to the app's first frame: its sky, its stars, and the words typed rising out of the box to be the headline. The planet just keeps turning, and the address says how far it had got and when, so the app's carries on from there. The browser can't animate between two sites, so nothing can be seen to change when the page does.
     const HAND_MS = 620, HAND_GO_MS = 480; let leaving = null, handed = [];
-    // The app's images, on hand for when it's needed.
-    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : ["earth-day-2048", ...(level <= 2 ? [] : ["earth-day"]), "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
+    // The app's images, on hand for when it's needed: the ones this planet is using, so not the full-size day map where it
+    // is too small for it (the app fetches that one itself if it draws the planet larger).
+    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : ["earth-day-2048", ...(level <= 2 || !sharp ? [] : ["earth-day"]), "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
     const fade = (el, delay = 0, move = 0) => { if (el) handed.push(el.animate([{ opacity: getComputedStyle(el).opacity, translate: "0 0" }, { opacity: 0, translate: `0 ${move}px` }], { duration: 340, delay, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" })); };
     // A search from anywhere on the page, with or without a phone's keyboard up, first closes the keyboard and brings the hero
     // back to the top, so the hand-over measures and starts from the hero exactly where the app will draw it. A search from
@@ -256,15 +266,15 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; animation: tw var(--tw) ease-in-out var(--twd) infinite alternate; } .s0 { --tw: 6s; --twd: 0s; } .s1 { --tw: 9s; --twd: -3s; } .s2 { --tw: 13s; --twd: -6s; } @keyframes tw { to { opacity: .35; } }
 
   .say { position: relative; z-index: 6; display: grid; justify-items: center; gap: 14px; }
-  h1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .26em; font-size: 38px; letter-spacing: -.04em; line-height: 1.06; } h1 span { display: inline-block; animation: rise 700ms var(--ease) calc(.05s + var(--i) * 45ms) backwards; } @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+  h1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .26em; font-size: 38px; letter-spacing: -.04em; line-height: 1.06; } h1 span { display: inline-block; animation-duration: .7s; animation-delay: calc(.05s + var(--i) * 45ms); }
   @media (min-width: 600px) { h1 { font-size: 56px; } } @media (min-width: 1100px) { h1 { font-size: 64px; } } @media (min-width: 1400px) { h1 { font-size: 72px; } } @media (max-width: 1099px) { h1 { max-width: 9em; } }
   /* The headline is filled with the same Earth under the sunrise: warm cream over the oceans, near white over land and ice, so every letter stays bright. */
   @supports (background-clip: text) or (-webkit-background-clip: text) { h1 span { padding: .08em .05em; margin: -.08em -.05em; color: transparent; background: linear-gradient(#ffe6cf, #ffe6cf), url(/img/earth-day-2048.avif) calc(var(--i) * -3.2em - 6em) -2.6em / 20em 10em #ffe6cf; background-blend-mode: screen, normal; -webkit-background-clip: text; background-clip: text; } }
-  .lead { font-size: 20px; color: #c9cfdc; animation: rise 800ms var(--ease) .36s backwards; }
+  .lead { font-size: 20px; color: #c9cfdc; animation-delay: .36s; }
 
   /* Openscholar's box is the one warm thing in the sky, lit like the sunrise on the planet below it. */
   /* Two lights run round the box's rim. The box clips them, so they only ever show in its 2px edge. */
-  .halo { position: relative; isolation: isolate; overflow: clip; width: min(100%, 700px); margin-top: 8px; padding: 2px; border-radius: 20px; background: linear-gradient(90deg, var(--brand-deep), var(--brand) 30%, var(--brand-bright) 70%, var(--brand-deep)); box-shadow: inset 0 0 0 2px transparent, 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); transition: box-shadow .5s var(--ease); animation: rise 800ms var(--ease) .46s backwards; } .halo :global(.big) { width: 100%; box-shadow: none; } .halo:focus-within { box-shadow: inset 0 0 0 2px transparent, 0 0 0 3px rgb(255 255 255 / .7), 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); } .halo:global(.fired) { box-shadow: inset 0 0 0 2px #fff1e0, 0 0 24px 2px color-mix(in srgb, var(--brand-bright) 85%, transparent); }
+  .halo { position: relative; isolation: isolate; overflow: clip; width: min(100%, 700px); margin-top: 8px; padding: 2px; border-radius: 20px; background: linear-gradient(90deg, var(--brand-deep), var(--brand) 30%, var(--brand-bright) 70%, var(--brand-deep)); box-shadow: inset 0 0 0 2px transparent, 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); transition: box-shadow .5s var(--ease); animation-delay: .46s; } .halo :global(.big) { width: 100%; box-shadow: none; } .halo:focus-within { box-shadow: inset 0 0 0 2px transparent, 0 0 0 3px rgb(255 255 255 / .7), 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); } .halo:global(.fired) { box-shadow: inset 0 0 0 2px #fff1e0, 0 0 24px 2px color-mix(in srgb, var(--brand-bright) 85%, transparent); }
   @supports (offset-path: inset(0 round 1px)) { .halo::before, .halo::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(closest-side, #fff1e0, var(--brand-bright) 34%, transparent); offset-path: inset(0 round 20px); offset-rotate: 0deg; animation: lap 11s linear infinite; pointer-events: none; } .halo::after { background: radial-gradient(closest-side, #ffd9b0, var(--brand-deep) 34%, transparent); animation-delay: -5.5s; } @keyframes lap { from { offset-distance: 0%; } to { offset-distance: 100%; } } .halo:focus-within::before, .halo:focus-within::after { animation-play-state: paused; } }
   @media (max-width: 719px) { .halo :global(button span) { display: none; } .halo :global(.btn) { --chip: var(--brand); --chipt: var(--brand-on); gap: 0; height: 48px; min-height: 0; padding: 0 6px; } }
   @media (max-width: 500px) { .halo { width: calc(100% + 32px); margin-inline: -16px; } }
@@ -312,8 +322,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   @media (hover: none) { .sat b { display: none; } }
   @media (max-width: 699px) { .sky { padding-top: 126px; } .space { height: 302px; margin-top: -76px; } .space::before { width: 800px; } .sat { width: 52px; height: 52px; } .hubline a, .hubline span { display: block; margin: 0; } .lead { font-size: 17px; } }
 
-  /* Scrolling lifts the words away and sinks the stars. The planet, ring and strip stay with the page, so no text can collide. */
-  @media (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
+  /* Scrolling lifts the words away and sinks the stars. The planet, ring and strip stay with the page, so no text can collide.
+     Only with a mouse or trackpad, as on the publish page: under a finger these moves stuttered (Safari, iOS 27). */
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
     .say { animation: lift linear both; }
     .say { animation-timeline: scroll(root); animation-range: 0 500px; }
     .stars { animation: tw var(--tw) ease-in-out var(--twd) infinite alternate, sink linear both; }

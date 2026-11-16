@@ -99,6 +99,39 @@ export function useAnswerInvitation() {
 }
 
 /**
+ * A workspace as the switcher lists it, laid out by the row it is put in: its picture, its name, and under it your
+ * address for your own workspace, which is you, or an organization's plan and what you are in it. Wherever one of your
+ * workspaces is picked it is drawn this way, so your account never reads as one more organization.
+ */
+export function WorkspaceLine({ workspace }: { workspace: WorkspaceRow }) {
+  const email = useUser().user?.primaryEmailAddress?.emailAddress;
+  return (
+    <>
+      {workspace.kind === "personal" ? (
+        <WorkspaceTile workspace={workspace} size="md" />
+      ) : (
+        <Framed>
+          <WorkspaceTile workspace={workspace} size="md" />
+        </Framed>
+      )}
+      <span className="min-w-0 flex-1 text-start">
+        <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
+        {workspace.kind === "personal" ? (
+          <span className="mt-0.5 block h-4 truncate text-[11px] text-muted-foreground">{email}</span>
+        ) : (
+          <span className="mt-0.5 flex h-4 items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="font-medium">
+              <PlanName workspace={workspace} />
+            </span>
+            <RoleOf workspace={workspace} />
+          </span>
+        )}
+      </span>
+    </>
+  );
+}
+
+/**
  * The workspaces to switch to and the invitations to answer, in the account card. `current` is the
  * workspace the card is on, undefined until it is read. `all` is read by the rail, which is always
  * there, so the list is in the card as it opens. `onSwitch` goes to a
@@ -109,7 +142,6 @@ export function WorkspaceMenu({ current, all, shared, onSwitch, onCreate }: { cu
   const tc = useTranslations("common");
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
-  const email = useUser().user?.primaryEmailAddress?.emailAddress;
   // Listed once the workspace you're in is read: before that it would be among the others, and its row would leave.
   const others = current ? (all.list ?? []).filter((workspace) => workspace.workspaceId !== current.workspaceId) : [];
   // A list that is in the card as it opens is simply there; one read after opens its place.
@@ -130,27 +162,7 @@ export function WorkspaceMenu({ current, all, shared, onSwitch, onCreate }: { cu
                     onClick={() => onSwitch(workspace.slug, workspace)}
                     className={cn(ROW, "h-11")}
                   >
-                    {/* Your own workspace is you: your photo, your name and your address, which the card's head shows while you're in it. */}
-                    {workspace.kind === "personal" ? (
-                      <WorkspaceTile workspace={workspace} size="md" />
-                    ) : (
-                      <Framed>
-                        <WorkspaceTile workspace={workspace} size="md" />
-                      </Framed>
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
-                      {workspace.kind === "personal" ? (
-                        <span className="mt-0.5 block h-4 truncate text-[11px] text-muted-foreground">{email}</span>
-                      ) : (
-                        <span className="mt-0.5 flex h-4 items-center gap-2 text-[11px] text-muted-foreground">
-                          <span className="font-medium">
-                            <PlanName workspace={workspace} />
-                          </span>
-                          <RoleOf workspace={workspace} />
-                        </span>
-                      )}
-                    </span>
+                    <WorkspaceLine workspace={workspace} />
                     {workspace.kind === "personal" && shared ? (
                       <TooltipHint label={t("sharedWithYou", { count: shared })}>
                         <span className="fade-enter flex shrink-0 items-center gap-1 pe-1 text-[11px] tabular-nums text-muted-foreground">
@@ -191,7 +203,7 @@ export function WorkspaceMenu({ current, all, shared, onSwitch, onCreate }: { cu
             <div className="mt-1 space-y-2 border-t border-border/60 px-2 pb-1 pt-2.5">
               <div className="flex items-center gap-2.5">
                 {/* The organization's logo and whoever invited you, as its page shows them. */}
-                <WorkspaceTile workspace={{ kind: "organization", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl }} size="md" />
+                <WorkspaceTile workspace={{ kind: "organization", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl }} size="md" className="self-start" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-semibold leading-tight">{invitation.organization.name}</span>
                   {invitation.invitedBy ? (

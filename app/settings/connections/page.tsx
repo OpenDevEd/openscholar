@@ -86,7 +86,7 @@ export default function ConnectionsPage() {
                       transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
                       className="flex items-center gap-3 p-3"
                     >
-                      <Tile icon={AppWindow} tint={APP_TINTS[(active.offset + i) % APP_TINTS.length]!} />
+                      <Tile icon={AppWindow} tint={APP_TINTS[(active.offset + i) % APP_TINTS.length]!} className="self-start" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">{key.appName}</p>
                         <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
@@ -212,7 +212,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
 
   return (
     <li className="flex items-center gap-3 p-3" data-zotero={account.connected ? "connected" : "not-connected"}>
-      <Tile icon={ZoteroIcon} tint="#cc2936" />
+      <Tile icon={ZoteroIcon} tint="#cc2936" className="self-start" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">Zotero</p>
         <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
@@ -316,7 +316,7 @@ function SiteRow({ site, tint }: { site: Site; tint: string }) {
 
   return (
     <li className="flex items-center gap-3 p-3">
-      <Tile icon={Globe} tint={site.disconnectedAt ? "#94a3b8" : tint} className="transition-colors" />
+      <Tile icon={Globe} tint={site.disconnectedAt ? "#94a3b8" : tint} className="self-start transition-colors" />
       <div className="min-w-0 flex-1">
         <p className={`truncate text-sm font-semibold transition-colors ${site.disconnectedAt ? "text-muted-foreground" : ""}`}>{site.name}</p>
         <Swap id={String(confirm)} className="flex min-w-0 items-center text-xs text-muted-foreground">

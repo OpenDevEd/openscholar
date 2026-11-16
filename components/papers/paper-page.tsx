@@ -6,7 +6,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { dateMoment, dateStyleOf } from "@/lib/reports/report";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { copyText } from "@/components/copy-text";
 import Link from "@/components/workspace-link";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -222,15 +222,16 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
 /** The DOI where it's seen: under the journal, opening the paper, with a button that copies it. */
 function DoiLine({ doi }: { doi: string }) {
   const t = useTranslations("paperPage");
+  const tToast = useTranslations("toast");
   const [copied, setCopied] = useState(false);
   return (
     <p className="mt-2 flex items-center gap-2 text-sm">
       <span className="inline-flex h-5 items-center rounded bg-inset px-1.5 text-[11px] font-semibold text-muted-foreground">DOI</span>
       <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
       <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
+        {/* Each press decides the tick: a refused copy after one that worked takes it away. */}
         <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
-          try { await navigator.clipboard.writeText(`https://doi.org/${doi}`); setCopied(true); toast.success(t("doiCopied")); }
-          catch { toast.error(t("doiCopyFailed")); }
+          setCopied(await copyText(`https://doi.org/${doi}`, { copied: t("doiCopied"), failed: t("doiCopyFailed"), select: tToast("copyFailedDescription") }));
         }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
       </TooltipHint>
     </p>
@@ -458,7 +459,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
           {copies.map((copy, index) => (
             <li key={copy.name} className={cn(!all && index >= COPIES_SHOWN && "hidden")}>
               <a href={copy.url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-                <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", copy.pdf ? "bg-success/15 ink-success" : "bg-inset text-muted-foreground")}>
+                <span className={cn("flex size-8 shrink-0 items-center justify-center self-start rounded-lg", copy.pdf ? "bg-success/15 ink-success" : "bg-inset text-muted-foreground")}>
                   {copy.pdf ? <FileText aria-hidden className="size-4" /> : copy.kind === "publisher" ? <BookOpen aria-hidden className="size-4" /> : <Library aria-hidden className="size-4" />}
                 </span>
                 <span className="min-w-0 flex-1">

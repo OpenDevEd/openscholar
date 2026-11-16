@@ -4672,6 +4672,7 @@
     "explore": "Hlola",
     "authors": "Ababhali",
     "account": "I-akhawunti",
+    "organizations": "Izinhlangano",
     "close": "Vala",
     "switchFrom": "Isikhala sokusebenzela: {name}. Shintsha isikhala sokusebenzela",
     "runningLabel": "{label}, {what}, {done} kwa-{total}",
@@ -6547,13 +6548,17 @@
       "agreementTitle": "Isivumelwano sokushicilela no-{series}",
       "version": "Inguqulo {version}",
       "agreementIntro": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense, engeke isashintshwa uma ususayinile. Ukusayina kubekisa i-DOI yakho.",
-      "agreementShared": "Ugcina ilungelo lobunikazi futhi ukhetha ilayisense, engeke isashintshwa uma ususayinile. Ukusayina kubekisa i-DOI yakho. Lo mbiko ungowale ndawo yokusebenza: amalungu ayo angawubona, futhi wena nabaphathi bayo niyawusebenza.",
       "signedBy": "Kusayinwa ngu-",
       "agree": "Ngiyavumelana nalesi sivumelwano, egameni lami nelabo bonke ababhali engibhala nabo, bonke abavumile",
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
       "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza ibhokisi.",
       "agreementInEnglish": "Isivumelwano uqobo sibhalwe ngesiNgisi.",
+      "shut": {
+        "closed": "Uhlelo lwayo alukufaki ukushicilela",
+        "ownClosed": "Uhlelo lwakho alukufaki ukushicilela",
+        "used": "Ayisekho imibiko ongayiqala namuhla"
+      },
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
         "personalClosed": "Uhlelo lwakho alukufaki ukushicilela. Thuthela ohlelweni olukufakayo.",
@@ -6613,7 +6618,14 @@
           "notPublished": "Akukho ku-Openscholar Reports, ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
           "notPublishedElsewhere": "Akukho ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
           "unfinished": "Lokhu kuhlola akukwazanga ukuqedwa.",
-          "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama."
+          "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama.",
+          "namesVersion": "Umbiko ubala olunye uhlobo lwawo phakathi kwezixhumanisi zawo.",
+          "sameTitle": "Isihloko esifanayo, sonyaka ofanayo.",
+          "sameStudy": "Ucwaningo olufanayo nale rekhodi, ngokwesihloko nesifingqo sayo (ukuqiniseka {percent})."
+        },
+        "foundAt": {
+          "ownLinks": "Kutholwe ezixhumanisini zombiko uqobo:",
+          "ourIndex": "Kutholwe kunkomba ka-Openscholar:"
         },
         "defaults": {
           "byline": {
@@ -7042,7 +7054,6 @@
         "matched": "Kufundwe ku-PDF yakho, bese kuyabhekwa",
         "classified": "Kuphakanyiswe yi-OpenAlex",
         "author": "Iqala njengoMbhali",
-        "fixed": "Kusethwe yi-Openscholar",
         "reserved": "Kubekelwa eceleni uma usayina"
       },
       "entry": {
@@ -7070,9 +7081,9 @@
           "name": "Amakhodi olimi e-ISO 639",
           "detail": "Amakhodi i-OpenAlex ewasebenzisayo"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "I-Creative Commons Attribution 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "Lokho ilayisense ngayinye ekuvumelayo"
         },
         "crossrefContributors": {
           "name": "Abanikeli ku-Crossref",
@@ -7181,7 +7192,7 @@
         },
         "licence": {
           "title": "Ilayisensi",
-          "about": "Yonke i-Openscholar Report ishicilelwa ngaphansi kwe-CC BY 4.0, njengoba isivumelwano osisayinile sisho."
+          "about": "Ilayisense oyikhethile ngesikhathi usayina isivumelwano. Ayisakwazi ukushintshwa manje."
         },
         "authors": {
           "title": "Ababhali",
@@ -7261,6 +7272,11 @@
           "title": "Idatha, ikhodi nezinguqulo",
           "about": "Lapho idatha yombiko, ikhodi, ezinye izinguqulo nezengezo kukhona.",
           "note": "Ngayinye ingukheli lewebhu noma i-DOI."
+        },
+        "workspace": {
+          "title": "Isikhala sokusebenzela",
+          "about": "Umbiko ungowendawo yokusebenza oyikhethayo. Awukwazi ukuthuthelwa kwenye uma ususayinile.",
+          "note": "Enhlanganweni, amalungu ayo angawubona umbiko, futhi wena nabaphathi bayo niyawusebenza. Ibhalansi yokushicilela yendawo yokusebenza iyawukhokhela."
         },
         "agreement": {
           "title": "Isivumelwano sokushicilela",

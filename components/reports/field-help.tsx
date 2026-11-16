@@ -18,7 +18,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 /** How a part was filled in before its author saw it. */
-const FILLED = { pdf: AiIcon, judged: AiIcon, matched: Search, classified: AiIcon, author: Pencil, fixed: Lock, reserved: Lock } as const satisfies Record<string, AppIcon>;
+const FILLED = { pdf: AiIcon, judged: AiIcon, matched: Search, classified: AiIcon, author: Pencil, reserved: Lock } as const satisfies Record<string, AppIcon>;
 /** What can be entered in it. */
 const ENTRY = { list: ListChecks, typed: Pencil, either: ListChecks, pasted: Pencil, toggle: Check, chosen: Check } as const satisfies Record<string, AppIcon>;
 
@@ -30,7 +30,7 @@ const SOURCES = {
   zenodoTypes: { mark: "web", href: "https://help.zenodo.org/docs/deposit/describe-records/resource-type/" },
   crossrefReports: { mark: "web", href: "https://www.crossref.org/documentation/schema-library/markup-guide-record-types/reports-and-working-papers/" },
   iso639: { mark: "web", href: "https://www.loc.gov/standards/iso639-2/php/code_list.php" },
-  ccBy: { mark: "web", href: "https://creativecommons.org/licenses/by/4.0/" },
+  ccLicences: { mark: "web", href: "https://creativecommons.org/cc-licenses/" },
   crossrefContributors: { mark: "web", href: `${CROSSREF}/contributors/` },
   crossrefRoles: { mark: "web", href: `${CROSSREF}/contributors/` },
   orcid: { mark: "orcid", href: "https://info.orcid.org/what-is-orcid/" },
@@ -72,7 +72,7 @@ const HELP = {
   type: { note: true, filled: "pdf", entry: "list", sources: ["openalexWorkTypes", "zenodoTypes", "crossrefReports"], sent: { crossref: false, zenodo: true } },
   language: { filled: "pdf", entry: "list", sources: ["iso639"], sent: BOTH },
   date: { note: true, filled: "pdf", entry: "typed", sent: BOTH },
-  licence: { filled: "fixed", sources: ["ccBy"], sent: BOTH },
+  licence: { sources: ["ccLicences"], sent: BOTH },
   authors: { note: true, filled: "pdf", entry: "typed", sources: ["crossrefContributors"], sent: BOTH },
   name: { note: true, filled: "pdf", entry: "typed", sent: BOTH },
   kind: { note: true, filled: "author", entry: "list", sources: ["crossrefRoles"], sent: BOTH },
@@ -89,7 +89,8 @@ const HELP = {
   funding: { note: true, filled: "matched", entry: "either", sources: ["openalexFunders", "rorFunders", "funderRegistry", "rorAdd"], sent: BOTH },
   references: { note: true, filled: "pdf", entry: "pasted", sources: ["doi", "crossrefReferences"], sent: BOTH },
   links: { note: true, filled: "pdf", entry: "either", sources: ["crossrefRelations"], sent: BOTH },
-  agreement: { note: true, sources: ["ccBy"] },
+  agreement: { note: true, sources: ["ccLicences"] },
+  workspace: { note: true },
   doi: { note: true, filled: "reserved", sources: ["doi"] },
   byline: { note: true, entry: "chosen", sources: ["issn"] },
   checks: { note: true },

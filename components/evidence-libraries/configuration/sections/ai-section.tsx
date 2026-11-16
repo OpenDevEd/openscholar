@@ -147,7 +147,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                           <span className="w-4 shrink-0 text-end font-mono text-xs text-muted-foreground">
                             {index + 1}
                           </span>
-                          <Icon className="size-4 shrink-0 text-foreground/75" />
+                          <Icon className="mt-0.5 size-4 shrink-0 self-start text-foreground/75" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">
                               {stripProviderPrefix(name)}

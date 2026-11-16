@@ -66,7 +66,7 @@ export function AuthorList({createsBefore, firstPage, examples}: {createsBefore:
     <AutoHeight>
     {!!profiles.length && <p className="border-t border-border-subtle px-4 pt-4 pb-1 text-xs font-medium text-muted-foreground">{t("authorProfilesLabel")}</p>}
     {!!profiles.length && <ul className="divide-y divide-border-subtle">{profiles.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
-      <AuthorAvatar photo={profile.photo} className="me-1 size-10 shrink-0" />
+      <AuthorAvatar photo={profile.photo} className="me-1 size-10 shrink-0 self-start" />
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}

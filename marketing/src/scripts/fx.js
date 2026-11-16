@@ -47,8 +47,17 @@ const menu = $(".menu");
 addEventListener("click", (e) => { if (menu?.open && (!menu.contains(e.target) || e.target.closest(".sheet a"))) menu.open = false; });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && menu?.open) { menu.open = false; $("summary", menu).focus(); } });
 
+// A page the browser keeps for Back is put away with its menus shut and nothing fading, so it never comes back with one closing.
+addEventListener("pagehide", () => {
+  const fading = [mega, pill, $(".scrim")].filter(Boolean);
+  clearTimeout(openTimer); clearTimeout(closeTimer); if (menu) menu.open = false;
+  for (const el of fading) el.style.transition = "none";
+  close(); for (const el of fading) getComputedStyle(el).opacity;
+  for (const el of fading) el.style.transition = "";
+});
+
 // The hero's stars, the communities' laptop and the closing ribbons only move while they're on screen.
-for (const el of $$("[data-orbit], .p-lap, .close")) new IntersectionObserver(([e]) => el.classList.toggle("away", !e.isIntersecting)).observe(el);
+for (const el of $$("[data-orbit], .p-lap, .close, .ah, .research, .orgs, .ph")) new IntersectionObserver(([e]) => el.classList.toggle("away", !e.isIntersecting)).observe(el);
 // The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
@@ -82,11 +91,14 @@ if (fine) {
       const t = last.target, spot = t.closest?.(".panel, .spot, [data-spot]");
       if (spot) { const r = spot.getBoundingClientRect(); const x = last.clientX - r.left, y = last.clientY - r.top; spot.style.setProperty("--mx", `${x}px`); spot.style.setProperty("--my", `${y}px`); if (spot.matches("[data-spot]")) { const w = $(".word", spot), wr = w.getBoundingClientRect(); w.style.setProperty("--mx", `${last.clientX - wr.left}px`); w.style.setProperty("--my", `${last.clientY - wr.top}px`); } }
       const tilt = t.closest?.("[data-tilt]");
-      if (tilt) { const r = tilt.getBoundingClientRect(), x = (last.clientX - r.left) / r.width - .5, y = (last.clientY - r.top) / r.height - .5; tilt.style.transform = `perspective(1400px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateZ(0)`; tilt.style.setProperty("--sx", `${(x + .5) * 100}%`); tilt.style.setProperty("--sy", `${(y + .5) * 100}%`); }
+      // Where the pointer is across and down it, -.5 to .5 (--tx, --ty). What leans is its styles' business: a transform
+      // made from the two, with a transition on it, so nothing snaps as the pointer arrives or leaves.
+      if (tilt) { const r = tilt.getBoundingClientRect(); tilt.style.setProperty("--tx", ((last.clientX - r.left) / r.width - .5).toFixed(3)); tilt.style.setProperty("--ty", ((last.clientY - r.top) / r.height - .5).toFixed(3)); }
     });
   }, { passive: true });
-  still.addEventListener("change", () => $$("[data-tilt]").forEach((t) => (t.style.transform = "")));
-  document.addEventListener("pointerout", (e) => { const tilt = e.target.closest?.("[data-tilt]"); if (tilt && !tilt.contains(e.relatedTarget)) tilt.style.transform = ""; });
+  const level = (t) => { t.style.removeProperty("--tx"); t.style.removeProperty("--ty"); };
+  still.addEventListener("change", () => $$("[data-tilt]").forEach(level));
+  document.addEventListener("pointerout", (e) => { const tilt = e.target.closest?.("[data-tilt]"); if (tilt && !tilt.contains(e.relatedTarget)) level(tilt); });
 }
 
 // Move across a device to wipe it between its light and dark screens.

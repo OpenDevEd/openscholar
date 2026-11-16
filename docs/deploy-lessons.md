@@ -36,6 +36,10 @@ On 6 November four releases went out this way with nothing broken (#1073, #1074,
 
 **An import doesn't fill what crons fill.** After the launch import, the presets showed no intelligence bars: 0 of 693 models had a score, because the daily OpenRouter sync hadn't run yet. Running the sync by hand fixed it. After an import, run the syncs the pages depend on.
 
+**Add to prod's version tables, never replace them.** On 13 November prod's checks and agreement were brought up to dev's. Prod had two live reports signed under prod's own agreement version 1 and checked under its checks versions 1 and 2, whose text differed from dev's rows of the same numbers. Replacing `reportAgreementVersions` and `reportCheckVersions` with dev's would have changed what those reports signed. Dev's versions above prod's newest went in with `npx convex import --append`, and the settings row then named dev's current versions. Before copying a table to prod, look for prod rows that point at it.
+
+**Copy settings before a migration that edits them.** `migrations/publicationBalance` makes a new agreement version when the saved one still names CC BY 4.0. Run after dev's agreement was in place, it found nothing to change. Run before, it would have made a version 2 that collides with dev's.
+
 **Copying rows doesn't update counters.** Imports run no triggers, so topic counts and community list counts stayed wrong for moved communities until `communityMoveCounts` and `pagedLibraryVersions` ran. Plan these rebuilds before moving data.
 
 **Say where a change is live.** The signed-out overview went to dev only, and the user tested it on `discover` and found nothing (5 November, 23:30). Every report says "live on shared dev", "live on prod", or both.
@@ -58,6 +62,8 @@ On 6 November four releases went out this way with nothing broken (#1073, #1074,
 
 **A big community's publish can time out on its search indexer.** The indexer's health check waits behind Meilisearch's current batch, and the publish gives up after about 150 seconds. Wait for Meilisearch's queue to reach 0, then retry once.
 
+**A hung database session fails an update that carries a migration.** On 13 November seven of prod's eight communities moved to `runtime-9394eb5c` in about a minute each. AIED stayed in "publishing" for 12 minutes and failed. Its new search indexer runs the database migrations first, and one that adds triggers to `item` waited on a lock held by an insert of AIED's own source sync, stuck inside Postgres since the day before (`wait_event` `PerSessionDSA`, 0% CPU). `pg_cancel_backend` and `pg_terminate_backend` don't reach a session in that state. Only a restart of the Postgres server every community shares does, and the user decides that. Visitors were served on the old release by the standby the whole time. Before a rollout whose releases carry a database change, list sessions older than ten minutes in `pg_stat_activity` on that server, and `pg_blocking_pids(<pid>)` says what a waiting migration waits on.
+
 ## Outside services
 
 **Clerk: enabling organizations also forces organization selection.** On 5 November this reached the live site for about 15 minutes, and one real person was sent through the choose-organization page. Send `force_organization_selection: false` in the same request. Prove a change to a shared production service by signing in, not by an HTTP 200.
@@ -69,6 +75,8 @@ On 6 November four releases went out this way with nothing broken (#1073, #1074,
 **Autumn's dashboard showed sandbox data under the Production label.** The dashboard sends the environment in an `app_env` header, and its proxy dropped it because of the underscore. The agent first told the user they were on the wrong environment. The user was right, and the agent only found out by looking in the user's browser. Check what the user sees before explaining it.
 
 **Autumn's Svix can hold most of Postgres's connections.** A burst of webhooks took about 80 of 100 and refused new ones until Svix restarted. The limit is now 300, but the pool isn't capped.
+
+**Compare Autumn's plans and features on both sides before a ship.** On 13 November prod's Autumn had no `reports_per_day`, the daily limit on new reports that dev's Free, Free organization and Southern plans carry. Prod's code read it, found nothing, and set no limit. List `plans.list` and `features.list` on the sandbox and on live, and compare each plan's items. To add an item to a live plan in place, send `plans.update` with `items` holding every existing item plus the new one, and `disable_version: true`: the version and the other items' entitlement IDs stay. Our Autumn ignores `add_items` without an error. A plan nobody is on gets all its entitlements made again by the same call.
 
 **Test the money path with a real event.** The first real refund on prod returned the money but not the credits. The code looked for an invoice line tag that Autumn no longer adds, and the test used the old format, so it passed. Only a real $1 refund showed it.
 

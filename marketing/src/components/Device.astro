@@ -4,13 +4,20 @@ const { kind = "laptop", name, theme = "light", sizes = "(max-width: 900px) 60vw
 const W = { laptop: [1000, 2000], tablet: [800, 1400], phone: [400, 800] }[kind], R = { laptop: "1280 / 800", tablet: "834 / 1112", phone: "393 / 852" }[kind];
 const attrs = (t) => { const base = `/img/screens/${name}-${kind}-${t}`, srcset = `${base}-${W[0]}.avif ${W[0]}w, ${base}.avif ${W[1]}w`; return defer || (lazyDark && t === "dark") ? { "data-src": `${base}.avif`, "data-srcset": srcset, sizes } : { src: `${base}.avif`, srcset, sizes, loading: eager ? "eager" : "lazy", fetchpriority: eager ? "high" : undefined, decoding: "async" }; };
 const themes = theme === "both" ? ["light", "dark"] : [theme];
+// A device that tilts leans inside itself, on a wrapper of its own: a page that styles or animates the device can then
+// never cancel the lean or its ease.
+const Lean = tilt ? "div" : Fragment;
 ---
 <figure class:list={["dev", kind, cls]} data-tilt={tilt || undefined} {...rest}>
+  <Lean {...(tilt ? { class: "lean" } : {})}>
   <div class="body"><div class="glass" style={`aspect-ratio:${R}`}>{themes.map((t) => <div class:list={["scr", t]}>{kind === "phone" && <i class="status" aria-hidden="true"><span>9:41</span><svg viewBox="0 0 54 12" width="44" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1" /><rect x="5" y="5" width="3" height="7" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /><path d="M29 2.500a8 8 0 0 1 6 2.500l-1.300 1.400A6 6 0 0 0 29 4.400a6 6 0 0 0-4.700 2L23 5a8 8 0 0 1 6-2.500Zm0 3.700a4.300 4.300 0 0 1 3.300 1.400L29 11.500l-3.300-3.900A4.300 4.300 0 0 1 29 6.200Z" /><rect x="40" y="1.500" width="12" height="9" rx="2.500" /><rect x="52.800" y="4.500" width="1.200" height="3" rx=".6" /></svg></i>}<img {...attrs(t)} width={W[1]} alt={t === themes[0] ? alt : ""} /></div>)}<slot /><i class="sheen" aria-hidden="true"></i></div>{kind === "laptop" && <i class="cam" aria-hidden="true"></i>}{kind === "phone" && <><i class="island" aria-hidden="true"></i><i class="btn-a" aria-hidden="true"></i><i class="btn-b" aria-hidden="true"></i><i class="btn-c" aria-hidden="true"></i><i class="btn-d" aria-hidden="true"></i></>}</div>
   {kind === "laptop" && <div class="deck" aria-hidden="true"><i></i></div>}
+  </Lean>
 </figure>
 <style>
   .dev { position: relative; margin: 0; transform-style: preserve-3d; }
+  /* It leans towards the pointer over it, which fx.js gives it as --tx and --ty, and eases there and back. */
+  .dev > :global(.lean) { transform: perspective(1400px) rotateX(calc(var(--ty, 0) * -4deg)) rotateY(calc(var(--tx, 0) * 5deg)); transform-style: preserve-3d; transition: transform .7s var(--ease); }
   .glass { position: relative; overflow: hidden; background: #0b0d12; } .scr { position: absolute; inset: 0; } .scr img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; max-width: none; }
   .phone .scr.light { color: var(--ink); } .phone .scr.dark { color: #fff; } .status { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 6.7%; }
   .status { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 9% 2px 11%; font: 500 3.6cqw/1 var(--sans); }

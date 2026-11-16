@@ -46,10 +46,40 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   <script type="speculationrules" set:html={JSON.stringify({ prerender: [{ where: { href_matches: "/*" }, eagerness: "moderate" }] })} />
   <script is:inline>document.documentElement.classList.add("has-js"); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
   <script type="application/ld+json" set:html={JSON.stringify(ENTITY)} />
+  {/* The first frame waits for the header, so a page move always has the arriving page's header to draw. */}
+  <link rel="expect" href="#top" blocking="render" />
+  {/* Between two pages only the arriving page's header is drawn (global.css), so there are never two. It starts at the
+      width the last page's header had on screen, measured as that page was left, and glides to its own.
+      While a page is still arriving, leaving it again is a plain cut, not another animated move: one that interrupted the
+      first would show this page whole for a few frames before taking it away. That holds for the first 350 ms, by which
+      time the arriving page has faded in and there is nothing left to jump, and for as long as a portrait is still
+      waiting for its photo (html.waiting, src/scripts/travel.js), which an interruption would leave as an empty frame.
+      The cut is made as the page is left (html.held), and a move in progress is noted on the page's own object
+      (html.move), never in the page itself. A style rule taken out as the move ended, as this was first done, made
+      Safari on a phone show the arriving page's words a few frames younger for one frame, so they blinked (iOS 27,
+      3 arrivals in 3; taken out 20 ms later, none in 3). The words' own entrance no longer lets that happen
+      (.rise, global.css), and this keeps the end of a move free of such changes all the same.
+      A page left before it had finished arriving is kept by the browser as it stood, half way in, and a busy machine
+      shows that for a frame when the page is next brought back. So such a page comes back with a plain cut too, and the
+      frame reads as the start of it, not as a flash before a second move. */}
+  <script is:inline>{
+    const bar = () => document.querySelector(".bar"), html = document.documentElement;
+    addEventListener("pageswap", (e) => { html.cut = !!html.move; if (html.held) e.viewTransition?.skipTransition(); try { sessionStorage.setItem("bar", Math.round(bar()?.getBoundingClientRect().width || 0)); } catch {} });
+    addEventListener("pagereveal", (e) => {
+      const move = e.viewTransition, b = bar(); if (!move) return;
+      if (html.cut) { html.cut = false; move.skipTransition(); return; }
+      const free = () => { if (html.held === move) html.held = null; }, done = () => { free(); if (html.move === move) html.move = null; };
+      html.move = html.held = move; setTimeout(() => html.classList.contains("waiting") || free(), 350); move.finished.finally(done); addEventListener("pagehide", done, { once: true });
+      let was = 0; try { was = +sessionStorage.getItem("bar"); } catch {}
+      if (!b || !was || Math.abs(was - b.getBoundingClientRect().width) < 1) return;
+      b.style.transition = "none"; b.style.width = `${was}px`;
+      requestAnimationFrame(() => requestAnimationFrame(() => { b.style.transition = b.style.width = ""; }));
+    });
+  }</script>
   <slot name="head" />
 </head>
 <body style={`background-color:${top}`}>
-  <div class="top">
+  <div class="top" id="top">
     <header class="bar">
       <a class="brand" href="/" aria-label="Openscholar home">
         <svg class="mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" set:html={MARK} />
@@ -58,10 +88,11 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       {/* A link is the current page when it leads to this page, whichever part of it: Product leads to /#product, on the home page. */}
       <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href.split("#")[0] ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
+        <a class="signin" href="/about/" aria-current={path.startsWith("/about/") ? "page" : undefined}><span class="roll" data-t="About"><span>About</span></span></a>
         <a class="signin" href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a>
         <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
         <a class="go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span></a>
-        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href} aria-current={path === n.href.split("#")[0] ? "page" : undefined}>{n.label}<Arrow /></a>)}<a href={`${APP}/pricing`}>Pricing<Arrow /></a><a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
+        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href} aria-current={path === n.href.split("#")[0] ? "page" : undefined}>{n.label}<Arrow /></a>)}<a href="/about/" aria-current={path.startsWith("/about/") ? "page" : undefined}>About<Arrow /></a><a href={`${APP}/pricing`}>Pricing<Arrow /></a><a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
       </div>
       {sections.length > 0 && <nav class="rail" aria-label="On this page" data-rail>{sections.map(([id, label, color]) => <a href={`#${id}`} data-to={id} data-label={label} style={`--c:${color}`} aria-label={label}><i></i></a>)}</nav>}
     </header>
@@ -89,10 +120,10 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
         <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a><a href="/publithon/"><span class="roll" data-t="Publithon"><span>Publithon</span></span></a></div>
         <div><b>Use it for</b>{INTENTS.map((p) => <a href={p.href}><span class="roll" data-t={p.title}><span>{p.title}</span></span></a>)}</div>
         <div><b>Compare</b>{COMPARISONS.map((c) => <a href={c.href}><span class="roll" data-t={`${c.name} alternative`}><span>{c.name} alternative</span></span></a>)}</div>
-        <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a><a href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a><a href="/contact/"><span class="roll" data-t="Contact"><span>Contact</span></span></a></div>
+        <div><b>Learn</b><a href="/about/"><span class="roll" data-t="About"><span>About</span></span></a><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a><a href={`${APP}/pricing`}><span class="roll" data-t="Pricing"><span>Pricing</span></span></a><a href="/contact/"><span class="roll" data-t="Contact"><span>Contact</span></span></a></div>
         <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a><button type="button" class="prefs" data-consent-open><span class="roll" data-t="Cookie preferences"><span>Cookie preferences</span></span></button></div>
       </nav>
-      <p class="credit">Built by <a href="https://www.opendeved.net">OpenDevEd</a> and <a href="https://www.ekitabu.com">eKitabu</a></p>
+      <p class="credit"><span>Built by <a href="https://www.opendeved.net">OpenDevEd</a> and <a href="https://www.ekitabu.com">eKitabu</a></span>{path !== "/about/" && <a class="meet" href="/about/">Meet the team<Arrow /></a>}</p>
     </div>
     <div class="stand" aria-hidden="true"><div class="word">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i><div class="word edge2">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div></div>
   </footer>
@@ -114,12 +145,12 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   /* The section you're reading sits beside the name, in space that opens once there is one. */
   .name { white-space: nowrap; } .slot { display: flex; align-items: baseline; gap: 8px; width: 112px; margin-left: -2px; overflow: hidden; opacity: 0; font-size: 15px; font-weight: 400; letter-spacing: 0; white-space: nowrap; color: rgb(255 255 255 / .82); transition: opacity .3s var(--ease); } .slot i { font-style: normal; opacity: .4; } .has-sec .slot { opacity: 1; }
   .nav { position: relative; display: flex; gap: 2px; font-size: 15px; color: rgb(255 255 255 / .82); }
-  .lk { position: relative; z-index: 1; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; transition: color .15s var(--ease); } .lk:hover, .lk.on { color: #fff; } .lk[aria-current] { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
+  .lk { position: relative; z-index: 1; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; transition: color .15s var(--ease); } .lk:hover, .lk.on { color: #fff; } .lk[aria-current], .signin[aria-current] { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
   .chev { opacity: .6; transition: rotate .25s var(--ease); } .lk.on .chev { rotate: 180deg; }
   .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(255 255 255 / .12); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .3s var(--ease), width .3s var(--ease), opacity .18s var(--ease); pointer-events: none; }
   .end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
   /* The search button keeps asking real questions. */
-  .signin { display: inline-flex; align-items: center; height: 40px; font-size: 15px; padding-inline: 10px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
+  .signin { display: inline-flex; align-items: center; height: 40px; font-size: 15px; padding-inline: 10px; border-radius: 11px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
   .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; }
   .go::before { content: ""; position: absolute; z-index: -2; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, var(--brand-deep), var(--brand-bright), #fff1e0, var(--brand-bright), var(--brand-deep)); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
   .go::after { content: ""; position: absolute; z-index: -1; inset: 2px; border-radius: 10px; background: #fff; }
@@ -155,7 +186,9 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   .f-in { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 32px 56px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + var(--pad)) 28px; }
   .f-brand { display: grid; justify-items: start; align-content: start; gap: 12px; } .f-brand p { color: rgb(255 255 255 / .78); max-width: 18em; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.25; letter-spacing: -.01em; } .f-go { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; } .f-go :global(i) { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand); color: var(--brand-on); }
   .prefs { width: fit-content; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; } .prefs:hover { color: #fff; }
-  /* The link groups flow down columns of a fixed width, like a newspaper, so a short group never leaves a gap beside a long one and the brand beside them never narrows. */ .foot nav:not(.belt) { columns: 215px; column-gap: 40px; } .foot nav:not(.belt) > div { break-inside: avoid; margin-bottom: 32px; } .foot nav:not(.belt) div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .78); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav:not(.belt) a { width: fit-content; } .foot nav:not(.belt) a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .62); } .credit a { color: rgb(255 255 255 / .82); text-decoration: underline; text-decoration-color: rgb(255 255 255 / .3); text-underline-offset: 3px; transition: color .15s var(--ease), text-decoration-color .15s var(--ease); } .credit a:hover { color: #fff; text-decoration-color: currentColor; }
+  /* The cookie choices need scripts, and without scripts nothing is tracked, so the button goes. */
+  :global(html:not(.has-js)) .prefs { display: none; }
+  /* The link groups flow down columns of a fixed width, like a newspaper, so a short group never leaves a gap beside a long one and the brand beside them never narrows. */ .foot nav:not(.belt) { columns: 215px; column-gap: 40px; } .foot nav:not(.belt) > div { break-inside: avoid; margin-bottom: 32px; } .foot nav:not(.belt) div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .78); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav:not(.belt) a { width: fit-content; } .foot nav:not(.belt) a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .62); } .credit a { color: rgb(255 255 255 / .82); text-decoration: underline; text-decoration-color: rgb(255 255 255 / .3); text-underline-offset: 3px; transition: color .15s var(--ease), text-decoration-color .15s var(--ease); } .credit a:hover { color: #fff; text-decoration-color: currentColor; } .credit { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; } .credit .meet { display: inline-flex; align-items: center; gap: 2px; color: #fff; text-decoration: none; } .credit .meet :global(i) { display: grid; place-items: center; width: 24px; height: 24px; transition: translate .25s var(--ease); } .credit .meet:hover :global(i) { translate: 3px 0; }
   /* The name runs off the bottom of the page, cut from lit glass. A dark veil with one bright window slides across it, following the pointer or sweeping by itself, and only ever moves as a transform. */
   /* The name in dark glass, its edges catching a little light, with the sunrise showing only in the one bright window that moves across it. */
   .stand { position: relative; height: 1.03em; margin-top: 8px; overflow: clip; font-size: 17.2vw; } .edge2 { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; } .edge2 span { background: none !important; color: transparent; -webkit-text-fill-color: transparent !important; -webkit-text-stroke: 1px rgb(255 255 255 / .28); }

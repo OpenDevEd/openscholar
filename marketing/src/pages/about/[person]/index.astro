@@ -1,0 +1,116 @@
+---
+// One person's page: who they are, where they are, where else to find them, what they've published, and the organisation
+// they work for. Everything on it is what their own organisation's page and their own public profiles already say
+// (src/data/team.mjs).
+import "../../../styles/about.css";
+import TRAVEL_JS from "../../../scripts/travel.js?raw";
+import Base from "../../../layouts/Base.astro";
+import Portrait from "../../../components/Portrait.astro";
+import Publications from "../../../components/Publications.astro";
+import TeamGrid from "../../../components/TeamGrid.astro";
+import OrgPanel from "../../../components/OrgPanel.astro";
+import Mark from "../../../components/Mark.astro";
+import Close from "../../../components/Close.astro";
+import Arrow from "../../../components/Arrow.astro";
+import { ORGS, TEAM, PLACE, LINK_NAMES, CLOCK_JS } from "../../../data/team.mjs";
+import { LOGOS } from "../../../data/logos.mjs";
+export function getStaticPaths() { return TEAM.map((m) => ({ params: { person: m.slug }, props: { m } })); }
+const { m } = Astro.props, p = PLACE[m.place], org = ORGS[m.org], pubs = m.pubs ?? [];
+// A service with its own mark gets a round button in that service's colour; any other page is a pill with its name.
+const services = m.links.filter(([kind]) => kind in LINK_NAMES), sites = m.links.filter(([kind]) => !(kind in LINK_NAMES));
+const person = { "@context": "https://schema.org", "@type": "Person", name: m.name, jobTitle: m.role, url: `https://openscholar.ai/about/${m.slug}/`, image: `https://openscholar.ai/img/team/${m.key}.avif`, affiliation: { "@type": "Organization", name: org.name, url: org.url }, sameAs: [...m.links.map((l) => l[1]), m.source] };
+// A bio opens on its first sentence, set large, and the rest follows as text.
+const cut = m.bio ? m.bio[0].indexOf(". ") + 1 : 0, opening = m.bio && (cut ? m.bio[0].slice(0, cut) : m.bio[0]), rest = m.bio ? [cut ? m.bio[0].slice(cut + 1) : "", ...m.bio.slice(1)].filter(Boolean) : [];
+// A long opening sentence is set smaller, so it never becomes a wall of display type.
+const long = opening && opening.replace(/<[^>]+>/g, "").length > 110;
+// The organisation's name is never broken across lines in that sentence.
+const orgName = org.name.replaceAll("&", "&amp;"), lead = opening && opening.replaceAll(orgName, orgName.replaceAll(" ", "&nbsp;"));
+const Out = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>`;
+---
+<Base top={p.bg} title={`${m.name}: Openscholar`} description={`${m.name}, ${m.role}, ${org.name}. Part of the team behind Openscholar.`}>
+  {/* The first paint waits for the portrait frame, so the frame is there for the page transition to bring in. */}
+  <Fragment slot="head"><script type="application/ld+json" set:html={JSON.stringify(person)} /><link rel="expect" href="#face" blocking="render" /><script is:inline set:html={TRAVEL_JS} /></Fragment>
+  <section class="bleed ph" style={`--bg:${p.bg};--glow:${p.glow}`}>
+    <div class="ph-art" aria-hidden="true"><img src={`/img/art-place-${p.id}.avif`} srcset={`/img/art-place-${p.id}-960.avif 960w, /img/art-place-${p.id}.avif 1672w`} sizes="(max-width: 700px) 50vw, (max-width: 1140px) 100vw, 1000px" width="1672" height="941" alt="" fetchpriority="high" onload="this.dataset.loaded = ''" onerror="this.dataset.loaded = ''" /><script is:inline>{ const art = document.currentScript.previousElementSibling; if (art.complete) art.dataset.loaded = ""; }</script><i class="glint"></i></div>
+    <div class="inner ph-in">
+      <a class="back rise" href="/about/" data-back><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 10H4M9 5l-5 5 5 5" /></svg>The team</a>
+      <div class="ph-face rise" id="face"><Portrait person={m} eager clock /></div>
+      <div class="ph-copy rises">
+        <h1>{m.name}{m.suffix && <small>{" "}{m.suffix}</small>}</h1>
+        <p class="role">{m.role}</p>
+        <a class="org" href={org.url}>{org.name}<Fragment set:html={Out} /></a>
+        {m.links.length > 0 && <ul class="links" aria-label={`Where to find ${m.name}`}>
+          {services.map(([kind, url]) => <li><a class="svc" href={url} rel="me" aria-label={`${m.name} on ${LINK_NAMES[kind]}`} data-label={LINK_NAMES[kind]} style={`--brand:${LOGOS[kind].color}`}><Mark kind={kind} size={20} /></a></li>)}
+          {sites.map(([kind, url, label]) => <li><a class="site" href={url} rel="me"><Mark kind={kind} size={18} />{label}<Fragment set:html={Out} /></a></li>)}
+        </ul>}
+      </div>
+    </div>
+    <script is:inline set:html={CLOCK_JS} />
+  </section>
+  <div class="pb" style={`--bg:${p.bg}`}>
+    {m.quote ? <figure class="quote rise"><svg class="qm" viewBox="0 0 48 36" width="56" height="42" aria-hidden="true"><path fill="currentColor" d="M0 36V21.6C0 9.2 6.6 1.8 19.2 0l1.6 5.4C13.6 7 10.6 10.6 10.2 16h9v20Zm27.2 0V21.6C27.2 9.2 33.8 1.8 46.4 0L48 5.4C40.8 7 37.8 10.6 37.4 16h9v20Z" /></svg><blockquote>{m.quote}</blockquote><figcaption>From <a href={m.source}>{org.host}</a></figcaption></figure>
+      : <section class="bio rise"><p class:list={["first", { long }]} set:html={lead} />{rest.length > 0 && <div class="rest">{rest.map((text) => <p set:html={text} />)}</div>}<p class="src">From <a href={m.source}>{org.host}</a></p></section>}
+    {pubs.length > 0 && <Publications pubs={pubs} />}
+  </div>
+  <div class="works"><OrgPanel id={m.org} except={m.key} h={2} /></div>
+  <section class="more" aria-labelledby="more-h"><h2 id="more-h">More of the team</h2><TeamGrid people={TEAM.filter((x) => x !== m)} whole lazy /></section>
+  <Close title="Talk to the team"><a slot="action" class="btn" href="/contact/">Get in touch<Arrow /></a></Close>
+</Base>
+<style>
+  /* The head of the page: the person's frame on the page's left edge, the way back and their name beside its top, and their
+     place's glass model on the right. The frame hangs below the head, over the white page, so the head only clips sideways. */
+  .ph, .pb { --hang: 64px; --face: clamp(240px, 32vw, 320px); --gutter: clamp(32px, 4vw, 56px); } .ph { overflow: visible; overflow-x: clip; background: var(--bg); padding-block: clamp(104px, 8.4vw, 128px) 0; }
+  .ph-art { position: absolute; right: 0; bottom: 0; z-index: -1; height: 88%; aspect-ratio: 1672 / 941; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%), linear-gradient(transparent, #000 24%); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 34%, #000 60%), linear-gradient(transparent, #000 24%); mask-composite: intersect; animation: ph-art 1.4s .1s var(--ease) both; } .ph-art img { width: 100%; height: 100%; transform-origin: 70% 100%; animation: ph-breathe 24s ease-in-out infinite alternate; } @keyframes ph-art { from { opacity: 0; transform: translateX(28px); } } @keyframes ph-breathe { to { transform: scale(1.05); } }
+  /* The model fades in when its picture lands (one the browser already holds is marked as the page is read, so it is there
+     from the first frame), and no light crosses the glass before there is glass. */
+  .ph-art img { transition: opacity .8s var(--ease); } :global(html.js) .ph-art img:not([data-loaded]) { opacity: 0; } :global(html.js) .ph-art img:not([data-loaded]) ~ .glint { display: none; }
+  /* A band of light crosses the glass once the page is in, and again now and then. */
+  .glint { position: absolute; inset: 0 auto 0 0; width: 300%; background: linear-gradient(105deg, transparent 46%, rgb(255 255 255 / .22) 50%, transparent 54%); mix-blend-mode: overlay; animation: glint 9s 1.2s var(--ease) infinite; } @keyframes glint { from { translate: -86.7% 0; } 30%, to { translate: 20% 0; } }
+  .ph:global(.away) :is(.ph-art img, .glint) { animation-play-state: paused; }
+  /* On a window wider than the picture can reach from its edge, the model stays near the page and fades out on its right too. */
+  @media (min-width: 1760px) { .ph-art { right: calc(50% - 720px); -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); mask-image: linear-gradient(90deg, transparent 34%, #000 60%, #000 84%, transparent), linear-gradient(transparent, #000 24%); } }
+  .ph-in { display: grid; grid-template-columns: var(--face) minmax(0, 1fr); grid-template-areas: "face back" "face copy"; grid-template-rows: auto 1fr; column-gap: var(--gutter); align-items: start; padding-inline: calc(var(--gap) + var(--edge)); }
+  /* The frame is drawn exactly as on the person's card, so it can travel here from it. On a page the transition brings in, or one
+     come back to, it is simply there; on a direct visit it rises in with the name beside it. */
+  .ph-face { grid-area: face; margin-bottom: calc(-1 * var(--hang)); } .ph-face :global(.pf) { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2), 0 20px 32px -22px color-mix(in srgb, var(--bg) 45%, transparent); }
+  .back { grid-area: back; justify-self: start; display: inline-flex; align-items: center; gap: 8px; height: 44px; margin: -14px 0 10px -12px; padding-inline: 12px 14px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .8); transition: background-color .2s var(--ease), color .2s var(--ease); } .back svg { transition: translate .25s var(--ease); } :global(html:not(.cold)) .back:hover, .back:focus-visible { background: rgb(255 255 255 / .1); color: #fff; } :global(html:not(.cold)) .back:hover svg, .back:focus-visible svg { translate: -3px 0; }
+  .ph-copy { grid-area: copy; display: grid; justify-items: start; max-width: 680px; } .ph-copy > :nth-child(1) { animation-delay: .06s; } .ph-copy > :nth-child(2) { animation-delay: .12s; } .ph-copy > :nth-child(3) { animation-delay: .18s; } .ph-copy > :nth-child(4) { animation-delay: .24s; }
+  .ph-copy h1 { font-size: clamp(40px, 4.8vw, 68px); line-height: 1; letter-spacing: -.04em; } .ph-copy h1 small { margin-left: .17em; font-size: .34em; font-weight: 400; letter-spacing: 0; color: rgb(255 255 255 / .66); }
+  .role { margin-top: 16px; font-size: clamp(19px, 1.7vw, 23px); line-height: 1.25; letter-spacing: -.01em; }
+  .org { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 17px; color: rgb(255 255 255 / .78); transition: color .15s var(--ease); } .org :global(svg) { opacity: .7; transition: translate .25s var(--ease), opacity .15s var(--ease); } .org:is(:hover, :focus-visible) { color: #fff; } .org:is(:hover, :focus-visible) :global(svg) { translate: 2px -2px; opacity: 1; }
+  /* Under a finger the organisation's link is as tall as the buttons around it, without moving anything. */
+  @media (pointer: coarse) { .org { padding-block: 10px; margin-block: -6px -10px; } }
+  /* Where else to find them. Each service is a round button (.svc, in about.css); any other page is a pill with its name. */
+  .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .site { display: inline-flex; align-items: center; gap: 9px; height: 52px; padding-inline: 16px 18px; border-radius: 999px; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .18); font-size: 15px; white-space: nowrap; transition: background .12s var(--ease), color .12s var(--ease), translate .3s var(--ease); } .site :global(svg) { flex: none; } .site :global(svg:last-child) { opacity: .7; } .site:focus-visible { background: #fff; color: var(--ink); translate: 0 -4px; } @media (hover: hover) { :global(html:not(.cold)) .site:hover { background: #fff; color: var(--ink); translate: 0 -4px; } }
+  /* What they say about themselves carries on down the name's column, beside the foot of the hanging frame: the first
+     sentence large, the rest as text. Everything after it is a section of its own, back at the page's edge, and as far from the one before it as
+     the sections of the About page are from each other. */
+  .pb { display: grid; gap: calc(clamp(56px, 7vw, 96px) + var(--gap)); padding: 24px var(--edge) clamp(56px, 7vw, 96px); }
+  /* It rises in after the name and the links above it, never before them. */
+  :is(.bio, .quote, .ph-face) { animation: none; } :global(.js) .bio, :global(.js) .quote { animation: rise .8s var(--ease) .3s both; }
+  :global(html.js:not(.back):not(.moved)) .ph-face { animation: rise .8s var(--ease) both; }
+  /* The frame waits for its photo, so it never rises in as an empty box with the person arriving after it. */
+  :global(html.js:not(.back):not(.moved)) .ph-face:has(:global(.pf-who:not([data-landed]))) { animation-play-state: paused; }
+  /* A page come back to has been seen: nothing on it makes an entrance again. A page the page transition brought in makes
+     the entrance every other page's hero makes, all but the frame above (.moved, set in src/scripts/travel.js): the
+     picture travelling to it is its entrance. */
+  :global(html.back) :is(.ph-art, .back, .ph-copy > *, .bio, .quote) { animation: none; }
+  .bio, .quote { margin-left: calc(var(--face) + var(--gutter)); min-height: var(--hang); }
+  .bio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; max-width: 836px; } .bio :global(a), figcaption a { text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; transition: text-decoration-color .15s var(--ease); } .bio :global(a):hover, figcaption a:hover { text-decoration-color: currentColor; }
+  .first { font-size: clamp(24px, 2.9vw, 38px); line-height: 1.2; letter-spacing: -.025em; text-wrap: balance; } .first.long { font-size: clamp(20px, 1.9vw, 25px); line-height: 1.35; letter-spacing: -.015em; text-wrap: pretty; }
+  .rest { display: grid; gap: 1em; font-size: clamp(17px, 1.4vw, 19px); line-height: 1.6; color: var(--t2); } .rest :global(a) { color: var(--ink); }
+  .src, figcaption { font-size: 14px; line-height: 1.4; color: var(--t3); }
+  /* The quote mark takes the place's own deep colour: orange is kept for light and for things to press. */
+  .quote { display: grid; gap: 20px; } .qm { color: var(--bg); } blockquote { max-width: 20em; font-size: clamp(26px, 3.2vw, 44px); line-height: 1.16; letter-spacing: -.028em; text-wrap: balance; }
+  .more { padding: clamp(56px, 7vw, 96px) var(--edge); } .more h2 { margin-bottom: clamp(24px, 3vw, 40px); }
+  /* Where the place's model stands in full on the right, the frame doesn't show it a second time behind the shoulders. */
+  @media (min-width: 1141px) { .ph-face :global(.pf-art) { opacity: 0; } }
+  /* Under 1140 px the name and the links would reach the glass model, so it becomes a quiet backdrop along the head's foot. */
+  @media (max-width: 1140px) { .ph-art { left: 0; height: auto; aspect-ratio: auto; top: 30%; opacity: .32; -webkit-mask-image: linear-gradient(transparent, #000 40%); mask-image: linear-gradient(transparent, #000 40%); } .ph-art img { object-fit: cover; object-position: 78% 100%; } .glint { display: none; } }
+  /* Under 880 px some people's links take two rows, and the words beside the frame can be taller than it. So nothing hangs
+     there: the frame stays inside the head, and what they say starts at the page's edge, as everything after it does. */
+  @media (max-width: 880px) { .ph, .pb { --hang: 0px; } .ph { padding-bottom: clamp(32px, 5vw, 48px); } .bio, .quote { margin-left: 0; min-height: 0; } .pb { padding-top: clamp(40px, 4vw, 56px); } }
+  /* On a phone: the way back at the top, the frame, then the words, all in one column on the left edge. */
+  @media (max-width: 700px) { .ph-in { grid-template-columns: minmax(0, 1fr); grid-template-areas: "back" "face" "copy"; grid-template-rows: none; row-gap: 4px; } .back { margin-top: -2px; margin-left: -12px; } .ph-face { width: min(100%, 280px); margin-bottom: 20px; } }
+</style>

@@ -4673,6 +4673,7 @@
     "explore": "Verken",
     "authors": "Outeurs",
     "account": "Rekening",
+    "organizations": "Organisasies",
     "close": "Maak toe",
     "switchFrom": "Werkruimte: {name}. Wissel werkruimte",
     "runningLabel": "{label}, {what}, {done} van {total}",
@@ -6548,13 +6549,17 @@
       "agreementTitle": "Publikasie-ooreenkoms met {series}",
       "version": "Weergawe {version}",
       "agreementIntro": "Jy behou die kopiereg en kies die lisensie, wat nie kan verander nadat jy geteken het nie. Deur te teken word jou DOI bespreek.",
-      "agreementShared": "Jy behou die kopiereg en kies die lisensie, wat nie kan verander nadat jy geteken het nie. Deur te teken word jou DOI bespreek. Hierdie verslag behoort aan hierdie werkruimte: sy lede kan dit sien, en jy en sy administrateurs werk daaraan.",
       "signedBy": "Onderteken deur",
       "agree": "Ek stem in tot hierdie ooreenkoms, vir myself en enige medeskrywers, wat ingestem het",
       "untouched": "Jy het reeds 'n DOI vir <mono>{key}</mono> gereserveer en nog nie sy PDF opgelaai nie.",
       "continueWith": "Gaan daarmee voort",
       "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkie.",
       "agreementInEnglish": "Die ooreenkoms self is in Engels geskryf.",
+      "shut": {
+        "closed": "Sy plan sluit publikasie nie in nie",
+        "ownClosed": "Jou plan sluit publikasie nie in nie",
+        "used": "Geen verslae oor om vandag te begin nie"
+      },
       "limit": {
         "personal": "Jou plan begin {count, plural, one {# verslag} other {# verslae}} per dag. Kom môre terug, of skuif na 'n plan met meer.",
         "personalClosed": "Jou plan sluit publikasie nie in nie. Skuif na 'n plan wat dit insluit.",
@@ -6614,7 +6619,14 @@
           "notPublished": "Nie in Openscholar Reports, OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "notPublishedElsewhere": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
-          "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
+          "bylineFound": "Die PDF se teks bevat die reël woord vir woord.",
+          "namesVersion": "Die verslag noem ’n ander weergawe van homself onder sy skakels.",
+          "sameTitle": "Dieselfde titel, uit dieselfde jaar.",
+          "sameStudy": "Dieselfde studie as hierdie rekord, volgens sy titel en opsomming ({percent} seker)."
+        },
+        "foundAt": {
+          "ownLinks": "Gevind in die verslag se eie skakels:",
+          "ourIndex": "Gevind in Openscholar se indeks:"
         },
         "defaults": {
           "byline": {
@@ -7043,7 +7055,6 @@
         "matched": "Uit jou PDF gelees en dan opgesoek",
         "classified": "Deur OpenAlex voorgestel",
         "author": "Begin as Skrywer",
-        "fixed": "Deur Openscholar vasgestel",
         "reserved": "Gereserveer wanneer jy teken"
       },
       "entry": {
@@ -7071,9 +7082,9 @@
           "name": "ISO 639-taalkodes",
           "detail": "Die kodes wat OpenAlex gebruik"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "Creative Commons Erkenning 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "Wat elke lisensie toelaat"
         },
         "crossrefContributors": {
           "name": "Bydraers by Crossref",
@@ -7182,7 +7193,7 @@
         },
         "licence": {
           "title": "Lisensie",
-          "about": "Elke Openscholar Report word onder CC BY 4.0 gepubliseer, soos die ooreenkoms wat jy geteken het sê."
+          "about": "Die lisensie wat jy gekies het toe jy die ooreenkoms geteken het. Dit kan nie nou meer verander nie."
         },
         "authors": {
           "title": "Skrywers",
@@ -7262,6 +7273,11 @@
           "title": "Data, kode en weergawes",
           "about": "Waar die verslag se data, kode, ander weergawes en aanvullings is.",
           "note": "Elkeen is ’n webadres of ’n DOI."
+        },
+        "workspace": {
+          "title": "Werkruimte",
+          "about": "Die verslag behoort aan die werkruimte wat jy kies. Dit kan nie na 'n ander geskuif word nadat jy geteken het nie.",
+          "note": "In 'n organisasie kan sy lede die verslag sien, en jy en sy administrateurs werk daaraan. Die werkruimte se publikasiebalans betaal daarvoor."
         },
         "agreement": {
           "title": "Die publikasie-ooreenkoms",

@@ -4672,6 +4672,7 @@
     "explore": "Explorer",
     "authors": "Auteurs",
     "account": "Compte",
+    "organizations": "Organisations",
     "close": "Fermer",
     "switchFrom": "Espace de travail : {name}. Changer d'espace de travail",
     "runningLabel": "{label}, {what}, {done} sur {total}",
@@ -6547,13 +6548,17 @@
       "agreementTitle": "Accord de publication avec {series}",
       "version": "Version {version}",
       "agreementIntro": "Vous gardez le droit d’auteur et choisissez la licence, qui ne peut plus changer une fois signé. La signature réserve votre DOI.",
-      "agreementShared": "Vous gardez le droit d’auteur et choisissez la licence, qui ne peut plus changer une fois signé. La signature réserve votre DOI. Le rapport appartient à cet espace de travail : ses membres peuvent le voir, et vous et ses administrateurs y travaillez.",
       "signedBy": "Signé par",
       "agree": "J'accepte cet accord, pour moi et pour les éventuels coauteurs, qui ont donné leur accord",
       "untouched": "Vous avez déjà réservé un DOI pour <mono>{key}</mono> et n'avez pas téléversé son PDF.",
       "continueWith": "Continuer avec celui-ci",
       "agreementChanged": "L'accord a changé pendant que cette page était ouverte. Relisez-le, puis cochez la case.",
       "agreementInEnglish": "L’accord lui-même est rédigé en anglais.",
+      "shut": {
+        "closed": "Son offre ne comprend pas la publication",
+        "ownClosed": "Votre offre ne comprend pas la publication",
+        "used": "Plus de rapport à commencer aujourd'hui"
+      },
       "limit": {
         "personal": "Votre offre permet de commencer {count, plural, one {# rapport} other {# rapports}} par jour. Revenez demain, ou passez à une offre qui en permet plus.",
         "personalClosed": "Votre offre ne comprend pas la publication. Passez à une offre qui la comprend.",
@@ -6613,7 +6618,14 @@
           "notPublished": "Absent d’Openscholar Reports, d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
           "notPublishedElsewhere": "Absent d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
           "unfinished": "Cette vérification n’a pas pu aboutir.",
-          "bylineFound": "Le texte du PDF contient la ligne mot pour mot."
+          "bylineFound": "Le texte du PDF contient la ligne mot pour mot.",
+          "namesVersion": "Le rapport cite une autre version de lui-même parmi ses liens.",
+          "sameTitle": "Le même titre, de la même année.",
+          "sameStudy": "La même étude que cette notice, d’après son titre et son résumé (sûr à {percent})."
+        },
+        "foundAt": {
+          "ownLinks": "Trouvé dans les propres liens du rapport :",
+          "ourIndex": "Trouvé dans l’index d’Openscholar :"
         },
         "defaults": {
           "byline": {
@@ -7042,7 +7054,6 @@
         "matched": "Lu dans votre PDF, puis recherché",
         "classified": "Proposé par OpenAlex",
         "author": "Auteur par défaut",
-        "fixed": "Fixé par Openscholar",
         "reserved": "Réservé à la signature"
       },
       "entry": {
@@ -7070,9 +7081,9 @@
           "name": "Codes de langue ISO 639",
           "detail": "Les codes qu’utilise OpenAlex"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "Creative Commons Attribution 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "Ce que chaque licence permet"
         },
         "crossrefContributors": {
           "name": "Contributeurs Crossref",
@@ -7181,7 +7192,7 @@
         },
         "licence": {
           "title": "Licence",
-          "about": "Chaque Openscholar Report est publié sous CC BY 4.0, comme le dit l’accord que vous avez signé."
+          "about": "La licence que vous avez choisie en signant l’accord. Elle ne peut plus changer."
         },
         "authors": {
           "title": "Auteurs",
@@ -7261,6 +7272,11 @@
           "title": "Données, code et versions",
           "about": "Où se trouvent les données, le code, les autres versions et les compléments du rapport.",
           "note": "Chacun est une adresse web ou un DOI."
+        },
+        "workspace": {
+          "title": "Espace de travail",
+          "about": "Le rapport appartient à l’espace de travail que vous choisissez. Il ne peut plus être déplacé vers un autre une fois signé.",
+          "note": "Dans une organisation, ses membres peuvent voir le rapport, et vous et ses administrateurs y travaillez. Le solde de publication de l’espace de travail le paie."
         },
         "agreement": {
           "title": "L’accord de publication",

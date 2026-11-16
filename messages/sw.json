@@ -4673,6 +4673,7 @@
     "explore": "Gundua",
     "authors": "Waandishi",
     "account": "Akaunti",
+    "organizations": "Mashirika",
     "close": "Funga",
     "switchFrom": "Nafasi kazi: {name}. Badilisha nafasi kazi",
     "runningLabel": "{label}, {what}, {done} kati ya {total}",
@@ -6548,13 +6549,17 @@
       "agreementTitle": "Makubaliano ya uchapishaji na {series}",
       "version": "Toleo {version}",
       "agreementIntro": "Unabaki na hakimiliki na unachagua leseni, ambayo haiwezi kubadilishwa baada ya kutia saini. Kutia saini kunahifadhi DOI yako.",
-      "agreementShared": "Unabaki na hakimiliki na unachagua leseni, ambayo haiwezi kubadilishwa baada ya kutia saini. Kutia saini kunahifadhi DOI yako. Ripoti hii ni ya eneo hili la kazi: wanachama wake wanaweza kuiona, na wewe na wasimamizi wake mnaifanyia kazi.",
       "signedBy": "Inasainiwa na",
       "agree": "Ninakubali makubaliano haya, kwa niaba yangu na ya waandishi wenza wote, ambao wote wamekubali",
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
       "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye kisanduku.",
       "agreementInEnglish": "Makubaliano yenyewe yameandikwa kwa Kiingereza.",
+      "shut": {
+        "closed": "Mpango wake haujumuishi uchapishaji",
+        "ownClosed": "Mpango wako haujumuishi uchapishaji",
+        "used": "Hakuna ripoti zilizobaki za kuanzisha leo"
+      },
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
         "personalClosed": "Mpango wako haujumuishi uchapishaji. Hamia mpango unaoujumuisha.",
@@ -6614,7 +6619,14 @@
           "notPublished": "Haipo katika Openscholar Reports, OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "notPublishedElsewhere": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "unfinished": "Ukaguzi huu haukuweza kukamilika.",
-          "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
+          "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno.",
+          "namesVersion": "Ripoti inataja toleo jingine lake yenyewe miongoni mwa viungo vyake.",
+          "sameTitle": "Kichwa kilekile, cha mwaka uleule.",
+          "sameStudy": "Utafiti uleule na rekodi hii, kwa kichwa na muhtasari wake (uhakika {percent})."
+        },
+        "foundAt": {
+          "ownLinks": "Imepatikana katika viungo vya ripoti yenyewe:",
+          "ourIndex": "Imepatikana katika faharasa ya Openscholar:"
         },
         "defaults": {
           "byline": {
@@ -7043,7 +7055,6 @@
         "matched": "Imesomwa kutoka kwenye PDF yako, kisha ikatafutwa",
         "classified": "Imependekezwa na OpenAlex",
         "author": "Huanza kama Mwandishi",
-        "fixed": "Huwekwa na Openscholar",
         "reserved": "Huhifadhiwa unaposaini"
       },
       "entry": {
@@ -7071,9 +7082,9 @@
           "name": "Misimbo ya lugha ya ISO 639",
           "detail": "Misimbo ambayo OpenAlex hutumia"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "Creative Commons Attribution 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "Kila leseni inaruhusu nini"
         },
         "crossrefContributors": {
           "name": "Wachangiaji kwenye Crossref",
@@ -7182,7 +7193,7 @@
         },
         "licence": {
           "title": "Leseni",
-          "about": "Kila Openscholar Report huchapishwa chini ya CC BY 4.0, kama makubaliano uliyosaini yanavyosema."
+          "about": "Leseni uliyochagua ulipotia saini makubaliano. Haiwezi kubadilishwa sasa."
         },
         "authors": {
           "title": "Waandishi",
@@ -7262,6 +7273,11 @@
           "title": "Data, msimbo na matoleo",
           "about": "Mahali data, msimbo, matoleo mengine na nyongeza za ripoti zilipo.",
           "note": "Kila moja ni anwani ya wavuti au DOI."
+        },
+        "workspace": {
+          "title": "Nafasi kazi",
+          "about": "Ripoti ni ya eneo la kazi unalochagua. Haiwezi kuhamishwa kwenda jingine baada ya kutia saini.",
+          "note": "Katika shirika, wanachama wake wanaweza kuiona ripoti, na wewe na wasimamizi wake mnaifanyia kazi. Salio la uchapishaji la eneo la kazi ndilo linaloilipia."
         },
         "agreement": {
           "title": "Makubaliano ya uchapishaji",

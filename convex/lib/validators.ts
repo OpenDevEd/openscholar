@@ -1,6 +1,7 @@
 import { v, type Infer, type Validator } from "convex/values";
 import type { Doc, TableNames } from "../_generated/dataModel";
 import { MAX_METADATA_FIELDS, MAX_VERIFIED_EMAILS, capped } from "./listCaps";
+import { locales } from "../../i18n/config";
 
 /**
  * Compile-time invariant: the runtime row type for `T` is exactly the
@@ -279,3 +280,6 @@ const _check_chatGenerationUsageValidator: AssertExactDoc<
   typeof chatGenerationUsageValidator
 > = true;
 void _check_chatGenerationUsageValidator;
+
+/** The languages the app speaks, as a page names its own. */
+export const localeValidator = v.union(...locales.map((locale) => v.literal(locale)));

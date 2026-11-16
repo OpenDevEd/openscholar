@@ -7,7 +7,7 @@ import ContactBody from "../../components/ContactBody.astro";
 <Base top="#070b1a" title="Contact: Openscholar" description="Write to the team behind Openscholar about your research, your team or a community of your own.">
   <section class="bleed ghero">
     <div class="inner g-in">
-      <div class="c-copy"><h1>Talk to the people behind Openscholar</h1><p class="lead">Researchers and analysts working with governments and communities around the world. Tell us what you're working on.</p><p class="by">Built by <a href="https://www.opendeved.net">Open Development &amp; Education</a> and <a href="https://www.ekitabu.com">eKitabu</a></p></div>
+      <div class="c-copy rises"><h1>Talk to the people behind Openscholar</h1><p class="lead">Researchers and analysts working with governments and communities around the world. Tell us what you're working on.</p><p class="by">Built by <a href="https://www.opendeved.net">Open Development &amp; Education</a> and <a href="https://www.ekitabu.com">eKitabu</a>. <a href="/about/">Meet the team</a></p></div>
     </div>
     <div class="g-globe"><Globe /></div>
   </section>
@@ -18,7 +18,7 @@ import ContactBody from "../../components/ContactBody.astro";
   .g-in { position: relative; z-index: 1; }
   .c-copy { display: grid; gap: 20px; max-width: 560px; } .c-copy h1 { font-size: clamp(44px, 5.6vw, 84px); line-height: 1; letter-spacing: -.035em; } .c-copy .lead { max-width: 28em; color: rgb(255 255 255 / .86); }
   .by { font-size: 15px; color: rgb(255 255 255 / .62); } .by a { color: #fff; text-decoration: underline; text-decoration-color: rgb(255 255 255 / .3); text-underline-offset: 3px; transition: text-decoration-color .15s var(--ease); } .by a:hover { text-decoration-color: currentColor; }
-  .c-copy > * { animation: g-up .8s var(--ease) both; } .c-copy > :nth-child(2) { animation-delay: .07s; } .c-copy > :nth-child(3) { animation-delay: .14s; } @keyframes g-up { from { opacity: 0; transform: translateY(18px); } }
+  .c-copy > :nth-child(2) { animation-delay: .07s; } .c-copy > :nth-child(3) { animation-delay: .14s; }
   /* The globe sits to the right of the words and sinks behind the form, like a planet rising over it. */
   .g-globe { position: absolute; top: clamp(70px, 6vw, 96px); left: calc(50% + 40px); width: min(720px, 52vw); animation: g-in 1.2s .1s var(--ease) both; } @keyframes g-in { from { opacity: 0; transform: translateY(40px) scale(.96); } }
   @media (max-width: 1100px) { .g-globe { left: auto; right: -12vw; width: 64vw; } .c-copy { max-width: 470px; } }

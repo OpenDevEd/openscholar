@@ -451,7 +451,7 @@ export function ModelPicker({
                       className={ROW}
                     >
                       <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2.5")}>
-                        <Icon className="size-4 shrink-0 text-muted-foreground" />
+                        <Icon className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
                         <span className="min-w-0">
                           <span className="block font-medium">{tm(`presets.${preset.id}`)}</span>
                           <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">

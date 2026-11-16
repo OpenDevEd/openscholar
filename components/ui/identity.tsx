@@ -78,7 +78,7 @@ export function EmailAvatar() {
 export function IdentityRow({ avatar, name, you = false, detail, className, children }: { avatar: ReactNode; name: string; you?: boolean; detail?: ReactNode; className?: string; children?: ReactNode }) {
   return (
     <div className={cn("flex items-center gap-3", className)}>
-      {avatar}
+      <span className="flex shrink-0 self-start">{avatar}</span>
       <div className="min-w-0 flex-1">
         <PersonName name={name} you={you} className="text-sm font-medium" />
         {detail ? <p className="truncate text-xs text-muted-foreground">{detail}</p> : null}

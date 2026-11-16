@@ -600,7 +600,7 @@ function AccountPanel({
       data-account-state={connected ? "connected" : "not-connected"}
     >
       <span
-        className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#cc2936] text-sm font-bold text-white"
+        className="flex size-9 shrink-0 items-center justify-center self-start rounded-md bg-[#cc2936] text-sm font-bold text-white"
         aria-hidden
       >
         <ZoteroIcon className="size-5" />

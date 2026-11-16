@@ -4672,6 +4672,7 @@
     "explore": "探索",
     "authors": "著者",
     "account": "アカウント",
+    "organizations": "組織",
     "close": "閉じる",
     "switchFrom": "ワークスペース：{name}。ワークスペースを切り替え",
     "runningLabel": "{label}、{what}、{total} 件中 {done} 件",
@@ -6547,13 +6548,17 @@
       "agreementTitle": "{series}との出版契約",
       "version": "バージョン {version}",
       "agreementIntro": "著作権はあなたに残り、ライセンスはあなたが選びます。ライセンスは署名後に変更できません。署名すると DOI が予約されます。",
-      "agreementShared": "著作権はあなたに残り、ライセンスはあなたが選びます。ライセンスは署名後に変更できません。署名すると DOI が予約されます。レポートはこのワークスペースのものです。メンバーは閲覧でき、あなたと管理者が作業します。",
       "signedBy": "署名者",
       "agree": "自分自身と共著者全員を代表してこの契約に同意します。共著者全員の同意を得ています",
       "untouched": "<mono>{key}</mono> の DOI をすでに予約していますが、PDF はまだアップロードしていません。",
       "continueWith": "これで続ける",
       "agreementChanged": "このページを開いている間に契約が変更されました。読み直してからチェックを入れてください。",
       "agreementInEnglish": "契約書そのものは英語で書かれています。",
+      "shut": {
+        "closed": "このプランには公開が含まれていません",
+        "ownClosed": "ご利用のプランには公開が含まれていません",
+        "used": "今日はもうレポートを開始できません"
+      },
       "limit": {
         "personal": "ご利用のプランでは1日に{count}件のレポートを開始できます。明日またお試しいただくか、上限の多いプランに変更してください。",
         "personalClosed": "ご利用のプランには公開が含まれていません。公開を含むプランに変更してください。",
@@ -6613,7 +6618,14 @@
           "notPublished": "Openscholar Reports、OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "notPublishedElsewhere": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
-          "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
+          "bylineFound": "PDF のテキストにこの行がそのまま含まれています。",
+          "namesVersion": "レポートのリンクに、このレポートの別のバージョンが含まれています。",
+          "sameTitle": "同じタイトルで、同じ年です。",
+          "sameStudy": "タイトルと要旨から、このレコードと同じ研究です（確信度 {percent}）。"
+        },
+        "foundAt": {
+          "ownLinks": "レポート自身のリンクで見つかりました：",
+          "ourIndex": "Openscholar のインデックスで見つかりました："
         },
         "defaults": {
           "byline": {
@@ -7042,7 +7054,6 @@
         "matched": "PDF から読み取り、照合",
         "classified": "OpenAlex の提案",
         "author": "最初は著者",
-        "fixed": "Openscholar が設定",
         "reserved": "署名時に予約"
       },
       "entry": {
@@ -7070,9 +7081,9 @@
           "name": "ISO 639 言語コード",
           "detail": "OpenAlex が使うコード"
         },
-        "ccBy": {
-          "name": "CC BY 4.0",
-          "detail": "クリエイティブ・コモンズ 表示 4.0"
+        "ccLicences": {
+          "name": "Creative Commons",
+          "detail": "各ライセンスで許可されること"
         },
         "crossrefContributors": {
           "name": "Crossref の寄与者",
@@ -7181,7 +7192,7 @@
         },
         "licence": {
           "title": "ライセンス",
-          "about": "署名した契約のとおり、すべての Openscholar Report は CC BY 4.0 で公開されます。"
+          "about": "契約に署名したときに選んだライセンスです。もう変更できません。"
         },
         "authors": {
           "title": "著者",
@@ -7261,6 +7272,11 @@
           "title": "データ、コード、版",
           "about": "報告書のデータ、コード、ほかの版、補足資料の置き場所。",
           "note": "それぞれウェブアドレスまたは DOI です。"
+        },
+        "workspace": {
+          "title": "ワークスペース",
+          "about": "レポートは選んだワークスペースのものになります。署名後は別のワークスペースに移動できません。",
+          "note": "組織では、メンバーがレポートを閲覧でき、あなたと管理者が作業します。費用はそのワークスペースの出版残高から支払われます。"
         },
         "agreement": {
           "title": "出版契約",

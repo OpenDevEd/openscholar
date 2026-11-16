@@ -249,7 +249,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
       <Zone label={t("agreement")}>
         <ul className={LIST}>
           <li className="flex items-center gap-3 px-4 py-3.5">
-            <Tile icon={PenLine} tint="var(--primary)" />
+            <Tile icon={PenLine} tint="var(--primary)" className="self-start" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 text-sm font-medium">
                 {t("agreementName")} <Tag>v{settings.agreement.version}</Tag>
@@ -341,7 +341,7 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckRow; onEdit:
   const name = useCheckWords().name(check.name);
   return (
     <li className={cn("flex items-center gap-3 px-4 py-3", !check.enabled && "opacity-60")}>
-      <Tile icon={Brand} tint={tintOf(check.modelId)} />
+      <Tile icon={Brand} tint={tintOf(check.modelId)} className="self-start" />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{name}</span>

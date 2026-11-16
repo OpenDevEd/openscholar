@@ -15,10 +15,11 @@ import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
-import { CHECK_SAID, carries, doiIn, linkHref } from "../../lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, carries, doiIn, linkHref } from "../../lib/reports/report";
 import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { storedBytes } from "./pdfBytes";
 import { alreadyPublished, decide, reportSays, type Candidate, type CheckModel, type Community } from "./published";
+import { localeValidator } from "../lib/validators";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
 
 const QUESTION_RULES = [
@@ -50,7 +51,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   if (check.builtIn === "already-published") {
     // A report that names another version of itself says where it was published before: no search is needed to find it.
     const named = metadata.relations.map((relation) => ({ relation, href: linkHref(relation.target) })).find(({ relation, href }) => relation.kind === "version" && href && doiIn(href) !== report.doi.toLowerCase());
-    if (named) return { ...base, ...failed, pass: false, evidence: { title: named.relation.target, url: named.href!, where: "the report's own links" }, reasoning: "The report names another version of itself among its links." };
+    if (named) return { ...base, ...failed, pass: false, evidence: { title: named.relation.target, url: named.href!, where: CHECK_WHERE.ownLinks }, reasoning: CHECK_SAID.namesVersion };
     // With its PDF's text, which a report with no abstract is compared by.
     const found = await alreadyPublished({ ...metadata, text }, report.doi, on, communities, ours);
     return found
@@ -74,7 +75,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   const { output } = await generateText({
     model: on.model,
     maxRetries: 1,
-    instructions: QUESTION_RULES,
+    instructions: `${QUESTION_RULES}\nWrite the sentence on why in ${on.language}.`,
     output: Output.object({ schema: answerSchema }),
     prompt: `Question: ${question}\n\nThe report\nTitle: ${metadata.title}\nAbstract: ${metadata.abstract}\n\nIts PDF's text\n${text.slice(0, LLM_TEXT)}`,
     providerOptions: callOptions(on.model, { effort: on.effort }),
@@ -102,11 +103,12 @@ async function restamp(ctx: ActionCtx, reportId: Id<"reports">, runId: string, p
 }
 
 export const run = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, from: runFromValidator },
+  // The page's language, which the checks say why in: the author's.
+  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, from: runFromValidator, locale: localeValidator },
   // Where changes to a live report stand after the run; null for a report's first checks.
   returns: v.union(v.null(), v.literal("live"), changeStageValidator),
   // The return is typed because a handler that returns what its own module's functions return has no type to infer.
-  handler: async (ctx, { workspaceId, key, metadata, from }): Promise<"live" | ChangeStage | null> => {
+  handler: async (ctx, { workspaceId, key, metadata, from, locale }): Promise<"live" | ChangeStage | null> => {
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
     const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, from });
@@ -145,12 +147,13 @@ export const run = action({
       }
     };
     const ours = started.checks.some((check) => check.builtIn) ? await ownReports() : [];
+    const language = new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? locale;
     const results = await Promise.all(
       started.checks.map(async ({ model: modelId, ...check }) => {
         const result = await (async (): Promise<Result> => {
           if (!modelId) throw new Error("its model is no longer offered");
           const { model, modelSlug } = await resolveOpenRouterModel(ctx, modelId);
-          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort }, started, text, metadata, communities, ours);
+          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort, language }, started, text, metadata, communities, ours);
         })().catch((error: unknown): Result => {
           console.error(JSON.stringify({ event: "report-check-failed", reportId, check: check.id, error: String(error).slice(0, 500) }));
           // A check that can't answer holds the report for a person rather than pass it. Why it couldn't is the

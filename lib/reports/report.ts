@@ -71,7 +71,15 @@ export const CHECK_SAID = {
   notPublished: "Not in Openscholar Reports, OpenAlex, Openscholar's index or our communities.",
   unfinished: "This check couldn't finish.",
   bylineFound: "The PDF's text has the line word for word.",
+  namesVersion: "The report names another version of itself among its links.",
+  sameTitle: "The same title, from the same year.",
 } as const;
+/** Where a check found the report already published, when it is no community's or series' name (`check.foundAt`). */
+export const CHECK_WHERE = { ownLinks: "the report's own links", ourIndex: "Openscholar's index" } as const;
+/** What a decision model, which gives no reason, is said to have found: the same study, this sure (`check.said.sameStudy`). */
+export const sameStudySaid = (percent: number) => `The same study as this record, by its title and abstract (${percent}% sure).`;
+/** How sure a decision model was of the match `sameStudySaid` says; undefined for anything else. */
+export const sameStudySure = (words: string | undefined) => [...Array(101).keys()].find((percent) => sameStudySaid(percent) === words);
 
 export const CREDIT_ROLES = [
   "Conceptualization", "Data curation", "Formal analysis", "Funding acquisition", "Investigation", "Methodology", "Project administration",

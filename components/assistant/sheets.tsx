@@ -715,7 +715,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
                   const name = `steps.${words}.ask` as "steps.other.ask";
                   return (
                     <li key={job.id} className="flex items-center gap-3 px-3 py-2.5">
-                      <KindTile kind={kind} />
+                      <KindTile kind={kind} className="self-start" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{job.subject ?? (ta.has(name) ? ta(name) : ta("steps.other.ask"))}</span>
                         <span className="block text-xs tabular-nums text-muted-foreground">{t("holds", { credits: job.credits })}</span>
@@ -732,7 +732,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
                   </li>
                 ) : null}
                 <li className="flex items-center gap-3 px-3 py-2.5">
-                  <KindTile kind="other" />
+                  <KindTile kind="other" className="self-start" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{t("publishing")}</span>
                     <span className="block text-xs text-muted-foreground">{t("publishingDetail")}</span>
@@ -823,7 +823,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5">
-            <KindTile kind={waiting.kind} />
+            <KindTile kind={waiting.kind} className="self-start" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{waiting.title}</span>
               <span className="block text-xs text-muted-foreground">{t("waiting")}</span>

@@ -11,6 +11,14 @@ import { cn } from "@/lib/utils"
 // itself, and once it has loaded the fallback steps aside; one that fails is dropped, and the
 // fallback shows again.
 
+/**
+ * For avatars put on the page after it has loaded, as in a step or a row that arrives: put on an element around them,
+ * each picture fades in once it has loaded and its fallback keeps out of the way meanwhile, where the two would
+ * otherwise change places in one frame. A picture the browser already holds is there from the first frame.
+ */
+export const AVATARS_FADE_IN =
+  "[&_[data-slot=avatar-image]]:opacity-0 [&_[data-slot=avatar-image]]:transition-opacity [&_[data-slot=avatar-image]]:duration-200 motion-reduce:[&_[data-slot=avatar-image]]:transition-none [&_[data-slot=avatar-image][data-loaded]]:opacity-100 [&_[data-slot=avatar]:has(>img)>[data-slot=avatar-fallback]]:hidden"
+
 function Avatar({
   className,
   size = "default",

@@ -112,7 +112,7 @@ export default function ModelListPage() {
             <ul className={LIST}>
               {models.items.map((m) => (
                 <li key={m._id} className={cn("flex items-center gap-3 p-3 transition-opacity", !m.on && "opacity-50")}>
-                  <Tile icon={getModelIcon(m.modelId)} tint={m.on ? tintOf(m.modelId) : "#94a3b8"} />
+                  <Tile icon={getModelIcon(m.modelId)} tint={m.on ? tintOf(m.modelId) : "#94a3b8"} className="self-start" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{stripProviderPrefix(m.name)}</span>
                     <span className="block truncate font-mono text-2xs text-muted-foreground">{m.modelId}</span>
