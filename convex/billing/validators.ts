@@ -53,6 +53,8 @@ export const billingAccountSnapshotValidator = v.object({
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
   credit: v.optional(v.number()),
+  /** The currency of the customer at Stripe when it isn't US dollars, upper case: nothing priced in dollars can be bought there, and its credit isn't counted. Read with `card`. */
+  stripeCurrency: v.optional(v.string()),
   signupGranted: v.boolean(),
   /** Has paid for a plan or credits, so Stripe holds invoices for them. */
   hasPaid: v.boolean(),

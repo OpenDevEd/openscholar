@@ -41,7 +41,7 @@ const OFF: Record<string, number> = { HALFOFF: 0.5, FREEDOI: 1 };
  * answer never arrives, and the customer's invoices then hold `lost`. Stripe has every invoice paid, at `stripeTotal`
  * cents. `asked` is the calls made to Autumn, in order.
  */
-function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = false, lost, racy = false, stripeTotal = 1000, credit = 0 }: { monthly?: number; kept?: number; card?: boolean; dropFirstQuote?: boolean; lost?: { status: string; stripe_id: string }; /** Holds read the balance and take from it a moment apart, as two at once were seen to on our Autumn. */ racy?: boolean; stripeTotal?: number; /** Credit on the account at Stripe, in dollars, which a charge is paid from before the card. */ credit?: number }) {
+function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = false, lost, racy = false, stripeTotal = 1000, credit = 0, stripeCurrency }: { monthly?: number; kept?: number; card?: boolean; dropFirstQuote?: boolean; lost?: { status: string; stripe_id: string }; /** Holds read the balance and take from it a moment apart, as two at once were seen to on our Autumn. */ racy?: boolean; stripeTotal?: number; /** Credit on the account at Stripe, in dollars, which a charge is paid from before the card. */ credit?: number; /** The currency Stripe has the customer in: with it, Autumn names a Stripe customer, which Stripe answers with the credit. */ stripeCurrency?: string }) {
   vi.stubEnv("AUTUMN_URL", "https://autumn.test");
   vi.stubEnv("AUTUMN_SECRET_KEY", "am_sk_test_fake");
   const asked: Array<Record<string, unknown> & { path: string }> = [];
@@ -62,6 +62,7 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
       if (url.endsWith("/expire")) session = "expired";
       return Response.json(session === "paid" ? { status: "complete", payment_status: "paid", invoice: "in_checkout" } : { status: session, payment_status: "unpaid", invoice: null });
     }
+    if (stripeCurrency && url.includes("api.stripe.com/v1/customers/")) return Response.json({ id: "cus_test", currency: stripeCurrency, balance: -Math.round(credit * 100) });
     if (url.startsWith("https://api.stripe.com")) return Response.json({ id: "in_late", status: "paid", total: stripeTotal, amount_due: Math.max(0, stripeTotal - credit * 100), currency: "usd", payments: { data: [] } });
     const path = url.split("/v1/")[1]!;
     const key = (init?.headers as Record<string, string> | undefined)?.["Idempotency-Key"];
@@ -119,7 +120,7 @@ function autumnStub({ monthly = 0, kept = 0, card = false, dropFirstQuote = fals
       return Response.json({ success: true });
     }
     if (body.email) asked.push({ path, email: body.email });
-    return Response.json({ id: body.customer_id, email: null, subscriptions: [], purchases: [], invoices, balances: { publication_balance: { remaining: left(), breakdown: entries } }, payment_method: card ? { card: { brand: "visa", last4: "4242" } } : null });
+    return Response.json({ id: body.customer_id, ...(stripeCurrency && { stripe_id: "cus_test" }), email: null, subscriptions: [], purchases: [], invoices, balances: { publication_balance: { remaining: left(), breakdown: entries } }, payment_method: card ? { card: { brand: "visa", last4: "4242" } } : null });
   });
   return {
     asked,
@@ -318,6 +319,75 @@ describe("activating a report", () => {
     expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { fromBalance: 0, byCredit: 10, byCard: 0, code: null } });
   });
 
+  it("with no card saved, pays from Stripe credit that covers it all by an invoice the credit pays, never on Stripe's page", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ credit: 70.39 });
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 0, card: null })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ invoice_mode: { enabled: true, finalize: true } }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { byCredit: 10, byCard: 0 } });
+  });
+
+  it("with no card saved and Stripe credit covering part, charges what Stripe's page takes, all of it, only when the page showed that", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ credit: 3 });
+    // A page that counted the credit would have shown $7: Stripe's page takes $10, so nothing is bought.
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 7, card: null })).rejects.toMatchObject({ data: expect.objectContaining({ code: "CONFLICT", reason: "changed" }) });
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    // Showing $10, it goes to Stripe's page.
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 10, card: null })).toEqual({ url: CHECKOUT });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ invoice_mode: undefined }]);
+    await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+  });
+
+  it("has a card buy enough that Stripe charges it at least its least charge, never leaving a sum owed at Stripe", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // $9.70 in the balance and $0.70 of credit: $1 bought would leave the card $0.30, which Stripe doesn't charge.
+    const autumn = autumnStub({ kept: 9.7, card: true, credit: 0.7, stripeCurrency: "usd" });
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "balance", price: 10, expect: 0.5, card: "4242" })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ quantity: 1.2 }]);
+  });
+
+  it("says what a card bought past the price to reach Stripe's least charge went to the balance", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ card: true, credit: 9.8, stripeCurrency: "usd" });
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 0.5, card: "4242" })).toEqual({ live: true });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.filter((call) => call.path === "billing.attach")).toMatchObject([{ quantity: 10.3 }]);
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key })).toMatchObject({ paid: { price: 10, fromBalance: 0, kept: 0.3, byCredit: 9.8, byCard: 0.5 } });
+  });
+
+  it("charges no card under Stripe's least charge when the credit couldn't be read", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // No Stripe read: sized without the credit, Autumn's quote leaves the card $0.20.
+    const autumn = autumnStub({ card: true, credit: 9.8 });
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 0.5, card: "4242" })).rejects.toMatchObject({ data: expect.objectContaining({ code: "CONFLICT", reason: "changed" }) });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+  });
+
+  it("refuses a purchase for a workspace whose Stripe account is in another currency, before anything is bought", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const autumn = autumnStub({ card: true, credit: 70.39, stripeCurrency: "gbp" });
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
+    await expect(world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, payWith: "card", price: 10, expect: 10, card: "4242" })).rejects.toMatchObject({ data: expect.objectContaining({ code: "CONFLICT", reason: "currency", currency: "GBP" }) });
+    vi.unstubAllGlobals();
+    expect(autumn.asked.map((call) => call.path)).not.toContain("billing.attach");
+    expect(await activations(world)).toEqual([]);
+    expect(await row(world.t, key)).toMatchObject({ status: "passed" });
+  });
+
   it("with no saved card, pays on Stripe's page with its code, and goes live on what was bought once that is paid", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
@@ -421,8 +491,6 @@ describe("activating a report", () => {
     const { key } = await checked(world, [passed("byline")]);
     const read = (left: number, fetchedAt: number) => world.t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId: world.own, withCard: false, fetchedAt, snapshot: { pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, publication: [{ interval: "month", left, size: 20 }] } });
     const shown = async () => (await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key }))?.balance;
-    /** What the live report's screen says the balance holds since: nothing until a read made after its hold was finished. */
-    const leftSince = async () => (await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key }))?.paid?.left;
     const later = () => vi.advanceTimersByTime(1_000);
     await read(4, Date.now());
     // A card buys the $6 the balance is short of: Autumn has $10 until the report's price is held.
@@ -441,7 +509,6 @@ describe("activating a report", () => {
     // A read begun before the hold was finished, arriving after it.
     await read(10, early + 1);
     expect(await shown()).toBe(4);
-    expect(await leftSince()).toBeNull();
     // Another report's payment opens before the balance is read again: that read is kept back too, so the balance
     // shown is still the one from before this report was paid, and says nothing of what is left since.
     await world.t.run(async (ctx) => {
@@ -453,12 +520,10 @@ describe("activating a report", () => {
     later();
     await read(0, Date.now());
     expect(await shown()).toBe(4);
-    expect(await leftSince()).toBeNull();
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId: waiting, outcome: { kind: "refused" } });
     later();
     await read(0, Date.now());
     expect(await shown()).toBe(0);
-    expect(await leftSince()).toBe(0);
   });
 
   it("refuses a report that is already live before anything is charged", async () => {

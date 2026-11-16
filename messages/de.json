@@ -395,7 +395,7 @@
         "refund": "Erstattung"
       }
     },
-    "credits": "Credits",
+    "credits": "KI-Credits",
     "refillOn": "+{amount} am {date}",
     "bought": "{amount} gekauft",
     "topUp": "Aufladen",
@@ -429,7 +429,11 @@
       "backTo": "Am {date} wieder {amount}",
       "kept": "{amount} bleiben bis zur Nutzung",
       "publish": "Veröffentlichen",
-      "noLimit": "Ohne Limit"
+      "noLimit": "Ohne Limit",
+      "stripeCredit": "Stripe-Guthaben von {amount} zahlt vor der Karte",
+      "stripeCurrency": "Eine Karte kann keine Berichte bezahlen, solange das Stripe-Konto in {currency} ist",
+      "stripeCreditNoCard": "Stripe-Guthaben von {amount} zahlt, sobald eine Karte gespeichert ist",
+      "saveCard": "Karte speichern"
     }
   },
   "errors": {
@@ -4776,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {# Artikel gleichzeitig} other {# Artikel gleichzeitig}}",
       "anyPapersAJob": "Beliebig viele Artikel pro Auftrag",
       "papersAJob": "Bis zu {count, number} Artikel pro Auftrag",
-      "sharedCredits": "Gemeinsame Credits",
+      "sharedCredits": "Gemeinsame KI-Credits",
       "membersDraw": "{count, plural, one {# Mitglied nutzt sie} other {# Mitglieder nutzen sie}}",
       "refillOn": "{amount} am {date}",
       "upToMembers": "Bis zu {count, number} Mitglieder",
@@ -6522,7 +6526,7 @@
         "live": "Online",
         "sealed": "Gesperrt, sobald die Vereinbarung unterzeichnet ist.",
         "paying": "Die Zahlung läuft, daher lassen sich die Schritte gerade nicht öffnen. Lehnt die Bank sie ab, sind sie wieder offen.",
-        "liveNow": "Er ist live. Ändern Sie die Angaben mit {action}.",
+        "liveNow": "Er ist live. Ändern Sie die Angaben mit dem Stift in seiner Zeile unter Ihren Berichten.",
         "closed": "Eine prüfende Person hat ihn zurückgezogen, daher lässt er sich nicht mehr ändern.",
         "running": "Die Prüfungen laufen. Die Schritte öffnen sich wieder, wenn sie fertig sind.",
         "notYours": "Nur die Person, die diesen Bericht begonnen hat, kann ihn ändern."
@@ -6558,7 +6562,8 @@
       "shut": {
         "closed": "Sein Plan enthält kein Veröffentlichen",
         "ownClosed": "Ihr Plan enthält kein Veröffentlichen",
-        "used": "Heute lassen sich keine Berichte mehr beginnen"
+        "used": "Heute lassen sich keine Berichte mehr beginnen",
+        "currency": "Ihr Stripe-Konto ist in {currency}"
       },
       "limit": {
         "personal": "Mit Ihrem Plan beginnen Sie {count, plural, one {# Bericht} other {# Berichte}} am Tag. Kommen Sie morgen wieder oder wechseln Sie zu einem Plan mit mehr.",
@@ -6719,8 +6724,6 @@
       "changesDiscardFailed": "Die Änderungen konnten nicht verworfen werden.",
       "discard": "Verwerfen",
       "pages": "{count, plural, one {# Seite} other {# Seiten}}",
-      "agreementVersion": "Vereinbarung v{version}",
-      "checksVersion": "Prüfungen v{version}",
       "yourTitle": "Ihr Titel",
       "noDoi": "Noch kein DOI",
       "issn": "ISSN {issn}",
@@ -6859,7 +6862,6 @@
         "payWith": "Bezahlen mit",
         "balance": "Publikationsguthaben",
         "card": "Karte",
-        "byCard": "Zahlung per Karte",
         "due": "Fällig bei Aktivierung",
         "later": "Nichts wird belastet, bis der Bericht aktiviert wird, und die Zahlungsart lässt sich noch ändern.",
         "code": "Code {code}",
@@ -6867,18 +6869,26 @@
         "title": "Zahlung",
         "sign": "Lesen und unterschreiben",
         "noLimit": "Ohne Limit",
-        "credit": "Guthaben des Kontos",
-        "least": "Eine Karte zahlt mindestens {least}, daher bleiben {spare} in Ihrem Guthaben."
+        "credit": "Stripe-Guthaben",
+        "creditYours": "Sie haben <amount></amount> bei Stripe",
+        "creditTheirs": "{owner} hat <amount></amount> bei Stripe",
+        "creditIdle": "Die Zahlungsseite von Stripe kann die <amount></amount> Stripe-Guthaben nicht nutzen. Mit einer gespeicherten Karte nimmt Stripe zuerst das Guthaben, die Karte zahlt den Rest.",
+        "least": "Eine Karte zahlt mindestens {least}, daher bleiben {spare} in Ihrem Guthaben.",
+        "leastStripe": "Stripe belastet eine Karte mit mindestens {least}, also bleiben {spare} in Ihrem Guthaben.",
+        "currency": "Das Stripe-Konto dieses Arbeitsbereichs ist in {currency}, und Berichte werden in US-Dollar bezahlt. Eine Karte kann hier erst zahlen, wenn wir es ändern.",
+        "emailUs": "Schreiben Sie uns",
+        "saveCard": "Karte speichern",
+        "codeOff": "{off} auf die {amount}, die eine Karte zahlt",
+        "charged": "Der Karte belastet",
+        "voucher": "Gutschein"
       },
       "activateFree": "DOI aktivieren",
       "paid": {
-        "balance": "{amount} aus dem Guthaben bezahlt",
-        "balanceLeft": "{amount} aus dem Guthaben bezahlt, {left} übrig",
-        "card": "{amount} mit Karte bezahlt",
-        "code": "{code} hat den Preis gedeckt",
-        "codeRest": "{code} hat den Rest gedeckt",
-        "credit": "{amount} aus dem Guthaben des Kontos bezahlt"
-      }
+        "receipt": "Beleg",
+        "receiptFailed": "Der Beleg ließ sich nicht öffnen. Versuchen Sie es erneut."
+      },
+      "emailUs": "Schreiben Sie uns",
+      "status": "Status"
     },
     "meta": {
       "publish": "Veröffentlichen | Openscholar",

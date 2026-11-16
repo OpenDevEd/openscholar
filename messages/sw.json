@@ -395,7 +395,7 @@
         "refund": "Rejesho"
       }
     },
-    "credits": "krediti",
+    "credits": "krediti za AI",
     "refillOn": "+{amount} tarehe {date}",
     "bought": "{amount} zimenunuliwa",
     "topUp": "Ongeza salio",
@@ -429,7 +429,11 @@
       "backTo": "Hurudi kuwa {amount} tarehe {date}",
       "kept": "{amount} zimehifadhiwa hadi zitumike",
       "publish": "Chapisha",
-      "noLimit": "Bila kikomo"
+      "noLimit": "Bila kikomo",
+      "stripeCredit": "Salio la Stripe la {amount} hulipa kabla ya kadi",
+      "stripeCurrency": "Kadi haiwezi kulipia ripoti wakati akaunti ya Stripe iko katika {currency}",
+      "stripeCreditNoCard": "Salio la Stripe la {amount} hulipa kadi ikishahifadhiwa",
+      "saveCard": "Hifadhi kadi"
     }
   },
   "errors": {
@@ -4776,7 +4780,7 @@
       "papersAtOnce": "{count, plural, one {makala # kwa wakati mmoja} other {makala # kwa wakati mmoja}}",
       "anyPapersAJob": "Idadi yoyote ya makala kwa kazi",
       "papersAJob": "Hadi makala {count, number} kwa kazi",
-      "sharedCredits": "Krediti zilizoshirikiwa",
+      "sharedCredits": "Krediti za AI zilizoshirikiwa",
       "membersDraw": "{count, plural, one {Mwanachama # anachukua} other {Wanachama # wanachukua}} kutoka kwazo",
       "refillOn": "{amount} tarehe {date}",
       "upToMembers": "Hadi wanachama {count, number}",
@@ -6522,7 +6526,7 @@
         "live": "Imechapishwa",
         "sealed": "Imefungwa baada ya makubaliano kutiwa saini.",
         "paying": "Malipo yake yanaendelea, kwa hiyo hatua zake haziwezi kufunguliwa sasa. Benki ikiyakataa, zitafunguka tena.",
-        "liveNow": "Iko hewani. Badilisha maelezo yake kwa {action}.",
+        "liveNow": "Iko hewani. Badilisha maelezo yake kwa penseli kwenye safu yake katika ripoti zako.",
         "closed": "Mkaguzi aliiondoa, kwa hiyo haiwezi kubadilishwa.",
         "running": "Ukaguzi wake unaendelea. Hatua zitafunguka tena ukimalizika.",
         "notYours": "Ni mtu aliyeanzisha ripoti hii pekee anayeweza kuibadilisha."
@@ -6558,7 +6562,8 @@
       "shut": {
         "closed": "Mpango wake haujumuishi uchapishaji",
         "ownClosed": "Mpango wako haujumuishi uchapishaji",
-        "used": "Hakuna ripoti zilizobaki za kuanzisha leo"
+        "used": "Hakuna ripoti zilizobaki za kuanzisha leo",
+        "currency": "Akaunti yake ya Stripe iko katika {currency}"
       },
       "limit": {
         "personal": "Mpango wako unaanzisha {count, plural, one {ripoti #} other {ripoti #}} kwa siku. Rudi kesho, au hamia mpango wenye zaidi.",
@@ -6719,8 +6724,6 @@
       "changesDiscardFailed": "Mabadiliko hayakuweza kuachwa.",
       "discard": "Acha",
       "pages": "{count, plural, one {ukurasa #} other {kurasa #}}",
-      "agreementVersion": "Makubaliano toleo {version}",
-      "checksVersion": "Ukaguzi toleo {version}",
       "yourTitle": "Kichwa chako",
       "noDoi": "Bado hakuna DOI",
       "issn": "ISSN {issn}",
@@ -6859,7 +6862,6 @@
         "payWith": "Lipa kwa",
         "balance": "Salio la uchapishaji",
         "card": "Kadi",
-        "byCard": "Malipo kwa kadi",
         "due": "Kinachodaiwa wakati wa kuwasha",
         "later": "Hakuna kinachotozwa hadi ripoti iwashwe, na bado unaweza kubadilisha namna ya kulipa.",
         "code": "Msimbo {code}",
@@ -6867,18 +6869,26 @@
         "title": "Malipo",
         "sign": "Soma na utie saini",
         "noLimit": "Bila kikomo",
-        "credit": "Salio la akaunti",
-        "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako."
+        "credit": "Salio la Stripe",
+        "creditYours": "Una <amount></amount> kwenye Stripe",
+        "creditTheirs": "{owner} ina <amount></amount> kwenye Stripe",
+        "creditIdle": "Ukurasa wa malipo wa Stripe hauwezi kutumia salio la Stripe la <amount></amount>. Ukihifadhi kadi, Stripe hutumia salio kwanza na kadi hulipa kilichobaki.",
+        "least": "Kadi hulipa angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
+        "leastStripe": "Stripe hutoza kadi angalau {least}, kwa hiyo {spare} zinabaki kwenye salio lako.",
+        "currency": "Akaunti ya Stripe ya eneo hili la kazi iko katika {currency}, na ripoti hulipwa kwa dola za Marekani, kwa hiyo kadi haiwezi kulipa hapa hadi tuibadilishe.",
+        "emailUs": "Tuandikie",
+        "saveCard": "Hifadhi kadi",
+        "codeOff": "{off} punguzo kwenye {amount} zinazolipwa na kadi",
+        "charged": "Kilichotozwa kwenye kadi",
+        "voucher": "Vocha"
       },
       "activateFree": "Washa DOI",
       "paid": {
-        "balance": "{amount} zimelipwa kutoka kwenye salio",
-        "balanceLeft": "{amount} zimelipwa kutoka kwenye salio, zimebaki {left}",
-        "card": "{amount} zimelipwa kwa kadi",
-        "code": "{code} imegharamia bei",
-        "codeRest": "{code} imegharamia kilichobaki",
-        "credit": "{amount} zimelipwa kutoka kwenye salio la akaunti"
-      }
+        "receipt": "Risiti",
+        "receiptFailed": "Risiti haikuweza kufunguliwa. Jaribu tena."
+      },
+      "emailUs": "Tuandikie",
+      "status": "Hali"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

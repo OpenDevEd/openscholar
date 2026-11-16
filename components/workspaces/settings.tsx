@@ -784,7 +784,7 @@ export function WorkspaceBilling() {
                 </div>
               </div>
             ) : null}
-            {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} /> : null}
+            {publishing ? <PublicationBalanceRow parts={account.publication ?? []} unlimited={account.publicationUnlimited === true} credit={account.credit} currency={account.stripeCurrency} onSaveCard={admin && !account.card ? () => void attempt("portal", async () => window.location.assign(await openPortal({}))) : undefined} /> : null}
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">

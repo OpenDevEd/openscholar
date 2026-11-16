@@ -394,7 +394,7 @@
         "refund": "Ukubuyiselwa kwemali"
       }
     },
-    "credits": "amakhredithi",
+    "credits": "amakhredithi e-AI",
     "refillOn": "+{amount} ngo-{date}",
     "bought": "{amount} athengiwe",
     "topUp": "Gcwalisa",
@@ -428,7 +428,11 @@
       "backTo": "Ibuyela ku-{amount} ngo-{date}",
       "kept": "{amount} igcinwa kuze kusetshenziswe",
       "publish": "Shicilela",
-      "noLimit": "Akukho mkhawulo"
+      "noLimit": "Akukho mkhawulo",
+      "stripeCredit": "Isikweletu se-Stripe esingu-{amount} sikhokha ngaphambi kwekhadi",
+      "stripeCurrency": "Ikhadi alikwazi ukukhokhela imibiko uma i-akhawunti ye-Stripe isekwi-{currency}",
+      "stripeCreditNoCard": "Isikweletu se-Stripe esingu-{amount} sikhokha uma ikhadi seligciniwe",
+      "saveCard": "Gcina ikhadi"
     }
   },
   "errors": {
@@ -4775,7 +4779,7 @@
       "papersAtOnce": "{count, plural, one {# iphepha ngesikhathi esisodwa} other {# amaphepha ngesikhathi esisodwa}}",
       "anyPapersAJob": "Noma yimaphi amaphepha ngomsebenzi",
       "papersAJob": "Kuze kube ngu-{count, number} amaphepha ngomsebenzi",
-      "sharedCredits": "Amakhredithi ahlanganyelwe",
+      "sharedCredits": "Amakhredithi e-AI ahlanganyelwe",
       "membersDraw": "{count, plural, one {# ilungu lithatha} other {# amalungu athatha}} kuwo",
       "refillOn": "{amount} ngo-{date}",
       "upToMembers": "Kuze kube ngu-{count, number} amalungu",
@@ -6521,7 +6525,7 @@
         "live": "Kushicilelwe",
         "sealed": "Kuvaliwe uma isivumelwano sesisayiniwe.",
         "paying": "Inkokhelo yayo isaqhubeka, ngakho izinyathelo zayo azikwazi ukuvulwa manje. Uma ibhange liyenqaba, ziyavuleka futhi.",
-        "liveNow": "Isiku-inthanethi. Shintsha imininingwane yayo nge-{action}.",
+        "liveNow": "Isiphilile. Shintsha imininingwane yayo ngepensela emgqeni wayo emibikweni yakho.",
         "closed": "Umbuyekezi uyikhiphile, ngakho ayikwazi ukushintshwa.",
         "running": "Ukuhlola kwayo kuyaqhubeka. Izinyathelo zizovuleka futhi uma kuqedile.",
         "notYours": "Umuntu oqale lo mbiko kuphela ongawushintsha."
@@ -6557,7 +6561,8 @@
       "shut": {
         "closed": "Uhlelo lwayo alukufaki ukushicilela",
         "ownClosed": "Uhlelo lwakho alukufaki ukushicilela",
-        "used": "Ayisekho imibiko ongayiqala namuhla"
+        "used": "Ayisekho imibiko ongayiqala namuhla",
+        "currency": "I-akhawunti yayo ye-Stripe ikwi-{currency}"
       },
       "limit": {
         "personal": "Uhlelo lwakho luqala {count, plural, one {umbiko #} other {imibiko #}} ngosuku. Buya kusasa, noma uthuthele ohlelweni olunokuningi.",
@@ -6718,8 +6723,6 @@
       "changesDiscardFailed": "Izinguquko azikwazanga ukulahlwa.",
       "discard": "Lahla",
       "pages": "{count, plural, one {ikhasi elingu-#} other {amakhasi angu-#}}",
-      "agreementVersion": "Isivumelwano inguqulo {version}",
-      "checksVersion": "Ukuhlolwa inguqulo {version}",
       "yourTitle": "Isihloko sakho",
       "noDoi": "Ayikho i-DOI okwamanje",
       "issn": "ISSN {issn}",
@@ -6858,7 +6861,6 @@
         "payWith": "Khokha nge-",
         "balance": "Ibhalansi yokushicilela",
         "card": "Ikhadi",
-        "byCard": "Ukukhokha ngekhadi",
         "due": "Okukweletwayo lapho kuvulwa",
         "later": "Akukho okukhokhiswayo kuze kuvulwe umbiko, futhi indlela okhokha ngayo isengashintsha.",
         "code": "Ikhodi {code}",
@@ -6866,18 +6868,26 @@
         "title": "Inkokhelo",
         "sign": "Funda bese usayina",
         "noLimit": "Akukho mkhawulo",
-        "credit": "Isikweletu se-akhawunti",
-        "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho."
+        "credit": "Isikweletu se-Stripe",
+        "creditYours": "Unokungu-<amount></amount> ku-Stripe",
+        "creditTheirs": "I-{owner} inokungu-<amount></amount> ku-Stripe",
+        "creditIdle": "Ikhasi lokukhokha le-Stripe alikwazi ukusebenzisa isikweletu se-Stripe esingu-<amount></amount>. Uma ikhadi ligciniwe, i-Stripe ithatha isikweletu kuqala bese ikhadi likhokha okusele.",
+        "least": "Ikhadi likhokha okungenani {least}, ngakho {spare} kusala ebhalansini yakho.",
+        "leastStripe": "I-Stripe ikhokhisa ikhadi okungenani u-{least}, ngakho u-{spare} usala kubhalansi yakho.",
+        "currency": "I-akhawunti ye-Stripe yale ndawo yokusebenza ikwi-{currency}, futhi imibiko ikhokhwa ngamadola aseMelika, ngakho ikhadi alikwazi ukukhokha lapha size siyishintshe.",
+        "emailUs": "Sithumelele i-imeyili",
+        "saveCard": "Gcina ikhadi",
+        "codeOff": "{off} kususwe ku-{amount} ekhokhwa yikhadi",
+        "charged": "Okukhokhiswe ekhadini",
+        "voucher": "Ivawusha"
       },
       "activateFree": "Vula i-DOI",
       "paid": {
-        "balance": "Kukhokhwe {amount} ngebhalansi",
-        "balanceLeft": "Kukhokhwe {amount} ngebhalansi, kusele {left}",
-        "card": "Kukhokhwe {amount} ngekhadi",
-        "code": "I-{code} ikhokhele inani",
-        "codeRest": "I-{code} ikhokhele okusele",
-        "credit": "Kukhokhwe {amount} ngesikweletu se-akhawunti"
-      }
+        "receipt": "Irisidi",
+        "receiptFailed": "Irisidi ayivulekanga. Zama futhi."
+      },
+      "emailUs": "Sithumelele i-imeyili",
+      "status": "Isimo"
     },
     "meta": {
       "publish": "Shicilela | Openscholar",
