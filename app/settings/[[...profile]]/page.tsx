@@ -321,18 +321,20 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                   <Icon className="size-4" />
                 </span>
                 <div className="min-w-0 rounded-xl px-3 py-2 transition-colors group-hover:bg-muted">
-                  <p className="flex items-center gap-2 truncate text-sm font-medium">
-                    {e.title}
-                    {e.here ? <span className="text-xs font-normal text-primary">{t("thisDevice")}</span> : null}
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                    <span className="min-w-0 truncate">{e.title}</span>
+                    {e.here ? <span className="shrink-0 text-xs font-normal text-primary">{t("thisDevice")}</span> : null}
                   </p>
-                  <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                  {/* On a phone the address goes under the place when both don't fit, so the place keeps its name. */}
+                  <p className="flex min-w-0 flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
                     <span className={cn("shrink-0 tabular-nums sm:hidden", e.here && "font-medium text-primary")}>{e.here ? t("now") : format.relativeTime(e.last, now)}</span>
                     {e.place ? <span className="flex min-w-0 items-center gap-1.5">{e.country ? <CountryFlag countryCode={e.country} className="shrink-0" /> : null}<span className="truncate">{e.place}</span></span> : null}
                     {e.ip ? <span className="font-mono text-2xs text-muted-foreground/70">{e.ip}</span> : null}
                   </p>
                 </div>
                 {e.here ? (
-                  <span className="w-24" />
+                  // Keeps the rows' text level with the sign-out buttons beside the other devices; a phone has the room for the name instead.
+                  <span className="w-24 max-sm:hidden" />
                 ) : (
                   <Button
                     variant="ghost"
