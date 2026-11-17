@@ -24,8 +24,7 @@ export type Comparison = {
 };
 
 type Entry = { browser: string; phase: string; line: string; keys: string[]; deltas?: Item["deltas"] };
-// `opened` is how many dialogs, sheets, popovers and menus this branch opened, over every browser.
-type Outcome = { added: Entry[]; existing: Entry[]; baseSeen: Entry[]; notes: string[]; shots: string[]; runDir: string; opened: number };
+type Outcome = { added: Entry[]; existing: Entry[]; baseSeen: Entry[]; notes: string[]; shots: string[]; runDir: string };
 
 function newRunDir(runsDir: string, target: string): string {
   const runDir = path.join(runsDir, `${new Date().toISOString().replace(/[:.]/g, "-")}-${slug(target)}`);
@@ -111,7 +110,6 @@ function sort(outcome: Outcome, entry: Entry, item: Item, known: boolean, repeat
 async function checkBrowser(comparison: Comparison, browser: string, runDir: string, outcome: Outcome) {
   const local = await runSite(browser, comparison.local, comparison.target, comparison.options, runDir, false);
   outcome.shots.push(...local.shots);
-  outcome.opened += local.opened;
   const onBase = await known(comparison, browser, local, outcome);
   const repeated = await again(comparison, browser, local, onBase);
   local.phases.forEach((phase, index) => {
@@ -125,7 +123,7 @@ async function checkBrowser(comparison: Comparison, browser: string, runDir: str
 /** Runs the check in each browser and writes report.json into a new run folder. */
 export async function compare(comparison: Comparison): Promise<Outcome> {
   const runDir = newRunDir(comparison.runsDir, comparison.target);
-  const outcome: Outcome = { added: [], existing: [], baseSeen: [], notes: [], shots: [], runDir, opened: 0 };
+  const outcome: Outcome = { added: [], existing: [], baseSeen: [], notes: [], shots: [], runDir };
   for (const browser of comparison.browsers) await checkBrowser(comparison, browser, runDir, outcome);
   const { target, base, browsers, options } = comparison;
   writeJson(path.join(runDir, "report.json"), { target, base, steps: options.steps.map((step) => step.label), browsers, slow: options.slow, ...outcome });

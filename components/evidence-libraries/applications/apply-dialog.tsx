@@ -141,7 +141,7 @@ function CommunityHeader({ community }: { community: AppliedCommunity }) {
   const t = useTranslations("communityApplications");
   return (
     <DialogHeader className="flex-row items-center gap-3 space-y-0 border-b border-border-subtle p-5 pe-12 text-start max-sm:@max-[17rem]:flex-col max-sm:@max-[17rem]:items-start max-sm:@max-[17rem]:pe-5">
-      <span className="size-12 shrink-0 overflow-hidden rounded-xl bg-inset">
+      <span className="size-12 shrink-0 self-start overflow-hidden rounded-xl bg-inset">
         <FadeImage src={community.faviconUrl ?? "/icon.svg"} fallback="/icon.svg" className="size-full object-cover" />
       </span>
       <div className="min-w-0 flex-1 max-sm:@max-[17rem]:wrap-anywhere">

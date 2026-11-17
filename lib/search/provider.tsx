@@ -131,6 +131,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const tValidation = useTranslations("validation");
   const source = useSearchSource();
   const searchId = getEffectiveSearchId(usePathname(), local?.searchId) ?? '';
+  // A boolean for the context: the object a dialog passes is new on each of its renders.
+  const inPlace = local !== undefined;
   
   const account = useContext(ResearchContext);
   // The ID a link to it carries (#653): its document's, which a guest's page already goes by.
@@ -900,6 +902,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   // Build context value
   const value: SearchContextValue = useMemo(() => ({
     searchId,
+    local: inPlace,
     
     params: urlParams as SearchParams,
     
@@ -948,6 +951,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     mutate: () => mutate(),
   }), [
     searchId,
+    inPlace,
     urlParams,
     data,
     oql,

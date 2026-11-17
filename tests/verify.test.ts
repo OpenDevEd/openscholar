@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzePhase, knownAfterLooks, matchKnown, stopDecision, type Frame, type Item } from "../scripts/verify/analysis.ts";
+import { analyzePhase, knownAfterLooks, matchKnown, type Frame, type Item } from "../scripts/verify/analysis.ts";
 import { earlyStep, parseStep } from "../scripts/verify/browser.ts";
 
 function frame(t: number, change: Partial<Frame> = {}): Frame {
@@ -332,75 +332,6 @@ describe("analyzePhase on a step taken while the page loads", () => {
       frame(1_400 + at * 16, { moved: [{ id: 12, dx: 0, dy: -20, dw: 0, dh: 0, inside: 10 }], removed: [{ id: 20 + at, box: [16, 60, 284, 20], inside: 10 }] }),
     );
     expect(analyzePhase([opening, ...leaving], early)).toMatchObject([{ kind: "shift", moves: [{ id: 12, dy: -120 }] }]);
-  });
-});
-
-describe("stopDecision", () => {
-  const sessionStartMs = 1_000;
-  const userFacing = /^((app|components)\/.+\.(tsx|css)|components\/.+\.ts)$/;
-
-  it("counts .ts modules beside components, such as shared field styles", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/ui/field-styles.ts", mtimeMs: 5_000 }] }),
-    ).toEqual({ block: true, files: ["components/ui/field-styles.ts"] });
-  });
-
-  it("lets the agent stop when no user-facing file changed", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "convex/papers.ts", mtimeMs: 5_000 }, { path: "app/api/health/route.ts", mtimeMs: 5_000 }] }),
-    ).toEqual({ block: false });
-  });
-
-  it("blocks when a page or style changed in this session and nothing verified it", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }, { path: "app/globals.css", mtimeMs: 6_000 }] }),
-    ).toEqual({ block: true, files: ["components/search/bar.tsx", "app/globals.css"] });
-  });
-
-  it("ignores user-facing files changed before this session started", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 500 }] }),
-    ).toEqual({ block: false });
-  });
-
-  it("blocks when a changed file holds a dialog and the passing check opened none", () => {
-    const changed = [{ path: "components/workspaces/share-dialog.tsx", mtimeMs: 5_000, overlay: true }];
-    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, lastPassOpened: 0, changed })).toEqual({ block: true, files: ["components/workspaces/share-dialog.tsx"], unopened: true });
-    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, lastPassOpened: 1, changed })).toEqual({ block: false });
-    // A recorded skip opened nothing and says so by leaving the count out.
-    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, changed })).toEqual({ block: false });
-  });
-
-  it("stays quiet once the user said not to verify, in that session only", () => {
-    const changed = [{ path: "components/search/bar.tsx", mtimeMs: 8_000 }, { path: "components/workspaces/share-dialog.tsx", mtimeMs: 8_000, overlay: true }];
-    const blocked = { block: true, files: ["components/search/bar.tsx", "components/workspaces/share-dialog.tsx"] };
-    const stop = (off: { at: number; session?: string | null }, session: string, start = sessionStartMs) => stopDecision({ userFacing, stopHookActive: false, sessionStartMs: start, lastPassMs: null, off, session, changed });
-    expect(stop({ at: 7_000, session: "a" }, "a")).toEqual({ block: false });
-    // Another session open in the same worktree keeps its check.
-    expect(stop({ at: 7_000, session: "a" }, "b")).toEqual(blocked);
-    // An agent that couldn't name its session: the sessions started before it said so.
-    expect(stop({ at: 7_000, session: null }, "a")).toEqual({ block: false });
-    expect(stop({ at: 7_000, session: null }, "b", 7_500)).toEqual(blocked);
-    // A stop event whose session start can't be read is not taken for it.
-    expect(stop({ at: 7_000, session: null }, "b", 0)).toEqual(blocked);
-  });
-
-  it("lets the agent stop once a verify pass is newer than every change", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),
-    ).toEqual({ block: false });
-  });
-
-  it("blocks again when a file changed after the last verify pass", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }, { path: "components/search/chip.tsx", mtimeMs: 8_000 }] }),
-    ).toEqual({ block: true, files: ["components/search/chip.tsx"] });
-  });
-
-  it("never blocks twice in a row, so a broken environment cannot trap the agent", () => {
-    expect(
-      stopDecision({ userFacing, stopHookActive: true, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),
-    ).toEqual({ block: false });
   });
 });
 

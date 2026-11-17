@@ -143,7 +143,7 @@ test("saves only verified credentials, keeps them private, and assembles the run
   ).rejects.toThrow(/CONFLICT/);
 });
 
-test("refuses invalid tokens and Crossref without Zenodo without saving anything", async () => {
+test("refuses invalid tokens, a licence Zenodo doesn't take, and Crossref without Zenodo without saving anything", async () => {
   const fixture = await createDraftSetupFixture("invalid_publication");
   const libraryId = fixture.created.libraryId;
   const fetch = vi.fn<typeof globalThis.fetch>(async () =>
@@ -165,6 +165,17 @@ test("refuses invalid tokens and Crossref without Zenodo without saving anything
     await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId)),
   ).toBeNull();
   fetch.mockClear();
+  // A typo in the licence would fail every deposit later, so the save refuses it before calling Zenodo.
+  await expect(
+    fixture.admin.action(api.evidenceLibraries.publicationProviderActions.verifyAndSave, {
+      libraryId,
+      settings: { ...customZenodo(), zenodo: { ...customZenodo().zenodo, license: "cc-by-4" } },
+      credentials: { zenodoToken: "valid-token" },
+      expectedUpdatedAt: null,
+    }),
+  ).rejects.toThrow(/licence/);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId))).toBeNull();
   const settings = structuredClone(EMPTY_PUBLICATION_SETTINGS);
   settings.crossref.mode = "custom";
   await expect(

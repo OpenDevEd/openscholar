@@ -7,7 +7,7 @@ import { autocompleteParameters } from "../openalex/autocomplete";
 import { authorFilterValue, isAuthorId } from "../openalex/author-filter";
 import { fetchOqlWorks } from "../openalex/oql-works";
 import { fetchOwnWorks } from "../openalex/read-works";
-import { sourceForId } from "./source";
+import { paperOfQuery, sourceForId } from "./source";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -143,5 +143,22 @@ describe("sending OQL", () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ validation: { errors: [{ message: "this field is unknown", position: 12 }] } }), { status: 400 })));
     const result = await fetchOqlWorks("works where nope is value", { perPage: 1 }, "openscholar");
     expect(result).toMatchObject({ ok: false, detail: { problem: "this field is unknown", near: { token: "nope", after: " is (value)" } } });
+  });
+});
+
+describe("a query that is a paper's ID", () => {
+  it("opens that paper's page, however the ID is written", () => {
+    expect(paperOfQuery(" r100666 ")).toBe("/papers/R100666");
+    expect(paperOfQuery("W2741809807")).toBe("/papers/W2741809807");
+    expect(paperOfQuery("https://openalex.org/W2741809807")).toBe("/papers/W2741809807");
+    expect(paperOfQuery("OS79563844")).toBe("/papers/OS79563844");
+  });
+
+  it("stays a search when the ID is only part of it, when it's short enough to be a word, or when it's a DOI", () => {
+    expect(paperOfQuery("school feeding R100666")).toBeNull();
+    expect(paperOfQuery("R2")).toBeNull();
+    expect(paperOfQuery("W2")).toBeNull();
+    expect(paperOfQuery("OS2")).toBeNull();
+    expect(paperOfQuery("10.53832/openscholar-reports.r100666")).toBeNull();
   });
 });

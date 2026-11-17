@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useRef, useState } from "react";
 import type React from "react";
-import { Check, Plus, X } from "@/components/icons";
+import { Check, ChevronDown, Plus, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -119,6 +119,105 @@ export function OptionPicker({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Words as the search compares them: lower case, and anything between letters, digits and dots a single space. */
+const words = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}.]+/gu, " ").trim();
+
+/**
+ * The options that hold what was typed, best first: an exact id or name, then one that starts with it, then one with a
+ * word that does, then the rest, each in list order. One list without headings, since a match ranks across groups.
+ */
+function ranked(options: readonly PickerOption[], search: string): PickerOption[] {
+  const typed = words(search);
+  const rank = (option: PickerOption) => {
+    const [id, name] = [words(option.id), words(option.name)];
+    if (id === typed || name === typed) return 0;
+    if (id.startsWith(typed) || name.startsWith(typed)) return 1;
+    if (` ${name} ${id}`.includes(` ${typed}`)) return 2;
+    return name.includes(typed) || id.includes(typed) ? 3 : -1;
+  };
+  return options
+    .map((option) => [option, rank(option)] as const)
+    .filter(([, place]) => place >= 0)
+    .sort((a, b) => a[1] - b[1])
+    .map(([option]) => ({ ...option, group: undefined }));
+}
+
+/**
+ * A searchable single choice in a popover, from the same list as OptionPicker: the trigger names what is picked, and
+ * picking another closes it. A value that isn't one of the options still shows, as it is, so nothing saved is hidden.
+ * It ranks its own search: cmdk 1.1.1 ranks rows within a group but never reorders the groups, so the best match in a
+ * later group would sit below weak ones in the first.
+ */
+export function OptionSelect({
+  id,
+  label,
+  value,
+  options,
+  searchPlaceholder,
+  emptyText,
+  invalid = false,
+  disabled = false,
+  onChange,
+}: {
+  id?: string;
+  label: string;
+  value: string;
+  options: readonly PickerOption[];
+  searchPlaceholder: string;
+  emptyText: string;
+  /** The value isn't one the list allows: the trigger says so. */
+  invalid?: boolean;
+  disabled?: boolean;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const picked = options.find((option) => option.id === value);
+  return (
+    <Popover
+      modal
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          aria-label={label}
+          aria-invalid={invalid || undefined}
+          disabled={disabled}
+          className="h-9 w-full justify-between font-normal aria-invalid:border-destructive"
+        >
+          <TooltipHint label={picked?.name ?? value} onlyWhenClipped>
+            <span className="min-w-0 truncate">{picked?.name ?? value}</span>
+          </TooltipHint>
+          <ChevronDown className="size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent aria-label={label} className="w-(--radix-popover-trigger-width) min-w-72 p-0" align="start">
+        <OptionList
+          options={words(search) ? ranked(options, search) : options}
+          selected={[value]}
+          searchPlaceholder={searchPlaceholder}
+          emptyText={emptyText}
+          onSearch={setSearch}
+          onToggle={(picked) => {
+            onChange(picked);
+            setOpen(false);
+            setSearch("");
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 

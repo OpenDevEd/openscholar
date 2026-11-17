@@ -2,7 +2,8 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
-import { SEMANTIC_FIELD } from "@/lib/search/source";
+import { useRouter } from "next/navigation";
+import { paperOfQuery, SEMANTIC_FIELD } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import { Search, AiIcon } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
@@ -50,6 +51,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const tValidation = useTranslations("validation");
   const locale = useLocale();
   const search = useSearchOptional();
+  const router = useRouter();
   const effectiveSearchId = useEffectiveSearchId();
 
   // Research question state
@@ -118,10 +120,13 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const handleSearchSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
+      // A paper's ID opens its page, unless the search is built in place (a community's source).
+      const paper = search?.local ? null : paperOfQuery(localInputValue);
+      if (paper) return router.push(paper);
       // No keywords is a search too: every work the filters leave, newest first.
       search?.setQuery(localInputValue);
     },
-    [search, localInputValue]
+    [search, localInputValue, router]
   );
 
   // Handle research question submit

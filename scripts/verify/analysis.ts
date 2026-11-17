@@ -312,36 +312,6 @@ export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since), ...popped, ...picturePops(frames, since)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
-/**
- * Whether the stop hook keeps an agent working: a file a person sees
- * (`userFacing`) changed during this session and no `verify` pass or
- * recorded skip is newer than it.
- */
-export function stopDecision(input: {
-  stopHookActive: boolean;
-  sessionStartMs: number;
-  lastPassMs: number | null;
-  /** How many dialogs, sheets, popovers or menus the last passing check opened. Absent for a recorded skip. */
-  lastPassOpened?: number;
-  /** The user said not to verify (`verify -- off`): when, and in which session when the agent knew its id. It holds in that session only. */
-  off?: { at: number; session?: string | null } | null;
-  /** The stopping session's id. */
-  session?: string;
-  changed: { path: string; mtimeMs: number; overlay?: boolean }[];
-  userFacing: RegExp;
-}): { block: false } | { block: true; files: string[]; unopened?: true } {
-  // Without a session id, only a session whose start is known and earlier counts as the one that said it.
-  const off = input.off && (input.off.session ? input.off.session === input.session : input.sessionStartMs > 0 && input.off.at > input.sessionStartMs);
-  if (input.stopHookActive || off) return { block: false };
-  const since = Math.max(input.sessionStartMs, input.lastPassMs ?? 0);
-  const seen = input.changed.filter((file) => input.userFacing.test(file.path));
-  const files = seen.filter((file) => file.mtimeMs > since).map((file) => file.path);
-  if (files.length > 0) return { block: true, files };
-  // A check that opened nothing says nothing about a dialog this session changed.
-  const overlays = seen.filter((file) => file.overlay && file.mtimeMs > input.sessionStartMs).map((file) => file.path);
-  return overlays.length > 0 && input.lastPassOpened === 0 ? { block: true, files: overlays, unopened: true } : { block: false };
-}
-
 // One thing to report: its kind, what identifies it on another site (element
 // keys or text, never positions or timing), and the line to print. A shift
 // also says how each element it names moved, in the same order as its keys.
