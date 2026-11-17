@@ -149,11 +149,9 @@ workflow.
   on a throwaway Convex project of its own.
 - Run one final browser, deployment, or live-service gate when the changed
   boundary needs one.
-- A change a person sees is done when `npm run verify -- shift` passes for
-  every route it touched, in a repository that has the command (the `verify`
-  skill says how). On the user's machine a stop hook keeps the session open
-  until it passes, or until `npm run verify -- skip "<reason>"` records why it
-  can't.
+- When a change touches a loading state, a dialog, sheet, popover or menu, or
+  motion, run `npm run verify -- shift` on the routes it touched, in a
+  repository that has the command (the `verify` skill says how).
 - A new or changed flow a person walks through is done when the first two
   passes of the `first-use-qa` skill are complete: a state table for each
   changed screen, then a first-use walk on a new account and on an account with
