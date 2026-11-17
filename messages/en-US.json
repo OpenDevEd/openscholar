@@ -346,7 +346,14 @@
     "verified": "Verified {date}",
     "checkedBeforeSaving": "Credentials are checked before saving.",
     "verifying": "Verifying…",
-    "verifySave": "Verify and save"
+    "verifySave": "Verify and save",
+    "account": "Your Zenodo account",
+    "accountHint": "Records are archived in this Zenodo account, under its name",
+    "accountManage": "Manage in Connections",
+    "accountNone": "No Zenodo account connected",
+    "accountNoneHint": "Connect yours to archive this community's records in it",
+    "accountConnect": "Connect Zenodo",
+    "accountNeeded": "Connect a Zenodo account first, or choose another option."
   },
   "auth": {
     "backToSearch": "Back to search",
@@ -1753,7 +1760,9 @@
     "siteSignsOut": "Signed out there until you allow it again",
     "disconnectedTime": "Disconnected {time}",
     "allowAgain": "Allow again",
-    "openSite": "Open {site}"
+    "openSite": "Open {site}",
+    "zenodoAbout": "Archive what you publish in your own account",
+    "zenodoKeeps": "Records already archived stay in your Zenodo account"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6887,7 +6896,24 @@
         "receiptFailed": "The receipt couldn’t be opened. Try again."
       },
       "emailUs": "Email us",
-      "status": "Status"
+      "status": "Status",
+      "archive": {
+        "label": "Archive",
+        "openscholar": "Openscholar's archive",
+        "openscholarBody": "Kept on Zenodo in Openscholar's account",
+        "own": "Your Zenodo account",
+        "ownBody": "Kept on Zenodo under your name",
+        "connectFirst": "Connect your Zenodo account to keep the report there.",
+        "connect": "Connect Zenodo",
+        "connectNeeded": "Connect Zenodo to sign",
+        "help": {
+          "about": "Why reports are archived",
+          "title": "Why a report is archived",
+          "why": "A DOI has to lead to the report for good. Crossref, which registers the DOI, asks for a permanent copy in an archive, and Zenodo keeps it.",
+          "same": "The report keeps its Crossref DOI wherever it is archived.",
+          "policies": "How Zenodo keeps records"
+        }
+      }
     },
     "meta": {
       "publish": "Publish | Openscholar",

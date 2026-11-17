@@ -1,11 +1,13 @@
 "use client";
 
+import { ZenodoMark, preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import type { FunctionReturnType } from "convex/server";
 import { FlaskConical, KeyRound, ShieldCheck, PublishIcon } from "@/components/icons";
+import { connectZenodo, useZenodoAccount } from "@/lib/mock/zenodo-account";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -35,22 +37,29 @@ type Saved = FunctionReturnType<
 >;
 type ActiveMode = "sandbox" | "custom";
 
+/**
+ * Which account a provider is used with: our sandbox, the person's own connected account (Zenodo only, `own`), or
+ * credentials typed in.
+ */
 function CredentialMode({
   provider,
   value,
   onChange,
+  own,
   children,
 }: {
   provider: string;
-  value: ActiveMode;
-  onChange: (mode: ActiveMode) => void;
+  value: ActiveMode | "account";
+  onChange: (mode: ActiveMode | "account") => void;
+  /** MOCK (#1237): what the connected-account tab shows; without it there is no such tab. */
+  own?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const t = useTranslations("publicationSettings");
   return (
     <Tabs
       value={value}
-      onValueChange={(mode) => onChange(mode as ActiveMode)}
+      onValueChange={(mode) => onChange(mode as ActiveMode | "account")}
       className="gap-4"
     >
       <TabsList aria-label={t("credentials", { provider })}>
@@ -58,6 +67,12 @@ function CredentialMode({
           <FlaskConical />
           {t("sandbox")}
         </TabsTrigger>
+        {own ? (
+          <TabsTrigger value="account">
+            <ZenodoMark className="size-4 rounded-[4px]" />
+            {t("account")}
+          </TabsTrigger>
+        ) : null}
         <TabsTrigger value="custom">
           <KeyRound />
           {t("custom")}
@@ -70,6 +85,7 @@ function CredentialMode({
           leading={<FlaskConical className="size-4 text-muted-foreground" />}
         />
       </TabsContent>
+      {own ? <TabsContent value="account">{own}</TabsContent> : null}
       <TabsContent value="custom">{children}</TabsContent>
     </Tabs>
   );
@@ -102,6 +118,7 @@ export function PublicationSection({
           key={`${libraryId}:${data.updatedAt}`}
           saved={data}
           disabled={operationRunning}
+          ownAccount
           onSave={(input) => save({ libraryId, ...input })}
         />
       ) : (
@@ -123,6 +140,7 @@ export function PublicationForm({
   onSave,
   words,
   crossrefAlone = false,
+  ownAccount = false,
 }: {
   saved: Saved;
   disabled?: boolean;
@@ -136,6 +154,8 @@ export function PublicationForm({
   words?: { zenodoHint?: string; crossrefHint?: string; namespaceHint?: string; namespacePlaceholder?: string; savedHint?: string };
   /** Crossref may be on without Zenodo. A community's runtime refuses that; Openscholar Reports chooses. */
   crossrefAlone?: boolean;
+  /** Zenodo can be the person's own connected account: a community's, not Openscholar Reports' own publishing. */
+  ownAccount?: boolean;
 }) {
   const t = useTranslations("publicationSettings");
   const format = useFormatter();
@@ -144,10 +164,17 @@ export function PublicationForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const zenodo = settings.zenodo.mode !== "off";
+  // MOCK (#1237): the community archives into the Zenodo account its admin connected. Kept here until the
+  // server takes the mode; saving it only says it is saved.
+  const account = useZenodoAccount();
+  const [own, setOwn] = useState(false);
+  // The account tab's mark is fetched with the form, so it is there when the tab opens.
+  preloadZenodoMark();
   const crossref = settings.crossref.mode !== "off";
   const dirty =
     JSON.stringify(settings) !== JSON.stringify(saved.settings) ||
-    Object.values(credentials).some(Boolean);
+    Object.values(credentials).some(Boolean) ||
+    own;
   const updateZenodo = (patch: Partial<PublicationSettings["zenodo"]>) =>
     setSettings((current) => ({
       ...current,
@@ -165,6 +192,14 @@ export function PublicationForm({
     if (busy || disabled) return;
     setBusy(true);
     setError(null);
+    if (own) {
+      // MOCK: nothing is sent; the real save checks the connection can deposit, as it checks a token.
+      await new Promise((done) => setTimeout(done, 900));
+      setBusy(false);
+      if (!account) return setError(t("accountNeeded"));
+      toast.success(t("saved"), { description: words?.savedHint ?? t("activateHint") });
+      return;
+    }
     try {
       await onSave({
         settings,
@@ -212,8 +247,39 @@ export function PublicationForm({
             <>
               <CredentialMode
                 provider="Zenodo"
-                value={settings.zenodo.mode as ActiveMode}
-                onChange={(mode) => updateZenodo({ mode })}
+                value={own ? "account" : (settings.zenodo.mode as ActiveMode)}
+                onChange={(mode) => {
+                  setOwn(mode === "account");
+                  if (mode !== "account") updateZenodo({ mode });
+                }}
+                own={
+                  ownAccount ? (
+                    account ? (
+                      <PanelRow
+                        title={account.name}
+                        hint={t("accountHint")}
+                        leading={<ZenodoMark className="size-8 rounded-lg" />}
+                        action={
+                          <a className="text-xs text-primary hover:underline" href="/settings/connections">
+                            {t("accountManage")}
+                          </a>
+                        }
+                      />
+                    ) : (
+                      <PanelRow
+                        title={t("accountNone")}
+                        hint={t("accountNoneHint")}
+                        leading={<ZenodoMark className="size-8 rounded-lg" />}
+                        action={
+                          // A window of its own, so the settings typed here stay as they are while Zenodo is connected.
+                          <Button size="sm" type="button" onClick={() => connectZenodo(window.location.pathname + window.location.search, { window: true })}>
+                            {t("accountConnect")}
+                          </Button>
+                        }
+                      />
+                    )
+                  ) : undefined
+                }
               >
                 <Field label={t("token")} hint={t("tokenHint")}>
                   {(id) => (
@@ -330,8 +396,9 @@ export function PublicationForm({
                 value={settings.crossref.mode as ActiveMode}
                 onChange={(mode) => {
                   // The own account's details come back as they were kept; a first switch starts them empty.
+                  // Crossref has no connected-account tab, so the mode is one of its own.
                   updateCrossref({
-                    mode,
+                    mode: mode as ActiveMode,
                     ...(mode === "custom"
                       ? (saved.custom.crossref ?? {
                           prefix: "",

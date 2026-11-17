@@ -58,6 +58,9 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { ArchiveChoice } from "@/components/reports/archive-choice";
+import { connectZenodo, useZenodoAccount } from "@/lib/mock/zenodo-account";
+import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Bill, PaidBill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { WayOnButton, WorkspaceChoice, type WayOn } from "@/components/reports/workspace-choice";
@@ -1108,6 +1111,15 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // with the report when it is signed, and open to change until it is activated.
   const [picked, setPicked] = useState<PayWith | null>(null);
   const payWith: PayWith = starts?.balance === 0 ? "card" : (picked ?? "balance");
+  // Where the report's permanent copy is kept (#1237): Openscholar's Zenodo account, or the author's own. Kept in
+  // the address, so it is still picked after connecting Zenodo. MOCK: not yet sent with the signing.
+  const [archive, setArchive] = useQueryState("archive", parseAsStringLiteral(["openscholar", "own"] as const).withDefault("openscholar"));
+  const zenodo = useZenodoAccount();
+  const [connecting, setConnecting] = useState(false);
+  // Zenodo's mark, in the archive choice and its "?", is fetched with the step.
+  preloadZenodoMark();
+  // Their own account picked, with none connected: the report can't be signed until it is.
+  const zenodoNeeded = archive === "own" && !zenodo;
   const choosing = choosesLicence(agreement.text);
   const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
   // An own licence still being typed reads in the agreement as far as it goes.
@@ -1190,6 +1202,21 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
         </section>
       ) : null}
+      {/* Where the permanent copy goes, said before the agreement that promises one. */}
+      <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
+        <ArchiveChoice
+          value={archive}
+          onChange={(picked) => void setArchive(picked === "openscholar" ? null : picked)}
+          account={zenodo ?? null}
+          connecting={connecting}
+          onConnect={() => {
+            // A window of its own, so everything picked on this step stays as it is while Zenodo is connected.
+            setConnecting(true);
+            connectZenodo(window.location.pathname + window.location.search, { window: true });
+            setTimeout(() => setConnecting(false), 1500);
+          }}
+        />
+      </section>
       <h3 className={SECTION}>{t("payment.sign")}</h3>
       <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
@@ -1232,6 +1259,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         ) : null}
         {/* Why Sign is shut while an own licence lacks its name or address, said beside it. */}
         {!licence && !blocked ? <p className="text-sm text-muted-foreground">{t("licence.ownNeeded")}</p> : null}
+        {licence && zenodoNeeded && !blocked ? <p className="text-sm text-muted-foreground">{t("archive.connectNeeded")}</p> : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -1241,7 +1269,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         {starts ? (
           <NextButton
             busy={busy || !!signed || leaving}
-            disabled={!agreed || !name.trim() || !licence || busy || !!signed || leaving || settling || !!blocked || !workspaceId}
+            disabled={!agreed || !name.trim() || !licence || zenodoNeeded || busy || !!signed || leaving || settling || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
                 say(null);
