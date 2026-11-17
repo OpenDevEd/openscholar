@@ -7,6 +7,7 @@ import { useUIStore, useCurrentQueryStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 import { useQueryChangeHandler, useCreateSearchFilters } from "@/lib/hooks";
 import { submitNewSearch } from "@/lib/search";
+import { paperOfQuery } from "@/lib/search/source";
 import { cn } from "@/lib/utils";
 import { Search, Loader2 } from "@/components/icons";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +64,13 @@ function PageContent() {
     // If the event comes from a form submission, prevent default
     e?.preventDefault();
     if (leaving) return;
+
+    // A paper's ID names that paper: its page, not a search for the ID's letters.
+    const paper = paperOfQuery(text);
+    if (paper) {
+      startLeaving(() => router.push(paper));
+      return;
+    }
 
     setLoadingResultIndex(null);
 
