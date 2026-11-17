@@ -174,7 +174,9 @@ export function useSavePaper(paper: WorkInput | undefined) {
     })().finally(() => settleSaved(paper.id, token));
   };
 
-  const toggle = () => {
+  // A click's `detail`: the second click of a double click lands on the pressed button and would take the save back.
+  const toggle = (event?: { detail: number }) => {
+    if (event && event.detail > 1) return;
     if (!isSignedIn) {
       try {
         if (paper) window.sessionStorage.setItem(SAVE_AFTER_SIGN_IN, paper.id);
