@@ -2,6 +2,7 @@
 
 import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
 import type { CustomCrossref, PublicationSecrets, PublicationSettings } from "./publicationValidators";
+import { isZenodoLicence } from "../../lib/zenodo-licences";
 
 const timeout = () => AbortSignal.timeout(15_000);
 // zenodo.org answers 403 with an HTML page to Node fetch's default `node` User-Agent; its sandbox does not.
@@ -183,6 +184,9 @@ export async function verifiedPublication(
   ] as const)
     settings.crossref[key] = settings.crossref[key].trim();
   settings.zenodo.license = settings.zenodo.license.trim().toLowerCase();
+  // Zenodo refuses a deposit under any other licence, so one outside its list is refused here, before anything is saved.
+  if (settings.zenodo.mode !== "off" && !isZenodoLicence(settings.zenodo.license))
+    throw new Error("Zenodo doesn't take this licence. Pick one from the list.");
   settings.crossref.suffixNamespace ||= namespace;
   // The own accounts stay kept through a spell on the sandbox: switching back takes them up again, and anything typed
   // replaces them.
