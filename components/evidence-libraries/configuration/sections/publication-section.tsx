@@ -237,9 +237,11 @@ export function PublicationForm({
               aria-label={t("enableZenodo")}
               checked={zenodo}
               disabled={crossref && !crossrefAlone}
-              onCheckedChange={(enabled) =>
-                updateZenodo({ mode: enabled ? "sandbox" : "off" })
-              }
+              onCheckedChange={(enabled) => {
+                // Off, there is no account to archive with: the connected one is unpicked with the rest.
+                if (!enabled) setOwn(false);
+                updateZenodo({ mode: enabled ? "sandbox" : "off" });
+              }}
             />
           }
         >

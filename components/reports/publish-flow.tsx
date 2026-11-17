@@ -1210,6 +1210,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           account={zenodo ?? null}
           connecting={connecting}
           onConnect={() => {
+            // Signed out, there is no one to connect Zenodo for yet: signing in comes first, back on this step.
+            if (!user) return openSignIn();
             // A window of its own, so everything picked on this step stays as it is while Zenodo is connected.
             setConnecting(true);
             connectZenodo(window.location.pathname + window.location.search, { window: true });
