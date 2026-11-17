@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Prove an OpenScholar change in real browsers with `npm run verify`. Use whenever a change touches anything a person sees (app/, components/, styles), when reproducing a visual, loading or layout bug, and before saying UI work is done. Starts this worktree's app, signs in, checks that pages hold still in Chromium and Firefox with slow data, compares with dev.openscholar.ai, and stops what it started.
+description: Prove an OpenScholar change in real browsers with `npm run verify`. Use when a change touches a loading state, a dialog, sheet, popover or menu, or motion, and when reproducing a visual, loading or layout bug. Starts this worktree's app, signs in, checks that pages hold still in Chromium and Firefox with slow data, compares with dev.openscholar.ai, and stops what it started.
 ---
 
 # Verify
@@ -16,7 +16,6 @@ npm run verify -- shift /extraction --do "click text=Recent" --do "press Escape"
 npm run verify -- shot /settings/ai  # screenshots only
 npm run verify -- status             # what is running, and whether the environment is ready
 npm run verify -- down               # stop the server this worktree started
-npm run verify -- skip "<reason>"    # record why a change needs no browser check
 ```
 
 `npm run verify` with no command prints every option.
@@ -48,12 +47,8 @@ If a step can't run on dev (it clicks something your branch adds), everything af
 
 `shift` and `shot` decline the cookie banner on both sites: the deployed one shows it across the foot of every page, over the account button. They sign in as `verify-agent+clerk_test@example.com`, a member of the "Verify Agent" organization, which has Evidence Libraries, authors and extraction turned on. Its data is its own, so a check never touches a real person's records. `verify` creates both on first use, then stops and asks you to run the command again: Clerk takes a few seconds to send them to Convex. On shared dev the verify user is also an OpenScholar admin, so `/settings/admin` opens, and its organization owns a draft Evidence Library, "Verify Agent Library" (`/evidence-communities/r1706p6pdaz0wbdpc0yk3x33bs8fyan0/configuration`), that was never set up, so configuration can be checked without a running library. To check a page with another account's data, pass `--as <email>` with an existing development user. `--anon` skips sign-in. Its own library has a collection, "Verify overlays": click it on `/library` to get an open collection's Activity, Move and Share ("Share this collection") buttons.
 
-## The stop hook
-
-A stop hook runs `npm run verify -- hook stop` when an agent tries to finish. It lives on the user's machine, not in this repository: `~/.agents/hooks/verify-stop.sh`, registered for Stop in `~/.claude/settings.json`, `~/.claudeekitabu/settings.json` and `~/.codex/hooks.json` (trusted through Codex's `/hooks`). If files under `app/` or `components/` changed (`.tsx` and `.css`, and `.ts` beside components) in this session and no `shift` has passed since, it sends the agent back with the files to check. It also sends the agent back when a changed file holds a dialog, sheet, popover or menu and the passing `shift` opened none. If nothing a person sees changed, or the user said not to test, run `skip "<reason>"` and give the same reason in your reply.
-
 ## Files
 
 - `scripts/verify/cli.ts`: the commands. This one is OpenScholar's own.
-- `scripts/verify/analysis.ts`, `recorder.ts`, `browser.ts`, `compare.ts`, `hook.ts` and `util.ts`: the same files as the Evidence Library's `tools/verify` (OpenDevEd/new-el); keep the two in step. `analysis.ts` decides what counts as a problem (tested in `tests/verify.test.ts`); `recorder.ts` runs in the page.
-- `.verify/` (ignored): the server's pid and log, run reports and screenshots, and the last pass.
+- `scripts/verify/analysis.ts`, `recorder.ts`, `browser.ts`, `compare.ts` and `util.ts`: the same files as the Evidence Library's `tools/verify` (OpenDevEd/new-el); keep the two in step. `analysis.ts` decides what counts as a problem (tested in `tests/verify.test.ts`); `recorder.ts` runs in the page.
+- `.verify/` (ignored): the server's pid and log, run reports and screenshots.

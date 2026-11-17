@@ -2,7 +2,7 @@
 // real browsers against dev.openscholar.ai, and stop what it started. The
 // verify skill (.agents/skills/verify/SKILL.md) says when to use each command.
 //
-// analysis, recorder, browser, compare, hook and util are the same files as
+// analysis, recorder, browser, compare and util are the same files as
 // the Evidence Library's tools/verify (OpenDevEd/new-el); this file is
 // OpenScholar's own.
 
@@ -15,22 +15,14 @@ import type { BrowserContext, Page } from "@playwright/test";
 
 import { earlyStep, open, parseStep, type RunOptions } from "./browser.ts";
 import { compare, printShots, report, type Comparison } from "./compare.ts";
-import { hookStop, offFile } from "./hook.ts";
 import { git, listening, members, readJson, runsNext, sleep, stopGroup, withLock, withTimeout, writeJson } from "./util.ts";
 
 const ROOT = git(["rev-parse", "--show-toplevel"], process.cwd());
 const STATE = path.join(ROOT, ".verify");
 const SERVER = path.join(STATE, "server.json");
-const LAST_PASS = path.join(STATE, "last-pass.json");
-const OFF = path.join(STATE, "off");
 const CONVEX_URL = "https://convex.opendev.space";
 const DEV_SITE = "https://dev.openscholar.ai";
 const VERIFY_USER = "verify-agent+clerk_test@example.com";
-// Files a person sees: pages, components and styles, and the .ts modules
-// beside components. Route handlers and other .ts files under app/ are not.
-const USER_FACING = /^((app|components)\/.+\.(tsx|css)|components\/.+\.ts)$/;
-// Code that holds something that opens over the page: a dialog, sheet, popover or menu.
-const OVERLAY_CODE = /<\w*(Dialog|Sheet|Drawer|Popover|DropdownMenu)(Content|Primitive\.Content)\b|role="(dialog|alertdialog|menu)"/;
 // Elements whose movement is their job: progress bars, Next's dev badge, and
 // anything a page marks with data-verify-ignore.
 const ALWAYS_ALLOWED = ["[role=progressbar]", "[data-verify-ignore]", "nextjs-portal"];
@@ -326,35 +318,11 @@ async function comparisonFor(target: string, values: Values, mode: "shift" | "sh
   };
 }
 
-function recordPass(comparison: Comparison, built: string, opened: number) {
-  // Code changed during the check isn't in the build it checked.
-  if (fingerprint() !== built) return console.log("The code changed during the check, so no pass is recorded. Run `npm run verify -- up --prod`, then check again.");
-  const steps = comparison.options.steps.map((step) => step.label);
-  writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), target: comparison.target, steps, browsers: comparison.browsers, opened });
-  rmSync(OFF, { recursive: true, force: true });
-}
-
 async function drive(target: string, values: Values, mode: "shift" | "shot") {
-  const built = fingerprint();
   const comparison = await comparisonFor(target, values, mode);
   const outcome = await compare(comparison);
   if (mode === "shot") return printShots(outcome.shots);
-  if (report(comparison, outcome)) recordPass(comparison, built, outcome.opened);
-  else process.exitCode = 1;
-}
-
-function skip(reason: string) {
-  if (!reason.trim()) throw new Error('Say why: npm run verify -- skip "<reason>".');
-  writeJson(LAST_PASS, { at: Date.now(), head: git(["rev-parse", "HEAD"], ROOT), skipped: reason });
-  console.log(`Recorded: ${reason}`);
-}
-
-/** The user said not to verify: the stop hook stays quiet in this session (Claude Code names it) until a check passes. */
-function off(words: string) {
-  if (!words.trim()) throw new Error("Give the user's words: npm run verify -- off \"<their words>\".");
-  const session = process.env.CLAUDE_CODE_SESSION_ID ?? null;
-  writeJson(offFile(OFF, session), { at: Date.now(), session, words });
-  console.log(`Recorded: the stop hook stays quiet for the rest of this session. ${words}`);
+  if (!report(comparison, outcome)) process.exitCode = 1;
 }
 
 const HELP = `Usage: npm run verify -- <command>
@@ -367,9 +335,6 @@ const HELP = `Usage: npm run verify -- <command>
                            then do the same on dev.openscholar.ai, and fail on any layout shift, flash
                            or page error that dev doesn't have. Writes screenshots.
   shot <path> [options]    Screenshots only (Chromium, no slowdown).
-  skip "<reason>"          Record why this change needs no browser check.
-  off "<the user's words>" The user said not to verify: the stop hook stays quiet for the rest of
-                           this session, until a shift passes again.
 
 Options for shift and shot:
   --do "<step>"            Repeat for each action: click <selector>, hover <selector>,
@@ -399,9 +364,6 @@ const COMMANDS: Record<string, (values: Values, rest: string[]) => unknown> = {
   status: () => status(),
   shift: (values, rest) => drive(rest[0] ?? "", values, "shift"),
   shot: (values, rest) => drive(rest[0] ?? "", values, "shot"),
-  skip: (_, rest) => skip(rest.join(" ")),
-  off: (_, rest) => off(rest.join(" ")),
-  hook: (_, rest) => rest[0] === "stop" && hookStop({ root: ROOT, baseBranch: "origin/dev", userFacing: USER_FACING, overlay: OVERLAY_CODE, lastPassFile: LAST_PASS, offDir: OFF, start: "npm run verify -- up --prod" }),
 };
 
 const OPTIONS = {
