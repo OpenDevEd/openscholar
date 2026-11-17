@@ -86,6 +86,8 @@ export interface SetQueryOptions {
 export interface SearchContextValue {
   // Search ID (reference to history entry)
   searchId: string;
+  /** A search built in place, such as a community's source: what is typed into it stays its query. */
+  local: boolean;
   
   // Current params from URL (source of truth)
   params: SearchParams;

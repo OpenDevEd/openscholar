@@ -1,3 +1,5 @@
+import { openalexWork, ownWork, reportKey } from "../papers/paper-ref";
+
 /**
  * Which source OpenScholar's searches read: OpenAlex, or our own index (the OpenScholar API). One is active for the
  * whole site, chosen by a site admin at Settings > Admin > Switches. Evidence Communities don't follow it: their
@@ -44,6 +46,13 @@ export const UNSERVED_FILTER_PANELS: Record<SearchSource, readonly string[]> = {
   openalex: [],
   openscholar: ["studyDesign"],
 };
+
+/** The page of the paper a whole query is the ID of: an OpenAlex work, a paper on our index or a report published on Openscholar; null for anything else. */
+export function paperOfQuery(query: string): string | null {
+  const id = openalexWork(query) ?? ownWork(query) ?? reportKey(query);
+  // Six digits at least, as a report's key has: a shorter one ("W2", "OS2") is more likely words someone searches for.
+  return id && /\d{6}$/.test(id) ? `/papers/${id}` : null;
+}
 
 /** The DOI a whole query is, with or without its address, in the form a filter takes it; null for anything else. */
 export function doiOfQuery(query: string): string | null {

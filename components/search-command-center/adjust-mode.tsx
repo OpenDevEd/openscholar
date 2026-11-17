@@ -11,7 +11,9 @@ import { QueryHistoryNav } from "./components/query-history-nav";
 import { QueryTextarea } from "./components/query-textarea";
 import { OqlQueryStatus } from "./components/oql-query-status";
 import { OQL_FIELD } from "@/lib/openalex/oql";
+import { useRouter } from "next/navigation";
 import { useSearch } from "@/lib/search";
+import { paperOfQuery } from "@/lib/search/source";
 import { useQueryHistory } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
@@ -31,6 +33,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   const tv = useTranslations("validation");
   const locale = useLocale();
   const search = useSearch();
+  const router = useRouter();
 
   // Use the new router hook
   const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
@@ -60,8 +63,11 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
 
   // Handle manual query submission
   const submitQuery = useCallback(() => {
+    // A paper's ID opens its page, unless the search is built in place (a community's source).
+    const paper = search.local ? null : paperOfQuery(editableQuery);
+    if (paper) return router.push(paper);
     search.setQuery(editableQuery);
-  }, [search, editableQuery]);
+  }, [search, editableQuery, router]);
 
   // Handle AI enhancement
   const handleAiEnhancement = async (e: React.FormEvent) => {
