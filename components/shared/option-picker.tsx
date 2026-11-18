@@ -127,16 +127,17 @@ const words = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}.]+/gu, 
 
 /**
  * The options that hold what was typed, best first: an exact id or name, then one that starts with it, then one with a
- * word that does, then the rest, each in list order. One list without headings, since a match ranks across groups.
+ * word that does (the line beneath the name included, so a licence's full title finds it by its short name), then the
+ * rest, each in list order. One list without headings, since a match ranks across groups.
  */
 function ranked(options: readonly PickerOption[], search: string): PickerOption[] {
   const typed = words(search);
   const rank = (option: PickerOption) => {
-    const [id, name] = [words(option.id), words(option.name)];
+    const [id, name, detail] = [words(option.id), words(option.name), words(option.detail ?? "")];
     if (id === typed || name === typed) return 0;
     if (id.startsWith(typed) || name.startsWith(typed)) return 1;
-    if (` ${name} ${id}`.includes(` ${typed}`)) return 2;
-    return name.includes(typed) || id.includes(typed) ? 3 : -1;
+    if (` ${name} ${id} ${detail}`.includes(` ${typed}`)) return 2;
+    return name.includes(typed) || id.includes(typed) || detail.includes(typed) ? 3 : -1;
   };
   return options
     .map((option) => [option, rank(option)] as const)
