@@ -39,6 +39,26 @@ describe("a request Cloudflare challenges", () => {
     expect(earn).toHaveBeenCalledTimes(1);
   });
 
+  it("takes the outcome of an attempt that ended while it was on its way", async () => {
+    // The second request left before the first one's attempt ended, and its challenge comes back after.
+    let release = () => {};
+    const late = new Promise<void>((resolve) => { release = resolve; });
+    const plain = vi.fn().mockImplementation(async (address: string) => {
+      if (address === "/late" && plain.mock.calls.filter(([sent]) => sent === "/late").length === 1) await late;
+      return challenged();
+    });
+    const earn = vi.fn().mockRejectedValue(new Error("sent away"));
+    const fetched = withPass(plain, earn);
+    const slow = fetched("/late", { method: "POST" });
+    expect((await fetched("/first", { method: "POST" })).status).toBe(403);
+    release();
+    expect((await slow).status).toBe(403);
+    expect(earn).toHaveBeenCalledTimes(1);
+    // One that leaves afterwards asks again.
+    await fetched("/after", { method: "POST" });
+    expect(earn).toHaveBeenCalledTimes(2);
+  });
+
   it("is left alone when it can't be sent twice", async () => {
     const plain = vi.fn().mockImplementation(async () => challenged());
     const earn = vi.fn();
