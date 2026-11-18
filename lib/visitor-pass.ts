@@ -2,8 +2,8 @@
 
 import { loadTurnstile } from "@/lib/turnstile-script";
 
-// Cloudflare answers a signed-out browser's server actions only once the browser holds its pass, the `cf_clearance`
-// cookie a solved challenge leaves (docs/agents/project.md, "Bot floods"). Pages themselves are never checked, so the
+// Cloudflare answers a signed-out browser's server actions (any POST to a page) only once the browser holds its pass,
+// the `cf_clearance` cookie a solved challenge leaves (docs/agents/project.md, "Bot floods"). Pages themselves are never checked, so the
 // first search, or a paper page's lists, is where a browser without the pass is stopped: the request comes back as a
 // challenge page marked `cf-mitigated: challenge`
 // (developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response). Turnstile then
@@ -14,15 +14,30 @@ const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Fetch = typeof fetch;
 
-/** `plain`, sending a request Cloudflare challenged once more after `earn` gets the browser its pass. Requests challenged together wait for one pass. */
+/**
+ * `plain`, sending a request Cloudflare challenged once more after `earn` gets the browser its pass. Requests
+ * challenged together wait for one attempt, and one whose challenge comes back after an attempt has ended takes that
+ * attempt's outcome: it left before the pass existed, or before its check was sent away, so it doesn't ask again.
+ */
 export function withPass(plain: Fetch, earn: () => Promise<void>): Fetch {
   let earning: Promise<boolean> | null = null;
+  // How many requests have left, and the last attempt that ended: whether it earned the pass, and how many had left by then.
+  let sent = 0;
+  let ended: { earned: boolean; sent: number } | null = null;
   return async (input, init) => {
+    const mine = ++sent;
     const response = await plain(input, init);
     // Only a request that can be sent twice goes again: one given as an address, with a body that isn't a stream. Server actions are.
     if (response.headers.get("cf-mitigated") !== "challenge" || input instanceof Request || init?.body instanceof ReadableStream) return response;
-    earning ??= earn().then(() => true, () => false).finally(() => { earning = null; });
-    return (await earning) ? plain(input, init) : response;
+    const covered = ended && mine <= ended.sent ? ended.earned : null;
+    if (covered === null) {
+      earning ??= earn().then(() => true, () => false).then((earned) => {
+        ended = { earned, sent };
+        earning = null;
+        return earned;
+      });
+    }
+    return (covered ?? (await earning)) ? plain(input, init) : response;
   };
 }
 

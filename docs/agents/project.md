@@ -156,11 +156,15 @@ visitor we don't know no searches:
   visitor can't send it. Anyone else's searches run from their browser as
   server actions. A new page that reads our index or OpenAlex while it renders
   does the same.
-- Cloudflare answers a signed-out browser's server actions (a `POST` with
-  `Next-Action`) on `discover` and `dev` only once the browser holds its pass,
-  the `cf_clearance` cookie. The zone's custom rule answers the rest with a
-  managed challenge. `lib/visitor-pass.ts` earns the pass through Turnstile,
-  out of sight, and sends the request again.
+- Cloudflare answers a signed-out browser's server actions on `discover` and
+  `dev` only once the browser holds its pass, the `cf_clearance` cookie. The
+  zone's custom rule answers the rest with a managed challenge.
+  `lib/visitor-pass.ts` earns the pass through Turnstile, out of sight, and
+  sends the request again.
+- The rule covers every `POST` outside `/api/`, `/data/` and `/cdn-cgi/`, not
+  only those with a `Next-Action` header: Next also runs an action posted as
+  a form without it. A new route that takes a `POST` from signed-out browsers
+  or other sites goes under `/api/`.
 - Both Turnstile widgets issue the pass (`clearance_level: managed`). It is
   good on every host of `openscholar.ai` for the zone's Challenge Passage,
   7 days. The marketing site's search boxes earn it before a search leaves for
