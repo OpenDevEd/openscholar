@@ -14,6 +14,8 @@ export type TurnstileOptions = {
   callback: (token: string) => void;
   "error-callback": () => boolean;
   "before-interactive-callback"?: () => void;
+  /** The visitor left the checkbox unticked for two minutes. Turnstile says so only here: a widget run by `execute` then goes quiet, with no error and no token. */
+  "timeout-callback"?: () => void;
 };
 export type Turnstile = { render: (element: HTMLElement, options: TurnstileOptions) => string; execute: (id: string) => void; reset: (id: string) => void; remove: (id: string) => void };
 declare global {
