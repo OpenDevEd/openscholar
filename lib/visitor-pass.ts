@@ -82,7 +82,9 @@ async function earnPass() {
           // Handled here, so Turnstile doesn't retry on its own.
           return true;
         },
+        // Called again each time an unticked checkbox is renewed, every two minutes, so it sets up once.
         "before-interactive-callback": () => {
+          if (slot.tabIndex === -1) return;
           host.className = "fade-enter fixed inset-0 z-100 flex items-center justify-center bg-black/50";
           slot.className = "rounded-lg border bg-background p-4 shadow-lg outline-none";
           // Focus comes to the checkbox's frame, so Tab reaches it next.
