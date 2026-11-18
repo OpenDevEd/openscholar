@@ -2,7 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { fetchOwnWorks, readOpenAlexWorks } from "@/lib/openalex/read-works";
+import { fetchOwnWorks, readOpenAlexWork, readOpenAlexWorks } from "@/lib/openalex/read-works";
 import { SearchError } from "@/lib/search/search-error";
 import { MAX_LOCATIONS } from "@/lib/topics/publications";
 import { normalizeDoi } from "@/lib/topics/identity";
@@ -90,10 +90,7 @@ export async function readPaperLists(paper: PaperResult): Promise<PaperLists> {
 
 /** The paper as OpenAlex holds it, for what our index leaves out: authors' institutions and ORCID iDs, keywords, citations by year, copies, grants, MeSH. */
 export const readOpenAlexForPage = unstable_cache(
-  async (work: string): Promise<PaperResult | null> => {
-    const read = await readOpenAlexWorks({ filter: { openalex_id: work } as never, cursor: "*", perPage: 1 }, "openalex");
-    return (read.results[0] as PaperResult | undefined) ?? null;
-  },
+  async (work: string): Promise<PaperResult | null> => (await readOpenAlexWork(work)) as PaperResult | null,
   ["paper-page-openalex"],
   { revalidate: DAY },
 );
