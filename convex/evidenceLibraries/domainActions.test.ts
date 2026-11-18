@@ -350,7 +350,7 @@ function coolifyApplication(composeDomains: string, tag: string) {
     uuid: COOLIFY_APPLICATION_UUID,
     name: tag,
     config_hash: "1".repeat(64),
-    git_repository: "OpenDevEd/new-el",
+    git_repository: "Openscholar-ai/evidence-community",
     git_branch: "main",
     git_commit_sha: "a".repeat(40),
     build_pack: "dockercompose",

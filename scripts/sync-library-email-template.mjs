@@ -9,9 +9,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = process.argv.find((arg, index) => index >= 2 && arg !== '--check');
 const check = process.argv.includes('--check');
 if (!source) throw new Error('Pass the new-el checkout path: npm run check:email-template -- <new-el checkout>');
-const repository = 'https://github.com/OpenDevEd/new-el';
+const repository = 'https://github.com/Openscholar-ai/evidence-community';
 const git = (...args) => execFileSync('git', ['-C', resolve(source), ...args], {encoding: 'utf8'});
-if (normalizeGitHubRepository(git('remote', 'get-url', 'origin')) !== repository) throw new Error('The email source must be the OpenDevEd/new-el repository.');
+if (normalizeGitHubRepository(git('remote', 'get-url', 'origin')) !== repository) throw new Error('The email source must be the Openscholar-ai/evidence-community repository.');
 const paths = ['lib/emails/library-template.ts', 'lib/escape-html.ts'];
 const lockPath = resolve(root, 'lib/emails/source-lock.json');
 const lock = check ? JSON.parse(await readFile(lockPath, 'utf8')) : {repository, commit: git('rev-parse', 'HEAD').trim()};
@@ -22,7 +22,7 @@ if (check) {
   catch { throw new Error('The pinned email source must be present in origin/main. Fetch main before checking.'); }
 }
 for (const path of paths) {
-  const content = '// Generated from OpenDevEd/new-el src/' + path + '.\n// Regenerate with: node scripts/sync-library-email-template.mjs <new-el checkout>\n' + git('show', `${lock.commit}:src/${path}`);
+  const content = '// Generated from Openscholar-ai/evidence-community src/' + path + '.\n// Regenerate with: node scripts/sync-library-email-template.mjs <new-el checkout>\n' + git('show', `${lock.commit}:src/${path}`);
   const destination = resolve(root, path);
   if (check) {
     if (await readFile(destination, 'utf8') !== content) throw new Error(path + ' differs from its shared source at ' + lock.commit);
