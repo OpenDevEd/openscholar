@@ -467,7 +467,7 @@ export function SignedOutOverview({ params }: { params: string }) {
   const t = useTranslations("overview");
   const locale = useLocale() as Locale;
   const signIn = useSignInRedirect();
-  const { slot, token } = useTurnstile();
+  const { slot, token, asking } = useTurnstile();
   const [open, setOpen] = useState<BuiltInLens>(DEFAULT_LENS);
   const [collapsed, setCollapsed] = useState(false);
   const key = `${params}~${open}~${locale}`;
@@ -482,13 +482,15 @@ export function SignedOutOverview({ params }: { params: string }) {
     return () => {};
   });
   const overview = run && "status" in run ? run : null;
-  const working = !collapsed && !out ? !run || overview?.status === "running" : overview?.status === "running";
+  const underway = !collapsed && !out ? !run || overview?.status === "running" : overview?.status === "running";
+  // While Cloudflare's checkbox waits for the visitor nothing is being read or written yet, so the card doesn't say it is.
+  const working = underway && !asking;
 
   // As for a signed-in person: the last overview written stays, dimmed, until the next one is whole.
   const [last, setLast] = useState<{ key: string; overview: Overview } | null>(null);
   if (overview?.status === "done" && last?.key !== key) setLast({ key, overview });
   const live = overview && overview.status !== "failed" && overview.text && (overview.status === "done" || !last) ? { key, overview } : null;
-  const showing = live ?? (working ? last : null);
+  const showing = live ?? (underway ? last : null);
   const blocks = showing ? blocksOf(showing.overview.text) : [];
   const again = () => void ensureSignedOut(key, request, token, "again");
   const toSignIn = (from: "new_lens" | "write") => {
@@ -569,7 +571,7 @@ export function SignedOutOverview({ params }: { params: string }) {
                   <RefreshCw /> {t("tryAgain")}
                 </Button>
               </div>
-            ) : working || showing ? (
+            ) : asking && !showing ? null : working || showing ? (
               <>
                 <p className="grid pb-2 text-sm text-muted-foreground">{working ? <WorkingText>{stepText(t, overview?.step)}</WorkingText> : <span>{showing ? <ReadText overview={showing.overview} /> : null}</span>}</p>
                 {showing ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { trackOverview } from "@/lib/posthog-overview";
 import { loadTurnstile } from "@/lib/turnstile-script";
 
@@ -20,11 +20,13 @@ export class TurnstileCancelled extends Error {}
 
 /**
  * A slot for the widget, and `token()`, which asks Turnstile for a token: one use each, so one per overview, asked for
- * one at a time. Without a site key, as in a build that has none, there's nothing to ask and it fails.
+ * one at a time. Without a site key, as in a build that has none, there's nothing to ask and it fails. `asking` is
+ * true while Cloudflare's checkbox is showing in the slot, waiting for the visitor.
  */
 export function useTurnstile() {
   const element = useRef<HTMLDivElement | null>(null);
   const widget = useRef<Widget | null>(null);
+  const [asking, setAsking] = useState(false);
 
   // The widget is Cloudflare's and lives in this slot: it goes when the slot does, and a token it was making with it.
   const slot = useCallback((node: HTMLDivElement | null) => {
@@ -36,6 +38,7 @@ export function useTurnstile() {
         window.turnstile?.remove(made.id);
         made.waiting?.reject(new TurnstileCancelled("The overview's slot went away"));
         widget.current = null;
+        setAsking(false);
       }
       if (element.current === node) element.current = null;
     };
@@ -56,17 +59,30 @@ export function useTurnstile() {
           appearance: "interaction-only",
           size: "flexible",
           callback: (value) => {
+            setAsking(false);
             made.waiting?.resolve(value);
             made.waiting = null;
           },
           "error-callback": () => {
+            setAsking(false);
             trackOverview("overview_verification", { result: "failed" });
             made.waiting?.reject(new Error("Turnstile couldn't tell"));
             made.waiting = null;
             // Handled here, so Turnstile doesn't retry on its own.
             return true;
           },
-          "before-interactive-callback": () => trackOverview("overview_verification", { result: "interactive" }),
+          "before-interactive-callback": () => {
+            setAsking(true);
+            trackOverview("overview_verification", { result: "interactive" });
+          },
+          // Left unticked for two minutes, the checkbox goes and Turnstile says nothing more: without this the overview
+          // waited for good, and every lens after it waited behind it.
+          "timeout-callback": () => {
+            setAsking(false);
+            trackOverview("overview_verification", { result: "failed" });
+            made.waiting?.reject(new Error("Turnstile's check went unanswered"));
+            made.waiting = null;
+          },
         });
         widget.current = made;
       } else turnstile.reset(widget.current.id);
@@ -82,5 +98,5 @@ export function useTurnstile() {
     return next;
   }, [one]);
 
-  return { slot, token };
+  return { slot, token, asking };
 }
