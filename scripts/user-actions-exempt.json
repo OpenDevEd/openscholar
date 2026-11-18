@@ -165,6 +165,7 @@
     "evidenceLibraries/readers:address": "evidenceLibraries/library:source",
     "app/actions/overview-papers:readCitedPapers": "research/papers:get",
     "app/actions/similar:readSimilarPapers": "research/papers:search",
+    "app/actions/paper-lists:readPaperListsLater": "research/papers:search",
     "app/actions/author-card:readAuthorCard": "research/authors:get",
     "app/actions/author-card:searchIndexAuthors": "research/lookup:find",
     "app/actions/author-card:readInstitutionCard": "research/lookup:find",

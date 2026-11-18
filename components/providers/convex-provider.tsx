@@ -23,6 +23,8 @@ import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
 import { UserSync } from "@/lib/auth/user-sync";
 import { RetryingConvexClient } from "@/lib/convex-client";
+// For what it does on loading: a server action Cloudflare challenges earns the browser its pass and goes again.
+import "@/lib/visitor-pass";
 
 const convex = new RetryingConvexClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const noSubscription = () => () => {};

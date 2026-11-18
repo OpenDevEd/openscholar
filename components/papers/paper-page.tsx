@@ -3,6 +3,7 @@
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { creativeCommons } from "@/lib/papers/licence";
 import { Fragment, useState, type ReactNode } from "react";
+import useSWR from "swr";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { dateMoment, dateStyleOf } from "@/lib/reports/report";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -33,7 +34,8 @@ import { similarSearchHref } from "@/lib/search/similar-href";
 import { paperPath } from "@/lib/papers/page-address";
 import { abstractSections } from "@/lib/papers/abstract-sections";
 import { cn } from "@/lib/utils";
-import type { SimilarPaper } from "@/app/actions/similar";
+import { readPaperListsLater } from "@/app/actions/paper-lists";
+import type { PaperLists } from "@/lib/papers/paper-page-data";
 import type { CommunityCopy } from "@/lib/papers/community-copies";
 import { useLiveCopies } from "@/components/papers/use-live-copies";
 import type { PaperDetail } from "@/lib/papers/paper-detail";
@@ -50,8 +52,8 @@ type Props = {
   paper: PaperResult;
   id: string;
   detail: PaperDetail;
-  similar: SimilarPaper[];
-  references: SimilarPaper[];
+  /** The papers like it and the ones it cites. Null for a visitor the server ran no searches for: their browser reads them. */
+  lists: PaperLists | null;
   /** The paper's records in communities as the server read them, with their PDFs. */
   communities: CommunityCopy[];
   /** The keys they're found by, which the page follows for records published while it's open. */
@@ -61,12 +63,11 @@ type Props = {
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
-export function PaperPage({ paper, id, detail, similar, references, communities: read, copyKeys, extra }: Props) {
+export function PaperPage({ paper, id, detail, lists, communities: read, copyKeys, extra }: Props) {
   const t = useTranslations("paperPage");
   const tc = useTranslations("common");
   const tTopics = useTranslations("topics");
   const tAuthors = useTranslations("authorPages");
-  const tSimilar = useTranslations("similarPapers");
   const tp = useTranslations("paperCard");
   const title = paper.title ?? paper.display_name ?? "";
   const communities = useLiveCopies(read, copyKeys);
@@ -178,16 +179,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
           </Section>
           <Authors detail={detail} />
           {extra?.main}
-          {similar.length ? (
-            <Section id="paper-similar" title={tSimilar("title")} action={<SeeAll href={similarSearchHref([paper.id]) ?? "/results"} />}>
-              <PaperRows papers={similar} link={(row) => ({ href: paperPath(row.id, row.title) })} />
-            </Section>
-          ) : null}
-          {references.length ? (
-            <Section id="paper-references" title={t("references")} count={paper.referenced_works_count ?? references.length} action={<SeeAll href={buildShareableUrl("", { citedBy: appId })} />}>
-              <PaperRows papers={references} link={(row) => ({ href: paperPath(row.id, row.title) })} />
-            </Section>
-          ) : null}
+          {lists ? <Lists paper={paper} lists={lists} /> : <LaterLists paper={paper} id={id} />}
         </div>
         {/* On a phone the citations come before the abstract; beside it they head the sidebar. */}
         <aside className="contents lg:block lg:min-w-0 lg:space-y-10">
@@ -248,6 +240,42 @@ function Abstract({ text }: { text: string }) {
         <p key={section.heading}><span className="me-2 font-semibold text-foreground">{section.heading}</span>{section.text}</p>
       ))}
     </div>
+  );
+}
+
+/** The papers like this one and the ones it cites, each a section while it has any. */
+function Lists({ paper, lists: { similar, references } }: { paper: PaperResult; lists: PaperLists }) {
+  const t = useTranslations("paperPage");
+  const tSimilar = useTranslations("similarPapers");
+  return (
+    <>
+      {similar.length ? (
+        <Section id="paper-similar" title={tSimilar("title")} action={<SeeAll href={similarSearchHref([paper.id]) ?? "/results"} />}>
+          <PaperRows papers={similar} link={(row) => ({ href: paperPath(row.id, row.title) })} />
+        </Section>
+      ) : null}
+      {references.length ? (
+        <Section id="paper-references" title={t("references")} count={paper.referenced_works_count ?? references.length} action={<SeeAll href={buildShareableUrl("", { citedBy: paper.id.split("/").at(-1)! })} />}>
+          <PaperRows papers={references} link={(row) => ({ href: paperPath(row.id, row.title) })} />
+        </Section>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The lists as the browser reads them, for a visitor the server ran no searches for. They open their place at the
+ * column's foot as they arrive and fade in; a read that fails leaves the page without them, as the server's does.
+ */
+function LaterLists({ paper, id }: { paper: PaperResult; id: string }) {
+  // Asked once: a browser Cloudflare won't give its pass, or a visitor who sent its check away, isn't asked again.
+  const { data } = useSWR(["paper-lists", id], ([, asked]) => readPaperListsLater(asked), { revalidateOnFocus: false, shouldRetryOnError: false });
+  return (
+    // The column spaces its parts with a margin under each but the last. Empty, this takes that margin back, so the
+    // column ends where it would without lists; filled, the same space is its own, above its first section.
+    <AutoHeight className="-mt-10">
+      {data?.similar.length || data?.references.length ? <div className="fade-enter space-y-10 pt-10"><Lists paper={paper} lists={data} /></div> : null}
+    </AutoHeight>
   );
 }
 

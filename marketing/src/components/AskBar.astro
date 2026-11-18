@@ -1,8 +1,8 @@
 ---
-import { APP } from "../data/site.mjs";
+import { APP, TURNSTILE_SITE_KEY } from "../data/site.mjs";
 const { id = "ask", questions, mark = false, class: cls = "", label = "Search the research" } = Astro.props;
 ---
-<form class:list={["ask", cls]} data-questions={questions ? JSON.stringify(questions) : undefined} data-q={questions?.[0]} data-ask action={`${APP}/results`} method="get" role="search" aria-label={label}>
+<form class:list={["ask", cls]} data-questions={questions ? JSON.stringify(questions) : undefined} data-q={questions?.[0]} data-ask data-sitekey={TURNSTILE_SITE_KEY} action={`${APP}/results`} method="get" role="search" aria-label={label}>
   <label class="sr" for={id}>Ask a research question</label>
   {mark && <img class="mk" src="/favicon.svg" width="28" height="28" alt="" />}
   <span class="fld">
@@ -12,8 +12,21 @@ const { id = "ask", questions, mark = false, class: cls = "", label = "Search th
   <button class="btn brand" aria-label="Search"><span>Search</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
 </form>
 <script>
+  import { loadTurnstile } from "../scripts/turnstile";
   // An empty box runs the question showing in it.
   for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", () => { const input = form.querySelector("input"); if (!input.value.trim() && form.dataset.q) input.value = form.dataset.q; });
+  // Whoever starts on a search box earns the app's pass meanwhile: Cloudflare answers a signed-out browser's searches only
+  // once it holds one (the app's lib/visitor-pass.ts), and one earned here, good across openscholar.ai, means the search
+  // doesn't wait for it there. Turnstile does it out of sight; if it wants a click, that's left for the app to ask.
+  let earning = false;
+  const earnPass = async (form) => {
+    if (earning) return; earning = true;
+    const turnstile = await loadTurnstile(), host = Object.assign(document.createElement("div"), { style: "position:fixed;bottom:0;width:0;height:0;overflow:hidden" });
+    document.body.append(host);
+    const done = () => { turnstile.remove(widget); host.remove(); return true; };
+    const widget = turnstile.render(host, { sitekey: form.dataset.sitekey, action: "pass", appearance: "interaction-only", callback: done, "error-callback": done, "before-interactive-callback": done });
+  };
+  for (const form of document.querySelectorAll("[data-ask]")) for (const start of ["focusin", "pointerenter"]) form.addEventListener(start, () => { earnPass(form).catch(() => {}); }, { once: true });
   const still = matchMedia("(prefers-reduced-motion: reduce)"), wait = (ms) => new Promise((go) => setTimeout(go, ms));
   // Questions type themselves one after another, so Search always has a whole one to run. The box still takes whatever you type instead.
   for (const form of document.querySelectorAll("[data-questions]")) {

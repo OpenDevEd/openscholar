@@ -142,6 +142,41 @@ development Convex service.
   `docs/agents/project.md`.
 - Do not use the user's `new-el-optimize` checkout.
 
+## Bot floods
+
+On 18 November 2026 thousands of browsers on home internet connections crawled
+`discover`'s results and paper pages. They cost about 100 searches a second,
+and our search API turned real searches away. Since then a page costs a
+visitor we don't know no searches:
+
+- A page never runs a search for a visitor it doesn't know.
+  `isKnownVisitor()` (`lib/known-visitor.ts`) is someone signed in, or a
+  crawler Cloudflare has verified. A Cloudflare transform rule sets
+  `x-openscholar-verified-bot` on every request to `discover` and `dev`, so a
+  visitor can't send it. Anyone else's searches run from their browser as
+  server actions. A new page that reads our index or OpenAlex while it renders
+  does the same.
+- Cloudflare answers a signed-out browser's server actions (a `POST` with
+  `Next-Action`) on `discover` and `dev` only once the browser holds its pass,
+  the `cf_clearance` cookie. The zone's custom rule answers the rest with a
+  managed challenge. `lib/visitor-pass.ts` earns the pass through Turnstile,
+  out of sight, and sends the request again.
+- Both Turnstile widgets issue the pass (`clearance_level: managed`). It is
+  good on every host of `openscholar.ai` for the zone's Challenge Passage,
+  7 days. The marketing site's search boxes earn it before a search leaves for
+  the app.
+- Pages are never challenged. People arrive from communities, emails and chat
+  apps with no referrer, so a rule on a page stops them too.
+- The rule skips a request that carries a `__session` cookie, so signed-in
+  people never meet Turnstile. A bot that sends a made-up `__session` skips it
+  too. If one does, drop that clause from the rule: signed-in browsers then
+  earn the pass like everyone else.
+- A route that isn't a server action and costs a search or an AI call checks
+  its own Turnstile token, as `/api/overviews` does.
+- Cloudflare's rules don't run on `localhost`. To test a change here before
+  merging, serve the build through a Cloudflare tunnel on a hostname of the
+  zone, and add that hostname to the rule and to the dev widget.
+
 ## Evidence Library configuration data
 
 Saved configuration must never be lost. Development libraries are used for
