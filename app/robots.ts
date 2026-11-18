@@ -7,7 +7,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
     rules: [
       { userAgent: TRAINING_CRAWLERS, disallow: "/" },
-      { userAgent: "*", allow: "/" },
+      // Search results are noindex already; crawling them only spends searches on our index.
+      { userAgent: "*", allow: "/", disallow: "/results" },
     ],
     sitemap: [`${SITE_URL}/sitemap.xml`, ...PAPER_SITEMAP_YEARS.map((_, id) => `${SITE_URL}/papers/sitemap/${id}.xml`)],
   };
