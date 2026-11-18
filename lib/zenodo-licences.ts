@@ -459,3 +459,10 @@ export const isZenodoLicence = (id: string) => IDS.has(id);
 
 /** A licence's title by its id, or the id itself for one Zenodo doesn't have. */
 export const zenodoLicenceTitle = (id: string) => ZENODO_LICENCES.find(([known]) => known === id)?.[1] ?? id;
+
+/** A Creative Commons licence's short name, "CC BY-NC 4.0", as the community admin's Licence field shows it; null for others. */
+export function licenceShortName(id: string) {
+  if (id === "cc0-1.0") return "CC0 1.0";
+  const cc = /^cc-(by(?:-(?:nc|nd|sa))*)-(\d\.\d)$/u.exec(id);
+  return cc ? `CC ${cc[1]!.toUpperCase()} ${cc[2]}` : null;
+}
