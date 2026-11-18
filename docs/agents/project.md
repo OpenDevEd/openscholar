@@ -146,8 +146,8 @@ development Convex service.
 
 On 18 November 2026 thousands of browsers on home internet connections crawled
 `discover`'s results and paper pages. They cost about 100 searches a second,
-and our search API turned real searches away. Since then a page costs a
-visitor we don't know no searches:
+and our search API turned real searches away. Since then a page runs no
+searches for a visitor we don't know:
 
 - A page never runs a search for a visitor it doesn't know.
   `isKnownVisitor()` (`lib/known-visitor.ts`) is someone signed in, or a
@@ -169,8 +169,15 @@ visitor we don't know no searches:
   good on every host of `openscholar.ai` for the zone's Challenge Passage,
   7 days. The marketing site's search boxes earn it before a search leaves for
   the app.
-- Pages are never challenged. People arrive from communities, emails and chat
-  apps with no referrer, so a rule on a page stops them too.
+- A second rule checks a signed-out browser that opens a `/papers/` or
+  `/results` page with no referrer and no pass. Drawing those pages for the
+  flood pinned the app's one server process on 18 November: at about 19 pages
+  a second, pages took up to 18 seconds, with no searches running. It stops
+  people too, once per pass: community links to Openscholar carry
+  `rel="noreferrer"`, and emails, chat apps and bookmarks send none. A visit
+  from a search engine or the marketing site has a referrer and isn't checked.
+  Remove the rule only once the app can draw that many pages, or the flood has
+  gone, and watch `next-server`'s CPU when you do.
 - The rule skips a request that carries a `__session` cookie, so signed-in
   people never meet Turnstile. A bot that sends a made-up `__session` skips it
   too. If one does, drop that clause from the rule: signed-in browsers then

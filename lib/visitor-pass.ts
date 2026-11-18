@@ -3,8 +3,9 @@
 import { loadTurnstile } from "@/lib/turnstile-script";
 
 // Cloudflare answers a signed-out browser's server actions (any POST to a page) only once the browser holds its pass,
-// the `cf_clearance` cookie a solved challenge leaves (docs/agents/project.md, "Bot floods"). Pages themselves are never checked, so the
-// first search, or a paper page's lists, is where a browser without the pass is stopped: the request comes back as a
+// the `cf_clearance` cookie a solved challenge leaves (docs/agents/project.md, "Bot floods"). A page reached from a
+// search engine or the marketing site opens without a check, so the first search, or a paper page's lists, is where
+// a browser without the pass is stopped: the request comes back as a
 // challenge page marked `cf-mitigated: challenge`
 // (developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response). Turnstile then
 // earns the pass out of sight, and the request goes again. For a browser that doesn't earn it the request fails with
