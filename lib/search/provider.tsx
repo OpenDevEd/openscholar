@@ -28,6 +28,7 @@ import { getSearchResultsWithFilters } from './search-results';
 import { paramsAsRun, SEMANTIC_FIELD, type SearchSource } from './source';
 import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
+import { PassNotEarned } from '@/lib/visitor-pass';
 import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
@@ -479,7 +480,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       keepPreviousData: true,
       dedupingInterval: 5000,
       errorRetryCount: 2,
-      shouldRetryOnError: (err) => !(err instanceof SearchError && err.status === 400),
+      // Not a query our index refused, and not a search Cloudflare stopped for a check the visitor sent away: asking again would bring the check back.
+      shouldRetryOnError: (err) => !(err instanceof SearchError && err.status === 400) && !(err instanceof PassNotEarned),
       errorRetryInterval: 1000,
       onSuccess: (data) => {
         if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
