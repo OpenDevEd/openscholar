@@ -68,6 +68,7 @@ async function earnPass() {
   const slot = host.appendChild(document.createElement("div"));
   document.body.append(host);
   let widget = "";
+  let asked = false;
   const left = new AbortController();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -84,7 +85,8 @@ async function earnPass() {
         },
         // Called again each time an unticked checkbox is renewed, every two minutes, so it sets up once.
         "before-interactive-callback": () => {
-          if (slot.tabIndex === -1) return;
+          if (asked) return;
+          asked = true;
           host.className = "fade-enter fixed inset-0 z-100 flex items-center justify-center bg-black/50";
           slot.className = "rounded-lg border bg-background p-4 shadow-lg outline-none";
           // Focus comes to the checkbox's frame, so Tab reaches it next.
