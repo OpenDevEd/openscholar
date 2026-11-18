@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen } from "@/components/icons";
+import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen, RefreshCw } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";
@@ -146,6 +146,31 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
             {tsc("oqlReference")}
           </a>
         )}
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * The search didn't run because the browser's check wasn't passed (lib/visitor-pass.ts): the visitor sent it away, or
+ * it couldn't run here. Trying again asks for it again. Its words are the signed-out overview's for the same check.
+ */
+export function UncheckedState({ onRetry }: { onRetry: () => void }) {
+  const t = useTranslations("overview");
+  return (
+    <div className="flex items-center justify-center py-16 md:py-24">
+      <motion.div
+        role="alert"
+        className="flex flex-col items-center text-center max-w-xl px-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      >
+        <CircleAlert className="mb-6 h-12 w-12 text-destructive opacity-60" aria-hidden />
+        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">{t("failed.verify")}</h2>
+        <Button onClick={onRetry} variant="outline" className="mt-6 h-10 gap-2 px-5">
+          <RefreshCw aria-hidden /> {t("tryAgain")}
+        </Button>
       </motion.div>
     </div>
   );

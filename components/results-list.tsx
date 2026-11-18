@@ -31,7 +31,8 @@ import type { PaperCardHide } from "./paper-card/shared";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 
-import { NoResults, LoadingResults, QueryErrorState } from "@/components/no-results";
+import { NoResults, LoadingResults, QueryErrorState, UncheckedState } from "@/components/no-results";
+import { PassNotEarned } from "@/lib/visitor-pass";
 import { rejectedQuery } from "@/lib/search/search-error";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { motion, AnimatePresence } from "motion/react";
@@ -630,6 +631,8 @@ export function ResultsList({
                 <QueryErrorState detail={queryError} oql={search.params.field === OQL_FIELD} />
               ) : isSearching || isInitialLoading ? (
                 <LoadingResults />
+              ) : isEmptySearch && search.error instanceof PassNotEarned ? (
+                <UncheckedState onRetry={() => void search.mutate()} />
               ) : isEmptySearch && failed ? (
                 <QueryErrorState detail={failed} oql={search.params.field === OQL_FIELD} />
               ) : isEmptySearch ? (
