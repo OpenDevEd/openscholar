@@ -19,6 +19,8 @@ test("copies the selected citation from every result-card layout", async ({ page
   next.onFetch((request) => {
     const url = new URL(request.url);
     if (url.hostname !== "api.openalex.org") return;
+    // The paper's own record, which its page reads when a card's link to it is prefetched.
+    if (url.pathname === `/works/${paper.id.split("/").at(-1)}`) return Response.json(paper);
     if (url.pathname !== "/works") throw new Error(`Unexpected OpenAlex request: ${url.pathname}`);
     // Next adds this header to requests intercepted on the server.
     if (request.headers.has("next-test-stack")) servedServerSearch = true;
