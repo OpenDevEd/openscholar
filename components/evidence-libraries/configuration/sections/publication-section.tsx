@@ -29,13 +29,21 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldError, SectionCard } from "../section-card";
 import { OptionSelect, type PickerOption } from "@/components/shared/option-picker";
-import { COMMON_ZENODO_LICENCES, ZENODO_LICENCES, isZenodoLicence, zenodoLicenceTitle } from "@/lib/zenodo-licences";
+import { COMMON_ZENODO_LICENCES, ZENODO_LICENCES, isZenodoLicence, licenceShortName, zenodoLicenceTitle } from "@/lib/zenodo-licences";
 import { FieldGroup, PanelRow } from "../fields";
 
-/** Zenodo's licences as picker rows: the common ones first, then every one, each with its id beneath its title. */
+/**
+ * Zenodo's licences as picker rows, the common ones first. A Creative Commons licence goes by its short name with its
+ * full title beneath, as the community admin's Licence field shows it: the six common titles all start "Creative Commons
+ * Attribution", so cut to a phone's field they read the same. Any other goes by its title with its id beneath.
+ */
+const licenceOption = (id: string, group: string): PickerOption => {
+  const short = licenceShortName(id);
+  return { id, name: short ?? zenodoLicenceTitle(id), detail: short ? zenodoLicenceTitle(id) : id, group };
+};
 const licenceOptions = (common: string, all: string): PickerOption[] => [
-  ...COMMON_ZENODO_LICENCES.map((id) => ({ id, name: zenodoLicenceTitle(id), detail: id, group: common })),
-  ...ZENODO_LICENCES.filter(([id]) => !(COMMON_ZENODO_LICENCES as readonly string[]).includes(id)).map(([id, name]) => ({ id, name, detail: id, group: all })),
+  ...COMMON_ZENODO_LICENCES.map((id) => licenceOption(id, common)),
+  ...ZENODO_LICENCES.filter(([id]) => !(COMMON_ZENODO_LICENCES as readonly string[]).includes(id)).map(([id]) => licenceOption(id, all)),
 ];
 
 type Saved = FunctionReturnType<
@@ -250,7 +258,9 @@ export function PublicationForm({
                   {t("createToken")}
                 </a>
               </CredentialMode>
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* One column set on a phone too: an implicit column grows to the picker's licence name on one line, and
+                  at 200% text that ran the field 703px wide on a 390px phone. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Zenodo refuses any licence outside its own list, so the list is all that can be picked. A licence
                     saved before this was a picker, and isn't on it, still shows, marked, until another is picked. */}
                 <Field label={t("license")} hint={isZenodoLicence(settings.zenodo.license) ? t("licenseHint") : t("licenseUnknown")}>

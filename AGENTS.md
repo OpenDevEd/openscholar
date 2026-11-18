@@ -1,7 +1,7 @@
 # Agent working agreement
 
-Keep this file byte-for-byte identical in `OpenDevEd/openalex-count` and
-`OpenDevEd/new-el`. Repository-specific rules belong in
+Keep this file byte-for-byte identical in `Openscholar-ai/openscholar` and
+`Openscholar-ai/evidence-community`. Repository-specific rules belong in
 `docs/agents/project.md`.
 
 Read `docs/agents/project.md` in the repository the task is about before
@@ -19,12 +19,14 @@ This product spans two repositories. The folder a session starts in does not
 tell you which one a request is about: the user often starts in one and means
 the other.
 
-- `OpenDevEd/openalex-count` is OpenScholar: branch `dev`, integration checkout
+- `Openscholar-ai/openscholar` (formerly `OpenDevEd/openalex-count`) is
+  OpenScholar: branch `dev`, integration checkout
   `~/Documents/Github/openscholar/dev-self`. It owns research features,
   accounts, billing, and Evidence Library setup. "The config", "the
   configuration page", and "library settings" mean OpenScholar's Evidence
   Library configuration.
-- `OpenDevEd/new-el` is the Evidence Library: branch `main`, checkout
+- `Openscholar-ai/evidence-community` (formerly `OpenDevEd/new-el`, still called
+  new-el) is the Evidence Library: branch `main`, checkout
   `~/Documents/Github/new-el`. It owns the public library and its admin. "The
   admin", "the admin page", and "the admin panel" mean new-el's `/admin`.
   "Evidence Library" on its own means new-el unless the request is about
@@ -163,8 +165,8 @@ workflow.
 ## Issues and the project board
 
 Every issue in both repositories belongs to the organisation project
-**OpenScholar** (number 4) and to a milestone (`OS-NN` in openalex-count,
-`EL-NN` in new-el).
+**Openscholar** (Openscholar-ai project 1) and to a milestone (`OS-NN` in
+openscholar, `EL-NN` in evidence-community).
 
 - Before creating an issue, search open and closed issues in both
   repositories. Update an existing issue instead of creating a duplicate.
@@ -173,14 +175,14 @@ Every issue in both repositories belongs to the organisation project
   Body: the problem, the checks that prove it's done, and what is out of
   scope. No padded requirements.
 - Create it with everything in one step, then read it back: milestone,
-  project (`gh issue create --milestone "<title>" --project OpenScholar`),
+  project (`gh issue create --milestone "<title>" --project Openscholar`),
   board Status (`Backlog`, or `Ready` when the user wants it soon), and any
   label that applies (`needs-decision`, `external-blocker`, `documentation`).
 - Work that needs several issues becomes a milestone with issues, not a plan
   document.
 - Set `In progress` when you start, and `Blocker` with a comment naming the
-  blocker. The board-upkeep workflow in openalex-count does the rest, every
-  four hours and on openalex-count's issue and pull request events: `In review`
+  blocker. The board-upkeep workflow in openscholar does the rest, every
+  four hours and on openscholar's issue and pull request events: `In review`
   while an open PR closes the issue and `In progress` again once none does,
   `Done` when the issue closes, the current Sprint on an issue in progress,
   missing issues added to the board, and a milestone closed when its last
@@ -191,13 +193,13 @@ Every issue in both repositories belongs to the organisation project
   more weekly ones to the Sprint field; the board-upkeep run reports it.
 - When a decision changes an issue's scope, edit its body in the same turn so
   it never contradicts what was agreed. Use comments for progress.
-- A PR for planned work names its issue: `Closes OpenDevEd/<repo>#N` when it
-  finishes the issue, `Part of OpenDevEd/<repo>#N` otherwise. A small fix with
+- A PR for planned work names its issue: `Closes Openscholar-ai/<repo>#N` when it
+  finishes the issue, `Part of Openscholar-ai/<repo>#N` otherwise. A small fix with
   nothing planned behind it (a bug the user just reported, a copy change, a
   dependency bump) goes straight to a PR whose title is the record; don't open
   an issue only to close it.
-- `Closes` only works in PRs into the default branch: `dev` in openalex-count,
-  `main` in new-el. After merging, check the issue actually closed.
+- `Closes` only works in PRs into the default branch: `dev` in openscholar,
+  `main` in evidence-community. After merging, check the issue actually closed.
 - Close an issue as soon as its work is merged and verified. If only part is
   done, comment what remains.
 

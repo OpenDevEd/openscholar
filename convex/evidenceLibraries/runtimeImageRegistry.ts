@@ -1,9 +1,14 @@
 const REGISTRY_ORIGIN = "https://ghcr.io";
 const TOKEN_URL = "https://ghcr.io/token";
 const GITHUB_USER_URL = "https://api.github.com/user";
-const REPOSITORY = "opendeved/evidence-library-runtime";
-const IMAGE = "ghcr.io/opendeved/evidence-library-runtime";
-const PULL_SCOPE = `repository:${REPOSITORY}:pull`;
+// Releases were published under OpenDevEd until the repositories moved to Openscholar-ai, and communities set up
+// before then keep those images. A commit is looked up in the old repository first: GHCR refuses, rather than
+// answers "not found", in a repository that holds no image yet.
+const REPOSITORIES = [
+  "opendeved/evidence-library-runtime",
+  "openscholar-ai/evidence-library-runtime",
+] as const;
+type Repository = (typeof REPOSITORIES)[number];
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_REQUEST_ATTEMPTS = 3;
 const MAX_RETRY_DELAY_MS = 5_000;
@@ -11,7 +16,7 @@ const MAX_JSON_BYTES = 64 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const DIGEST = /^sha256:[a-f0-9]{64}$/u;
 const IMAGE_REFERENCE =
-  /^ghcr\.io\/opendeved\/evidence-library-runtime@sha256:[a-f0-9]{64}$/u;
+  /^ghcr\.io\/(?:opendeved|openscholar-ai)\/evidence-library-runtime@sha256:[a-f0-9]{64}$/u;
 const GITHUB_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const MANIFEST_ACCEPT = [
   "application/vnd.oci.image.index.v1+json",
@@ -20,8 +25,7 @@ const MANIFEST_ACCEPT = [
   "application/vnd.docker.distribution.manifest.v2+json",
 ].join(", ");
 
-export type RuntimeImageReference =
-  `ghcr.io/opendeved/evidence-library-runtime@sha256:${string}`;
+export type RuntimeImageReference = `ghcr.io/${Repository}@sha256:${string}`;
 
 export class RuntimeImageRegistryError extends Error {
   constructor(
@@ -42,7 +46,7 @@ export function isRuntimeImageReference(
 type BearerChallenge = {
   realm: typeof TOKEN_URL;
   service: "ghcr.io";
-  scope: typeof PULL_SCOPE;
+  scope: `repository:${Repository}:pull`;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -53,7 +57,11 @@ function invalidResponse(message: string): never {
   throw new RuntimeImageRegistryError("REGISTRY_INVALID_RESPONSE", message);
 }
 
-export function parseRegistryChallenge(value: string | null): BearerChallenge {
+export function parseRegistryChallenge(
+  value: string | null,
+  repository: Repository = REPOSITORIES[0],
+): BearerChallenge {
+  const scope = `repository:${repository}:pull` as const;
   if (!value?.startsWith("Bearer ")) {
     return invalidResponse("GHCR returned an invalid authentication challenge");
   }
@@ -66,13 +74,13 @@ export function parseRegistryChallenge(value: string | null): BearerChallenge {
   if (
     parameters.get("realm") !== TOKEN_URL ||
     parameters.get("service") !== "ghcr.io" ||
-    parameters.get("scope") !== PULL_SCOPE
+    parameters.get("scope") !== scope
   ) {
     return invalidResponse(
       "GHCR returned an unexpected authentication challenge",
     );
   }
-  return { realm: TOKEN_URL, service: "ghcr.io", scope: PULL_SCOPE };
+  return { realm: TOKEN_URL, service: "ghcr.io", scope };
 }
 
 async function request(
@@ -167,12 +175,15 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-function digestFrom(response: Response): RuntimeImageReference {
+function digestFrom(
+  response: Response,
+  repository: Repository,
+): RuntimeImageReference {
   const digest = response.headers.get("docker-content-digest");
   if (!digest || !DIGEST.test(digest)) {
     return invalidResponse("GHCR did not return an exact image digest");
   }
-  return `${IMAGE}@${digest}` as RuntimeImageReference;
+  return `ghcr.io/${repository}@${digest}` as RuntimeImageReference;
 }
 
 async function readTokenOwner(
@@ -289,64 +300,80 @@ export async function resolveRuntimeImage(input: {
         new Promise<void>((resolve) => setTimeout(resolve, delayMs))),
     randomImpl: input.randomImpl ?? Math.random,
   };
-  const manifestUrl = new URL(
-    `/v2/${REPOSITORY}/manifests/${input.commit}`,
-    REGISTRY_ORIGIN,
-  );
-  const manifestHeaders = {
-    accept: MANIFEST_ACCEPT,
-    "user-agent": "Openscholar",
-  };
-  const anonymous = await request(
-    fetchImpl,
-    manifestUrl,
-    {
-      method: "HEAD",
-      headers: manifestHeaders,
-    },
-    retry,
-  );
-  if (anonymous.status === 200) return digestFrom(anonymous);
-  if (anonymous.status === 404) return null;
-  if (anonymous.status !== 401) {
-    throw new RuntimeImageRegistryError(
-      "REGISTRY_UNAVAILABLE",
-      "The runtime image could not be checked",
-    );
+  let login: string | undefined;
+  for (const repository of REPOSITORIES) {
+    const image = await resolveIn(repository, input.commit, async () => {
+      login ??= await readTokenOwner(fetchImpl, githubToken, retry);
+      return login;
+    });
+    if (image) return image;
   }
+  return null;
 
-  const challenge = parseRegistryChallenge(
-    anonymous.headers.get("www-authenticate"),
-  );
-  const login = await readTokenOwner(fetchImpl, githubToken, retry);
-  const bearer = await exchangeBearerToken(
-    fetchImpl,
-    githubToken,
-    login,
-    challenge,
-    retry,
-  );
-  const authenticated = await request(
-    fetchImpl,
-    manifestUrl,
-    {
-      method: "HEAD",
-      headers: { ...manifestHeaders, authorization: `Bearer ${bearer}` },
-    },
-    retry,
-  );
-  if (authenticated.status === 404) return null;
-  if (authenticated.status === 401 || authenticated.status === 403) {
-    throw new RuntimeImageRegistryError(
-      "REGISTRY_AUTHENTICATION_FAILED",
-      "GHCR rejected the runtime image request",
+  async function resolveIn(
+    repository: Repository,
+    commit: string,
+    tokenOwner: () => Promise<string>,
+  ): Promise<RuntimeImageReference | null> {
+    const manifestUrl = new URL(
+      `/v2/${repository}/manifests/${commit}`,
+      REGISTRY_ORIGIN,
     );
-  }
-  if (authenticated.status !== 200) {
-    throw new RuntimeImageRegistryError(
-      "REGISTRY_UNAVAILABLE",
-      "The runtime image could not be checked",
+    const manifestHeaders = {
+      accept: MANIFEST_ACCEPT,
+      "user-agent": "Openscholar",
+    };
+    const anonymous = await request(
+      fetchImpl,
+      manifestUrl,
+      {
+        method: "HEAD",
+        headers: manifestHeaders,
+      },
+      retry,
     );
+    if (anonymous.status === 200) return digestFrom(anonymous, repository);
+    if (anonymous.status === 404) return null;
+    if (anonymous.status !== 401) {
+      throw new RuntimeImageRegistryError(
+        "REGISTRY_UNAVAILABLE",
+        "The runtime image could not be checked",
+      );
+    }
+
+    const challenge = parseRegistryChallenge(
+      anonymous.headers.get("www-authenticate"),
+      repository,
+    );
+    const bearer = await exchangeBearerToken(
+      fetchImpl,
+      githubToken,
+      await tokenOwner(),
+      challenge,
+      retry,
+    );
+    const authenticated = await request(
+      fetchImpl,
+      manifestUrl,
+      {
+        method: "HEAD",
+        headers: { ...manifestHeaders, authorization: `Bearer ${bearer}` },
+      },
+      retry,
+    );
+    if (authenticated.status === 404) return null;
+    if (authenticated.status === 401 || authenticated.status === 403) {
+      throw new RuntimeImageRegistryError(
+        "REGISTRY_AUTHENTICATION_FAILED",
+        "GHCR rejected the runtime image request",
+      );
+    }
+    if (authenticated.status !== 200) {
+      throw new RuntimeImageRegistryError(
+        "REGISTRY_UNAVAILABLE",
+        "The runtime image could not be checked",
+      );
+    }
+    return digestFrom(authenticated, repository);
   }
-  return digestFrom(authenticated);
 }

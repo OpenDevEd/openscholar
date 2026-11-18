@@ -128,7 +128,7 @@ describe("community releases", () => {
     ]);
     expect(catalog[1]?.release.summary).toBe("Promoted.");
     await setRuntimeReleasePrerelease({ token: "t", releaseId: 3, prerelease: false, fetchImpl });
-    expect(patches).toEqual([{ url: "/repos/OpenDevEd/new-el/releases/3", body: { prerelease: false } }]);
+    expect(patches).toEqual([{ url: "/repos/Openscholar-ai/evidence-community/releases/3", body: { prerelease: false } }]);
   });
 
   it("is for site admins only", async () => {

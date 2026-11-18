@@ -1,4 +1,4 @@
-// Generated from OpenDevEd/new-el src/lib/emails/library-template.ts.
+// Generated from Openscholar-ai/evidence-community src/lib/emails/library-template.ts.
 // Regenerate with: node scripts/sync-library-email-template.mjs <new-el checkout>
 import { escapeHtml } from "@/lib/escape-html";
 

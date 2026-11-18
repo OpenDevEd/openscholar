@@ -20,7 +20,7 @@ const DIGEST = `sha256:${"c".repeat(64)}`;
 const IMAGE = `ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`;
 const GITHUB = "https://api.github.com";
 const GHCR = "https://ghcr.io";
-const REPO = "/repos/OpenDevEd/new-el";
+const REPO = "/repos/Openscholar-ai/evidence-community";
 // A release body as new-el writes it: summary, notes, then the image line.
 const LATEST_NOTES = [
   "Import problems are easier to manage.",
@@ -112,10 +112,10 @@ function createGithub(input: {
         if (url.pathname === "/token") {
           return jsonResponse({ token: "registry-bearer" });
         }
-        if (
-          url.pathname ===
-          `/v2/opendeved/evidence-library-runtime/manifests/${input.latest}`
-        ) {
+        const imageRepository = url.pathname.match(
+          /^\/v2\/((?:opendeved|openscholar-ai)\/evidence-library-runtime)\/manifests\/(.+)$/u,
+        );
+        if (imageRepository && imageRepository[2] === input.latest) {
           if (input.imageStatus === 404)
             return new Response(null, { status: 404 });
           if (new Headers(init?.headers).get("authorization")) {
@@ -128,7 +128,7 @@ function createGithub(input: {
             status: 401,
             headers: {
               "www-authenticate":
-                'Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:opendeved/evidence-library-runtime:pull"',
+                `Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:${imageRepository[1]}:pull"`,
             },
           });
         }
@@ -388,6 +388,7 @@ describe("Evidence Library software release lookup", () => {
     expect(github.requests.map(({ url }) => url.pathname)).toEqual([
       `${REPO}/releases`,
       `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
+      `/v2/openscholar-ai/evidence-library-runtime/manifests/${LATEST}`,
     ]);
   });
 

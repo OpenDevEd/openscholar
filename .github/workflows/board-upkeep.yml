@@ -1,10 +1,10 @@
 name: Board upkeep
 
-# Keeps the OpenScholar project board in step with the issues of openalex-count
-# and new-el (scripts/board-upkeep.mts). It runs as the "OpenDevEd board
-# upkeep" GitHub App, installed on both repositories, because the job's own
-# token can't edit the organization's board. new-el's own events are caught by
-# the schedule.
+# Keeps the Openscholar project board in step with the issues of openscholar
+# and evidence-community (scripts/board-upkeep.mts). It runs as the "Openscholar
+# Board" GitHub App, installed on the organization, because the job's own token
+# can't edit the organization's board. evidence-community's own events are
+# caught by the schedule.
 on:
   schedule:
     - cron: "23 */4 * * *"
@@ -41,8 +41,8 @@ jobs:
         with:
           client-id: ${{ secrets.BOARD_APP_CLIENT_ID }}
           private-key: ${{ secrets.BOARD_APP_PRIVATE_KEY }}
-          owner: OpenDevEd
-          repositories: openalex-count,new-el
+          owner: Openscholar-ai
+          repositories: openscholar,evidence-community
 
       - name: Bring the board in step
         env:

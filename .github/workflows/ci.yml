@@ -151,7 +151,7 @@ jobs:
         if: steps.email-source-access.outputs.available == 'true'
         uses: actions/checkout@v6
         with:
-          repository: OpenDevEd/new-el
+          repository: Openscholar-ai/evidence-community
           ref: ${{ steps.email-source.outputs.commit }}
           fetch-depth: 0
           ssh-key: ${{ secrets.EVIDENCE_LIBRARY_SOURCE_KEY }}
