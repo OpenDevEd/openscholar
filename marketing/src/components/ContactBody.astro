@@ -96,6 +96,7 @@ const faq = [
   <section class="bleed close"><Art name="close-rose" pos="50% 100%" /><h2>Or start on your own</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
 
 <script>
+  import { loadTurnstile } from "../scripts/turnstile";
   const form = document.querySelector<HTMLFormElement>("[data-contact]");
   if (form) {
     const sent = form.querySelector<HTMLElement>("[data-sent]")!;
@@ -258,19 +259,10 @@ const faq = [
     // checked by the app (/api/contact), which sends it to habari@. Its widget stays out of sight unless it needs a click.
     const SITE_KEY = form.dataset.sitekey!;
     const ts = form.querySelector<HTMLElement>("[data-ts]")!, note = form.querySelector<HTMLElement>("[data-note]")!, noteText = note.textContent;
-    type Turnstile = { render: (el: HTMLElement, o: Record<string, unknown>) => string; execute: (id: string) => void; reset: (id: string) => void };
-    let widget = "", waiting: ((token: string | null) => void) | null = null, loading: Promise<Turnstile> | null = null;
-    const load = () => loading ??= new Promise<Turnstile>((resolve, reject) => {
-      const w = window as unknown as { turnstile?: Turnstile };
-      if (w.turnstile) return resolve(w.turnstile);
-      const script = Object.assign(document.createElement("script"), { src: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit", async: true });
-      script.onload = () => (w.turnstile ? resolve(w.turnstile) : reject(new Error("Turnstile didn't start")));
-      script.onerror = () => { loading = null; reject(new Error("Turnstile didn't load")); };
-      document.head.append(script);
-    });
+    let widget = "", waiting: ((token: string | null) => void) | null = null;
     const answer = (token: string | null) => { ts.classList.remove("asking"); waiting?.(token); waiting = null; };
     const prepare = async () => {
-      const turnstile = await load();
+      const turnstile = await loadTurnstile();
       widget ||= turnstile.render(form.querySelector<HTMLElement>("[data-ts-slot]")!, {
         sitekey: SITE_KEY, action: "contact", execution: "execute", appearance: "interaction-only", size: "normal",
         callback: (token: string) => answer(token), "error-callback": () => { answer(null); return true; }, "expired-callback": () => answer(null),

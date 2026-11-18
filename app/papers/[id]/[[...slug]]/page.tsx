@@ -14,7 +14,8 @@ import { licenceName, licenceUrl } from "@/lib/reports/report";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { citeFilePath, paperPageId, paperPath, paperSlug } from "@/lib/papers/page-address";
 import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
-import { copyKeysOf, quietly, readCommunityCopies, readPaperPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
+import { copyKeysOf, quietly, readCommunityCopies, readPaperLists, readPaperPage } from "@/lib/papers/paper-page-data";
+import { isKnownVisitor } from "@/lib/known-visitor";
 import { topicHref } from "@/lib/topics/links";
 import type { PaperResult } from "@/lib/types/search.types";
 
@@ -92,15 +93,13 @@ export default async function Page({ params }: Params) {
   const title = paper.title ?? paper.display_name ?? "";
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.
   if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
-  const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((reference) => reference.split("/").at(-1)!).slice(0, 100);
   // A report's own details beyond a paper's record, and whether the person reading may correct it: its owner and
   // its workspace's admins, whom only a signed-in read can tell.
   const live = report?.state === "live" ? report : null;
   const token = live ? ((await (await auth()).getToken({ template: "convex" })) ?? undefined) : undefined;
-  const [similar, referenceRows, communities, mine] = await Promise.all([
-    // A report isn't in our index, so nothing is like it there yet.
-    live ? [] : readSimilarForPage(id).catch(quietly("similar papers", id, [])),
-    readReferencesForPage(references).catch(quietly("references", id, [])),
+  const [lists, communities, mine] = await Promise.all([
+    // The lists are searches, run here only for a visitor we know; anyone else's browser reads them once it holds its pass.
+    (await isKnownVisitor()) ? readPaperLists(paper) : null,
     readCommunityCopies(paper.doi ?? null, work).catch(quietly("community copies", id, [])),
     token ? fetchQuery(api.reports.paper.mine, { key: id }, { token }).catch(quietly("report's owner", id, null)) : null,
   ]);
@@ -132,7 +131,7 @@ export default async function Page({ params }: Params) {
         keywords: detail.keywords.join(", ") || undefined,
         funder: detail.funding.map((funding) => ({ "@type": "Organization", name: funding.funder })),
         about: detail.topics.map((topic) => ({ "@type": "Thing", name: topic.name })),
-        citation: referenceRows.map((row) => ({ "@type": "ScholarlyArticle", name: row.title, url: `${SITE_URL}${paperPath(row.id, row.title)}` })),
+        citation: lists?.references.map((row) => ({ "@type": "ScholarlyArticle", name: row.title, url: `${SITE_URL}${paperPath(row.id, row.title)}` })),
       },
       topic && {
         "@type": "BreadcrumbList",
@@ -157,7 +156,7 @@ export default async function Page({ params }: Params) {
       {detail.copies.find((copy) => copy.pdf) && <link rel="item" type="application/pdf" href={detail.copies.find((copy) => copy.pdf)!.url} />}
       {detail.authors.flatMap((author) => author.orcid ? [<link key={author.orcid} rel="author" href={author.orcid} />] : [])}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={live ? { licence: { name: licenceName(live.metadata.licence), url: licenceUrl(live.metadata.licence) }, main: <ReportMain m={live.metadata} />, side: <ReportSide m={live.metadata} reportKey={id} />, cover: live.coverUrl, coverShape: live.coverShape ?? null, actions: mine ? <CorrectReport id={id} waiting={mine.waiting} slug={mine.slug} /> : undefined } : undefined} />
+      <PaperPage paper={paper} id={id} detail={detail} lists={lists} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={live ? { licence: { name: licenceName(live.metadata.licence), url: licenceUrl(live.metadata.licence) }, main: <ReportMain m={live.metadata} />, side: <ReportSide m={live.metadata} reportKey={id} />, cover: live.coverUrl, coverShape: live.coverShape ?? null, actions: mine ? <CorrectReport id={id} waiting={mine.waiting} slug={mine.slug} /> : undefined } : undefined} />
     </PageWrapper>
   );
 }
