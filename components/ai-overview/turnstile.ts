@@ -2,51 +2,18 @@
 
 import { useCallback, useRef } from "react";
 import { trackOverview } from "@/lib/posthog-overview";
+import { loadTurnstile } from "@/lib/turnstile-script";
 
 // Cloudflare Turnstile, which shows a signed-out visitor is a person before their overview runs (#1070). Its widget
 // stays out of sight unless Cloudflare needs the visitor to click: then it appears where the card puts its slot.
 // developers.cloudflare.com/turnstile/get-started/client-side-rendering
 
-const SCRIPT = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 /** The action the server checks a token was made for (lib/turnstile.ts). */
 const ACTION = "overview";
 
-type Options = {
-  sitekey: string;
-  action: string;
-  execution: "execute";
-  appearance: "interaction-only";
-  size: "flexible";
-  callback: (token: string) => void;
-  "error-callback": () => boolean;
-  "before-interactive-callback": () => void;
-};
 /** The card's widget, the slot it's in, and the token request it's answering. */
 type Widget = { id: string; element: HTMLElement; waiting: { resolve: (token: string) => void; reject: (error: Error) => void } | null };
-type Turnstile = { render: (element: HTMLElement, options: Options) => string; execute: (id: string) => void; reset: (id: string) => void; remove: (id: string) => void };
-declare global {
-  interface Window {
-    turnstile?: Turnstile;
-  }
-}
-
-let loading: Promise<Turnstile> | null = null;
-function load() {
-  if (window.turnstile) return Promise.resolve(window.turnstile);
-  loading ??= new Promise<Turnstile>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = SCRIPT;
-    script.async = true;
-    script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile didn't start")));
-    script.onerror = () => {
-      loading = null;
-      reject(new Error("Turnstile didn't load"));
-    };
-    document.head.append(script);
-  });
-  return loading;
-}
 
 /** A token asked for while the card's slot went away, unmounted or folded: nothing failed, so its overview just waits. */
 export class TurnstileCancelled extends Error {}
@@ -76,7 +43,7 @@ export function useTurnstile() {
 
   const one = useCallback(async () => {
     if (!SITE_KEY) throw new Error("No Turnstile site key in this build");
-    const turnstile = await load();
+    const turnstile = await loadTurnstile();
     const slotted = element.current;
     if (!slotted) throw new TurnstileCancelled("The overview's slot isn't there");
     return await new Promise<string>((resolve, reject) => {

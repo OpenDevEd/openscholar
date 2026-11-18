@@ -36,9 +36,12 @@ export const readPaperForPage = unstable_cache(
   { revalidate: DAY },
 );
 
+/** A record's own ID in our index, bare: the ID its page is named by. */
+const ownIdOf = (paper: PaperResult) => ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
+
 /** A paper in one of the page's lists. Named by our own ID, so its row links straight to its page instead of through a redirect. */
 const rowOf = (work: PaperResult): SimilarPaper => ({
-  id: ((work as { openscholar_id?: string }).openscholar_id ?? work.id).split("/").at(-1)!,
+  id: ownIdOf(work),
   title: work.title ?? work.display_name ?? "",
   year: work.publication_year ?? null,
   citations: work.cited_by_count ?? 0,
@@ -70,6 +73,20 @@ export const readReferencesForPage = unstable_cache(
   ["paper-page-references"],
   { revalidate: DAY },
 );
+
+export type PaperLists = { similar: SimilarPaper[]; references: SimilarPaper[] };
+
+/** A paper page's two lists: the papers closest in meaning to it, and the most cited of the ones it cites. One that can't be read is empty. */
+export async function readPaperLists(paper: PaperResult): Promise<PaperLists> {
+  const id = ownIdOf(paper);
+  const cited = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((reference) => reference.split("/").at(-1)!).slice(0, 100);
+  const [similar, references] = await Promise.all([
+    // A report isn't in our index, so nothing is like it there yet.
+    id.startsWith("R") ? [] : readSimilarForPage(id).catch(quietly("similar papers", id, [])),
+    readReferencesForPage(cited).catch(quietly("references", id, [])),
+  ]);
+  return { similar, references };
+}
 
 /** The paper as OpenAlex holds it, for what our index leaves out: authors' institutions and ORCID iDs, keywords, citations by year, copies, grants, MeSH. */
 export const readOpenAlexForPage = unstable_cache(
@@ -113,7 +130,7 @@ export const readPaperPathByDoi = unstable_cache(
     const read = await readOpenAlexWorks({ filter: { doi } as never, cursor: "*", perPage: 1 }, "openscholar");
     const paper = read.results[0] as PaperResult | undefined;
     if (!paper) return null;
-    const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
+    const id = ownIdOf(paper);
     return paperPath(id, paper.title ?? paper.display_name ?? "");
   },
   ["paper-page-by-doi"],
@@ -145,7 +162,7 @@ export async function readPaperPage(raw: string) {
   const paper = await readAskedPaper(paperPageId(raw));
   if (!paper) return null;
   // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
-  const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
+  const id = ownIdOf(paper);
   const work = openalexIdOf(paper);
   // A report is its own fullest record, so its goals and grant numbers show as OpenAlex's would.
   const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : id.startsWith("R") ? paper : null;
