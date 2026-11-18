@@ -203,7 +203,7 @@ export function OptionSelect({
           <ChevronDown className="size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent aria-label={label} className="w-(--radix-popover-trigger-width) min-w-72 p-0" align="start">
+      <PopoverContent aria-label={label} className="w-(--radix-popover-trigger-width) p-0" align="start">
         <OptionList
           options={words(search) ? ranked(options, search) : options}
           selected={[value]}
