@@ -58,10 +58,15 @@ function registryFetch() {
 }
 
 describe("runtime image registry", () => {
-  it("accepts only the fixed repository at an exact digest", () => {
+  it("accepts only the runtime's repositories at an exact digest", () => {
     expect(
       isRuntimeImageReference(
         `ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`,
+      ),
+    ).toBe(true);
+    expect(
+      isRuntimeImageReference(
+        `ghcr.io/openscholar-ai/evidence-library-runtime@${DIGEST}`,
       ),
     ).toBe(true);
     expect(
@@ -117,7 +122,24 @@ describe("runtime image registry", () => {
         fetchImpl,
       }),
     ).resolves.toBeNull();
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("finds a commit published after the move to Openscholar-ai", async () => {
+    const movedManifest = `https://ghcr.io/v2/openscholar-ai/evidence-library-runtime/manifests/${COMMIT}`;
+    const fetchImpl: typeof fetch = vi.fn(async (request: RequestInfo | URL) =>
+      String(request) === movedManifest
+        ? response(null, 200, { "docker-content-digest": DIGEST })
+        : response(null, 404),
+    );
+
+    await expect(
+      resolveRuntimeImage({
+        commit: COMMIT,
+        githubToken: "github-token",
+        fetchImpl,
+      }),
+    ).resolves.toBe(`ghcr.io/openscholar-ai/evidence-library-runtime@${DIGEST}`);
   });
 
   it("retries safe registry reads and honors Retry-After", async () => {
