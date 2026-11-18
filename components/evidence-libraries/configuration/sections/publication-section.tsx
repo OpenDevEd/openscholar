@@ -250,7 +250,9 @@ export function PublicationForm({
                   {t("createToken")}
                 </a>
               </CredentialMode>
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* One column set on a phone too: an implicit column grows to the picker's licence name on one line, and
+                  at 200% text that ran the field 703px wide on a 390px phone. */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Zenodo refuses any licence outside its own list, so the list is all that can be picked. A licence
                     saved before this was a picker, and isn't on it, still shows, marked, until another is picked. */}
                 <Field label={t("license")} hint={isZenodoLicence(settings.zenodo.license) ? t("licenseHint") : t("licenseUnknown")}>
