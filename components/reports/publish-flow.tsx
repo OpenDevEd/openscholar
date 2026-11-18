@@ -2686,9 +2686,11 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
     // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it, or above
     // it on a phone at large text, where the cover would leave the caption and the bill no room. The query reads the
     // page, which is under 18rem on a phone only from 125% text: at 150% on a 390px phone the caption beside the cover
-    // was 100px. On any phone, a fact or a bill line too long for its row puts its value under its label, and a label too
-    // long for the caption wraps instead of being cut: at 112.5% and 125% the cover is still beside a caption of 118 to
-    // 172px, where "Agreement" was cut to "A…". As the page scrolls it stays under the page's bar, as far from it as it is from the card's edge.
+    // was 100px. Once the page is under 22rem, from 112.5% text on a 390px phone, a fact or a bill line too long for its
+    // row puts its value under its label, and a label too long for the caption wraps instead of being cut, nested ones
+    // such as the Stripe credit's included: at 112.5% and 125% the cover is still beside a caption of 118 to 172px, where
+    // "Agreement" was cut to "A…". At normal text (22.5rem on a 360px phone) every row stays as it was. As the page
+    // scrolls it stays under the page's bar, as far from it as it is from the card's edge.
     <aside ref={aside} className="flex items-start gap-4 max-sm:@max-[18rem]:flex-col @3xl:sticky @3xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @3xl:block @3xl:self-start">
       <PaperCover
         className="w-28 shrink-0 @3xl:w-full"
@@ -2704,7 +2706,7 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
         href={report?.pdf?.url ?? null}
         pdf={!!report?.pdf?.url}
       />
-      <div className="min-w-0 flex-1 max-sm:@max-[18rem]:w-full max-sm:[&_dl>div]:flex-wrap max-sm:[&_dt]:whitespace-normal @3xl:mt-4">
+      <div className="min-w-0 flex-1 max-sm:@max-[18rem]:w-full max-sm:@max-[22rem]:[&_dl>div]:flex-wrap max-sm:@max-[22rem]:[&_dt]:whitespace-normal max-sm:@max-[22rem]:[&_dt_.truncate]:whitespace-normal @3xl:mt-4">
         <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
           <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
         </TooltipHint>
