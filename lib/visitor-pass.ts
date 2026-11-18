@@ -3,19 +3,29 @@
 import { loadTurnstile } from "@/lib/turnstile-script";
 
 // Cloudflare answers a signed-out browser's server actions (any POST to a page) only once the browser holds its pass,
-// the `cf_clearance` cookie a solved challenge leaves (docs/agents/project.md, "Bot floods"). Pages themselves are never checked, so the
-// first search, or a paper page's lists, is where a browser without the pass is stopped: the request comes back as a
+// the `cf_clearance` cookie a solved challenge leaves (docs/agents/project.md, "Bot floods"). A page reached from a
+// search engine or the marketing site opens without a check, so the first search, or a paper page's lists, is where
+// a browser without the pass is stopped: the request comes back as a
 // challenge page marked `cf-mitigated: challenge`
 // (developers.cloudflare.com/cloudflare-challenges/challenge-types/challenge-pages/detect-response). Turnstile then
-// earns the pass out of sight, and the request goes again. A browser that can't earn it gets the challenge page as
-// its answer, which the action's caller shows as any failed request.
+// earns the pass out of sight, and the request goes again. For a browser that doesn't earn it the request fails with
+// `PassNotEarned`, which a page can tell from any other failure.
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Fetch = typeof fetch;
 
+/** Why a request Cloudflare challenged went unanswered: the browser's check was sent away, or Turnstile couldn't run. */
+export class PassNotEarned extends Error {
+  constructor() {
+    super("We couldn't check that you're a person.");
+    this.name = "PassNotEarned";
+  }
+}
+
 /**
- * `plain`, sending a request Cloudflare challenged once more after `earn` gets the browser its pass. Requests
+ * `plain`, sending a request Cloudflare challenged once more after `earn` gets the browser its pass, or failing it
+ * with `PassNotEarned` when `earn` doesn't. Requests
  * challenged together wait for one attempt, and one whose challenge comes back after an attempt has ended takes that
  * attempt's outcome: it left before the pass existed, or before its check was sent away, so it doesn't ask again.
  */
@@ -37,7 +47,8 @@ export function withPass(plain: Fetch, earn: () => Promise<void>): Fetch {
         return earned;
       });
     }
-    return (covered ?? (await earning)) ? plain(input, init) : response;
+    if (!(covered ?? (await earning))) throw new PassNotEarned();
+    return plain(input, init);
   };
 }
 

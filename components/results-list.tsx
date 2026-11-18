@@ -31,7 +31,8 @@ import type { PaperCardHide } from "./paper-card/shared";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 
-import { NoResults, LoadingResults, QueryErrorState } from "@/components/no-results";
+import { NoResults, LoadingResults, QueryErrorState, UncheckedState } from "@/components/no-results";
+import { PassNotEarned } from "@/lib/visitor-pass";
 import { rejectedQuery } from "@/lib/search/search-error";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { motion, AnimatePresence } from "motion/react";
@@ -623,11 +624,17 @@ export function ResultsList({
             paginatedResults.length === 0 && results.length > 0;
           const showValidatingBanner =
             isValidating && results.length > 0;
+          // The search Cloudflare stopped for a check that wasn't passed. It takes the place of an earlier search's
+          // papers too, which would otherwise read as this one's answer, until it's tried again.
+          const unchecked =
+            search.error instanceof PassNotEarned && !isLoading && !isValidating;
 
           return (
             <>
               {queryError ? (
                 <QueryErrorState detail={queryError} oql={search.params.field === OQL_FIELD} />
+              ) : unchecked ? (
+                <UncheckedState onRetry={() => void search.mutate()} />
               ) : isSearching || isInitialLoading ? (
                 <LoadingResults />
               ) : isEmptySearch && failed ? (

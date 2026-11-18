@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { withPass } from "@/lib/visitor-pass";
+import { PassNotEarned, withPass } from "@/lib/visitor-pass";
 
 const challenged = () => new Response("<html>challenge</html>", { status: 403, headers: { "cf-mitigated": "challenge" } });
 const answered = () => new Response("ok");
@@ -22,10 +22,9 @@ describe("a request Cloudflare challenges", () => {
     expect(plain).toHaveBeenCalledTimes(2);
   });
 
-  it("comes back as the challenge when the pass can't be earned", async () => {
+  it("fails as PassNotEarned when the pass can't be earned, and isn't sent again", async () => {
     const plain = vi.fn().mockImplementation(async () => challenged());
-    const response = await withPass(plain, () => Promise.reject(new Error("no")))("/results", { method: "POST" });
-    expect(response.status).toBe(403);
+    await expect(withPass(plain, () => Promise.reject(new Error("no")))("/results", { method: "POST" })).rejects.toBeInstanceOf(PassNotEarned);
     expect(plain).toHaveBeenCalledTimes(1);
   });
 
@@ -50,12 +49,13 @@ describe("a request Cloudflare challenges", () => {
     const earn = vi.fn().mockRejectedValue(new Error("sent away"));
     const fetched = withPass(plain, earn);
     const slow = fetched("/late", { method: "POST" });
-    expect((await fetched("/first", { method: "POST" })).status).toBe(403);
+    slow.catch(() => {});
+    await expect(fetched("/first", { method: "POST" })).rejects.toBeInstanceOf(PassNotEarned);
     release();
-    expect((await slow).status).toBe(403);
+    await expect(slow).rejects.toBeInstanceOf(PassNotEarned);
     expect(earn).toHaveBeenCalledTimes(1);
     // One that leaves afterwards asks again.
-    await fetched("/after", { method: "POST" });
+    await expect(fetched("/after", { method: "POST" })).rejects.toBeInstanceOf(PassNotEarned);
     expect(earn).toHaveBeenCalledTimes(2);
   });
 
