@@ -195,7 +195,7 @@ describe("validateOwnerSection", () => {
 
   test("leaves out who gets new records' files while it is anyone, which a community on an older release refuses", () => {
     const configuration = assembleEvidenceLibraryConfiguration({ sections: ownerSections, managed: managedConfiguration, now: new Date("2026-08-24T19:00:00.000Z") });
-    const services = configuration.services as { publication: { zenodo: Record<string, unknown> } };
+    const services = configuration.services as unknown as { publication: { zenodo: Record<string, unknown> } };
     expect(services.publication.zenodo).not.toHaveProperty("defaultFileAccess");
   });
 
