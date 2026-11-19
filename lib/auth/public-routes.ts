@@ -49,12 +49,12 @@ function matchesPattern(pathname: string, pattern: string) {
 /**
  * The files and redirects routes serve to anyone, and the only addresses outside /api that aren't pages: a report's PDF,
  * a paper's citation files and cover, a DOI's paper, robots.txt and the sitemaps, the question stage's parts. They need
- * no account, so the proxy never hands them to Clerk. Exact, because a page takes any other address (`/papers/x.php`
- * is a paper page that isn't found) and a page needs Clerk.
+ * no account, so the proxy never hands them to Clerk; nor does Zenodo's sign-in coming back, which its state vouches for.
+ * Exact, because a page takes any other address (`/papers/x.php` is a paper page that isn't found) and a page needs Clerk.
  */
 // The .txt file is the IndexNow key in public/, named in full: another name of the same shape is a page that isn't found.
 export const isPublicFile = (pathname: string) =>
-  /^\/(?:robots\.txt|sitemap\.xml|6be290a44567a13bf59a858fe61708f7\.txt|papers\/sitemap\/\d+\.xml|papers\/doi\/.+|papers\/[^/]+\/(?:report\.pdf|cite\.(?:bib|ris)|cover\.png)|question-stage\/(?:hold|earth\.js))$/.test(pathname);
+  /^\/(?:robots\.txt|sitemap\.xml|6be290a44567a13bf59a858fe61708f7\.txt|papers\/sitemap\/\d+\.xml|papers\/doi\/.+|papers\/[^/]+\/(?:report\.pdf|cite\.(?:bib|ris)|cover\.png)|question-stage\/(?:hold|earth\.js)|settings\/connections\/zenodo)$/.test(pathname);
 
 export function isPublicPath(pathname: string) {
   const normalizedPath = normalizePathname(pathname);

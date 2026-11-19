@@ -1763,7 +1763,11 @@
     "siteSignsOut": "已在该网站退出登录，直到您再次允许",
     "disconnectedTime": "已断开 {time}",
     "allowAgain": "再次允许",
-    "openSite": "打开 {site}"
+    "openSite": "打开 {site}",
+    "zenodoAbout": "将你发布的内容存档到你自己的账户",
+    "zenodoKeeps": "已存档的记录会留在你的 Zenodo 账户中",
+    "zenodoBroken": "Zenodo 不再接受此连接。请重新连接以在那里存档。",
+    "zenodoFailed": "无法连接 Zenodo。请重试。"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6934,6 +6938,24 @@
         "confirmTitle": "更改谁能获得文件？",
         "confirmLive": "读者可以保留已获得的文件，因此此操作无法撤销：从现在起文件只能进一步开放。Zenodo 和 Crossref 也会更新。",
         "confirmBefore": "目前尚未公开任何内容：此设置在报告上线时生效，在此之前可以更改。"
+      },
+      "archive": {
+        "label": "存档",
+        "openscholar": "Openscholar 的存档",
+        "openscholarBody": "以 Openscholar 的账户保存在 Zenodo",
+        "own": "你的 Zenodo 账户",
+        "ownBody": "以你的名义保存在 Zenodo",
+        "connectFirst": "连接你的 Zenodo 账户以将报告保存在那里。",
+        "connect": "连接 Zenodo",
+        "connectNeeded": "连接 Zenodo 后签署",
+        "broken": "Zenodo 不再接受你的连接。请重新连接。",
+        "help": {
+          "about": "为什么要存档报告",
+          "title": "为什么报告要存档",
+          "why": "DOI 必须始终指向报告。注册 DOI 的 Crossref 要求在存档中保留永久副本，Zenodo 负责保存。",
+          "same": "无论存档在哪里，报告都保留其 Crossref DOI。",
+          "policies": "Zenodo 如何保存记录"
+        }
       }
     },
     "meta": {

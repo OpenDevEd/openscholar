@@ -4,7 +4,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
-import { internalMutation, mutation } from "../lib/functions";
+import { internalMutation, mutation, type MutationCtx } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -48,6 +48,8 @@ export const begin = internalMutation({
       zenodoDraftId: v.optional(v.string()),
       /** Crossref took this record's deposit, and hasn't shown the record yet. */
       depositSent: v.boolean(),
+      /** Whose own Zenodo account it is archived in, when not Openscholar's (#1237). */
+      archiveOwnerId: v.optional(v.id("users")),
       /** Who may get its file, which Zenodo keeps private, or private until a day, when not anyone. */
       fileAccess: v.optional(fileAccessValidator),
       pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), pages: v.optional(v.number()) })),
@@ -85,6 +87,7 @@ export const begin = internalMutation({
       ...(report.zenodoDraftId && { zenodoDraftId: report.zenodoDraftId }),
       depositSent: report.depositSent === true,
       ...(report.fileAccess && { fileAccess: report.fileAccess }),
+      ...(report.archiveOwnerId && { archiveOwnerId: report.archiveOwnerId }),
       pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }) } : null,
       publication: settings.publication,
       encryptedCredentials: settings.row?.encryptedCredentials ?? null,
@@ -164,21 +167,27 @@ export const retry = mutation({
     const report = await ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
     if (!report || report.activatedAt === undefined) throw createError("NOT_FOUND", "This report isn't live, so it has nothing registered.");
     if (report.deposit !== "failed" && report.archive !== "failed") throw createError("CONFLICT", "Nothing was refused: its registrations are done or under way.");
-    // What was already registered stays as it is: only what was refused, and what waited behind it, is sent. A new
-    // asking, so nothing still running for the old one is taken for it.
-    const registers = providersOf(report.registration);
-    const again = (at: string, done: string) => (at === done ? done : "queued");
-    const rev = (report.registrationRev ?? 0) + 1;
-    await touch(ctx, report, {
-      ...(registers.includes("crossref") && { deposit: again(report.deposit, "deposited") as Doc<"reports">["deposit"] }),
-      ...(registers.includes("zenodo") && { archive: again(report.archive, "archived") as Doc<"reports">["archive"] }),
-      registrationRev: rev,
-      registrationError: undefined,
-      registrationTries: undefined,
-      // Sent again whole: a deposit Crossref took and never showed is not waited on any longer.
-      depositSent: undefined,
-    });
-    await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id, rev });
+    await registerAgain(ctx, report);
     return null;
   },
 });
+
+/**
+ * Sends a report again to what refused it, and what waited behind it: what was already registered stays as it is. A
+ * new asking, so nothing still running for the old one is taken for it.
+ */
+export async function registerAgain(ctx: MutationCtx, report: Doc<"reports">) {
+  const registers = providersOf(report.registration);
+  const again = (at: string, done: string) => (at === done ? done : "queued");
+  const rev = (report.registrationRev ?? 0) + 1;
+  await touch(ctx, report, {
+    ...(registers.includes("crossref") && { deposit: again(report.deposit, "deposited") as Doc<"reports">["deposit"] }),
+    ...(registers.includes("zenodo") && { archive: again(report.archive, "archived") as Doc<"reports">["archive"] }),
+    registrationRev: rev,
+    registrationError: undefined,
+    registrationTries: undefined,
+    // Sent again whole: a deposit Crossref took and never showed is not waited on any longer.
+    depositSent: undefined,
+  });
+  await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id, rev });
+}

@@ -227,9 +227,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator), /** Who may get its PDF, as its licence allows (`fileAccessOf`). */ fileAccess: v.optional(fileAccessValidator) },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator), /** Who may get its PDF, as its licence allows (`fileAccessOf`). */ fileAccess: v.optional(fileAccessValidator), /** Where its copy is archived: Openscholar's Zenodo account, or the signer's own, connected. */ archive: v.optional(v.union(v.literal("openscholar"), v.literal("own"))) },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith, fileAccess: asked }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith, fileAccess: asked, archive }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -241,6 +241,12 @@ export const sign = workspaceMutation({
     const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url, chosen.open);
     if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name in Latin letters and the web address of its text.");
     const fileAccess = fileAccessOf(licence, keptFileAccess(asked));
+    // Their own Zenodo account must be connected, and still accepted, to archive in it: never Openscholar's instead.
+    const ownArchive = archive === "own";
+    if (ownArchive) {
+      const connection = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+      if (!connection || connection.broken) throw createError("CONFLICT", "Connect your Zenodo account to archive the report there, or choose Openscholar's archive.");
+    }
     const { voucher, voucherOff } = keptVoucher(applied);
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
@@ -249,7 +255,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), voucher, voucherOff, payWith });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, zenodo: ownArchive || zenodo.mode !== "off", ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -276,7 +282,9 @@ export const sign = workspaceMutation({
       ...keptAccess(fileAccess),
       ...(voucher && { voucher, voucherOff }),
       ...(payWith && { payWith }),
-      registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
+      // A copy in their own Zenodo account is always made, under the report's Crossref DOI.
+      registration: { crossref: true, zenodo: ownArchive || zenodo.mode !== "off", policy: ownArchive ? "reuse-crossref" : zenodo.defaultIdentifierPolicy },
+      ...(ownArchive && { archiveOwnerId: userId }),
       step: "doi",
       status: "draft",
       signedBy: { name: signer, onBehalfOfAll },

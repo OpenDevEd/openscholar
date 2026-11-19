@@ -1764,7 +1764,11 @@
     "siteSignsOut": "Daar afgemeld totdat jy dit weer toelaat",
     "disconnectedTime": "Ontkoppel {time}",
     "allowAgain": "Laat weer toe",
-    "openSite": "Maak {site} oop"
+    "openSite": "Maak {site} oop",
+    "zenodoAbout": "Argiveer wat jy publiseer in jou eie rekening",
+    "zenodoKeeps": "Rekords wat reeds geargiveer is, bly in jou Zenodo-rekening",
+    "zenodoBroken": "Zenodo aanvaar nie meer hierdie koppeling nie. Koppel dit weer om daar te argiveer.",
+    "zenodoFailed": "Zenodo kon nie gekoppel word nie. Probeer weer."
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6935,6 +6939,24 @@
         "confirmTitle": "Verander wie die lêer kry?",
         "confirmLive": "Lesers mag 'n lêer hou wat hulle al gehad het, dus kan dit nie ontdoen word nie: van nou af kan die lêer net verder oopmaak. Zenodo en Crossref word ook bygewerk.",
         "confirmBefore": "Niks is nog publiek nie: dit geld sodra die verslag lewendig gaan, en kan tot dan verander."
+      },
+      "archive": {
+        "label": "Argief",
+        "openscholar": "Openscholar se argief",
+        "openscholarBody": "Op Zenodo in Openscholar se rekening bewaar",
+        "own": "Jou Zenodo-rekening",
+        "ownBody": "Op Zenodo onder jou naam bewaar",
+        "connectFirst": "Koppel jou Zenodo-rekening om die verslag daar te bewaar.",
+        "connect": "Koppel Zenodo",
+        "connectNeeded": "Koppel Zenodo om te teken",
+        "broken": "Zenodo aanvaar nie meer jou koppeling nie. Koppel dit weer.",
+        "help": {
+          "about": "Waarom verslae geargiveer word",
+          "title": "Waarom 'n verslag geargiveer word",
+          "why": "'n DOI moet vir altyd na die verslag lei. Crossref, wat die DOI registreer, vra 'n permanente afskrif in 'n argief, en Zenodo bewaar dit.",
+          "same": "Die verslag behou sy Crossref-DOI waar dit ook al geargiveer word.",
+          "policies": "Hoe Zenodo rekords bewaar"
+        }
       }
     },
     "meta": {

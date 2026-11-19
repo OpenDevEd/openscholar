@@ -653,6 +653,8 @@ export default defineSchema({
     // The reviewers' list reads each status's newest, and the reports whose changes wait.
     .index("by_status_and_updatedAt", ["status", "updatedAt"])
     .index("by_changes", ["changes"])
+    // A person's reports archived in their own Zenodo account, sent again when they reconnect it (zenodo/connection.ts).
+    .index("by_archiveOwnerId_and_archive", ["archiveOwnerId", "archive"])
     // Reports whose file opens on a day, which are opened once it comes (reports/fileAccess.ts).
     .index("by_fileOpensOn", ["fileOpensOn"])
     // Every report in the order it last changed, which the search index's feed reads from where it left off (reports/searchIndex.ts).
@@ -1000,6 +1002,29 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_zotero_user", ["zoteroUserId"]),
+
+  // A person's own Zenodo account, connected through Zenodo's sign-in (#1237): where their reports' copies may be
+  // archived. Its tokens are encrypted (ENCRYPTION_KEY) and the access token is renewed before it is used
+  // (zenodo/connection.ts). `broken` once Zenodo refused to renew it: the person connects again.
+  zenodoConnections: defineTable({
+    userId: v.id("users"),
+    encryptedTokens: v.string(),
+    expiresAt: v.number(),
+    zenodoUserId: v.optional(v.string()),
+    name: v.optional(v.string()),
+    connectedAt: v.number(),
+    broken: v.optional(v.boolean()),
+  }).index("by_user", ["userId"]),
+
+  // A Zenodo sign-in under way: what Zenodo hands back proves it was started here, by this person.
+  zenodoOAuthStates: defineTable({
+    state: v.string(),
+    userId: v.id("users"),
+    returnTo: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_state", ["state"])
+    .index("by_expiry", ["expiresAt"]),
 
   // Temporary storage for OAuth request tokens (short-lived)
   zoteroOAuthTokens: defineTable({

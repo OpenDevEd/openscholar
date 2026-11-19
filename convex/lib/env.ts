@@ -19,3 +19,14 @@ export function requireAppUrl(): string {
   }
   return url;
 }
+
+/**
+ * `value` as a path on this app, normalized the way a browser reads it, or null when it would leave the app: a
+ * sign-in's "come back here" is never another site's address, however it is disguised (`//x.org`, `/\n/x.org`).
+ */
+export function localPath(value: string): string | null {
+  if (!value.startsWith("/")) return null;
+  const here = "https://app.invalid";
+  const url = new URL(value, here);
+  return url.origin === here ? `${url.pathname}${url.search}${url.hash}` : null;
+}

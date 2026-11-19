@@ -117,6 +117,10 @@ export const cleanupDeletedUsers = internalMutation({
         continue; // Skip user delete, process on next run
       }
 
+      // Their Zenodo account's tokens go too (#1237): what was archived there stays theirs, on Zenodo.
+      const zenodo = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", user._id)).unique();
+      if (zenodo) await ctx.db.delete("zenodoConnections", zenodo._id);
+
       // Their assistant chats go for everyone they were shared with, and so does their access to other people's.
       if (!(await purgeAccountChats(ctx, user._id))) {
         deferred = true;

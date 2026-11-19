@@ -1763,7 +1763,11 @@
     "siteSignsOut": "Uphumile lapho uze uyivumele futhi",
     "disconnectedTime": "Inqanyuliwe {time}",
     "allowAgain": "Vumela futhi",
-    "openSite": "Vula {site}"
+    "openSite": "Vula {site}",
+    "zenodoAbout": "Gcina okushicilelayo ku-akhawunti yakho",
+    "zenodoKeeps": "Amarekhodi asegciniwe ahlala ku-akhawunti yakho ye-Zenodo",
+    "zenodoBroken": "I-Zenodo ayisakwamukeli lokhu kuxhumana. Phinda uyixhume ukuze ugcine lapho.",
+    "zenodoFailed": "I-Zenodo ayikwazanga ukuxhunywa. Zama futhi."
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6934,6 +6938,24 @@
         "confirmTitle": "Shintsha ukuthi ubani othola ifayela?",
         "confirmLive": "Abafundi bangagcina ifayela abake baba nalo, ngakho lokhu akunakuhlehliswa: kusukela manje ifayela lingavuleka kakhulu kuphela. I-Zenodo ne-Crossref nazo ziyabuyekezwa.",
         "confirmBefore": "Akukho okusobala okwamanje: lokhu kusebenza uma umbiko uba ku-inthanethi, futhi kungashintsha kuze kube yileso sikhathi."
+      },
+      "archive": {
+        "label": "Inqolobane",
+        "openscholar": "Inqolobane ye-Openscholar",
+        "openscholarBody": "Igcinwa ku-Zenodo ku-akhawunti ye-Openscholar",
+        "own": "I-akhawunti yakho ye-Zenodo",
+        "ownBody": "Igcinwa ku-Zenodo ngegama lakho",
+        "connectFirst": "Xhuma i-akhawunti yakho ye-Zenodo ukuze ugcine umbiko lapho.",
+        "connect": "Xhuma i-Zenodo",
+        "connectNeeded": "Xhuma i-Zenodo ukuze usayine",
+        "broken": "I-Zenodo ayisakwamukeli ukuxhumana kwakho. Phinda uyixhume.",
+        "help": {
+          "about": "Kungani imibiko igcinwa",
+          "title": "Kungani umbiko ugcinwa",
+          "why": "I-DOI kumele iholele embikweni unomphela. I-Crossref, ebhalisa i-DOI, icela ikhophi engapheli enqolobaneni, futhi i-Zenodo iyayigcina.",
+          "same": "Umbiko ugcina i-DOI yawo ye-Crossref noma ngabe ugcinwe kuphi.",
+          "policies": "Indlela i-Zenodo egcina ngayo amarekhodi"
+        }
       }
     },
     "meta": {

@@ -7,6 +7,7 @@
 import { v } from "convex/values";
 import { CrossrefApiClient, ProviderHttpError, ZenodoApiClient, mapCrossrefRecord, type CrossrefDiagnosticResult } from "@opendeved/doi-sync-core";
 import { internal } from "../_generated/api";
+import { zenodoAccessToken } from "../zenodo/connectionActions";
 import { internalAction } from "../_generated/server";
 import type { PublicationSecrets } from "../evidenceLibraries/publicationValidators";
 import { userAgent } from "../evidenceLibraries/publicationCredentialVerification";
@@ -143,18 +144,41 @@ export const register = internalAction({
             console.info(JSON.stringify({ event: "report-crossref-verify", reportId, key: job.key, registered }));
             if (!(await settle(provider, registered ? { outcome: "done" } : { outcome: "unreached", error: "Crossref took the deposit and doesn't show the record yet." }))) return null;
           } else {
-            if (zenodo.mode === "off" || !secrets.zenodoToken) throw new Error("Zenodo isn't connected in the publishing settings.");
-            const token = secrets.zenodoToken;
-            const endpoint = zenodo.mode === "sandbox" ? "https://sandbox.zenodo.org" : "https://zenodo.org";
+            // In its author's own Zenodo account (#1237), under their name: always zenodo.org, as sandbox.zenodo.org has
+            // accounts of its own. A connection Zenodo no longer accepts refuses the report, which waits for them.
+            const own = job.archiveOwnerId !== undefined;
+            if (!own && (zenodo.mode === "off" || !secrets.zenodoToken)) throw new Error("Zenodo isn't connected in the publishing settings.");
+            const token = own ? await zenodoAccessToken(ctx, job.archiveOwnerId!) : secrets.zenodoToken!;
+            const endpoint = own || zenodo.mode !== "sandbox" ? "https://zenodo.org" : "https://sandbox.zenodo.org";
+            // The copy carries the report's Crossref DOI: one from Crossref's test system (shared dev) is never published as
+            // a real record in someone's own account. It leaves a draft there, which they may discard.
+            const draftOnly = own && crossref.mode !== "custom";
             const client = new ZenodoApiClient({
               endpoint,
               // zenodo.org answers 403 to an unknown User-Agent, so every call says who is asking.
               fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent } }),
             });
             // Reusing the Crossref DOI, Zenodo archives the file under it; otherwise it gives the copy a DOI of its own.
-            const doiPolicy = job.registration.crossref && job.registration.policy === "reuse-crossref" ? ("external-crossref" as const) : ("dual" as const);
+            const doiPolicy = own || (job.registration.crossref && job.registration.policy === "reuse-crossref") ? ("external-crossref" as const) : ("dual" as const);
             const { landingUrl, doi, ...metadata } = zenodoRecord(record, job.metadata);
             const shared = { token, doiPolicy, metadata: { ...metadata, ...(doiPolicy === "external-crossref" && { doi }) }, resourceUrl: landingUrl };
+            if (draftOnly) {
+              const blob = job.pdf && (await ctx.storage.get(job.pdf.file));
+              if (!blob) throw new Error("The report's PDF is missing, so there is nothing to archive.");
+              // The draft already there takes the report as it now stands (its file and details), one gone is made again,
+              // and a new draft's id is kept the moment Zenodo gives it, so a try that fails after never makes another.
+              const draft = await client.prepareCreateRecord({
+                ...shared,
+                ...(job.zenodoDraftId && { draftDepositionId: job.zenodoDraftId }),
+                files: [{ key: job.key, filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await blob.arrayBuffer()) }],
+                onPreparedDraft: async ({ depositionId }) => {
+                  await ctx.runMutation(internal.reports.registration.noted, { reportId, rev, zenodoDraftId: depositionId });
+                },
+              });
+              console.info(JSON.stringify({ event: "report-zenodo-own-draft", reportId, key: job.key, draft: draft.depositionId }));
+              if (!(await settle(provider, { outcome: "done" }))) return null;
+              continue;
+            }
             // A record published by a try whose answer never arrived is found under the report's DOI, not made again.
             const found = job.zenodoRecordId ?? (doiPolicy === "external-crossref" ? await client.findRecordByDoi({ token, doi }).then((looked) => (looked.status === "found" ? looked.record.identifiers.latestRecordId : undefined)) : undefined);
             const identifiers = found
