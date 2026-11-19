@@ -143,7 +143,8 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const rows = parts.flatMap(({ text }) => text.trimEnd().split("\n").slice(1));
     expect(rows).toHaveLength(MAX_SIZE.libraryItems);
     expect(parts.every(({ text }) => text.startsWith("\ufeffabstract,"))).toBe(true);
-    expect(new Set(rows.map((row) => row.match(/https:\/\/openalex\.org\/W\d+/)?.[0])).size).toBe(MAX_SIZE.libraryItems);
+    // The OpenAlex ID column holds the bare ID (W123), a field of its own between commas.
+    expect(new Set(rows.map((row) => row.match(/,(W\d+),/)?.[1])).size).toBe(MAX_SIZE.libraryItems);
   }, 600_000);
 
   it("a library's filtered counts are exact for every filter, from its counts or along the narrowest", async () => {
