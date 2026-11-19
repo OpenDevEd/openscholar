@@ -6041,7 +6041,13 @@
     "askPublish": "Shicilela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}}",
     "askQueue": "Thumela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} ukuze libuyekezwe",
     "alreadyInIt": "Selikhona",
-    "inReview": "Liyabuyekezwa"
+    "inReview": "Liyabuyekezwa",
+    "pdfAsk": {
+      "title": "Ingabe i-{community} kufanele ithole i-PDF?",
+      "body": "Lo mbiko ungaphansi kwe-{licence}, engavumeli muntu ukwabelana ngawo. Abafundi be-Openscholar bangafunda i-PDF, kodwa i-{community} iyithola kuphela uma uvuma. Noma kunjani, ithola umbiko.",
+      "yes": "Yebo, ne-PDF",
+      "no": "Cha, ngaphandle kwayo"
+    }
   },
   "communityApplications": {
     "joinName": "Joyina i-{name}",
@@ -6515,9 +6521,11 @@
       "balances": "Amabhalansi",
       "balancesHint": "Indawo yokusebenza ngayinye inebhalansi yokushicilela ku-Autumn, ngamadola, ekhokhela la manani ngaphambi kwekhadi. Nika umuntu noma inhlangano ibhalansi lapho, kanye noma egcwaliswa nsuku zonke, masonto onke, nyanga zonke noma minyaka yonke. Into esohlelweni iyinika yonke indawo yokusebenza ekulolo hlelo.",
       "openAutumn": "Vula i-Autumn",
-      "priceThree": "I-NC, i-ND namalayisense omnikazi",
-      "priceThreeHint": "Ukuthi kubiza malini ukushicilela umbiko ngaphansi kwelayisense ye-NC noma ye-ND, noma eyombhali uqobo, ngamadola aseMelika.",
-      "prices": "Amanani"
+      "priceThree": "NC, ND namalayisensi avulekile ombhali",
+      "priceThreeHint": "Okubiza ukushicilela umbiko ngaphansi kwelayisensi ye-NC noma ye-ND, noma ilayisensi evulekile yombhali uqobo, ngamadola aseMelika.",
+      "prices": "Amanani",
+      "priceClosed": "Amalayisensi ombhali angavulekile",
+      "priceClosedHint": "Okubiza ukushicilela umbiko ngaphansi kwelayisensi yombhali uqobo engavumeli muntu ukwabelana ngawo, ngamadola aseMelika."
     },
     "flow": {
       "steps": {
@@ -6832,8 +6840,8 @@
         },
         "activate": {
           "title": "Yenza kusebenze",
-          "bodyPrices": "{price} ngaphansi kwe-CC BY noma i-CC BY-SA, {priceOfThree} ngaphansi kwenye ilayisense. Kukhokhwa ngebhalansi yakho yokushicilela noma ngekhadi. I-DOI iyabhaliswa futhi umbiko uba ku-inthanethi.",
-          "bodyCard": "{price} ngaphansi kwe-CC BY noma i-CC BY-SA, {priceOfThree} ngaphansi kwenye ilayisense, kukhokhwa ngekhadi. Ikhodi yevawusha ingakwehlisa noma ikukhokhele. I-DOI iyabhaliswa futhi umbiko uba ku-inthanethi."
+          "bodyPrices": "{price} ngaphansi kwe-CC BY noma i-CC BY-SA, {priceOfThree} ngaphansi kwenye ilayisense, {priceClosed} ngaphansi kwelayisense yakho engavulekile. Kukhokhwa ngebhalansi yakho yokushicilela noma ngekhadi. I-DOI iyabhaliswa futhi umbiko uba ku-inthanethi.",
+          "bodyCard": "{price} ngaphansi kwe-CC BY noma i-CC BY-SA, {priceOfThree} ngaphansi kwenye ilayisense, {priceClosed} ngaphansi kwelayisense yakho engavulekile, kukhokhwa ngekhadi. Ikhodi yevawusha ingakwehlisa noma ikukhokhele. I-DOI iyabhaliswa futhi umbiko uba ku-inthanethi."
         }
       },
       "licence": {
@@ -6846,7 +6854,7 @@
         "own": "Ilayisense yami",
         "ownName": "Igama layo",
         "ownUrl": "Ikheli lewebhu lombhalo wayo",
-        "ownNeeded": "Nika ilayisense yakho igama ngezinhlamvu zesiLatini nekheli lewebhu lombhalo wayo.",
+        "ownNeeded": "Nikeza ilayisensi yakho igama ngezinhlamvu zesiLatini nekheli lewebhu lombhalo wayo, bese usho ukuthi ivumela noma ubani ukwabelana ngombiko yini.",
         "help": {
           "title": "Amalayisense",
           "about": "Mayelana namalayisense",
@@ -6860,7 +6868,10 @@
           "crossref": "Ibhalisa i-DOI",
           "zenodo": "Igcina ikhophi",
           "openscholar": "Ibonisa umbiko"
-        }
+        },
+        "ownOpen": "Ingabe ivumela noma ubani ukwabelana ngombiko?",
+        "ownOpenYes": "Yebo",
+        "ownOpenNo": "Cha"
       },
       "payment": {
         "payWith": "Khokha nge-",
@@ -6892,7 +6903,26 @@
         "receiptFailed": "Irisidi ayivulekanga. Zama futhi."
       },
       "emailUs": "Sithumelele i-imeyili",
-      "status": "Isimo"
+      "status": "Isimo",
+      "fileAccess": {
+        "label": "Ubani othola ifayela",
+        "open": "Noma ubani",
+        "openBody": "Ku-Openscholar, ku-Zenodo nasemiphakathini.",
+        "private": "Okuyimfihlo",
+        "privateBody": "Abantu abangashintsha umbiko kuphela.",
+        "embargo": "Kusukela ngosuku",
+        "embargoBody": "Kuyimfihlo kuze kube usuku olukhethayo.",
+        "readers": "Abafundi be-Openscholar",
+        "readersBody": "Kufundwa lapha, kuyimfihlo ku-Zenodo.",
+        "opensOn": "Livuleka ngo",
+        "meaning": {
+          "open": "Noma ubani angafunda futhi alande i-PDF, nemiphakathi engeza umbiko iyayithola nayo.",
+          "private": "Ikhasi lombiko ne-DOI yawo kuhlala kusobala, kodwa abantu abangawushintsha kuphela abangavula i-PDF. I-Zenodo iyigcina iyimfihlo, nemiphakathi ithola umbiko ngaphandle kwayo.",
+          "privateClosed": "Ikhasi lombiko ne-DOI yawo kuhlala kusobala, kodwa abantu abangawushintsha kuphela abangavula i-PDF. I-Zenodo iyigcina iyimfihlo, ngoba ilayisensi yawo ayivumeli muntu ukwabelana ngawo.",
+          "embargo": "Akekho ongalanda i-PDF ngaphambi kuka-{date}. Bese ivuleka ngokwayo ku-Openscholar naku-Zenodo, nemiphakathi iyayithola nayo.",
+          "readers": "Noma ubani angafunda i-PDF ku-Openscholar. I-Zenodo iyigcina iyimfihlo, ngoba ilayisensi yawo ayivumeli muntu ukwabelana ngawo, futhi umphakathi uyithola kuphela uma umuntu ongashintsha umbiko evuma lapho wengezwa."
+        }
+      }
     },
     "meta": {
       "publish": "Shicilela | Openscholar",

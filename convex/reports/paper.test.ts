@@ -29,7 +29,7 @@ describe("a report's page", () => {
     const { key } = await live(world);
     await world.reviewer.mutation(api.reports.settings.update, { series: { name: "Working Reports" } });
     expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ series: { name: "Openscholar Reports" } });
-    expect(await world.t.query(internal.reports.paper.forCommunity, { dois: [(await row(world.t, key)).doi] })).toMatchObject([{ series: "Openscholar Reports" }]);
+    expect(await world.t.query(internal.reports.paper.forCommunity, { dois: [(await row(world.t, key)).doi], libraryId: "community-1" })).toMatchObject([{ series: "Openscholar Reports" }]);
   });
 
   it("says a withdrawn report was withdrawn, without its details or its files, until it is reinstated", async () => {
@@ -52,7 +52,7 @@ describe("a report's page", () => {
     const waiting = await checked(world, [passed("byline", false)]);
     const { key } = await live(world, world.author, world.lab);
     const doi = (await row(world.t, key)).doi;
-    const ask = (...dois: string[]) => world.t.query(internal.reports.paper.forCommunity, { dois });
+    const ask = (...dois: string[]) => world.t.query(internal.reports.paper.forCommunity, { dois, libraryId: "community-1" });
     // In the order asked; a DOI that is no report of ours, and a report that never went live, name nothing.
     const [first, other, unpublished] = await ask(doi.toUpperCase(), "10.1000/elsewhere", (await row(world.t, waiting.key)).doi);
     expect(first).toMatchObject({ state: "live", key, doi, title: "Shade trees and maize yields", series: "Openscholar Reports", hasPdf: true });
@@ -200,6 +200,44 @@ describe("a report's page", () => {
       await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630" } });
       await world.t.finishAllScheduledFunctions(vi.runAllTimers);
       expect(JSON.parse((await copy()).paperData!)).toMatchObject({ primary_location: { source: { issn_l: "2049-3630" } } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("gives its file only to whom its access allows: private to no one, readers-only to an agreed community, an embargo from its day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-19T12:00:00Z"));
+    try {
+      const world = await setup();
+      const { key, reportId } = await live(world);
+      const doi = (await row(world.t, key)).doi;
+      const page = () => world.t.query(api.reports.paper.get, { key });
+      const community = async (libraryId: string) => (await world.t.query(internal.reports.paper.forCommunity, { dois: [doi], libraryId }))[0];
+      const access = (fileAccess: { mode: "open" } | { mode: "private" } | { mode: "embargo"; until: string }) => world.author.mutation(api.reports.flow.setFileAccess, { workspaceId: world.own, key, fileAccess });
+
+      await access({ mode: "private" });
+      expect(await page()).toMatchObject({ pdfUrl: null, fileAccess: { mode: "private" } });
+      expect(await community("community-1")).toMatchObject({ hasPdf: false });
+
+      await access({ mode: "embargo", until: "2026-11-21" });
+      expect(await page()).toMatchObject({ pdfUrl: null });
+      expect(await world.t.mutation(internal.reports.fileAccess.openEmbargoes, {})).toBe(0);
+      vi.setSystemTime(new Date("2026-11-21T00:30:00Z"));
+      expect(await world.t.mutation(internal.reports.fileAccess.openEmbargoes, {})).toBe(1);
+      expect(await page()).toMatchObject({ pdfUrl: expect.any(String), fileAccess: { mode: "open" } });
+      expect(await community("community-1")).toMatchObject({ hasPdf: true });
+
+      // Under the author's own licence that isn't open, readers here get the file, and a community only once agreed.
+      const [agreed, other] = await world.t.run(async (ctx) => {
+        const library = (slug: string) => ctx.db.insert("evidenceLibraries", { workspaceId: world.own, name: slug, slug, state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 } as never);
+        return [await library("agreed"), await library("other")];
+      });
+      await world.t.run((ctx) => ctx.db.patch("reports", reportId, { licence: { name: "Our terms", url: "https://example.org/terms", open: false }, fileAccess: { mode: "readers" }, pdfCommunities: [] }));
+      expect(await page()).toMatchObject({ pdfUrl: expect.any(String) });
+      expect(await community(agreed)).toMatchObject({ hasPdf: false });
+      await world.t.run((ctx) => ctx.db.patch("reports", reportId, { pdfCommunities: [agreed] }));
+      expect(await community(agreed)).toMatchObject({ hasPdf: true });
+      expect(await community(other)).toMatchObject({ hasPdf: false });
     } finally {
       vi.useRealTimers();
     }

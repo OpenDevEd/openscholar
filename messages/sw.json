@@ -6042,7 +6042,13 @@
     "askPublish": "Chapisha {count, plural, one {makala #} other {makala #}}",
     "askQueue": "Tuma {count, plural, one {makala #} other {makala #}} kwa ukaguzi",
     "alreadyInIt": "Tayari imo",
-    "inReview": "Inakaguliwa"
+    "inReview": "Inakaguliwa",
+    "pdfAsk": {
+      "title": "Je, {community} ipate PDF?",
+      "body": "Ripoti hii iko chini ya {licence}, ambayo hairuhusu mtu yeyote kuishiriki. Wasomaji wa Openscholar wanaweza kusoma PDF, lakini {community} inaipata tu ukikubali. Kwa vyovyote vile, inapata ripoti.",
+      "yes": "Ndiyo, pamoja na PDF",
+      "no": "Hapana, bila PDF"
+    }
   },
   "communityApplications": {
     "joinName": "Jiunge na {name}",
@@ -6516,9 +6522,11 @@
       "balances": "Salio",
       "balancesHint": "Kila nafasi ya kazi ina salio la uchapishaji kwenye Autumn, kwa dola, ambalo hulipa bei hizi kabla ya kadi. Mpe mtu au shirika salio huko, mara moja au linalojazwa kila siku, wiki, mwezi au mwaka. Kipengele kwenye mpango hulitoa kwa kila nafasi ya kazi iliyo kwenye mpango huo.",
       "openAutumn": "Fungua Autumn",
-      "priceThree": "NC, ND na leseni za mwandishi",
-      "priceThreeHint": "Gharama ya kuchapisha ripoti chini ya leseni ya NC au ND, au leseni ya mwandishi mwenyewe, kwa dola za Marekani.",
-      "prices": "Bei"
+      "priceThree": "NC, ND na leseni wazi za mwandishi",
+      "priceThreeHint": "Gharama ya kuchapisha ripoti chini ya leseni ya NC au ND, au leseni wazi ya mwandishi mwenyewe, kwa dola za Marekani.",
+      "prices": "Bei",
+      "priceClosed": "Leseni za mwandishi zisizo wazi",
+      "priceClosedHint": "Gharama ya kuchapisha ripoti chini ya leseni ya mwandishi mwenyewe isiyoruhusu mtu yeyote kuishiriki, kwa dola za Marekani."
     },
     "flow": {
       "steps": {
@@ -6833,8 +6841,8 @@
         },
         "activate": {
           "title": "Washa",
-          "bodyPrices": "{price} chini ya CC BY au CC BY-SA, {priceOfThree} chini ya leseni nyingine. Hulipwa kutoka salio lako la uchapishaji au kwa kadi. DOI husajiliwa na ripoti huwa hewani.",
-          "bodyCard": "{price} chini ya CC BY au CC BY-SA, {priceOfThree} chini ya leseni nyingine, hulipwa kwa kadi. Msimbo wa vocha unaweza kupunguza au kugharamia. DOI husajiliwa na ripoti huwa hewani."
+          "bodyPrices": "{price} chini ya CC BY au CC BY-SA, {priceOfThree} chini ya leseni nyingine, {priceClosed} chini ya leseni yako isiyo wazi. Hulipwa kutoka salio lako la uchapishaji au kwa kadi. DOI husajiliwa na ripoti huwa hewani.",
+          "bodyCard": "{price} chini ya CC BY au CC BY-SA, {priceOfThree} chini ya leseni nyingine, {priceClosed} chini ya leseni yako isiyo wazi, hulipwa kwa kadi. Msimbo wa vocha unaweza kupunguza au kugharamia. DOI husajiliwa na ripoti huwa hewani."
         }
       },
       "licence": {
@@ -6847,7 +6855,7 @@
         "own": "Leseni yangu mwenyewe",
         "ownName": "Jina lake",
         "ownUrl": "Anwani ya wavuti ya maandishi yake",
-        "ownNeeded": "Ipe leseni yako jina kwa herufi za Kilatini na anwani ya wavuti ya maandishi yake.",
+        "ownNeeded": "Ipe leseni yako jina kwa herufi za Kilatini na anwani ya wavuti ya maandishi yake, na useme kama inaruhusu mtu yeyote kushiriki ripoti.",
         "help": {
           "title": "Leseni",
           "about": "Kuhusu leseni",
@@ -6861,7 +6869,10 @@
           "crossref": "Husajili DOI",
           "zenodo": "Huhifadhi nakala",
           "openscholar": "Huonyesha ripoti"
-        }
+        },
+        "ownOpen": "Je, inaruhusu mtu yeyote kushiriki ripoti?",
+        "ownOpenYes": "Ndiyo",
+        "ownOpenNo": "Hapana"
       },
       "payment": {
         "payWith": "Lipa kwa",
@@ -6893,7 +6904,26 @@
         "receiptFailed": "Risiti haikuweza kufunguliwa. Jaribu tena."
       },
       "emailUs": "Tuandikie",
-      "status": "Hali"
+      "status": "Hali",
+      "fileAccess": {
+        "label": "Nani anapata faili",
+        "open": "Mtu yeyote",
+        "openBody": "Kwenye Openscholar, Zenodo na jumuiya.",
+        "private": "Faragha",
+        "privateBody": "Watu wanaoweza kubadilisha ripoti pekee.",
+        "embargo": "Kuanzia tarehe",
+        "embargoBody": "Faragha hadi siku utakayochagua.",
+        "readers": "Wasomaji wa Openscholar",
+        "readersBody": "Inasomwa hapa, faragha kwenye Zenodo.",
+        "opensOn": "Inafunguka tarehe",
+        "meaning": {
+          "open": "Mtu yeyote anaweza kusoma na kupakua PDF, na jumuiya zinazoongeza ripoti zinaipata pia.",
+          "private": "Ukurasa wa ripoti na DOI yake vinabaki wazi kwa umma, lakini watu wanaoweza kuibadilisha pekee ndio wanaweza kufungua PDF. Zenodo inaiweka faragha, na jumuiya zinapata ripoti bila PDF.",
+          "privateClosed": "Ukurasa wa ripoti na DOI yake vinabaki wazi kwa umma, lakini watu wanaoweza kuibadilisha pekee ndio wanaweza kufungua PDF. Zenodo inaiweka faragha, kwa kuwa leseni yake hairuhusu mtu yeyote kuishiriki.",
+          "embargo": "Hakuna anayeweza kupakua PDF kabla ya {date}. Kisha inafunguka yenyewe kwenye Openscholar na Zenodo, na jumuiya zinaipata pia.",
+          "readers": "Mtu yeyote anaweza kusoma PDF kwenye Openscholar. Zenodo inaiweka faragha, kwa kuwa leseni yake hairuhusu mtu yeyote kuishiriki, na jumuiya inaipata tu mtu anayeweza kubadilisha ripoti akikubali inapoongezwa."
+        }
+      }
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

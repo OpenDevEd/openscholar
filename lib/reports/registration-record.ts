@@ -3,7 +3,7 @@
 // field of a report's details that either registrar takes (plans/registrar-metadata).
 import { CREDIT_ROLES, type CreditRole } from "@opendeved/doi-sync-core";
 import { SDGS, STUDY_DESIGNS } from "../openalex/vocabulary";
-import { LICENCES, doiIn, isAuthor, personName, type Metadata, type RelationKind, wholeDate } from "./report";
+import { LICENCES, depositFileAccess, doiIn, fileAccessOf, isAuthor, licenceOpen, personName, type FileAccess, type Metadata, type RelationKind, wholeDate } from "./report";
 import type { Series } from "./settings";
 
 /**
@@ -79,8 +79,10 @@ function creator(author: Metadata["authors"][number], institutions: RegistryIds[
  * public, so no full-text address goes with it. Funders, references and links are always sent whole, so a deposit with
  * none of one clears what Crossref held. `ids` gives what OpenAlex knows of its funders and institutions.
  */
+const withFileAccess = (fileAccess: ReturnType<typeof depositFileAccess>) => (fileAccess ? { fileAccess } : {});
+
 export function registrationRecord(
-  report: { key: string; doi: string; withdrawnAt?: number | undefined; pages?: number | undefined; hasPdf?: boolean },
+  report: { key: string; doi: string; withdrawnAt?: number | undefined; pages?: number | undefined; hasPdf?: boolean; fileAccess?: FileAccess | undefined },
   m: Metadata,
   series: Pick<Series, "name" | "issn">,
   origin: string,
@@ -100,9 +102,11 @@ export function registrationRecord(
     publisher: "Openscholar",
     institution: series.name,
     // The licence its author agreed to publish under, as Zenodo names it, or the author's own by name and address: the
-    // same wherever the report is registered. Openscholar keeps every report free to read, whatever its licence.
+    // same wherever the report is registered. Free to read under any licence that lets anyone share it.
     ...(typeof m.licence === "string" ? { license: LICENCES[m.licence].zenodo } : { customLicense: { title: m.licence.name, url: m.licence.url } }),
-    freeToRead: true,
+    freeToRead: licenceOpen(m.licence),
+    // Who may get its file: Zenodo keeps it private, or private until a day, and Crossref sends no free full text.
+    ...withFileAccess(depositFileAccess(fileAccessOf(m.licence, report.fileAccess))),
     copyright: `© ${m.date.slice(0, 4)} The authors`,
     creators: m.authors.filter((author) => author.name.trim()).map((author) => creator(author, ids.institutions)),
     tags: m.keywords,

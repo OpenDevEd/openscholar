@@ -6041,7 +6041,13 @@
     "askPublish": "Publish {count, plural, one {# paper} other {# papers}}",
     "askQueue": "Send {count, plural, one {# paper} other {# papers}} for review",
     "alreadyInIt": "Already in it",
-    "inReview": "In review"
+    "inReview": "In review",
+    "pdfAsk": {
+      "title": "Should {community} get the PDF?",
+      "body": "This report is under {licence}, which doesn't let anyone share it. Openscholar's readers can read the PDF, but {community} gets it only if you agree. Either way, it gets the report.",
+      "yes": "Yes, with the PDF",
+      "no": "No, without it"
+    }
   },
   "communityApplications": {
     "joinName": "Join {name}",
@@ -6515,9 +6521,11 @@
       "balances": "Balances",
       "balancesHint": "Each workspace has a publication balance in Autumn, in dollars, which pays these prices before a card does. Give a person or an organization some there, once or refilled every day, week, month or year. An item on a plan gives it to every workspace on it.",
       "openAutumn": "Open Autumn",
-      "priceThree": "NC, ND and own licenses",
-      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own, costs, in US dollars.",
-      "prices": "Prices"
+      "priceThree": "NC, ND and own open licenses",
+      "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own open one, costs, in US dollars.",
+      "prices": "Prices",
+      "priceClosed": "Own licenses that aren't open",
+      "priceClosedHint": "What publishing a report under the author's own license that doesn't let anyone share it costs, in US dollars."
     },
     "flow": {
       "steps": {
@@ -6832,8 +6840,8 @@
         },
         "activate": {
           "title": "Activate",
-          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license. Paid from your publication balance or by card. The DOI is registered and the report goes live.",
-          "bodyCard": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license, paid by card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "bodyPrices": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license, {priceClosed} under your own that isn't open. Paid from your publication balance or by card. The DOI is registered and the report goes live.",
+          "bodyCard": "{price} under CC BY or CC BY-SA, {priceOfThree} under another license, {priceClosed} under your own that isn't open, paid by card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
         }
       },
       "licence": {
@@ -6846,7 +6854,7 @@
         "own": "My own license",
         "ownName": "Its name",
         "ownUrl": "Web address of its text",
-        "ownNeeded": "Give your license a name in Latin letters and the web address of its text.",
+        "ownNeeded": "Give your license a name in Latin letters and the web address of its text, and say whether it lets anyone share the report.",
         "help": {
           "title": "Licenses",
           "about": "About licenses",
@@ -6860,7 +6868,10 @@
           "crossref": "Registers the DOI",
           "zenodo": "Archives a copy",
           "openscholar": "Shows the report"
-        }
+        },
+        "ownOpen": "Does it let anyone share the report?",
+        "ownOpenYes": "Yes",
+        "ownOpenNo": "No"
       },
       "payment": {
         "payWith": "Pay with",
@@ -6892,7 +6903,26 @@
         "receiptFailed": "The receipt couldn’t be opened. Try again."
       },
       "emailUs": "Email us",
-      "status": "Status"
+      "status": "Status",
+      "fileAccess": {
+        "label": "Who gets the file",
+        "open": "Anyone",
+        "openBody": "On Openscholar, Zenodo and communities.",
+        "private": "Private",
+        "privateBody": "Only people who can change the report.",
+        "embargo": "From a date",
+        "embargoBody": "Private until the day you choose.",
+        "readers": "Openscholar readers",
+        "readersBody": "Read here, kept private on Zenodo.",
+        "opensOn": "Opens on",
+        "meaning": {
+          "open": "Anyone can read and download the PDF, and communities that add the report get it too.",
+          "private": "The report's page and DOI stay public, but only people who can change it can open the PDF. Zenodo keeps it private, and communities get the report without it.",
+          "privateClosed": "The report's page and DOI stay public, but only people who can change it can open the PDF. Zenodo keeps it private, as its license doesn't let anyone share it.",
+          "embargo": "Nobody can download the PDF until {date}. Then it opens on Openscholar and Zenodo by itself, and communities get it too.",
+          "readers": "Anyone can read the PDF on Openscholar. Zenodo keeps it private, as its license doesn't let anyone share it, and a community gets it only if someone who can change the report agrees when adding it."
+        }
+      }
     },
     "meta": {
       "publish": "Publish | Openscholar",

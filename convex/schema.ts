@@ -653,6 +653,8 @@ export default defineSchema({
     // The reviewers' list reads each status's newest, and the reports whose changes wait.
     .index("by_status_and_updatedAt", ["status", "updatedAt"])
     .index("by_changes", ["changes"])
+    // Reports whose file opens on a day, which are opened once it comes (reports/fileAccess.ts).
+    .index("by_fileOpensOn", ["fileOpensOn"])
     // Every report in the order it last changed, which the search index's feed reads from where it left off (reports/searchIndex.ts).
     .index("by_updatedAt_and_key", ["updatedAt", "key"])
     // A workspace's reports that never went live, which go with it when it is deleted (workspaces/purge.ts).

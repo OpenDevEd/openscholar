@@ -10,6 +10,7 @@ import type { FunctionReturnType } from "convex/server";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { FileAccessChoice } from "@/components/reports/file-access-choice";
 import { api } from "@/convex/_generated/api";
 import { ENTRY_OPEN, Entry } from "@/components/command-center/entry";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
@@ -257,6 +258,7 @@ function SubmissionRow({ row, stage, onOpen, onApprove, onRetry }: { row: Row; s
 function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report open now; null when none is. */ report: Report | null; /** The one last open, shown while the dialog closes. */ last: Report | null; onClose: () => void; /** Opens the report's details in the form. */ onEdit: () => void }) {
   const decideReport = useMutation(api.reports.review.decide);
   const decideItsChanges = useMutation(api.reports.review.decideChanges);
+  const setFileAccess = useMutation(api.reports.review.setFileAccess);
   const [note, setNote] = useState("");
   const [busy, start] = useTransition();
   const t = useTranslations("publishReports.review");
@@ -461,6 +463,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   {t("passed", { passed: s.results?.filter((r) => r.pass).length ?? 0, total: s.results?.length ?? 0 })} {s.checksVersion ? <Tag>v{s.checksVersion}</Tag> : null}
                 </Fact>
               </div>
+              {/* Who gets its PDF, under the licence it was signed under: a reviewer may change it as its author may. */}
+              <FileAccessChoice licence={s.licence} value={s.fileAccess} disabled={busy} onChange={(fileAccess) => void setFileAccess({ key: s.key, fileAccess }).catch(failed)} />
               {/* What the checks said comes straight after the facts: it is what a reviewer decides on. With changes
                   open, their checks above are the ones to read, and the report's own would say most of it twice. */}
               {s.results?.length && !changes ? (

@@ -2,7 +2,7 @@
 
 import { cloneElement, useRef, useState, type ReactElement, type ReactNode, type UIEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
@@ -19,6 +19,7 @@ import { RoleLabel } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/ui/opening";
 import { useProtectedPaginatedQuery, useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { isRightToLeft } from "@/lib/i18n/locale-map";
 import type { WorkInput } from "@/lib/library/trim-paper-data";
@@ -232,7 +233,27 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
   const yours = mine.filter((row) => !recentIds.has(row.id));
   const publicOnes = others.filter((row) => !recentIds.has(row.id));
 
-  const send = async (publish: boolean) => {
+  // A report of the person's own whose PDF only Openscholar's readers may have: each community is asked about once.
+  const question = useProtectedQuery(api.reports.communityPdf.question, paper.doi ? { doi: paper.doi } : "skip").data;
+  const answer = useMutation(api.reports.communityPdf.answer);
+  const [asking, setAsking] = useState<{ publish: boolean } | null>(null);
+  const send = (publish: boolean) => (question && picked && !question.agreed.includes(picked.id) ? setAsking({ publish }) : deliver(publish));
+  /** The answer for the community picked, then the paper sent: with its PDF on a yes, without it on a no. */
+  const answered = async (give: boolean) => {
+    const publish = asking!.publish;
+    setAsking(null);
+    if (give) {
+      try {
+        await answer({ doi: paper.doi!, libraryId: picked!.id, give });
+      } catch (error) {
+        toast.error(refusalOr(error, t("addFailed")));
+        return;
+      }
+    }
+    await deliver(publish);
+  };
+
+  const deliver = async (publish: boolean) => {
     if (!picked || !here) return;
     setSending(publish ? "publish" : "queue");
     try {
@@ -308,7 +329,8 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
           // pull it back every time the list redraws, such as when the pointer passes over other rows during a scroll.
           <div ref={bringIntoView} className="fade-enter space-y-2 px-2 pb-2 pt-1.5">
             <p className="text-xs text-muted-foreground">{canPublish ? t("publishOrReview") : t("reviewFirst")}</p>
-            <PublishChoice size="sm" canPublish={canPublish} sending={sending} onSend={(publish) => void send(publish)} />
+            {/* Held until it is known whether to ask about the PDF, so nothing is sent before the question could be put. */}
+            <PublishChoice size="sm" canPublish={canPublish} sending={sending} disabled={!!paper.doi && question === undefined} onSend={(publish) => void send(publish)} />
           </div>
         ) : null}
       </li>
@@ -327,6 +349,20 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
     <>
       {/* Its card to the left of the popover, on a screen wide enough and a pointer that hovers. */}
       <SideCard hover={hover} />
+      {/* Whether the community gets the PDF of a report under a licence that doesn't let anyone share it: asked of
+          someone who may change the report, before it is sent. Closing it sends nothing. */}
+      <AlertDialog open={!!asking} onOpenChange={(open) => !open && setAsking(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("pdfAsk.title", { community: picked?.name ?? "" })}</AlertDialogTitle>
+            <AlertDialogDescription>{t("pdfAsk.body", { community: picked?.name ?? "", licence: question?.licence ?? "" })}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(event) => (event.preventDefault(), void answered(false))}>{t("pdfAsk.no")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void answered(true)}>{t("pdfAsk.yes")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <p className="px-2 pb-2 pt-1 text-sm font-medium">{t("addToCommunity")}</p>
       <div className="relative mb-1">
         <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

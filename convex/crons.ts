@@ -11,6 +11,14 @@ crons.interval(
   {},
 );
 
+// A report's file opens on its embargo's day (reports/fileAccess.ts): within the hour after midnight UTC.
+crons.interval(
+  "open embargoed report files",
+  { hours: 1 },
+  internal.reports.fileAccess.openEmbargoes,
+  {},
+);
+
 // Custom domains that stop pointing at us should stop showing as working.
 crons.interval(
   "recheck evidence library custom domains",

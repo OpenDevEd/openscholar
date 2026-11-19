@@ -268,8 +268,15 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
   );
 }
 
+/** Each price by the licences it is for: Creative Commons' open ones, the rest and open own licences, and own ones that aren't open. */
+const PRICE_ROWS = [
+  { which: "standard", label: "priceOne", hint: "priceHint" },
+  { which: "other", label: "priceThree", hint: "priceThreeHint" },
+  { which: "closed", label: "priceClosed", hint: "priceClosedHint" },
+] as const;
+
 /**
- * What publishing a report costs, by its licence, and where the balances that pay it are given: the two prices are
+ * What publishing a report costs, by its licence, and where the balances that pay it are given: the prices are
  * saved here, and each workspace's publication balance is Autumn's.
  */
 function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string | null }) {
@@ -283,11 +290,11 @@ function PriceSettings({ prices: now, autumn }: { prices: Prices; autumn: string
   return (
     <Zone label={t("prices")}>
       <ul className={LIST}>
-        {(["standard", "other"] as const).map((which) => (
-          <Row key={which} label={t(which === "standard" ? "priceOne" : "priceThree")} hint={t(which === "standard" ? "priceHint" : "priceThreeHint")}>
+        {PRICE_ROWS.map(({ which, label, hint }) => (
+          <Row key={which} label={t(label)} hint={t(hint)}>
             <span className="flex shrink-0 items-center gap-1.5">
               <span className="text-sm text-muted-foreground">$</span>
-              <SavedInput value={String(now[which])} onSave={save(which)} ariaLabel={t(which === "standard" ? "priceOne" : "priceThree")} className="w-20 text-end tabular-nums" />
+              <SavedInput value={String(now[which])} onSave={save(which)} ariaLabel={t(label)} className="w-20 text-end tabular-nums" />
             </span>
           </Row>
         ))}

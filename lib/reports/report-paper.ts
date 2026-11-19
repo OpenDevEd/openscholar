@@ -2,7 +2,7 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { catalogAncestors } from "@/lib/topics/search";
-import { LICENCES, fullTitle, isAuthor, type Metadata } from "./report";
+import { LICENCES, fullTitle, isAuthor, licenceOpen, type Metadata } from "./report";
 import type { Series } from "./settings";
 
 type Topic = Metadata["topics"][number];
@@ -17,8 +17,10 @@ function withParents(topic: Topic) {
 }
 
 export function reportPaper(report: { key: string; doi: string; pdfUrl: string | null; updatedAt: number }, m: Metadata, series: Pick<Series, "name" | "issn">): PaperResult {
+  // Free to read while its readers get the file: gold under a licence that lets anyone share it, bronze under one that doesn't.
+  const free = report.pdfUrl !== null;
   const location = {
-    is_oa: true,
+    is_oa: free,
     landing_page_url: `https://doi.org/${report.doi}`,
     // Its own lasting address, which leads to the file while the report is live (app/papers/[id]/report.pdf).
     pdf_url: report.pdfUrl ? `/papers/${report.key}/report.pdf` : null,
@@ -59,7 +61,7 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     })),
     primary_location: location,
     locations: [location],
-    open_access: { is_oa: true, oa_status: "gold", oa_url: location.pdf_url },
+    open_access: { is_oa: free, oa_status: !free ? "closed" : licenceOpen(m.licence) ? "gold" : "bronze", oa_url: location.pdf_url },
     ids: {},
   } as unknown as PaperResult;
 }

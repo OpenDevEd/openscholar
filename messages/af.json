@@ -6042,7 +6042,13 @@
     "askPublish": "Publiseer {count, plural, one {# artikel} other {# artikels}}",
     "askQueue": "Stuur {count, plural, one {# artikel} other {# artikels}} vir hersiening",
     "alreadyInIt": "Reeds daarin",
-    "inReview": "In hersiening"
+    "inReview": "In hersiening",
+    "pdfAsk": {
+      "title": "Moet {community} die PDF kry?",
+      "body": "Hierdie verslag is onder {licence}, wat niemand toelaat om dit te deel nie. Openscholar se lesers kan die PDF lees, maar {community} kry dit net as jy instem. Hoe ook al, dit kry die verslag.",
+      "yes": "Ja, met die PDF",
+      "no": "Nee, daarsonder"
+    }
   },
   "communityApplications": {
     "joinName": "Sluit aan by {name}",
@@ -6516,9 +6522,11 @@
       "balances": "Saldo's",
       "balancesHint": "Elke werkruimte het ’n publikasiebalans in Autumn, in dollar, wat hierdie pryse betaal voordat ’n kaart dit doen. Gee daar balans aan ’n persoon of ’n organisasie, een keer of elke dag, week, maand of jaar aangevul. ’n Item op ’n plan gee dit aan elke werkruimte op daardie plan.",
       "openAutumn": "Maak Autumn oop",
-      "priceThree": "NC, ND en eie lisensies",
-      "priceThreeHint": "Wat dit kos om ’n verslag onder ’n NC- of ND-lisensie, of die outeur se eie lisensie, te publiseer, in Amerikaanse dollar.",
-      "prices": "Pryse"
+      "priceThree": "NC, ND en eie oop lisensies",
+      "priceThreeHint": "Wat dit kos om 'n verslag onder 'n NC- of ND-lisensie, of die outeur se eie oop lisensie, te publiseer, in Amerikaanse dollar.",
+      "prices": "Pryse",
+      "priceClosed": "Eie lisensies wat nie oop is nie",
+      "priceClosedHint": "Wat dit kos om 'n verslag onder die outeur se eie lisensie wat niemand toelaat om dit te deel nie, te publiseer, in Amerikaanse dollar."
     },
     "flow": {
       "steps": {
@@ -6833,8 +6841,8 @@
         },
         "activate": {
           "title": "Aktiveer",
-          "bodyPrices": "{price} onder CC BY of CC BY-SA, {priceOfThree} onder ’n ander lisensie. Betaal uit jou publikasiebalans of per kaart. Die DOI word geregistreer en die verslag gaan lewendig.",
-          "bodyCard": "{price} onder CC BY of CC BY-SA, {priceOfThree} onder ’n ander lisensie, per kaart betaal. ’n Koopbewyskode kan dit verminder of dek. Die DOI word geregistreer en die verslag gaan lewendig."
+          "bodyPrices": "{price} onder CC BY of CC BY-SA, {priceOfThree} onder ’n ander lisensie, {priceClosed} onder jou eie lisensie wat nie oop is nie. Betaal uit jou publikasiebalans of per kaart. Die DOI word geregistreer en die verslag gaan lewendig.",
+          "bodyCard": "{price} onder CC BY of CC BY-SA, {priceOfThree} onder ’n ander lisensie, {priceClosed} onder jou eie lisensie wat nie oop is nie, per kaart betaal. ’n Koopbewyskode kan dit verminder of dek. Die DOI word geregistreer en die verslag gaan lewendig."
         }
       },
       "licence": {
@@ -6847,7 +6855,7 @@
         "own": "My eie lisensie",
         "ownName": "Sy naam",
         "ownUrl": "Webadres van sy teks",
-        "ownNeeded": "Gee jou lisensie ’n naam in Latynse letters en die webadres van sy teks.",
+        "ownNeeded": "Gee jou lisensie 'n naam in Latynse letters en die webadres van sy teks, en sê of dit enigiemand toelaat om die verslag te deel.",
         "help": {
           "title": "Lisensies",
           "about": "Oor lisensies",
@@ -6861,7 +6869,10 @@
           "crossref": "Registreer die DOI",
           "zenodo": "Argiveer ’n kopie",
           "openscholar": "Wys die verslag"
-        }
+        },
+        "ownOpen": "Laat dit enigiemand toe om die verslag te deel?",
+        "ownOpenYes": "Ja",
+        "ownOpenNo": "Nee"
       },
       "payment": {
         "payWith": "Betaal met",
@@ -6893,7 +6904,26 @@
         "receiptFailed": "Die kwitansie kon nie oopgemaak word nie. Probeer weer."
       },
       "emailUs": "E-pos ons",
-      "status": "Status"
+      "status": "Status",
+      "fileAccess": {
+        "label": "Wie kry die lêer",
+        "open": "Enigiemand",
+        "openBody": "Op Openscholar, Zenodo en in gemeenskappe.",
+        "private": "Privaat",
+        "privateBody": "Net mense wat die verslag kan verander.",
+        "embargo": "Vanaf 'n datum",
+        "embargoBody": "Privaat tot die dag wat jy kies.",
+        "readers": "Openscholar-lesers",
+        "readersBody": "Hier gelees, privaat op Zenodo.",
+        "opensOn": "Maak oop op",
+        "meaning": {
+          "open": "Enigiemand kan die PDF lees en aflaai, en gemeenskappe wat die verslag byvoeg, kry dit ook.",
+          "private": "Die verslag se bladsy en DOI bly publiek, maar net mense wat dit kan verander, kan die PDF oopmaak. Zenodo hou dit privaat, en gemeenskappe kry die verslag daarsonder.",
+          "privateClosed": "Die verslag se bladsy en DOI bly publiek, maar net mense wat dit kan verander, kan die PDF oopmaak. Zenodo hou dit privaat, want sy lisensie laat niemand toe om dit te deel nie.",
+          "embargo": "Niemand kan die PDF voor {date} aflaai nie. Dan maak dit vanself op Openscholar en Zenodo oop, en gemeenskappe kry dit ook.",
+          "readers": "Enigiemand kan die PDF op Openscholar lees. Zenodo hou dit privaat, want sy lisensie laat niemand toe om dit te deel nie, en 'n gemeenskap kry dit net as iemand wat die verslag kan verander, instem wanneer dit bygevoeg word."
+        }
+      }
     },
     "meta": {
       "publish": "Publiseer | Openscholar",
