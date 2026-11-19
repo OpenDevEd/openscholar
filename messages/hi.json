@@ -365,7 +365,7 @@
     "accountConnect": "Zenodo जोड़ें",
     "accountBroken": "Zenodo अब आपका कनेक्शन स्वीकार नहीं करता। इसे फिर से जोड़ें।",
     "accountSandbox": "आपका अपना Crossref खाता चाहिए",
-    "accountSandboxHint": "Crossref सैंडबॉक्स पर समुदाय Zenodo सैंडबॉक्स में संग्रहित करता है: उसके परीक्षण DOI असली Zenodo रिकॉर्ड पर नहीं जा सकते।"
+    "accountSandboxHint": "आपके खाते में संग्रहित रिकॉर्ड इस समुदाय का Crossref DOI रखते हैं, इसलिए अपने क्रेडेंशियल से Crossref चालू करें। सैंडबॉक्स के परीक्षण DOI असली Zenodo रिकॉर्ड पर नहीं जा सकते।"
   },
   "auth": {
     "backToSearch": "खोज पर वापस जाएँ",

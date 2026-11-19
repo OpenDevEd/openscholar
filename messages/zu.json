@@ -365,7 +365,7 @@
     "accountConnect": "Xhuma i-Zenodo",
     "accountBroken": "I-Zenodo ayisakwamukeli ukuxhumana kwakho. Phinda uyixhume.",
     "accountSandbox": "Idinga i-akhawunti yakho ye-Crossref",
-    "accountSandboxHint": "Umphakathi osesandbox ye-Crossref ugcina ku-sandbox ye-Zenodo: ama-DOI awo okuhlola awakwazi ukuya kumarekhodi angempela e-Zenodo."
+    "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo."
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",

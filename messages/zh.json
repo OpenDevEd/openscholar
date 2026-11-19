@@ -365,7 +365,7 @@
     "accountConnect": "连接 Zenodo",
     "accountBroken": "Zenodo 不再接受你的连接。请重新连接。",
     "accountSandbox": "需要你自己的 Crossref 账户",
-    "accountSandboxHint": "使用 Crossref 沙盒的社区存档在 Zenodo 沙盒中：其测试 DOI 不能用于真实的 Zenodo 记录。"
+    "accountSandboxHint": "存档到你账户中的记录会沿用本社区的 Crossref DOI，因此请用你自己的凭据开启 Crossref。沙盒中的测试 DOI 不能用于真实的 Zenodo 记录。"
   },
   "auth": {
     "backToSearch": "返回搜索",

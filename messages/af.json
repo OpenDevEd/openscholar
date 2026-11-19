@@ -365,7 +365,7 @@
     "accountConnect": "Koppel Zenodo",
     "accountBroken": "Zenodo aanvaar nie meer jou koppeling nie. Koppel dit weer.",
     "accountSandbox": "Het jou eie Crossref-rekening nodig",
-    "accountSandboxHint": "'n Gemeenskap op die Crossref-sandput argiveer in die Zenodo-sandput: sy toets-DOI's kan nie op regte Zenodo-rekords gaan nie."
+    "accountSandboxHint": "Rekords wat in jou rekening geargiveer word, behou hierdie gemeenskap se Crossref-DOI, dus skakel Crossref aan met jou eie besonderhede. Toets-DOI's uit die sandput kan nie op regte Zenodo-rekords gaan nie."
   },
   "auth": {
     "backToSearch": "Terug na soektog",

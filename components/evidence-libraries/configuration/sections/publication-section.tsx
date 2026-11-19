@@ -155,7 +155,8 @@ export function PublicationSection({
  */
 /**
  * A community's own Zenodo account (#1237): the one its admin connected on Settings > Connections, where its records
- * are archived under its name. A community on the Crossref sandbox can't use it: its records would carry test DOIs.
+ * are archived under its name, keeping the community's Crossref DOI. A community without its own Crossref credentials
+ * (off, or the sandbox) can't use it: its records would carry no DOI, or a test one.
  */
 function OwnZenodoAccount({ testCrossref }: { testCrossref: boolean }) {
   const t = useTranslations("publicationSettings");
@@ -357,34 +358,37 @@ export function PublicationForm({
                     );
                   }}
                 </Field> : null}
-                <Field label={t("archiveDoi")}>
-                  {(id) => (
-                    <Select
-                      value={settings.zenodo.defaultIdentifierPolicy}
-                      onValueChange={(value) =>
-                        updateZenodo({
-                          defaultIdentifierPolicy: value as
-                            | "mint-zenodo"
-                            | "reuse-crossref",
-                        })
-                      }
-                    >
-                      <SelectTrigger id={id} className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mint-zenodo">
-                          {t("zenodoDoi")}
-                        </SelectItem>
-                        {crossref && (
-                          <SelectItem value="reuse-crossref">
-                            {t("crossrefDoi")}
+                {/* A copy in the community's own account always keeps its Crossref DOI. */}
+                {settings.zenodo.mode !== "own" && (
+                  <Field label={t("archiveDoi")}>
+                    {(id) => (
+                      <Select
+                        value={settings.zenodo.defaultIdentifierPolicy}
+                        onValueChange={(value) =>
+                          updateZenodo({
+                            defaultIdentifierPolicy: value as
+                              | "mint-zenodo"
+                              | "reuse-crossref",
+                          })
+                        }
+                      >
+                        <SelectTrigger id={id} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mint-zenodo">
+                            {t("zenodoDoi")}
                           </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </Field>
+                          {crossref && (
+                            <SelectItem value="reuse-crossref">
+                              {t("crossrefDoi")}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </Field>
+                )}
               </div>
             </>
           )}

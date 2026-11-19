@@ -365,7 +365,7 @@
     "accountConnect": "ربط Zenodo",
     "accountBroken": "لم يعد Zenodo يقبل ربطك. اربطه مرة أخرى.",
     "accountSandbox": "يتطلب حسابك الخاص على Crossref",
-    "accountSandboxHint": "المجتمع على بيئة Crossref التجريبية يؤرشف في بيئة Zenodo التجريبية: لا يمكن وضع معرّفات DOI التجريبية على سجلات Zenodo حقيقية."
+    "accountSandboxHint": "تحتفظ السجلات المؤرشفة في حسابك بمعرّف DOI من Crossref الخاص بهذا المجتمع، لذا شغّل Crossref ببيانات اعتمادك الخاصة. لا يمكن وضع معرّفات DOI التجريبية من البيئة التجريبية على سجلات Zenodo حقيقية."
   },
   "auth": {
     "backToSearch": "العودة إلى البحث",

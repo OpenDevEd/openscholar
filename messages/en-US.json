@@ -365,7 +365,7 @@
     "accountConnect": "Connect Zenodo",
     "accountBroken": "Zenodo stopped accepting your connection. Connect it again.",
     "accountSandbox": "Needs your own Crossref account",
-    "accountSandboxHint": "A community on the Crossref sandbox archives in the Zenodo sandbox: its test DOIs can't go on real Zenodo records."
+    "accountSandboxHint": "Records archived in your account keep this community's Crossref DOI, so turn on Crossref with your own credentials. Test DOIs from the sandbox can't go on real Zenodo records."
   },
   "auth": {
     "backToSearch": "Back to search",

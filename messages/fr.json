@@ -365,7 +365,7 @@
     "accountConnect": "Connecter Zenodo",
     "accountBroken": "Zenodo n’accepte plus votre connexion. Connectez-le à nouveau.",
     "accountSandbox": "Nécessite votre propre compte Crossref",
-    "accountSandboxHint": "Une communauté sur le bac à sable Crossref archive dans le bac à sable Zenodo : ses DOI de test ne peuvent pas aller sur de vraies fiches Zenodo."
+    "accountSandboxHint": "Les fiches archivées dans votre compte gardent le DOI Crossref de cette communauté : activez donc Crossref avec vos propres identifiants. Les DOI de test du bac à sable ne peuvent pas aller sur de vraies fiches Zenodo."
   },
   "auth": {
     "backToSearch": "Retour à la recherche",

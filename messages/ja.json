@@ -365,7 +365,7 @@
     "accountConnect": "Zenodo を接続",
     "accountBroken": "Zenodo が接続を受け付けなくなりました。もう一度接続してください。",
     "accountSandbox": "自分の Crossref アカウントが必要です",
-    "accountSandboxHint": "Crossref のサンドボックスのコミュニティは Zenodo のサンドボックスにアーカイブします。テスト用の DOI を実際の Zenodo レコードに付けることはできません。"
+    "accountSandboxHint": "あなたのアカウントにアーカイブされたレコードは、このコミュニティの Crossref DOI をそのまま使います。ご自身の認証情報で Crossref をオンにしてください。サンドボックスのテスト用 DOI を実際の Zenodo レコードに付けることはできません。"
   },
   "auth": {
     "backToSearch": "検索に戻る",

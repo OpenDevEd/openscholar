@@ -365,7 +365,7 @@
     "accountConnect": "Unganisha Zenodo",
     "accountBroken": "Zenodo haikubali tena muunganisho wako. Iunganishe tena.",
     "accountSandbox": "Inahitaji akaunti yako ya Crossref",
-    "accountSandboxHint": "Jumuiya iliyo kwenye sandbox ya Crossref inahifadhi kwenye sandbox ya Zenodo: DOI zake za majaribio haziwezi kwenda kwenye rekodi halisi za Zenodo."
+    "accountSandboxHint": "Rekodi zinazohifadhiwa kwenye akaunti yako zinabaki na DOI ya Crossref ya jumuiya hii, kwa hivyo washa Crossref kwa vitambulisho vyako. DOI za majaribio za sandbox haziwezi kwenda kwenye rekodi halisi za Zenodo."
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",

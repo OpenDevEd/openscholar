@@ -365,7 +365,7 @@
     "accountConnect": "Conectar Zenodo",
     "accountBroken": "Zenodo ya no acepta tu conexión. Vuelve a conectarlo.",
     "accountSandbox": "Necesita tu propia cuenta de Crossref",
-    "accountSandboxHint": "Una comunidad en el sandbox de Crossref archiva en el sandbox de Zenodo: sus DOI de prueba no pueden ir en registros reales de Zenodo."
+    "accountSandboxHint": "Los registros archivados en tu cuenta conservan el DOI de Crossref de esta comunidad, así que activa Crossref con tus propias credenciales. Los DOI de prueba del sandbox no pueden ir en registros reales de Zenodo."
   },
   "auth": {
     "backToSearch": "Volver a la búsqueda",
