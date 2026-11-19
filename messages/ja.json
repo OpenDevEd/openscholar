@@ -6448,7 +6448,7 @@
       "zenodoSandbox": "Zenodo テスト環境",
       "crossrefSandbox": "Crossref テスト環境",
       "off": "オフ",
-      "zenodoHint": "各レポートの PDF をアーカイブします。オフの場合、レポートは Crossref のみに登録されます。",
+      "zenodoHint": "各レポートの PDF をアーカイブします。",
       "crossrefHint": "各レポートにあなたのプレフィックスで DOI を付与します。オフにすると公開は止まります。Zenodo だけではまだレポートに DOI を付与できません。",
       "namespaceHint": "DOI の中で各レポートのキーの前に付きます。",
       "savedHint": "新しいレポートはこの方法で登録されます。DOI があるレポートはそのままです。",

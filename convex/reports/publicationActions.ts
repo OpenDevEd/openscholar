@@ -32,7 +32,7 @@ export const save = action({
       asked.crossref.suffixNamespace = asked.crossref.suffixNamespace.trim().toLowerCase();
       const previous: PublicationSecrets = kept.encryptedCredentials ? JSON.parse(decrypt(kept.encryptedCredentials, encryptionKey)) : {};
       const keptCustom = kept.encryptedCustomCredentials ? { ...(kept.customAccounts?.crossref && { crossref: kept.customAccounts.crossref }), credentials: JSON.parse(decrypt(kept.encryptedCustomCredentials, encryptionKey)) as PublicationSecrets } : undefined;
-      const { settings, credentials, custom } = await verifiedPublication({ settings: asked, credentials: args.credentials }, { settings: kept.settings, credentials: previous, ...(keptCustom && { custom: keptCustom }) }, { namespace: NAMESPACE, crossrefAlone: true });
+      const { settings, credentials, custom } = await verifiedPublication({ settings: asked, credentials: args.credentials }, { settings: kept.settings, credentials: previous, ...(keptCustom && { custom: keptCustom }) }, { namespace: NAMESPACE });
       await ctx.runMutation(internal.reports.publication.saveVerified, {
         settings,
         encryptedCredentials: encrypt(JSON.stringify(credentials), encryptionKey),

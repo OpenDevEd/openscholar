@@ -6449,7 +6449,7 @@
       "zenodoSandbox": "Zenodo-toetsomgewing",
       "crossrefSandbox": "Crossref-toetsomgewing",
       "off": "Af",
-      "zenodoHint": "Argiveer elke verslag se PDF. As dit af is, word verslae net by Crossref geregistreer.",
+      "zenodoHint": "Argiveer elke verslag se PDF.",
       "crossrefHint": "Gee elke verslag 'n DOI onder jou voorvoegsel. As dit af is, stop publisering: Zenodo alleen kan nog nie 'n verslag sy DOI gee nie.",
       "namespaceHint": "Kom voor elke verslag se sleutel in die DOI.",
       "savedHint": "Nuwe verslae word so geregistreer. Verslae wat reeds 'n DOI het, hou dit.",

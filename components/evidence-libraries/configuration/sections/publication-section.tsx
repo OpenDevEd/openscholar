@@ -138,7 +138,6 @@ export function PublicationForm({
   disabled = false,
   onSave,
   words,
-  crossrefAlone = false,
 }: {
   saved: Saved;
   disabled?: boolean;
@@ -150,8 +149,6 @@ export function PublicationForm({
   }) => Promise<unknown>;
   /** What differs from a community's wording, where the form isn't a community's. */
   words?: { zenodoHint?: string; crossrefHint?: string; namespaceHint?: string; namespacePlaceholder?: string; savedHint?: string };
-  /** Crossref may be on without Zenodo. A community's runtime refuses that; Openscholar Reports chooses. */
-  crossrefAlone?: boolean;
 }) {
   const t = useTranslations("publicationSettings");
   const format = useFormatter();
@@ -212,12 +209,12 @@ export function PublicationForm({
               <img src="/brands/zenodo.svg" alt="Zenodo" className="h-7 w-auto" />
             </span>
           }
-          hint={crossref && !crossrefAlone ? t("zenodoRequired") : (words?.zenodoHint ?? t("zenodoHint"))}
+          hint={crossref ? t("zenodoRequired") : (words?.zenodoHint ?? t("zenodoHint"))}
           action={
             <Switch
               aria-label={t("enableZenodo")}
               checked={zenodo}
-              disabled={crossref && !crossrefAlone}
+              disabled={crossref}
               onCheckedChange={(enabled) =>
                 updateZenodo({ mode: enabled ? "sandbox" : "off" })
               }
@@ -334,7 +331,7 @@ export function PublicationForm({
                   zenodo: {
                     ...current.zenodo,
                     mode:
-                      enabled && current.zenodo.mode === "off" && !crossrefAlone
+                      enabled && current.zenodo.mode === "off"
                         ? "sandbox"
                         : current.zenodo.mode,
                     defaultIdentifierPolicy: enabled

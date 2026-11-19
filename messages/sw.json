@@ -6449,7 +6449,7 @@
       "zenodoSandbox": "Mazingira ya majaribio ya Zenodo",
       "crossrefSandbox": "Mazingira ya majaribio ya Crossref",
       "off": "Imezimwa",
-      "zenodoHint": "Inahifadhi PDF ya kila ripoti. Ikizimwa, ripoti zinasajiliwa na Crossref pekee.",
+      "zenodoHint": "Inahifadhi PDF ya kila ripoti.",
       "crossrefHint": "Inaipa kila ripoti DOI chini ya kiambishi chako. Ikizimwa, uchapishaji unasimama: Zenodo peke yake bado haiwezi kuipa ripoti DOI yake.",
       "namespaceHint": "Inakuja kabla ya ufunguo wa kila ripoti katika DOI.",
       "savedHint": "Ripoti mpya zinasajiliwa hivi. Ripoti ambazo tayari zina DOI zinabaki nayo.",

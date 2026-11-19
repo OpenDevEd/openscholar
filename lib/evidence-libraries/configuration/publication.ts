@@ -7,11 +7,10 @@ import { validateSectionStructure } from "./generated-validation";
 export function buildPublicationConfiguration(
   settings: PublicationSettings,
   secrets: PublicationSecrets,
-  /** Crossref may be on without Zenodo. A community's runtime refuses that; Openscholar Reports chooses. */
-  { crossrefAlone = false }: { crossrefAlone?: boolean } = {},
 ) {
   const { crossref, zenodo } = settings;
-  if (crossref.mode !== "off" && zenodo.mode === "off" && !crossrefAlone)
+  // A DOI promises the work stays reachable, and Crossref's terms ask whoever registers it to have it archived.
+  if (crossref.mode !== "off" && zenodo.mode === "off")
     throw new Error("Crossref requires Zenodo archiving. Enable Zenodo first.");
   if (crossref.mode === "custom" && zenodo.mode === "sandbox")
     throw new Error("Production Crossref requires production Zenodo. Use custom Zenodo credentials.");
