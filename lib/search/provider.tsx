@@ -493,7 +493,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       },
       onError: (err) => {
         console.error('Search failed:', err);
-        // A query the source refuses says why on the page, in place of its results, and found nothing.
+        // A query the source refuses, or a search stopped for a check the visitor didn't pass, says why on the page, in
+        // place of its results. A refused query found nothing.
+        if (err instanceof PassNotEarned) return;
         if (!(err instanceof SearchError && err.status === 400)) toast.search.failed(err);
         else if (searchId && getSearchResult(searchId)?.count && getSearchResult(searchId)?.query === currentParams.q) updateSearchResult(searchId, { count: 0 });
       },
