@@ -7,7 +7,9 @@
 
 import { useId, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { fileAccessModes, fileAccessOf, licenceOpen, utcDay, type FileAccess, type Licence } from "@/lib/reports/report";
@@ -20,7 +22,14 @@ const aYearOn = () => {
   return utcDay(date);
 };
 
-export function FileAccessChoice({ licence, value, onChange, disabled = false }: { licence: Licence; /** The choice made, which the licence may not allow: then it gets the licence's own. */ value: FileAccess | null; onChange: (access: FileAccess) => void; disabled?: boolean }) {
+/** The modes a live report's file may move to from `from`: only ever more open (`opensFurther`), and where it is now. */
+const reachable = (from: FileAccess, mode: FileAccess["mode"]) =>
+  mode === from.mode || (from.mode === "private" ? mode !== "private" : from.mode === "embargo" && mode === "open");
+
+/** A day before `day` (YYYY-MM-DD). */
+const dayBefore = (day: string) => utcDay(new Date(new Date(`${day}T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000));
+
+export function FileAccessChoice({ licence, value, onChange, disabled = false, from = null }: { licence: Licence; /** The choice made, which the licence may not allow: then it gets the licence's own. */ value: FileAccess | null; onChange: (access: FileAccess) => void; disabled?: boolean; /** A live report's saved access, which it may only open further from: every other choice is off. */ from?: FileAccess | null }) {
   const t = useTranslations("publishReports.flow.fileAccess");
   const format = useFormatter();
   const id = useId();
@@ -41,14 +50,16 @@ export function FileAccessChoice({ licence, value, onChange, disabled = false }:
         aria-labelledby={`${id}-label`}
         value={access.mode}
         disabled={disabled}
-        onValueChange={(mode) => onChange(mode === "embargo" ? { mode, until: aYearOn() } : ({ mode } as FileAccess))}
+        // An embargo picked from one it is under starts on the day before it ends; otherwise a year on.
+        onValueChange={(mode) => onChange(mode === "embargo" ? { mode, until: from?.mode === "embargo" ? dayBefore(from.until) : aYearOn() } : ({ mode } as FileAccess))}
         className={cn("grid-cols-1 gap-3", open ? "sm:grid-cols-3" : "sm:grid-cols-2")}
       >
         {fileAccessModes(licence).map((mode) => {
           const on = access.mode === mode;
+          const off = disabled || (from !== null && !reachable(from, mode));
           return (
-            <label key={mode} htmlFor={`${id}-${mode}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
-              <RadioGroupItem id={`${id}-${mode}`} value={mode} className="mt-0.5" />
+            <label key={mode} htmlFor={`${id}-${mode}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", off ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !off && "hover:border-foreground/25 hover:bg-muted/50"))}>
+              <RadioGroupItem id={`${id}-${mode}`} value={mode} disabled={off} className="mt-0.5" />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">{t(mode)}</span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">{t(`${mode}Body`)}</span>
@@ -66,13 +77,15 @@ export function FileAccessChoice({ licence, value, onChange, disabled = false }:
               type="date"
               className="w-44"
               min={tomorrow}
+              // An embargo it is under already may only end sooner.
+              max={from?.mode === "embargo" ? dayBefore(from.until) : undefined}
               disabled={disabled}
               // A new value from outside starts the box again from it.
               key={access.until}
               defaultValue={access.until}
               onBlur={(event) => {
                 const until = event.currentTarget.value;
-                if (until && until !== access.until && until >= tomorrow) onChange({ mode: "embargo", until });
+                if (until && until !== access.until && until >= tomorrow && (from?.mode !== "embargo" || until < from.until)) onChange({ mode: "embargo", until });
               }}
             />
           </label>
@@ -81,6 +94,60 @@ export function FileAccessChoice({ licence, value, onChange, disabled = false }:
       <p className="text-sm text-pretty text-muted-foreground" aria-live="polite">
         {meaning}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Who gets a report's file, changed after signing: picked here, then confirmed, so a change is meant and the
+ * registrars aren't sent one for every click. Live, the file only ever opens further, which the prompt says.
+ */
+export function FileAccessChange({ licence, saved, live, onSave, disabled = false }: { licence: Licence; saved: FileAccess; /** Readers may have had the file: it only opens further. */ live: boolean; onSave: (access: FileAccess) => Promise<unknown>; disabled?: boolean }) {
+  const t = useTranslations("publishReports.flow.fileAccess");
+  const [picked, setPicked] = useState<FileAccess | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const changed = picked !== null && JSON.stringify(fileAccessOf(licence, picked)) !== JSON.stringify(saved);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave(fileAccessOf(licence, picked));
+      setPicked(null);
+    } finally {
+      setSaving(false);
+      setAsking(false);
+    }
+  };
+  return (
+    <div className="space-y-3">
+      <FileAccessChoice licence={licence} value={picked ?? saved} onChange={setPicked} disabled={disabled || saving} from={live ? saved : null} />
+      {live ? <p className="text-xs text-pretty text-muted-foreground">{t("oneWay")}</p> : null}
+      <AutoHeight>
+        {changed ? (
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={() => setPicked(null)}>
+              {t("cancel")}
+            </Button>
+            <Button type="button" size="sm" disabled={saving} onClick={() => setAsking(true)}>
+              {t("save")}
+            </Button>
+          </div>
+        ) : null}
+      </AutoHeight>
+      <AlertDialog open={asking} onOpenChange={(open) => !open && !saving && setAsking(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t(live ? "confirmLive" : "confirmBefore")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction disabled={saving} onClick={(event) => (event.preventDefault(), void save())}>
+              {t("confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

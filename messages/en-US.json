@@ -6926,7 +6926,14 @@
           "privateClosed": "The report's page and DOI stay public, but only people who can change it can open the PDF. Zenodo keeps it private, as its license doesn't let anyone share it.",
           "embargo": "Nobody can download the PDF until {date}. Then it opens on Openscholar and Zenodo by itself, and communities get it too.",
           "readers": "Anyone can read the PDF on Openscholar. Zenodo keeps it private, as its license doesn't let anyone share it, and a community gets it only if someone who can change the report agrees when adding it."
-        }
+        },
+        "oneWay": "Once readers can have the file, it can only open further.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Change it",
+        "confirmTitle": "Change who gets the file?",
+        "confirmLive": "Readers may keep a file once they have had it, so this can't be undone: from now on the file can only open further. Zenodo and Crossref are updated too.",
+        "confirmBefore": "Nothing is public yet: this applies once the report goes live, and can change until then."
       }
     },
     "meta": {

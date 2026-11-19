@@ -58,7 +58,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
-import { FileAccessChoice } from "@/components/reports/file-access-choice";
+import { FileAccessChange, FileAccessChoice } from "@/components/reports/file-access-choice";
 import { refusalOr } from "@/components/evidence-libraries/added-papers/add-papers-dialog";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Bill, PaidBill, PayWithSwitch } from "@/components/reports/payment-choice";
@@ -2541,11 +2541,12 @@ function LiveFileAccess({ report }: { report: Report }) {
   const setFileAccess = useMutation(api.reports.flow.setFileAccess);
   const t = useTranslations("publishReports.flow");
   return (
-    <FileAccessChoice
+    <FileAccessChange
       licence={report.licence}
-      value={report.fileAccess}
+      saved={report.fileAccess}
+      live
       disabled={!workspaceId}
-      onChange={(fileAccess) => void setFileAccess({ workspaceId: workspaceId!, key: report.key, fileAccess }).catch((error: unknown) => toast.error(refusalOr(error, t("saveFailed"))))}
+      onSave={(fileAccess) => setFileAccess({ workspaceId: workspaceId!, key: report.key, fileAccess }).catch((error: unknown) => void toast.error(refusalOr(error, t("saveFailed"))))}
     />
   );
 }

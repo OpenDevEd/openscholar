@@ -6927,7 +6927,14 @@
           "privateClosed": "Die verslag se bladsy en DOI bly publiek, maar net mense wat dit kan verander, kan die PDF oopmaak. Zenodo hou dit privaat, want sy lisensie laat niemand toe om dit te deel nie.",
           "embargo": "Niemand kan die PDF voor {date} aflaai nie. Dan maak dit vanself op Openscholar en Zenodo oop, en gemeenskappe kry dit ook.",
           "readers": "Enigiemand kan die PDF op Openscholar lees. Zenodo hou dit privaat, want sy lisensie laat niemand toe om dit te deel nie, en 'n gemeenskap kry dit net as iemand wat die verslag kan verander, instem wanneer dit bygevoeg word."
-        }
+        },
+        "oneWay": "Sodra lesers die lêer kan kry, kan dit net verder oopmaak.",
+        "save": "Stoor",
+        "cancel": "Kanselleer",
+        "confirm": "Verander dit",
+        "confirmTitle": "Verander wie die lêer kry?",
+        "confirmLive": "Lesers mag 'n lêer hou wat hulle al gehad het, dus kan dit nie ontdoen word nie: van nou af kan die lêer net verder oopmaak. Zenodo en Crossref word ook bygewerk.",
+        "confirmBefore": "Niks is nog publiek nie: dit geld sodra die verslag lewendig gaan, en kan tot dan verander."
       }
     },
     "meta": {

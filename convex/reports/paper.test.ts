@@ -215,7 +215,10 @@ describe("a report's page", () => {
       const community = async (libraryId: string) => (await world.t.query(internal.reports.paper.forCommunity, { dois: [doi], libraryId }))[0];
       const access = (fileAccess: { mode: "open" } | { mode: "private" } | { mode: "embargo"; until: string }) => world.author.mutation(api.reports.flow.setFileAccess, { workspaceId: world.own, key, fileAccess });
 
-      await access({ mode: "private" });
+      // Live, its file only ever opens: anyone may have had it, so it can't be made private again.
+      await expect(access({ mode: "private" })).rejects.toThrow(/only open further/);
+      // Signed private, it is private on its page and to communities.
+      await world.t.run((ctx) => ctx.db.patch("reports", reportId, { fileAccess: { mode: "private" } }));
       expect(await page()).toMatchObject({ pdfUrl: null, fileAccess: { mode: "private" } });
       expect(await community("community-1")).toMatchObject({ hasPdf: false });
 
