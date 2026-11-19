@@ -6922,7 +6922,14 @@
           "privateClosed": "La página del informe y su DOI siguen siendo públicos, pero solo quienes pueden cambiarlo pueden abrir el PDF. Zenodo lo mantiene privado, porque su licencia no permite que nadie lo comparta.",
           "embargo": "Nadie puede descargar el PDF hasta el {date}. Entonces se abre solo en Openscholar y Zenodo, y las comunidades también lo reciben.",
           "readers": "Cualquiera puede leer el PDF en Openscholar. Zenodo lo mantiene privado, porque su licencia no permite que nadie lo comparta, y una comunidad solo lo recibe si alguien que puede cambiar el informe lo acepta al añadirlo."
-        }
+        },
+        "oneWay": "Una vez que los lectores pueden tener el archivo, solo puede abrirse más.",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "confirm": "Cambiarlo",
+        "confirmTitle": "¿Cambiar quién recibe el archivo?",
+        "confirmLive": "Los lectores pueden quedarse con un archivo que ya tuvieron, así que esto no se puede deshacer: desde ahora el archivo solo podrá abrirse más. Zenodo y Crossref también se actualizan.",
+        "confirmBefore": "Aún no hay nada público: esto se aplica cuando el informe se publique y puede cambiar hasta entonces."
       }
     },
     "meta": {

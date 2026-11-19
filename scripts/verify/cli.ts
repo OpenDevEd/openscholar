@@ -71,7 +71,8 @@ function ensureEnv(): Record<string, string> {
 /** A port that stays the same for a worktree, so links keep working between runs. */
 async function pickPort(): Promise<number> {
   let port = 3600 + (Number.parseInt(createHash("sha1").update(ROOT).digest("hex").slice(0, 6), 16) % 300);
-  while (await listening(port)) port += 1;
+  // Next refuses the ports browsers block; 3659 (apple-sasl) is the one in this range.
+  while (port === 3659 || (await listening(port))) port += 1;
   return port;
 }
 

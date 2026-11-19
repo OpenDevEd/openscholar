@@ -6922,7 +6922,14 @@
           "privateClosed": "Ukurasa wa ripoti na DOI yake vinabaki wazi kwa umma, lakini watu wanaoweza kuibadilisha pekee ndio wanaweza kufungua PDF. Zenodo inaiweka faragha, kwa kuwa leseni yake hairuhusu mtu yeyote kuishiriki.",
           "embargo": "Hakuna anayeweza kupakua PDF kabla ya {date}. Kisha inafunguka yenyewe kwenye Openscholar na Zenodo, na jumuiya zinaipata pia.",
           "readers": "Mtu yeyote anaweza kusoma PDF kwenye Openscholar. Zenodo inaiweka faragha, kwa kuwa leseni yake hairuhusu mtu yeyote kuishiriki, na jumuiya inaipata tu mtu anayeweza kubadilisha ripoti akikubali inapoongezwa."
-        }
+        },
+        "oneWay": "Wasomaji wakishaweza kupata faili, inaweza tu kufunguka zaidi.",
+        "save": "Hifadhi",
+        "cancel": "Ghairi",
+        "confirm": "Ibadilishe",
+        "confirmTitle": "Kubadilisha nani anapata faili?",
+        "confirmLive": "Wasomaji wanaweza kuweka faili waliyowahi kuwa nayo, kwa hivyo hili haliwezi kutenduliwa: kuanzia sasa faili inaweza tu kufunguka zaidi. Zenodo na Crossref zinasasishwa pia.",
+        "confirmBefore": "Hakuna kilicho wazi bado: hili linatumika ripoti ikiwa hewani, na linaweza kubadilika hadi wakati huo."
       }
     },
     "meta": {

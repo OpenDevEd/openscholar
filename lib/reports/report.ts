@@ -218,6 +218,17 @@ export function fileAccessOf(licence: Licence, chosen: FileAccess | null | undef
   if (chosen && fileAccessModes(licence).includes(chosen.mode)) return chosen;
   return licenceOpen(licence) ? { mode: "open" } : { mode: "private" };
 }
+/**
+ * Whether a live report's file may go from `from` to `to`: only ever more open. Once readers could have it (anyone,
+ * Openscholar's readers, or an embargo that ended), it stays theirs: its licence lets them keep and share it, so no
+ * later choice could take it back. A private file may open to anyone, to Openscholar's readers or from a date; an
+ * embargo may open now or on an earlier day.
+ */
+export function opensFurther(from: FileAccess, to: FileAccess) {
+  if (from.mode === "private") return to.mode !== "private";
+  if (from.mode === "embargo") return to.mode === "open" || (to.mode === "embargo" && to.until < from.until);
+  return false;
+}
 /** Today in UTC, YYYY-MM-DD: the day an embargo is counted in. */
 export const utcDay = (at = new Date()) => at.toISOString().slice(0, 10);
 /** A day that exists, written YYYY-MM-DD: 2027-02-30 isn't one. */

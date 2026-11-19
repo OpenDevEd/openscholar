@@ -6921,7 +6921,14 @@
           "privateClosed": "报告页面和 DOI 仍然公开,但只有能修改报告的人才能打开 PDF。由于其许可证不允许任何人分享,Zenodo 会将其保持私密。",
           "embargo": "{date} 之前任何人都无法下载 PDF。届时它会在 Openscholar 和 Zenodo 上自动开放,社区也会获得它。",
           "readers": "任何人都可以在 Openscholar 上阅读 PDF。由于其许可证不允许任何人分享,Zenodo 会将其保持私密,社区只有在添加时经能修改报告的人同意才能获得它。"
-        }
+        },
+        "oneWay": "一旦读者可以获得文件，它就只能进一步开放。",
+        "save": "保存",
+        "cancel": "取消",
+        "confirm": "更改",
+        "confirmTitle": "更改谁能获得文件？",
+        "confirmLive": "读者可以保留已获得的文件，因此此操作无法撤销：从现在起文件只能进一步开放。Zenodo 和 Crossref 也会更新。",
+        "confirmBefore": "目前尚未公开任何内容：此设置在报告上线时生效，在此之前可以更改。"
       }
     },
     "meta": {

@@ -6921,7 +6921,14 @@
           "privateClosed": "Ikhasi lombiko ne-DOI yawo kuhlala kusobala, kodwa abantu abangawushintsha kuphela abangavula i-PDF. I-Zenodo iyigcina iyimfihlo, ngoba ilayisensi yawo ayivumeli muntu ukwabelana ngawo.",
           "embargo": "Akekho ongalanda i-PDF ngaphambi kuka-{date}. Bese ivuleka ngokwayo ku-Openscholar naku-Zenodo, nemiphakathi iyayithola nayo.",
           "readers": "Noma ubani angafunda i-PDF ku-Openscholar. I-Zenodo iyigcina iyimfihlo, ngoba ilayisensi yawo ayivumeli muntu ukwabelana ngawo, futhi umphakathi uyithola kuphela uma umuntu ongashintsha umbiko evuma lapho wengezwa."
-        }
+        },
+        "oneWay": "Uma abafundi sebengathola ifayela, lingavuleka kakhulu kuphela.",
+        "save": "Londoloza",
+        "cancel": "Khansela",
+        "confirm": "Kushintshe",
+        "confirmTitle": "Shintsha ukuthi ubani othola ifayela?",
+        "confirmLive": "Abafundi bangagcina ifayela abake baba nalo, ngakho lokhu akunakuhlehliswa: kusukela manje ifayela lingavuleka kakhulu kuphela. I-Zenodo ne-Crossref nazo ziyabuyekezwa.",
+        "confirmBefore": "Akukho okusobala okwamanje: lokhu kusebenza uma umbiko uba ku-inthanethi, futhi kungashintsha kuze kube yileso sikhathi."
       }
     },
     "meta": {

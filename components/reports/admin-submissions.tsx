@@ -10,7 +10,7 @@ import type { FunctionReturnType } from "convex/server";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { FileAccessChoice } from "@/components/reports/file-access-choice";
+import { FileAccessChange } from "@/components/reports/file-access-choice";
 import { api } from "@/convex/_generated/api";
 import { ENTRY_OPEN, Entry } from "@/components/command-center/entry";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
@@ -464,7 +464,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                 </Fact>
               </div>
               {/* Who gets its PDF, under the licence it was signed under: a reviewer may change it as its author may. */}
-              <FileAccessChoice licence={s.licence} value={s.fileAccess} disabled={busy} onChange={(fileAccess) => void setFileAccess({ key: s.key, fileAccess }).catch(failed)} />
+              <FileAccessChange licence={s.licence} saved={s.fileAccess} live={s.activatedAt !== undefined} disabled={busy} onSave={(fileAccess) => setFileAccess({ key: s.key, fileAccess }).catch(failed)} />
               {/* What the checks said comes straight after the facts: it is what a reviewer decides on. With changes
                   open, their checks above are the ones to read, and the report's own would say most of it twice. */}
               {s.results?.length && !changes ? (

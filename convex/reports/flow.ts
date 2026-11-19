@@ -17,7 +17,7 @@ import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { choosesLicence } from "../../lib/reports/agreement";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, isCalendarDay, keptAccess, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, isCalendarDay, keptAccess, opensFurther, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
@@ -316,7 +316,10 @@ export const setFileAccess = workspaceMutation({
 /** Keeps who may get a report's PDF, as its licence allows, and sends a live report to its registrars again. */
 export async function changeFileAccess(ctx: MutationCtx, report: Doc<"reports">, asked: FileAccess) {
   const fileAccess = fileAccessOf(licenceOf(report), keptFileAccess(asked));
-  if (JSON.stringify(fileAccess) === JSON.stringify(fileAccessOf(licenceOf(report), report.fileAccess))) return;
+  const before = fileAccessOf(licenceOf(report), report.fileAccess);
+  if (JSON.stringify(fileAccess) === JSON.stringify(before)) return;
+  // Before it goes live nobody has had the file, so any choice stands; once it is live, the file only ever opens.
+  if (report.activatedAt !== undefined && !opensFurther(before, fileAccess)) throw createError("CONFLICT", "Once readers can have a report's file it stays theirs: its access can only open further, never close.");
   await ctx.db.patch("reports", report._id, { ...keptAccess(fileAccess), updatedAt: changedAt(report) });
   // A file readers can no longer have is stored again, so the addresses it was read by stop working (./files.ts).
   if (fileHidden(fileAccess) && !fileHidden(fileAccessOf(licenceOf(report), report.fileAccess))) await ctx.scheduler.runAfter(0, internal.reports.files.rotate, { reportId: report._id });
