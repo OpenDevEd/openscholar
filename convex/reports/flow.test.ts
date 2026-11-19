@@ -83,6 +83,18 @@ describe("a report archived in its author's own Zenodo account", () => {
     const key = await signOwn();
     // Archived even though Openscholar's own Zenodo is off here, and under the report's Crossref DOI.
     expect(await row(world.t, key)).toMatchObject({ archiveOwnerId: authorId, registration: { zenodo: true, policy: "reuse-crossref" } });
+
+    // Two renewals of the same tokens at once: the one that saves second finds them changed and keeps nothing.
+    const renew = (from: string, encryptedTokens: string) => world.t.mutation(internal.zenodo.connection.renewed, { userId: authorId, from, encryptedTokens, expiresAt: 2 });
+    expect(await renew("sealed", "first")).toBe(true);
+    expect(await renew("sealed", "second")).toBe(false);
+    expect(await world.t.run((ctx) => ctx.db.get("zenodoConnections", connectionId))).toMatchObject({ encryptedTokens: "first" });
+
+    // Connected again, a withdrawn report whose archiving failed goes to Zenodo again; what Crossref holds stays as it is.
+    const reportId = (await row(world.t, key))._id;
+    await world.t.run((ctx) => ctx.db.patch("reports", reportId, { status: "live", withdrawnAt: 2, activatedAt: 1, deposit: "deposited", archive: "failed" }));
+    await world.t.mutation(internal.zenodo.connection.resend, { userId: authorId, cursor: null });
+    expect(await row(world.t, key)).toMatchObject({ deposit: "deposited", archive: "queued" });
   });
 });
 

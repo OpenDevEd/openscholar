@@ -141,8 +141,7 @@
       "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left",
       "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left",
       "REVIEWS_REMOVED": "a removed report's reviewer decisions, deleted with it; one that can be removed never went live, so it has a decline or two",
-      "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next",
-      "RESENT_AT_ONCE": "a person's reports whose Zenodo archiving failed, sent again when they reconnect; the rest go with their next reconnection or a reviewer's retry"
+      "OPENED_PER_RUN": "reports whose embargo ended opened in one hourly run; the rest are opened by the next"
     }
   }
 }

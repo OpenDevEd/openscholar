@@ -3,13 +3,14 @@
 // archived there, under their name, instead of in Openscholar's account. The sign-in and the tokens are
 // ./connectionActions.ts's, which needs Node for their encryption.
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { internalQuery, query } from "../_generated/server";
 import { internalMutation, mutation } from "../lib/functions";
 import { getCurrentUser, refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { register } from "../reports/registering";
+import { registerAgain } from "../reports/registration";
 
-/** How many of a person's reports one reconnection sends to Zenodo again; any more go with the next. */
+/** How many of a person's reports one go of a reconnection sends to Zenodo again; the next go takes the rest. */
 const RESENT_AT_ONCE = 50;
 /** How long a sign-in may take before what Zenodo hands back is refused. */
 const STATE_MS = 15 * 60 * 1000;
@@ -40,14 +41,15 @@ export const keepState = internalMutation({
   },
 });
 
+/** Who started the sign-in this state was given to, and where they go back to; null when it is unknown or expired. */
 export const takeState = internalMutation({
-  args: { state: v.string(), userId: v.id("users") },
-  returns: v.union(v.null(), v.string()),
-  handler: async (ctx, { state, userId }) => {
+  args: { state: v.string() },
+  returns: v.union(v.null(), v.object({ userId: v.id("users"), returnTo: v.string() })),
+  handler: async (ctx, { state }) => {
     const row = await ctx.db.query("zenodoOAuthStates").withIndex("by_state", (q) => q.eq("state", state)).unique();
     if (!row) return null;
     await ctx.db.delete("zenodoOAuthStates", row._id);
-    return row.userId === userId && row.expiresAt > Date.now() ? row.returnTo : null;
+    return row.expiresAt > Date.now() ? { userId: row.userId, returnTo: row.returnTo } : null;
   },
 });
 
@@ -59,9 +61,25 @@ export const keep = internalMutation({
     if (row) await ctx.db.replace("zenodoConnections", row._id, { userId, ...connection, connectedAt: Date.now() });
     else await ctx.db.insert("zenodoConnections", { userId, ...connection, connectedAt: Date.now() });
     // Reports whose archiving failed for want of the account go to it again now.
-    for (const report of await ctx.db.query("reports").withIndex("by_archiveOwnerId_and_archive", (q) => q.eq("archiveOwnerId", userId).eq("archive", "failed")).take(RESENT_AT_ONCE)) {
-      if (report.status === "live") await register(ctx, report);
-    }
+    await ctx.scheduler.runAfter(0, internal.zenodo.connection.resend, { userId, cursor: null });
+    return null;
+  },
+});
+
+/**
+ * Sends a person's reports whose archiving failed to their account again, withdrawn ones too (Zenodo still shows
+ * those, and is told so): only Zenodo's part, what Crossref already holds stays as it is.
+ */
+export const resend = internalMutation({
+  args: { userId: v.id("users"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { userId, cursor }) => {
+    const page = await ctx.db
+      .query("reports")
+      .withIndex("by_archiveOwnerId_and_archive", (q) => q.eq("archiveOwnerId", userId).eq("archive", "failed"))
+      .paginate({ numItems: RESENT_AT_ONCE, cursor });
+    for (const report of page.page) if (report.activatedAt !== undefined) await registerAgain(ctx, report);
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.zenodo.connection.resend, { userId, cursor: page.continueCursor });
     return null;
   },
 });
@@ -80,22 +98,30 @@ export const disconnect = mutation({
   },
 });
 
+/** The person's tokens, as stored; none for an account that was deleted. */
 export const stored = internalQuery({
   args: { userId: v.id("users") },
   returns: v.union(v.null(), v.object({ encryptedTokens: v.string(), expiresAt: v.number(), broken: v.boolean() })),
   handler: async (ctx, { userId }) => {
+    const owner = await ctx.db.get("users", userId);
+    if (!owner || owner.state === "deleted") return null;
     const row = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
     return row ? { encryptedTokens: row.encryptedTokens, expiresAt: row.expiresAt, broken: row.broken === true } : null;
   },
 });
 
+/**
+ * Saves what renewing the tokens read as `from` came to, unless they changed since (another renewal, or a new
+ * sign-in): answers whether it was saved, and the renewal that lost takes the tokens stored instead.
+ */
 export const renewed = internalMutation({
-  args: { userId: v.id("users"), encryptedTokens: v.optional(v.string()), expiresAt: v.optional(v.number()), broken: v.optional(v.boolean()) },
-  returns: v.null(),
-  handler: async (ctx, { userId, ...change }) => {
+  args: { userId: v.id("users"), from: v.string(), encryptedTokens: v.optional(v.string()), expiresAt: v.optional(v.number()), broken: v.optional(v.boolean()) },
+  returns: v.boolean(),
+  handler: async (ctx, { userId, from, ...change }) => {
     const row = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
-    if (row) await ctx.db.patch("zenodoConnections", row._id, change);
-    return null;
+    if (!row || row.encryptedTokens !== from) return false;
+    await ctx.db.patch("zenodoConnections", row._id, change);
+    return true;
   },
 });
 

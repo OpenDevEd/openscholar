@@ -162,18 +162,24 @@ export const register = internalAction({
             const doiPolicy = own || (job.registration.crossref && job.registration.policy === "reuse-crossref") ? ("external-crossref" as const) : ("dual" as const);
             const { landingUrl, doi, ...metadata } = zenodoRecord(record, job.metadata);
             const shared = { token, doiPolicy, metadata: { ...metadata, ...(doiPolicy === "external-crossref" && { doi }) }, resourceUrl: landingUrl };
-            // A record published by a try whose answer never arrived is found under the report's DOI, not made again.
             if (draftOnly) {
               const blob = job.pdf && (await ctx.storage.get(job.pdf.file));
               if (!blob) throw new Error("The report's PDF is missing, so there is nothing to archive.");
-              const draft = job.zenodoDraftId
-                ? { depositionId: job.zenodoDraftId }
-                : await client.prepareCreateRecord({ ...shared, files: [{ key: job.key, filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await blob.arrayBuffer()) }] });
-              await ctx.runMutation(internal.reports.registration.noted, { reportId, rev, zenodoDraftId: draft.depositionId });
+              // The draft already there takes the report as it now stands (its file and details), one gone is made again,
+              // and a new draft's id is kept the moment Zenodo gives it, so a try that fails after never makes another.
+              const draft = await client.prepareCreateRecord({
+                ...shared,
+                ...(job.zenodoDraftId && { draftDepositionId: job.zenodoDraftId }),
+                files: [{ key: job.key, filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await blob.arrayBuffer()) }],
+                onPreparedDraft: async ({ depositionId }) => {
+                  await ctx.runMutation(internal.reports.registration.noted, { reportId, rev, zenodoDraftId: depositionId });
+                },
+              });
               console.info(JSON.stringify({ event: "report-zenodo-own-draft", reportId, key: job.key, draft: draft.depositionId }));
               if (!(await settle(provider, { outcome: "done" }))) return null;
               continue;
             }
+            // A record published by a try whose answer never arrived is found under the report's DOI, not made again.
             const found = job.zenodoRecordId ?? (doiPolicy === "external-crossref" ? await client.findRecordByDoi({ token, doi }).then((looked) => (looked.status === "found" ? looked.record.identifiers.latestRecordId : undefined)) : undefined);
             const identifiers = found
               ? await client.updateRecordMetadata({ ...shared, latestRecordId: found })

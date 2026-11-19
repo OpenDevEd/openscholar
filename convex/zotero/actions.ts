@@ -12,6 +12,7 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 import { createError } from "../lib/errors";
+import { localPath } from "../lib/env";
 import { ZOTERO_ABSTRACT_MAX, ZOTERO_LIST_PAGE, ZOTERO_NAME_MAX, ZOTERO_PAGE, ZOTERO_TITLE_MAX, checkZoteroIds } from "./libraryValidators";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
@@ -206,11 +207,6 @@ function buildZoteroUrl(
 /**
  * Start OAuth flow - get request token and return authorize URL.
  */
-// A path on this app the callback may send the person back to.
-export function isSafeReturnPath(value: string): boolean {
-  return value.startsWith("/") && !value.startsWith("//") && !value.includes("\\");
-}
-
 export const startOAuth = action({
   args: {
     callbackUrl: v.string(),
@@ -219,8 +215,9 @@ export const startOAuth = action({
   returns: v.object({
     authorizeUrl: v.string(),
   }),
-  handler: async (ctx, { callbackUrl, returnTo }) => {
-    if (returnTo !== undefined && !isSafeReturnPath(returnTo)) {
+  handler: async (ctx, { callbackUrl, returnTo: asked }) => {
+    const returnTo = asked === undefined ? undefined : (localPath(asked) ?? undefined);
+    if (asked !== undefined && returnTo === undefined) {
       throw createError("VALIDATION_ERROR", "returnTo must be a path on this app");
     }
     const userId = await requireCurrentUserId(ctx);
