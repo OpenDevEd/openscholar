@@ -351,7 +351,12 @@
     "verified": "確認済み {date}",
     "checkedBeforeSaving": "認証情報は保存前に確認されます。",
     "verifying": "確認中…",
-    "verifySave": "確認して保存"
+    "verifySave": "確認して保存",
+    "fileAccess": "ファイルを受け取れる人",
+    "fileAccessHint": "ここで作成するレコードはこの設定で始まり、編集者が変更できます。",
+    "fileAccess_open": "誰でも",
+    "fileAccess_private": "編集者のみ",
+    "fileAccess_readers": "ここの読者"
   },
   "auth": {
     "backToSearch": "検索に戻る",

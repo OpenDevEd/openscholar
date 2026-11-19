@@ -282,6 +282,15 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "services.publication.zenodo.defaultFileAccess",
+				"values": [
+					"open",
+					"private",
+					"readers"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "services.publication.zenodo.defaultIdentifierPolicy",
 				"values": [
 					"reuse-crossref",

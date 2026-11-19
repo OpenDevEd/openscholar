@@ -351,7 +351,12 @@
     "verified": "Vérifié le {date}",
     "checkedBeforeSaving": "Les identifiants sont vérifiés avant l’enregistrement.",
     "verifying": "Vérification…",
-    "verifySave": "Vérifier et enregistrer"
+    "verifySave": "Vérifier et enregistrer",
+    "fileAccess": "Qui reçoit les fichiers",
+    "fileAccessHint": "Les fiches créées ici partent de ce choix ; leurs éditeurs peuvent le changer.",
+    "fileAccess_open": "Tout le monde",
+    "fileAccess_private": "Éditeurs seulement",
+    "fileAccess_readers": "Lecteurs d’ici"
   },
   "auth": {
     "backToSearch": "Retour à la recherche",

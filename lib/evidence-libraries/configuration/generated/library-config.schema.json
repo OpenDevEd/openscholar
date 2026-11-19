@@ -2391,6 +2391,15 @@
 									"minLength": 1,
 									"maxLength": 128,
 									"pattern": "^[a-z0-9][a-z0-9.-]*$"
+								},
+								"defaultFileAccess": {
+									"default": "open",
+									"type": "string",
+									"enum": [
+										"open",
+										"private",
+										"readers"
+									]
 								}
 							},
 							"additionalProperties": false

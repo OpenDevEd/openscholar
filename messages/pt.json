@@ -351,7 +351,12 @@
     "verified": "Validado em {date}",
     "checkedBeforeSaving": "As credenciais são verificadas antes de guardar.",
     "verifying": "A validar…",
-    "verifySave": "Validar e guardar"
+    "verifySave": "Validar e guardar",
+    "fileAccess": "Quem recebe os arquivos",
+    "fileAccessHint": "Os registros criados aqui começam com isto; os editores podem mudar.",
+    "fileAccess_open": "Qualquer pessoa",
+    "fileAccess_private": "Só editores",
+    "fileAccess_readers": "Leitores daqui"
   },
   "auth": {
     "backToSearch": "Voltar à pesquisa",

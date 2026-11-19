@@ -351,7 +351,12 @@
     "verified": "Imethibitishwa {date}",
     "checkedBeforeSaving": "Vitambulisho vinakaguliwa kabla ya kuhifadhi.",
     "verifying": "Inathibitisha…",
-    "verifySave": "Thibitisha na uhifadhi"
+    "verifySave": "Thibitisha na uhifadhi",
+    "fileAccess": "Nani anapata faili",
+    "fileAccessHint": "Rekodi zinazotengenezwa hapa zinaanza na hili; wahariri wake wanaweza kulibadilisha.",
+    "fileAccess_open": "Mtu yeyote",
+    "fileAccess_private": "Wahariri pekee",
+    "fileAccess_readers": "Wasomaji wa hapa"
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",

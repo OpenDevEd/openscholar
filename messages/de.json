@@ -351,7 +351,12 @@
     "verified": "Geprüft am {date}",
     "checkedBeforeSaving": "Zugangsdaten werden vor dem Speichern geprüft.",
     "verifying": "Wird geprüft…",
-    "verifySave": "Prüfen und speichern"
+    "verifySave": "Prüfen und speichern",
+    "fileAccess": "Wer die Dateien bekommt",
+    "fileAccessHint": "Hier erstellte Einträge beginnen damit; ihre Redakteure können es ändern.",
+    "fileAccess_open": "Alle",
+    "fileAccess_private": "Nur Redakteure",
+    "fileAccess_readers": "Leser hier"
   },
   "auth": {
     "backToSearch": "Zurück zur Suche",

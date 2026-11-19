@@ -351,7 +351,12 @@
     "verified": "Nagegaan op {date}",
     "checkedBeforeSaving": "Geloofsbriewe word voor stoor nagegaan.",
     "verifying": "Gaan na…",
-    "verifySave": "Gaan na en stoor"
+    "verifySave": "Gaan na en stoor",
+    "fileAccess": "Wie kry die lêers",
+    "fileAccessHint": "Rekords wat hier gemaak word, begin hiermee; hul redakteurs kan dit verander.",
+    "fileAccess_open": "Enigiemand",
+    "fileAccess_private": "Net redakteurs",
+    "fileAccess_readers": "Lesers hier"
   },
   "auth": {
     "backToSearch": "Terug na soektog",

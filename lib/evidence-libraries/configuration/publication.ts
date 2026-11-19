@@ -57,6 +57,9 @@ export function buildPublicationConfiguration(
             enabled: true,
             environment: zenodo.mode === "sandbox" ? "sandbox" : "production",
             license: zenodo.license,
+            // Sent only when it isn't anyone, the community's own default: a community on a release from before it
+            // refuses the key (its configuration is strict).
+            ...(zenodo.defaultFileAccess && zenodo.defaultFileAccess !== "open" && { defaultFileAccess: zenodo.defaultFileAccess }),
             defaultIdentifierPolicy: zenodo.defaultIdentifierPolicy,
             accessRight: "open",
             token: secrets.zenodoToken,

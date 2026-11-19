@@ -351,7 +351,12 @@
     "verified": "已验证 {date}",
     "checkedBeforeSaving": "保存前会验证凭据。",
     "verifying": "正在验证…",
-    "verifySave": "验证并保存"
+    "verifySave": "验证并保存",
+    "fileAccess": "谁能获得文件",
+    "fileAccessHint": "在这里创建的记录以此开始，编辑者可以更改。",
+    "fileAccess_open": "任何人",
+    "fileAccess_private": "仅编辑者",
+    "fileAccess_readers": "这里的读者"
   },
   "auth": {
     "backToSearch": "返回搜索",
