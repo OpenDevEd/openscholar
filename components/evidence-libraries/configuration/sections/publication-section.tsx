@@ -118,6 +118,7 @@ export function PublicationSection({
     >
       {data ? (
         <PublicationForm
+          fileAccess
           key={`${libraryId}:${data.updatedAt}`}
           saved={data}
           disabled={operationRunning}
@@ -141,9 +142,12 @@ export function PublicationForm({
   disabled = false,
   onSave,
   words,
+  fileAccess = false,
 }: {
   saved: Saved;
   disabled?: boolean;
+  /** A community's form: who gets its new records' files is set beside their licence. Reports choose per report. */
+  fileAccess?: boolean;
   /** Verifies the accounts and saves; a refusal's `message` is shown under the form. */
   onSave: (input: {
     settings: PublicationSettings;
@@ -279,7 +283,7 @@ export function PublicationForm({
                 </Field>
                 {/* Who gets the files of records made here, as the licence allows: an open one lets them go to anyone or
                     the editors only, one that isn't keeps them private on Zenodo and lets readers here have them or not. */}
-                <Field label={t("fileAccess")} hint={t("fileAccessHint")}>
+                {fileAccess ? <Field label={t("fileAccess")} hint={t("fileAccessHint")}>
                   {(id) => {
                     const open = !CLOSED_ZENODO_LICENCES.has(settings.zenodo.license);
                     const saved = settings.zenodo.defaultFileAccess ?? "open";
@@ -299,7 +303,7 @@ export function PublicationForm({
                       </Select>
                     );
                   }}
-                </Field>
+                </Field> : null}
                 <Field label={t("archiveDoi")}>
                   {(id) => (
                     <Select

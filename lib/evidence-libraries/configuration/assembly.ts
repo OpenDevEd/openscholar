@@ -395,6 +395,10 @@ export function assembleEvidenceLibraryConfiguration({
   // The runtime's schema still fills in the partners list it reads from older settings. Nothing is sent under it:
   // a community's funders are the footer's.
   if (isObject(withDefaults.identity)) delete withDefaults.identity.fundingPartners;
+  // Anyone, the default for who gets new records' files, goes unsaid: a community on a release from before it
+  // refuses the key (its configuration is strict), so only a community's own choice is sent.
+  const zenodo = isObject(withDefaults.services) && isObject(withDefaults.services.publication) && isObject(withDefaults.services.publication.zenodo) ? withDefaults.services.publication.zenodo : null;
+  if (zenodo?.defaultFileAccess === "open") delete zenodo.defaultFileAccess;
   // AI answers decide both halves of the AI offer: the assistant and search
   // by meaning. The runtime refuses AI search without an embedder, so the
   // two are written together or not at all. Deep research is a separate
