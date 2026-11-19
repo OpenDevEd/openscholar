@@ -83,9 +83,9 @@ export default async function proxy(
   if (isPublicFile(request.nextUrl.pathname)) return NextResponse.next();
   const bareLink = bareWorkLink(request.nextUrl);
   if (bareLink) return NextResponse.redirect(bareLink);
-  // Our index names each record by an address, openscholar.ai/OS…, which reaches here: it's that paper's page.
-  const ownRecord = /^\/(OS\d+)$/i.exec(request.nextUrl.pathname)?.[1];
-  if (ownRecord) return NextResponse.redirect(new URL(`/papers/${ownRecord.toUpperCase()}`, request.url), 308);
+  // Our index names each record by an address, openscholar.ai/OS… or /OSA…, which reaches here: the paper's or the author's page.
+  const ownRecord = /^\/(OSA?\d+)$/i.exec(request.nextUrl.pathname)?.[1]?.toUpperCase();
+  if (ownRecord) return NextResponse.redirect(new URL(`/${ownRecord.startsWith("OSA") ? "authors" : "papers"}/${ownRecord}`, request.url), 308);
 
   // A link from a community site names the language its reader chose (`?hl=fr`): someone with no language here yet
   // starts in that one, and the address drops it. A language they already have here stays theirs.
