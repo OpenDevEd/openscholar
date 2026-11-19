@@ -172,7 +172,7 @@ const CUSTOM_CROSSREF = ["prefix", "depositorName", "email", "registrant"] as co
 export async function verifiedPublication(
   asked: { settings: PublicationSettings; credentials: PublicationSecrets },
   kept: { settings?: PublicationSettings | null; credentials: PublicationSecrets; custom?: KeptCustom },
-  { namespace, crossrefAlone = false }: { /** The DOI namespace when none is typed. */ namespace: string; crossrefAlone?: boolean },
+  { namespace }: { /** The DOI namespace when none is typed. */ namespace: string },
 ): Promise<{ settings: PublicationSettings; credentials: PublicationSecrets; custom: KeptCustom }> {
   const settings = structuredClone(asked.settings);
   for (const key of [
@@ -230,7 +230,7 @@ export async function verifiedPublication(
     delete custom.credentials.crossrefPassword;
     delete custom.crossref;
   }
-  buildPublicationConfiguration(settings, credentials, { crossrefAlone });
+  buildPublicationConfiguration(settings, credentials);
   if (settings.zenodo.mode !== "off")
     await verifyZenodoCredentials(
       credentials.zenodoToken!,

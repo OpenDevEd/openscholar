@@ -6448,7 +6448,7 @@
       "zenodoSandbox": "Zenodo 测试环境",
       "crossrefSandbox": "Crossref 测试环境",
       "off": "关闭",
-      "zenodoHint": "存档每份报告的 PDF。关闭后，报告仅在 Crossref 注册。",
+      "zenodoHint": "存档每份报告的 PDF。",
       "crossrefHint": "每份报告获得您前缀下的 DOI。关闭后，发布将停止：仅凭 Zenodo 目前还无法为报告提供 DOI。",
       "namespaceHint": "在 DOI 中位于每份报告编号之前。",
       "savedHint": "新报告将这样注册。已有 DOI 的报告保留原 DOI。",

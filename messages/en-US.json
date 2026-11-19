@@ -6448,7 +6448,7 @@
       "zenodoSandbox": "Zenodo sandbox",
       "crossrefSandbox": "Crossref sandbox",
       "off": "Off",
-      "zenodoHint": "Archives each report's PDF. Off, reports register with Crossref alone.",
+      "zenodoHint": "Archives each report's PDF.",
       "crossrefHint": "Each report gets a DOI under your prefix. Off, publishing stops: Zenodo alone can't give a report its DOI yet.",
       "namespaceHint": "Comes before each report's key in its DOI.",
       "savedHint": "New reports register this way. Reports with a DOI keep theirs.",

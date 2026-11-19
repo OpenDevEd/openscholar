@@ -6448,7 +6448,7 @@
       "zenodoSandbox": "Indawo yokuhlola ye-Zenodo",
       "crossrefSandbox": "Indawo yokuhlola ye-Crossref",
       "off": "Kuvaliwe",
-      "zenodoHint": "Igcina i-PDF yombiko ngamunye. Uma kuvaliwe, imibiko ibhaliswa ku-Crossref kuphela.",
+      "zenodoHint": "Igcina i-PDF yombiko ngamunye.",
       "crossrefHint": "Inika umbiko ngamunye i-DOI ngaphansi kwesiqalo sakho. Uma kuvaliwe, ukushicilela kuyama: i-Zenodo iyodwa ayikakwazi ukunika umbiko i-DOI yawo.",
       "namespaceHint": "Iza ngaphambi kokhiye wombiko ngamunye ku-DOI.",
       "savedHint": "Imibiko emisha ibhaliswa ngale ndlela. Imibiko esevele inayo i-DOI iyayigcina.",

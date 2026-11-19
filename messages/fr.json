@@ -6448,7 +6448,7 @@
       "zenodoSandbox": "Bac à sable Zenodo",
       "crossrefSandbox": "Bac à sable Crossref",
       "off": "Désactivé",
-      "zenodoHint": "Archive le PDF de chaque rapport. Désactivé, les rapports sont enregistrés auprès de Crossref seul.",
+      "zenodoHint": "Archive le PDF de chaque rapport.",
       "crossrefHint": "Chaque rapport reçoit un DOI sous votre préfixe. Désactivé, la publication s'arrête : Zenodo seul ne peut pas encore donner son DOI à un rapport.",
       "namespaceHint": "Vient avant la clé de chaque rapport dans son DOI.",
       "savedHint": "Les nouveaux rapports sont enregistrés ainsi. Les rapports qui ont un DOI gardent le leur.",

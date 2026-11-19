@@ -182,7 +182,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
         </ul>
       </Zone>
 
-      {/* The form a community's settings use. Here Crossref can be on alone: Openscholar chooses whether Zenodo archives its reports. */}
+      {/* The form a community's settings use, with the same rule: Crossref needs Zenodo, which keeps every report's copy. */}
       <Zone
         label={t("registration")}
         aside={
@@ -197,7 +197,6 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
           <PublicationForm
             key={settings.publicationSavedAt}
             saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: settings.publicationSavedAt, custom: settings.publicationCustom }}
-            crossrefAlone
             words={{
               zenodoHint: t("zenodoHint"),
               crossrefHint: t("crossrefHint"),

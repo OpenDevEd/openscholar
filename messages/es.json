@@ -6449,7 +6449,7 @@
       "zenodoSandbox": "Entorno de pruebas de Zenodo",
       "crossrefSandbox": "Entorno de pruebas de Crossref",
       "off": "Desactivado",
-      "zenodoHint": "Archiva el PDF de cada informe. Si está desactivado, los informes se registran solo en Crossref.",
+      "zenodoHint": "Archiva el PDF de cada informe.",
       "crossrefHint": "Cada informe recibe un DOI con tu prefijo. Si está desactivado, se detiene la publicación: Zenodo por sí solo aún no puede dar un DOI a un informe.",
       "namespaceHint": "Va antes de la clave de cada informe en su DOI.",
       "savedHint": "Los informes nuevos se registran así. Los que ya tienen DOI conservan el suyo.",

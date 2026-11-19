@@ -6449,7 +6449,7 @@
       "zenodoSandbox": "Ambiente de testes do Zenodo",
       "crossrefSandbox": "Ambiente de testes da Crossref",
       "off": "Desativado",
-      "zenodoHint": "Arquiva o PDF de cada relatório. Desativado, os relatórios são registados apenas na Crossref.",
+      "zenodoHint": "Arquiva o PDF de cada relatório.",
       "crossrefHint": "Cada relatório recebe um DOI com o seu prefixo. Desativado, a publicação para: o Zenodo sozinho ainda não consegue dar um DOI a um relatório.",
       "namespaceHint": "Vem antes da chave de cada relatório no seu DOI.",
       "savedHint": "Os novos relatórios são registados assim. Os relatórios com DOI mantêm o seu.",

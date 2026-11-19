@@ -6449,7 +6449,7 @@
       "zenodoSandbox": "Zenodo-Testumgebung",
       "crossrefSandbox": "Crossref-Testumgebung",
       "off": "Aus",
-      "zenodoHint": "Archiviert das PDF jedes Berichts. Ist es aus, werden Berichte nur bei Crossref registriert.",
+      "zenodoHint": "Archiviert das PDF jedes Berichts.",
       "crossrefHint": "Jeder Bericht erhält einen DOI unter Ihrem Präfix. Ist es aus, stoppt das Veröffentlichen: Zenodo allein kann einem Bericht noch keinen DOI geben.",
       "namespaceHint": "Steht im DOI vor dem Schlüssel jedes Berichts.",
       "savedHint": "Neue Berichte werden so registriert. Berichte mit einem DOI behalten ihren.",
