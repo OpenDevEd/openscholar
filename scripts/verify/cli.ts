@@ -195,7 +195,17 @@ async function signIn(page: Page, url: string, email: string, attempt = 1) {
   try {
     await open(page, url);
     await clerk.loaded({ page });
-    await clerk.signIn({ page, emailAddress: email });
+    // Clerk's sign-in sends a server action before the session exists, which Cloudflare challenges on the deployed
+    // site (docs/agents/project.md, "Bot floods"), and a browser driven by Playwright gets the checkbox. Sending the
+    // check away (Escape), as a person can, fails only that action, and Clerk signs in without it.
+    const signedIn = clerk.signIn({ page, emailAddress: email });
+    let done = false;
+    const settled = signedIn.then(() => { done = true; }, () => { done = true; });
+    while (!done) {
+      await Promise.race([settled, sleep(2_000)]);
+      if (!done) await page.keyboard.press("Escape").catch(() => {});
+    }
+    await signedIn;
   } catch (error) {
     if (attempt === 2) {
       throw new Error(`Signing in as ${email} on ${url} failed twice: ${(error as Error).message.split("\n")[0]}. Clerk's development API is sometimes slow; run it again, or use --anon for a page that needs no account.`);
