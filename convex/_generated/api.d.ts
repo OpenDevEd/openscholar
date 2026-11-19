@@ -210,6 +210,7 @@ import type * as evidenceLibraries_validators from "../evidenceLibraries/validat
 import type * as evidenceLibraries_versions from "../evidenceLibraries/versions.js";
 import type * as evidenceLibraries_volumeDeletionClient from "../evidenceLibraries/volumeDeletionClient.js";
 import type * as evidenceLibraries_writes from "../evidenceLibraries/writes.js";
+import type * as evidenceLibraries_zenodoToken from "../evidenceLibraries/zenodoToken.js";
 import type * as exportValidators from "../exportValidators.js";
 import type * as exports from "../exports.js";
 import type * as extraction_access from "../extraction/access.js";
@@ -732,6 +733,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/versions": typeof evidenceLibraries_versions;
   "evidenceLibraries/volumeDeletionClient": typeof evidenceLibraries_volumeDeletionClient;
   "evidenceLibraries/writes": typeof evidenceLibraries_writes;
+  "evidenceLibraries/zenodoToken": typeof evidenceLibraries_zenodoToken;
   exportValidators: typeof exportValidators;
   exports: typeof exports;
   "extraction/access": typeof extraction_access;

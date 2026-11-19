@@ -148,7 +148,7 @@ export const register = internalAction({
             // accounts of its own. A connection Zenodo no longer accepts refuses the report, which waits for them.
             const own = job.archiveOwnerId !== undefined;
             if (!own && (zenodo.mode === "off" || !secrets.zenodoToken)) throw new Error("Zenodo isn't connected in the publishing settings.");
-            const token = own ? await zenodoAccessToken(ctx, job.archiveOwnerId!) : secrets.zenodoToken!;
+            const token = own ? (await zenodoAccessToken(ctx, job.archiveOwnerId!)).accessToken : secrets.zenodoToken!;
             const endpoint = own || zenodo.mode !== "sandbox" ? "https://zenodo.org" : "https://sandbox.zenodo.org";
             // The copy carries the report's Crossref DOI: one from Crossref's test system (shared dev) is never published as
             // a real record in someone's own account. It leaves a draft there, which they may discard.

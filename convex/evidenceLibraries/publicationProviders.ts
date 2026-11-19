@@ -145,6 +145,27 @@ export const prepare = internalQuery({
   },
 });
 
+/**
+ * Whose own Zenodo account a community's running configuration deposits in (#1237): null when it uses a token of its
+ * own. The activated one's, never settings saved since and not yet activated.
+ */
+export const zenodoOwnerOf = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(v.null(), v.id("users")),
+  handler: async (ctx, { libraryId }) => (await ctx.db.get("evidenceLibraries", libraryId))?.activeZenodoOwnerId ?? null,
+});
+
+/**
+ * Whose own Zenodo account the publishing settings being activated deposit in: read from the record they were built
+ * from, which activation has already checked is unchanged (its digest changes on every write).
+ */
+export async function zenodoOwnerOfSource(ctx: ReadCtx, source: LibraryCredentialSource | undefined): Promise<Id<"users"> | undefined> {
+  if (!source?.present) return undefined;
+  const record = await ctx.db.get("evidenceLibraryCredentials", source.id);
+  const zenodo = record?.credentialDigest === source.digest ? record.publicationSettings?.zenodo : undefined;
+  return zenodo?.mode === "own" ? zenodo.ownerUserId : undefined;
+}
+
 export const saveVerified = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),

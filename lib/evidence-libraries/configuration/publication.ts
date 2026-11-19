@@ -14,6 +14,11 @@ export function buildPublicationConfiguration(
     throw new Error("Crossref requires Zenodo archiving. Enable Zenodo first.");
   if (crossref.mode === "custom" && zenodo.mode === "sandbox")
     throw new Error("Production Crossref requires production Zenodo. Use custom Zenodo credentials.");
+  // Its own account is a real zenodo.org account: its records carry the community's real Crossref DOIs, never test ones.
+  if (zenodo.mode === "own" && crossref.mode !== "custom")
+    throw new Error("Archiving in your own Zenodo account needs your own Crossref account: a test DOI can't go on a real Zenodo record.");
+  if (zenodo.mode === "own" && !zenodo.ownerUserId)
+    throw new Error("Connect your Zenodo account first.");
   if (
     zenodo.mode !== "off" &&
     zenodo.defaultIdentifierPolicy === "reuse-crossref" &&
@@ -33,7 +38,7 @@ export function buildPublicationConfiguration(
       if (!value?.trim()) throw new Error(`Enter the ${label}.`);
     }
   }
-  if (zenodo.mode !== "off" && !secrets.zenodoToken?.trim())
+  if (zenodo.mode !== "off" && zenodo.mode !== "own" && !secrets.zenodoToken?.trim())
     throw new Error("Enter a Zenodo token.");
   const publication = {
     crossref:
@@ -60,9 +65,11 @@ export function buildPublicationConfiguration(
             // Sent only when it isn't anyone, the community's own default: a community on a release from before it
             // refuses the key (its configuration is strict).
             ...(zenodo.defaultFileAccess && zenodo.defaultFileAccess !== "open" && { defaultFileAccess: zenodo.defaultFileAccess }),
-            defaultIdentifierPolicy: zenodo.defaultIdentifierPolicy,
             accessRight: "open",
-            token: secrets.zenodoToken,
+            // Its own account deposits under the Crossref DOI, with the token Openscholar gives it before each one.
+            ...(zenodo.mode === "own"
+              ? { defaultIdentifierPolicy: "reuse-crossref", account: "openscholar" }
+              : { defaultIdentifierPolicy: zenodo.defaultIdentifierPolicy, token: secrets.zenodoToken }),
           },
   };
   // Reuse the runtime contract. Other managed service fields are assembled at deployment.

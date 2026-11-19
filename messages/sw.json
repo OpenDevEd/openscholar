@@ -356,7 +356,16 @@
     "fileAccessHint": "Rekodi zinazotengenezwa hapa zinaanza na hili; wahariri wake wanaweza kulibadilisha.",
     "fileAccess_open": "Mtu yeyote",
     "fileAccess_private": "Wahariri pekee",
-    "fileAccess_readers": "Wasomaji wa hapa"
+    "fileAccess_readers": "Wasomaji wa hapa",
+    "account": "Akaunti yako ya Zenodo",
+    "accountHint": "Rekodi zinahifadhiwa katika akaunti hii ya Zenodo, kwa jina lake",
+    "accountManage": "Simamia katika Miunganisho",
+    "accountNone": "Hakuna akaunti ya Zenodo iliyounganishwa",
+    "accountNoneHint": "Unganisha yako ili kuhifadhi rekodi za jumuiya hii humo",
+    "accountConnect": "Unganisha Zenodo",
+    "accountBroken": "Zenodo haikubali tena muunganisho wako. Iunganishe tena.",
+    "accountSandbox": "Inahitaji akaunti yako ya Crossref",
+    "accountSandboxHint": "Rekodi zinazohifadhiwa kwenye akaunti yako zinabaki na DOI ya Crossref ya jumuiya hii, kwa hivyo washa Crossref kwa vitambulisho vyako. DOI za majaribio za sandbox haziwezi kwenda kwenye rekodi halisi za Zenodo."
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",

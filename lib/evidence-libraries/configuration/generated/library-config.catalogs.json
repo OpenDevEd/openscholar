@@ -282,6 +282,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "services.publication.zenodo.account",
+				"values": [
+					"token",
+					"openscholar"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "services.publication.zenodo.defaultFileAccess",
 				"values": [
 					"open",

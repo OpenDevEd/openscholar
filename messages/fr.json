@@ -356,7 +356,16 @@
     "fileAccessHint": "Les fiches créées ici partent de ce choix ; leurs éditeurs peuvent le changer.",
     "fileAccess_open": "Tout le monde",
     "fileAccess_private": "Éditeurs seulement",
-    "fileAccess_readers": "Lecteurs d’ici"
+    "fileAccess_readers": "Lecteurs d’ici",
+    "account": "Votre compte Zenodo",
+    "accountHint": "Les fiches sont archivées dans ce compte Zenodo, à son nom",
+    "accountManage": "Gérer dans Connexions",
+    "accountNone": "Aucun compte Zenodo connecté",
+    "accountNoneHint": "Connectez le vôtre pour y archiver les fiches de cette communauté",
+    "accountConnect": "Connecter Zenodo",
+    "accountBroken": "Zenodo n’accepte plus votre connexion. Connectez-le à nouveau.",
+    "accountSandbox": "Nécessite votre propre compte Crossref",
+    "accountSandboxHint": "Les fiches archivées dans votre compte gardent le DOI Crossref de cette communauté : activez donc Crossref avec vos propres identifiants. Les DOI de test du bac à sable ne peuvent pas aller sur de vraies fiches Zenodo."
   },
   "auth": {
     "backToSearch": "Retour à la recherche",

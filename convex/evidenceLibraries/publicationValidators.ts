@@ -7,7 +7,10 @@ const mode = v.union(
 );
 export const publicationSettingsValidator = v.object({
   zenodo: v.object({
-    mode,
+    // `own`: a community's owner's own Zenodo account, connected on Openscholar (#1237), never Openscholar Reports'.
+    mode: v.union(mode, v.literal("own")),
+    /** Whose connected account `own` deposits in: the person who saved it. */
+    ownerUserId: v.optional(v.id("users")),
     license: v.string(),
     /** Who gets the files of records made in the community, unless their editor chooses: anyone when none is saved. */
     defaultFileAccess: v.optional(v.union(v.literal("open"), v.literal("private"), v.literal("readers"))),

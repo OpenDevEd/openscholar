@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ZenodoMark } from "@/components/icons/zenodo-mark";
+import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -51,22 +53,29 @@ type Saved = FunctionReturnType<
 >;
 type ActiveMode = "sandbox" | "custom";
 
-function CredentialMode({
+/**
+ * Which account a provider is used with: our sandbox, credentials typed in, or the person's own connected account
+ * (Zenodo on a community only, `own`, #1237).
+ */
+function CredentialMode<Mode extends string = ActiveMode>({
   provider,
   value,
   onChange,
+  own,
   children,
 }: {
   provider: string;
-  value: ActiveMode;
-  onChange: (mode: ActiveMode) => void;
+  value: Mode;
+  onChange: (mode: Mode) => void;
+  /** What the connected-account tab shows; without it there is no such tab. */
+  own?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const t = useTranslations("publicationSettings");
   return (
     <Tabs
       value={value}
-      onValueChange={(mode) => onChange(mode as ActiveMode)}
+      onValueChange={(mode) => onChange(mode as Mode)}
       className="gap-4"
     >
       <TabsList aria-label={t("credentials", { provider })}>
@@ -74,6 +83,12 @@ function CredentialMode({
           <FlaskConical />
           {t("sandbox")}
         </TabsTrigger>
+        {own ? (
+          <TabsTrigger value="own">
+            <ZenodoMark className="size-4 rounded-[4px]" />
+            {t("account")}
+          </TabsTrigger>
+        ) : null}
         <TabsTrigger value="custom">
           <KeyRound />
           {t("custom")}
@@ -86,6 +101,7 @@ function CredentialMode({
           leading={<FlaskConical className="size-4 text-muted-foreground" />}
         />
       </TabsContent>
+      {own ? <TabsContent value="own">{own}</TabsContent> : null}
       <TabsContent value="custom">{children}</TabsContent>
     </Tabs>
   );
@@ -137,6 +153,43 @@ export function PublicationSection({
  * The Zenodo and Crossref accounts a publisher registers DOIs with: a community here, and Openscholar Reports on
  * the admin's Publishing page. A community's Crossref can't be on without Zenodo, which archives every file.
  */
+/**
+ * A community's own Zenodo account (#1237): the one its admin connected on Settings > Connections, where its records
+ * are archived under its name, keeping the community's Crossref DOI. A community without its own Crossref credentials
+ * (off, or the sandbox) can't use it: its records would carry no DOI, or a test one.
+ */
+function OwnZenodoAccount({ testCrossref }: { testCrossref: boolean }) {
+  const t = useTranslations("publicationSettings");
+  const account = useZenodoAccount();
+  const connect = useConnectZenodo();
+  const usable = account && !account.broken ? account : null;
+  if (testCrossref) return <PanelRow title={t("accountSandbox")} hint={t("accountSandboxHint")} leading={<ZenodoMark className="size-8 rounded-lg opacity-60" />} />;
+  return usable ? (
+    <PanelRow
+      title={usable.name ?? "Zenodo"}
+      hint={t("accountHint")}
+      leading={<ZenodoMark className="size-8 rounded-lg" />}
+      action={
+        <a className="text-xs text-primary hover:underline" href="/settings/connections">
+          {t("accountManage")}
+        </a>
+      }
+    />
+  ) : (
+    <PanelRow
+      title={t("accountNone")}
+      hint={t(account?.broken ? "accountBroken" : "accountNoneHint")}
+      leading={<ZenodoMark className="size-8 rounded-lg" />}
+      action={
+        // A window of its own, so the settings typed here stay as they are while Zenodo is connected.
+        <Button size="sm" type="button" onClick={() => void connect(window.location.pathname + window.location.search, { window: true })}>
+          {t("accountConnect")}
+        </Button>
+      }
+    />
+  );
+}
+
 export function PublicationForm({
   saved,
   disabled = false,
@@ -230,10 +283,11 @@ export function PublicationForm({
         >
           {zenodo && (
             <>
-              <CredentialMode
+              <CredentialMode<ActiveMode | "own">
                 provider="Zenodo"
-                value={settings.zenodo.mode as ActiveMode}
+                value={settings.zenodo.mode as ActiveMode | "own"}
                 onChange={(mode) => updateZenodo({ mode })}
+                own={fileAccess ? <OwnZenodoAccount testCrossref={settings.crossref.mode !== "custom"} /> : undefined}
               >
                 <Field label={t("token")} hint={t("tokenHint")}>
                   {(id) => (
@@ -304,34 +358,37 @@ export function PublicationForm({
                     );
                   }}
                 </Field> : null}
-                <Field label={t("archiveDoi")}>
-                  {(id) => (
-                    <Select
-                      value={settings.zenodo.defaultIdentifierPolicy}
-                      onValueChange={(value) =>
-                        updateZenodo({
-                          defaultIdentifierPolicy: value as
-                            | "mint-zenodo"
-                            | "reuse-crossref",
-                        })
-                      }
-                    >
-                      <SelectTrigger id={id} className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mint-zenodo">
-                          {t("zenodoDoi")}
-                        </SelectItem>
-                        {crossref && (
-                          <SelectItem value="reuse-crossref">
-                            {t("crossrefDoi")}
+                {/* A copy in the community's own account always keeps its Crossref DOI. */}
+                {settings.zenodo.mode !== "own" && (
+                  <Field label={t("archiveDoi")}>
+                    {(id) => (
+                      <Select
+                        value={settings.zenodo.defaultIdentifierPolicy}
+                        onValueChange={(value) =>
+                          updateZenodo({
+                            defaultIdentifierPolicy: value as
+                              | "mint-zenodo"
+                              | "reuse-crossref",
+                          })
+                        }
+                      >
+                        <SelectTrigger id={id} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mint-zenodo">
+                            {t("zenodoDoi")}
                           </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </Field>
+                          {crossref && (
+                            <SelectItem value="reuse-crossref">
+                              {t("crossrefDoi")}
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </Field>
+                )}
               </div>
             </>
           )}

@@ -290,3 +290,19 @@ test("keeps the own accounts through a spell on the sandbox, so switching back n
   const stored = await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId));
   expect(JSON.parse(decrypt(stored!.encryptedCustomValue!, key))).toEqual({});
 });
+
+test("builds a community archiving in its owner's own Zenodo account with no token, under its Crossref DOI, and only with its own Crossref", () => {
+  const crossref = { mode: "custom" as const, prefix: "10.1234", suffixNamespace: "c", depositorName: "D", email: "d@test.local", registrant: "R" };
+  const own = (mode: "custom" | "sandbox") => ({
+    ...structuredClone(EMPTY_PUBLICATION_SETTINGS),
+    zenodo: { ...EMPTY_PUBLICATION_SETTINGS.zenodo, mode: "own" as const, ownerUserId: "owner" as never },
+    crossref: { ...crossref, mode },
+  });
+  const secrets = { crossrefLoginId: "login", crossrefPassword: "secret" };
+  // Accepted by the runtime's contract (the builder checks it), with no token for the runtime to hold.
+  const built = buildPublicationConfiguration(own("custom"), secrets);
+  expect(built.zenodo).toMatchObject({ enabled: true, environment: "production", defaultIdentifierPolicy: "reuse-crossref", account: "openscholar" });
+  expect(built.zenodo).not.toHaveProperty("token");
+  // Test DOIs never go on real Zenodo records.
+  expect(() => buildPublicationConfiguration(own("sandbox"), secrets)).toThrow(/own Crossref/);
+});

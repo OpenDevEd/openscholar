@@ -356,7 +356,16 @@
     "fileAccessHint": "Amarekhodi enziwe lapha aqala ngalokhu; abahleli bawo bangakushintsha.",
     "fileAccess_open": "Noma ubani",
     "fileAccess_private": "Abahleli kuphela",
-    "fileAccess_readers": "Abafundi balapha"
+    "fileAccess_readers": "Abafundi balapha",
+    "account": "I-akhawunti yakho ye-Zenodo",
+    "accountHint": "Amarekhodi agcinwa kule akhawunti ye-Zenodo, ngegama layo",
+    "accountManage": "Phatha kokuxhumene",
+    "accountNone": "Ayikho i-akhawunti ye-Zenodo exhunyiwe",
+    "accountNoneHint": "Xhuma eyakho ukuze ugcine amarekhodi alo mphakathi kuyo",
+    "accountConnect": "Xhuma i-Zenodo",
+    "accountBroken": "I-Zenodo ayisakwamukeli ukuxhumana kwakho. Phinda uyixhume.",
+    "accountSandbox": "Idinga i-akhawunti yakho ye-Crossref",
+    "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo."
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",
