@@ -1534,6 +1534,34 @@ function PdfNotice({ trouble, lineAdded, onUpload }: { trouble: NonNullable<Repo
   );
 }
 
+/**
+ * Sets `--fill` on a screen: the height that brings the page's foot to the window's, so the screen reaches the bottom of
+ * the window and the page doesn't scroll for empty space. Read from the layout (offsets), not the screen, so a screen
+ * still rising in is measured where it will stand; again when the window is resized. What lies below it is the grid it
+ * stands in (the one the cover sets `--cover-height` on) and its page: their bottom padding, borders and margins, and
+ * anything laid out after them, such as a footer.
+ */
+function fillsWindow(element: HTMLDivElement | null) {
+  const grid = element?.closest<HTMLElement>(".grid");
+  if (!element || !grid) return;
+  const fit = () => {
+    let top = 0;
+    for (let at: HTMLElement | null = element; at; at = at.offsetParent as HTMLElement | null) top += at.offsetTop;
+    let below = 0;
+    for (let at: HTMLElement | null = grid; at && at !== document.body; at = at.parentElement) {
+      const style = getComputedStyle(at);
+      below += Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth) + Number.parseFloat(style.marginBottom);
+      // Only what takes room on the page: a banner or toast fixed over it, say the cookie notice, takes none.
+      for (let next = at.nextElementSibling; next; next = next.nextElementSibling)
+        if (next instanceof HTMLElement && !["fixed", "absolute"].includes(getComputedStyle(next).position)) below += next.offsetHeight;
+    }
+    element.style.setProperty("--fill", `${Math.max(0, window.innerHeight - top - below)}px`);
+  };
+  fit();
+  addEventListener("resize", fit);
+  return () => removeEventListener("resize", fit);
+}
+
 function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void; /** Back to the DOI. */ onBack: () => void; /** On to the details already read from this PDF, when there are some. */ onNext?: () => void }) {
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
@@ -1603,7 +1631,9 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
     }
   };
   return (
-    <div>
+    // The drop area takes the height the window has to spare, so Back and Next sit at its foot. Not the cover's column:
+    // that grows when the bill under it arrives, and the drop area would grow after it.
+    <div ref={fillsWindow} className="flex min-h-[var(--fill,0px)] flex-col">
       <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
       <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
       <button
@@ -1620,7 +1650,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           void send(e.dataTransfer.files[0]);
         }}
         disabled={busy || !by}
-        className={cn("flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", !by ? "border-border opacity-60" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
+        className={cn("flex min-h-44 w-full flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", !by ? "border-border opacity-60" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
       >
         {sending ? (
           <>
