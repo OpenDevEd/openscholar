@@ -150,9 +150,9 @@ export const register = internalAction({
             if (!own && (zenodo.mode === "off" || !secrets.zenodoToken)) throw new Error("Zenodo isn't connected in the publishing settings.");
             const token = own ? await zenodoAccessToken(ctx, job.archiveOwnerId!) : secrets.zenodoToken!;
             const endpoint = own || zenodo.mode !== "sandbox" ? "https://zenodo.org" : "https://sandbox.zenodo.org";
-            // A deployment registering in the sandboxes (shared dev) never publishes a real record with a test DOI in
-            // someone's own account: it leaves a draft there, which they may discard.
-            const draftOnly = own && zenodo.mode === "sandbox";
+            // The copy carries the report's Crossref DOI: one from Crossref's test system (shared dev) is never published as
+            // a real record in someone's own account. It leaves a draft there, which they may discard.
+            const draftOnly = own && crossref.mode !== "custom";
             const client = new ZenodoApiClient({
               endpoint,
               // zenodo.org answers 403 to an unknown User-Agent, so every call says who is asking.
