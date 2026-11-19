@@ -351,7 +351,12 @@
     "verified": "تم التحقق في {date}",
     "checkedBeforeSaving": "يتم التحقق من بيانات الاعتماد قبل الحفظ.",
     "verifying": "جارٍ التحقق…",
-    "verifySave": "تحقّق واحفظ"
+    "verifySave": "تحقّق واحفظ",
+    "fileAccess": "من يحصل على الملفات",
+    "fileAccessHint": "تبدأ السجلات المنشأة هنا بهذا الخيار، ويستطيع محرروها تغييره.",
+    "fileAccess_open": "أي شخص",
+    "fileAccess_private": "المحررون فقط",
+    "fileAccess_readers": "القراء هنا"
   },
   "auth": {
     "backToSearch": "العودة إلى البحث",

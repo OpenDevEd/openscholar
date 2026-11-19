@@ -351,7 +351,12 @@
     "verified": "Verified {date}",
     "checkedBeforeSaving": "Credentials are checked before saving.",
     "verifying": "Verifying…",
-    "verifySave": "Verify and save"
+    "verifySave": "Verify and save",
+    "fileAccess": "Who gets the files",
+    "fileAccessHint": "Records made here start with this; their editors can change it.",
+    "fileAccess_open": "Anyone",
+    "fileAccess_private": "Editors only",
+    "fileAccess_readers": "Readers here"
   },
   "auth": {
     "backToSearch": "Back to search",

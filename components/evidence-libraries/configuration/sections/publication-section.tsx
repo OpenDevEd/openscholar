@@ -91,6 +91,9 @@ function CredentialMode({
   );
 }
 
+/** Zenodo's licences that don't let anyone share the work: their records' files are never public on Zenodo. */
+const CLOSED_ZENODO_LICENCES = new Set(["other-closed", "zenodo-freetoread-1.0"]);
+
 export function PublicationSection({
   libraryId,
   operationRunning,
@@ -273,6 +276,29 @@ export function PublicationForm({
                       onChange={(license) => updateZenodo({ license })}
                     />
                   )}
+                </Field>
+                {/* Who gets the files of records made here, as the licence allows: an open one lets them go to anyone or
+                    the editors only, one that isn't keeps them private on Zenodo and lets readers here have them or not. */}
+                <Field label={t("fileAccess")} hint={t("fileAccessHint")}>
+                  {(id) => {
+                    const open = !CLOSED_ZENODO_LICENCES.has(settings.zenodo.license);
+                    const saved = settings.zenodo.defaultFileAccess ?? "open";
+                    const value = open ? (saved === "readers" ? "open" : saved) : saved === "open" ? "private" : saved;
+                    return (
+                      <Select value={value} onValueChange={(mode) => updateZenodo({ defaultFileAccess: mode as "open" | "private" | "readers" })}>
+                        <SelectTrigger id={id} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(open ? (["open", "private"] as const) : (["readers", "private"] as const)).map((mode) => (
+                            <SelectItem key={mode} value={mode}>
+                              {t(`fileAccess_${mode}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  }}
                 </Field>
                 <Field label={t("archiveDoi")}>
                   {(id) => (

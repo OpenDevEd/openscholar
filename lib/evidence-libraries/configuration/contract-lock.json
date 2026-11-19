@@ -2,7 +2,7 @@
   "formatVersion": 3,
   "source": {
     "repository": "https://github.com/Openscholar-ai/evidence-community",
-    "commit": "2ef1dbc19f93fdf2836508b8d98f1a64cc6d3cca"
+    "commit": "253cf83e8f0b20bc5c421049ca86edf905f0c985"
   },
   "contract": {
     "schemaVersion": 1,
@@ -12,28 +12,28 @@
   "artifacts": {
     "schema": {
       "path": "generated/library-config.schema.json",
-      "bytes": 207611,
-      "sha256": "8a89bbb57d27801bdd5589483d83ba9ed6d53a4b2fef24dbd19d509f7a3a7385"
+      "bytes": 207797,
+      "sha256": "b7712dafd627f54c1431e489c4903035a05f2e5d15f4747968348e553ba367af"
     },
     "catalogs": {
       "path": "generated/library-config.catalogs.json",
-      "bytes": 144337,
-      "sha256": "ec9cd4b8a6fcc7f3aba206b4bb762e68db3bd9218ce75c4cb6d2c3f054dc4914"
+      "bytes": 144501,
+      "sha256": "228d6855eeb83d3387542ad63c48ef5b741fdc1ca83dc94379487ef4963d3bda"
     },
     "validator": {
       "path": "generated/library-config.validator.cjs",
-      "bytes": 4344576,
-      "sha256": "aa353cc9fec9586a1f7cccfb2abb85c3ae146ff7a9eb9096fbbb14099fe3bce6"
+      "bytes": 4346799,
+      "sha256": "237587a75858b6373b4e989b1f136f26493707c31e4efa4f96ced89ac92750c2"
     },
     "clientSchema": {
       "path": "generated/library-config.client.schema.json",
-      "bytes": 39165,
-      "sha256": "e7697786fae012314d880102ae301a0171afb888ee59e298c37093ebce8f8873"
+      "bytes": 39256,
+      "sha256": "c1c5db4690c2978a4bbb1de126a0ea874c5c1af404bc7fe113dbfe42c1b42f65"
     },
     "clientCatalogs": {
       "path": "generated/library-config.client.catalogs.json",
-      "bytes": 7811,
-      "sha256": "bf4d21e20e319b87c62ef81d205074897120a849b0282897b607ea222484a4bf"
+      "bytes": 7926,
+      "sha256": "6e9d3205c5fed9c49212857dac7df7122f921d8ffe2e2a281d5e412c8e017180"
     },
     "icons": {
       "path": "public/library-icons",

@@ -9,6 +9,8 @@ export const publicationSettingsValidator = v.object({
   zenodo: v.object({
     mode,
     license: v.string(),
+    /** Who gets the files of records made in the community, unless their editor chooses: anyone when none is saved. */
+    defaultFileAccess: v.optional(v.union(v.literal("open"), v.literal("private"), v.literal("readers"))),
     defaultIdentifierPolicy: v.union(
       v.literal("mint-zenodo"),
       v.literal("reuse-crossref"),

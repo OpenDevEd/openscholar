@@ -351,7 +351,12 @@
     "verified": "Iqinisekisiwe ngo-{date}",
     "checkedBeforeSaving": "Izimvume ziyahlolwa ngaphambi kokugcina.",
     "verifying": "Iyaqinisekisa…",
-    "verifySave": "Qinisekisa bese ugcina"
+    "verifySave": "Qinisekisa bese ugcina",
+    "fileAccess": "Ubani othola amafayela",
+    "fileAccessHint": "Amarekhodi enziwe lapha aqala ngalokhu; abahleli bawo bangakushintsha.",
+    "fileAccess_open": "Noma ubani",
+    "fileAccess_private": "Abahleli kuphela",
+    "fileAccess_readers": "Abafundi balapha"
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",

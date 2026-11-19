@@ -351,7 +351,12 @@
     "verified": "सत्यापित {date}",
     "checkedBeforeSaving": "सहेजने से पहले क्रेडेंशियल जाँचे जाते हैं।",
     "verifying": "सत्यापन हो रहा है…",
-    "verifySave": "सत्यापित करें और सहेजें"
+    "verifySave": "सत्यापित करें और सहेजें",
+    "fileAccess": "फ़ाइलें किसे मिलती हैं",
+    "fileAccessHint": "यहाँ बने रिकॉर्ड इसी से शुरू होते हैं; उनके संपादक इसे बदल सकते हैं।",
+    "fileAccess_open": "कोई भी",
+    "fileAccess_private": "केवल संपादक",
+    "fileAccess_readers": "यहाँ के पाठक"
   },
   "auth": {
     "backToSearch": "खोज पर वापस जाएँ",
