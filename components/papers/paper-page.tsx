@@ -25,7 +25,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
-import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, FileText, Globe, Library, LockOpen, MessageSquare, Target, TriangleAlert, Users } from "@/components/icons";
+import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, FileText, Globe, Library, LockOpen, MessageSquare, RefreshCw, Target, TriangleAlert, Users } from "@/components/icons";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { chatAbout } from "@/lib/assistant/place";
 import { topicHref } from "@/lib/topics/links";
@@ -35,6 +35,7 @@ import { paperPath } from "@/lib/papers/page-address";
 import { abstractSections } from "@/lib/papers/abstract-sections";
 import { cn } from "@/lib/utils";
 import { readPaperListsLater } from "@/app/actions/paper-lists";
+import { PassNotEarned } from "@/lib/visitor-pass";
 import type { PaperLists } from "@/lib/papers/paper-page-data";
 import type { CommunityCopy } from "@/lib/papers/community-copies";
 import { useLiveCopies } from "@/components/papers/use-live-copies";
@@ -265,16 +266,28 @@ function Lists({ paper, lists: { similar, references } }: { paper: PaperResult; 
 
 /**
  * The lists as the browser reads them, for a visitor the server ran no searches for. They open their place at the
- * column's foot as they arrive and fade in; a read that fails leaves the page without them, as the server's does.
+ * column's foot as they arrive and fade in; a read that fails leaves the page without them, as the server's does. One
+ * stopped for a check the visitor didn't pass says so in their place, with Try again, as the overview and search do.
  */
 function LaterLists({ paper, id }: { paper: PaperResult; id: string }) {
-  // Asked once: a browser Cloudflare won't give its pass, or a visitor who sent its check away, isn't asked again.
-  const { data } = useSWR(["paper-lists", id], ([, asked]) => readPaperListsLater(asked), { revalidateOnFocus: false, shouldRetryOnError: false });
+  const t = useTranslations("overview");
+  // Asked once: a browser Cloudflare won't give its pass, or a visitor who sent its check away, isn't asked again
+  // until Try again.
+  const { data, error, isValidating, mutate } = useSWR(["paper-lists", id], ([, asked]) => readPaperListsLater(asked), { revalidateOnFocus: false, shouldRetryOnError: false });
   return (
     // The column spaces its parts with a margin under each but the last. Empty, this takes that margin back, so the
     // column ends where it would without lists; filled, the same space is its own, above its first section.
     <AutoHeight className="-mt-10">
-      {data?.similar.length || data?.references.length ? <div className="fade-enter space-y-10 pt-10"><Lists paper={paper} lists={data} /></div> : null}
+      {data?.similar.length || data?.references.length ? (
+        <div className="fade-enter space-y-10 pt-10"><Lists paper={paper} lists={data} /></div>
+      ) : error instanceof PassNotEarned && !isValidating ? (
+        <div role="status" className="fade-enter flex flex-wrap items-center gap-3 pt-10 text-sm text-muted-foreground">
+          <span className="flex-1">{t("failed.verify")}</span>
+          <Button size="sm" variant="outline" onClick={() => void mutate()}>
+            <RefreshCw /> {t("tryAgain")}
+          </Button>
+        </div>
+      ) : null}
     </AutoHeight>
   );
 }
