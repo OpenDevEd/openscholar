@@ -6879,8 +6879,10 @@
           "openscholar": "रिपोर्ट दिखाता है"
         },
         "ownOpen": "क्या यह किसी को भी रिपोर्ट साझा करने देता है?",
-        "ownOpenYes": "हाँ",
-        "ownOpenNo": "नहीं"
+        "ownOpenYes": "हाँ, कोई भी इसे साझा कर सकता है",
+        "ownOpenNo": "नहीं, यह साझा करना रोकता है",
+        "ownOpenYesBody": "कोई भी PDF पढ़ और डाउनलोड कर सकता है, जैसे Creative Commons में।",
+        "ownOpenNoBody": "अधिक से अधिक Openscholar के पाठकों को PDF मिलती है: Zenodo को कभी नहीं, और किसी समुदाय को केवल आपकी सहमति से।"
       },
       "payment": {
         "payWith": "इससे भुगतान करें",

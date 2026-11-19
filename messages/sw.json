@@ -6880,8 +6880,10 @@
           "openscholar": "Huonyesha ripoti"
         },
         "ownOpen": "Je, inaruhusu mtu yeyote kushiriki ripoti?",
-        "ownOpenYes": "Ndiyo",
-        "ownOpenNo": "Hapana"
+        "ownOpenYes": "Ndiyo, mtu yeyote anaweza kuishiriki",
+        "ownOpenNo": "Hapana, inazuia kushiriki",
+        "ownOpenYesBody": "Mtu yeyote anaweza kusoma na kupakua PDF, kama kwa Creative Commons.",
+        "ownOpenNoBody": "Hadi wasomaji wa Openscholar tu ndio hupata PDF: Zenodo kamwe, na jumuiya ikiwa tu utakubali."
       },
       "payment": {
         "payWith": "Lipa kwa",

@@ -6879,8 +6879,10 @@
           "openscholar": "レポートを表示"
         },
         "ownOpen": "誰でもレポートを共有できるライセンスですか?",
-        "ownOpenYes": "はい",
-        "ownOpenNo": "いいえ"
+        "ownOpenYes": "はい、誰でも共有できます",
+        "ownOpenNo": "いいえ、共有を制限します",
+        "ownOpenYesBody": "Creative Commons と同じく、誰でも PDF を読んでダウンロードできます。",
+        "ownOpenNoBody": "PDF を受け取れるのは最大でも Openscholar の読者までです。Zenodo には渡さず、コミュニティにはあなたが同意した場合のみ渡します。"
       },
       "payment": {
         "payWith": "支払い方法",

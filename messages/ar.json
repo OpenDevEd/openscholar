@@ -6880,8 +6880,10 @@
           "openscholar": "يعرض التقرير"
         },
         "ownOpen": "هل يسمح لأي شخص بمشاركة التقرير؟",
-        "ownOpenYes": "نعم",
-        "ownOpenNo": "لا"
+        "ownOpenYes": "نعم، يمكن لأي شخص مشاركته",
+        "ownOpenNo": "لا، يقيّد المشاركة",
+        "ownOpenYesBody": "يمكن لأي شخص قراءة ملف PDF وتنزيله، كما في Creative Commons.",
+        "ownOpenNoBody": "يحصل قرّاء Openscholar على ملف PDF على الأكثر: لا يحصل عليه Zenodo أبدًا، ولا يحصل عليه مجتمع إلا بموافقتك."
       },
       "payment": {
         "payWith": "الدفع بـ",

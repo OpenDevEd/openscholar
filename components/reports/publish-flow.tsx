@@ -70,7 +70,7 @@ import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/compone
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
-import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, fileAccessOf, licenceName, ownLicence, payment, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, fileAccessOf, licenceName, ownLicence, payment, pickedLicence, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -1128,8 +1128,10 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const choosing = choosesLicence(agreement.text);
   // An own licence counts once it is named, has its address, and says whether it lets anyone share the report.
   const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : pick.open === undefined ? null : ownLicence(pick.name, pick.url, pick.open);
-  // An own licence still being typed reads in the agreement as far as it goes.
-  const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
+  // The licence as far as it is picked: the price, the file's choices, the bill and the agreement all read it.
+  const named: Licence = choosing ? pickedLicence(pick) : DEFAULT_LICENCE;
+  // The bill names an own licence not yet named as such, never "…".
+  const billed = typeof pick !== "string" && choosing && !pick.name.trim() ? t("licence.own") : licenceName(named);
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
   const priceNow = priceOf(named, basics.prices);
   const sum = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: voucher?.off ?? 0, credit: starts.credit, cardSaved: starts.cardSaved }) : null;
@@ -1225,8 +1227,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
             </motion.div>
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
-          <Bill boxed className="mt-4 @3xl:hidden" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />
-          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(named)} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={billed} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={billed} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>

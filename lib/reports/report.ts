@@ -202,6 +202,12 @@ export const DEFAULT_PRICES: Prices = { standard: 10, other: 30, closed: 100 };
 export const PRICE_MAX = 10_000;
 export const isPrice = (dollars: number) => Number.isInteger(dollars) && dollars >= 1 && dollars <= PRICE_MAX;
 export const priceOf = (licence: Licence, prices: Prices) => prices[tierOf(licence)];
+/**
+ * A licence as far as the author has picked it: what the agreement step prices, offers file access for and fills the
+ * agreement with, so they never disagree. An own licence not yet named or given its address reads "…" there.
+ */
+export const pickedLicence = (pick: Licence): Licence =>
+  typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…", ...(pick.open !== undefined && { open: pick.open }) };
 
 /**
  * Who may get a report's PDF. `open`: anyone, on Openscholar, Zenodo and every community. `private`: only the people

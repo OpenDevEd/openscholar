@@ -6879,8 +6879,10 @@
           "openscholar": "展示报告"
         },
         "ownOpen": "它允许任何人分享报告吗?",
-        "ownOpenYes": "是",
-        "ownOpenNo": "否"
+        "ownOpenYes": "是，任何人都可以分享",
+        "ownOpenNo": "否，它限制分享",
+        "ownOpenYesBody": "任何人都可以阅读和下载 PDF，与 Creative Commons 相同。",
+        "ownOpenNoBody": "最多只有 Openscholar 的读者能获得 PDF：Zenodo 永远不会获得，社区只有在你同意时才能获得。"
       },
       "payment": {
         "payWith": "支付方式",
