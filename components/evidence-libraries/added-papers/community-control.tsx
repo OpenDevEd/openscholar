@@ -32,6 +32,9 @@ import { CommunityIcon, ROLE_KINDS } from "../your-communities";
 import { refusalOr } from "./add-papers-dialog";
 import { PublishChoice, publishes } from "./publish-choice";
 
+/** Brings a panel into view when it first appears. One function for every render, so React calls it only then. */
+const bringIntoView = (element: HTMLElement | null) => element?.scrollIntoView({ block: "nearest" });
+
 type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.directory>["page"][number];
 type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
 type Recent = FunctionReturnType<typeof api.evidenceLibraries.submissions.recentCommunities>[number];
@@ -301,8 +304,9 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
         </button>
         {/* The choice opens under the community picked, where the pointer already is. */}
         {selected ? (
-          // Brought into view when it opens under a row at the foot of the list.
-          <div ref={(element) => element?.scrollIntoView({ block: "nearest" })} className="fade-enter space-y-2 px-2 pb-2 pt-1.5">
+          // Brought into view once, when it opens under a row at the foot of the list: a ref made anew each render would
+          // pull it back every time the list redraws, such as when the pointer passes over other rows during a scroll.
+          <div ref={bringIntoView} className="fade-enter space-y-2 px-2 pb-2 pt-1.5">
             <p className="text-xs text-muted-foreground">{canPublish ? t("publishOrReview") : t("reviewFirst")}</p>
             <PublishChoice size="sm" canPublish={canPublish} sending={sending} onSend={(publish) => void send(publish)} />
           </div>
