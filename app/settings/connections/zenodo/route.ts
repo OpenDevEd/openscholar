@@ -8,7 +8,8 @@ import { api } from "@/convex/_generated/api";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const back = (path: string) => NextResponse.redirect(new URL(path, url.origin));
+  // A relative address: behind the proxy, the request's own origin is the container's (localhost:3000), not the site's.
+  const back = (path: string) => new NextResponse(null, { status: 303, headers: { Location: path } });
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return back("/settings/connections?zenodo_error=1");
