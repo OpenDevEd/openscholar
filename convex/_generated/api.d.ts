@@ -504,6 +504,8 @@ import type * as workspaces_move from "../workspaces/move.js";
 import type * as workspaces_personal from "../workspaces/personal.js";
 import type * as workspaces_purge from "../workspaces/purge.js";
 import type * as workspaces_queries from "../workspaces/queries.js";
+import type * as zenodo_connection from "../zenodo/connection.js";
+import type * as zenodo_connectionActions from "../zenodo/connectionActions.js";
 import type * as zotero_actions from "../zotero/actions.js";
 import type * as zotero_groupAccess from "../zotero/groupAccess.js";
 import type * as zotero_internal from "../zotero/internal.js";
@@ -1024,6 +1026,8 @@ declare const fullApi: ApiFromModules<{
   "workspaces/personal": typeof workspaces_personal;
   "workspaces/purge": typeof workspaces_purge;
   "workspaces/queries": typeof workspaces_queries;
+  "zenodo/connection": typeof zenodo_connection;
+  "zenodo/connectionActions": typeof zenodo_connectionActions;
   "zotero/actions": typeof zotero_actions;
   "zotero/groupAccess": typeof zotero_groupAccess;
   "zotero/internal": typeof zotero_internal;

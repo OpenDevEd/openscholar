@@ -67,6 +67,25 @@ describe("how a report is paid for", () => {
   });
 });
 
+describe("a report archived in its author's own Zenodo account", () => {
+  it("is signed only while their account is connected and accepted, and goes there under its Crossref DOI", async () => {
+    // On fake timers: what signing schedules never runs (see the next describe).
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
+    const world = await setup();
+    const signOwn = () => world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0", archive: "own" });
+    await expect(signOwn()).rejects.toMatchObject(refused("CONFLICT"));
+    const authorId = await world.t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "author")!._id);
+    const connectionId = await world.t.run((ctx) => ctx.db.insert("zenodoConnections", { userId: authorId, encryptedTokens: "sealed", expiresAt: 0, connectedAt: 1, broken: true }));
+    // One Zenodo no longer accepts is no account to archive in.
+    await expect(signOwn()).rejects.toMatchObject(refused("CONFLICT"));
+    await world.t.run((ctx) => ctx.db.patch("zenodoConnections", connectionId, { broken: undefined }));
+    const key = await signOwn();
+    // Archived even though Openscholar's own Zenodo is off here, and under the report's Crossref DOI.
+    expect(await row(world.t, key)).toMatchObject({ archiveOwnerId: authorId, registration: { zenodo: true, policy: "reuse-crossref" } });
+  });
+});
+
 describe("an author's own licence", () => {
   it("is kept by name and address, and only with a name the page added to a PDF can print", async () => {
     // On fake timers: what these steps schedule (the PDF's reading, registering, emails) never runs. This file

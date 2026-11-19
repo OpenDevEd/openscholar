@@ -1764,7 +1764,11 @@
     "siteSignsOut": "Umetoka huko hadi utakapoiruhusu tena",
     "disconnectedTime": "Imetenganishwa {time}",
     "allowAgain": "Ruhusu tena",
-    "openSite": "Fungua {site}"
+    "openSite": "Fungua {site}",
+    "zenodoAbout": "Hifadhi unachochapisha katika akaunti yako mwenyewe",
+    "zenodoKeeps": "Rekodi zilizokwisha hifadhiwa zinabaki katika akaunti yako ya Zenodo",
+    "zenodoBroken": "Zenodo haikubali tena muunganisho huu. Iunganishe tena ili kuhifadhi humo.",
+    "zenodoFailed": "Imeshindikana kuunganisha Zenodo. Jaribu tena."
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6935,6 +6939,24 @@
         "confirmTitle": "Kubadilisha nani anapata faili?",
         "confirmLive": "Wasomaji wanaweza kuweka faili waliyowahi kuwa nayo, kwa hivyo hili haliwezi kutenduliwa: kuanzia sasa faili inaweza tu kufunguka zaidi. Zenodo na Crossref zinasasishwa pia.",
         "confirmBefore": "Hakuna kilicho wazi bado: hili linatumika ripoti ikiwa hewani, na linaweza kubadilika hadi wakati huo."
+      },
+      "archive": {
+        "label": "Hifadhi",
+        "openscholar": "Hifadhi ya Openscholar",
+        "openscholarBody": "Inahifadhiwa kwenye Zenodo katika akaunti ya Openscholar",
+        "own": "Akaunti yako ya Zenodo",
+        "ownBody": "Inahifadhiwa kwenye Zenodo kwa jina lako",
+        "connectFirst": "Unganisha akaunti yako ya Zenodo ili kuhifadhi ripoti humo.",
+        "connect": "Unganisha Zenodo",
+        "connectNeeded": "Unganisha Zenodo ili kusaini",
+        "broken": "Zenodo haikubali tena muunganisho wako. Iunganishe tena.",
+        "help": {
+          "about": "Kwa nini ripoti huhifadhiwa",
+          "title": "Kwa nini ripoti inahifadhiwa",
+          "why": "DOI lazima ielekeze kwenye ripoti milele. Crossref, inayosajili DOI, inaomba nakala ya kudumu katika hifadhi, na Zenodo inaitunza.",
+          "same": "Ripoti inabaki na DOI yake ya Crossref popote inapohifadhiwa.",
+          "policies": "Jinsi Zenodo inavyohifadhi rekodi"
+        }
       }
     },
     "meta": {

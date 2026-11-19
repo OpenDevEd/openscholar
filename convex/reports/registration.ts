@@ -48,6 +48,8 @@ export const begin = internalMutation({
       zenodoDraftId: v.optional(v.string()),
       /** Crossref took this record's deposit, and hasn't shown the record yet. */
       depositSent: v.boolean(),
+      /** Whose own Zenodo account it is archived in, when not Openscholar's (#1237). */
+      archiveOwnerId: v.optional(v.id("users")),
       /** Who may get its file, which Zenodo keeps private, or private until a day, when not anyone. */
       fileAccess: v.optional(fileAccessValidator),
       pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), pages: v.optional(v.number()) })),
@@ -85,6 +87,7 @@ export const begin = internalMutation({
       ...(report.zenodoDraftId && { zenodoDraftId: report.zenodoDraftId }),
       depositSent: report.depositSent === true,
       ...(report.fileAccess && { fileAccess: report.fileAccess }),
+      ...(report.archiveOwnerId && { archiveOwnerId: report.archiveOwnerId }),
       pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }) } : null,
       publication: settings.publication,
       encryptedCredentials: settings.row?.encryptedCredentials ?? null,

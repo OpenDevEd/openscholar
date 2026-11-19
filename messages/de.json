@@ -1764,7 +1764,11 @@
     "siteSignsOut": "Dort abgemeldet, bis Sie sie wieder erlauben",
     "disconnectedTime": "Getrennt {time}",
     "allowAgain": "Wieder erlauben",
-    "openSite": "{site} öffnen"
+    "openSite": "{site} öffnen",
+    "zenodoAbout": "Archivieren Sie, was Sie veröffentlichen, in Ihrem eigenen Konto",
+    "zenodoKeeps": "Bereits archivierte Einträge bleiben in Ihrem Zenodo-Konto",
+    "zenodoBroken": "Zenodo akzeptiert diese Verbindung nicht mehr. Verbinden Sie es erneut, um dort zu archivieren.",
+    "zenodoFailed": "Zenodo konnte nicht verbunden werden. Versuchen Sie es erneut."
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6935,6 +6939,24 @@
         "confirmTitle": "Ändern, wer die Datei bekommt?",
         "confirmLive": "Leser dürfen eine Datei behalten, die sie einmal hatten, daher lässt sich das nicht rückgängig machen: Die Datei kann sich ab jetzt nur noch weiter öffnen. Zenodo und Crossref werden ebenfalls aktualisiert.",
         "confirmBefore": "Noch ist nichts öffentlich: Das gilt, sobald der Bericht live geht, und kann sich bis dahin ändern."
+      },
+      "archive": {
+        "label": "Archiv",
+        "openscholar": "Openscholars Archiv",
+        "openscholarBody": "Auf Zenodo im Konto von Openscholar aufbewahrt",
+        "own": "Ihr Zenodo-Konto",
+        "ownBody": "Auf Zenodo unter Ihrem Namen aufbewahrt",
+        "connectFirst": "Verbinden Sie Ihr Zenodo-Konto, um den Bericht dort aufzubewahren.",
+        "connect": "Zenodo verbinden",
+        "connectNeeded": "Zenodo verbinden, um zu unterschreiben",
+        "broken": "Zenodo akzeptiert Ihre Verbindung nicht mehr. Verbinden Sie es erneut.",
+        "help": {
+          "about": "Warum Berichte archiviert werden",
+          "title": "Warum ein Bericht archiviert wird",
+          "why": "Ein DOI muss dauerhaft zum Bericht führen. Crossref, das den DOI registriert, verlangt eine dauerhafte Kopie in einem Archiv, und Zenodo bewahrt sie auf.",
+          "same": "Der Bericht behält seinen Crossref-DOI, wo immer er archiviert ist.",
+          "policies": "Wie Zenodo Einträge aufbewahrt"
+        }
       }
     },
     "meta": {

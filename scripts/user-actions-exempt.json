@@ -99,7 +99,11 @@
     "app/actions/people-lookup:findOrcid": "A form's ORCID iD picker searching ORCID as someone types: the form saves the iD they pick (a report's details, the profile setup).",
     "app/actions/people-lookup:findRor": "A form's institution picker searching ROR as someone types: the form saves the institution they pick.",
     "users/profileSetup:get": "A person's own profile setup answers, for the setup page and Settings › Profile to show.",
-    "users/profileSetup:due": "Whether the page the server is drawing is the profile setup instead."
+    "users/profileSetup:due": "Whether the page the server is drawing is the profile setup instead.",
+    "zenodo/connection:mine": "Connecting your own Zenodo account goes through Zenodo's sign-in in the browser, on Settings > Connections and the publishing agreement: the person approves it there.",
+    "zenodo/connection:disconnect": "Connecting your own Zenodo account goes through Zenodo's sign-in in the browser, on Settings > Connections and the publishing agreement: the person approves it there.",
+    "zenodo/connectionActions:start": "Connecting your own Zenodo account goes through Zenodo's sign-in in the browser, on Settings > Connections and the publishing agreement: the person approves it there.",
+    "zenodo/connectionActions:finish": "Connecting your own Zenodo account goes through Zenodo's sign-in in the browser, on Settings > Connections and the publishing agreement: the person approves it there."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",

@@ -179,6 +179,8 @@ export const reportFields = {
   fileAccess: v.optional(fileAccessValidator),
   /** The day its embargo ends, kept apart so the reports to open are found by it (reports/fileAccess.ts). */
   fileOpensOn: v.optional(v.string()),
+  /** Whose own Zenodo account its copy is archived in (#1237), chosen when it was signed; none is Openscholar's. */
+  archiveOwnerId: v.optional(v.id("users")),
   /** The communities whose editors were told the licence and agreed to have the PDF of a report readers alone may get. */
   pdfCommunities: capped(v.optional(v.array(v.id("evidenceLibraries"))), PDF_COMMUNITIES_MAX),
   /** The promotion code applied to what a card pays for it: chosen with the licence, and open to change until it is activated. */

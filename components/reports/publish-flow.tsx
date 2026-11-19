@@ -58,6 +58,9 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { ArchiveChoice } from "@/components/reports/archive-choice";
+import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
+import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { FileAccessChange, FileAccessChoice } from "@/components/reports/file-access-choice";
 import { refusalOr } from "@/components/evidence-libraries/added-papers/add-papers-dialog";
 import { StripeIcon } from "@/components/icons/stripe-icon";
@@ -1112,6 +1115,16 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // with the report when it is signed, and open to change until it is activated.
   const [picked, setPicked] = useState<PayWith | null>(null);
   const payWith: PayWith = starts?.balance === 0 ? "card" : (picked ?? "balance");
+  // Where the report's permanent copy is kept (#1237): Openscholar's Zenodo account, or the author's own. Kept in
+  // the address, so it is still picked after connecting Zenodo in the page itself.
+  const [archive, setArchive] = useQueryState("archive", parseAsStringLiteral(["openscholar", "own"] as const).withDefault("openscholar"));
+  const zenodo = useZenodoAccount();
+  const connectZenodo = useConnectZenodo();
+  const [connecting, setConnecting] = useState(false);
+  // Zenodo's mark, in the archive choice and its "?", is fetched with the step.
+  preloadZenodoMark();
+  // Their own account picked, with none connected (or one Zenodo stopped accepting): it can't be signed until it is.
+  const zenodoNeeded = archive === "own" && (!zenodo || zenodo.broken);
   const choosing = choosesLicence(agreement.text);
   // An own licence counts once it is named, has its address, and says whether it lets anyone share the report.
   const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : pick.open === undefined ? null : ownLicence(pick.name, pick.url, pick.open);
@@ -1166,6 +1179,24 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       ) : null}
       <section className="mb-7">
         <FileAccessChoice licence={named} value={access} onChange={setAccess} disabled={busy || !!signed} />
+      </section>
+      {/* Where the permanent copy goes, said before the agreement that promises one. */}
+      <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
+        <ArchiveChoice
+          value={archive}
+          onChange={(chosen) => void setArchive(chosen === "openscholar" ? null : chosen)}
+          account={zenodo ?? null}
+          connecting={connecting}
+          onConnect={() => {
+            // Signed out, there is no one to connect Zenodo for yet: signing in comes first, back on this step.
+            if (!user) return openSignIn();
+            // A window of its own, so everything picked on this step stays as it is while Zenodo is connected.
+            setConnecting(true);
+            void connectZenodo(window.location.pathname + window.location.search, { window: true })
+              .catch((error: unknown) => say(error instanceof Error ? error.message : String(error)))
+              .finally(() => setConnecting(false));
+          }}
+        />
       </section>
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
@@ -1240,6 +1271,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         ) : null}
         {/* Why Sign is shut while an own licence lacks its name or address, said beside it. */}
         {!licence && !blocked ? <p className="text-sm text-muted-foreground">{t("licence.ownNeeded")}</p> : null}
+        {licence && zenodoNeeded && !blocked ? <p className="text-sm text-muted-foreground">{t("archive.connectNeeded")}</p> : null}
         {blocked ? (
           <>
             <p className="text-sm text-muted-foreground">{blocked}</p>
@@ -1249,13 +1281,13 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         {starts ? (
           <NextButton
             busy={busy || !!signed || leaving}
-            disabled={!agreed || !name.trim() || !licence || busy || !!signed || leaving || settling || !!blocked || !workspaceId}
+            disabled={!agreed || !name.trim() || !licence || zenodoNeeded || busy || !!signed || leaving || settling || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
                 say(null);
                 try {
                   // The licence is the report's from here on; what pays and the code can still change until it is activated.
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, fileAccess: fileAccessOf(licence!, access), payWith, ...(voucher && { voucher }) });
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, fileAccess: fileAccessOf(licence!, access), archive, payWith, ...(voucher && { voucher }) });
                   setMade(key);
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);

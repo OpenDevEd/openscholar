@@ -1764,7 +1764,11 @@
     "siteSignsOut": "Sesión cerrada allí hasta que lo vuelva a permitir",
     "disconnectedTime": "Desconectado {time}",
     "allowAgain": "Volver a permitir",
-    "openSite": "Abrir {site}"
+    "openSite": "Abrir {site}",
+    "zenodoAbout": "Archiva lo que publicas en tu propia cuenta",
+    "zenodoKeeps": "Los registros ya archivados se quedan en tu cuenta de Zenodo",
+    "zenodoBroken": "Zenodo ya no acepta esta conexión. Vuelve a conectarlo para archivar allí.",
+    "zenodoFailed": "No se pudo conectar Zenodo. Inténtalo de nuevo."
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6935,6 +6939,24 @@
         "confirmTitle": "¿Cambiar quién recibe el archivo?",
         "confirmLive": "Los lectores pueden quedarse con un archivo que ya tuvieron, así que esto no se puede deshacer: desde ahora el archivo solo podrá abrirse más. Zenodo y Crossref también se actualizan.",
         "confirmBefore": "Aún no hay nada público: esto se aplica cuando el informe se publique y puede cambiar hasta entonces."
+      },
+      "archive": {
+        "label": "Archivo",
+        "openscholar": "El archivo de Openscholar",
+        "openscholarBody": "Guardado en Zenodo en la cuenta de Openscholar",
+        "own": "Tu cuenta de Zenodo",
+        "ownBody": "Guardado en Zenodo a tu nombre",
+        "connectFirst": "Conecta tu cuenta de Zenodo para guardar allí el informe.",
+        "connect": "Conectar Zenodo",
+        "connectNeeded": "Conecta Zenodo para firmar",
+        "broken": "Zenodo ya no acepta tu conexión. Vuelve a conectarlo.",
+        "help": {
+          "about": "Por qué se archivan los informes",
+          "title": "Por qué se archiva un informe",
+          "why": "Un DOI tiene que llevar al informe para siempre. Crossref, que registra el DOI, pide una copia permanente en un archivo, y Zenodo la guarda.",
+          "same": "El informe conserva su DOI de Crossref dondequiera que se archive.",
+          "policies": "Cómo guarda Zenodo los registros"
+        }
       }
     },
     "meta": {

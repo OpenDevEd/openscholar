@@ -1763,7 +1763,11 @@
     "siteSignsOut": "再び許可するまで、そのサイトからサインアウトされます",
     "disconnectedTime": "切断 {time}",
     "allowAgain": "再び許可",
-    "openSite": "{site} を開く"
+    "openSite": "{site} を開く",
+    "zenodoAbout": "公開したものを自分のアカウントにアーカイブ",
+    "zenodoKeeps": "すでにアーカイブしたレコードは Zenodo アカウントに残ります",
+    "zenodoBroken": "Zenodo がこの接続を受け付けなくなりました。そこにアーカイブするにはもう一度接続してください。",
+    "zenodoFailed": "Zenodo に接続できませんでした。もう一度お試しください。"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -6934,6 +6938,24 @@
         "confirmTitle": "ファイルを受け取れる人を変更しますか?",
         "confirmLive": "読者は一度入手したファイルを保持できるため、この変更は取り消せません。今後ファイルはさらに公開する方向にしか変えられません。Zenodo と Crossref も更新されます。",
         "confirmBefore": "まだ何も公開されていません。この設定はレポートの公開時に適用され、それまでは変更できます。"
+      },
+      "archive": {
+        "label": "アーカイブ",
+        "openscholar": "Openscholar のアーカイブ",
+        "openscholarBody": "Openscholar のアカウントで Zenodo に保管",
+        "own": "あなたの Zenodo アカウント",
+        "ownBody": "あなたの名前で Zenodo に保管",
+        "connectFirst": "レポートをそこに保管するには Zenodo アカウントを接続してください。",
+        "connect": "Zenodo を接続",
+        "connectNeeded": "署名するには Zenodo を接続",
+        "broken": "Zenodo が接続を受け付けなくなりました。もう一度接続してください。",
+        "help": {
+          "about": "レポートをアーカイブする理由",
+          "title": "レポートがアーカイブされる理由",
+          "why": "DOI は常にレポートにたどり着く必要があります。DOI を登録する Crossref はアーカイブに恒久的なコピーを求めており、Zenodo がそれを保管します。",
+          "same": "どこにアーカイブしても、レポートは Crossref の DOI を保ちます。",
+          "policies": "Zenodo のレコード保管方法"
+        }
       }
     },
     "meta": {

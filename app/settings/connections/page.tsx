@@ -1,5 +1,6 @@
 "use client";
 
+import { ZenodoMark, preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { useState, type ReactNode } from "react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -21,6 +22,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { APPS_PER_PAGE, DeveloperApps } from "@/components/settings/developer-apps";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 
 const PER_PAGE = 8;
 const APP_TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
@@ -31,6 +33,8 @@ export default function ConnectionsPage() {
   const tc = useTranslations("common");
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
+  // Zenodo's row comes with the lists: its mark is fetched with the page, so it is there when the row is.
+  preloadZenodoMark();
   // Each list is read a page at a time, newest first; the counts total their pages.
   const active = useCursorPageAt("keys", api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: true }), PER_PAGE, { scroll: false });
   const revoked = useCursorPageAt("revoked", api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: false }), PER_PAGE, { scroll: false });
@@ -63,6 +67,7 @@ export default function ConnectionsPage() {
         <Zone label={t("integrations")}>
           <ul className={`${LIST} @container/integrations`}>
             <ZoteroRow account={zotero} />
+            <ZenodoRow />
           </ul>
         </Zone>
 
@@ -242,6 +247,94 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
         ) : (
           <Button variant="outline" size="sm" className="relative" disabled={step === "busy"} onClick={() => setStep("confirm")}>
             <Working busy={step === "busy"}>{t("disconnect")}</Working>
+          </Button>
+        )}
+      </Swap>
+    </li>
+  );
+}
+
+/**
+ * Your Zenodo account: reports can archive into it instead of Openscholar's (#1237). Connect goes through Zenodo's
+ * own sign-in and comes back here; one Zenodo stopped accepting says so and offers to connect again.
+ */
+function ZenodoRow() {
+  const t = useTranslations("connectionsPage");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const account = useZenodoAccount();
+  const connect = useConnectZenodo();
+  const disconnect = useMutation(api.zenodo.connection.disconnect);
+  const toast = useAppToast();
+  const [step, setStep] = useState<"idle" | "confirm" | "busy">("idle");
+  // A sign-in that came back without finishing says so here (/settings/connections/zenodo sends it).
+  const [failed] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("zenodo_error"));
+  const connected = !!account && !account.broken;
+
+  const line = !account ? (
+    <span className="truncate">{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
+  ) : account.broken ? (
+    <span className="truncate text-destructive">{t("zenodoBroken")}</span>
+  ) : step === "confirm" ? (
+    <span className="truncate">{t("zenodoKeeps")}</span>
+  ) : (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <PersonIcon className="size-3 shrink-0" />
+      <span className="truncate">{account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo")}</span>
+    </span>
+  );
+
+  return (
+    <li className="flex items-center gap-3 p-3" data-zenodo={connected ? "connected" : "not-connected"}>
+      <ZenodoMark className="size-9 shrink-0 self-start rounded-lg" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">Zenodo</p>
+        <Swap id={`${connected}-${step === "confirm"}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
+          {line}
+        </Swap>
+      </div>
+      {account ? (
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground @max-[32rem]/integrations:hidden">
+          {t("connectedTime", { time: format.relativeTime(Math.min(account.connectedAt, now.getTime()), now) })}
+        </span>
+      ) : null}
+      <Swap id={connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className="flex w-40 shrink-0 justify-end gap-1">
+        {!connected ? (
+          <Button
+            size="sm"
+            className="relative"
+            disabled={step === "busy"}
+            onClick={() => {
+              // The page goes to Zenodo from here, so the spinner stays until it leaves.
+              setStep("busy");
+              connect("/settings/connections").catch((error: unknown) => {
+                setStep("idle");
+                toast.error(getErrorMessage(error, tc("somethingWentWrong")));
+              });
+            }}
+          >
+            <Working busy={step === "busy"}>{t("connect")}</Working>
+          </Button>
+        ) : step === "confirm" ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setStep("idle")}>
+              {tc("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setStep("idle");
+                disconnect().catch((error: unknown) => toast.error(getErrorMessage(error, tc("somethingWentWrong"))));
+              }}
+            >
+              {t("disconnect")}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setStep("confirm")}>
+            {t("disconnect")}
           </Button>
         )}
       </Swap>
