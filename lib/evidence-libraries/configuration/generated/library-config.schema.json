@@ -2400,6 +2400,14 @@
 										"private",
 										"readers"
 									]
+								},
+								"account": {
+									"default": "token",
+									"type": "string",
+									"enum": [
+										"token",
+										"openscholar"
+									]
 								}
 							},
 							"additionalProperties": false
