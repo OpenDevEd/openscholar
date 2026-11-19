@@ -110,20 +110,23 @@ export const finish = action({
   },
 });
 
+/** An access token, with when that very token ends. */
+type ZenodoToken = { accessToken: string; expiresAt: number };
+
 /**
  * An access token for the person's own Zenodo account, renewed when it is near its end. A connection Zenodo refuses
  * to renew is marked broken and refused: their report waits for them to connect again, never going elsewhere.
  * Renewals may run side by side (two reports at once): the first to save wins, and the other takes what it saved,
  * so a refresh token Zenodo has already replaced never breaks a working connection, nor overwrites a newer one.
  */
-export async function zenodoAccessToken(ctx: Pick<ActionCtx, "runQuery" | "runMutation">, userId: Id<"users">, tries = 3): Promise<string> {
+export async function zenodoAccessToken(ctx: Pick<ActionCtx, "runQuery" | "runMutation">, userId: Id<"users">, tries = 3): Promise<ZenodoToken> {
   const row = await ctx.runQuery(internal.zenodo.connection.stored, { userId });
   if (!row || row.broken) throw new Error(RECONNECT);
   const tokens = JSON.parse(decrypt(row.encryptedTokens, key())) as { access: string; refresh: string | null };
-  if (row.expiresAt - Date.now() > RENEW_MS) return tokens.access;
+  if (row.expiresAt - Date.now() > RENEW_MS) return { accessToken: tokens.access, expiresAt: row.expiresAt };
   const save = (change: { encryptedTokens: string; expiresAt: number } | { broken: true }): Promise<boolean> =>
     ctx.runMutation(internal.zenodo.connection.renewed, { userId, from: row.encryptedTokens, ...change });
-  const theirs = (): Promise<string> => {
+  const theirs = (): Promise<ZenodoToken> => {
     if (tries <= 1) throw new ProviderHttpError({ provider: "zenodo", status: 503, body: "The connection kept changing while it was renewed." });
     return zenodoAccessToken(ctx, userId, tries - 1);
   };
@@ -138,7 +141,8 @@ export async function zenodoAccessToken(ctx: Pick<ActionCtx, "runQuery" | "runMu
     return theirs();
   }
   const encryptedTokens = encrypt(JSON.stringify({ access: renewed.access_token, refresh: renewed.refresh_token ?? tokens.refresh }), key());
-  if (await save({ encryptedTokens, expiresAt: Date.now() + (renewed.expires_in ?? 3600) * 1000 })) return renewed.access_token;
+  const expiresAt = Date.now() + (renewed.expires_in ?? 3600) * 1000;
+  if (await save({ encryptedTokens, expiresAt })) return { accessToken: renewed.access_token, expiresAt };
   return theirs();
 }
 
@@ -146,9 +150,5 @@ export async function zenodoAccessToken(ctx: Pick<ActionCtx, "runQuery" | "runMu
 export const tokenFor = internalAction({
   args: { userId: v.id("users") },
   returns: v.object({ accessToken: v.string(), expiresAt: v.number() }),
-  handler: async (ctx, { userId }): Promise<{ accessToken: string; expiresAt: number }> => {
-    const accessToken = await zenodoAccessToken(ctx, userId);
-    const row = await ctx.runQuery(internal.zenodo.connection.stored, { userId });
-    return { accessToken, expiresAt: row?.expiresAt ?? Date.now() };
-  },
+  handler: (ctx, { userId }): Promise<ZenodoToken> => zenodoAccessToken(ctx, userId),
 });

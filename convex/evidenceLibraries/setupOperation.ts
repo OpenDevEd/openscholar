@@ -13,6 +13,7 @@ import { requireNonBlankProvisioningValue } from "./provisioning";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import { isSetupLeaseHeld } from "./operationLeases";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
+import { zenodoOwnerOfSource } from "./publicationProviders";
 import {
   evidenceLibraryOperationFailureValidator,
   evidenceLibrarySetupResultValidator,
@@ -536,6 +537,7 @@ export async function recordEvidenceLibrarySetupStep(
     state: "active",
     activeRevisionId: setup.revision._id,
     activePublicationConfigDigest: operation.setupPublicationProviders?.present ? operation.setupPublicationProviders.digest : undefined,
+    activeZenodoOwnerId: await zenodoOwnerOfSource(ctx, operation.setupPublicationProviders),
     activeDeploymentOperationId: operation._id,
     updatedByClerkUserId: operation.requestedByClerkUserId,
     updatedAt: now,

@@ -17,6 +17,8 @@ Decided (2026-11-19):
 - A community's Publishing settings offer "Your Zenodo account" beside the existing modes. Saving it records whose
   connected account it uses (the person saving, who must have a working connection). Nothing else changes for
   the community: the record keeps its Crossref DOI (`reuse-crossref`).
+- The account is the activated configuration's: activating records its owner (`activeZenodoOwnerId`), and settings
+  saved since change nothing until they are activated.
 - A broken or removed connection fails the deposit with a message to reconnect; nothing is deposited in another
   account in its place.
 - A community registering DOIs in the Crossref sandbox can't choose it: its deposits would be real zenodo.org

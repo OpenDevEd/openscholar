@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { encrypt } from "../lib/crypto";
+import { readPublicationProviderSource, zenodoOwnerOfSource } from "./publicationProviders";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -25,10 +26,17 @@ it("gives a community archiving in its owner's own Zenodo account that account's
   expect((await ask()).status).toBe(409);
   await t.run((ctx) =>
     ctx.db.insert("evidenceLibraryCredentials", {
-      libraryId, credentialKey: "publication-providers", encryptedValue: "unused", validationState: "valid", createdByClerkUserId: clerkUserId, updatedByClerkUserId: clerkUserId, createdAt: 1, updatedAt: 1,
+      libraryId, credentialKey: "publication-providers", encryptedValue: "unused", credentialDigest: "saved", validationState: "valid", createdByClerkUserId: clerkUserId, updatedByClerkUserId: clerkUserId, createdAt: 1, updatedAt: 1,
       publicationSettings: { zenodo: { mode: "own", ownerUserId: ownerId, license: "cc-by-4.0", defaultIdentifierPolicy: "reuse-crossref" }, crossref: { mode: "custom", prefix: "10.1234", suffixNamespace: "c", depositorName: "d", email: "d@test.local", registrant: "r" } },
     } as never),
   );
+  // Saved, not activated: the running configuration still has its own token, so nothing here is its to use.
+  expect((await ask()).status).toBe(409);
+  // Activating reads the owner from the very settings it activates, and only while they are unchanged.
+  const source = await t.run((ctx) => readPublicationProviderSource(ctx, libraryId));
+  expect(await t.run((ctx) => zenodoOwnerOfSource(ctx, source))).toBe(ownerId);
+  expect(await t.run((ctx) => zenodoOwnerOfSource(ctx, source.present ? { ...source, digest: "saved-since" } : source))).toBeFalsy();
+  await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { activeZenodoOwnerId: ownerId }));
   const answer = await ask();
   expect(answer.status).toBe(200);
   expect(await answer.json()).toMatchObject({ accessToken: "owners-token", expiresAt: expect.any(Number) });

@@ -2,6 +2,7 @@ import {
   readPublicationProviderSource,
   readPublicationProviderPayload,
   requireUnchangedPublicationProviders,
+  zenodoOwnerOfSource,
 } from "./publicationProviders";
 import { noteLive, publishesSettings } from "./directory";
 import { publicationPayloadValidator } from "./publicationValidators";
@@ -1458,6 +1459,7 @@ export const completeConfigurationDeployment = internalMutation({
       activePublicationConfigDigest: target.publicationProviders?.present
         ? target.publicationProviders.digest
         : undefined,
+      activeZenodoOwnerId: await zenodoOwnerOfSource(ctx, target.publicationProviders),
       activeDeploymentOperationId: deployment.operation._id,
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,

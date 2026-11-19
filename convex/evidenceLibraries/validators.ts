@@ -278,6 +278,8 @@ export const cardFactsValidator = v.object({
 
 export const evidenceLibraryFields = {
   activePublicationConfigDigest: v.optional(v.string()),
+  /** Whose own Zenodo account the active configuration deposits in (#1237): set when it is activated, not when saved. */
+  activeZenodoOwnerId: v.optional(v.id("users")),
   // Set once every approved OpenAlex query version in the library's revisions is in
   // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
   approvedQueriesRecorded: v.optional(v.literal(true)),
