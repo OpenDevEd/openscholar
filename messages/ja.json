@@ -6041,7 +6041,13 @@
     "askPublish": "{count, plural, other {# 件の論文}}を公開",
     "askQueue": "{count, plural, other {# 件の論文}}をレビューに送る",
     "alreadyInIt": "追加済み",
-    "inReview": "レビュー中"
+    "inReview": "レビュー中",
+    "pdfAsk": {
+      "title": "{community} に PDF を渡しますか?",
+      "body": "このレポートは {licence} のもとにあり、誰にも共有を認めていません。Openscholar の読者は PDF を読めますが、{community} が受け取るのはあなたが同意した場合だけです。どちらの場合も、レポート自体は追加されます。",
+      "yes": "はい、PDF も渡す",
+      "no": "いいえ、PDF なし"
+    }
   },
   "communityApplications": {
     "joinName": "{name} に参加",
@@ -6515,9 +6521,11 @@
       "balances": "残高",
       "balancesHint": "各ワークスペースには Autumn にドル建ての出版残高があり、カードより先にこれらの料金を支払います。そこで個人または組織に残高を付与できます。1回限り、または毎日・毎週・毎月・毎年補充する形です。プランの項目に入れると、そのプランのすべてのワークスペースに付与されます。",
       "openAutumn": "Autumnを開く",
-      "priceThree": "NC、ND、独自のライセンス",
-      "priceThreeHint": "NC または ND ライセンス、あるいは著者独自のライセンスでレポートを公開する料金（米ドル）。",
-      "prices": "料金"
+      "priceThree": "NC、ND、独自のオープンライセンス",
+      "priceThreeHint": "NC または ND ライセンス、または著者独自のオープンライセンスでレポートを公開する料金(米ドル)。",
+      "prices": "料金",
+      "priceClosed": "オープンでない独自ライセンス",
+      "priceClosedHint": "誰にも共有を認めない著者独自のライセンスでレポートを公開する料金(米ドル)。"
     },
     "flow": {
       "steps": {
@@ -6832,8 +6840,8 @@
         },
         "activate": {
           "title": "有効化",
-          "bodyPrices": "CC BY または CC BY-SA は {price}、その他のライセンスは {priceOfThree}。出版残高またはカードで支払います。DOI が登録され、レポートが公開されます。",
-          "bodyCard": "CC BY または CC BY-SA は {price}、その他のライセンスは {priceOfThree}。カードで支払います。バウチャーコードで減額または全額をまかなえます。DOI が登録され、レポートが公開されます。"
+          "bodyPrices": "CC BY または CC BY-SA は {price}、その他のライセンスは {priceOfThree}、オープンでない独自ライセンスは {priceClosed}。出版残高またはカードで支払います。DOI が登録され、レポートが公開されます。",
+          "bodyCard": "CC BY または CC BY-SA は {price}、その他のライセンスは {priceOfThree}、オープンでない独自ライセンスは {priceClosed}。カードで支払います。バウチャーコードで減額または全額をまかなえます。DOI が登録され、レポートが公開されます。"
         }
       },
       "licence": {
@@ -6846,7 +6854,7 @@
         "own": "独自のライセンス",
         "ownName": "名称",
         "ownUrl": "本文のウェブアドレス",
-        "ownNeeded": "ライセンスの名称（ラテン文字）と本文のウェブアドレスを入力してください。",
+        "ownNeeded": "ライセンスにラテン文字の名前と本文のウェブアドレスを付け、誰でもレポートを共有できるかどうかを選んでください。",
         "help": {
           "title": "ライセンス",
           "about": "ライセンスについて",
@@ -6860,7 +6868,10 @@
           "crossref": "DOI を登録",
           "zenodo": "コピーを保存",
           "openscholar": "レポートを表示"
-        }
+        },
+        "ownOpen": "誰でもレポートを共有できるライセンスですか?",
+        "ownOpenYes": "はい",
+        "ownOpenNo": "いいえ"
       },
       "payment": {
         "payWith": "支払い方法",
@@ -6892,7 +6903,26 @@
         "receiptFailed": "領収書を開けませんでした。もう一度お試しください。"
       },
       "emailUs": "メールで連絡",
-      "status": "状態"
+      "status": "状態",
+      "fileAccess": {
+        "label": "ファイルを受け取れる人",
+        "open": "誰でも",
+        "openBody": "Openscholar、Zenodo、コミュニティで。",
+        "private": "非公開",
+        "privateBody": "レポートを変更できる人だけ。",
+        "embargo": "日付から",
+        "embargoBody": "選んだ日まで非公開。",
+        "readers": "Openscholar の読者",
+        "readersBody": "ここで読め、Zenodo では非公開。",
+        "opensOn": "公開日",
+        "meaning": {
+          "open": "誰でも PDF を読んでダウンロードでき、レポートを追加したコミュニティも受け取ります。",
+          "private": "レポートのページと DOI は公開のままですが、PDF を開けるのはレポートを変更できる人だけです。Zenodo では非公開になり、コミュニティは PDF なしでレポートを受け取ります。",
+          "privateClosed": "レポートのページと DOI は公開のままですが、PDF を開けるのはレポートを変更できる人だけです。そのライセンスは誰にも共有を認めていないため、Zenodo では非公開になります。",
+          "embargo": "{date} まで誰も PDF をダウンロードできません。その日に Openscholar と Zenodo で自動的に公開され、コミュニティも受け取ります。",
+          "readers": "Openscholar では誰でも PDF を読めます。そのライセンスは誰にも共有を認めていないため Zenodo では非公開になり、コミュニティが受け取れるのは追加時にレポートを変更できる人が同意した場合だけです。"
+        }
+      }
     },
     "meta": {
       "publish": "公開 | Openscholar",

@@ -15,7 +15,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { detailsOf } from "./flow";
 import { reportSettings } from "./settings";
 import { canonicalJson, indexRecord } from "../../lib/reports/index-record";
-import { REPORTS_PER_READ } from "../../lib/reports/report";
+import { REPORTS_PER_READ, readersGetFile } from "../../lib/reports/report";
 import { seriesOf } from "../../lib/reports/settings";
 import { normalDoi } from "../../lib/papers/paper-ref";
 
@@ -77,7 +77,7 @@ async function itemsOf(ctx: QueryCtx, reports: Array<Doc<"reports">>, site: stri
         state: live ? "live" : "withdrawn",
         doi: normalDoi(report.doi) ?? report.doi,
         zenodoDoi: normalDoi(report.zenodoDoi),
-        record: live ? indexRecord({ key: report.key, hasPdf: report.pdf !== undefined }, metadata!, seriesOf(report, series), site) : null,
+        record: live ? indexRecord({ key: report.key, hasPdf: readersGetFile(report) }, metadata!, seriesOf(report, series), site) : null,
       };
     }),
   );

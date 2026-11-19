@@ -24,7 +24,7 @@ const READING_TASK = "extraction";
 /** The settings as they are: the one row, over what the series starts with. */
 export async function reportSettings(ctx: QueryCtx) {
   const row = await ctx.db.query("reportSettings").first();
-  return { ...REPORT_DEFAULTS, metadataEffort: REPORT_DEFAULTS.metadataEffort as Effort | undefined, ...row, row };
+  return { ...REPORT_DEFAULTS, metadataEffort: REPORT_DEFAULTS.metadataEffort as Effort | undefined, ...row, prices: { ...REPORT_DEFAULTS.prices, ...row?.prices }, row };
 }
 
 /**

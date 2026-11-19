@@ -17,7 +17,7 @@ import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { choosesLicence } from "../../lib/reports/agreement";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, isCalendarDay, keptAccess, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
@@ -25,7 +25,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, bylineByValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator, payWithValidator } from "./validators";
+import { authorRowValidator, bylineByValidator, fileAccessValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator, payWithValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -227,9 +227,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator) },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator), /** Who may get its PDF, as its licence allows (`fileAccessOf`). */ fileAccess: v.optional(fileAccessValidator) },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith, fileAccess: asked }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -237,8 +237,10 @@ export const sign = workspaceMutation({
     const signer = name.trim();
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
-    const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url);
+    if (typeof chosen !== "string" && chosen.open === undefined) throw createError("VALIDATION_ERROR", "Say whether your licence lets anyone share the report.");
+    const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url, chosen.open);
     if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name in Latin letters and the web address of its text.");
+    const fileAccess = fileAccessOf(licence, keptFileAccess(asked));
     const { voucher, voucherOff } = keptVoucher(applied);
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
@@ -247,7 +249,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, voucher, voucherOff, payWith });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), voucher, voucherOff, payWith });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -271,6 +273,7 @@ export const sign = workspaceMutation({
       byline: bylineOf(settings.series, doi, licence),
       seriesName: settings.series.name,
       licence,
+      ...keptAccess(fileAccess),
       ...(voucher && { voucher, voucherOff }),
       ...(payWith && { payWith }),
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
@@ -287,6 +290,38 @@ export const sign = workspaceMutation({
     return key;
   },
 });
+
+/** A file access as it may be kept: an embargo to a day that exists, after today; null for one that can't be. */
+function keptFileAccess(asked: FileAccess | undefined): FileAccess | null {
+  if (!asked) return null;
+  if (asked.mode !== "embargo") return asked;
+  if (!isCalendarDay(asked.until) || asked.until <= utcDay()) throw createError("VALIDATION_ERROR", "Choose a day after today for the file to open.");
+  return asked;
+}
+
+/**
+ * Who may get a report's PDF, changed by anyone who may change the report, as its licence allows. A live report's
+ * registrars take the change (Zenodo restricts or opens the file), and its page, search and saved copies follow.
+ */
+export const setFileAccess = workspaceMutation({
+  args: { key: v.string(), fileAccess: fileAccessValidator },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, fileAccess }) => {
+    await refuseApps(ctx);
+    await changeFileAccess(ctx, await changing(ctx, actor, key), fileAccess);
+    return null;
+  },
+});
+
+/** Keeps who may get a report's PDF, as its licence allows, and sends a live report to its registrars again. */
+export async function changeFileAccess(ctx: MutationCtx, report: Doc<"reports">, asked: FileAccess) {
+  const fileAccess = fileAccessOf(licenceOf(report), keptFileAccess(asked));
+  if (JSON.stringify(fileAccess) === JSON.stringify(fileAccessOf(licenceOf(report), report.fileAccess))) return;
+  await ctx.db.patch("reports", report._id, { ...keptAccess(fileAccess), updatedAt: changedAt(report) });
+  // A file readers can no longer have is stored again, so the addresses it was read by stop working (./files.ts).
+  if (fileHidden(fileAccess) && !fileHidden(fileAccessOf(licenceOf(report), report.fileAccess))) await ctx.scheduler.runAfter(0, internal.reports.files.rotate, { reportId: report._id });
+  if (report.status === "live") await register(ctx, report);
+}
 
 /** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
  * retyped is kept empty; the checks are what need one. */
@@ -717,6 +752,9 @@ const reportValidator = v.object({
   /** The promotion code applied when it was signed, which the activation offers. */
   /** The licence it is published under, chosen when it was signed. */
   licence: licenceValidator,
+  /** Who may get its PDF under that licence, and whether the person reading may change it. */
+  fileAccess: fileAccessValidator,
+  mayChange: v.boolean(),
   /** The promotion code kept with it, with the share of what a card pays that it took off when last quoted. */
   voucher: v.optional(voucherValidator),
   /** What pays for it, as last chosen; none is the balance while it holds something. */
@@ -772,11 +810,14 @@ export const getAction = defineUserQuery({
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
         agreementVersion: report.agreementVersion,
         licence: licenceOf(report),
+        fileAccess: fileAccessOf(licenceOf(report), report.fileAccess),
+        mayChange: mayChange(actor, report),
         ...(report.voucher && { voucher: { code: report.voucher, off: report.voucherOff ?? 0 } }),
         ...(report.payWith && { payWith: report.payWith }),
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        // A file its readers can't have is the address only of those who may change the report, not every member's.
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: readersGetFile(report) || mayChange(actor, report) ? await ctx.storage.getUrl(report.pdf.file) : null } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

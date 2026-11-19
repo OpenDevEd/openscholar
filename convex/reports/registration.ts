@@ -14,7 +14,7 @@ import { detailsOf, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
-import { metadataValidator, registrationValidator } from "./validators";
+import { fileAccessValidator, metadataValidator, registrationValidator } from "./validators";
 
 const providerValidator = v.union(v.literal("crossref"), v.literal("zenodo"));
 /** Times a registration is tried again by itself when its registrar couldn't be reached, a few minutes apart. */
@@ -48,6 +48,8 @@ export const begin = internalMutation({
       zenodoDraftId: v.optional(v.string()),
       /** Crossref took this record's deposit, and hasn't shown the record yet. */
       depositSent: v.boolean(),
+      /** Who may get its file, which Zenodo keeps private, or private until a day, when not anyone. */
+      fileAccess: v.optional(fileAccessValidator),
       pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), pages: v.optional(v.number()) })),
       publication: publicationSettingsValidator,
       encryptedCredentials: v.union(v.string(), v.null()),
@@ -82,6 +84,7 @@ export const begin = internalMutation({
       ...(report.zenodoRecordId && { zenodoRecordId: report.zenodoRecordId }),
       ...(report.zenodoDraftId && { zenodoDraftId: report.zenodoDraftId }),
       depositSent: report.depositSent === true,
+      ...(report.fileAccess && { fileAccess: report.fileAccess }),
       pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }) } : null,
       publication: settings.publication,
       encryptedCredentials: settings.row?.encryptedCredentials ?? null,

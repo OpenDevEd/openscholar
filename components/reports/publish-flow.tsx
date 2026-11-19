@@ -58,6 +58,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { FileAccessChoice } from "@/components/reports/file-access-choice";
+import { refusalOr } from "@/components/evidence-libraries/added-papers/add-papers-dialog";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Bill, PaidBill, PayWithSwitch } from "@/components/reports/payment-choice";
 import { WayOnButton, WorkspaceChoice, type WayOn } from "@/components/reports/workspace-choice";
@@ -65,7 +67,7 @@ import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/compone
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
-import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, licenceName, ownLicence, payment, priceOf, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, fileAccessOf, licenceName, ownLicence, payment, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -1097,6 +1099,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const { agreement } = basics;
   // The licence, which the agreement names: CC BY unless the author picks another, and only where the agreement lets them.
   const [pick, setPick] = useState<LicencePick>(DEFAULT_LICENCE);
+  // Who gets its PDF, as the licence allows: anyone, unless the author picks otherwise.
+  const [access, setAccess] = useState<FileAccess | null>(null);
   // A promotion code, quoted here and kept with the report when it is signed, for what a card pays to activate it.
   const [quoted, setQuoted] = useState<(Quote & { for?: Id<"workspaces"> }) | null>(null);
   // A code is quoted for one workspace's customer, so it counts only for the workspace it was asked for: with another
@@ -1109,7 +1113,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const [picked, setPicked] = useState<PayWith | null>(null);
   const payWith: PayWith = starts?.balance === 0 ? "card" : (picked ?? "balance");
   const choosing = choosesLicence(agreement.text);
-  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : ownLicence(pick.name, pick.url);
+  // An own licence counts once it is named, has its address, and says whether it lets anyone share the report.
+  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : pick.open === undefined ? null : ownLicence(pick.name, pick.url, pick.open);
   // An own licence still being typed reads in the agreement as far as it goes.
   const named: Licence = licence ?? (typeof pick === "string" ? pick : { name: pick.name.trim() || "…", url: pick.url.trim() || "…" });
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
@@ -1159,6 +1164,9 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} />
         </section>
       ) : null}
+      <section className="mb-7">
+        <FileAccessChoice licence={named} value={access} onChange={setAccess} disabled={busy || !!signed} />
+      </section>
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
@@ -1247,7 +1255,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
                 say(null);
                 try {
                   // The licence is the report's from here on; what pays and the code can still change until it is activated.
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, payWith, ...(voucher && { voucher }) });
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, fileAccess: fileAccessOf(licence!, access), payWith, ...(voucher && { voucher }) });
                   setMade(key);
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
@@ -1445,7 +1453,7 @@ function Overview({ series, reviewed, prices, balance, onStart }: { series: stri
     { id: "checks", icon: ShieldCheck },
     { id: "activate", icon: spendable ? BadgeCheck : CreditCard },
   ] as const;
-  const activating = t(spendable ? "activate.bodyPrices" : "activate.bodyCard", { price: money(prices.standard), priceOfThree: money(prices.other) });
+  const activating = t(spendable ? "activate.bodyPrices" : "activate.bodyCard", { price: money(prices.standard), priceOfThree: money(prices.other), priceClosed: money(prices.closed) });
   return (
     <div>
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
@@ -2527,6 +2535,21 @@ function useReceipt(reportKey: string) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
+/** The live report's file access, saved as it is picked; a refusal is said and the row shows what is saved. */
+function LiveFileAccess({ report }: { report: Report }) {
+  const workspaceId = useWorkspace();
+  const setFileAccess = useMutation(api.reports.flow.setFileAccess);
+  const t = useTranslations("publishReports.flow");
+  return (
+    <FileAccessChoice
+      licence={report.licence}
+      value={report.fileAccess}
+      disabled={!workspaceId}
+      onChange={(fileAccess) => void setFileAccess({ workspaceId: workspaceId!, key: report.key, fileAccess }).catch((error: unknown) => toast.error(refusalOr(error, t("saveFailed"))))}
+    />
+  );
+}
+
 function LiveReport({ report, series, fresh }: { report: Report; /** The series it is published in, which its saved copy names. */ series: Parameters<typeof reportPaper>[2]; fresh: boolean }) {
   // The report as the app's papers are, for saving it: the same as its own page saves.
   const paper = report.metadata ? reportPaper({ key: report.key, doi: report.doi, pdfUrl: `/papers/${report.key}/report.pdf`, updatedAt: report.updatedAt }, report.metadata, series) : null;
@@ -2580,6 +2603,12 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
         <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
       </motion.div>
+      {/* Who gets its PDF, which those who may change the report change here as on its agreement: its registrars take it again. */}
+      {report.mayChange ? (
+        <motion.div className="mt-6" {...rise(0.75)}>
+          <LiveFileAccess report={report} />
+        </motion.div>
+      ) : null}
       {/* On a phone the three are even rows, in place of a ragged wrap; at large text, one column. A label wider than its button wraps and the button grows. */}
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] max-sm:[&>*]:h-auto max-sm:[&>*]:min-h-9 max-sm:[&>*]:w-full max-sm:[&>*]:whitespace-normal" {...rise(0.8)}>
         {/* The app's own three, as on the report's page: save to the library, add to a collection, add to a community. */}

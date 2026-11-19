@@ -169,8 +169,11 @@ export const LICENCES = {
 } as const;
 export type LicenceName = keyof typeof LICENCES;
 export const LICENCE_NAMES = Object.keys(LICENCES) as LicenceName[];
-/** A licence of the author's own: its name and the address of its text. */
-export type OwnLicence = { name: string; url: string };
+/**
+ * A licence of the author's own: its name, the address of its text, and whether it lets anyone read and share the
+ * report. One signed before authors said is open.
+ */
+export type OwnLicence = { name: string; url: string; open?: boolean };
 export type Licence = LicenceName | OwnLicence;
 /** What a report signed before authors chose is published under. */
 export const DEFAULT_LICENCE: LicenceName = "CC BY 4.0";
@@ -184,16 +187,61 @@ export const CODE_MAX = 100;
 export const licenceOf = (report: { licence?: Licence | undefined }): Licence => report.licence ?? DEFAULT_LICENCE;
 export const licenceName = (licence: Licence) => (typeof licence === "string" ? licence : licence.name);
 export const licenceUrl = (licence: Licence) => (typeof licence === "string" ? LICENCES[licence].url : licence.url);
-/** Which of the two prices a licence is published at: an author's own costs what the dearer Creative Commons ones do. */
-export type LicenceTier = "standard" | "other";
-export const tierOf = (licence: Licence): LicenceTier => (typeof licence === "string" ? LICENCES[licence].tier : "other");
+/** Whether a licence lets anyone read and share the report: every Creative Commons one does, an author's own may not. */
+export const licenceOpen = (licence: Licence) => typeof licence === "string" || licence.open !== false;
+/**
+ * Which price a licence is published at: an author's own costs what the dearer Creative Commons ones do while it is
+ * open, and its own price when it isn't (closed).
+ */
+export type LicenceTier = "standard" | "other" | "closed";
+export const tierOf = (licence: Licence): LicenceTier => (typeof licence === "string" ? LICENCES[licence].tier : licenceOpen(licence) ? "other" : "closed");
 /** What publishing a report costs, in whole US dollars, by its licence's tier: set on Admin > Publications. */
 export type Prices = Record<LicenceTier, number>;
-export const DEFAULT_PRICES: Prices = { standard: 10, other: 30 };
+export const DEFAULT_PRICES: Prices = { standard: 10, other: 30, closed: 100 };
 /** The most a price can be set to, and the least: a whole number of dollars. */
 export const PRICE_MAX = 10_000;
 export const isPrice = (dollars: number) => Number.isInteger(dollars) && dollars >= 1 && dollars <= PRICE_MAX;
 export const priceOf = (licence: Licence, prices: Prices) => prices[tierOf(licence)];
+
+/**
+ * Who may get a report's PDF. `open`: anyone, on Openscholar, Zenodo and every community. `private`: only the people
+ * who may change the report. `embargo`: nobody until `until` (YYYY-MM-DD, UTC), then anyone. `readers`: Openscholar's
+ * readers, under a licence that doesn't let anyone share it; never Zenodo's, and a community only when someone who may
+ * change the report agrees. The report, its details and its DOI stay public in every case.
+ */
+export type FileAccess = { mode: "open" } | { mode: "private" } | { mode: "readers" } | { mode: "embargo"; until: string };
+export type FileAccessMode = FileAccess["mode"];
+/** What a licence lets its file be: an open one anything but readers-only, one that isn't readers-only or private. */
+export const fileAccessModes = (licence: Licence): readonly FileAccessMode[] => (licenceOpen(licence) ? ["open", "private", "embargo"] : ["readers", "private"]);
+/** The access a report's file has: the one chosen, when its licence allows it, else the licence's own (open or private). */
+export function fileAccessOf(licence: Licence, chosen: FileAccess | null | undefined): FileAccess {
+  if (chosen && fileAccessModes(licence).includes(chosen.mode)) return chosen;
+  return licenceOpen(licence) ? { mode: "open" } : { mode: "private" };
+}
+/** Today in UTC, YYYY-MM-DD: the day an embargo is counted in. */
+export const utcDay = (at = new Date()) => at.toISOString().slice(0, 10);
+/** A day that exists, written YYYY-MM-DD: 2027-02-30 isn't one. */
+export function isCalendarDay(day: string) {
+  const at = new Date(`${day}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(at.getTime()) && at.toISOString().slice(0, 10) === day;
+}
+/**
+ * Whether Openscholar's readers can't get the file: kept private, or under an embargo. An embargo is over the hour after
+ * its day begins, when the report is opened for good (convex/reports/fileAccess.ts), so this asks no clock.
+ */
+export const fileHidden = (access: FileAccess) => access.mode === "private" || access.mode === "embargo";
+/** A file access as a report keeps it, with the day an embargo ends beside it, so the reports to open can be found. */
+export const keptAccess = (fileAccess: FileAccess) => ({ fileAccess, fileOpensOn: fileAccess.mode === "embargo" ? fileAccess.until : undefined });
+/** Whether Openscholar's readers get a report's file on `today`: it has one, and its access doesn't keep it from them. */
+export const readersGetFile = (report: { pdf?: unknown; licence?: Licence | undefined; fileAccess?: FileAccess | undefined }) =>
+  report.pdf !== undefined && !fileHidden(fileAccessOf(licenceOf(report), report.fileAccess));
+/** What a deposit says of the file: nothing when anyone may have it, else restricted, until a day under an embargo. */
+export function depositFileAccess(access: FileAccess): { restricted: true; until?: string } | undefined {
+  if (access.mode === "open") return undefined;
+  return access.mode === "embargo" ? { restricted: true, until: access.until } : { restricted: true };
+}
+/** Whether a community gets the file: when anyone may, or when someone who may change the report agreed. */
+export const communityGetsFile = (access: FileAccess, agreed: boolean) => (access.mode === "readers" ? agreed : !fileHidden(access));
 
 /** What pays for a report: the workspace's publication balance, with a card for what it can't cover, or a card alone. */
 export const PAY_WITH = ["balance", "card"] as const;
@@ -257,11 +305,11 @@ const PRINTABLE = /^[\x20-\x7E\u00A0-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\
  * An author's own licence as it may be kept: a name the byline can print, and a web address for its text. Null when
  * it can't be.
  */
-export function ownLicence(name: string, url: string): OwnLicence | null {
+export function ownLicence(name: string, url: string, open = true): OwnLicence | null {
   const named = name.trim();
   const address = url.trim();
   if (!named || named.length > LICENCE_NAME_MAX || !PRINTABLE.test(named) || LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase())) return null;
-  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? { name: named, url: address } : null;
+  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? { name: named, url: address, open } : null;
 }
 
 /** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */

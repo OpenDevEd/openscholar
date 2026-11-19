@@ -75,13 +75,14 @@ export const register = internalAction({
     const settle = (provider: "crossref" | "zenodo", answer: { outcome: "done" | "refused" | "unreached"; error?: string; zenodoRecordId?: string; zenodoDoi?: string }) =>
       ctx.runMutation(internal.reports.registration.settle, { reportId, rev, provider, ...answer });
     try {
-      for (const provider of job.waiting) {
+      // A report Zenodo already holds is changed there first: a restriction on its file never waits on Crossref.
+      for (const provider of job.zenodoRecordId ? [...job.waiting].sort((a, b) => (a === "zenodo" ? -1 : b === "zenodo" ? 1 : 0)) : job.waiting) {
         try {
           // Inside the attempt, so settings that can't be read are a refusal a reviewer sees, never a report left queued.
           const key = process.env.ENCRYPTION_KEY;
           secrets = job.encryptedCredentials && key ? JSON.parse(decrypt(job.encryptedCredentials, key)) : {};
           const { crossref, zenodo } = job.publication;
-          const record = registrationRecord({ ...job, pages: job.pdf?.pages, hasPdf: job.pdf !== null }, job.metadata, job.series, requireAppUrl(), await registryIds(job.metadata));
+          const record = registrationRecord({ ...job, pages: job.pdf?.pages, hasPdf: job.pdf !== null, fileAccess: job.fileAccess }, job.metadata, job.series, requireAppUrl(), await registryIds(job.metadata));
           if (provider === "crossref") {
             if (crossref.mode === "off" || !secrets.crossrefLoginId || !secrets.crossrefPassword) throw new Error("Crossref isn't connected in the publishing settings.");
             const mapped = mapCrossrefRecord(record, job.doi);
@@ -144,8 +145,9 @@ export const register = internalAction({
           } else {
             if (zenodo.mode === "off" || !secrets.zenodoToken) throw new Error("Zenodo isn't connected in the publishing settings.");
             const token = secrets.zenodoToken;
+            const endpoint = zenodo.mode === "sandbox" ? "https://sandbox.zenodo.org" : "https://zenodo.org";
             const client = new ZenodoApiClient({
-              endpoint: zenodo.mode === "sandbox" ? "https://sandbox.zenodo.org" : "https://zenodo.org",
+              endpoint,
               // zenodo.org answers 403 to an unknown User-Agent, so every call says who is asking.
               fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent } }),
             });
@@ -169,6 +171,17 @@ export const register = internalAction({
                   });
                 })();
             console.info(JSON.stringify({ event: "report-zenodo-archive", reportId, key: job.key, record: identifiers.latestRecordId, doi: identifiers.versionDoi ?? null }));
+            // Who may get the file, as Zenodo now shows it: a write it answered without taking is tried again, never
+            // counted done while a file meant to be private is still public there.
+            const wanted = record.fileAccess ? "restricted" : "public";
+            const shown = await fetch(`${endpoint}/api/records/${identifiers.latestRecordId}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.inveniordm.v1+json", "User-Agent": userAgent } })
+              .then(async (answer) => (answer.ok ? ((await answer.json()) as { access?: { files?: string } }).access?.files : undefined))
+              .catch(() => undefined);
+            if (shown !== wanted) {
+              console.error(JSON.stringify({ event: "report-zenodo-access-mismatch", reportId, key: job.key, record: identifiers.latestRecordId, wanted, shown: shown ?? null }));
+              await settle(provider, { outcome: "unreached", error: `Zenodo shows the file as ${shown ?? "unknown"}, not ${wanted}.` });
+              return null;
+            }
             if (!(await settle(provider, { outcome: "done", zenodoRecordId: identifiers.latestRecordId, ...(identifiers.versionDoi && { zenodoDoi: identifiers.versionDoi }) }))) return null;
           }
         } catch (error) {

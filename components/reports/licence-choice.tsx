@@ -20,8 +20,8 @@ import { useMoney } from "@/lib/hooks/use-money";
 import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, type LicenceName, type Prices } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
-/** What the author has picked: a Creative Commons licence by name, or their own, as typed so far. */
-export type LicencePick = LicenceName | { name: string; url: string };
+/** What the author has picked: a Creative Commons licence by name, or their own, as typed and answered so far. */
+export type LicencePick = LicenceName | { name: string; url: string; /** Whether it lets anyone share the report: unanswered until the author says. */ open?: boolean };
 
 /** The licences at the standard price, offered on their own; the rest are behind "Another licence". */
 const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].tier === "standard");
@@ -36,7 +36,8 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
   const dollars = useMoney();
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), price: prices.standard })),
-    { id: "other", title: t("other"), body: t("otherBody"), price: prices.other },
+    // An own licence that isn't open has its own price, which its card shows once the author says so.
+    { id: "other", title: t("other"), body: t("otherBody"), price: typeof value !== "string" && value.open === false ? prices.closed : prices.other },
   ];
   return (
     <div className="space-y-3">
@@ -96,11 +97,33 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input value={value.name} maxLength={LICENCE_NAME_MAX} disabled={disabled} aria-label={t("ownName")} placeholder={t("ownName")} onChange={(e) => onChange({ ...value, name: e.target.value })} />
                 <Input value={value.url} maxLength={DETAIL_TEXT.link} disabled={disabled} type="url" inputMode="url" aria-label={t("ownUrl")} placeholder="https://" onChange={(e) => onChange({ ...value, url: e.target.value })} />
+                <OwnOpen value={value.open} disabled={disabled} onChange={(open) => onChange({ ...value, open })} />
               </div>
             )}
           </div>
         ) : null}
       </AutoHeight>
+    </div>
+  );
+}
+
+/** Whether the author's own licence lets anyone share the report, which decides its price and who may get its file. */
+function OwnOpen({ value, onChange, disabled }: { value: boolean | undefined; onChange: (open: boolean) => void; disabled: boolean }) {
+  const t = useTranslations("publishReports.flow.licence");
+  const id = useId();
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:col-span-2">
+      <span id={`${id}-label`} className="text-sm">
+        {t("ownOpen")}
+      </span>
+      <RadioGroup aria-labelledby={`${id}-label`} value={value === undefined ? "" : value ? "yes" : "no"} disabled={disabled} onValueChange={(answer) => onChange(answer === "yes")} className="flex gap-4">
+        {(["yes", "no"] as const).map((answer) => (
+          <label key={answer} htmlFor={`${id}-${answer}`} className={cn("flex items-center gap-2 text-sm", !disabled && "cursor-pointer")}>
+            <RadioGroupItem id={`${id}-${answer}`} value={answer} />
+            {t(answer === "yes" ? "ownOpenYes" : "ownOpenNo")}
+          </label>
+        ))}
+      </RadioGroup>
     </div>
   );
 }

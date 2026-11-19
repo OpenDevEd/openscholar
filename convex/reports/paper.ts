@@ -10,7 +10,7 @@ import { reportSettings } from "./settings";
 import { seriesOf } from "../../lib/reports/settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
 import { liveReportValidator, metadataValidator, withdrawnReportValidator } from "./validators";
-import { REPORTS_PER_READ, fullTitle, isAuthor, licenceName } from "../../lib/reports/report";
+import { REPORTS_PER_READ, communityGetsFile, fileAccessOf, fileHidden, fullTitle, isAuthor, licenceName, licenceOf, licenceOpen, readersGetFile } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 
@@ -36,7 +36,9 @@ export const get = query({
       doi: report.doi,
       metadata,
       series: seriesOf(report, series),
-      pdfUrl: report.pdf ? await ctx.storage.getUrl(report.pdf.file) : null,
+      // A file its readers can't have yet has no address here, so its page offers none and report.pdf answers not found.
+      pdfUrl: report.pdf && readersGetFile(report) ? await ctx.storage.getUrl(report.pdf.file) : null,
+      fileAccess: fileAccessOf(licenceOf(report), report.fileAccess),
       coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
       updatedAt: report.updatedAt,
     };
@@ -104,7 +106,7 @@ export const record = internalQuery({
       type: metadata.type,
       language: metadata.language,
       doi: report.doi,
-      openAccess: true,
+      openAccess: licenceOpen(licenceOf(report)) && !fileHidden(fileAccessOf(licenceOf(report), report.fileAccess)),
       ...(metadata.abstract.trim() && { abstract: metadata.abstract.length > 6_000 ? `${metadata.abstract.slice(0, 6_000)}…` : metadata.abstract }),
     };
   },
@@ -148,9 +150,9 @@ const communityReportValidator = v.union(
  * that never went live. In the order asked.
  */
 export const forCommunity = internalQuery({
-  args: { dois: v.array(v.string()) },
+  args: { dois: v.array(v.string()), /** The community asking, which gets a file readers alone may have only when it was agreed. */ libraryId: v.string() },
   returns: v.array(communityReportValidator),
-  handler: async (ctx, { dois }) => {
+  handler: async (ctx, { dois, libraryId }) => {
     const { series, row: settings } = await reportSettings(ctx);
     // The series' name is part of the answer, and it is the settings' to change.
     const version = (at: number) => new Date(Math.max(at, settings?.updatedAt ?? 0)).toISOString();
@@ -185,7 +187,7 @@ export const forCommunity = internalQuery({
           funding: metadata.funding,
           relations: metadata.relations,
           series: seriesOf(report, series).name,
-          hasPdf: report.pdf !== undefined,
+          hasPdf: report.pdf !== undefined && communityGetsFile(fileAccessOf(licenceOf(report), report.fileAccess), report.pdfCommunities?.some((id) => id === libraryId) ?? false),
         };
       }),
     );

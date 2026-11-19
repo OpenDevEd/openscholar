@@ -74,7 +74,7 @@ describe("an author's own licence", () => {
     vi.useFakeTimers();
     onTestFinished(() => void vi.useRealTimers());
     const world = await setup();
-    const own = (name: string) => world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: { name, url: "https://example.org/licence" } });
+    const own = (name: string) => world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: { name, url: "https://example.org/licence", open: true } });
     // The byline carries the licence's name, and the added page writes the byline in Latin letters only.
     await expect(own("许可证")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     const key = await own("Licence Ouverte – Etalab 2.0");

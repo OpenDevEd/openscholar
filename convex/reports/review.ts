@@ -10,13 +10,13 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, isReportKey, isAuthor, licenceOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, fileAccessOf, isReportKey, isAuthor, licenceOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
-import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
+import { changeFileAccess, checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { becameReady, notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
-import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
+import { adminReportValidator, adminRowsValidator, fileAccessValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
 
 /** Reports one page of the reviewers' list holds, and the newest of each status the list reads. */
 export const REVIEW_PER_PAGE = 8;
@@ -126,6 +126,8 @@ export const get = query({
       owner: { name: (owner && personName(owner)) || "", email: owner?.email ?? "" },
       workspace: workspace.organization ? workspace.name : null,
       signedAt: report.signedAt,
+      licence: licenceOf(report),
+      fileAccess: fileAccessOf(licenceOf(report), report.fileAccess),
       onBehalfOfAll: report.signedBy.onBehalfOfAll,
       agreementVersion: report.agreementVersion,
       ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
@@ -142,6 +144,20 @@ export const get = query({
       emails: emails.reverse().map(({ event, audience, at, error }) => ({ event, audience, at, ...(error && { failed: true }) })),
       humanReview: settings.humanReview,
     };
+  },
+});
+
+/** Who may get a report's PDF, changed by a reviewer, as its licence allows: as its author changes it (`changeFileAccess`). */
+export const setFileAccess = mutation({
+  args: { key: v.string(), fileAccess: fileAccessValidator },
+  returns: v.null(),
+  handler: async (ctx, { key, fileAccess }) => {
+    await refuseApps(ctx);
+    await requireAdmin(ctx);
+    const report = await byKey(ctx, key);
+    if (!report) throw createError("NOT_FOUND", "This report was discarded.");
+    await changeFileAccess(ctx, report, fileAccess);
+    return null;
   },
 });
 

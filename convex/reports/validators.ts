@@ -31,7 +31,8 @@ export const checkNamesValidator = capped(v.array(v.object({ id: v.string(), nam
 export const seriesValidator = v.object({ name: v.string(), issn: v.string(), byline: v.string() });
 
 /** What publishing a report costs, in whole US dollars: under CC BY or CC BY-SA, and under any other licence. */
-export const pricesValidator = v.object({ standard: v.number(), other: v.number() });
+/** A closed own licence's price, missing from settings saved before it existed, is its default until set. */
+export const pricesValidator = v.object({ standard: v.number(), other: v.number(), closed: v.optional(v.number()) });
 /** The one settings row, once an admin changes something. Until then the series runs on `REPORT_DEFAULTS`. */
 export const reportSettingsFields = {
   enabled: v.boolean(),
@@ -66,7 +67,18 @@ const literals = <T extends string>(values: readonly T[]) => v.union(...values.m
 /** What pays for a report: the workspace's publication balance, with a card for the rest, or a card alone. */
 export const payWithValidator = literals(PAY_WITH);
 /** A report's licence: one of the Creative Commons ones by name, or the author's own (`ownLicence`). */
-export const licenceValidator = v.union(literals(LICENCE_NAMES), v.object({ name: v.string(), url: v.string() }));
+export const licenceValidator = v.union(literals(LICENCE_NAMES), v.object({ name: v.string(), url: v.string(), open: v.optional(v.boolean()) }));
+/** The most communities a report's PDF is agreed for: more is written to us about. */
+export const PDF_COMMUNITIES_MAX = 200;
+/** What a community is asked about a report's PDF: its licence, and the communities that were already given it. */
+export const communityPdfQuestionValidator = v.union(v.null(), v.object({ key: v.string(), licence: v.string(), licenceUrl: v.string(), agreed: capped(v.array(v.id("evidenceLibraries")), PDF_COMMUNITIES_MAX) }));
+/** Who may get a report's PDF (`FileAccess`). */
+export const fileAccessValidator = v.union(
+  v.object({ mode: v.literal("open") }),
+  v.object({ mode: v.literal("private") }),
+  v.object({ mode: v.literal("readers") }),
+  v.object({ mode: v.literal("embargo"), until: v.string() }),
+);
 
 export const checkResultValidator = v.object({
   checkId: v.string(),
@@ -162,6 +174,13 @@ export const reportFields = {
   /** The licence its author chose when signing, which the agreement and byline name: it never changes after. A report
    * signed before authors chose has none, and is CC BY 4.0 (`licenceOf`). */
   licence: v.optional(licenceValidator),
+  /** Who may get its PDF, chosen with the licence and open to change by anyone who may change the report. None is the
+   * licence's own (`fileAccessOf`): anyone, for every report signed before this was asked. */
+  fileAccess: v.optional(fileAccessValidator),
+  /** The day its embargo ends, kept apart so the reports to open are found by it (reports/fileAccess.ts). */
+  fileOpensOn: v.optional(v.string()),
+  /** The communities whose editors were told the licence and agreed to have the PDF of a report readers alone may get. */
+  pdfCommunities: capped(v.optional(v.array(v.id("evidenceLibraries"))), PDF_COMMUNITIES_MAX),
   /** The promotion code applied to what a card pays for it: chosen with the licence, and open to change until it is activated. */
   voucher: v.optional(v.string()),
   /** The share of what a card pays that the code took off when it was last quoted, 0 to 1: for showing the bill. The charge is always Autumn's own sum. */
@@ -299,6 +318,9 @@ export const adminReportValidator = v.object({
   /** The organisation whose workspace it is; null for its owner's own. */
   workspace: v.union(v.string(), v.null()),
   signedAt: v.number(),
+  /** The licence it was signed under, and who may get its PDF under it, which a reviewer may change. */
+  licence: licenceValidator,
+  fileAccess: fileAccessValidator,
   onBehalfOfAll: v.boolean(),
   agreementVersion: v.number(),
   checksVersion: v.optional(v.number()),
@@ -321,7 +343,7 @@ export const adminReportValidator = v.object({
 export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), licence: licenceValidator, doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
-export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), coverShape: v.optional(v.number()), updatedAt: v.number() });
+export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), /** Who may get its file: its page says why it offers none. */ fileAccess: fileAccessValidator, coverUrl: v.union(v.string(), v.null()), coverShape: v.optional(v.number()), updatedAt: v.number() });
 export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
 
 /** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */

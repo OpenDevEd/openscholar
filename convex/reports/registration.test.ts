@@ -110,6 +110,21 @@ describe("a report's record for its registrars", () => {
     expect(buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).metadata.publication_date).toBe("2026-10-01");
   });
 
+  it("keeps its file private on Zenodo, or private until a day, as its access says, and an own licence that isn't open isn't free to read", () => {
+    const zenodo = (record: ReturnType<typeof registrationRecord>) => {
+      const { landingUrl, doi, ...metadata } = zenodoRecord(record, m);
+      return buildZenodoRecordPayload({ doiPolicy: "external-crossref", metadata: { ...metadata, doi }, resourceUrl: landingUrl }).access;
+    };
+    const closed = { name: "Our terms", url: "https://example.org/terms", open: false };
+    const readers = registrationRecord({ ...report, fileAccess: { mode: "readers" } }, { ...m, licence: closed }, series, "https://openscholar.ai");
+    expect(readers).toMatchObject({ freeToRead: false, fileAccess: { restricted: true } });
+    expect(zenodo(readers)).toMatchObject({ files: "restricted" });
+    const embargoed = registrationRecord({ ...report, fileAccess: { mode: "embargo", until: "2027-06-01" } }, m, series, "https://openscholar.ai");
+    expect(zenodo(embargoed)).toMatchObject({ files: "restricted", embargo: { active: true, until: "2027-06-01" } });
+    // Anyone may have it: nothing is said, as for every report published before.
+    expect(registrationRecord(report, m, series, "https://openscholar.ai")).not.toHaveProperty("fileAccess");
+  });
+
   it("carries its licence to both registrars: one of Creative Commons' by its name there, and an author's own by its name and address", () => {
     const sent = (licence: typeof m.licence) => {
       const record = registrationRecord(report, { ...m, licence }, series, "https://openscholar.ai");

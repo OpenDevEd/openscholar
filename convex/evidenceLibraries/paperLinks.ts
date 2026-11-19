@@ -136,7 +136,7 @@ export const reportRecords: ReturnType<typeof httpAction> = httpAction(async (ct
     const asked = dois.map((doi) => normalDoi(doi) ?? doi);
     // A few reports a read, so the largest details still fit one (REPORTS_PER_READ).
     const parts = Array.from({ length: Math.ceil(asked.length / REPORTS_PER_READ) }, (_, at) => asked.slice(at * REPORTS_PER_READ, (at + 1) * REPORTS_PER_READ));
-    const reports = (await Promise.all(parts.map((part) => ctx.runQuery(internal.reports.paper.forCommunity, { dois: part })))).flat();
+    const reports = (await Promise.all(parts.map((part) => ctx.runQuery(internal.reports.paper.forCommunity, { dois: part, libraryId })))).flat();
     return jsonResponse(200, {
       reports: reports.map((report) => {
         if (report?.state !== "live") return report;

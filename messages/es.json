@@ -6042,7 +6042,13 @@
     "askPublish": "Publicar {count, plural, one {# artículo} other {# artículos}}",
     "askQueue": "Enviar {count, plural, one {# artículo} other {# artículos}} a revisión",
     "alreadyInIt": "Ya está",
-    "inReview": "En revisión"
+    "inReview": "En revisión",
+    "pdfAsk": {
+      "title": "¿Debe {community} recibir el PDF?",
+      "body": "Este informe tiene la licencia {licence}, que no permite que nadie lo comparta. Los lectores de Openscholar pueden leer el PDF, pero {community} solo lo recibe si aceptas. En cualquier caso, recibe el informe.",
+      "yes": "Sí, con el PDF",
+      "no": "No, sin él"
+    }
   },
   "communityApplications": {
     "joinName": "Unirse a {name}",
@@ -6516,9 +6522,11 @@
       "balances": "Saldos",
       "balancesHint": "Cada espacio de trabajo tiene un saldo de publicación en Autumn, en dólares, que paga estos precios antes que una tarjeta. Dale saldo allí a una persona o a una organización, una vez o renovado cada día, semana, mes o año. Un elemento en un plan lo da a cada espacio de trabajo que lo tiene.",
       "openAutumn": "Abrir Autumn",
-      "priceThree": "NC, ND y licencias propias",
-      "priceThreeHint": "Lo que cuesta publicar un informe bajo una licencia NC o ND, o bajo la licencia propia de su autor, en dólares estadounidenses.",
-      "prices": "Precios"
+      "priceThree": "NC, ND y licencias propias abiertas",
+      "priceThreeHint": "Lo que cuesta publicar un informe con una licencia NC o ND, o con la licencia abierta propia del autor, en dólares estadounidenses.",
+      "prices": "Precios",
+      "priceClosed": "Licencias propias que no son abiertas",
+      "priceClosedHint": "Lo que cuesta publicar un informe con la licencia propia del autor que no permite que nadie lo comparta, en dólares estadounidenses."
     },
     "flow": {
       "steps": {
@@ -6833,8 +6841,8 @@
         },
         "activate": {
           "title": "Activar",
-          "bodyPrices": "{price} bajo CC BY o CC BY-SA, {priceOfThree} bajo otra licencia. Se paga con tu saldo de publicación o con tarjeta. El DOI se registra y el informe se publica.",
-          "bodyCard": "{price} bajo CC BY o CC BY-SA, {priceOfThree} bajo otra licencia, pagado con tarjeta. Un código de descuento puede rebajarlo o cubrirlo. El DOI se registra y el informe se publica."
+          "bodyPrices": "{price} bajo CC BY o CC BY-SA, {priceOfThree} bajo otra licencia, {priceClosed} bajo tu propia licencia no abierta. Se paga con tu saldo de publicación o con tarjeta. El DOI se registra y el informe se publica.",
+          "bodyCard": "{price} bajo CC BY o CC BY-SA, {priceOfThree} bajo otra licencia, {priceClosed} bajo tu propia licencia no abierta, pagado con tarjeta. Un código de descuento puede rebajarlo o cubrirlo. El DOI se registra y el informe se publica."
         }
       },
       "licence": {
@@ -6847,7 +6855,7 @@
         "own": "Mi propia licencia",
         "ownName": "Su nombre",
         "ownUrl": "Dirección web de su texto",
-        "ownNeeded": "Da a tu licencia un nombre en letras latinas y la dirección web de su texto.",
+        "ownNeeded": "Dale a tu licencia un nombre en letras latinas y la dirección web de su texto, y di si permite que cualquiera comparta el informe.",
         "help": {
           "title": "Licencias",
           "about": "Sobre las licencias",
@@ -6861,7 +6869,10 @@
           "crossref": "Registra el DOI",
           "zenodo": "Archiva una copia",
           "openscholar": "Muestra el informe"
-        }
+        },
+        "ownOpen": "¿Permite que cualquiera comparta el informe?",
+        "ownOpenYes": "Sí",
+        "ownOpenNo": "No"
       },
       "payment": {
         "payWith": "Pagar con",
@@ -6893,7 +6904,26 @@
         "receiptFailed": "No se pudo abrir el recibo. Inténtalo de nuevo."
       },
       "emailUs": "Escríbenos",
-      "status": "Estado"
+      "status": "Estado",
+      "fileAccess": {
+        "label": "Quién recibe el archivo",
+        "open": "Cualquiera",
+        "openBody": "En Openscholar, Zenodo y las comunidades.",
+        "private": "Privado",
+        "privateBody": "Solo quienes pueden cambiar el informe.",
+        "embargo": "Desde una fecha",
+        "embargoBody": "Privado hasta el día que elijas.",
+        "readers": "Lectores de Openscholar",
+        "readersBody": "Se lee aquí, privado en Zenodo.",
+        "opensOn": "Se abre el",
+        "meaning": {
+          "open": "Cualquiera puede leer y descargar el PDF, y las comunidades que añadan el informe también lo reciben.",
+          "private": "La página del informe y su DOI siguen siendo públicos, pero solo quienes pueden cambiarlo pueden abrir el PDF. Zenodo lo mantiene privado, y las comunidades reciben el informe sin él.",
+          "privateClosed": "La página del informe y su DOI siguen siendo públicos, pero solo quienes pueden cambiarlo pueden abrir el PDF. Zenodo lo mantiene privado, porque su licencia no permite que nadie lo comparta.",
+          "embargo": "Nadie puede descargar el PDF hasta el {date}. Entonces se abre solo en Openscholar y Zenodo, y las comunidades también lo reciben.",
+          "readers": "Cualquiera puede leer el PDF en Openscholar. Zenodo lo mantiene privado, porque su licencia no permite que nadie lo comparta, y una comunidad solo lo recibe si alguien que puede cambiar el informe lo acepta al añadirlo."
+        }
+      }
     },
     "meta": {
       "publish": "Publicar | Openscholar",
