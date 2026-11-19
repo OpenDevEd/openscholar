@@ -6880,8 +6880,10 @@
           "openscholar": "Muestra el informe"
         },
         "ownOpen": "¿Permite que cualquiera comparta el informe?",
-        "ownOpenYes": "Sí",
-        "ownOpenNo": "No"
+        "ownOpenYes": "Sí, cualquiera puede compartirlo",
+        "ownOpenNo": "No, restringe compartirlo",
+        "ownOpenYesBody": "Cualquiera puede leer y descargar el PDF, como con Creative Commons.",
+        "ownOpenNoBody": "Como mucho, los lectores de Openscholar reciben el PDF: nunca Zenodo, y una comunidad solo si das tu acuerdo."
       },
       "payment": {
         "payWith": "Pagar con",

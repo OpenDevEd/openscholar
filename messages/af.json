@@ -6880,8 +6880,10 @@
           "openscholar": "Wys die verslag"
         },
         "ownOpen": "Laat dit enigiemand toe om die verslag te deel?",
-        "ownOpenYes": "Ja",
-        "ownOpenNo": "Nee"
+        "ownOpenYes": "Ja, enigiemand mag dit deel",
+        "ownOpenNo": "Nee, dit hou deel terug",
+        "ownOpenYesBody": "Enigiemand mag die PDF lees en aflaai, soos met Creative Commons.",
+        "ownOpenNoBody": "Hoogstens Openscholar se lesers kry die PDF: nooit Zenodo nie, en 'n gemeenskap net as jy instem."
       },
       "payment": {
         "payWith": "Betaal met",

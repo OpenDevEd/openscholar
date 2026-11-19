@@ -6880,8 +6880,10 @@
           "openscholar": "Zeigt den Bericht"
         },
         "ownOpen": "Erlaubt sie allen, den Bericht zu teilen?",
-        "ownOpenYes": "Ja",
-        "ownOpenNo": "Nein"
+        "ownOpenYes": "Ja, jeder darf ihn teilen",
+        "ownOpenNo": "Nein, er schränkt das Teilen ein",
+        "ownOpenYesBody": "Jeder darf das PDF lesen und herunterladen, wie bei Creative Commons.",
+        "ownOpenNoBody": "Höchstens die Leser auf Openscholar erhalten das PDF: nie Zenodo, und eine Community nur mit Ihrer Zustimmung."
       },
       "payment": {
         "payWith": "Bezahlen mit",

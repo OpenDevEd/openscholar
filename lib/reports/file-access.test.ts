@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { opensFurther } from "./report";
+import { DEFAULT_PRICES, fileAccessModes, opensFurther, pickedLicence, priceOf } from "./report";
 
 describe("a live report's file access", () => {
   it("only ever opens further: private may open, an embargo may open or end sooner, and nothing closes again", () => {
@@ -13,4 +13,11 @@ describe("a live report's file access", () => {
     expect(opensFurther({ mode: "open" }, { mode: "private" })).toBe(false);
     expect(opensFurther({ mode: "readers" }, { mode: "private" })).toBe(false);
   });
+});
+
+it("prices and offers files for an own licence by its answer before it is named, as the agreement step shows it", () => {
+  const closed = pickedLicence({ name: "", url: "", open: false });
+  expect(priceOf(closed, DEFAULT_PRICES)).toBe(DEFAULT_PRICES.closed);
+  expect(fileAccessModes(closed)).toEqual(["readers", "private"]);
+  expect(priceOf(pickedLicence({ name: "", url: "" }), DEFAULT_PRICES)).toBe(DEFAULT_PRICES.other);
 });

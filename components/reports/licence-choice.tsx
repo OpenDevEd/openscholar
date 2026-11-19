@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CircleHelp, ExternalLink } from "@/components/icons";
 import { LogoMark } from "@/components/logo";
 import { useMoney } from "@/lib/hooks/use-money";
-import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, type LicenceName, type Prices } from "@/lib/reports/report";
+import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, pickedLicence, priceOf, type LicenceName, type Prices } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 /** What the author has picked: a Creative Commons licence by name, or their own, as typed and answered so far. */
@@ -28,6 +28,7 @@ const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].tier === "standar
 const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].tier !== "standard");
 const OWN = "own";
 
+
 export function LicenceChoice({ value, onChange, prices, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
   const id = useId();
@@ -37,7 +38,7 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), price: prices.standard })),
     // An own licence that isn't open has its own price, which its card shows once the author says so.
-    { id: "other", title: t("other"), body: t("otherBody"), price: typeof value !== "string" && value.open === false ? prices.closed : prices.other },
+    { id: "other", title: t("other"), body: t("otherBody"), price: other ? priceOf(pickedLicence(value), prices) : prices.other },
   ];
   return (
     <div className="space-y-3">
@@ -54,21 +55,9 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
         onValueChange={(picked) => onChange(picked === "other" ? OTHERS[0]! : (picked as LicenceName))}
         className="grid-cols-1 gap-3 sm:grid-cols-3"
       >
-        {cards.map((card) => {
-          const on = card.id === "other" ? other : value === card.id;
-          return (
-            <label key={card.id} htmlFor={`${id}-${card.id}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
-              <RadioGroupItem id={`${id}-${card.id}`} value={card.id} className="mt-0.5" />
-              <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
-                  <span className="min-w-0 break-words">{card.title}</span>
-                  <span className="ms-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">{dollars(card.price)}</span>
-                </span>
-                <span className="mt-0.5 block text-sm text-muted-foreground">{card.body}</span>
-              </span>
-            </label>
-          );
-        })}
+        {cards.map((card) => (
+          <PricedCard key={card.id} id={`${id}-${card.id}`} value={card.id} on={card.id === "other" ? other : value === card.id} disabled={disabled} title={card.title} price={dollars(card.price)} body={card.body} />
+        ))}
       </RadioGroup>
       {/* Opens under the cards as it is picked, rather than pushing the agreement down in one frame. Its top space is
           inside it, so closed it takes none. */}
@@ -97,9 +86,9 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
               <div className="grid gap-3 sm:grid-cols-2">
                 <Input value={value.name} maxLength={LICENCE_NAME_MAX} disabled={disabled} aria-label={t("ownName")} placeholder={t("ownName")} onChange={(e) => onChange({ ...value, name: e.target.value })} />
                 <Input value={value.url} maxLength={DETAIL_TEXT.link} disabled={disabled} type="url" inputMode="url" aria-label={t("ownUrl")} placeholder="https://" onChange={(e) => onChange({ ...value, url: e.target.value })} />
-                <OwnOpen value={value.open} disabled={disabled} onChange={(open) => onChange({ ...value, open })} />
               </div>
             )}
+            {typeof value === "string" ? null : <OwnOpen value={value.open} prices={prices} disabled={disabled} onChange={(open) => onChange({ ...value, open })} />}
           </div>
         ) : null}
       </AutoHeight>
@@ -107,22 +96,38 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
   );
 }
 
-/** Whether the author's own licence lets anyone share the report, which decides its price and who may get its file. */
-function OwnOpen({ value, onChange, disabled }: { value: boolean | undefined; onChange: (open: boolean) => void; disabled: boolean }) {
+/** One choice of the step's: its title with its price, and what it means beneath. */
+function PricedCard({ id, value, on, disabled, title, price, body }: { id: string; value: string; on: boolean; disabled: boolean; title: string; price: string; body: string }) {
+  return (
+    <label htmlFor={id} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
+      <RadioGroupItem id={id} value={value} className="mt-0.5" />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
+          <span className="min-w-0 break-words">{title}</span>
+          <span className="ms-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">{price}</span>
+        </span>
+        <span className="mt-0.5 block text-sm text-muted-foreground">{body}</span>
+      </span>
+    </label>
+  );
+}
+
+/**
+ * Whether the author's own licence lets anyone share the report: the answer sets its price and who may get its file,
+ * so each answer shows both, as the licences above do.
+ */
+function OwnOpen({ value, onChange, prices, disabled }: { value: boolean | undefined; onChange: (open: boolean) => void; prices: Prices; disabled: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
+  const dollars = useMoney();
   const id = useId();
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:col-span-2">
-      <span id={`${id}-label`} className="text-sm">
+    <div className="space-y-2 sm:col-span-2">
+      <p id={`${id}-label`} className="text-sm font-medium">
         {t("ownOpen")}
-      </span>
-      <RadioGroup aria-labelledby={`${id}-label`} value={value === undefined ? "" : value ? "yes" : "no"} disabled={disabled} onValueChange={(answer) => onChange(answer === "yes")} className="flex gap-4">
-        {(["yes", "no"] as const).map((answer) => (
-          <label key={answer} htmlFor={`${id}-${answer}`} className={cn("flex items-center gap-2 text-sm", !disabled && "cursor-pointer")}>
-            <RadioGroupItem id={`${id}-${answer}`} value={answer} />
-            {t(answer === "yes" ? "ownOpenYes" : "ownOpenNo")}
-          </label>
-        ))}
+      </p>
+      <RadioGroup aria-labelledby={`${id}-label`} value={value === undefined ? "" : value ? "yes" : "no"} disabled={disabled} onValueChange={(answer) => onChange(answer === "yes")} className="grid-cols-1 gap-3 sm:grid-cols-2">
+        <PricedCard id={`${id}-yes`} value="yes" on={value === true} disabled={disabled} title={t("ownOpenYes")} price={dollars(prices.other)} body={t("ownOpenYesBody")} />
+        <PricedCard id={`${id}-no`} value="no" on={value === false} disabled={disabled} title={t("ownOpenNo")} price={dollars(prices.closed)} body={t("ownOpenNoBody")} />
       </RadioGroup>
     </div>
   );

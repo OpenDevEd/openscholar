@@ -6879,8 +6879,10 @@
           "openscholar": "Ibonisa umbiko"
         },
         "ownOpen": "Ingabe ivumela noma ubani ukwabelana ngombiko?",
-        "ownOpenYes": "Yebo",
-        "ownOpenNo": "Cha"
+        "ownOpenYes": "Yebo, noma ubani angayabelana ngayo",
+        "ownOpenNo": "Cha, ivimba ukwabelana",
+        "ownOpenYesBody": "Noma ubani angafunda futhi alande i-PDF, njengakwi-Creative Commons.",
+        "ownOpenNoBody": "Kakhulu, abafundi be-Openscholar kuphela abathola i-PDF: i-Zenodo ayiyitholi neze, futhi umphakathi uyithola kuphela uma uvuma."
       },
       "payment": {
         "payWith": "Khokha nge-",
