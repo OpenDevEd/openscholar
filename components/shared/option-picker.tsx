@@ -83,7 +83,7 @@ export function OptionPicker({
             <Plus className="size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent aria-label={label} className="w-(--radix-popover-trigger-width) p-0" align="start">
+        <PopoverContent aria-label={label} className="@container w-(--radix-popover-trigger-width) p-0" align="start">
           <OptionList
             options={options}
             selected={selected}
@@ -187,6 +187,9 @@ export function OptionSelect({
       }}
     >
       <PopoverTrigger asChild>
+        {/* At large text on a phone the picked name wraps rather than being cut. The query reads the settings column
+            around the field's fieldset (a size container inside a fieldset breaks in Chromium): 15.9rem in a community's
+            settings and 13.8rem on Reports at normal text on a 320px phone, so normal text is as before. */}
         <Button
           id={id}
           type="button"
@@ -196,15 +199,15 @@ export function OptionSelect({
           aria-label={label}
           aria-invalid={invalid || undefined}
           disabled={disabled}
-          className="h-9 w-full justify-between font-normal aria-invalid:border-destructive"
+          className="h-9 w-full justify-between font-normal aria-invalid:border-destructive max-sm:@max-[13rem]/settings:h-auto max-sm:@max-[13rem]/settings:min-h-9 max-sm:@max-[13rem]/settings:whitespace-normal max-sm:@max-[13rem]/settings:text-left"
         >
           <TooltipHint label={picked?.name ?? value} onlyWhenClipped>
-            <span className="min-w-0 truncate">{picked?.name ?? value}</span>
+            <span className="min-w-0 truncate max-sm:@max-[13rem]/settings:whitespace-normal max-sm:@max-[13rem]/settings:wrap-break-word">{picked?.name ?? value}</span>
           </TooltipHint>
           <ChevronDown className="size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent aria-label={label} className="w-(--radix-popover-trigger-width) p-0" align="start">
+      <PopoverContent aria-label={label} className="@container w-(--radix-popover-trigger-width) p-0" align="start">
         <OptionList
           options={words(search) ? ranked(options, search) : options}
           selected={[value]}
@@ -285,9 +288,12 @@ function OptionRows({ options: shown, selected, onToggle }: {
         >
           <Check className={cn("size-4", selected.includes(option.id) ? "opacity-100" : "opacity-0")} />
           {option.icon}
+          {/* Under 12rem, at large text on a phone, a name wraps rather than being cut, so two licences can be told
+              apart; the quieter line beneath stays one line, as at normal text. The list is its field's width: 13.5rem
+              at normal text on a 320px phone. */}
           <span className="min-w-0 flex-1">
             <TooltipHint label={option.name} onlyWhenClipped>
-              <span className="block truncate">
+              <span className="block truncate max-sm:@max-[12rem]:whitespace-normal max-sm:@max-[12rem]:wrap-break-word">
                 {option.name}
               </span>
             </TooltipHint>

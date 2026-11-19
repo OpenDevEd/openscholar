@@ -193,7 +193,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
           </span>
         }
       >
-        <div className="space-y-5 rounded-2xl border border-border-subtle p-4">
+        <div className="@container/settings space-y-5 rounded-2xl border border-border-subtle p-4">
           <PublicationForm
             key={settings.publicationSavedAt}
             saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: settings.publicationSavedAt, custom: settings.publicationCustom }}
