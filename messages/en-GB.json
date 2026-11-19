@@ -356,7 +356,16 @@
     "fileAccessHint": "Records made here start with this; their editors can change it.",
     "fileAccess_open": "Anyone",
     "fileAccess_private": "Editors only",
-    "fileAccess_readers": "Readers here"
+    "fileAccess_readers": "Readers here",
+    "account": "Your Zenodo account",
+    "accountHint": "Records are archived in this Zenodo account, under its name",
+    "accountManage": "Manage in Connections",
+    "accountNone": "No Zenodo account connected",
+    "accountNoneHint": "Connect yours to archive this community's records in it",
+    "accountConnect": "Connect Zenodo",
+    "accountBroken": "Zenodo stopped accepting your connection. Connect it again.",
+    "accountSandbox": "Needs your own Crossref account",
+    "accountSandboxHint": "A community on the Crossref sandbox archives in the Zenodo sandbox: its test DOIs can't go on real Zenodo records."
   },
   "auth": {
     "backToSearch": "Back to search",

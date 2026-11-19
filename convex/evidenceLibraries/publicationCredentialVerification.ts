@@ -231,7 +231,8 @@ export async function verifiedPublication(
     delete custom.crossref;
   }
   buildPublicationConfiguration(settings, credentials);
-  if (settings.zenodo.mode !== "off")
+  // Its own account is checked when it is connected, and each time its token is renewed (zenodo/connectionActions.ts).
+  if (settings.zenodo.mode !== "off" && settings.zenodo.mode !== "own")
     await verifyZenodoCredentials(
       credentials.zenodoToken!,
       settings.zenodo.mode === "sandbox",

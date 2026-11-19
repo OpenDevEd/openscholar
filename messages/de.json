@@ -356,7 +356,16 @@
     "fileAccessHint": "Hier erstellte Einträge beginnen damit; ihre Redakteure können es ändern.",
     "fileAccess_open": "Alle",
     "fileAccess_private": "Nur Redakteure",
-    "fileAccess_readers": "Leser hier"
+    "fileAccess_readers": "Leser hier",
+    "account": "Ihr Zenodo-Konto",
+    "accountHint": "Einträge werden in diesem Zenodo-Konto archiviert, unter seinem Namen",
+    "accountManage": "In Verbindungen verwalten",
+    "accountNone": "Kein Zenodo-Konto verbunden",
+    "accountNoneHint": "Verbinden Sie Ihres, um die Einträge dieser Community darin zu archivieren",
+    "accountConnect": "Zenodo verbinden",
+    "accountBroken": "Zenodo akzeptiert Ihre Verbindung nicht mehr. Verbinden Sie es erneut.",
+    "accountSandbox": "Braucht Ihr eigenes Crossref-Konto",
+    "accountSandboxHint": "Eine Community in der Crossref-Sandbox archiviert in der Zenodo-Sandbox: Ihre Test-DOIs können nicht auf echte Zenodo-Einträge."
   },
   "auth": {
     "backToSearch": "Zurück zur Suche",

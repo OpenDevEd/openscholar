@@ -145,6 +145,16 @@ export const prepare = internalQuery({
   },
 });
 
+/** Whose own Zenodo account a community deposits in (#1237): null when it uses a token of its own. */
+export const zenodoOwnerOf = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(v.null(), v.id("users")),
+  handler: async (ctx, { libraryId }) => {
+    const settings = (await readPublicationProviderRecord(ctx, libraryId))?.publicationSettings;
+    return settings?.zenodo.mode === "own" ? (settings.zenodo.ownerUserId ?? null) : null;
+  },
+});
+
 export const saveVerified = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),

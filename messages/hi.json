@@ -356,7 +356,16 @@
     "fileAccessHint": "यहाँ बने रिकॉर्ड इसी से शुरू होते हैं; उनके संपादक इसे बदल सकते हैं।",
     "fileAccess_open": "कोई भी",
     "fileAccess_private": "केवल संपादक",
-    "fileAccess_readers": "यहाँ के पाठक"
+    "fileAccess_readers": "यहाँ के पाठक",
+    "account": "आपका Zenodo खाता",
+    "accountHint": "रिकॉर्ड इस Zenodo खाते में, उसके नाम से संग्रहित होते हैं",
+    "accountManage": "कनेक्शन में प्रबंधित करें",
+    "accountNone": "कोई Zenodo खाता जुड़ा नहीं है",
+    "accountNoneHint": "इस समुदाय के रिकॉर्ड संग्रहित करने के लिए अपना खाता जोड़ें",
+    "accountConnect": "Zenodo जोड़ें",
+    "accountBroken": "Zenodo अब आपका कनेक्शन स्वीकार नहीं करता। इसे फिर से जोड़ें।",
+    "accountSandbox": "आपका अपना Crossref खाता चाहिए",
+    "accountSandboxHint": "Crossref सैंडबॉक्स पर समुदाय Zenodo सैंडबॉक्स में संग्रहित करता है: उसके परीक्षण DOI असली Zenodo रिकॉर्ड पर नहीं जा सकते।"
   },
   "auth": {
     "backToSearch": "खोज पर वापस जाएँ",

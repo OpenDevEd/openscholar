@@ -152,7 +152,7 @@ export const reportRecords: ReturnType<typeof httpAction> = httpAction(async (ct
 });
 
 /** Whether the credential is this community's own. */
-async function isCommunity(ctx: Pick<ActionCtx, "runQuery">, libraryId: string, credential: string) {
+export async function isCommunity(ctx: Pick<ActionCtx, "runQuery">, libraryId: string, credential: string) {
   const credentialDigest = await digestOpaqueToken(credential);
   return await ctx.runQuery(internal.topics.serviceHttp.authenticate, { libraryId, credentialDigest }).then(() => true, () => false);
 }

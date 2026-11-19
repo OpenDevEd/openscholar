@@ -42,6 +42,13 @@ export const verifyAndSave = action({
         "API_KEY_ENCRYPTION_KEY_MISSING",
         "Credential storage is not configured.",
       );
+    // Its own Zenodo account is the saver's: connected, and still accepted by Zenodo.
+    if (args.settings.zenodo.mode === "own") {
+      const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+      const connection = user && (await ctx.runQuery(internal.zenodo.connection.stored, { userId: user._id }));
+      if (!user || !connection || connection.broken) throw createError("VALIDATION_ERROR", "Connect your Zenodo account first, or choose another option.");
+      args.settings.zenodo.ownerUserId = user._id;
+    } else delete args.settings.zenodo.ownerUserId;
     try {
       const previous: PublicationSecrets = prepared.record
         ? JSON.parse(decrypt(prepared.record.encryptedValue, encryptionKey))

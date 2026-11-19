@@ -356,7 +356,16 @@
     "fileAccessHint": "在这里创建的记录以此开始，编辑者可以更改。",
     "fileAccess_open": "任何人",
     "fileAccess_private": "仅编辑者",
-    "fileAccess_readers": "这里的读者"
+    "fileAccess_readers": "这里的读者",
+    "account": "你的 Zenodo 账户",
+    "accountHint": "记录会以该账户的名义存档在这个 Zenodo 账户中",
+    "accountManage": "在连接中管理",
+    "accountNone": "未连接 Zenodo 账户",
+    "accountNoneHint": "连接你的账户以在其中存档此社区的记录",
+    "accountConnect": "连接 Zenodo",
+    "accountBroken": "Zenodo 不再接受你的连接。请重新连接。",
+    "accountSandbox": "需要你自己的 Crossref 账户",
+    "accountSandboxHint": "使用 Crossref 沙盒的社区存档在 Zenodo 沙盒中：其测试 DOI 不能用于真实的 Zenodo 记录。"
   },
   "auth": {
     "backToSearch": "返回搜索",

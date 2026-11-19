@@ -356,7 +356,16 @@
     "fileAccessHint": "Rekords wat hier gemaak word, begin hiermee; hul redakteurs kan dit verander.",
     "fileAccess_open": "Enigiemand",
     "fileAccess_private": "Net redakteurs",
-    "fileAccess_readers": "Lesers hier"
+    "fileAccess_readers": "Lesers hier",
+    "account": "Jou Zenodo-rekening",
+    "accountHint": "Rekords word in hierdie Zenodo-rekening geargiveer, onder sy naam",
+    "accountManage": "Bestuur in Koppelings",
+    "accountNone": "Geen Zenodo-rekening gekoppel nie",
+    "accountNoneHint": "Koppel joune om hierdie gemeenskap se rekords daarin te argiveer",
+    "accountConnect": "Koppel Zenodo",
+    "accountBroken": "Zenodo aanvaar nie meer jou koppeling nie. Koppel dit weer.",
+    "accountSandbox": "Het jou eie Crossref-rekening nodig",
+    "accountSandboxHint": "'n Gemeenskap op die Crossref-sandput argiveer in die Zenodo-sandput: sy toets-DOI's kan nie op regte Zenodo-rekords gaan nie."
   },
   "auth": {
     "backToSearch": "Terug na soektog",

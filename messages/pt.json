@@ -356,7 +356,16 @@
     "fileAccessHint": "Os registros criados aqui começam com isto; os editores podem mudar.",
     "fileAccess_open": "Qualquer pessoa",
     "fileAccess_private": "Só editores",
-    "fileAccess_readers": "Leitores daqui"
+    "fileAccess_readers": "Leitores daqui",
+    "account": "Sua conta do Zenodo",
+    "accountHint": "Os registros são arquivados nesta conta do Zenodo, em nome dela",
+    "accountManage": "Gerenciar em Conexões",
+    "accountNone": "Nenhuma conta do Zenodo conectada",
+    "accountNoneHint": "Conecte a sua para arquivar nela os registros desta comunidade",
+    "accountConnect": "Conectar o Zenodo",
+    "accountBroken": "O Zenodo deixou de aceitar sua conexão. Conecte-o novamente.",
+    "accountSandbox": "Precisa da sua própria conta do Crossref",
+    "accountSandboxHint": "Uma comunidade no sandbox do Crossref arquiva no sandbox do Zenodo: seus DOIs de teste não podem ir para registros reais do Zenodo."
   },
   "auth": {
     "backToSearch": "Voltar à pesquisa",

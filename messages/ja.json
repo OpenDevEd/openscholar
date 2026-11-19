@@ -356,7 +356,16 @@
     "fileAccessHint": "ここで作成するレコードはこの設定で始まり、編集者が変更できます。",
     "fileAccess_open": "誰でも",
     "fileAccess_private": "編集者のみ",
-    "fileAccess_readers": "ここの読者"
+    "fileAccess_readers": "ここの読者",
+    "account": "あなたの Zenodo アカウント",
+    "accountHint": "レコードはこの Zenodo アカウントに、その名前でアーカイブされます",
+    "accountManage": "接続で管理",
+    "accountNone": "Zenodo アカウントが接続されていません",
+    "accountNoneHint": "このコミュニティのレコードをアーカイブするにはアカウントを接続してください",
+    "accountConnect": "Zenodo を接続",
+    "accountBroken": "Zenodo が接続を受け付けなくなりました。もう一度接続してください。",
+    "accountSandbox": "自分の Crossref アカウントが必要です",
+    "accountSandboxHint": "Crossref のサンドボックスのコミュニティは Zenodo のサンドボックスにアーカイブします。テスト用の DOI を実際の Zenodo レコードに付けることはできません。"
   },
   "auth": {
     "backToSearch": "検索に戻る",

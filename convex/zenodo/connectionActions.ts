@@ -7,7 +7,7 @@ import { v } from "convex/values";
 import { ProviderHttpError } from "@opendeved/doi-sync-core";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { action, type ActionCtx } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { decrypt, encrypt } from "../lib/crypto";
 import { localPath, requireAppUrl } from "../lib/env";
@@ -141,3 +141,14 @@ export async function zenodoAccessToken(ctx: Pick<ActionCtx, "runQuery" | "runMu
   if (await save({ encryptedTokens, expiresAt: Date.now() + (renewed.expires_in ?? 3600) * 1000 })) return renewed.access_token;
   return theirs();
 }
+
+/** The current token of a person's own account, with when it ends: for a community's runtime (#1237). */
+export const tokenFor = internalAction({
+  args: { userId: v.id("users") },
+  returns: v.object({ accessToken: v.string(), expiresAt: v.number() }),
+  handler: async (ctx, { userId }): Promise<{ accessToken: string; expiresAt: number }> => {
+    const accessToken = await zenodoAccessToken(ctx, userId);
+    const row = await ctx.runQuery(internal.zenodo.connection.stored, { userId });
+    return { accessToken, expiresAt: row?.expiresAt ?? Date.now() };
+  },
+});
