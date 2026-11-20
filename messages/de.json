@@ -6680,7 +6680,7 @@
           },
           "published": {
             "name": "Noch nicht veröffentlicht",
-            "fix": "Wenn es Ihre eigene frühere Veröffentlichung ist, sagen Sie das, wenn Sie um eine Prüfung bitten."
+            "fix": "Wenn es Ihre eigene frühere Veröffentlichung ist, teilen Sie der Prüfung mit, wo sie erschienen ist."
           },
           "harm": {
             "name": "Keine Hassrede und keine Belästigung",
@@ -6798,7 +6798,8 @@
           "unknownCode": "{code} ist kein Code, den wir kennen, oder er ist aufgebraucht.",
           "nothingOff": "{code} senkt den Preis für die Veröffentlichung eines Berichts nicht.",
           "codeTooLong": "Dieser Code ist zu lang, um einer von unseren zu sein.",
-          "applyFirst": "Wenden Sie den Code an oder löschen Sie ihn, um zu aktivieren."
+          "applyFirst": "Wenden Sie den Code an oder löschen Sie ihn, um zu aktivieren.",
+          "typeFirst": "Geben Sie zuerst einen Code ein."
         },
         "card": {
           "bankAsked": "Ihre Bank möchte die Zahlung bestätigen lassen",

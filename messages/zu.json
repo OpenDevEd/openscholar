@@ -6679,7 +6679,7 @@
           },
           "published": {
             "name": "Akukaze kushicilelwe ngaphambili",
-            "fix": "Uma lokhu kuwukushicilela kwakho kwangaphambili, kusho lapho ucela ukubuyekezwa."
+            "fix": "Uma lokhu kungukushicilela kwakho kwangaphambili, tshela umhloli ukuthi kwavela kuphi."
           },
           "harm": {
             "name": "Akukho nkulumo yenzondo noma ukuhlukumeza",
@@ -6797,7 +6797,8 @@
           "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
           "nothingOff": "{code} ayehlisi inani lokushicilela umbiko.",
           "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu.",
-          "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze."
+          "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze.",
+          "typeFirst": "Thayipha ikhodi kuqala."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",

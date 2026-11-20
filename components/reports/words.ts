@@ -54,6 +54,9 @@ export function useFailed() {
   return (error: unknown) => void toast.error(getErrorMessage(error, t("failed")));
 }
 
+/** Advice a shipped check gave before, as it is now: "ask for a review" read wrong once the report was in review. */
+const OLD_FIXES: Record<string, string> = { "If this is your own earlier publication, say so when you ask for a review.": DEFAULT_CHECKS.find((check) => check.id === "published")!.fix! };
+
 type DefaultCheckId = "byline" | "published" | "harm" | "rights" | "research";
 
 /**
@@ -68,7 +71,9 @@ export function useCheckWords() {
     return shipped ? t(`check.defaults.${shipped.id as DefaultCheckId}.name`) : name;
   };
   /** A fix as a result keeps it, its byline or licence already filled in: that is carried into the translated words. */
-  const fix = (fix: string) => {
+  const fix = (shown: string) => {
+    // Advice a check shipped with before it was reworded, kept by settings and results made then.
+    const fix = OLD_FIXES[shown] ?? shown;
     for (const check of DEFAULT_CHECKS) {
       if (!check.fix) continue;
       const hole = /\{(?:byline|licence)\}/.exec(check.fix)?.[0];

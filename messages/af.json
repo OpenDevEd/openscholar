@@ -6680,7 +6680,7 @@
           },
           "published": {
             "name": "Nog nie vantevore gepubliseer nie",
-            "fix": "As dit jou eie vroeëre publikasie is, sê so wanneer jy om 'n hersiening vra."
+            "fix": "As dit jou eie vroeëre publikasie is, sê vir die beoordelaar waar dit verskyn het."
           },
           "harm": {
             "name": "Geen haatspraak of teistering nie",
@@ -6798,7 +6798,8 @@
           "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
           "nothingOff": "{code} neem niks af van die prys om ’n verslag te publiseer nie.",
           "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees.",
-          "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer."
+          "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer.",
+          "typeFirst": "Tik eers 'n kode."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",

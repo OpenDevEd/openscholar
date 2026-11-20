@@ -39,7 +39,7 @@ import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, dateParts, licen
 import { FieldHelp, FieldLabel, RegistrarsProvider, type HelpKey } from "@/components/reports/field-help";
 import { ReferenceBox } from "@/components/reports/reference-box";
 import { cn } from "@/lib/utils";
-import { FieldMessage, useStepForm } from "@/components/reports/form";
+import { FieldMessage, StepNav, useStepForm } from "@/components/reports/form";
 
 const REFS_PER_PAGE = 5;
 const REF_ROW = 41;
@@ -977,49 +977,55 @@ export function DetailsStep({
           </Button>
         </Section>
       </div>
-      {/* Back and the ways on: one row, at the foot of the step, which fills the card (publish-flow.tsx `Screens`). */}
-      <div className="mt-auto flex items-end gap-2 pt-8">
-        {onBack ? (
-          <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground" onClick={() => {
-            // An edit still waiting to be saved goes first: once the report is back at its PDF, a save of its details is refused.
-            sendNow();
-            onBack();
-          }}>
-            <ArrowLeft /> {t("back")}
-          </Button>
-        ) : null}
-        {/* The ways on wrap upwards on a phone; Back stays on the bottom line, level with the last of them. */}
-        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-        {onReturn && !touched ? (
-          <Button variant="outline" onClick={onReturn}>
-            {t("backToChecks")}
-          </Button>
-        ) : null}
-        <p id={`${id}-unchanged`} tabIndex={-1} className={cn("min-w-0 text-xs text-destructive outline-none", !(tried && unchanged) && "sr-only")}>
-          {tried && unchanged ? t("unchanged") : null}
-        </p>
-        {onCancel ? (
-          <Button variant="outline" onClick={() => {
-            // What was typed is given up, so a save still waiting must never arrive after it.
-            clearTimeout(held.current.timer);
-            held.current.send = undefined;
-            held.current.closed = true;
-            onCancel(opened);
-          }}>
-            {t("cancel")}
-          </Button>
-        ) : null}
-        {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
-        {words || onCancel ? (
-          // A long label ("Vérifier les modifications et les envoyer en relecture") wraps on a phone rather than leaving the screen.
-          <Button disabled={working} onClick={tryRun} className="max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal">
-            <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
-          </Button>
-        ) : (
-          <NextButton busy={working} onClick={tryRun}>{t("runChecks")}</NextButton>
-        )}
-        </div>
-      </div>
+      {/* Back and the ways on, at the foot of the step as every step's are (components/reports/form.tsx `StepNav`). */}
+      <StepNav
+        onBack={
+          onBack
+            ? () => {
+                // An edit still waiting to be saved goes first: once the report is back at its PDF, a save of its details is refused.
+                sendNow();
+                onBack();
+              }
+            : undefined
+        }
+        between={
+          <>
+            <p id={`${id}-unchanged`} tabIndex={-1} className={cn("min-w-0 text-xs text-destructive outline-none", !(tried && unchanged) && "sr-only")}>
+              {tried && unchanged ? t("unchanged") : null}
+            </p>
+            {onReturn && !touched ? (
+              <Button variant="outline" onClick={onReturn}>
+                {t("backToChecks")}
+              </Button>
+            ) : null}
+            {onCancel ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // What was typed is given up, so a save still waiting must never arrive after it.
+                  clearTimeout(held.current.timer);
+                  held.current.send = undefined;
+                  held.current.closed = true;
+                  onCancel(opened);
+                }}
+              >
+                {t("cancel")}
+              </Button>
+            ) : null}
+          </>
+        }
+        next={
+          // A report on its way out goes on to its next step; a live report's changes are sent.
+          words || onCancel ? (
+            // A long label ("Vérifier les modifications et les envoyer en relecture") wraps on a phone rather than leaving the screen.
+            <Button disabled={working} onClick={tryRun} className="max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal">
+              <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
+            </Button>
+          ) : (
+            <NextButton busy={working} onClick={tryRun}>{t("runChecks")}</NextButton>
+          )
+        }
+      />
     </div>
     </RegistrarsProvider>
   );

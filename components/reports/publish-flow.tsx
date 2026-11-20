@@ -43,7 +43,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
-import { FieldMessage, useStepForm } from "@/components/reports/form";
+import { FieldMessage, StepNav, useStepForm } from "@/components/reports/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1494,27 +1494,6 @@ function BylineChoice({ id, byline, by, onPick, error, disabled = false }: { /**
   );
 }
 
-/**
- * A step's Back and Next: one row, always, at the foot of the step, which fills the card (`Screens`). What is wrong
- * is said at the fields, never here; `between` is for a step's other ways on, as Ask for a review.
- */
-function StepNav({ onBack, backDisabled, next, between }: { onBack?: () => void; backDisabled?: boolean; next?: ReactNode; between?: ReactNode }) {
-  const t = useTranslations("publishReports.flow");
-  return (
-    // Several ways on that don't fit a phone's row wrap upwards: Back stays on the bottom line, level with Next.
-    <div className="mt-auto flex items-end gap-3 pt-6">
-      {onBack ? (
-        <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground" disabled={backDisabled} onClick={onBack}>
-          <ArrowLeft /> {t("back")}
-        </Button>
-      ) : null}
-      <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-        {between}
-        {next}
-      </div>
-    </div>
-  );
-}
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
 function Overview({ series, reviewed, prices, balance, onStart }: { series: string; /** What a report costs under each kind of licence, in US dollars, said here so it is no surprise at the last step. */ prices: Prices; /** What the workspace's publication balance holds, which pays for the last step before a card does; null for no limit, 0 signed out. */ balance: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
@@ -1998,7 +1977,10 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
     });
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
-  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
+  const shut = terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
+  // A code typed and not applied is the code field's to say: Activate takes the person there (`useStepForm`).
+  const codeField = useId();
+  const { tried, go } = useStepForm();
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -2073,7 +2055,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
                       {vouchers ? (
                         <div className={cn("py-1", terms.balance !== 0 && "px-3")}>
-                          <PromoCode fixed={terms.balance === 0} applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
+                          <PromoCode id={codeField} error={tried && unapplied ? t("activation.promo.applyFirst") : null} fixed={terms.balance === 0} applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
                         </div>
                       ) : null}
                     </AutoHeight>
@@ -2109,99 +2091,87 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
         </AnimatePresence>
       </AutoHeight>
       {report ? (
-          // Back and the ways on: one row, at the foot of the step, which fills the card (`Screens`).
-          // The ways on wrap upwards on a phone; Back stays on the bottom line, level with the last of them (`StepNav`).
-          <div className="mt-auto flex items-end gap-2 pt-6">
-            {/* Back to the details, as every other step has a way back to the one before it: wherever the server
-                lets a checked report change (flow.ts `goTo`). */}
-            {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
-              <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
-                <ArrowLeft /> {t("back")}
-              </Button>
-            ) : null}
-            <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-            {stage === "failed" ? (
-              <>
-                {report.asked ? null : (
-                  <Button variant="outline" onClick={() => setAsking(true)}>
-                    <ReviewQueueIcon /> {t("requestReview")}
+          // Back to the details, as every other step has a way back to the one before it: wherever the server lets a
+          // checked report change (flow.ts `goTo`). Its ways on, at the foot of the step as every step's are.
+          <StepNav
+            onBack={stage === "failed" || stage === "ready" || stage === "review" || reopens ? onDetails : undefined}
+            backDisabled={activating || charging}
+            between={
+              stage === "failed" ? (
+                <>
+                  {report.asked ? null : (
+                    <Button variant="outline" onClick={() => setAsking(true)}>
+                      <ReviewQueueIcon /> {t("requestReview")}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={onDetails}>
+                    <PenLine /> {t("changeDetails")}
                   </Button>
-                )}
-                <Button variant="outline" onClick={onDetails}>
-                  <PenLine /> {t("changeDetails")}
+                </>
+              ) : reopens ? (
+                // Declined before it ever went live, it can be changed and sent round again: the reviewer's note is a reason to, not the end of it.
+                <Button variant="outline" onClick={onFix}>
+                  <RotateCcw /> {t("uploadNew")}
                 </Button>
+              ) : stage === "review" && onRequestReview && !report.reviewRequest ? (
+                // What a check flagged may need words it can't have (published before, say): said to the reviewer here.
+                <Button variant="outline" onClick={() => setAsking(true)}>
+                  <ReviewQueueIcon /> {t("noteForReviewer")}
+                </Button>
+              ) : null
+            }
+            next={
+              stage === "failed" ? (
                 <Button onClick={onFix}>
                   <RotateCcw /> {t("uploadNew")}
                 </Button>
-              </>
-            ) : (
-              <>
-                {/* Declined before it ever went live, it can be changed and sent round again: the reviewer's note is a reason to, not the end of it. */}
-                {reopens ? (
-                  <>
-                    <Button variant="outline" onClick={onFix}>
-                      <RotateCcw /> {t("uploadNew")}
+              ) : reopens ? (
+                <Button onClick={onDetails}>
+                  <PenLine /> {t("changeDetails")}
+                </Button>
+              ) : onAnother && stage === "declined" ? (
+                // Only where this report has come to its end, declined for good or taken down: there it is the way
+                // on. Beside Pay, or beside the buttons that change the report, it read as one more thing to do with
+                // this report. A new one starts from the list, as ever.
+                <Button onClick={onAnother}>
+                  <Plus /> {t("publishAnother")}
+                </Button>
+              ) : stage === "ready" && admin && terms && !pending ? (
+                // What pressing it does, in a "?" beside it: people asked what Activate would do before they pressed.
+                <FieldHelp field="activation" side="top" around="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                  {shut ? (
+                    // Shut, with why, for what the person can't change here: paused, nothing on sale to pay with, or
+                    // its Stripe account's currency. A code typed and not applied is a field's: Activate goes there.
+                    <TooltipHint label={shut}>
+                      <span tabIndex={0}>
+                        <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                      </span>
+                    </TooltipHint>
+                  ) : (
+                    // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
+                    // something due, it pays, and says how much.
+                    <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={() => go([unapplied && codeField], due === 0 ? () => activateNow() : askToPay)} />
+                  )}
+                </FieldHelp>
+              ) : stage === "ready" && !admin ? (
+                <TooltipHint label={t("activation.onlyAdmin")}>
+                  <span tabIndex={0}>
+                    <Button disabled>
+                      <BadgeCheck /> {t("activateFree")}
                     </Button>
-                    <Button onClick={onDetails}>
-                      <PenLine /> {t("changeDetails")}
+                  </span>
+                </TooltipHint>
+              ) : stage === "review" ? (
+                <TooltipHint label={t("needsApproval")}>
+                  <span tabIndex={0}>
+                    <Button disabled>
+                      <BadgeCheck /> {t("activateFree")}
                     </Button>
-                  </>
-                ) : null}
-                {/* Only where this report has come to its end, declined for good or taken down: there it is the way
-                    on. Beside Pay, or beside the buttons that change the report, it read as one more thing to do with
-                    this report. A new one starts from the list, as ever. */}
-                {onAnother && stage === "declined" && !reopens ? (
-                  <Button onClick={onAnother}>
-                    <Plus /> {t("publishAnother")}
-                  </Button>
-                ) : null}
-                {stage === "ready" && admin && terms && !pending ? (
-                  // What pressing it does, in a "?" beside it: people asked what Activate would do before they
-                  // pressed. It opens above the two, where it leaves the button in sight.
-                  <FieldHelp field="activation" side="top" around="flex min-w-0 max-w-full items-center justify-end gap-1.5">
-                    {shut ? (
-                      // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
-                      <TooltipHint label={shut}>
-                        <span tabIndex={0}>
-                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                        </span>
-                      </TooltipHint>
-                    ) : (
-                      // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
-                      // something due, it pays, and says how much.
-                      <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? () => activateNow() : askToPay} />
-                    )}
-                  </FieldHelp>
-                ) : null}
-                {stage === "ready" && !admin ? (
-                  <TooltipHint label={t("activation.onlyAdmin")}>
-                    <span tabIndex={0}>
-                      <Button disabled>
-                        <BadgeCheck /> {t("activateFree")}
-                      </Button>
-                    </span>
-                  </TooltipHint>
-                ) : stage === "review" ? (
-                  <>
-                  {/* What a check flagged may need words it can't have (published before, say): said to the reviewer here. */}
-                  {onRequestReview && !report.reviewRequest ? (
-                    <Button variant="outline" onClick={() => setAsking(true)}>
-                      <ReviewQueueIcon /> {t("noteForReviewer")}
-                    </Button>
-                  ) : null}
-                  <TooltipHint label={t("needsApproval")}>
-                    <span tabIndex={0}>
-                      <Button disabled>
-                        <BadgeCheck /> {t("activateFree")}
-                      </Button>
-                    </span>
-                  </TooltipHint>
-                  </>
-                ) : null}
-              </>
-            )}
-            </div>
-          </div>
+                  </span>
+                </TooltipHint>
+              ) : null
+            }
+          />
       ) : null}
       {onRequestReview ? <ReviewRequestDialog open={asking} note={stage === "review"} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
       {report && terms ? (
@@ -2291,7 +2261,7 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }: { /** The field is all the section holds (a card is the only way to pay): it stays open, with no way to shut it. */ fixed?: boolean; applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+function PromoCode({ id, error = null, applied, onApply, onQuote, typed, onTyped, fixed = false }: { /** The code's box, for the step's way on to take the person to. */ id?: string; /** What the step says is wrong with the field, once its way on was pressed. */ error?: string | null; /** The field is all the section holds (a card is the only way to pay): it stays open, with no way to shut it. */ fixed?: boolean; applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
   // A code already typed (it came back from Stripe's page in the address) opens the field with it.
   const [opened, setOpen] = useState(typed !== "");
   const open = fixed || opened;
@@ -2335,11 +2305,17 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }:
             className="space-y-1.5 p-px"
             onSubmit={(e) => {
               e.preventDefault();
+              // Apply is never shut for an empty box (components/reports/form.tsx): pressed, it says what to do.
               if (typed.trim()) apply();
+              else {
+                setWrong(t("typeFirst"));
+                field.current?.focus();
+              }
             }}
           >
             <div className="flex gap-2">
               <Input
+                id={id}
                 // Opened by a press, it takes the keyboard; there from the start, it leaves the page where it is.
                 autoFocus={!fixed && finePointer()}
                 value={typed}
@@ -2351,12 +2327,12 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }:
                 placeholder={t("label")}
                 ref={field}
                 aria-label={t("label")}
-                aria-invalid={!!wrong}
-                aria-describedby={wrong ? wrongId : undefined}
+                aria-invalid={!!(wrong ?? error)}
+                aria-describedby={wrong ?? error ? wrongId : undefined}
                 className="font-mono placeholder:font-sans"
               />
               {/* A code typed and not yet applied: Apply stands out as what to press next, in place of a line saying so. */}
-              <Button type="submit" variant={typed.trim() ? "default" : "outline"} className="shrink-0" disabled={!typed.trim() || checking}>
+              <Button type="submit" variant={typed.trim() ? "default" : "outline"} className="shrink-0" disabled={checking}>
                 {t("apply")}
               </Button>
               {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
@@ -2377,11 +2353,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }:
               </Button>
               )}
             </div>
-            {wrong ? (
-              <p id={wrongId} role="alert" className="text-xs text-destructive">
-                {wrong}
-              </p>
-            ) : null}
+            {wrong ?? error ? <FieldMessage id={wrongId} className="pt-0">{wrong ?? error}</FieldMessage> : null}
           </form>
         ) : (
           // As tall as the field it opens into and the code it ends as, so neither moves what is under or beside it.

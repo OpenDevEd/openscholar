@@ -6679,7 +6679,7 @@
           },
           "published": {
             "name": "Not published before",
-            "fix": "If this is your own earlier publication, say so when you ask for a review."
+            "fix": "If this is your own earlier publication, tell the reviewer where it appeared."
           },
           "harm": {
             "name": "No hate speech or harassment",
@@ -6797,7 +6797,8 @@
           "unknownCode": "{code} isn't a code we know, or it has been used up.",
           "nothingOff": "{code} doesn't take anything off publishing a report.",
           "codeTooLong": "That code is too long to be one of ours.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Apply the code, or clear it, to activate.",
+          "typeFirst": "Type a code first."
         },
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",

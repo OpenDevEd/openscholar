@@ -6680,7 +6680,7 @@
           },
           "published": {
             "name": "Haijachapishwa kabla",
-            "fix": "Ikiwa hili ni chapisho lako la awali, sema hivyo unapoomba mapitio."
+            "fix": "Ikiwa hii ni chapisho lako la awali, mweleze mkaguzi lilipochapishwa."
           },
           "harm": {
             "name": "Hakuna matamshi ya chuki wala unyanyasaji",
@@ -6798,7 +6798,8 @@
           "unknownCode": "{code} si msimbo tunaoujua, au umeshatumika wote.",
           "nothingOff": "{code} haipunguzi bei ya kuchapisha ripoti.",
           "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu.",
-          "applyFirst": "Tumia msimbo, au uufute, ili kuwasha."
+          "applyFirst": "Tumia msimbo, au uufute, ili kuwasha.",
+          "typeFirst": "Andika msimbo kwanza."
         },
         "card": {
           "bankAsked": "Benki yako imeomba kuthibitisha malipo",

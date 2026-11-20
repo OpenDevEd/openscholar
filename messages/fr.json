@@ -6679,7 +6679,7 @@
           },
           "published": {
             "name": "Jamais publié auparavant",
-            "fix": "S'il s'agit de votre propre publication antérieure, dites-le lorsque vous demandez une relecture."
+            "fix": "S'il s'agit de votre propre publication antérieure, indiquez à la relecture où elle est parue."
           },
           "harm": {
             "name": "Ni discours haineux ni harcèlement",
@@ -6797,7 +6797,8 @@
           "unknownCode": "{code} n’est pas un code que nous connaissons, ou il a déjà été utilisé.",
           "nothingOff": "{code} ne réduit pas le prix de publication d’un rapport.",
           "codeTooLong": "Ce code est trop long pour être l’un des nôtres.",
-          "applyFirst": "Appliquez le code, ou effacez-le, pour activer."
+          "applyFirst": "Appliquez le code, ou effacez-le, pour activer.",
+          "typeFirst": "Saisissez d'abord un code."
         },
         "card": {
           "bankAsked": "Votre banque demande de confirmer le paiement",
