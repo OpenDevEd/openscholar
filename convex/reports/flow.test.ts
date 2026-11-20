@@ -461,7 +461,8 @@ describe("a report's checks", () => {
     const { key } = await checked(world, [passed("byline", false)]);
     await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "The byline is on page 2." });
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "doi" });
-    expect(await read(world.author, world.own, key)).toMatchObject({ step: "doi", reopened: true });
+    // Only looked at, it still waits for the reviewer its author asked for: not a draft in the list or the queue.
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "doi", reopened: true, stage: "failed", asked: true });
     await world.author.mutation(api.reports.flow.backToChecks, { workspaceId: world.own, key });
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "done", status: "failed", asked: true, reviewRequest: { comment: "The byline is on page 2." } });
   });
@@ -490,7 +491,7 @@ describe("a report's checks", () => {
 
     await back("doi");
     await back("details");
-    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", status: "passed", reopened: true });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", status: "passed", reopened: true, stage: "ready" });
     await toChecks();
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "done", status: "passed", reopened: false, results: [{ checkId: "byline" }] });
     await expect(toChecks()).rejects.toMatchObject(refused("CONFLICT"));

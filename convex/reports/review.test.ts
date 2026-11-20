@@ -77,6 +77,15 @@ describe("reviewing", () => {
     expect(await read(world.author, world.own, key)).toMatchObject({ status: "live" });
   });
 
+  it("decides on a report its author went back to look at, putting it back on its checks", async () => {
+    const world = await setup({ humanReview: true });
+    const { key } = await checked(world, [passed("byline")]);
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
+    expect(stageOf(await row(world.t, key), true)).toBe("review");
+    await decide(world, key, "approve");
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "done", reopened: false, stage: "ready" });
+  });
+
   it("declines with a note the author reads, once", async () => {
     const world = await setup({ humanReview: true });
     const { key } = await checked(world, [passed("byline")]);

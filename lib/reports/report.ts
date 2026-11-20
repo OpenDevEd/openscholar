@@ -394,10 +394,12 @@ export const STAGES = ["draft", "review", "ready", "live", "failed", "declined"]
  * so switching review off releases the reports waiting only for it. */
 export type Stage = (typeof STAGES)[number];
 /** What a report's standing is told from: `flagged` is that one of its checks didn't pass. */
-export type Standing = { step: Step; status: Status; approved?: boolean; flagged?: boolean };
+export type Standing = { step: Step; status: Status; approved?: boolean; flagged?: boolean; reopened?: boolean };
 export function stageOf(report: Standing, humanReview: boolean): Stage {
   // Sent back for a new PDF, a report is being worked on again: nothing about its last checks is waiting on anyone.
-  if (report.step !== "done") return "draft";
+  // One its author only went back to look at, with nothing changed (`reopened`), still waits as it did: in review,
+  // ready, or failed with a reviewer asked.
+  if (report.step !== "done" && !report.reopened) return "draft";
   // A reviewer may approve a report whatever its checks said: it is then its author's to activate.
   if (report.status === "failed") return report.approved ? "ready" : "failed";
   if (report.status !== "passed") return report.status;

@@ -1965,9 +1965,10 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const due = Math.round(sum.due * 100);
   // Paid on Stripe's page this once (another card): what the button is doing is opening it, not activating yet.
   const [toStripe, setToStripe] = useState(false);
-  const activateNow = (otherCard = false) =>
+  const activateNow = (otherCard = false) => {
+    // Set before the transition: inside it, React would hold it back until the activation is over.
+    setToStripe(otherCard);
     start(async () => {
-      setToStripe(otherCard);
       say(null);
       try {
         // The code goes with it only where a card buys something for it to lower.
@@ -1982,6 +1983,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
         else failed(t("activateFailed"))(error);
       }
     });
+  };
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
   const shut = terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
