@@ -6911,7 +6911,9 @@
         "ownName_known": "Leyo yilayisense ye-Creative Commons: yikhethe ngenhla esikhundleni salokho.",
         "ownUrl_missing": "Faka ikheli lewebhu lombhalo wayo.",
         "ownUrl_invalid": "Faka ikheli lewebhu eliphelele eliqala ngo-https://.",
-        "ownOpenMissing": "Sho ukuthi iyamvumela yini noma ubani ukwabelana ngombiko."
+        "ownOpenMissing": "Sho ukuthi iyamvumela yini noma ubani ukwabelana ngombiko.",
+        "chooseOther": "Khetha ilayisense",
+        "whichMissing": "Khetha ukuthi iyiphi ilayisense."
       },
       "payment": {
         "payWith": "Khokha nge-",

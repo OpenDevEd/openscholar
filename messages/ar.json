@@ -6912,7 +6912,9 @@
         "ownName_known": "هذا ترخيص من Creative Commons: اختره من الأعلى بدلًا من ذلك.",
         "ownUrl_missing": "أدخل عنوان الويب لنصّه.",
         "ownUrl_invalid": "أدخل عنوان ويب كاملًا يبدأ بـ https://.",
-        "ownOpenMissing": "حدّد ما إذا كان يسمح لأي شخص بمشاركة التقرير."
+        "ownOpenMissing": "حدّد ما إذا كان يسمح لأي شخص بمشاركة التقرير.",
+        "chooseOther": "اختر ترخيصًا",
+        "whichMissing": "اختر الترخيص."
       },
       "payment": {
         "payWith": "الدفع بـ",

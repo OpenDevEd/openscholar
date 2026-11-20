@@ -6911,7 +6911,9 @@
         "ownName_known": "C'est une licence Creative Commons : choisissez-la plutôt ci-dessus.",
         "ownUrl_missing": "Indiquez l'adresse web de son texte.",
         "ownUrl_invalid": "Indiquez une adresse web complète commençant par https://.",
-        "ownOpenMissing": "Indiquez si elle permet à tout le monde de partager le rapport."
+        "ownOpenMissing": "Indiquez si elle permet à tout le monde de partager le rapport.",
+        "chooseOther": "Choisissez une licence",
+        "whichMissing": "Choisissez de quelle licence il s'agit."
       },
       "payment": {
         "payWith": "Payer avec",

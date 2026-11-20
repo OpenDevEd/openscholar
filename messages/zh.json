@@ -6911,7 +6911,9 @@
         "ownName_known": "这是 Creative Commons 许可：请在上方选择它。",
         "ownUrl_missing": "填写许可文本的网址。",
         "ownUrl_invalid": "请填写以 https:// 开头的完整网址。",
-        "ownOpenMissing": "请说明它是否允许任何人分享报告。"
+        "ownOpenMissing": "请说明它是否允许任何人分享报告。",
+        "chooseOther": "选择许可",
+        "whichMissing": "请选择是哪种许可。"
       },
       "payment": {
         "payWith": "支付方式",

@@ -6912,7 +6912,9 @@
         "ownName_known": "Dis 'n Creative Commons-lisensie: kies dit eerder hierbo.",
         "ownUrl_missing": "Gee die webadres van sy teks.",
         "ownUrl_invalid": "Gee 'n volledige webadres wat met https:// begin.",
-        "ownOpenMissing": "Sê of dit enigiemand toelaat om die verslag te deel."
+        "ownOpenMissing": "Sê of dit enigiemand toelaat om die verslag te deel.",
+        "chooseOther": "Kies 'n lisensie",
+        "whichMissing": "Kies watter lisensie dit is."
       },
       "payment": {
         "payWith": "Betaal met",

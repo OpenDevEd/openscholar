@@ -21,8 +21,10 @@ import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, pickedLicence, 
 import { cn } from "@/lib/utils";
 import { FieldMessage } from "@/components/reports/form";
 
-/** What the author has picked: a Creative Commons licence by name, or their own, as typed and answered so far. */
-export type LicencePick = LicenceName | { name: string; url: string; /** Whether it lets anyone share the report: unanswered until the author says. */ open?: boolean };
+/** What the author has picked: a licence by name, their own as typed so far, or "Another licence" with none chosen yet. */
+export type LicencePick = LicenceName | typeof ANOTHER | { name: string; url: string; /** Whether it lets anyone share the report: unanswered until the author says. */ open?: boolean };
+/** "Another licence" picked, and which one not yet: nothing is chosen for the author, who skims past what is (walkers kept CC BY-NC unawares). */
+export const ANOTHER = "another";
 
 /** The licences at the standard price, offered on their own; the rest are behind "Another licence". */
 const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].tier === "standard");
@@ -31,18 +33,18 @@ const OWN = "own";
 
 
 /** The ids of an own licence's fields, from the `id` the step gives: where its Next takes the person. */
-export const licenceFields = (id: string) => ({ name: `${id}-own-name`, url: `${id}-own-url`, open: `${id}-own-yes` });
+export const licenceFields = (id: string) => ({ which: `${id}-which`, name: `${id}-own-name`, url: `${id}-own-url`, open: `${id}-own-yes` });
 
-export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabled = false }: { /** From `useId`: the fields' ids are `licenceFields(id)`. */ id: string; value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; /** What is wrong with the own licence's fields, once Next was pressed. */ errors?: { name?: string; url?: string; open?: string }; disabled?: boolean }) {
+export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabled = false }: { /** From `useId`: the fields' ids are `licenceFields(id)`. */ id: string; value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; /** What is wrong with the own licence's fields, once Next was pressed. */ errors?: { which?: string; name?: string; url?: string; open?: string }; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
   const fields = licenceFields(id);
-  const other = typeof value !== "string" || !STANDARD.includes(value);
+  const other = typeof value !== "string" || value === ANOTHER || !STANDARD.includes(value as LicenceName);
   // Each licence by its price, whatever pays it: what picking one leaves to pay is the bill's to say.
   const dollars = useMoney();
   const cards = [
     ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), price: prices.standard })),
     // An own licence that isn't open has its own price, which its card shows once the author says so.
-    { id: "other", title: t("other"), body: t("otherBody"), price: other ? priceOf(pickedLicence(value), prices) : prices.other },
+    { id: "other", title: t("other"), body: t("otherBody"), price: other && value !== ANOTHER ? priceOf(pickedLicence(value), prices) : prices.other },
   ];
   return (
     <div className="space-y-3">
@@ -56,7 +58,7 @@ export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabl
         value={other ? "other" : (value as string)}
         disabled={disabled}
         // "Another licence" opens on the first of them, which the list beneath it changes.
-        onValueChange={(picked) => onChange(picked === "other" ? OTHERS[0]! : (picked as LicenceName))}
+        onValueChange={(picked) => onChange(picked === "other" ? ANOTHER : (picked as LicenceName))}
         className="grid-cols-1 gap-3 sm:grid-cols-3"
       >
         {cards.map((card) => (
@@ -68,9 +70,10 @@ export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabl
       <AutoHeight className="!mt-0">
         {other ? (
           <div className="grid gap-3 pt-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-start">
-            <Select value={typeof value === "string" ? value : OWN} disabled={disabled} onValueChange={(picked) => onChange(picked === OWN ? { name: "", url: "" } : (picked as LicenceName))}>
-              <SelectTrigger aria-label={t("which")} className="w-full">
-                <SelectValue />
+            <div>
+            <Select value={value === ANOTHER ? "" : typeof value === "string" ? value : OWN} disabled={disabled} onValueChange={(picked) => onChange(picked === OWN ? { name: "", url: "" } : (picked as LicenceName))}>
+              <SelectTrigger id={fields.which} aria-label={t("which")} aria-invalid={errors.which ? true : undefined} aria-describedby={errors.which ? `${fields.which}-error` : undefined} className="w-full">
+                <SelectValue placeholder={t("chooseOther")} />
               </SelectTrigger>
               <SelectContent>
                 {OTHERS.map((name) => (
@@ -81,7 +84,9 @@ export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabl
                 <SelectItem value={OWN}>{t("own")}</SelectItem>
               </SelectContent>
             </Select>
-            {typeof value === "string" ? (
+            {errors.which ? <FieldMessage id={`${fields.which}-error`}>{errors.which}</FieldMessage> : null}
+            </div>
+            {value === ANOTHER ? null : typeof value === "string" ? (
               <a href={LICENCES[value].url} target="_blank" rel="noreferrer license" className="inline-flex h-9 min-w-0 items-center gap-1.5 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
                 <span className="truncate">{LICENCES[value].title}</span>
                 <ExternalLink className="size-3.5 shrink-0" />

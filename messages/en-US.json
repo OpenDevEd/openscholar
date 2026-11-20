@@ -6911,7 +6911,9 @@
         "ownName_known": "That's a Creative Commons license: pick it above instead.",
         "ownUrl_missing": "Give the web address of its text.",
         "ownUrl_invalid": "Give a full web address, starting with https://.",
-        "ownOpenMissing": "Say whether it lets anyone share the report."
+        "ownOpenMissing": "Say whether it lets anyone share the report.",
+        "chooseOther": "Choose a license",
+        "whichMissing": "Choose which license it is."
       },
       "payment": {
         "payWith": "Pay with",

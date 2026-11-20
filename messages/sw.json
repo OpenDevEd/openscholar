@@ -6912,7 +6912,9 @@
         "ownName_known": "Hiyo ni leseni ya Creative Commons: ichague hapo juu badala yake.",
         "ownUrl_missing": "Andika anwani ya wavuti ya maandishi yake.",
         "ownUrl_invalid": "Andika anwani kamili ya wavuti inayoanza na https://.",
-        "ownOpenMissing": "Sema kama inamruhusu mtu yeyote kushiriki ripoti."
+        "ownOpenMissing": "Sema kama inamruhusu mtu yeyote kushiriki ripoti.",
+        "chooseOther": "Chagua leseni",
+        "whichMissing": "Chagua ni leseni gani."
       },
       "payment": {
         "payWith": "Lipa kwa",

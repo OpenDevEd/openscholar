@@ -6912,7 +6912,9 @@
         "ownName_known": "Das ist eine Creative-Commons-Lizenz: Wählen Sie sie stattdessen oben aus.",
         "ownUrl_missing": "Geben Sie die Webadresse ihres Textes ein.",
         "ownUrl_invalid": "Geben Sie eine vollständige Webadresse ein, die mit https:// beginnt.",
-        "ownOpenMissing": "Geben Sie an, ob jeder den Bericht teilen darf."
+        "ownOpenMissing": "Geben Sie an, ob jeder den Bericht teilen darf.",
+        "chooseOther": "Lizenz wählen",
+        "whichMissing": "Wählen Sie die Lizenz."
       },
       "payment": {
         "payWith": "Bezahlen mit",
