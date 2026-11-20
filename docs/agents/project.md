@@ -5,12 +5,12 @@ facts, commands, and deployment boundaries.
 
 ## Product and repository boundary
 
-- Repository: `Openscholar-ai/openscholar` (formerly `OpenDevEd/openalex-count`).
+- Repository: `OpenDevEd/openscholar` (formerly `OpenDevEd/openalex-count`).
 - Active development branch: `dev`. See "Branches and live systems".
 - OpenScholar owns research discovery, reviews, screening, extraction,
   synthesis, evidence organization, accounts, billing, and Evidence Library
   setup and management.
-- `Openscholar-ai/evidence-community` (new-el) on `main` owns the public Evidence Library runtime,
+- `OpenDevEd/evidence-community` (new-el) on `main` owns the public Evidence Library runtime,
   record admin, files, search, source sync, writeback, and runtime workers.
 - Cross-repository calls use an authenticated, versioned, retry-safe API. Do
   not copy runtime features into OpenScholar.

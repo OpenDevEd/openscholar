@@ -243,7 +243,7 @@ describe("Evidence Library application setup", () => {
         requests.push(url);
         if (
           url.href ===
-          "https://api.github.com/repos/Openscholar-ai/evidence-community/releases?per_page=100"
+          "https://api.github.com/repos/OpenDevEd/evidence-community/releases?per_page=100"
         ) {
           return Response.json([
             {
@@ -288,7 +288,7 @@ describe("Evidence Library application setup", () => {
       setupRuntimeImage: LATEST_RUNTIME_IMAGE,
     });
     expect(requests.slice(0, 2).map(String)).toEqual([
-      "https://api.github.com/repos/Openscholar-ai/evidence-community/releases?per_page=100",
+      "https://api.github.com/repos/OpenDevEd/evidence-community/releases?per_page=100",
       `https://ghcr.io/v2/opendeved/evidence-library-runtime/manifests/${LATEST_RUNTIME_COMMIT}`,
     ]);
   });

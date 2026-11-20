@@ -11,7 +11,7 @@ import {
   synchronizeContractSnapshot,
 } from "../lib/evidence-libraries/configuration/contract-sync.mjs";
 
-const EXPECTED_REPOSITORY = "https://github.com/Openscholar-ai/evidence-community";
+const EXPECTED_REPOSITORY = "https://github.com/OpenDevEd/evidence-community";
 const EXPECTED_BRANCH = "main";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 

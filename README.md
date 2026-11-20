@@ -2,7 +2,7 @@
 
 The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn. Openscholar searches OpenAlex's 250 million works and runs at [discover.openscholar.ai](https://discover.openscholar.ai).
 
-This repository holds the app, its [Convex](https://convex.dev) backend, and the marketing site at [openscholar.ai](https://openscholar.ai) (`marketing/`). Evidence Communities, the public research libraries that teams set up from Openscholar, live in [Openscholar-ai/evidence-community](https://github.com/Openscholar-ai/evidence-community).
+This repository holds the app, its [Convex](https://convex.dev) backend, and the marketing site at [openscholar.ai](https://openscholar.ai) (`marketing/`). Evidence Communities, the public research libraries that teams set up from Openscholar, live in [OpenDevEd/evidence-community](https://github.com/OpenDevEd/evidence-community).
 
 ## What it does
 
@@ -27,7 +27,7 @@ This repository holds the app, its [Convex](https://convex.dev) backend, and the
 You need Node.js 22 or later, a Convex deployment (Convex Cloud or [self-hosted](https://github.com/get-convex/convex-backend)), and a Clerk application. Billing needs an [Autumn](https://useautumn.com) server and a Stripe account, and AI features need an OpenRouter key.
 
 ```bash
-git clone https://github.com/Openscholar-ai/openscholar.git
+git clone https://github.com/OpenDevEd/openscholar.git
 cd openscholar
 npm install
 cp .env.example .env.local
@@ -167,7 +167,7 @@ the proxy. Responses stay real unless a spec supplies a network fixture.
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/Openscholar-ai/.github/blob/main/CONTRIBUTING.md). To report a security problem, see [SECURITY.md](https://github.com/Openscholar-ai/.github/blob/main/SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## Licence
 
