@@ -26,7 +26,11 @@ export function AutoHeight({ className, children }: { className?: string; childr
   }, []);
   return (
     <motion.div className={cn("overflow-clip [overflow-clip-margin:4px]", className)} initial={false} animate={{ height }} transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: EASE }}>
-      <div ref={inner}>{children}</div>
+      {/* flow-root keeps its content's margins inside, so the height measured is the height laid out: a first child's
+          mt-6 left out of offsetHeight cut 24px off the activate step's foot. */}
+      <div ref={inner} className="flow-root">
+        {children}
+      </div>
     </motion.div>
   );
 }
