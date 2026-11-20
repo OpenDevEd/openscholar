@@ -76,6 +76,8 @@ describe("public route auth matrix", () => {
       "/credits",
       // The public communities, for anyone (#1090).
       "/evidence-communities",
+      // Where a report's file sends someone it won't open: the PDF is private, and its owner may sign in.
+      "/files/private",
       "/history",
       // A paper's page, which search engines read signed out.
       // A paper's citation files, for reference managers and tools that follow a paper page's links.
@@ -92,8 +94,6 @@ describe("public route auth matrix", () => {
       "/privacy",
       // Publish shows what publishing a report takes to someone signed out, and asks for sign-in to start one.
       "/publish",
-      // Where that file sends someone it won't open: the PDF is private, and its owner may sign in.
-      "/publish/private-file",
       // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.
       "/question-stage/earth.js",
       "/question-stage/hold",
