@@ -21,9 +21,9 @@ export const DEFAULT_TEXT_EFFORT: Effort = "medium";
 export type Check = {
   id: string;
   name: string;
-  /** Asked about the report's details and its PDF's text. `{byline}` and `{doi}` are this report's. */
+  /** Asked about the report's details and its PDF's text. `{byline}`, `{doi}` and `{licence}` are this report's. */
   question: string;
-  /** What the author is told to do when the check fails, with `{byline}` and `{doi}` filled in as in the question. */
+  /** What the author is told to do when the check fails, with `{byline}`, `{doi}` and `{licence}` filled in as in the question. */
   fix?: string;
   /** The model's slug in the catalog, and the effort it runs at. */
   modelId: string;
@@ -80,6 +80,18 @@ export const DEFAULT_CHECKS: Check[] = [
     modelId: JEV_MODEL,
     threshold: 0.7,
     blocking: true,
+    enabled: true,
+  },
+  {
+    id: "rights",
+    // A PDF that says "All rights reserved" published under CC BY tells its readers two things: they can't know which holds.
+    name: "Rights match the licence",
+    question: 'Does every statement of rights or licence in the text agree with "{licence}"? A line such as "All rights reserved" or another licence\'s name disagrees with an open licence. The line naming {licence} that Openscholar adds agrees.',
+    fix: "Take out or change the rights statement in the PDF so it says {licence}, then upload the PDF again.",
+    modelId: JEV_MODEL,
+    threshold: 0.7,
+    // A reviewer decides: an older edition's notice may be fine.
+    blocking: false,
     enabled: true,
   },
   {

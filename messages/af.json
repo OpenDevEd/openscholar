@@ -365,7 +365,9 @@
     "accountConnect": "Koppel Zenodo",
     "accountBroken": "Zenodo aanvaar nie meer jou koppeling nie. Koppel dit weer.",
     "accountSandbox": "Het jou eie Crossref-rekening nodig",
-    "accountSandboxHint": "Rekords wat in jou rekening geargiveer word, behou hierdie gemeenskap se Crossref-DOI, dus skakel Crossref aan met jou eie besonderhede. Toets-DOI's uit die sandput kan nie op regte Zenodo-rekords gaan nie."
+    "accountSandboxHint": "Rekords wat in jou rekening geargiveer word, behou hierdie gemeenskap se Crossref-DOI, dus skakel Crossref aan met jou eie besonderhede. Toets-DOI's uit die sandput kan nie op regte Zenodo-rekords gaan nie.",
+    "archiveDoiHint": "Zenodo-DOI: die geargiveerde kopie kry sy eie DOI. Crossref-DOI: die kopie deel die rekord se Crossref-DOI.",
+    "accountCrossrefJoin": "Hoe om by Crossref aan te sluit"
   },
   "auth": {
     "backToSearch": "Terug na soektog",
@@ -5979,7 +5981,8 @@
     "paperPage": "Artikelblad",
     "share": "Deel",
     "inCommunities": "In hierdie gemeenskappe",
-    "fieldAverage": "× veldgemiddeld"
+    "fieldAverage": "× veldgemiddeld",
+    "freeToRead": "Gratis om te lees"
   },
   "addedPapers": {
     "name": "Bygevoegde artikels",
@@ -6170,7 +6173,9 @@
         "working": "Word in Zenodo geargiveer",
         "done": "In Zenodo geargiveer",
         "failed": "Zenodo het dit geweier",
-        "withdrawn": "As teruggetrek in Zenodo aangeteken"
+        "withdrawn": "As teruggetrek in Zenodo aangeteken",
+        "doneMine": "Geargiveer in jou Zenodo-rekening",
+        "doneSigner": "Geargiveer in die ondertekenaar se Zenodo-rekening"
       },
       "crossref": {
         "waiting": "Crossref is volgende",
@@ -6237,7 +6242,9 @@
       "seeChanges": "Sien jou wysigings",
       "correct": "Korrigeer besonderhede",
       "takeDownTitle": "Om dit te laat verwyder",
-      "openDoi": "Maak die DOI {doi} oop"
+      "openDoi": "Maak die DOI {doi} oop",
+      "filePrivate": "PDF privaat",
+      "fileUntil": "PDF privaat tot {date}"
     },
     "stages": {
       "draft": "Konsep",
@@ -6677,6 +6684,10 @@
             "name": "Geen haatspraak of teistering nie",
             "fix": "Haal die gedeeltes uit wat mense aanval, en laai dan die PDF weer op."
           },
+          "rights": {
+            "name": "Regte stem ooreen met die lisensie",
+            "fix": "Haal die regteverklaring in die PDF uit of verander dit sodat dit {licence} sê, en laai dan die PDF weer op."
+          },
           "research": {
             "name": "Navorsing, nie advertensie nie",
             "fix": "Openscholar Reports publiseer navorsing. As joune navorsing is, vra om 'n hersiening en sê wat die toets gemis het."
@@ -6949,7 +6960,9 @@
         "confirm": "Verander dit",
         "confirmTitle": "Verander wie die lêer kry?",
         "confirmLive": "Lesers mag 'n lêer hou wat hulle al gehad het, dus kan dit nie ontdoen word nie: van nou af kan die lêer net verder oopmaak. Zenodo en Crossref word ook bygewerk.",
-        "confirmBefore": "Niks is nog publiek nie: dit geld sodra die verslag lewendig gaan, en kan tot dan verander."
+        "confirmBefore": "Niks is nog publiek nie: dit geld sodra die verslag lewendig gaan, en kan tot dan verander.",
+        "until": "Privaat tot {date}",
+        "readersMost": "Sy lisensie laat nie toe dat enigiemand dit deel nie, dus is Openscholar se lesers die meeste wat die lêer kan kry."
       },
       "archive": {
         "label": "Argief",
@@ -6967,7 +6980,8 @@
           "why": "'n DOI moet vir altyd na die verslag lei. Crossref, wat die DOI registreer, vra 'n permanente afskrif in 'n argief, en Zenodo bewaar dit.",
           "same": "Die verslag behou sy Crossref-DOI waar dit ook al geargiveer word.",
           "policies": "Hoe Zenodo rekords bewaar"
-        }
+        },
+        "signers": "Die ondertekenaar se Zenodo-rekening"
       }
     },
     "meta": {

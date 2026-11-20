@@ -159,7 +159,7 @@ describe("changes to a live report", () => {
     if ("unchanged" in started) throw new Error("the changes were taken for none");
     expect(started.byline).toBe(signed);
     expect(started.version).toBe(1);
-    expect(started.checks.map((check) => check.id)).toEqual(["byline", "published", "harm", "research"]);
+    expect(started.checks.map((check) => check.id)).toEqual(["byline", "published", "harm", "rights", "research"]);
     // A report signed now carries the new line, and its first checks are today's.
     // In the organisation's workspace: the author's own has started its one report today.
     const next = await atDetails(world, world.author, world.lab);

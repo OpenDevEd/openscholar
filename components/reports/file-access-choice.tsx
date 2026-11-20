@@ -121,7 +121,9 @@ export function FileAccessChange({ licence, saved, live, onSave, disabled = fals
   return (
     <div className="space-y-3">
       <FileAccessChoice licence={licence} value={picked ?? saved} onChange={setPicked} disabled={disabled || saving} from={live ? saved : null} />
-      {live ? <p className="text-xs text-pretty text-muted-foreground">{t("oneWay")}</p> : null}
+      {/* Live, it only opens further, said while it can: one already as open as its licence allows is told why it stops there. */}
+      {live && (saved.mode === "private" || saved.mode === "embargo") ? <p className="text-xs text-pretty text-muted-foreground">{t("oneWay")}</p> : null}
+      {live && saved.mode === "readers" ? <p className="text-xs text-pretty text-muted-foreground">{t("readersMost")}</p> : null}
       <AutoHeight>
         {changed ? (
           <div className="flex justify-end gap-2 pt-1">

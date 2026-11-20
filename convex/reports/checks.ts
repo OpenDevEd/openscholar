@@ -15,7 +15,7 @@ import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
-import { CHECK_SAID, CHECK_WHERE, carries, doiIn, linkHref } from "../../lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, carries, doiIn, licenceName, linkHref } from "../../lib/reports/report";
 import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { storedBytes } from "./pdfBytes";
 import { alreadyPublished, decide, reportSays, type Candidate, type CheckModel, type Community } from "./published";
@@ -44,7 +44,7 @@ type Result = CheckResult & { model: string };
 
 /** One check's answer. A question goes to its model; Already published searches, then has its model compare. */
 async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string }, text: string, metadata: Metadata, communities: Community[], ours: Candidate[] | null): Promise<Result> {
-  const fill = (words: string) => words.replaceAll("{byline}", report.byline).replaceAll("{doi}", `https://doi.org/${report.doi}`);
+  const fill = (words: string) => words.replaceAll("{byline}", report.byline).replaceAll("{doi}", `https://doi.org/${report.doi}`).replaceAll("{licence}", licenceName(metadata.licence));
   const base = { checkId: check.id, name: check.name, model: on.name, blocking: check.blocking };
   // What to do about it, for the author, when it fails.
   const failed = check.fix?.trim() ? { fix: fill(check.fix) } : {};
@@ -153,7 +153,8 @@ export const run = action({
         const result = await (async (): Promise<Result> => {
           if (!modelId) throw new Error("its model is no longer offered");
           const { model, modelSlug } = await resolveOpenRouterModel(ctx, modelId);
-          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort, language }, started, text, metadata, communities, ours);
+          // Under the licence the report was signed with, which a request can't change.
+          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort, language }, started, text, { ...metadata, licence: started.licence }, communities, ours);
         })().catch((error: unknown): Result => {
           console.error(JSON.stringify({ event: "report-check-failed", reportId, check: check.id, error: String(error).slice(0, 500) }));
           // A check that can't answer holds the report for a person rather than pass it. Why it couldn't is the

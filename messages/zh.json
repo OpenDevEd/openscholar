@@ -365,7 +365,9 @@
     "accountConnect": "连接 Zenodo",
     "accountBroken": "Zenodo 不再接受你的连接。请重新连接。",
     "accountSandbox": "需要你自己的 Crossref 账户",
-    "accountSandboxHint": "存档到你账户中的记录会沿用本社区的 Crossref DOI，因此请用你自己的凭据开启 Crossref。沙盒中的测试 DOI 不能用于真实的 Zenodo 记录。"
+    "accountSandboxHint": "存档到你账户中的记录会沿用本社区的 Crossref DOI，因此请用你自己的凭据开启 Crossref。沙盒中的测试 DOI 不能用于真实的 Zenodo 记录。",
+    "archiveDoiHint": "Zenodo DOI：存档副本获得自己的 DOI。Crossref DOI：副本与记录共用 Crossref DOI。",
+    "accountCrossrefJoin": "如何加入 Crossref"
   },
   "auth": {
     "backToSearch": "返回搜索",
@@ -5978,7 +5980,8 @@
     "paperPage": "论文页面",
     "share": "分享",
     "inCommunities": "收录于这些社区",
-    "fieldAverage": "× 领域平均"
+    "fieldAverage": "× 领域平均",
+    "freeToRead": "可免费阅读"
   },
   "addedPapers": {
     "name": "已添加的论文",
@@ -6169,7 +6172,9 @@
         "working": "正在 Zenodo 存档",
         "done": "已在 Zenodo 存档",
         "failed": "Zenodo 拒绝了它",
-        "withdrawn": "已在 Zenodo 标记为撤回"
+        "withdrawn": "已在 Zenodo 标记为撤回",
+        "doneMine": "已存档到你的 Zenodo 账户",
+        "doneSigner": "已存档到签署人的 Zenodo 账户"
       },
       "crossref": {
         "waiting": "接下来提交 Crossref",
@@ -6236,7 +6241,9 @@
       "seeChanges": "查看您的修改",
       "correct": "更正信息",
       "takeDownTitle": "撤下报告",
-      "openDoi": "打开 DOI {doi}"
+      "openDoi": "打开 DOI {doi}",
+      "filePrivate": "PDF 不公开",
+      "fileUntil": "PDF 在 {date} 前不公开"
     },
     "stages": {
       "draft": "草稿",
@@ -6676,6 +6683,10 @@
             "name": "无仇恨言论或骚扰",
             "fix": "删除攻击他人的段落，然后重新上传 PDF。"
           },
+          "rights": {
+            "name": "权利声明与许可一致",
+            "fix": "删除或修改 PDF 中的权利声明，使其写明 {licence}，然后重新上传 PDF。"
+          },
           "research": {
             "name": "是研究而非广告",
             "fix": "Openscholar Reports 发表研究。如果你的作品是研究，请申请审核并说明检查遗漏了什么。"
@@ -6948,7 +6959,9 @@
         "confirm": "更改",
         "confirmTitle": "更改谁能获得文件？",
         "confirmLive": "读者可以保留已获得的文件，因此此操作无法撤销：从现在起文件只能进一步开放。Zenodo 和 Crossref 也会更新。",
-        "confirmBefore": "目前尚未公开任何内容：此设置在报告上线时生效，在此之前可以更改。"
+        "confirmBefore": "目前尚未公开任何内容：此设置在报告上线时生效，在此之前可以更改。",
+        "until": "{date} 前不公开",
+        "readersMost": "其许可不允许任何人分享，因此最多只有 Openscholar 的读者能获得该文件。"
       },
       "archive": {
         "label": "存档",
@@ -6966,7 +6979,8 @@
           "why": "DOI 必须始终指向报告。注册 DOI 的 Crossref 要求在存档中保留永久副本，Zenodo 负责保存。",
           "same": "无论存档在哪里，报告都保留其 Crossref DOI。",
           "policies": "Zenodo 如何保存记录"
-        }
+        },
+        "signers": "签署人的 Zenodo 账户"
       }
     },
     "meta": {

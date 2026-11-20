@@ -26,14 +26,18 @@ export function standingOf(report: Registered): RegistrationStep {
   return steps.find((step) => step.state === "failed") ?? steps.find((step) => step.state !== "done") ?? steps.at(-1)!;
 }
 
-/** Each registration as a chip, in the order they happen. */
-export function RegistrationChips({ report, withdrawn = false }: { report: Registered; withdrawn?: boolean }) {
+/**
+ * Each registration as a chip, in the order they happen. `own` names whose Zenodo account holds its copy, when it is
+ * the author's own: "Archived on Zenodo" alone left them unsure it went there.
+ */
+export function RegistrationChips({ report, withdrawn = false, own }: { report: Registered; withdrawn?: boolean; own?: "mine" | "signer" }) {
   const stepWords = useStepWords();
+  const t = useTranslations("publishReports.registration");
   return (
     <>
       {stepsOf(report).map((step) => (
         <StatusChip key={step.provider} tone={withdrawn && step.state === "done" ? "neutral" : stepTone(step)} icon="tone">
-          {stepWords(step, withdrawn)}
+          {own && step.provider === "zenodo" && step.state === "done" && !withdrawn ? t(own === "mine" ? "zenodo.doneMine" : "zenodo.doneSigner") : stepWords(step, withdrawn)}
         </StatusChip>
       ))}
     </>

@@ -39,7 +39,8 @@ export const get = query({
       // A file its readers can't have yet has no address here, so its page offers none and report.pdf answers not found.
       pdfUrl: report.pdf && readersGetFile(report) ? await ctx.storage.getUrl(report.pdf.file) : null,
       fileAccess: fileAccessOf(licenceOf(report), report.fileAccess),
-      coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
+      // The cover is a picture of the PDF's first page: shown only to those who may have the PDF.
+      coverUrl: report.cover && readersGetFile(report) ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && readersGetFile(report) && { coverShape: report.cover.shape }),
       updatedAt: report.updatedAt,
     };
   },

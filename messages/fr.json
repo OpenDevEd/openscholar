@@ -365,7 +365,9 @@
     "accountConnect": "Connecter Zenodo",
     "accountBroken": "Zenodo n’accepte plus votre connexion. Connectez-le à nouveau.",
     "accountSandbox": "Nécessite votre propre compte Crossref",
-    "accountSandboxHint": "Les fiches archivées dans votre compte gardent le DOI Crossref de cette communauté : activez donc Crossref avec vos propres identifiants. Les DOI de test du bac à sable ne peuvent pas aller sur de vraies fiches Zenodo."
+    "accountSandboxHint": "Les fiches archivées dans votre compte gardent le DOI Crossref de cette communauté : activez donc Crossref avec vos propres identifiants. Les DOI de test du bac à sable ne peuvent pas aller sur de vraies fiches Zenodo.",
+    "archiveDoiHint": "DOI Zenodo : la copie archivée reçoit son propre DOI. DOI Crossref : la copie partage le DOI Crossref de la fiche.",
+    "accountCrossrefJoin": "Comment rejoindre Crossref"
   },
   "auth": {
     "backToSearch": "Retour à la recherche",
@@ -5978,7 +5980,8 @@
     "paperPage": "Page de l’article",
     "share": "Partager",
     "inCommunities": "Dans ces communautés",
-    "fieldAverage": "× moyenne du domaine"
+    "fieldAverage": "× moyenne du domaine",
+    "freeToRead": "En libre accès"
   },
   "addedPapers": {
     "name": "Articles ajoutés",
@@ -6169,7 +6172,9 @@
         "working": "Archivage sur Zenodo",
         "done": "Archivé sur Zenodo",
         "failed": "Zenodo l'a refusé",
-        "withdrawn": "Marqué comme retiré sur Zenodo"
+        "withdrawn": "Marqué comme retiré sur Zenodo",
+        "doneMine": "Archivé dans votre compte Zenodo",
+        "doneSigner": "Archivé dans le compte Zenodo du signataire"
       },
       "crossref": {
         "waiting": "Crossref à venir",
@@ -6236,7 +6241,9 @@
       "seeChanges": "Voir vos modifications",
       "correct": "Corriger les informations",
       "takeDownTitle": "Faire retirer le rapport",
-      "openDoi": "Ouvrir le DOI {doi}"
+      "openDoi": "Ouvrir le DOI {doi}",
+      "filePrivate": "PDF privé",
+      "fileUntil": "PDF privé jusqu'au {date}"
     },
     "stages": {
       "draft": "Brouillon",
@@ -6676,6 +6683,10 @@
             "name": "Ni discours haineux ni harcèlement",
             "fix": "Retirez les passages qui s'en prennent à des personnes, puis téléversez à nouveau le PDF."
           },
+          "rights": {
+            "name": "Droits conformes à la licence",
+            "fix": "Retirez ou modifiez la mention de droits du PDF pour qu'elle indique {licence}, puis téléversez de nouveau le PDF."
+          },
           "research": {
             "name": "De la recherche, pas de la publicité",
             "fix": "Openscholar Reports publie de la recherche. Si votre document en est, demandez une relecture et indiquez ce que la vérification a manqué."
@@ -6948,7 +6959,9 @@
         "confirm": "Le changer",
         "confirmTitle": "Changer qui reçoit le fichier ?",
         "confirmLive": "Les lecteurs peuvent garder un fichier qu’ils ont eu, donc ce choix est définitif : le fichier ne pourra plus que s’ouvrir davantage. Zenodo et Crossref sont mis à jour aussi.",
-        "confirmBefore": "Rien n’est encore public : ce choix s’applique quand le rapport est mis en ligne, et peut changer d’ici là."
+        "confirmBefore": "Rien n’est encore public : ce choix s’applique quand le rapport est mis en ligne, et peut changer d’ici là.",
+        "until": "Privé jusqu'au {date}",
+        "readersMost": "Sa licence ne permet pas à tout le monde de le partager : au plus, les lecteurs d'Openscholar peuvent avoir le fichier."
       },
       "archive": {
         "label": "Archive",
@@ -6966,7 +6979,8 @@
           "why": "Un DOI doit mener au rapport pour toujours. Crossref, qui enregistre le DOI, demande une copie permanente dans une archive, et Zenodo la conserve.",
           "same": "Le rapport garde son DOI Crossref, où qu’il soit archivé.",
           "policies": "Comment Zenodo conserve les fiches"
-        }
+        },
+        "signers": "Le compte Zenodo du signataire"
       }
     },
     "meta": {
