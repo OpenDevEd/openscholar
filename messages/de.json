@@ -6987,6 +6987,8 @@
         "connectFirst": "Verbinden Sie Ihr Zenodo-Konto, um den Bericht dort aufzubewahren.",
         "connect": "Zenodo verbinden",
         "broken": "Zenodo akzeptiert Ihre Verbindung nicht mehr. Verbinden Sie es erneut.",
+        "refusedReconnect": "Zenodo akzeptiert deine Verbindung nicht mehr, daher ist der Bericht noch nicht in deinem Konto. Verbinde es erneut, dann kommt er dorthin.",
+        "refusedTeam": "Zenodo hat die Kopie in deinem Konto abgelehnt. Das Openscholar-Team ist informiert und sendet sie erneut.",
         "help": {
           "about": "Warum Berichte archiviert werden",
           "title": "Warum ein Bericht archiviert wird",

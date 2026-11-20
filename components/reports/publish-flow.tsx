@@ -59,7 +59,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { ANOTHER, LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
-import { ArchiveChoice } from "@/components/reports/archive-choice";
+import { ArchiveChoice, OwnArchiveRefused } from "@/components/reports/archive-choice";
 import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { FileAccessChange, FileAccessChoice, embargoProblem } from "@/components/reports/file-access-choice";
@@ -2684,6 +2684,8 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
         {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
         <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
+        {/* Its copy refused in the author's own Zenodo account: "Zenodo refused it" alone left them with nothing to do. */}
+        <AutoHeight>{report.archiveIn === "mine" && report.archive === "failed" ? <OwnArchiveRefused /> : null}</AutoHeight>
       </motion.div>
       {/* Who gets its PDF, which those who may change the report change here as on its agreement: its registrars take it again. */}
       {report.mayChange ? (

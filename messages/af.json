@@ -6987,6 +6987,8 @@
         "connectFirst": "Koppel jou Zenodo-rekening om die verslag daar te bewaar.",
         "connect": "Koppel Zenodo",
         "broken": "Zenodo aanvaar nie meer jou koppeling nie. Koppel dit weer.",
+        "refusedReconnect": "Zenodo het opgehou om jou verbinding te aanvaar, so die verslag is nog nie in jou rekening nie. Verbind dit weer en dit gaan soontoe.",
+        "refusedTeam": "Zenodo het die kopie in jou rekening geweier. Openscholar se span is ingelig en sal dit weer stuur.",
         "help": {
           "about": "Waarom verslae geargiveer word",
           "title": "Waarom 'n verslag geargiveer word",

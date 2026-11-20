@@ -6986,6 +6986,8 @@
         "connectFirst": "Connectez votre compte Zenodo pour y conserver le rapport.",
         "connect": "Connecter Zenodo",
         "broken": "Zenodo n’accepte plus votre connexion. Connectez-le à nouveau.",
+        "refusedReconnect": "Zenodo n’accepte plus votre connexion : le rapport n’est pas encore dans votre compte. Reconnectez-le et il y sera envoyé.",
+        "refusedTeam": "Zenodo a refusé la copie dans votre compte. L’équipe d’Openscholar est prévenue et la renverra.",
         "help": {
           "about": "Pourquoi les rapports sont archivés",
           "title": "Pourquoi un rapport est archivé",

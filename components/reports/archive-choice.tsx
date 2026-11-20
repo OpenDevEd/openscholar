@@ -5,7 +5,7 @@
 // way the report keeps its Crossref DOI. The "?" says why there is an archive at all.
 
 import { ZenodoMark } from "@/components/icons/zenodo-mark";
-import { useId } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -15,10 +15,52 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CircleHelp, ExternalLink, PersonIcon } from "@/components/icons";
 import { LogoMark } from "@/components/logo";
 import { EASE } from "@/components/ui/opening";
-import type { ZenodoAccount } from "@/lib/zenodo/account";
+import { useConnectZenodo, useZenodoAccount, type ZenodoAccount } from "@/lib/zenodo/account";
 import { cn } from "@/lib/utils";
 
 export type Archive = "openscholar" | "own";
+
+/** Why their Zenodo account is wanted, beside the button that connects it: under the archive choice, and on a live report its own account refused. */
+function ConnectZenodoBox({ id, invalid = false, disabled = false, onConnect, children }: { /** The button's, for a step's Next to take the person to. */ id?: string; invalid?: boolean; disabled?: boolean; onConnect: () => void; children: ReactNode }) {
+  const t = useTranslations("publishReports.flow.archive");
+  return (
+    <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border bg-inset px-3.5 py-3", invalid ? "border-destructive" : "border-transparent")}>
+      <p id={id ? `${id}-why` : undefined} className={cn("min-w-0 flex-1 basis-56 text-sm text-pretty", invalid && "text-destructive")}>{children}</p>
+      <Button id={id} aria-describedby={id ? `${id}-why` : undefined} size="sm" className="relative" disabled={disabled} onClick={onConnect}>
+        <ZenodoMark className="size-4 rounded-[4px]" />
+        {t("connect")}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * A live report whose copy its author's own Zenodo account refused: why, and their way on. A connection Zenodo stopped
+ * taking is theirs to connect again, which sends the report there at once (convex/zenodo/connection.ts); anything else
+ * Openscholar's team hears of and sends again.
+ */
+export function OwnArchiveRefused() {
+  const t = useTranslations("publishReports.flow.archive");
+  const account = useZenodoAccount();
+  const connect = useConnectZenodo();
+  const [connecting, setConnecting] = useState(false);
+  if (account === undefined) return null;
+  if (account && !account.broken) return <p className="pt-3 text-xs text-muted-foreground">{t("refusedTeam")}</p>;
+  return (
+    <div className="pt-3">
+      <ConnectZenodoBox
+        disabled={connecting}
+        onConnect={() => {
+          // A window of its own, so the report's page stays as it is while Zenodo is connected.
+          setConnecting(true);
+          void connect(window.location.pathname + window.location.search, { window: true }).finally(() => setConnecting(false));
+        }}
+      >
+        {t("refusedReconnect")}
+      </ConnectZenodoBox>
+    </div>
+  );
+}
 
 export function ArchiveChoice({ value, onChange, account: held, onConnect, connecting = false, disabled = false, connectId, invalid = false }: { value: Archive; onChange: (archive: Archive) => void; /** The author's Zenodo account, null when none is connected. */ account: ZenodoAccount | null; /** Goes to Zenodo to connect it, and comes back here. */ onConnect: () => void; /** On its way to Zenodo. */ connecting?: boolean; disabled?: boolean; /** The Connect button, for the step's Next to take the person to. */ connectId?: string; /** Next was pressed with their own account picked and none connected. */ invalid?: boolean }) {
   const t = useTranslations("publishReports.flow.archive");
@@ -65,13 +107,9 @@ export function ArchiveChoice({ value, onChange, account: held, onConnect, conne
       <AutoHeight className="!mt-0">
         {value === "own" && !account ? (
           <div className="pt-3">
-            <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border bg-inset px-3.5 py-3", invalid ? "border-destructive" : "border-transparent")}>
-              <p id={connectId ? `${connectId}-why` : undefined} className={cn("min-w-0 flex-1 basis-56 text-sm text-pretty", invalid && "text-destructive")}>{t(held?.broken ? "broken" : "connectFirst")}</p>
-              <Button id={connectId} aria-describedby={connectId ? `${connectId}-why` : undefined} size="sm" className="relative" disabled={disabled || connecting} onClick={onConnect}>
-                <ZenodoMark className="size-4 rounded-[4px]" />
-                {t("connect")}
-              </Button>
-            </div>
+            <ConnectZenodoBox id={connectId} invalid={invalid} disabled={disabled || connecting} onConnect={onConnect}>
+              {t(held?.broken ? "broken" : "connectFirst")}
+            </ConnectZenodoBox>
           </div>
         ) : null}
       </AutoHeight>

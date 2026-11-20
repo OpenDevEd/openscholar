@@ -6987,6 +6987,8 @@
         "connectFirst": "Unganisha akaunti yako ya Zenodo ili kuhifadhi ripoti humo.",
         "connect": "Unganisha Zenodo",
         "broken": "Zenodo haikubali tena muunganisho wako. Iunganishe tena.",
+        "refusedReconnect": "Zenodo imeacha kukubali muunganisho wako, kwa hiyo ripoti bado haiko kwenye akaunti yako. Iunganishe tena nayo itaenda huko.",
+        "refusedTeam": "Zenodo imekataa nakala kwenye akaunti yako. Timu ya Openscholar imearifiwa na itaituma tena.",
         "help": {
           "about": "Kwa nini ripoti huhifadhiwa",
           "title": "Kwa nini ripoti inahifadhiwa",
