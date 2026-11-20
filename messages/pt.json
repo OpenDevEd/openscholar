@@ -6851,7 +6851,7 @@
       },
       "overview": {
         "title": "Publicar um relatório com {series}",
-        "intro": "Cerca de cinco minutos do início ao fim. Isto é o que cada passo lhe pede.",
+        "intro": "Cerca de cinco minutos do início ao fim. Se uma verificação apontar algo, um revisor olha primeiro, o que leva até três dias úteis. Isto é o que cada etapa pede de você.",
         "introReviewed": "Cerca de cinco minutos do seu tempo. Depois, um revisor aprova o relatório antes de ele poder ficar publicado, e é avisado por e-mail.",
         "start": "Assinar o acordo",
         "agreement": {
