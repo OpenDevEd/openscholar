@@ -20,7 +20,7 @@ const DIGEST = `sha256:${"c".repeat(64)}`;
 const IMAGE = `ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`;
 const GITHUB = "https://api.github.com";
 const GHCR = "https://ghcr.io";
-const REPO = "/repos/Openscholar-ai/evidence-community";
+const REPO = "/repos/OpenDevEd/evidence-community";
 // A release body as new-el writes it: summary, notes, then the image line.
 const LATEST_NOTES = [
   "Import problems are easier to manage.",

@@ -19,7 +19,7 @@ import {
 import { MAX_RELEASES, MAX_RELEASE_CHANGES as MAX_CHANGES, MAX_RELEASE_NOTES as MAX_NOTES } from "../lib/listCaps";
 
 const GITHUB_ORIGIN = "https://api.github.com";
-const RUNTIME_REPOSITORY = "Openscholar-ai/evidence-community";
+const RUNTIME_REPOSITORY = "OpenDevEd/evidence-community";
 const RUNTIME_RELEASE_TAG = /^runtime-([a-f0-9]{40})$/u;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
