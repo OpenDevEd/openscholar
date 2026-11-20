@@ -163,7 +163,20 @@ function OwnZenodoAccount({ testCrossref }: { testCrossref: boolean }) {
   const account = useZenodoAccount();
   const connect = useConnectZenodo();
   const usable = account && !account.broken ? account : null;
-  if (testCrossref) return <PanelRow title={t("accountSandbox")} hint={t("accountSandboxHint")} leading={<ZenodoMark className="size-8 rounded-lg opacity-60" />} />;
+  if (testCrossref)
+    return (
+      <PanelRow
+        title={t("accountSandbox")}
+        hint={t("accountSandboxHint")}
+        leading={<ZenodoMark className="size-8 rounded-lg opacity-60" />}
+        // Where its own Crossref account comes from: the one thing it still needs.
+        action={
+          <a className="text-xs text-primary hover:underline" href="https://www.crossref.org/membership/" target="_blank" rel="noreferrer">
+            {t("accountCrossrefJoin")}
+          </a>
+        }
+      />
+    );
   return usable ? (
     <PanelRow
       title={usable.name ?? "Zenodo"}
@@ -216,23 +229,30 @@ export function PublicationForm({
   const [credentials, setCredentials] = useState<PublicationSecrets>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A refusal is about the settings it was given: any change leaves it behind, so it never stays over ones it isn't about.
+  const change: typeof setSettings = (next) => {
+    setError(null);
+    setSettings(next);
+  };
   const zenodo = settings.zenodo.mode !== "off";
   const crossref = settings.crossref.mode !== "off";
   const dirty =
     JSON.stringify(settings) !== JSON.stringify(saved.settings) ||
     Object.values(credentials).some(Boolean);
   const updateZenodo = (patch: Partial<PublicationSettings["zenodo"]>) =>
-    setSettings((current) => ({
+    change((current) => ({
       ...current,
       zenodo: { ...current.zenodo, ...patch },
     }));
   const updateCrossref = (patch: Partial<PublicationSettings["crossref"]>) =>
-    setSettings((current) => ({
+    change((current) => ({
       ...current,
       crossref: { ...current.crossref, ...patch },
     }));
-  const credential = (key: keyof PublicationSecrets, value: string) =>
+  const credential = (key: keyof PublicationSecrets, value: string) => {
+    setError(null);
     setCredentials((current) => ({ ...current, [key]: value }));
+  };
   const storedHint = saved.updatedAt ? t("storedHint") : undefined;
   async function verify() {
     if (busy || disabled) return;
@@ -360,7 +380,7 @@ export function PublicationForm({
                 </Field> : null}
                 {/* A copy in the community's own account always keeps its Crossref DOI. */}
                 {settings.zenodo.mode !== "own" && (
-                  <Field label={t("archiveDoi")}>
+                  <Field label={t("archiveDoi")} hint={t("archiveDoiHint")}>
                     {(id) => (
                       <Select
                         value={settings.zenodo.defaultIdentifierPolicy}
@@ -409,7 +429,7 @@ export function PublicationForm({
               aria-label={t("enableCrossref")}
               checked={crossref}
               onCheckedChange={(enabled) =>
-                setSettings((current) => ({
+                change((current) => ({
                   ...current,
                   crossref: {
                     ...current.crossref,

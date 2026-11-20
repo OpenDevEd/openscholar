@@ -365,7 +365,9 @@
     "accountConnect": "Conectar o Zenodo",
     "accountBroken": "O Zenodo deixou de aceitar sua conexão. Conecte-o novamente.",
     "accountSandbox": "Precisa da sua própria conta do Crossref",
-    "accountSandboxHint": "Os registros arquivados na sua conta mantêm o DOI do Crossref desta comunidade, então ative o Crossref com suas próprias credenciais. DOIs de teste do sandbox não podem ir para registros reais do Zenodo."
+    "accountSandboxHint": "Os registros arquivados na sua conta mantêm o DOI do Crossref desta comunidade, então ative o Crossref com suas próprias credenciais. DOIs de teste do sandbox não podem ir para registros reais do Zenodo.",
+    "archiveDoiHint": "DOI do Zenodo: a cópia arquivada recebe um DOI próprio. DOI do Crossref: a cópia compartilha o DOI do Crossref do registro.",
+    "accountCrossrefJoin": "Como entrar no Crossref"
   },
   "auth": {
     "backToSearch": "Voltar à pesquisa",
@@ -5979,7 +5981,8 @@
     "paperPage": "Página do artigo",
     "share": "Compartilhar",
     "inCommunities": "Nestas comunidades",
-    "fieldAverage": "× média do campo"
+    "fieldAverage": "× média do campo",
+    "freeToRead": "Gratuito para ler"
   },
   "addedPapers": {
     "name": "Artigos adicionados",
@@ -6170,7 +6173,9 @@
         "working": "A arquivar no Zenodo",
         "done": "Arquivado no Zenodo",
         "failed": "O Zenodo recusou-o",
-        "withdrawn": "Marcado como retirado no Zenodo"
+        "withdrawn": "Marcado como retirado no Zenodo",
+        "doneMine": "Arquivado na sua conta do Zenodo",
+        "doneSigner": "Arquivado na conta do Zenodo de quem assinou"
       },
       "crossref": {
         "waiting": "Crossref a seguir",
@@ -6237,7 +6242,9 @@
       "seeChanges": "Ver as suas alterações",
       "correct": "Corrigir os dados",
       "takeDownTitle": "Retirar o relatório",
-      "openDoi": "Abrir o DOI {doi}"
+      "openDoi": "Abrir o DOI {doi}",
+      "filePrivate": "PDF privado",
+      "fileUntil": "PDF privado até {date}"
     },
     "stages": {
       "draft": "Rascunho",
@@ -6949,7 +6956,9 @@
         "confirm": "Mudar",
         "confirmTitle": "Mudar quem recebe o arquivo?",
         "confirmLive": "Os leitores podem manter um arquivo que já tiveram, então isto não pode ser desfeito: a partir de agora o arquivo só poderá abrir mais. O Zenodo e o Crossref também são atualizados.",
-        "confirmBefore": "Nada é público ainda: isto vale quando o relatório entrar no ar e pode mudar até lá."
+        "confirmBefore": "Nada é público ainda: isto vale quando o relatório entrar no ar e pode mudar até lá.",
+        "until": "Privado até {date}",
+        "readersMost": "A licença não permite que qualquer pessoa o compartilhe, então no máximo os leitores do Openscholar podem ter o arquivo."
       },
       "archive": {
         "label": "Arquivo",
@@ -6967,7 +6976,8 @@
           "why": "Um DOI precisa levar ao relatório para sempre. O Crossref, que registra o DOI, pede uma cópia permanente em um arquivo, e o Zenodo a guarda.",
           "same": "O relatório mantém seu DOI do Crossref onde quer que seja arquivado.",
           "policies": "Como o Zenodo guarda os registros"
-        }
+        },
+        "signers": "A conta do Zenodo de quem assinou"
       }
     },
     "meta": {

@@ -218,8 +218,9 @@ describe("a report's page", () => {
       // Live, its file only ever opens: anyone may have had it, so it can't be made private again.
       await expect(access({ mode: "private" })).rejects.toThrow(/only open further/);
       // Signed private, it is private on its page and to communities.
-      await world.t.run((ctx) => ctx.db.patch("reports", reportId, { fileAccess: { mode: "private" } }));
-      expect(await page()).toMatchObject({ pdfUrl: null, fileAccess: { mode: "private" } });
+      // Its cover is a picture of the PDF's first page, held back with the PDF.
+      await world.t.run(async (ctx) => ctx.db.patch("reports", reportId, { fileAccess: { mode: "private" }, cover: { file: await ctx.storage.store(new Blob(["first page"])), at: 1 } }));
+      expect(await page()).toMatchObject({ pdfUrl: null, coverUrl: null, fileAccess: { mode: "private" } });
       expect(await community("community-1")).toMatchObject({ hasPdf: false });
 
       await access({ mode: "embargo", until: "2026-11-21" });
@@ -227,7 +228,7 @@ describe("a report's page", () => {
       expect(await world.t.mutation(internal.reports.fileAccess.openEmbargoes, {})).toBe(0);
       vi.setSystemTime(new Date("2026-11-21T00:30:00Z"));
       expect(await world.t.mutation(internal.reports.fileAccess.openEmbargoes, {})).toBe(1);
-      expect(await page()).toMatchObject({ pdfUrl: expect.any(String), fileAccess: { mode: "open" } });
+      expect(await page()).toMatchObject({ pdfUrl: expect.any(String), coverUrl: expect.any(String), fileAccess: { mode: "open" } });
       expect(await community("community-1")).toMatchObject({ hasPdf: true });
 
       // Under the author's own licence that isn't open, readers here get the file, and a community only once agreed.

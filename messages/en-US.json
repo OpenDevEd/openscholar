@@ -365,7 +365,9 @@
     "accountConnect": "Connect Zenodo",
     "accountBroken": "Zenodo stopped accepting your connection. Connect it again.",
     "accountSandbox": "Needs your own Crossref account",
-    "accountSandboxHint": "Records archived in your account keep this community's Crossref DOI, so turn on Crossref with your own credentials. Test DOIs from the sandbox can't go on real Zenodo records."
+    "accountSandboxHint": "Records archived in your account keep this community's Crossref DOI, so turn on Crossref with your own credentials. Test DOIs from the sandbox can't go on real Zenodo records.",
+    "archiveDoiHint": "Zenodo DOI: the archived copy gets a DOI of its own. Crossref DOI: the copy shares the record's Crossref DOI.",
+    "accountCrossrefJoin": "How to join Crossref"
   },
   "auth": {
     "backToSearch": "Back to search",
@@ -5978,7 +5980,8 @@
     "paperPage": "Paper page",
     "share": "Share",
     "inCommunities": "In these communities",
-    "fieldAverage": "× field average"
+    "fieldAverage": "× field average",
+    "freeToRead": "Free to read"
   },
   "addedPapers": {
     "name": "Added papers",
@@ -6169,7 +6172,9 @@
         "working": "Archiving on Zenodo",
         "done": "Archived on Zenodo",
         "failed": "Zenodo refused it",
-        "withdrawn": "Marked withdrawn on Zenodo"
+        "withdrawn": "Marked withdrawn on Zenodo",
+        "doneMine": "Archived in your Zenodo account",
+        "doneSigner": "Archived in the signer's Zenodo account"
       },
       "crossref": {
         "waiting": "Crossref next",
@@ -6236,7 +6241,9 @@
       "seeChanges": "See your changes",
       "correct": "Correct the details",
       "takeDownTitle": "Taking it down",
-      "openDoi": "Open the DOI {doi}"
+      "openDoi": "Open the DOI {doi}",
+      "filePrivate": "PDF private",
+      "fileUntil": "PDF private until {date}"
     },
     "stages": {
       "draft": "Draft",
@@ -6948,7 +6955,9 @@
         "confirm": "Change it",
         "confirmTitle": "Change who gets the file?",
         "confirmLive": "Readers may keep a file once they have had it, so this can't be undone: from now on the file can only open further. Zenodo and Crossref are updated too.",
-        "confirmBefore": "Nothing is public yet: this applies once the report goes live, and can change until then."
+        "confirmBefore": "Nothing is public yet: this applies once the report goes live, and can change until then.",
+        "until": "Private until {date}",
+        "readersMost": "Its license doesn't let anyone share it, so Openscholar's readers are the most who can have the file."
       },
       "archive": {
         "label": "Archive",
@@ -6966,7 +6975,8 @@
           "why": "A DOI has to lead to the report for good. Crossref, which registers the DOI, asks for a permanent copy in an archive, and Zenodo keeps it.",
           "same": "The report keeps its Crossref DOI wherever it is archived.",
           "policies": "How Zenodo keeps records"
-        }
+        },
+        "signers": "The signer's Zenodo account"
       }
     },
     "meta": {

@@ -365,7 +365,9 @@
     "accountConnect": "Xhuma i-Zenodo",
     "accountBroken": "I-Zenodo ayisakwamukeli ukuxhumana kwakho. Phinda uyixhume.",
     "accountSandbox": "Idinga i-akhawunti yakho ye-Crossref",
-    "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo."
+    "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo.",
+    "archiveDoiHint": "I-DOI ye-Zenodo: ikhophi egciniwe ithola i-DOI yayo. I-DOI ye-Crossref: ikhophi isebenzisa i-DOI ye-Crossref yerekhodi.",
+    "accountCrossrefJoin": "Indlela yokujoyina i-Crossref"
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",
@@ -5978,7 +5980,8 @@
     "paperPage": "Ikhasi lephepha",
     "share": "Yabelana",
     "inCommunities": "Kule mimphakathi",
-    "fieldAverage": "× isilinganiso somkhakha"
+    "fieldAverage": "× isilinganiso somkhakha",
+    "freeToRead": "Mahhala ukufunda"
   },
   "addedPapers": {
     "name": "Amaphepha engeziwe",
@@ -6169,7 +6172,9 @@
         "working": "Kugcinwa ku-Zenodo",
         "done": "Kugcinwe ku-Zenodo",
         "failed": "I-Zenodo iwenqabile",
-        "withdrawn": "Kubhalwe njengokuhoxisiwe ku-Zenodo"
+        "withdrawn": "Kubhalwe njengokuhoxisiwe ku-Zenodo",
+        "doneMine": "Kugcinwe ku-akhawunti yakho ye-Zenodo",
+        "doneSigner": "Kugcinwe ku-akhawunti ye-Zenodo yalowo osayinile"
       },
       "crossref": {
         "waiting": "I-Crossref ilandela",
@@ -6236,7 +6241,9 @@
       "seeChanges": "Bona izinguquko zakho",
       "correct": "Lungisa imininingwane",
       "takeDownTitle": "Ukuwususa",
-      "openDoi": "Vula i-DOI {doi}"
+      "openDoi": "Vula i-DOI {doi}",
+      "filePrivate": "I-PDF iyimfihlo",
+      "fileUntil": "I-PDF iyimfihlo kuze kube ngu-{date}"
     },
     "stages": {
       "draft": "Uhlaka",
@@ -6948,7 +6955,9 @@
         "confirm": "Kushintshe",
         "confirmTitle": "Shintsha ukuthi ubani othola ifayela?",
         "confirmLive": "Abafundi bangagcina ifayela abake baba nalo, ngakho lokhu akunakuhlehliswa: kusukela manje ifayela lingavuleka kakhulu kuphela. I-Zenodo ne-Crossref nazo ziyabuyekezwa.",
-        "confirmBefore": "Akukho okusobala okwamanje: lokhu kusebenza uma umbiko uba ku-inthanethi, futhi kungashintsha kuze kube yileso sikhathi."
+        "confirmBefore": "Akukho okusobala okwamanje: lokhu kusebenza uma umbiko uba ku-inthanethi, futhi kungashintsha kuze kube yileso sikhathi.",
+        "until": "Okuyimfihlo kuze kube ngu-{date}",
+        "readersMost": "Ilayisense yayo ayivumeli noma ubani ukwabelana ngayo, ngakho abafundi be-Openscholar yibo abaningi abangathola ifayela."
       },
       "archive": {
         "label": "Inqolobane",
@@ -6966,7 +6975,8 @@
           "why": "I-DOI kumele iholele embikweni unomphela. I-Crossref, ebhalisa i-DOI, icela ikhophi engapheli enqolobaneni, futhi i-Zenodo iyayigcina.",
           "same": "Umbiko ugcina i-DOI yawo ye-Crossref noma ngabe ugcinwe kuphi.",
           "policies": "Indlela i-Zenodo egcina ngayo amarekhodi"
-        }
+        },
+        "signers": "I-akhawunti ye-Zenodo yalowo osayinile"
       }
     },
     "meta": {

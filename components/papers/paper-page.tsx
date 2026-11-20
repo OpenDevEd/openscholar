@@ -60,7 +60,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** What a report published on Openscholar has beyond a paper's record: sections under the authors and in the sidebar, its PDF's cover, and what only its workspace does. */
-  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; /** The report's cover's width over its height, when kept. */ coverShape?: number | null; actions?: ReactNode; /** The licence its author chose, which may be their own. */ licence?: { name: string; url: string } };
+  extra?: { main?: ReactNode; side?: ReactNode; /** Under the cover: a report's PDF held back. */ fileNote?: ReactNode; cover?: string | null; /** The report's cover's width over its height, when kept. */ coverShape?: number | null; actions?: ReactNode; /** The licence its author chose, which may be their own. */ licence?: { name: string; url: string } };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -103,22 +103,24 @@ export function PaperPage({ paper, id, detail, lists, communities: read, copyKey
       <header className="relative isolate overflow-hidden p-5 sm:p-8">
         <IntroGlow rings={false} />
         <div className="grid gap-6 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
-          <PaperCover
-            className="w-28 sm:w-auto sm:self-start"
-            kind={look.kind}
-            ink={look.ink}
-            title={title}
-            authors={detail.authors.map((author) => author.name)}
-            source={detail.journal?.name ?? detail.publisher}
-            year={paper.publication_year ?? null}
-            type={paper.type ?? null}
-            // A community's picture of its PDF's first page opens that PDF.
-            // An Openscholar Report wears the cover Openscholar made of its own PDF.
-            image={extra?.cover ?? communityCover?.cover ?? null}
-            shape={extra?.cover ? (extra.coverShape ?? null) : null}
-            href={communityCover?.pdf ?? pdf ?? doi}
-            pdf={!!communityCover?.pdf || !!pdf}
-          />
+          <div className="w-28 sm:w-auto sm:self-start">
+            <PaperCover
+              kind={look.kind}
+              ink={look.ink}
+              title={title}
+              authors={detail.authors.map((author) => author.name)}
+              source={detail.journal?.name ?? detail.publisher}
+              year={paper.publication_year ?? null}
+              type={paper.type ?? null}
+              // A community's picture of its PDF's first page opens that PDF.
+              // An Openscholar Report wears the cover Openscholar made of its own PDF.
+              image={extra?.cover ?? communityCover?.cover ?? null}
+              shape={extra?.cover ? (extra.coverShape ?? null) : null}
+              href={communityCover?.pdf ?? pdf ?? doi}
+              pdf={!!communityCover?.pdf || !!pdf}
+            />
+            {extra?.fileNote}
+          </div>
           <div className="flex min-w-0 flex-col">
             <HeaderChips paper={paper} detail={detail} licence={extra?.licence} />
             {/* The bar's heading is the title; this is the title at reading size. */}
@@ -332,7 +334,8 @@ function HeaderChips({ paper, detail, licence }: { paper: PaperResult; detail: P
       {detail.retracted ? <span className={`${CHIP} bg-destructive/10 text-destructive`}><TriangleAlert aria-hidden className="size-3.5" />{t("retracted")}</span> : null}
       {dated || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{dated ? format.dateTime(dated.at, dateStyleOf(dated.parts, "short")) : paper.publication_year}</span> : null}
       {paper.type ? <span className={CHIP}><FileText aria-hidden className="size-3.5" />{workType(paper.type)}</span> : null}
-      {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
+      {/* Bronze is free to read without a licence that lets anyone share it: "Open access" read as leave to pass it on. */}
+      {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t(paper.open_access.oa_status === "bronze" ? "freeToRead" : "openAccess")}</span> : null}
       {license?.url ? (
         <a href={license.url} target="_blank" rel="noreferrer license" className={`${CHIP} hover:text-foreground`}>{license.name}</a>
       ) : license ? (

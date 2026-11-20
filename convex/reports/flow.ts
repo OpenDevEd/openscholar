@@ -654,7 +654,11 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanRev
     ...((report.title ?? report.pdf?.name) && { title: report.title ?? report.pdf?.name }),
     withdrawn: report.withdrawnAt !== undefined,
     signer: report.signedBy.name,
-    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
+    // A picture of the PDF's first page: for those who may have the PDF, as the PDF's address is.
+    ...(await (async () => {
+      const seen = report.cover && (mayChange(actor, report) || readersGetFile(report));
+      return { coverUrl: seen ? await ctx.storage.getUrl(report.cover!.file) : null, ...(seen && report.cover!.shape && { coverShape: report.cover!.shape }) };
+    })()),
     mine: mayChange(actor, report),
   };
 }
@@ -765,6 +769,8 @@ const reportValidator = v.object({
   licence: licenceValidator,
   /** Who may get its PDF under that licence, and whether the person reading may change it. */
   fileAccess: fileAccessValidator,
+  /** Where its copy is archived: Openscholar's Zenodo account, the reader's own, or its signer's, someone else. */
+  archiveIn: v.union(v.literal("openscholar"), v.literal("mine"), v.literal("signer")),
   mayChange: v.boolean(),
   /** The promotion code kept with it, with the share of what a card pays that it took off when last quoted. */
   voucher: v.optional(voucherValidator),
@@ -822,6 +828,7 @@ export const getAction = defineUserQuery({
         agreementVersion: report.agreementVersion,
         licence: licenceOf(report),
         fileAccess: fileAccessOf(licenceOf(report), report.fileAccess),
+        archiveIn: report.archiveOwnerId === undefined ? ("openscholar" as const) : report.archiveOwnerId === actor.userId ? ("mine" as const) : ("signer" as const),
         mayChange: mayChange(actor, report),
         ...(report.voucher && { voucher: { code: report.voucher, off: report.voucherOff ?? 0 } }),
         ...(report.payWith && { payWith: report.payWith }),

@@ -365,7 +365,9 @@
     "accountConnect": "Unganisha Zenodo",
     "accountBroken": "Zenodo haikubali tena muunganisho wako. Iunganishe tena.",
     "accountSandbox": "Inahitaji akaunti yako ya Crossref",
-    "accountSandboxHint": "Rekodi zinazohifadhiwa kwenye akaunti yako zinabaki na DOI ya Crossref ya jumuiya hii, kwa hivyo washa Crossref kwa vitambulisho vyako. DOI za majaribio za sandbox haziwezi kwenda kwenye rekodi halisi za Zenodo."
+    "accountSandboxHint": "Rekodi zinazohifadhiwa kwenye akaunti yako zinabaki na DOI ya Crossref ya jumuiya hii, kwa hivyo washa Crossref kwa vitambulisho vyako. DOI za majaribio za sandbox haziwezi kwenda kwenye rekodi halisi za Zenodo.",
+    "archiveDoiHint": "DOI ya Zenodo: nakala iliyohifadhiwa inapata DOI yake. DOI ya Crossref: nakala inatumia DOI ya Crossref ya rekodi.",
+    "accountCrossrefJoin": "Jinsi ya kujiunga na Crossref"
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",
@@ -5979,7 +5981,8 @@
     "paperPage": "Ukurasa wa makala",
     "share": "Shiriki",
     "inCommunities": "Katika jumuiya hizi",
-    "fieldAverage": "× wastani wa fani"
+    "fieldAverage": "× wastani wa fani",
+    "freeToRead": "Bure kusoma"
   },
   "addedPapers": {
     "name": "Makala zilizoongezwa",
@@ -6170,7 +6173,9 @@
         "working": "Inahifadhiwa kwenye Zenodo",
         "done": "Imehifadhiwa kwenye Zenodo",
         "failed": "Zenodo imeikataa",
-        "withdrawn": "Imerekodiwa kama iliyoondolewa kwenye Zenodo"
+        "withdrawn": "Imerekodiwa kama iliyoondolewa kwenye Zenodo",
+        "doneMine": "Imehifadhiwa kwenye akaunti yako ya Zenodo",
+        "doneSigner": "Imehifadhiwa kwenye akaunti ya Zenodo ya aliyesaini"
       },
       "crossref": {
         "waiting": "Crossref inafuata",
@@ -6237,7 +6242,9 @@
       "seeChanges": "Tazama mabadiliko yako",
       "correct": "Sahihisha maelezo",
       "takeDownTitle": "Kuiondoa",
-      "openDoi": "Fungua DOI {doi}"
+      "openDoi": "Fungua DOI {doi}",
+      "filePrivate": "PDF ni ya faragha",
+      "fileUntil": "PDF ni ya faragha hadi {date}"
     },
     "stages": {
       "draft": "Rasimu",
@@ -6949,7 +6956,9 @@
         "confirm": "Ibadilishe",
         "confirmTitle": "Kubadilisha nani anapata faili?",
         "confirmLive": "Wasomaji wanaweza kuweka faili waliyowahi kuwa nayo, kwa hivyo hili haliwezi kutenduliwa: kuanzia sasa faili inaweza tu kufunguka zaidi. Zenodo na Crossref zinasasishwa pia.",
-        "confirmBefore": "Hakuna kilicho wazi bado: hili linatumika ripoti ikiwa hewani, na linaweza kubadilika hadi wakati huo."
+        "confirmBefore": "Hakuna kilicho wazi bado: hili linatumika ripoti ikiwa hewani, na linaweza kubadilika hadi wakati huo.",
+        "until": "Faragha hadi {date}",
+        "readersMost": "Leseni yake hairuhusu mtu yeyote kuishiriki, kwa hivyo wasomaji wa Openscholar ndio wengi zaidi wanaoweza kupata faili."
       },
       "archive": {
         "label": "Hifadhi",
@@ -6967,7 +6976,8 @@
           "why": "DOI lazima ielekeze kwenye ripoti milele. Crossref, inayosajili DOI, inaomba nakala ya kudumu katika hifadhi, na Zenodo inaitunza.",
           "same": "Ripoti inabaki na DOI yake ya Crossref popote inapohifadhiwa.",
           "policies": "Jinsi Zenodo inavyohifadhi rekodi"
-        }
+        },
+        "signers": "Akaunti ya Zenodo ya aliyesaini"
       }
     },
     "meta": {

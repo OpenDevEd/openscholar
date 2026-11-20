@@ -365,7 +365,9 @@
     "accountConnect": "Zenodo を接続",
     "accountBroken": "Zenodo が接続を受け付けなくなりました。もう一度接続してください。",
     "accountSandbox": "自分の Crossref アカウントが必要です",
-    "accountSandboxHint": "あなたのアカウントにアーカイブされたレコードは、このコミュニティの Crossref DOI をそのまま使います。ご自身の認証情報で Crossref をオンにしてください。サンドボックスのテスト用 DOI を実際の Zenodo レコードに付けることはできません。"
+    "accountSandboxHint": "あなたのアカウントにアーカイブされたレコードは、このコミュニティの Crossref DOI をそのまま使います。ご自身の認証情報で Crossref をオンにしてください。サンドボックスのテスト用 DOI を実際の Zenodo レコードに付けることはできません。",
+    "archiveDoiHint": "Zenodo DOI：アーカイブされたコピーに独自の DOI が付きます。Crossref DOI：コピーはレコードの Crossref DOI を共有します。",
+    "accountCrossrefJoin": "Crossref への参加方法"
   },
   "auth": {
     "backToSearch": "検索に戻る",
@@ -5978,7 +5980,8 @@
     "paperPage": "論文ページ",
     "share": "共有",
     "inCommunities": "収録されているコミュニティ",
-    "fieldAverage": "× 分野平均"
+    "fieldAverage": "× 分野平均",
+    "freeToRead": "無料で読める"
   },
   "addedPapers": {
     "name": "追加した論文",
@@ -6169,7 +6172,9 @@
         "working": "Zenodo にアーカイブ中",
         "done": "Zenodo にアーカイブ済み",
         "failed": "Zenodo に拒否されました",
-        "withdrawn": "Zenodo で撤回済みと記録"
+        "withdrawn": "Zenodo で撤回済みと記録",
+        "doneMine": "あなたの Zenodo アカウントにアーカイブ済み",
+        "doneSigner": "署名者の Zenodo アカウントにアーカイブ済み"
       },
       "crossref": {
         "waiting": "次に Crossref へ",
@@ -6236,7 +6241,9 @@
       "seeChanges": "変更を見る",
       "correct": "詳細を修正",
       "takeDownTitle": "取り下げについて",
-      "openDoi": "DOI {doi} を開く"
+      "openDoi": "DOI {doi} を開く",
+      "filePrivate": "PDF は非公開",
+      "fileUntil": "PDF は {date} まで非公開"
     },
     "stages": {
       "draft": "下書き",
@@ -6948,7 +6955,9 @@
         "confirm": "変更する",
         "confirmTitle": "ファイルを受け取れる人を変更しますか?",
         "confirmLive": "読者は一度入手したファイルを保持できるため、この変更は取り消せません。今後ファイルはさらに公開する方向にしか変えられません。Zenodo と Crossref も更新されます。",
-        "confirmBefore": "まだ何も公開されていません。この設定はレポートの公開時に適用され、それまでは変更できます。"
+        "confirmBefore": "まだ何も公開されていません。この設定はレポートの公開時に適用され、それまでは変更できます。",
+        "until": "{date} まで非公開",
+        "readersMost": "このライセンスでは誰でも共有することはできないため、ファイルを受け取れるのは最大でも Openscholar の読者までです。"
       },
       "archive": {
         "label": "アーカイブ",
@@ -6966,7 +6975,8 @@
           "why": "DOI は常にレポートにたどり着く必要があります。DOI を登録する Crossref はアーカイブに恒久的なコピーを求めており、Zenodo がそれを保管します。",
           "same": "どこにアーカイブしても、レポートは Crossref の DOI を保ちます。",
           "policies": "Zenodo のレコード保管方法"
-        }
+        },
+        "signers": "署名者の Zenodo アカウント"
       }
     },
     "meta": {

@@ -2,18 +2,18 @@
 
 // A report's details that a paper's record has no place for, in the paper page's own sections (plans/publish-reports).
 import { parseAsInteger, useQueryState } from "nuqs";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { Section } from "@/components/papers/paper-page";
 import { Paged, pagerOf } from "@/components/settings/parts";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { CountryFlag } from "@/components/ui/country-flag";
-import { ExternalLink, PenLine } from "@/components/icons";
+import { ExternalLink, Lock, PenLine } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { useKindName, useRelationName, useRoleName } from "@/components/reports/words";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { isAuthor, linkHref, type Metadata } from "@/lib/reports/report";
+import { isAuthor, linkHref, type FileAccess, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 
@@ -116,6 +116,21 @@ export function ReportMain({ m }: { m: Metadata }) {
 }
 
 /** In the sidebar: the places the report is about and how it was studied. */
+/**
+ * Under a report's cover, to anyone, when its PDF is held back: that it is private, and until when. Its page offers no PDF
+ * then, so a reader isn't left looking for one.
+ */
+export function ReportFileNote({ access }: { access: FileAccess }) {
+  const t = useTranslations("publishReports.page");
+  const format = useFormatter();
+  return (
+    <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Lock aria-hidden className="size-3.5 shrink-0" />
+      {access.mode === "embargo" ? t("fileUntil", { date: format.dateTime(new Date(`${access.until}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" }) }) : t("filePrivate")}
+    </p>
+  );
+}
+
 export function ReportSide({ m, reportKey }: { m: Metadata; /** Its key, which a request to take it down names. */ reportKey: string }) {
   const t = useTranslations("publishReports.page");
   const tf = useTranslations("publishReports.flow");

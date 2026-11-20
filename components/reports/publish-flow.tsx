@@ -2623,7 +2623,7 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
           </TooltipHint>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <RegistrationChips report={report} />
+          <RegistrationChips report={report} own={report.archiveIn === "openscholar" ? undefined : report.archiveIn} />
           {/* Green only when every check passed: a report a reviewer approved over one says how many did, plainly. */}
           <StatusChip tone={passed === (report.results?.length ?? 0) ? "success" : "neutral"} icon={ShieldCheck}>
             {t("checksPassed", { passed, total: report.results?.length ?? 0 })}
@@ -2751,6 +2751,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
  */
 function ReportCover({ basics, report, slot }: { basics: Basics; report: Report | null; /** Given the element under the cover, on a wide page, where a step shows what it is working out. */ slot?: (element: HTMLDivElement | null) => void }) {
   const t = useTranslations("publishReports.flow");
+  const format = useFormatter();
   const m = report?.metadata;
   const live = report?.step === "done" && report.status === "live";
   // Its height on the grid it stands in (`--cover-height`), which a screen beside it fills to stand level with it. A
@@ -2775,6 +2776,10 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
     ...(report?.pdf?.pages !== undefined ? [{ id: "pdf", label: t("steps.upload"), value: t("pages", { count: report.pdf.pages }) }] : []),
     ...(report ? [{ id: "agreement", label: t("steps.agreement"), value: t("version", { version: report.agreementVersion }), href: `/publish/agreements/${report.key}` }] : []),
     ...(report?.checksVersion ? [{ id: "checks", label: t("steps.checks"), value: t("version", { version: report.checksVersion }) }] : []),
+    // What was chosen when it was signed, kept in sight on the steps after, where the choices are locked. Live, the
+    // screen shows both itself: who gets the file, and the archive's chip.
+    ...(report && !live ? [{ id: "file", label: t("fileAccess.label"), value: report.fileAccess.mode === "embargo" ? t("fileAccess.until", { date: format.dateTime(new Date(`${report.fileAccess.until}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" }) }) : t(`fileAccess.${report.fileAccess.mode}`) }] : []),
+    ...(report?.registration.zenodo && !live ? [{ id: "archive", label: t("archive.label"), value: t(report.archiveIn === "openscholar" ? "archive.openscholar" : report.archiveIn === "mine" ? "archive.own" : "archive.signers") }] : []),
   ];
   return (
     // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it, or above
