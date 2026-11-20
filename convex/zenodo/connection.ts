@@ -53,6 +53,9 @@ export const takeState = internalMutation({
   },
 });
 
+/** At most how many working connections a Zenodo account has here: one, as each new one ends the others, unless several raced. */
+const OTHER_HOLDERS = 20;
+
 export const keep = internalMutation({
   args: { userId: v.id("users"), encryptedTokens: v.string(), expiresAt: v.number(), zenodoUserId: v.optional(v.string()), name: v.optional(v.string()) },
   returns: v.null(),
@@ -60,6 +63,12 @@ export const keep = internalMutation({
     const row = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
     if (row) await ctx.db.replace("zenodoConnections", row._id, { userId, ...connection, connectedAt: Date.now() });
     else await ctx.db.insert("zenodoConnections", { userId, ...connection, connectedAt: Date.now() });
+    // Zenodo keeps one sign-in of an account for Openscholar: connecting it here ends the one another Openscholar
+    // account held (its tokens stop working), which that account is told now, not when its next report is refused.
+    if (connection.zenodoUserId) {
+      const held = await ctx.db.query("zenodoConnections").withIndex("by_zenodoUserId_and_broken", (q) => q.eq("zenodoUserId", connection.zenodoUserId).eq("broken", undefined)).take(OTHER_HOLDERS);
+      for (const other of held) if (other.userId !== userId) await ctx.db.patch("zenodoConnections", other._id, { broken: true });
+    }
     // Reports whose archiving failed for want of the account go to it again now.
     await ctx.scheduler.runAfter(0, internal.zenodo.connection.resend, { userId, cursor: null });
     return null;

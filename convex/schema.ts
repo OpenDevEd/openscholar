@@ -1014,7 +1014,9 @@ export default defineSchema({
     name: v.optional(v.string()),
     connectedAt: v.number(),
     broken: v.optional(v.boolean()),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_zenodoUserId_and_broken", ["zenodoUserId", "broken"]),
 
   // A Zenodo sign-in under way: what Zenodo hands back proves it was started here, by this person.
   zenodoOAuthStates: defineTable({

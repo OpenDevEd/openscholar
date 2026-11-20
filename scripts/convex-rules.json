@@ -104,7 +104,8 @@
       "REVIEWS_SHOWN": "a report's latest reviewer decisions, shown on its record; earlier ones stay in the table",
       "ADMINS_WRITTEN": "the admins of an organisation emailed that a member's report waits for one to activate it; past it the first twenty are written to",
       "RECENT": "the workspace's reports last changed, looked through for a DOI its signer reserved and did nothing with; one older than those is found in Your reports, and signing then starts another",
-      "ALIKE": "the live reports whose titles are closest to a report being checked, which Already published compares it with first; the search gives the best matches, and the rest of the series is searched through OpenAlex and our index"
+      "ALIKE": "the live reports whose titles are closest to a report being checked, which Already published compares it with first; the search gives the best matches, and the rest of the series is searched through OpenAlex and our index",
+      "OTHER_HOLDERS": "an account's working Zenodo connections from other Openscholar accounts, ended when it connects: each connection ends the others, so there is one unless several raced"
     },
     "batches": {
       "REMOVED_AT_ONCE": "submissions of one paper marked removed in one write; past it the mutation schedules itself for the rest",
