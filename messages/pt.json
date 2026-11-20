@@ -6684,6 +6684,10 @@
             "name": "Sem discurso de ódio nem assédio",
             "fix": "Retire as passagens que atacam pessoas e carregue o PDF de novo."
           },
+          "rights": {
+            "name": "Direitos de acordo com a licença",
+            "fix": "Remova ou altere a declaração de direitos do PDF para que diga {licence} e envie o PDF novamente."
+          },
           "research": {
             "name": "Investigação, não publicidade",
             "fix": "A Openscholar Reports publica investigação. Se o seu trabalho o é, peça uma revisão e diga o que a verificação não viu."

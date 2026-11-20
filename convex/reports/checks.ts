@@ -153,7 +153,8 @@ export const run = action({
         const result = await (async (): Promise<Result> => {
           if (!modelId) throw new Error("its model is no longer offered");
           const { model, modelSlug } = await resolveOpenRouterModel(ctx, modelId);
-          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort, language }, started, text, metadata, communities, ours);
+          // Under the licence the report was signed with, which a request can't change.
+          return runCheck(check, { model, slug: modelSlug, name: modelSlug, effort: check.effort, language }, started, text, { ...metadata, licence: started.licence }, communities, ours);
         })().catch((error: unknown): Result => {
           console.error(JSON.stringify({ event: "report-check-failed", reportId, check: check.id, error: String(error).slice(0, 500) }));
           // A check that can't answer holds the report for a person rather than pass it. Why it couldn't is the

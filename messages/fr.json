@@ -6683,6 +6683,10 @@
             "name": "Ni discours haineux ni harcèlement",
             "fix": "Retirez les passages qui s'en prennent à des personnes, puis téléversez à nouveau le PDF."
           },
+          "rights": {
+            "name": "Droits conformes à la licence",
+            "fix": "Retirez ou modifiez la mention de droits du PDF pour qu'elle indique {licence}, puis téléversez de nouveau le PDF."
+          },
           "research": {
             "name": "De la recherche, pas de la publicité",
             "fix": "Openscholar Reports publie de la recherche. Si votre document en est, demandez une relecture et indiquez ce que la vérification a manqué."

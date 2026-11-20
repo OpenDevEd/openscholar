@@ -6683,6 +6683,10 @@
             "name": "No hate speech or harassment",
             "fix": "Take out the passages that attack people, then upload the PDF again."
           },
+          "rights": {
+            "name": "Rights match the license",
+            "fix": "Take out or change the rights statement in the PDF so it says {licence}, then upload the PDF again."
+          },
           "research": {
             "name": "Research, not advertising",
             "fix": "Openscholar Reports publishes research. If yours is, ask for a review and say what the check missed."

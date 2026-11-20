@@ -6683,6 +6683,10 @@
             "name": "Akukho nkulumo yenzondo noma ukuhlukumeza",
             "fix": "Susa izingxenye ezihlasela abantu, bese ulayisha i-PDF futhi."
           },
+          "rights": {
+            "name": "Amalungelo ahambisana nelayisense",
+            "fix": "Susa noma ushintshe isitatimende samalungelo ku-PDF ukuze sithi {licence}, bese ulayisha i-PDF futhi."
+          },
           "research": {
             "name": "Ucwaningo, hhayi isikhangiso",
             "fix": "I-Openscholar Reports ishicilela ucwaningo. Uma okwakho kuwucwaningo, cela ukubuyekezwa bese usho ukuthi ukuhlola kuphuthelwe yini."

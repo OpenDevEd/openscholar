@@ -54,7 +54,7 @@ export function useFailed() {
   return (error: unknown) => void toast.error(getErrorMessage(error, t("failed")));
 }
 
-type DefaultCheckId = "byline" | "published" | "harm" | "research";
+type DefaultCheckId = "byline" | "published" | "harm" | "rights" | "research";
 
 /**
  * A check's name and fix in the reader's language while they are still the words Openscholar ships them with (the
@@ -67,13 +67,15 @@ export function useCheckWords() {
     const shipped = DEFAULT_CHECKS.find((check) => check.name === name || (check.id === "published" && name === "Already published"));
     return shipped ? t(`check.defaults.${shipped.id as DefaultCheckId}.name`) : name;
   };
-  /** A fix as a result keeps it, its byline already filled in: the byline is carried into the translated words. */
+  /** A fix as a result keeps it, its byline or licence already filled in: that is carried into the translated words. */
   const fix = (fix: string) => {
     for (const check of DEFAULT_CHECKS) {
       if (!check.fix) continue;
-      const [before = "", after = ""] = check.fix.split("{byline}");
-      const same = check.fix.includes("{byline}") ? fix.startsWith(before) && fix.endsWith(after) : fix === check.fix;
-      if (same) return t(`check.defaults.${check.id as DefaultCheckId}.fix`, { byline: fix.slice(before.length, fix.length - after.length) });
+      const hole = /\{(?:byline|licence)\}/.exec(check.fix)?.[0];
+      const [before = "", after = ""] = hole ? check.fix.split(hole) : [check.fix];
+      const same = hole ? fix.startsWith(before) && fix.endsWith(after) : fix === check.fix;
+      const filled = hole ? fix.slice(before.length, fix.length - after.length) : "";
+      if (same) return t(`check.defaults.${check.id as DefaultCheckId}.fix`, { byline: filled, licence: filled });
     }
     return fix;
   };

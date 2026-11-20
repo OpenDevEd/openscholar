@@ -6684,6 +6684,10 @@
             "name": "Sin discurso de odio ni acoso",
             "fix": "Quita los pasajes que atacan a personas y vuelve a subir el PDF."
           },
+          "rights": {
+            "name": "Los derechos coinciden con la licencia",
+            "fix": "Quita o cambia la declaración de derechos del PDF para que diga {licence} y vuelve a subir el PDF."
+          },
           "research": {
             "name": "Investigación, no publicidad",
             "fix": "Openscholar Reports publica investigación. Si lo tuyo lo es, pide una revisión y explica qué pasó por alto la comprobación."

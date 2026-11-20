@@ -6684,6 +6684,10 @@
             "name": "Hakuna matamshi ya chuki wala unyanyasaji",
             "fix": "Ondoa vifungu vinavyowashambulia watu, kisha pakia PDF tena."
           },
+          "rights": {
+            "name": "Haki zinalingana na leseni",
+            "fix": "Ondoa au badilisha tamko la haki kwenye PDF ili liseme {licence}, kisha pakia PDF tena."
+          },
           "research": {
             "name": "Utafiti, si tangazo",
             "fix": "Openscholar Reports huchapisha utafiti. Ikiwa kazi yako ni utafiti, omba mapitio na useme ukaguzi ulikosa nini."

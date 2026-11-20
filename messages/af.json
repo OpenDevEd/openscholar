@@ -6684,6 +6684,10 @@
             "name": "Geen haatspraak of teistering nie",
             "fix": "Haal die gedeeltes uit wat mense aanval, en laai dan die PDF weer op."
           },
+          "rights": {
+            "name": "Regte stem ooreen met die lisensie",
+            "fix": "Haal die regteverklaring in die PDF uit of verander dit sodat dit {licence} sê, en laai dan die PDF weer op."
+          },
           "research": {
             "name": "Navorsing, nie advertensie nie",
             "fix": "Openscholar Reports publiseer navorsing. As joune navorsing is, vra om 'n hersiening en sê wat die toets gemis het."

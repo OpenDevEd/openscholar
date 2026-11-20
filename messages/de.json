@@ -6684,6 +6684,10 @@
             "name": "Keine Hassrede und keine Belästigung",
             "fix": "Entfernen Sie die Passagen, die Menschen angreifen, und laden Sie das PDF erneut hoch."
           },
+          "rights": {
+            "name": "Rechte passen zur Lizenz",
+            "fix": "Entfernen oder ändern Sie den Rechtehinweis im PDF, sodass er {licence} nennt, und laden Sie das PDF dann erneut hoch."
+          },
           "research": {
             "name": "Forschung, keine Werbung",
             "fix": "Openscholar Reports veröffentlicht Forschung. Wenn Ihr Bericht Forschung ist, bitten Sie um eine Prüfung und sagen Sie, was die Prüfung übersehen hat."
