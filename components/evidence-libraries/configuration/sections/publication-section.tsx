@@ -237,6 +237,10 @@ export function PublicationForm({
   const t = useTranslations("publicationSettings");
   const format = useFormatter();
   const [settings, setSettings] = useState(saved.settings);
+  // Who gets the files of a community's new records: what its licence allows of what was saved (the field below).
+  const openFiles = !CLOSED_ZENODO_LICENCES.has(settings.zenodo.license);
+  const savedFiles = settings.zenodo.defaultFileAccess ?? "open";
+  const fileValue = openFiles ? (savedFiles === "readers" ? "open" : savedFiles) : savedFiles === "open" ? "private" : savedFiles;
   const [credentials, setCredentials] = useState<PublicationSecrets>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -367,27 +371,24 @@ export function PublicationForm({
                   )}
                 </Field>
                 {/* Who gets the files of records made here, as the licence allows: an open one lets them go to anyone or
-                    the editors only, one that isn't keeps them private on Zenodo and lets readers here have them or not. */}
-                {fileAccess ? <Field label={t("fileAccess")} hint={t("fileAccessHint")}>
-                  {(id) => {
-                    const open = !CLOSED_ZENODO_LICENCES.has(settings.zenodo.license);
-                    const saved = settings.zenodo.defaultFileAccess ?? "open";
-                    const value = open ? (saved === "readers" ? "open" : saved) : saved === "open" ? "private" : saved;
-                    return (
-                      <Select value={value} onValueChange={(mode) => updateZenodo({ defaultFileAccess: mode as "open" | "private" | "readers" })}>
-                        <SelectTrigger id={id} className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(open ? (["open", "private"] as const) : (["readers", "private"] as const)).map((mode) => (
-                            <SelectItem key={mode} value={mode}>
-                              {t(`fileAccess_${mode}`)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    );
-                  }}
+                    the editors only, one that isn't keeps them private on Zenodo and lets readers here have them or not.
+                    Its hint says what the choice means for readers first: "Editors only" beside an open licence read as a
+                    contradiction to a community admin who walked it. */}
+                {fileAccess ? <Field label={t("fileAccess")} hint={`${t(`fileAccessMeans_${fileValue}`)} ${t("fileAccessHint")}`}>
+                  {(id) => (
+                    <Select value={fileValue} onValueChange={(mode) => updateZenodo({ defaultFileAccess: mode as "open" | "private" | "readers" })}>
+                      <SelectTrigger id={id} className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(openFiles ? (["open", "private"] as const) : (["readers", "private"] as const)).map((mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {t(`fileAccess_${mode}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </Field> : null}
                 {/* A copy in the community's own account always keeps its Crossref DOI. */}
                 {settings.zenodo.mode !== "own" && (
