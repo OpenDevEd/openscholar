@@ -561,10 +561,19 @@ export const requestReview = workspaceMutation({
   handler: async (ctx, actor, { key, comment }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
-    // Asked of a report its checks failed and no one has approved since: anything else has moved on.
-    if (stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
+    // Asked of a report its checks failed and no one has approved since. One a check already sent to a reviewer takes a
+    // note for them instead, once: what a check flagged often needs words the checks can't have, such as where it was
+    // published before. Anything else has moved on.
+    const stage = stageOf(report, (await reportSettings(ctx)).humanReview);
+    if (stage !== "failed" && stage !== "review") throw createError("CONFLICT", MOVED_ON);
+    const details = await detailsOf(ctx, report._id);
+    const request = { reviewRequest: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } };
+    if (stage === "review") {
+      if (!details.reviewRequest) await ctx.db.patch("reportDetails", details._id, request);
+      return null;
+    }
     if (report.asked) return null;
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } });
+    await ctx.db.patch("reportDetails", details._id, request);
     await touch(ctx, report, { asked: true });
     await notify(ctx, report._id, "review-requested");
     return null;

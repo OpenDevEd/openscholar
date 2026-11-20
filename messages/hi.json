@@ -367,7 +367,8 @@
     "accountSandbox": "आपका अपना Crossref खाता चाहिए",
     "accountSandboxHint": "आपके खाते में संग्रहित रिकॉर्ड इस समुदाय का Crossref DOI रखते हैं, इसलिए अपने क्रेडेंशियल से Crossref चालू करें। सैंडबॉक्स के परीक्षण DOI असली Zenodo रिकॉर्ड पर नहीं जा सकते।",
     "archiveDoiHint": "Zenodo DOI: संग्रहित प्रति को अपना DOI मिलता है। Crossref DOI: प्रति रिकॉर्ड का Crossref DOI साझा करती है।",
-    "accountCrossrefJoin": "Crossref से कैसे जुड़ें"
+    "accountCrossrefJoin": "Crossref से कैसे जुड़ें",
+    "accountConnectedAs": "जुड़ा हुआ: {name}"
   },
   "auth": {
     "backToSearch": "खोज पर वापस जाएँ",
@@ -6993,7 +6994,12 @@
       },
       "uploadFirst": "आगे बढ़ने के लिए अपनी रिपोर्ट का PDF अपलोड करें।",
       "signedByMissing": "हस्ताक्षर करने के लिए अपना नाम लिखें।",
-      "agreeMissing": "सहमति देने के लिए यह बॉक्स चुनें।"
+      "agreeMissing": "सहमति देने के लिए यह बॉक्स चुनें।",
+      "noteForReviewer": "समीक्षक के लिए नोट जोड़ें",
+      "noteIntro": "आपकी रिपोर्ट समीक्षक के पास है। उन्हें वह बताएँ जो जाँचें नहीं जान सकती थीं, जैसे यह पहले कहाँ प्रकाशित हुई।",
+      "noteQuestion": "आपका नोट",
+      "sendNote": "नोट भेजें",
+      "yourNote": "समीक्षक के लिए आपका नोट"
     },
     "meta": {
       "publish": "प्रकाशित करें | Openscholar",

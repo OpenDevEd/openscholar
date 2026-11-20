@@ -367,7 +367,8 @@
     "accountSandbox": "Necesita tu propia cuenta de Crossref",
     "accountSandboxHint": "Los registros archivados en tu cuenta conservan el DOI de Crossref de esta comunidad, así que activa Crossref con tus propias credenciales. Los DOI de prueba del sandbox no pueden ir en registros reales de Zenodo.",
     "archiveDoiHint": "DOI de Zenodo: la copia archivada recibe un DOI propio. DOI de Crossref: la copia comparte el DOI de Crossref del registro.",
-    "accountCrossrefJoin": "Cómo unirse a Crossref"
+    "accountCrossrefJoin": "Cómo unirse a Crossref",
+    "accountConnectedAs": "Conectada: {name}"
   },
   "auth": {
     "backToSearch": "Volver a la búsqueda",
@@ -6994,7 +6995,12 @@
       },
       "uploadFirst": "Sube el PDF de tu informe para continuar.",
       "signedByMissing": "Escribe tu nombre para firmar.",
-      "agreeMissing": "Marca esta casilla para aceptar."
+      "agreeMissing": "Marca esta casilla para aceptar.",
+      "noteForReviewer": "Añadir una nota para quien revisa",
+      "noteIntro": "Tu informe está con una persona que lo revisa. Cuéntale lo que las comprobaciones no podían saber, como dónde se publicó antes.",
+      "noteQuestion": "Tu nota",
+      "sendNote": "Enviar la nota",
+      "yourNote": "Tu nota para quien revisa"
     },
     "meta": {
       "publish": "Publicar | Openscholar",

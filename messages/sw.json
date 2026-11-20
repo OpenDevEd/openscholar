@@ -367,7 +367,8 @@
     "accountSandbox": "Inahitaji akaunti yako ya Crossref",
     "accountSandboxHint": "Rekodi zinazohifadhiwa kwenye akaunti yako zinabaki na DOI ya Crossref ya jumuiya hii, kwa hivyo washa Crossref kwa vitambulisho vyako. DOI za majaribio za sandbox haziwezi kwenda kwenye rekodi halisi za Zenodo.",
     "archiveDoiHint": "DOI ya Zenodo: nakala iliyohifadhiwa inapata DOI yake. DOI ya Crossref: nakala inatumia DOI ya Crossref ya rekodi.",
-    "accountCrossrefJoin": "Jinsi ya kujiunga na Crossref"
+    "accountCrossrefJoin": "Jinsi ya kujiunga na Crossref",
+    "accountConnectedAs": "Imeunganishwa: {name}"
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",
@@ -6994,7 +6995,12 @@
       },
       "uploadFirst": "Pakia PDF ya ripoti yako ili kuendelea.",
       "signedByMissing": "Andika jina lako ili kusaini.",
-      "agreeMissing": "Weka alama kwenye kisanduku hiki ili kukubali."
+      "agreeMissing": "Weka alama kwenye kisanduku hiki ili kukubali.",
+      "noteForReviewer": "Ongeza ujumbe kwa mkaguzi",
+      "noteIntro": "Ripoti yako iko kwa mkaguzi. Mweleze lolote ambalo ukaguzi haukuweza kujua, kama mahali ilipochapishwa awali.",
+      "noteQuestion": "Ujumbe wako",
+      "sendNote": "Tuma ujumbe",
+      "yourNote": "Ujumbe wako kwa mkaguzi"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

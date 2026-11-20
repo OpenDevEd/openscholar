@@ -367,7 +367,8 @@
     "accountSandbox": "Het jou eie Crossref-rekening nodig",
     "accountSandboxHint": "Rekords wat in jou rekening geargiveer word, behou hierdie gemeenskap se Crossref-DOI, dus skakel Crossref aan met jou eie besonderhede. Toets-DOI's uit die sandput kan nie op regte Zenodo-rekords gaan nie.",
     "archiveDoiHint": "Zenodo-DOI: die geargiveerde kopie kry sy eie DOI. Crossref-DOI: die kopie deel die rekord se Crossref-DOI.",
-    "accountCrossrefJoin": "Hoe om by Crossref aan te sluit"
+    "accountCrossrefJoin": "Hoe om by Crossref aan te sluit",
+    "accountConnectedAs": "Gekoppel: {name}"
   },
   "auth": {
     "backToSearch": "Terug na soektog",
@@ -6994,7 +6995,12 @@
       },
       "uploadFirst": "Laai jou verslag se PDF op om voort te gaan.",
       "signedByMissing": "Tik jou naam om te teken.",
-      "agreeMissing": "Merk hierdie blokkie om in te stem."
+      "agreeMissing": "Merk hierdie blokkie om in te stem.",
+      "noteForReviewer": "Voeg 'n nota vir die beoordelaar by",
+      "noteIntro": "Jou verslag is by 'n beoordelaar. Vertel hulle enigiets wat die kontroles nie kon weet nie, soos waar dit voorheen gepubliseer is.",
+      "noteQuestion": "Jou nota",
+      "sendNote": "Stuur die nota",
+      "yourNote": "Jou nota vir die beoordelaar"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

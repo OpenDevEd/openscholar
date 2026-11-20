@@ -367,7 +367,8 @@
     "accountSandbox": "يتطلب حسابك الخاص على Crossref",
     "accountSandboxHint": "تحتفظ السجلات المؤرشفة في حسابك بمعرّف DOI من Crossref الخاص بهذا المجتمع، لذا شغّل Crossref ببيانات اعتمادك الخاصة. لا يمكن وضع معرّفات DOI التجريبية من البيئة التجريبية على سجلات Zenodo حقيقية.",
     "archiveDoiHint": "معرّف DOI من Zenodo: تحصل النسخة المؤرشفة على معرّف DOI خاص بها. معرّف DOI من Crossref: تشارك النسخة السجلَّ معرّف DOI الخاص به من Crossref.",
-    "accountCrossrefJoin": "كيفية الانضمام إلى Crossref"
+    "accountCrossrefJoin": "كيفية الانضمام إلى Crossref",
+    "accountConnectedAs": "متصل: {name}"
   },
   "auth": {
     "backToSearch": "العودة إلى البحث",
@@ -6994,7 +6995,12 @@
       },
       "uploadFirst": "ارفع ملف PDF الخاص بتقريرك للمتابعة.",
       "signedByMissing": "اكتب اسمك للتوقيع.",
-      "agreeMissing": "حدّد هذا المربع للموافقة."
+      "agreeMissing": "حدّد هذا المربع للموافقة.",
+      "noteForReviewer": "أضف ملاحظة للمراجع",
+      "noteIntro": "تقريرك لدى مراجع. أخبره بأي شيء لم تكن الفحوص لتعرفه، مثل مكان نشره سابقًا.",
+      "noteQuestion": "ملاحظتك",
+      "sendNote": "أرسل الملاحظة",
+      "yourNote": "ملاحظتك للمراجع"
     },
     "meta": {
       "publish": "نشر | Openscholar",

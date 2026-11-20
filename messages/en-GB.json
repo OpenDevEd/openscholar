@@ -367,7 +367,8 @@
     "accountSandbox": "Needs your own Crossref account",
     "accountSandboxHint": "Records archived in your account keep this community's Crossref DOI, so turn on Crossref with your own credentials. Test DOIs from the sandbox can't go on real Zenodo records.",
     "archiveDoiHint": "Zenodo DOI: the archived copy gets a DOI of its own. Crossref DOI: the copy shares the record's Crossref DOI.",
-    "accountCrossrefJoin": "How to join Crossref"
+    "accountCrossrefJoin": "How to join Crossref",
+    "accountConnectedAs": "Connected: {name}"
   },
   "auth": {
     "backToSearch": "Back to search",
@@ -6993,7 +6994,12 @@
       },
       "uploadFirst": "Upload your report's PDF to go on.",
       "signedByMissing": "Type your name to sign.",
-      "agreeMissing": "Tick this box to agree."
+      "agreeMissing": "Tick this box to agree.",
+      "noteForReviewer": "Add a note for the reviewer",
+      "noteIntro": "Your report is with a reviewer. Tell them anything the checks couldn't know, such as where it was published before.",
+      "noteQuestion": "Your note",
+      "sendNote": "Send the note",
+      "yourNote": "Your note for the reviewer"
     },
     "meta": {
       "publish": "Publish | Openscholar",

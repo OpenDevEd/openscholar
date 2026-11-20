@@ -2037,7 +2037,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           </motion.div>
         </AnimatePresence>
       </AutoHeight>
-      {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
+      {report?.reviewRequest && (stage === "failed" || stage === "review") ? <Said label={t(stage === "review" ? "yourNote" : "yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
       {terms?.kept && stage !== "live" ? (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -2179,6 +2179,13 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     </span>
                   </TooltipHint>
                 ) : stage === "review" ? (
+                  <>
+                  {/* What a check flagged may need words it can't have (published before, say): said to the reviewer here. */}
+                  {onRequestReview && !report.reviewRequest ? (
+                    <Button variant="outline" onClick={() => setAsking(true)}>
+                      <ReviewQueueIcon /> {t("noteForReviewer")}
+                    </Button>
+                  ) : null}
                   <TooltipHint label={t("needsApproval")}>
                     <span tabIndex={0}>
                       <Button disabled>
@@ -2186,12 +2193,13 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                       </Button>
                     </span>
                   </TooltipHint>
+                  </>
                 ) : null}
               </>
             )}
           </div>
       ) : null}
-      {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
+      {onRequestReview ? <ReviewRequestDialog open={asking} note={stage === "review"} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
       {report && terms ? (
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in
         // between. With none saved, confirming goes on to Stripe's page, and the dialog says so.
@@ -2515,7 +2523,7 @@ function useAsking() {
   return [ask === "review", set] as const;
 }
 
-function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void> }) {
+function ReviewRequestDialog({ open, onClose, onSend, note = false }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void>; /** A note for the reviewer of a report already waiting for one, rather than asking for one. */ note?: boolean }) {
   const t = useTranslations("publishReports.flow");
   const [comment, setComment] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
@@ -2551,10 +2559,10 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         }}
       >
         <DialogHeader>
-          <DialogTitle>{t("requestReview")}</DialogTitle>
-          <DialogDescription>{t("reviewIntro")}</DialogDescription>
+          <DialogTitle>{t(note ? "noteForReviewer" : "requestReview")}</DialogTitle>
+          <DialogDescription>{t(note ? "noteIntro" : "reviewIntro")}</DialogDescription>
         </DialogHeader>
-        <Field label={t("reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
+        <Field label={t(note ? "noteQuestion" : "reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea ref={box} id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} />}
         </Field>
         <Problem>{problem}</Problem>
@@ -2565,7 +2573,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
           <Button className="relative max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal" disabled={sending} onClick={send}>
             <Working busy={sending}>
               <span className="flex items-center gap-2">
-                <ReviewQueueIcon /> {t("sendForReview")}
+                <ReviewQueueIcon /> {t(note ? "sendNote" : "sendForReview")}
               </span>
             </Working>
           </Button>

@@ -367,7 +367,8 @@
     "accountSandbox": "Idinga i-akhawunti yakho ye-Crossref",
     "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo.",
     "archiveDoiHint": "I-DOI ye-Zenodo: ikhophi egciniwe ithola i-DOI yayo. I-DOI ye-Crossref: ikhophi isebenzisa i-DOI ye-Crossref yerekhodi.",
-    "accountCrossrefJoin": "Indlela yokujoyina i-Crossref"
+    "accountCrossrefJoin": "Indlela yokujoyina i-Crossref",
+    "accountConnectedAs": "Kuxhunyiwe: {name}"
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",
@@ -6993,7 +6994,12 @@
       },
       "uploadFirst": "Layisha i-PDF yombiko wakho ukuze uqhubeke.",
       "signedByMissing": "Thayipha igama lakho ukuze usayine.",
-      "agreeMissing": "Maka leli bhokisi ukuze uvume."
+      "agreeMissing": "Maka leli bhokisi ukuze uvume.",
+      "noteForReviewer": "Engeza inothi lomhloli",
+      "noteIntro": "Umbiko wakho usemhlolini. Mtshele noma yini ukuhlola okungakwazanga ukukwazi, njengalapho washicilelwa khona ngaphambili.",
+      "noteQuestion": "Inothi lakho",
+      "sendNote": "Thumela inothi",
+      "yourNote": "Inothi lakho lomhloli"
     },
     "meta": {
       "publish": "Shicilela | Openscholar",

@@ -367,7 +367,8 @@
     "accountSandbox": "自分の Crossref アカウントが必要です",
     "accountSandboxHint": "あなたのアカウントにアーカイブされたレコードは、このコミュニティの Crossref DOI をそのまま使います。ご自身の認証情報で Crossref をオンにしてください。サンドボックスのテスト用 DOI を実際の Zenodo レコードに付けることはできません。",
     "archiveDoiHint": "Zenodo DOI：アーカイブされたコピーに独自の DOI が付きます。Crossref DOI：コピーはレコードの Crossref DOI を共有します。",
-    "accountCrossrefJoin": "Crossref への参加方法"
+    "accountCrossrefJoin": "Crossref への参加方法",
+    "accountConnectedAs": "接続済み: {name}"
   },
   "auth": {
     "backToSearch": "検索に戻る",
@@ -6993,7 +6994,12 @@
       },
       "uploadFirst": "続けるには、レポートの PDF をアップロードしてください。",
       "signedByMissing": "署名するには名前を入力してください。",
-      "agreeMissing": "同意するにはこのボックスにチェックを入れてください。"
+      "agreeMissing": "同意するにはこのボックスにチェックを入れてください。",
+      "noteForReviewer": "レビュー担当者へのメモを追加",
+      "noteIntro": "レポートはレビュー担当者のもとにあります。以前の掲載先など、チェックでは分からないことを伝えてください。",
+      "noteQuestion": "メモ",
+      "sendNote": "メモを送信",
+      "yourNote": "レビュー担当者へのメモ"
     },
     "meta": {
       "publish": "公開 | Openscholar",

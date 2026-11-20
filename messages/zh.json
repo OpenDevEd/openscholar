@@ -367,7 +367,8 @@
     "accountSandbox": "需要你自己的 Crossref 账户",
     "accountSandboxHint": "存档到你账户中的记录会沿用本社区的 Crossref DOI，因此请用你自己的凭据开启 Crossref。沙盒中的测试 DOI 不能用于真实的 Zenodo 记录。",
     "archiveDoiHint": "Zenodo DOI：存档副本获得自己的 DOI。Crossref DOI：副本与记录共用 Crossref DOI。",
-    "accountCrossrefJoin": "如何加入 Crossref"
+    "accountCrossrefJoin": "如何加入 Crossref",
+    "accountConnectedAs": "已连接：{name}"
   },
   "auth": {
     "backToSearch": "返回搜索",
@@ -6993,7 +6994,12 @@
       },
       "uploadFirst": "上传报告的 PDF 以继续。",
       "signedByMissing": "输入你的姓名以签署。",
-      "agreeMissing": "勾选此框以表示同意。"
+      "agreeMissing": "勾选此框以表示同意。",
+      "noteForReviewer": "给审核人留言",
+      "noteIntro": "你的报告正在审核中。告诉审核人检查无法得知的信息，例如它之前在哪里发表过。",
+      "noteQuestion": "你的留言",
+      "sendNote": "发送留言",
+      "yourNote": "你给审核人的留言"
     },
     "meta": {
       "publish": "发布 | Openscholar",
