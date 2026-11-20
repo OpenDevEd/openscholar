@@ -179,7 +179,7 @@ export const startJobAction = defineUserMutation({
   activity: ({ name }, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", detail: name }),
   description:
     "Start an extraction from the sources picked on the extraction page, any number of them: each a paper set (a saved search, a collection, the saved papers, or a finished screening) with its papers `first` to `last`, and PDFs the person uploaded. " +
-    "From a chat, an extraction over one set is extraction/start:extract. A screening is its Included papers as they are now; later screening edits leave the extraction as it is. The person's plan sets how many papers one job takes.",
+    "A screening is its Included papers as they are now; later screening edits leave the extraction as it is. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
