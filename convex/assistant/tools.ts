@@ -103,7 +103,7 @@ const CORE_PATHS = [
  * (decisions 8 and 12): the reply waits for their answer (./asking.ts). One call of an
  * action that passes here can still ask first (`asksFirst` on its entry). An action that
  * spends credits asks with the most it holds, unless the person allowed that much in the
- * chat (#328); one that gives no estimate can't be asked about, and isn't run.
+ * chat (#328); one that gives no estimate can't be asked about, and isn't offered (`REACHABLE`).
  */
 export const runsWithoutAsking = (entry: UserAction) => entry.kind === "query" || (!entry.spendsCredits && !entry.outsideEffect && entry.undoable);
 
@@ -116,8 +116,14 @@ export function definition(entry: UserAction) {
   const { $schema: _dialect, ...args } = z.toJSONSchema(inputSchema(entry));
   return { does: entry.description, arguments: args };
 }
-/** The actions the assistant can reach: every registered one, however long its description. */
-const entryAt = (path: string) => USER_ACTIONS.find((entry) => entry.path === path);
+/**
+ * The actions the assistant can reach: every registered one, however long its description, except one that spends
+ * credits and can't say how many (#328). With no figure to ask the person with, a chat could never run it, and
+ * offered it the assistant picked it over its chat twin and told the person to start the job themselves
+ * (extraction/mutations:startJob over extraction/start:extract).
+ */
+const REACHABLE = USER_ACTIONS.filter((entry) => entry.kind === "query" || !entry.spendsCredits || entry.estimate !== undefined);
+const entryAt = (path: string) => REACHABLE.find((entry) => entry.path === path);
 
 /** The core actions, as registered. */
 export function core() {
@@ -188,14 +194,6 @@ function jobs(value: unknown, path = ""): string[] {
  */
 const sameChange = (entry: UserAction, a: unknown, b: unknown) =>
   viewOf(entry.path, variantIn(entry.path, a)).words === viewOf(entry.path, variantIn(entry.path, b)).words && jobs(a).sort().join() === jobs(b).sort().join();
-
-/**
- * What a reply is told at an action that spends credits and can't say how many (#328): with
- * no figure to show the person there is nothing to ask them with, so a chat doesn't start it.
- * Said plainly, so the reply doesn't tell the person an approval went missing.
- */
-export const NO_ESTIMATE =
-  "This can't be started from the chat yet: it spends credits, and it has no way to say how many before it runs. Tell the person it's started on its own page in the app, and walk them through it there.";
 
 /** The action a run_many call names: by its name, or by the name of its tool. */
 const namedAs = (name: string) => entryAt(name) ?? core().find((entry) => toolName(entry.path) === name);
@@ -305,7 +303,7 @@ function subjectOf(input: Record<string, unknown>) {
 export function found(keywords: string) {
   const asked = keywords.toLowerCase();
   const words = asked.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 1);
-  const matches = USER_ACTIONS
+  const matches = REACHABLE
     .map((entry) => {
       const text = `${entry.path} ${entry.description}`.toLowerCase();
       return { entry, score: words.filter((word) => text.includes(word)).length + (asked.includes(entry.path.toLowerCase()) ? words.length : 0) };
@@ -401,9 +399,9 @@ export function toolsFor(
     const read = approved || entry.kind === "query" ? undefined : holds.get(sameCall(entry.path, input));
     const within = read && "credits" in read ? read : undefined;
     if (!approved) {
-      // One that asks first only gets here allowed. The rest is refused: an action that spends credits past what the person allowed, or with no estimate to ask them with, or a call nothing asked about.
+      // One that asks first only gets here allowed. The rest is refused: an action that spends credits past what the person allowed, or a call nothing asked about.
       // An estimate that says why the call's arguments won't do is told as it said it, so the model can make the call again.
-      let why = stopped() ?? (read && "refused" in read ? read.refused : runsWithoutAsking(entry) || within?.covered ? null : entry.kind !== "query" && entry.spendsCredits && !entry.estimate ? NO_ESTIMATE : ASKS_FIRST);
+      let why = stopped() ?? (read && "refused" in read ? read.refused : runsWithoutAsking(entry) || within?.covered ? null : ASKS_FIRST);
       if (!why && changesSomething(entry)) {
         const kind = kindOf(entry, input);
         const nth = (changes.get(kind) ?? 0) + 1;

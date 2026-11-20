@@ -25,7 +25,7 @@ import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
 import { notePart } from "../../lib/assistant/view";
 import { misfit } from "./failures";
-import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, NO_ESTIMATE, batched, circling, core, definition, found, kindOf, written } from "./tools";
+import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { ensureWorkspace } from "../workspaces/create";
@@ -1034,7 +1034,8 @@ describe("the assistant's tools", () => {
     });
     expect(uncounted).toBe(3 * perPaper);
 
-    // Asked before every job again, and an action that spends credits with no estimate to ask with isn't run at all.
+    // Asked before every job again. An action that spends credits with no estimate to ask with is out of the chat's reach: never
+    // found, so a request to extract finds the chat's own extraction, and refused by name.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });
     expect(await limits()).toEqual({ replyLimit: null, allowance: null });
     requests.length = 0;
@@ -1042,7 +1043,10 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", sources: [], questions: [] } } }))
       .mockImplementationOnce(finishingDoStream(["I can't start that here."]));
     await say("Extract the sample sizes");
-    expect(told(1, "extract")).toEqual({ error: NO_ESTIMATE });
+    const offered = found("start extraction job").actions.map((action) => action.name);
+    expect(offered).toContain("extraction/start:extract");
+    expect(offered).not.toContain("extraction/mutations:startJob");
+    expect(told(1, "extract")).toEqual({ error: expect.stringMatching(/^No action is named/) });
     expect(await t.run(async (ctx) => (await ctx.db.query("extractionJobs").collect()).length)).toBe(0);
   });
 
