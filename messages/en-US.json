@@ -6989,6 +6989,8 @@
         "connectFirst": "Connect your Zenodo account to keep the report there.",
         "connect": "Connect Zenodo",
         "broken": "Zenodo stopped accepting your connection. Connect it again.",
+        "refusedReconnect": "Zenodo stopped accepting your connection, so the report isn't in your account yet. Connect it again and it goes there.",
+        "refusedTeam": "Zenodo refused the copy in your account. Openscholar's team has been told and will send it again.",
         "help": {
           "about": "Why reports are archived",
           "title": "Why a report is archived",

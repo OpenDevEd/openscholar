@@ -6990,6 +6990,8 @@
         "connectFirst": "Conecta tu cuenta de Zenodo para guardar allí el informe.",
         "connect": "Conectar Zenodo",
         "broken": "Zenodo ya no acepta tu conexión. Vuelve a conectarlo.",
+        "refusedReconnect": "Zenodo dejó de aceptar tu conexión, así que el informe aún no está en tu cuenta. Vuelve a conectarla y se enviará allí.",
+        "refusedTeam": "Zenodo rechazó la copia en tu cuenta. El equipo de Openscholar ya lo sabe y la enviará de nuevo.",
         "help": {
           "about": "Por qué se archivan los informes",
           "title": "Por qué se archiva un informe",

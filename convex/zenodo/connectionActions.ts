@@ -110,12 +110,25 @@ export const finish = action({
   },
 });
 
+/**
+ * Whether Zenodo still takes an access token. One revoked on zenodo.org (the app removed there, or replaced) says
+ * nothing until it is used, and then Zenodo answers 403, not 401: asked before it is handed out, so a report or a
+ * community's deposit never fails on it. Zenodo not answering counts as taken: the deposit says what is wrong.
+ */
+async function stillTaken(accessToken: string) {
+  const answer = await fetch(`${ZENODO}/api/deposit/depositions?size=1`, { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json", "User-Agent": USER_AGENT } }).catch(() => null);
+  if (answer?.status !== 401 && answer?.status !== 403) return true;
+  console.error(JSON.stringify({ event: "zenodo-token-not-taken", status: answer.status }));
+  return false;
+}
+
 /** An access token, with when that very token ends. */
 type ZenodoToken = { accessToken: string; expiresAt: number };
 
 /**
- * An access token for the person's own Zenodo account, renewed when it is near its end. A connection Zenodo refuses
- * to renew is marked broken and refused: their report waits for them to connect again, never going elsewhere.
+ * An access token for the person's own Zenodo account, renewed when it is near its end or Zenodo no longer takes it. A
+ * connection Zenodo refuses to renew is marked broken and refused: their report waits for them to connect again,
+ * never going elsewhere.
  * Renewals may run side by side (two reports at once): the first to save wins, and the other takes what it saved,
  * so a refresh token Zenodo has already replaced never breaks a working connection, nor overwrites a newer one.
  */
@@ -123,7 +136,7 @@ export async function zenodoAccessToken(ctx: Pick<ActionCtx, "runQuery" | "runMu
   const row = await ctx.runQuery(internal.zenodo.connection.stored, { userId });
   if (!row || row.broken) throw new Error(RECONNECT);
   const tokens = JSON.parse(decrypt(row.encryptedTokens, key())) as { access: string; refresh: string | null };
-  if (row.expiresAt - Date.now() > RENEW_MS) return { accessToken: tokens.access, expiresAt: row.expiresAt };
+  if (row.expiresAt - Date.now() > RENEW_MS && (await stillTaken(tokens.access))) return { accessToken: tokens.access, expiresAt: row.expiresAt };
   const save = (change: { encryptedTokens: string; expiresAt: number } | { broken: true }): Promise<boolean> =>
     ctx.runMutation(internal.zenodo.connection.renewed, { userId, from: row.encryptedTokens, ...change });
   const theirs = (): Promise<ZenodoToken> => {

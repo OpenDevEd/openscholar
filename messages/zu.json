@@ -6989,6 +6989,8 @@
         "connectFirst": "Xhuma i-akhawunti yakho ye-Zenodo ukuze ugcine umbiko lapho.",
         "connect": "Xhuma i-Zenodo",
         "broken": "I-Zenodo ayisakwamukeli ukuxhumana kwakho. Phinda uyixhume.",
+        "refusedReconnect": "I-Zenodo iyekile ukwamukela uxhumano lwakho, ngakho umbiko awukakabi sekhawuntini yakho. Phinda uyixhume bese uya khona.",
+        "refusedTeam": "I-Zenodo yenqabile ikhophi ekhawuntini yakho. Ithimba le-Openscholar lazisiwe futhi lizoyithumela futhi.",
         "help": {
           "about": "Kungani imibiko igcinwa",
           "title": "Kungani umbiko ugcinwa",

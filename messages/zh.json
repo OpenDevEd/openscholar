@@ -6989,6 +6989,8 @@
         "connectFirst": "连接你的 Zenodo 账户以将报告保存在那里。",
         "connect": "连接 Zenodo",
         "broken": "Zenodo 不再接受你的连接。请重新连接。",
+        "refusedReconnect": "Zenodo 不再接受你的连接，所以报告还没有存入你的账户。重新连接后就会存进去。",
+        "refusedTeam": "Zenodo 拒绝了你账户中的副本。Openscholar 团队已收到通知，会重新发送。",
         "help": {
           "about": "为什么要存档报告",
           "title": "为什么报告要存档",

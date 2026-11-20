@@ -6990,6 +6990,8 @@
         "connectFirst": "Conecte sua conta do Zenodo para guardar o relatório lá.",
         "connect": "Conectar o Zenodo",
         "broken": "O Zenodo deixou de aceitar sua conexão. Conecte-o novamente.",
+        "refusedReconnect": "O Zenodo deixou de aceitar sua conexão, então o relatório ainda não está na sua conta. Conecte de novo e ele vai para lá.",
+        "refusedTeam": "O Zenodo recusou a cópia na sua conta. A equipe do Openscholar foi avisada e vai enviá-la de novo.",
         "help": {
           "about": "Por que os relatórios são arquivados",
           "title": "Por que um relatório é arquivado",

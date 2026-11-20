@@ -4,11 +4,16 @@ import { encrypt } from "../lib/crypto";
 import { readPublicationProviderSource, zenodoOwnerOfSource } from "./publicationProviders";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 it("gives a community archiving in its owner's own Zenodo account that account's token, and says to reconnect when it can't", async () => {
   const key = "a".repeat(64);
   vi.stubEnv("ENCRYPTION_KEY", key);
+  // Zenodo still takes the owner's token (convex/zenodo/connectionActions.ts asks before handing it out).
+  vi.stubGlobal("fetch", async () => new Response("[]", { status: 200 }));
   const { t, created, clerkUserId } = await createReadySetupFixture("zenodo_token_http");
   const libraryId = created.libraryId;
   const token = "els_" + "z".repeat(43);
