@@ -60,6 +60,9 @@ export function isPublicPath(pathname: string) {
   const normalizedPath = normalizePathname(pathname);
 
   if ((OPEN_INSIDE_PRIVATE as readonly string[]).includes(normalizedPath)) return true;
+  // A report's file before its readers may have it: its route asks who is signed in itself, and tells anyone it won't
+  // open it for that the PDF is private, in place of a sign-in page that says nothing (app/api/reports/files).
+  if (/^\/api\/reports\/files\/[^/]+$/.test(normalizedPath)) return true;
   if (/^\/authors\/[^/]+\/configuration$/.test(normalizedPath)) return false;
   // The Communities page is open, its public communities everyone's (#1090); a community's own pages, and making one, take an account.
   if (/^\/evidence-communities\/.+/.test(normalizedPath)) return false;

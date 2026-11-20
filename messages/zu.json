@@ -6165,6 +6165,12 @@
     "sayMore": "Chaza kabanzi ngomsebenzi wakho emlayezweni ongezansi, bese uwuthumela futhi."
   },
   "publishReports": {
+    "privateFile": {
+      "title": "Le PDF iyimfihlo",
+      "signedOut": "Okwamanje abantu abashicilela lo mbiko kuphela abangavula i-PDF yawo. Uma kungeyakho, ngena ukuze uyivule.",
+      "signedIn": "Okwamanje abantu abashicilela lo mbiko kuphela abangavula i-PDF yawo, futhi le akhawunti akuyona eyabo. Buza lowo okuthumelele isixhumanisi.",
+      "signIn": "Ngena"
+    },
     "withdrawn": {
       "status": "Kuhoxisiwe",
       "copyDoi": "Kopisha i-DOI",

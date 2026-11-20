@@ -6165,6 +6165,12 @@
     "sayMore": "请在下方留言中多介绍一下你的工作，然后再次发送。"
   },
   "publishReports": {
+    "privateFile": {
+      "title": "此 PDF 为私密",
+      "signedOut": "目前只有发布这份报告的人可以打开它的 PDF。如果是你的，请登录后打开。",
+      "signedIn": "目前只有发布这份报告的人可以打开它的 PDF，而这个账户不在其中。请询问给你发链接的人。",
+      "signIn": "登录"
+    },
     "withdrawn": {
       "status": "已撤回",
       "copyDoi": "复制 DOI",

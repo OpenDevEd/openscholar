@@ -6166,6 +6166,12 @@
     "sayMore": "Vertel meer oor jou werk in die boodskap hieronder, en stuur dit dan weer."
   },
   "publishReports": {
+    "privateFile": {
+      "title": "Hierdie PDF is privaat",
+      "signedOut": "Net die mense wat hierdie verslag publiseer, kan die PDF nou oopmaak. As dit joune is, meld aan om dit oop te maak.",
+      "signedIn": "Net die mense wat hierdie verslag publiseer, kan die PDF nou oopmaak, en hierdie rekening is nie een van hulle nie. Vra wie ook al vir jou die skakel gestuur het.",
+      "signIn": "Meld aan"
+    },
     "withdrawn": {
       "status": "Teruggetrek",
       "copyDoi": "Kopieer DOI",

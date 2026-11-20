@@ -64,6 +64,8 @@ describe("public route auth matrix", () => {
       "/api/contact/institutions",
       // A signed-out visitor's AI overview (#1070), which checks for itself who's asking.
       "/api/overviews",
+      // A report's file before its readers may have it, which asks for itself who is signed in, and says the PDF is private to anyone else.
+      "/api/reports/files/x",
       "/authors",
       "/authors/x",
       "/bookmarks",
@@ -90,6 +92,8 @@ describe("public route auth matrix", () => {
       "/privacy",
       // Publish shows what publishing a report takes to someone signed out, and asks for sign-in to start one.
       "/publish",
+      // Where that file sends someone it won't open: the PDF is private, and its owner may sign in.
+      "/publish/private-file",
       // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.
       "/question-stage/earth.js",
       "/question-stage/hold",

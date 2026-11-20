@@ -6166,6 +6166,12 @@
     "sayMore": "Eleza zaidi kuhusu kazi yako katika ujumbe ulio hapa chini, kisha uutume tena."
   },
   "publishReports": {
+    "privateFile": {
+      "title": "PDF hii ni ya faragha",
+      "signedOut": "Kwa sasa ni wanaochapisha ripoti hii pekee wanaoweza kufungua PDF yake. Kama ni yako, ingia ili uifungue.",
+      "signedIn": "Kwa sasa ni wanaochapisha ripoti hii pekee wanaoweza kufungua PDF yake, na akaunti hii si mmoja wao. Muulize aliyekutumia kiungo.",
+      "signIn": "Ingia"
+    },
     "withdrawn": {
       "status": "Imeondolewa",
       "copyDoi": "Nakili DOI",

@@ -6166,6 +6166,12 @@
     "sayMore": "Conte mais sobre seu trabalho na mensagem abaixo e envie de novo."
   },
   "publishReports": {
+    "privateFile": {
+      "title": "Este PDF é privado",
+      "signedOut": "Por enquanto, só quem está publicando este relatório pode abrir o PDF. Se for seu, entre para abri-lo.",
+      "signedIn": "Por enquanto, só quem está publicando este relatório pode abrir o PDF, e esta conta não é uma delas. Pergunte a quem enviou o link.",
+      "signIn": "Entrar"
+    },
     "withdrawn": {
       "status": "Retirado",
       "copyDoi": "Copiar o DOI",
