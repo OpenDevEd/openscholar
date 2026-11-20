@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
+import { isVerifiedCrawler } from "@/lib/known-visitor";
 import { OPENALEX_REQUEST_LIMITS, RequestLimiter } from "./request-limiter";
 import { OPENALEX_LIMITED, type OpenAlexLimited } from "./limited";
 
@@ -54,5 +55,9 @@ export async function spendOpenAlexRequests(count = 1): Promise<OpenAlexLimited 
     if (counted !== null) return counted ? null : OPENALEX_LIMITED;
     return limiter.take(`account:${session.userId}`, OPENALEX_REQUEST_LIMITS.account, count) ? null : OPENALEX_LIMITED;
   }
-  return limiter.take(`visitor:${clientAddress(await headers())}`, OPENALEX_REQUEST_LIMITS.visitor, count) ? null : OPENALEX_LIMITED;
+  const list = await headers();
+  // A verified crawler fetches from a few addresses and would spend a visitor's day within hours, then get errors
+  // (Googlebot on author pages, 19 November 2026). Its own crawl rate holds it back, as on paper pages.
+  if (isVerifiedCrawler(list)) return null;
+  return limiter.take(`visitor:${clientAddress(list)}`, OPENALEX_REQUEST_LIMITS.visitor, count) ? null : OPENALEX_LIMITED;
 }
