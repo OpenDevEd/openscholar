@@ -6884,7 +6884,6 @@
         "own": "My own license",
         "ownName": "Its name",
         "ownUrl": "Web address of its text",
-        "ownNeeded": "Give your license a name in Latin letters and the web address of its text, and say whether it lets anyone share the report.",
         "help": {
           "title": "Licenses",
           "about": "About licenses",
@@ -6903,7 +6902,14 @@
         "ownOpenYes": "Yes, anyone may share it",
         "ownOpenNo": "No, it holds sharing back",
         "ownOpenYesBody": "Anyone may read and download the PDF, as with Creative Commons.",
-        "ownOpenNoBody": "Openscholar's readers at most get the PDF: never Zenodo, and a community only if you agree."
+        "ownOpenNoBody": "Openscholar's readers at most get the PDF: never Zenodo, and a community only if you agree.",
+        "ownName_missing": "Give your license its name.",
+        "ownName_long": "Shorten its name to {max} characters.",
+        "ownName_latin": "Write its name in Latin letters: it's printed in your PDF.",
+        "ownName_known": "That's a Creative Commons license: pick it above instead.",
+        "ownUrl_missing": "Give the web address of its text.",
+        "ownUrl_invalid": "Give a full web address, starting with https://.",
+        "ownOpenMissing": "Say whether it lets anyone share the report."
       },
       "payment": {
         "payWith": "Pay with",
@@ -6963,7 +6969,9 @@
         "confirmBefore": "Nothing is public yet: this applies once the report goes live, and can change until then.",
         "until": "Private until {date}",
         "readersMost": "Its license doesn't let anyone share it, so Openscholar's readers are the most who can have the file.",
-        "short": "Access"
+        "short": "Access",
+        "untilPast": "Pick a day after today.",
+        "untilNotSooner": "Pick a day before {date}: an embargo can only end sooner."
       },
       "archive": {
         "label": "Archive",
@@ -6973,7 +6981,6 @@
         "ownBody": "Kept on Zenodo under your name",
         "connectFirst": "Connect your Zenodo account to keep the report there.",
         "connect": "Connect Zenodo",
-        "connectNeeded": "Connect Zenodo to sign",
         "broken": "Zenodo stopped accepting your connection. Connect it again.",
         "help": {
           "about": "Why reports are archived",
@@ -6983,7 +6990,10 @@
           "policies": "How Zenodo keeps records"
         },
         "signers": "The signer's Zenodo account"
-      }
+      },
+      "uploadFirst": "Upload your report's PDF to go on.",
+      "signedByMissing": "Type your name to sign.",
+      "agreeMissing": "Tick this box to agree."
     },
     "meta": {
       "publish": "Publish | Openscholar",
@@ -7114,7 +7124,10 @@
       "undo": "Undo",
       "referencesTooBig": "That file is over 2 MB. A reference list is far smaller.",
       "openItsDoi": "Open its DOI",
-      "openReferenceDoi": "Open the DOI of reference {number}"
+      "openReferenceDoi": "Open the DOI of reference {number}",
+      "titleMissing": "Give the report its title.",
+      "authorsMissing": "Name at least one author.",
+      "unchanged": "Change a detail first: nothing has changed yet."
     },
     "kinds": {
       "author": "Author",

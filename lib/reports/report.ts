@@ -323,10 +323,18 @@ const PRINTABLE = /^[\x20-\x7E\u00A0-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\
  * it can't be.
  */
 export function ownLicence(name: string, url: string, open = true): OwnLicence | null {
+  const wrong = ownLicenceProblems(name, url);
+  return wrong.name || wrong.url ? null : { name: name.trim(), url: url.trim(), open };
+}
+
+/** What keeps an own licence from being one, field by field: what the agreement step says under each. */
+export type OwnLicenceProblems = { name?: "missing" | "long" | "latin" | "known"; url?: "missing" | "invalid" };
+export function ownLicenceProblems(name: string, url: string): OwnLicenceProblems {
   const named = name.trim();
   const address = url.trim();
-  if (!named || named.length > LICENCE_NAME_MAX || !PRINTABLE.test(named) || LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase())) return null;
-  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? { name: named, url: address, open } : null;
+  const nameWrong = !named ? "missing" : named.length > LICENCE_NAME_MAX ? "long" : !PRINTABLE.test(named) ? "latin" : LICENCE_NAMES.some((known) => known.toLowerCase() === named.toLowerCase()) ? "known" : null;
+  const urlWrong = !address ? "missing" : /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(address) && address.length <= DETAIL_TEXT.link ? null : "invalid";
+  return { ...(nameWrong && { name: nameWrong }), ...(urlWrong && { url: urlWrong }) };
 }
 
 /** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */

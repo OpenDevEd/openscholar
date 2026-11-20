@@ -6884,7 +6884,6 @@
         "own": "独自のライセンス",
         "ownName": "名称",
         "ownUrl": "本文のウェブアドレス",
-        "ownNeeded": "ライセンスにラテン文字の名前と本文のウェブアドレスを付け、誰でもレポートを共有できるかどうかを選んでください。",
         "help": {
           "title": "ライセンス",
           "about": "ライセンスについて",
@@ -6903,7 +6902,14 @@
         "ownOpenYes": "はい、誰でも共有できます",
         "ownOpenNo": "いいえ、共有を制限します",
         "ownOpenYesBody": "Creative Commons と同じく、誰でも PDF を読んでダウンロードできます。",
-        "ownOpenNoBody": "PDF を受け取れるのは最大でも Openscholar の読者までです。Zenodo には渡さず、コミュニティにはあなたが同意した場合のみ渡します。"
+        "ownOpenNoBody": "PDF を受け取れるのは最大でも Openscholar の読者までです。Zenodo には渡さず、コミュニティにはあなたが同意した場合のみ渡します。",
+        "ownName_missing": "ライセンスの名前を入力してください。",
+        "ownName_long": "名前を {max} 文字以内にしてください。",
+        "ownName_latin": "名前はラテン文字で書いてください。PDF に印刷されます。",
+        "ownName_known": "それは Creative Commons のライセンスです。上から選んでください。",
+        "ownUrl_missing": "本文のウェブアドレスを入力してください。",
+        "ownUrl_invalid": "https:// で始まる完全なウェブアドレスを入力してください。",
+        "ownOpenMissing": "誰でもレポートを共有できるかどうかを選んでください。"
       },
       "payment": {
         "payWith": "支払い方法",
@@ -6963,7 +6969,9 @@
         "confirmBefore": "まだ何も公開されていません。この設定はレポートの公開時に適用され、それまでは変更できます。",
         "until": "{date} まで非公開",
         "readersMost": "このライセンスでは誰でも共有することはできないため、ファイルを受け取れるのは最大でも Openscholar の読者までです。",
-        "short": "アクセス"
+        "short": "アクセス",
+        "untilPast": "明日以降の日を選んでください。",
+        "untilNotSooner": "{date} より前の日を選んでください。公開制限は早めることしかできません。"
       },
       "archive": {
         "label": "アーカイブ",
@@ -6973,7 +6981,6 @@
         "ownBody": "あなたの名前で Zenodo に保管",
         "connectFirst": "レポートをそこに保管するには Zenodo アカウントを接続してください。",
         "connect": "Zenodo を接続",
-        "connectNeeded": "署名するには Zenodo を接続",
         "broken": "Zenodo が接続を受け付けなくなりました。もう一度接続してください。",
         "help": {
           "about": "レポートをアーカイブする理由",
@@ -6983,7 +6990,10 @@
           "policies": "Zenodo のレコード保管方法"
         },
         "signers": "署名者の Zenodo アカウント"
-      }
+      },
+      "uploadFirst": "続けるには、レポートの PDF をアップロードしてください。",
+      "signedByMissing": "署名するには名前を入力してください。",
+      "agreeMissing": "同意するにはこのボックスにチェックを入れてください。"
     },
     "meta": {
       "publish": "公開 | Openscholar",
@@ -7114,7 +7124,10 @@
       "undo": "元に戻す",
       "referencesTooBig": "このファイルは 2 MB を超えています。参考文献の一覧はずっと小さいはずです。",
       "openItsDoi": "DOI を開く",
-      "openReferenceDoi": "参考文献 {number} の DOI を開く"
+      "openReferenceDoi": "参考文献 {number} の DOI を開く",
+      "titleMissing": "レポートのタイトルを入力してください。",
+      "authorsMissing": "著者を少なくとも1人入力してください。",
+      "unchanged": "先に詳細を変更してください。まだ何も変わっていません。"
     },
     "kinds": {
       "author": "著者",

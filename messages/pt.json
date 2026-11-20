@@ -6885,7 +6885,6 @@
         "own": "Minha própria licença",
         "ownName": "O nome dela",
         "ownUrl": "Endereço web do texto dela",
-        "ownNeeded": "Dê à sua licença um nome em letras latinas e o endereço web do texto, e diga se ela permite que qualquer pessoa compartilhe o relatório.",
         "help": {
           "title": "Licenças",
           "about": "Sobre as licenças",
@@ -6904,7 +6903,14 @@
         "ownOpenYes": "Sim, qualquer pessoa pode compartilhá-lo",
         "ownOpenNo": "Não, restringe o compartilhamento",
         "ownOpenYesBody": "Qualquer pessoa pode ler e baixar o PDF, como no Creative Commons.",
-        "ownOpenNoBody": "No máximo, os leitores do Openscholar recebem o PDF: nunca o Zenodo, e uma comunidade só se você concordar."
+        "ownOpenNoBody": "No máximo, os leitores do Openscholar recebem o PDF: nunca o Zenodo, e uma comunidade só se você concordar.",
+        "ownName_missing": "Informe o nome da sua licença.",
+        "ownName_long": "Encurte o nome para {max} caracteres.",
+        "ownName_latin": "Escreva o nome em letras latinas: ele é impresso no seu PDF.",
+        "ownName_known": "Essa é uma licença Creative Commons: escolha-a acima.",
+        "ownUrl_missing": "Informe o endereço web do texto dela.",
+        "ownUrl_invalid": "Informe um endereço web completo, começando com https://.",
+        "ownOpenMissing": "Diga se ela permite que qualquer pessoa compartilhe o relatório."
       },
       "payment": {
         "payWith": "Pagar com",
@@ -6964,7 +6970,9 @@
         "confirmBefore": "Nada é público ainda: isto vale quando o relatório entrar no ar e pode mudar até lá.",
         "until": "Privado até {date}",
         "readersMost": "A licença não permite que qualquer pessoa o compartilhe, então no máximo os leitores do Openscholar podem ter o arquivo.",
-        "short": "Acesso"
+        "short": "Acesso",
+        "untilPast": "Escolha um dia depois de hoje.",
+        "untilNotSooner": "Escolha um dia antes de {date}: um embargo só pode terminar mais cedo."
       },
       "archive": {
         "label": "Arquivo",
@@ -6974,7 +6982,6 @@
         "ownBody": "Guardado no Zenodo em seu nome",
         "connectFirst": "Conecte sua conta do Zenodo para guardar o relatório lá.",
         "connect": "Conectar o Zenodo",
-        "connectNeeded": "Conecte o Zenodo para assinar",
         "broken": "O Zenodo deixou de aceitar sua conexão. Conecte-o novamente.",
         "help": {
           "about": "Por que os relatórios são arquivados",
@@ -6984,7 +6991,10 @@
           "policies": "Como o Zenodo guarda os registros"
         },
         "signers": "A conta do Zenodo de quem assinou"
-      }
+      },
+      "uploadFirst": "Envie o PDF do seu relatório para continuar.",
+      "signedByMissing": "Digite seu nome para assinar.",
+      "agreeMissing": "Marque esta caixa para concordar."
     },
     "meta": {
       "publish": "Publicar | Openscholar",
@@ -7115,7 +7125,10 @@
       "undo": "Anular",
       "referencesTooBig": "Esse ficheiro tem mais de 2 MB. Uma lista de referências é muito mais pequena.",
       "openItsDoi": "Abrir o seu DOI",
-      "openReferenceDoi": "Abrir o DOI da referência {number}"
+      "openReferenceDoi": "Abrir o DOI da referência {number}",
+      "titleMissing": "Informe o título do relatório.",
+      "authorsMissing": "Informe pelo menos um autor.",
+      "unchanged": "Altere algum detalhe primeiro: nada mudou ainda."
     },
     "kinds": {
       "author": "Autor",

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 export type Archive = "openscholar" | "own";
 
-export function ArchiveChoice({ value, onChange, account: held, onConnect, connecting = false, disabled = false }: { value: Archive; onChange: (archive: Archive) => void; /** The author's Zenodo account, null when none is connected. */ account: ZenodoAccount | null; /** Goes to Zenodo to connect it, and comes back here. */ onConnect: () => void; /** On its way to Zenodo. */ connecting?: boolean; disabled?: boolean }) {
+export function ArchiveChoice({ value, onChange, account: held, onConnect, connecting = false, disabled = false, connectId, invalid = false }: { value: Archive; onChange: (archive: Archive) => void; /** The author's Zenodo account, null when none is connected. */ account: ZenodoAccount | null; /** Goes to Zenodo to connect it, and comes back here. */ onConnect: () => void; /** On its way to Zenodo. */ connecting?: boolean; disabled?: boolean; /** The Connect button, for the step's Next to take the person to. */ connectId?: string; /** Next was pressed with their own account picked and none connected. */ invalid?: boolean }) {
   const t = useTranslations("publishReports.flow.archive");
   const id = useId();
   // One Zenodo stopped accepting is no account to archive in: connecting again is asked for, saying why.
@@ -65,9 +65,9 @@ export function ArchiveChoice({ value, onChange, account: held, onConnect, conne
       <AutoHeight className="!mt-0">
         {value === "own" && !account ? (
           <div className="pt-3">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-inset px-3.5 py-3">
-              <p className="min-w-0 flex-1 basis-56 text-sm text-pretty">{t(held?.broken ? "broken" : "connectFirst")}</p>
-              <Button size="sm" className="relative" disabled={disabled || connecting} onClick={onConnect}>
+            <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border bg-inset px-3.5 py-3", invalid ? "border-destructive" : "border-transparent")}>
+              <p id={connectId ? `${connectId}-why` : undefined} className={cn("min-w-0 flex-1 basis-56 text-sm text-pretty", invalid && "text-destructive")}>{t(held?.broken ? "broken" : "connectFirst")}</p>
+              <Button id={connectId} aria-describedby={connectId ? `${connectId}-why` : undefined} size="sm" className="relative" disabled={disabled || connecting} onClick={onConnect}>
                 <ZenodoMark className="size-4 rounded-[4px]" />
                 {t("connect")}
               </Button>

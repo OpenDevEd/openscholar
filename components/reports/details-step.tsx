@@ -38,6 +38,7 @@ import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_YEAR, dateParts, licen
 import { FieldHelp, FieldLabel, RegistrarsProvider, type HelpKey } from "@/components/reports/field-help";
 import { ReferenceBox } from "@/components/reports/reference-box";
 import { cn } from "@/lib/utils";
+import { FieldMessage, useStepForm } from "@/components/reports/form";
 
 const REFS_PER_PAGE = 5;
 const REF_ROW = 41;
@@ -80,7 +81,7 @@ const dateOf = (year: number, month?: number, day?: number) => `${year}${month ?
  * clears the date; leaving it unfinished puts the saved year back, so the box never shows what isn't saved. A day the
  * month doesn't have goes when the month changes.
  */
-function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: string; /** A year being typed that isn't one yet. */ typed: string | null; onTyped: (typed: string | null) => void; onDate: (date: string) => void; invalid: boolean; children?: ReactNode }) {
+function DateField({ yearId, date, typed, onTyped, onDate, invalid, children }: { /** The year's box, for the step's Next to take the person to. */ yearId: string; date: string; /** A year being typed that isn't one yet. */ typed: string | null; onTyped: (typed: string | null) => void; onDate: (date: string) => void; invalid: boolean; children?: ReactNode }) {
   const t = useTranslations("publishReports.details");
   const format = useFormatter();
   const id = useId();
@@ -105,6 +106,7 @@ function DateField({ date, typed, onTyped, onDate, invalid, children }: { date: 
       {/* On a phone at large text the three don't fit a row: they stack, each full width. */}
       <div className="flex gap-1.5 max-sm:@max-[14.5rem]:flex-col">
         <Input
+          id={yearId}
           aria-label={t("dateYear")}
           inputMode="numeric"
           autoComplete="off"
@@ -226,7 +228,7 @@ function usePage<T>(list: T[], size: number) {
   return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))) };
 }
 
-function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
+function AuthorRow({ author, index, count, onChange, onMove, onRemove, nameId, nameError }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; /** The name's box, for the step's Next to take the person to (the first row's). */ nameId?: string; /** Said under the name: no author is named yet. */ nameError?: string }) {
   const t = useTranslations("publishReports.details");
   const tp = useTranslations("people");
   const roleName = useRoleName();
@@ -246,7 +248,8 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
         <span className="mb-1 flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
         <div className="min-w-0 flex-1 basis-44 space-y-1.5">
           <FieldLabel label={t("name")} help="name" htmlFor={`${id}-name`} />
-          <Input id={`${id}-name`} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="font-medium" />
+          <Input id={nameId ?? `${id}-name`} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="font-medium" aria-invalid={nameError ? true : undefined} aria-describedby={nameError ? `${nameId}-error` : undefined} />
+          {nameError ? <FieldMessage id={`${nameId}-error`}>{nameError}</FieldMessage> : null}
         </div>
         {/* What the person is to the report, in Crossref's own roles: an author unless set. */}
         <div className="w-full shrink-0 space-y-1.5 @md:w-44">
@@ -579,8 +582,19 @@ export function DetailsStep({
   const early = !!dated && dated.year < EARLIEST_YEAR;
   // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
   const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
-  const unready = adding || writing || !m.title.trim() || !m.authors.some((a) => a.name.trim()) || !dated || typedYear !== null || future || early || wrongLinks || (!!onCancel && !resend && !touched);
+  // A form (components/reports/form.tsx): what is missing or wrong is said at its field once Next was pressed, and Next
+  // takes the person to the first of them. The date says what is wrong with it as it is typed.
+  const { tried, go } = useStepForm();
+  const noTitle = !m.title.trim();
+  const noAuthor = !m.authors.some((a) => a.name.trim());
+  const firstWrongLink = m.relations.findIndex((r) => r.target.trim() !== "" && !linkHref(r.target));
+  // A correction with nothing changed yet has nothing to send: said beside the button once it is pressed.
+  const unchanged = !!onCancel && !resend && !touched;
+  const wrongFields = [noTitle && `${id}-title`, noAuthor && `${id}-author-name`, (!dated || typedYear !== null || future || early) && `${id}-year`, wrongLinks && `${id}-link-${firstWrongLink}`, unchanged && `${id}-unchanged`];
+  // Busy: a person being added, or a summary being written.
+  const working = adding || writing;
   // Not in a transition: the page shows the checks running at once, which a transition would hold back until they end.
+  const tryRun = () => go(wrongFields, run);
   const run = () => {
     // The run carries the details as they are, so a save still waiting has nothing left to send.
     clearTimeout(held.current.timer);
@@ -591,7 +605,7 @@ export function DetailsStep({
 
   return (
     <RegistrarsProvider value={registrars ?? { crossref: true, zenodo: true }}>
-    <div>
+    <div className="flex flex-1 flex-col">
       <div className="mb-6 space-y-1">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold tracking-tight">{words?.title ?? t(onCancel ? "correctTitle" : "checkTitle")}</h2>
@@ -610,7 +624,8 @@ export function DetailsStep({
       <div className="space-y-8">
         <Section title={t("work")}>
           <Field label={t("title")} help="title" id={`${id}-title`} counter={used(m.title, DETAIL_TEXT.title)}>
-            <Textarea id={`${id}-title`} value={m.title} maxLength={DETAIL_TEXT.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" />
+            <Textarea id={`${id}-title`} value={m.title} maxLength={DETAIL_TEXT.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" aria-invalid={tried && noTitle ? true : undefined} aria-describedby={tried && noTitle ? `${id}-title-error` : undefined} />
+            {tried && noTitle ? <FieldMessage id={`${id}-title-error`}>{t("titleMissing")}</FieldMessage> : null}
           </Field>
           <Field label={t("subtitle")} help="subtitle" id={`${id}-subtitle`} counter={m.subtitle ? used(m.subtitle, DETAIL_TEXT.subtitle) : undefined}>
             <Input id={`${id}-subtitle`} value={m.subtitle} maxLength={DETAIL_TEXT.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder={t("none")} />
@@ -645,7 +660,7 @@ export function DetailsStep({
                 </SelectContent>
               </Select>
             </Field>
-            <DateField date={m.date} typed={typedYear} onTyped={setTypedYear} onDate={(date) => set("date", date)} invalid={future || early}>
+            <DateField yearId={`${id}-year`} date={m.date} typed={typedYear} onTyped={setTypedYear} onDate={(date) => set("date", date)} invalid={future || early}>
               {/* A report is published by today, as the author's own calendar has it. A date past it says so here, before the checks are asked for. */}
               {(typedYear !== null && typedYear.length < 4) || (typedYear === null && !dated) ? (
                 <span className="block ps-1 text-xs text-destructive">{t("yearInvalid")}</span>
@@ -679,6 +694,8 @@ export function DetailsStep({
                 onChange={(patch) => setAuthor(i, patch)}
                 onMove={(by) => moveAuthor(i, by)}
                 onRemove={() => set("authors", m.authors.filter((_, other) => other !== i))}
+                nameId={i === 0 ? `${id}-author-name` : undefined}
+                nameError={i === 0 && tried && noAuthor ? t("authorsMissing") : undefined}
               />
               );
             })}
@@ -921,7 +938,7 @@ export function DetailsStep({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input aria-label={t("linkLabel")} aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder={t("linkPlaceholder")} value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
+                  <Input id={`${id}-link-${i}`} aria-label={t("linkLabel")} aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder={t("linkPlaceholder")} value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
                   <span className="ms-auto flex items-center gap-2 @xl:ms-0">
                   {href ? (
                     <TooltipHint label={t("openLink")}>
@@ -952,9 +969,10 @@ export function DetailsStep({
           </Button>
         </Section>
       </div>
-      <div className="mt-8 flex flex-wrap justify-end gap-2">
+      {/* Back and the ways on: one row, at the foot of the step, which fills the card (publish-flow.tsx `Screens`). */}
+      <div className="mt-auto flex items-center justify-end gap-2 pt-8">
         {onBack ? (
-          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={() => {
+          <Button variant="ghost" className="-ms-3 me-auto shrink-0 text-muted-foreground" onClick={() => {
             // An edit still waiting to be saved goes first: once the report is back at its PDF, a save of its details is refused.
             sendNow();
             onBack();
@@ -967,6 +985,9 @@ export function DetailsStep({
             {t("backToChecks")}
           </Button>
         ) : null}
+        <p id={`${id}-unchanged`} tabIndex={-1} className={cn("min-w-0 text-xs text-destructive outline-none", !(tried && unchanged) && "sr-only")}>
+          {tried && unchanged ? t("unchanged") : null}
+        </p>
         {onCancel ? (
           <Button variant="outline" onClick={() => {
             // What was typed is given up, so a save still waiting must never arrive after it.
@@ -981,11 +1002,11 @@ export function DetailsStep({
         {/* A report on its way out goes on to its next step; a live report's changes are sent. */}
         {words || onCancel ? (
           // A long label ("Vérifier les modifications et les envoyer en relecture") wraps on a phone rather than leaving the screen.
-          <Button disabled={unready} onClick={run} className="max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal">
+          <Button disabled={working} onClick={tryRun} className="max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal">
             <ShieldCheck /> {words ? words.action : t(waits ? "sendForReview" : "checkAndPublish")}
           </Button>
         ) : (
-          <NextButton disabled={unready} onClick={run}>{t("runChecks")}</NextButton>
+          <NextButton busy={working} onClick={tryRun}>{t("runChecks")}</NextButton>
         )}
       </div>
     </div>

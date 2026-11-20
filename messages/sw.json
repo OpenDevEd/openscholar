@@ -6885,7 +6885,6 @@
         "own": "Leseni yangu mwenyewe",
         "ownName": "Jina lake",
         "ownUrl": "Anwani ya wavuti ya maandishi yake",
-        "ownNeeded": "Ipe leseni yako jina kwa herufi za Kilatini na anwani ya wavuti ya maandishi yake, na useme kama inaruhusu mtu yeyote kushiriki ripoti.",
         "help": {
           "title": "Leseni",
           "about": "Kuhusu leseni",
@@ -6904,7 +6903,14 @@
         "ownOpenYes": "Ndiyo, mtu yeyote anaweza kuishiriki",
         "ownOpenNo": "Hapana, inazuia kushiriki",
         "ownOpenYesBody": "Mtu yeyote anaweza kusoma na kupakua PDF, kama kwa Creative Commons.",
-        "ownOpenNoBody": "Hadi wasomaji wa Openscholar tu ndio hupata PDF: Zenodo kamwe, na jumuiya ikiwa tu utakubali."
+        "ownOpenNoBody": "Hadi wasomaji wa Openscholar tu ndio hupata PDF: Zenodo kamwe, na jumuiya ikiwa tu utakubali.",
+        "ownName_missing": "Andika jina la leseni yako.",
+        "ownName_long": "Fupisha jina lake hadi herufi {max}.",
+        "ownName_latin": "Andika jina lake kwa herufi za Kilatini: linachapishwa kwenye PDF yako.",
+        "ownName_known": "Hiyo ni leseni ya Creative Commons: ichague hapo juu badala yake.",
+        "ownUrl_missing": "Andika anwani ya wavuti ya maandishi yake.",
+        "ownUrl_invalid": "Andika anwani kamili ya wavuti inayoanza na https://.",
+        "ownOpenMissing": "Sema kama inamruhusu mtu yeyote kushiriki ripoti."
       },
       "payment": {
         "payWith": "Lipa kwa",
@@ -6964,7 +6970,9 @@
         "confirmBefore": "Hakuna kilicho wazi bado: hili linatumika ripoti ikiwa hewani, na linaweza kubadilika hadi wakati huo.",
         "until": "Faragha hadi {date}",
         "readersMost": "Leseni yake hairuhusu mtu yeyote kuishiriki, kwa hivyo wasomaji wa Openscholar ndio wengi zaidi wanaoweza kupata faili.",
-        "short": "Ufikiaji"
+        "short": "Ufikiaji",
+        "untilPast": "Chagua siku baada ya leo.",
+        "untilNotSooner": "Chagua siku kabla ya {date}: zuio linaweza kuisha mapema tu."
       },
       "archive": {
         "label": "Hifadhi",
@@ -6974,7 +6982,6 @@
         "ownBody": "Inahifadhiwa kwenye Zenodo kwa jina lako",
         "connectFirst": "Unganisha akaunti yako ya Zenodo ili kuhifadhi ripoti humo.",
         "connect": "Unganisha Zenodo",
-        "connectNeeded": "Unganisha Zenodo ili kusaini",
         "broken": "Zenodo haikubali tena muunganisho wako. Iunganishe tena.",
         "help": {
           "about": "Kwa nini ripoti huhifadhiwa",
@@ -6984,7 +6991,10 @@
           "policies": "Jinsi Zenodo inavyohifadhi rekodi"
         },
         "signers": "Akaunti ya Zenodo ya aliyesaini"
-      }
+      },
+      "uploadFirst": "Pakia PDF ya ripoti yako ili kuendelea.",
+      "signedByMissing": "Andika jina lako ili kusaini.",
+      "agreeMissing": "Weka alama kwenye kisanduku hiki ili kukubali."
     },
     "meta": {
       "publish": "Chapisha | Openscholar",
@@ -7115,7 +7125,10 @@
       "undo": "Tendua",
       "referencesTooBig": "Faili hiyo ni kubwa kuliko MB 2. Orodha ya marejeleo ni ndogo zaidi ya hapo.",
       "openItsDoi": "Fungua DOI yake",
-      "openReferenceDoi": "Fungua DOI ya rejeleo {number}"
+      "openReferenceDoi": "Fungua DOI ya rejeleo {number}",
+      "titleMissing": "Andika kichwa cha ripoti.",
+      "authorsMissing": "Taja angalau mwandishi mmoja.",
+      "unchanged": "Badilisha taarifa kwanza: hakuna kilichobadilika bado."
     },
     "kinds": {
       "author": "Mwandishi",

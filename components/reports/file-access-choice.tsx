@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { fileAccessModes, fileAccessOf, licenceOpen, utcDay, type FileAccess, type Licence } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
+import { FieldMessage, useStepForm } from "@/components/reports/form";
 
 /** A year from today, where an embargo starts when it is picked: changed in the date box under it. */
 const aYearOn = () => {
@@ -28,15 +29,26 @@ const reachable = (from: FileAccess, mode: FileAccess["mode"]) =>
 
 /** A day before `day` (YYYY-MM-DD). */
 const dayBefore = (day: string) => utcDay(new Date(new Date(`${day}T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000));
+/** The first day an embargo can end on. */
+const tomorrowDay = () => utcDay(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
-export function FileAccessChoice({ licence, value, onChange, disabled = false, from = null }: { licence: Licence; /** The choice made, which the licence may not allow: then it gets the licence's own. */ value: FileAccess | null; onChange: (access: FileAccess) => void; disabled?: boolean; /** A live report's saved access, which it may only open further from: every other choice is off. */ from?: FileAccess | null }) {
+/**
+ * What is wrong with an embargo's day: before tomorrow, or, for one a live report is under, not sooner than it ends.
+ * The step that holds the choice stops its Next on it, and the field says it as it is typed.
+ */
+export const embargoProblem = (access: FileAccess, from: FileAccess | null = null): "past" | "notSooner" | null =>
+  access.mode !== "embargo" ? null : access.until < tomorrowDay() ? "past" : from?.mode === "embargo" && access.until >= from.until ? "notSooner" : null;
+
+export function FileAccessChoice({ licence, value, onChange, disabled = false, from = null, dateId }: { licence: Licence; /** The choice made, which the licence may not allow: then it gets the licence's own. */ value: FileAccess | null; onChange: (access: FileAccess) => void; disabled?: boolean; /** A live report's saved access, which it may only open further from: every other choice is off. */ from?: FileAccess | null; /** The embargo day's box, for the step's Next to take the person to. */ dateId?: string }) {
   const t = useTranslations("publishReports.flow.fileAccess");
   const format = useFormatter();
   const id = useId();
   const access = fileAccessOf(licence, value);
   const open = licenceOpen(licence);
   // The first day an embargo can end on, taken when the row opens.
-  const [tomorrow] = useState(() => utcDay(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+  const [tomorrow] = useState(tomorrowDay);
+  const date = dateId ?? `${id}-date`;
+  const wrong = embargoProblem(access, from);
   const meaning =
     access.mode === "embargo"
       ? t("meaning.embargo", { date: format.dateTime(new Date(`${access.until}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" }) })
@@ -71,24 +83,34 @@ export function FileAccessChoice({ licence, value, onChange, disabled = false, f
       {/* The day it opens, under the cards as it is picked; its top space is inside it, so closed it takes none. */}
       <AutoHeight className="!mt-0">
         {access.mode === "embargo" ? (
-          <label className="flex items-center gap-3 pt-3 text-sm">
-            <span className="text-muted-foreground">{t("opensOn")}</span>
-            <Input
-              type="date"
-              className="w-44"
-              min={tomorrow}
-              // An embargo it is under already may only end sooner.
-              max={from?.mode === "embargo" ? dayBefore(from.until) : undefined}
-              disabled={disabled}
-              // A new value from outside starts the box again from it.
-              key={access.until}
-              defaultValue={access.until}
-              onBlur={(event) => {
-                const until = event.currentTarget.value;
-                if (until && until !== access.until && until >= tomorrow && (from?.mode !== "embargo" || until < from.until)) onChange({ mode: "embargo", until });
-              }}
-            />
-          </label>
+          <div className="pt-3">
+            <label htmlFor={date} className="flex items-center gap-3 text-sm">
+              <span className="text-muted-foreground">{t("opensOn")}</span>
+              {/* What is typed is the choice, so the box and what is saved never differ: a day it can't be is said
+                  under it, and the step goes no further until it is changed. */}
+              <Input
+                id={date}
+                type="date"
+                className="w-44"
+                min={tomorrow}
+                // An embargo it is under already may only end sooner.
+                max={from?.mode === "embargo" ? dayBefore(from.until) : undefined}
+                disabled={disabled}
+                value={access.until}
+                aria-invalid={wrong ? true : undefined}
+                aria-describedby={wrong ? `${date}-error` : undefined}
+                onChange={(event) => {
+                  const until = event.currentTarget.value;
+                  if (until) onChange({ mode: "embargo", until });
+                }}
+              />
+            </label>
+            {wrong ? (
+              <FieldMessage id={`${date}-error`}>
+                {wrong === "past" ? t("untilPast") : t("untilNotSooner", { date: format.dateTime(new Date(`${(from as { until: string }).until}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" }) })}
+              </FieldMessage>
+            ) : null}
+          </div>
         ) : null}
       </AutoHeight>
       <p className="text-sm text-pretty text-muted-foreground" aria-live="polite">
@@ -107,6 +129,8 @@ export function FileAccessChange({ licence, saved, live, onSave, disabled = fals
   const [picked, setPicked] = useState<FileAccess | null>(null);
   const [asking, setAsking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const date = useId();
+  const { go } = useStepForm();
   const changed = picked !== null && JSON.stringify(fileAccessOf(licence, picked)) !== JSON.stringify(saved);
   const save = async () => {
     setSaving(true);
@@ -120,7 +144,7 @@ export function FileAccessChange({ licence, saved, live, onSave, disabled = fals
   };
   return (
     <div className="space-y-3">
-      <FileAccessChoice licence={licence} value={picked ?? saved} onChange={setPicked} disabled={disabled || saving} from={live ? saved : null} />
+      <FileAccessChoice licence={licence} value={picked ?? saved} onChange={setPicked} disabled={disabled || saving} from={live ? saved : null} dateId={date} />
       {/* Live, it only opens further, said while it can: one already as open as its licence allows is told why it stops there. */}
       {live && (saved.mode === "private" || saved.mode === "embargo") ? <p className="text-xs text-pretty text-muted-foreground">{t("oneWay")}</p> : null}
       {live && saved.mode === "readers" ? <p className="text-xs text-pretty text-muted-foreground">{t("readersMost")}</p> : null}
@@ -130,7 +154,8 @@ export function FileAccessChange({ licence, saved, live, onSave, disabled = fals
             <Button type="button" variant="ghost" size="sm" disabled={saving} onClick={() => setPicked(null)}>
               {t("cancel")}
             </Button>
-            <Button type="button" size="sm" disabled={saving} onClick={() => setAsking(true)}>
+            {/* A day it can't be is said under its box: Save goes there rather than asking to confirm it. */}
+            <Button type="button" size="sm" disabled={saving} onClick={() => go([!!embargoProblem(fileAccessOf(licence, picked), live ? saved : null) && date], () => setAsking(true))}>
               {t("save")}
             </Button>
           </div>

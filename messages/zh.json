@@ -6884,7 +6884,6 @@
         "own": "我自己的许可",
         "ownName": "名称",
         "ownUrl": "许可文本的网址",
-        "ownNeeded": "请为你的许可证填写拉丁字母名称和其文本的网址,并说明它是否允许任何人分享报告。",
         "help": {
           "title": "许可",
           "about": "关于许可",
@@ -6903,7 +6902,14 @@
         "ownOpenYes": "是，任何人都可以分享",
         "ownOpenNo": "否，它限制分享",
         "ownOpenYesBody": "任何人都可以阅读和下载 PDF，与 Creative Commons 相同。",
-        "ownOpenNoBody": "最多只有 Openscholar 的读者能获得 PDF：Zenodo 永远不会获得，社区只有在你同意时才能获得。"
+        "ownOpenNoBody": "最多只有 Openscholar 的读者能获得 PDF：Zenodo 永远不会获得，社区只有在你同意时才能获得。",
+        "ownName_missing": "填写你的许可名称。",
+        "ownName_long": "将名称缩短到 {max} 个字符。",
+        "ownName_latin": "请用拉丁字母填写名称：它会印在你的 PDF 中。",
+        "ownName_known": "这是 Creative Commons 许可：请在上方选择它。",
+        "ownUrl_missing": "填写许可文本的网址。",
+        "ownUrl_invalid": "请填写以 https:// 开头的完整网址。",
+        "ownOpenMissing": "请说明它是否允许任何人分享报告。"
       },
       "payment": {
         "payWith": "支付方式",
@@ -6963,7 +6969,9 @@
         "confirmBefore": "目前尚未公开任何内容：此设置在报告上线时生效，在此之前可以更改。",
         "until": "{date} 前不公开",
         "readersMost": "其许可不允许任何人分享，因此最多只有 Openscholar 的读者能获得该文件。",
-        "short": "访问"
+        "short": "访问",
+        "untilPast": "请选择今天之后的日期。",
+        "untilNotSooner": "请选择 {date} 之前的日期：禁限期只能提前结束。"
       },
       "archive": {
         "label": "存档",
@@ -6973,7 +6981,6 @@
         "ownBody": "以你的名义保存在 Zenodo",
         "connectFirst": "连接你的 Zenodo 账户以将报告保存在那里。",
         "connect": "连接 Zenodo",
-        "connectNeeded": "连接 Zenodo 后签署",
         "broken": "Zenodo 不再接受你的连接。请重新连接。",
         "help": {
           "about": "为什么要存档报告",
@@ -6983,7 +6990,10 @@
           "policies": "Zenodo 如何保存记录"
         },
         "signers": "签署人的 Zenodo 账户"
-      }
+      },
+      "uploadFirst": "上传报告的 PDF 以继续。",
+      "signedByMissing": "输入你的姓名以签署。",
+      "agreeMissing": "勾选此框以表示同意。"
     },
     "meta": {
       "publish": "发布 | Openscholar",
@@ -7114,7 +7124,10 @@
       "undo": "撤销",
       "referencesTooBig": "该文件超过 2 MB。参考文献列表要小得多。",
       "openItsDoi": "打开其 DOI",
-      "openReferenceDoi": "打开第 {number} 条参考文献的 DOI"
+      "openReferenceDoi": "打开第 {number} 条参考文献的 DOI",
+      "titleMissing": "填写报告标题。",
+      "authorsMissing": "至少填写一位作者。",
+      "unchanged": "请先修改某项信息：目前还没有任何改动。"
     },
     "kinds": {
       "author": "作者",

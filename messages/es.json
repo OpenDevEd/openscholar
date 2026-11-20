@@ -6885,7 +6885,6 @@
         "own": "Mi propia licencia",
         "ownName": "Su nombre",
         "ownUrl": "Dirección web de su texto",
-        "ownNeeded": "Dale a tu licencia un nombre en letras latinas y la dirección web de su texto, y di si permite que cualquiera comparta el informe.",
         "help": {
           "title": "Licencias",
           "about": "Sobre las licencias",
@@ -6904,7 +6903,14 @@
         "ownOpenYes": "Sí, cualquiera puede compartirlo",
         "ownOpenNo": "No, restringe compartirlo",
         "ownOpenYesBody": "Cualquiera puede leer y descargar el PDF, como con Creative Commons.",
-        "ownOpenNoBody": "Como mucho, los lectores de Openscholar reciben el PDF: nunca Zenodo, y una comunidad solo si das tu acuerdo."
+        "ownOpenNoBody": "Como mucho, los lectores de Openscholar reciben el PDF: nunca Zenodo, y una comunidad solo si das tu acuerdo.",
+        "ownName_missing": "Escribe el nombre de tu licencia.",
+        "ownName_long": "Acorta su nombre a {max} caracteres.",
+        "ownName_latin": "Escribe su nombre en letras latinas: se imprime en tu PDF.",
+        "ownName_known": "Esa es una licencia Creative Commons: elígela arriba.",
+        "ownUrl_missing": "Escribe la dirección web de su texto.",
+        "ownUrl_invalid": "Escribe una dirección web completa que empiece por https://.",
+        "ownOpenMissing": "Indica si permite que cualquiera comparta el informe."
       },
       "payment": {
         "payWith": "Pagar con",
@@ -6964,7 +6970,9 @@
         "confirmBefore": "Aún no hay nada público: esto se aplica cuando el informe se publique y puede cambiar hasta entonces.",
         "until": "Privado hasta el {date}",
         "readersMost": "Su licencia no permite que cualquiera lo comparta, así que como mucho los lectores de Openscholar pueden tener el archivo.",
-        "short": "Acceso"
+        "short": "Acceso",
+        "untilPast": "Elige un día posterior a hoy.",
+        "untilNotSooner": "Elige un día anterior al {date}: un embargo solo puede terminar antes."
       },
       "archive": {
         "label": "Archivo",
@@ -6974,7 +6982,6 @@
         "ownBody": "Guardado en Zenodo a tu nombre",
         "connectFirst": "Conecta tu cuenta de Zenodo para guardar allí el informe.",
         "connect": "Conectar Zenodo",
-        "connectNeeded": "Conecta Zenodo para firmar",
         "broken": "Zenodo ya no acepta tu conexión. Vuelve a conectarlo.",
         "help": {
           "about": "Por qué se archivan los informes",
@@ -6984,7 +6991,10 @@
           "policies": "Cómo guarda Zenodo los registros"
         },
         "signers": "La cuenta de Zenodo de quien firmó"
-      }
+      },
+      "uploadFirst": "Sube el PDF de tu informe para continuar.",
+      "signedByMissing": "Escribe tu nombre para firmar.",
+      "agreeMissing": "Marca esta casilla para aceptar."
     },
     "meta": {
       "publish": "Publicar | Openscholar",
@@ -7115,7 +7125,10 @@
       "undo": "Deshacer",
       "referencesTooBig": "Ese archivo supera los 2 MB. Una lista de referencias es mucho más pequeña.",
       "openItsDoi": "Abrir su DOI",
-      "openReferenceDoi": "Abrir el DOI de la referencia {number}"
+      "openReferenceDoi": "Abrir el DOI de la referencia {number}",
+      "titleMissing": "Escribe el título del informe.",
+      "authorsMissing": "Indica al menos un autor.",
+      "unchanged": "Cambia primero algún dato: todavía no ha cambiado nada."
     },
     "kinds": {
       "author": "Autor",
