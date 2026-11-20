@@ -2817,8 +2817,9 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
           <dl className="mt-4 space-y-1.5 border-t border-border-subtle pt-3 text-sm">
             {facts.map((fact) => (
               <div key={fact.id} className="fade-enter flex items-center justify-between gap-3">
-                <dt className="min-w-0 truncate text-muted-foreground">{fact.label}</dt>
-                <dd className="shrink-0 tabular-nums">
+                {/* The labels are a word each and keep it; a long value ("Private until Nov 20, 2027") wraps instead. */}
+                <dt className="shrink-0 text-muted-foreground">{fact.label}</dt>
+                <dd className="min-w-0 text-end tabular-nums">
                   {fact.href ? (
                     // The agreement as signed, in a tab of its own to read, save or print.
                     <Link href={fact.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 rounded-sm underline-offset-2 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring">

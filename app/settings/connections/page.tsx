@@ -203,9 +203,9 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
 
   // The line under the name: what Zotero is for, why the last sign-in failed, the account it's connected to, or what disconnecting leaves in place.
   const line = failed ? (
-    <span className="truncate text-destructive">{tc("zoteroSignInFailed")}</span>
+    <span className="line-clamp-2 text-destructive">{tc("zoteroSignInFailed")}</span>
   ) : !account.connected ? (
-    <span className="truncate">{t("zoteroAbout")}</span>
+    <span className="line-clamp-2">{t("zoteroAbout")}</span>
   ) : step === "confirm" ? (
     <span className="text-pretty">{t("zoteroKeeps")}</span>
   ) : (
@@ -220,7 +220,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
       <Tile icon={ZoteroIcon} tint="#cc2936" className="self-start" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">Zotero</p>
-        <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
+        <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className={LINE}>
           {line}
         </Swap>
       </div>
@@ -259,11 +259,13 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
  * own sign-in and comes back here; one Zenodo stopped accepting says so and offers to connect again.
  */
 /**
- * A connection's row. Under 16rem (a phone at large text) the buttons go under the text, which would otherwise be
- * pushed past the screen's edge; at normal sizes the row is as it was.
+ * A connection's row. Under 28rem (any phone) its buttons go under its text, lined up with it, so the text has the row's
+ * width: beside a button area kept wide enough for Cancel and Disconnect it had a third of a phone, cut short or run
+ * under the button. Its line keeps two lines' height there, so the account arriving never moves the rows below.
  */
-const ROW = "flex items-center gap-3 p-3 @max-[16rem]/integrations:flex-wrap";
-const ACTIONS = "flex w-40 shrink-0 justify-end gap-1 @max-[16rem]/integrations:w-full @max-[16rem]/integrations:justify-start";
+const ROW = "flex items-center gap-3 p-3 @max-[28rem]/integrations:flex-wrap";
+const ACTIONS = "flex w-40 shrink-0 justify-end gap-1 @max-[28rem]/integrations:w-full @max-[28rem]/integrations:justify-start @max-[28rem]/integrations:ps-12";
+const LINE = "flex min-w-0 items-center text-xs text-muted-foreground @max-[28rem]/integrations:min-h-8 @max-[28rem]/integrations:items-start";
 
 function ZenodoRow() {
   const t = useTranslations("connectionsPage");
@@ -280,14 +282,15 @@ function ZenodoRow() {
   const connected = !!account && !account.broken;
 
   const line = !account ? (
-    <span className="truncate">{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
+    <span className="line-clamp-2">{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
   ) : account.broken ? (
     <span className="truncate text-destructive">{t("zenodoBroken")}</span>
   ) : step === "confirm" ? (
     <span className="text-pretty">{t("zenodoKeeps")}</span>
   ) : (
     // What it is for, with the account: once connected, the row still says why it is there.
-    <span className="truncate">{t("zenodoIn", { name: account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo") })}</span>
+    // Wraps on a phone rather than cutting the account off.
+    <span className="line-clamp-2">{t("zenodoIn", { name: account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo") })}</span>
   );
 
   return (
@@ -295,7 +298,7 @@ function ZenodoRow() {
       <ZenodoMark className="size-9 shrink-0 self-start rounded-lg" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">Zenodo</p>
-        <Swap id={`${connected}-${step === "confirm"}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
+        <Swap id={`${connected}-${step === "confirm"}`} className={LINE}>
           {line}
         </Swap>
       </div>
