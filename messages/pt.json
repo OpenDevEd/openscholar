@@ -7001,7 +7001,8 @@
       "noteIntro": "Seu relatório está com quem revisa. Conte o que as verificações não podiam saber, como onde ele já foi publicado.",
       "noteQuestion": "Sua nota",
       "sendNote": "Enviar a nota",
-      "yourNote": "Sua nota para quem revisa"
+      "yourNote": "Sua nota para quem revisa",
+      "uploadIntroAdded": "Envie o seu PDF como está: adicionamos esta linha numa última página quando ele é enviado."
     },
     "meta": {
       "publish": "Publicar | Openscholar",

@@ -7000,7 +7000,8 @@
       "noteIntro": "レポートはレビュー担当者のもとにあります。以前の掲載先など、チェックでは分からないことを伝えてください。",
       "noteQuestion": "メモ",
       "sendNote": "メモを送信",
-      "yourNote": "レビュー担当者へのメモ"
+      "yourNote": "レビュー担当者へのメモ",
+      "uploadIntroAdded": "PDF はそのままアップロードしてください。アップロード時に最後のページとしてこの行を追加します。"
     },
     "meta": {
       "publish": "公開 | Openscholar",

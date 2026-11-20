@@ -7001,7 +7001,8 @@
       "noteIntro": "Jou verslag is by 'n beoordelaar. Vertel hulle enigiets wat die kontroles nie kon weet nie, soos waar dit voorheen gepubliseer is.",
       "noteQuestion": "Jou nota",
       "sendNote": "Stuur die nota",
-      "yourNote": "Jou nota vir die beoordelaar"
+      "yourNote": "Jou nota vir die beoordelaar",
+      "uploadIntroAdded": "Laai jou PDF op soos dit is: ons voeg hierdie reël op 'n laaste bladsy by wanneer dit opgelaai word."
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

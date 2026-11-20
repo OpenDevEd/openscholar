@@ -7001,7 +7001,8 @@
       "noteIntro": "Tu informe está con una persona que lo revisa. Cuéntale lo que las comprobaciones no podían saber, como dónde se publicó antes.",
       "noteQuestion": "Tu nota",
       "sendNote": "Enviar la nota",
-      "yourNote": "Tu nota para quien revisa"
+      "yourNote": "Tu nota para quien revisa",
+      "uploadIntroAdded": "Sube tu PDF tal como está: añadimos esta línea en una última página al subirlo."
     },
     "meta": {
       "publish": "Publicar | Openscholar",

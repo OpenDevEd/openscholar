@@ -7001,7 +7001,8 @@
       "noteIntro": "Ripoti yako iko kwa mkaguzi. Mweleze lolote ambalo ukaguzi haukuweza kujua, kama mahali ilipochapishwa awali.",
       "noteQuestion": "Ujumbe wako",
       "sendNote": "Tuma ujumbe",
-      "yourNote": "Ujumbe wako kwa mkaguzi"
+      "yourNote": "Ujumbe wako kwa mkaguzi",
+      "uploadIntroAdded": "Pakia PDF yako kama ilivyo: tunaongeza mstari huu kwenye ukurasa wa mwisho inapopakiwa."
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

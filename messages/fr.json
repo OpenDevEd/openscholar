@@ -7000,7 +7000,8 @@
       "noteIntro": "Votre rapport est en relecture. Indiquez ce que les vérifications ne pouvaient pas savoir, par exemple où il a déjà été publié.",
       "noteQuestion": "Votre note",
       "sendNote": "Envoyer la note",
-      "yourNote": "Votre note pour la relecture"
+      "yourNote": "Votre note pour la relecture",
+      "uploadIntroAdded": "Téléversez votre PDF tel quel : nous ajoutons cette ligne sur une dernière page au téléversement."
     },
     "meta": {
       "publish": "Publier | Openscholar",

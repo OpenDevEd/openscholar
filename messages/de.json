@@ -7001,7 +7001,8 @@
       "noteIntro": "Ihr Bericht liegt zur Prüfung vor. Teilen Sie mit, was die Prüfungen nicht wissen konnten, etwa wo er schon veröffentlicht wurde.",
       "noteQuestion": "Ihre Notiz",
       "sendNote": "Notiz senden",
-      "yourNote": "Ihre Notiz für die Prüfung"
+      "yourNote": "Ihre Notiz für die Prüfung",
+      "uploadIntroAdded": "Laden Sie Ihr PDF so hoch, wie es ist: Wir fügen diese Zeile beim Hochladen auf einer letzten Seite hinzu."
     },
     "meta": {
       "publish": "Veröffentlichen | Openscholar",

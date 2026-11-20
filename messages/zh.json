@@ -7000,7 +7000,8 @@
       "noteIntro": "你的报告正在审核中。告诉审核人检查无法得知的信息，例如它之前在哪里发表过。",
       "noteQuestion": "你的留言",
       "sendNote": "发送留言",
-      "yourNote": "你给审核人的留言"
+      "yourNote": "你给审核人的留言",
+      "uploadIntroAdded": "按原样上传你的 PDF：上传时我们会在最后一页加上这一行。"
     },
     "meta": {
       "publish": "发布 | Openscholar",

@@ -7000,7 +7000,8 @@
       "noteIntro": "Your report is with a reviewer. Tell them anything the checks couldn't know, such as where it was published before.",
       "noteQuestion": "Your note",
       "sendNote": "Send the note",
-      "yourNote": "Your note for the reviewer"
+      "yourNote": "Your note for the reviewer",
+      "uploadIntroAdded": "Upload your PDF as it is: we add this line on a last page when it's uploaded."
     },
     "meta": {
       "publish": "Publish | Openscholar",

@@ -86,7 +86,8 @@ export const DEFAULT_CHECKS: Check[] = [
     id: "rights",
     // A PDF that says "All rights reserved" published under CC BY tells its readers two things: they can't know which holds.
     name: "Rights match the licence",
-    question: 'Does every statement of rights or licence in the text agree with "{licence}"? A line such as "All rights reserved" or another licence\'s name disagrees with an open licence. The line naming {licence} that Openscholar adds agrees.',
+    // A copyright notice is not a licence: "© 2026 Turkana Water Trust" stands beside CC BY, and a walker's report was held for one.
+    question: 'Does every statement of rights or licence in the text agree with "{licence}"? A copyright notice ("© 2026 A Name", "Copyright A Name") names who holds the rights and agrees with any licence. "All rights reserved", a ban on copying or sharing, or another licence\'s name disagrees with an open licence. The line naming {licence} that Openscholar adds agrees.',
     fix: "Take out or change the rights statement in the PDF so it says {licence}, then upload the PDF again.",
     modelId: JEV_MODEL,
     threshold: 0.7,

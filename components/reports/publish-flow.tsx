@@ -1701,7 +1701,8 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   return (
     // The drop area takes the height the step has to spare (`Screens`), so Back and Next sit at its foot.
     <div className="flex flex-1 flex-col">
-      <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
+      {/* With the line added for them, the PDF needn't carry it: said so, as people read "must carry" and went to edit theirs. */}
+      <StepHead title={t("uploadPdf")} help="byline">{t(by === "added" ? "uploadIntroAdded" : "uploadIntro")}</StepHead>
       <BylineChoice id={choice} byline={report.byline} by={by} disabled={busy} error={tried && !by ? t("bylineBy.choose") : null} onPick={pick} />
       <button
         id={drop}
