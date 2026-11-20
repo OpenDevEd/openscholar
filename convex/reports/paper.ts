@@ -3,7 +3,7 @@
 // ever read here: a report that never went live has no page and nothing finds it.
 import { v } from "convex/values";
 import { internalQuery, query, type QueryCtx } from "../_generated/server";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, getIdentity } from "../lib/auth";
 import { appClientId } from "../lib/appCalls";
 import { isAdmin } from "../admins/access";
 import { actorIn } from "../workspaces/actor";
@@ -59,7 +59,7 @@ export const keptFile = internalQuery({
   args: { key: v.string(), part: v.union(v.literal("pdf"), v.literal("cover")) },
   returns: v.union(v.null(), v.id("_storage")),
   handler: async (ctx, { key, part }) => {
-    const user = appClientId(await ctx.auth.getUserIdentity()) ? null : await getCurrentUser(ctx);
+    const user = appClientId(await getIdentity(ctx)) ? null : await getCurrentUser(ctx);
     const report = user ? await byKey(ctx, key) : null;
     const file = part === "pdf" ? report?.pdf?.file : report?.cover?.file;
     if (!user || !report || !file) return null;

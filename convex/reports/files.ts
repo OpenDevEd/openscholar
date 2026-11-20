@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { fileOut } from "../../lib/reports/report";
 import { internal } from "../_generated/api";
 import { httpAction } from "../_generated/server";
+import { readConvexErrorData } from "../lib/errors";
 import type { Id } from "../_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "../lib/functions";
 
@@ -72,7 +73,11 @@ export const rotate = internalAction({
 export const kept = httpAction(async (ctx, request) => {
   const params = new URL(request.url).searchParams;
   const part = params.get("part") === "cover" ? "cover" : "pdf";
-  const file = await ctx.runQuery(internal.reports.paper.keptFile, { key: params.get("key") ?? "", part });
+  // A token that no longer counts (an app since deleted or disconnected) is refused as anyone else is.
+  const file = await ctx.runQuery(internal.reports.paper.keptFile, { key: params.get("key") ?? "", part }).catch((error: unknown) => {
+    if (readConvexErrorData(error)?.code === "UNAUTHENTICATED") return null;
+    throw error;
+  });
   const blob = file ? await ctx.storage.get(file) : null;
   if (!blob) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   return new Response(blob, { headers: { "Content-Type": blob.type || (part === "pdf" ? "application/pdf" : "image/jpeg"), "Content-Length": String(blob.size), "Cache-Control": "no-store" } });
