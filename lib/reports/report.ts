@@ -252,6 +252,14 @@ export const keptAccess = (fileAccess: FileAccess) => ({ fileAccess, fileOpensOn
 /** Whether Openscholar's readers get a report's file on `today`: it has one, and its access doesn't keep it from them. */
 export const readersGetFile = (report: { pdf?: unknown; licence?: Licence | undefined; fileAccess?: FileAccess | undefined }) =>
   report.pdf !== undefined && !fileHidden(fileAccessOf(licenceOf(report), report.fileAccess));
+/** Whether a report's file is out for everyone: live, and its readers get it. Only then is the file store's own address handed out. */
+export const fileOut = (report: Parameters<typeof readersGetFile>[0] & { status: Status }) => report.status === "live" && readersGetFile(report);
+/**
+ * Where a report's file opens for those who see it before its readers may (its workspace, Openscholar's reviewers): an
+ * address that asks who they are each time (app/api/reports/files). The file store's own address works for anyone it is
+ * passed to, for good, so a private or embargoed PDF copied from its owner's page would be anyone's.
+ */
+export const keptFileAddress = (key: string, part: "pdf" | "cover") => `/api/reports/files/${key}${part === "cover" ? "?part=cover" : ""}`;
 /** What a deposit says of the file: nothing when anyone may have it, else restricted, until a day under an embargo. */
 export function depositFileAccess(access: FileAccess): { restricted: true; until?: string } | undefined {
   if (access.mode === "open") return undefined;

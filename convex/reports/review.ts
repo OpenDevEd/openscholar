@@ -10,7 +10,7 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, fileAccessOf, isReportKey, isAuthor, licenceOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, doiIn, fileAccessOf, fileOut, keptFileAddress, isReportKey, isAuthor, licenceOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
 import { changeFileAccess, checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { becameReady, notify } from "./mail";
@@ -44,7 +44,7 @@ async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof 
     ...((report.title ?? report.pdf?.name) && { title: report.title ?? report.pdf?.name }),
     withdrawn: report.withdrawnAt !== undefined,
     signer: report.signedBy.name,
-    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
+    coverUrl: report.cover ? (fileOut(report) ? await ctx.storage.getUrl(report.cover.file) : keptFileAddress(report.key, "cover")) : null, ...(report.cover?.shape && { coverShape: report.cover.shape }),
     ...(report.pdf && { pdfAt: report.pdf.at }),
     ...(first?.name && { first: { name: first.name, ...(first.affiliations[0]?.country && { country: first.affiliations[0].country }) } }),
   };
@@ -132,7 +132,7 @@ export const get = query({
       agreementVersion: report.agreementVersion,
       ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
       ...(report.run && { run: { at: report.run.at, changes: report.run.changes === true } }),
-      ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+      ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: fileOut(report) ? await ctx.storage.getUrl(report.pdf.file) : keptFileAddress(report.key, "pdf") } }),
       ...(details.metadata && { metadata: details.metadata }),
       ...(details.results && { results: details.results }),
       ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

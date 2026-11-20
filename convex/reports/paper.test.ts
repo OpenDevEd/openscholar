@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { checked, live, passed, refused, row, setup, type World } from "./reports.test-support";
+import { checked, live, passed, read, refused, row, setup, type World } from "./reports.test-support";
 import { trimPaperData } from "../../lib/library/trim-paper-data";
 import { reportPaper } from "../../lib/reports/report-paper";
 
@@ -222,6 +222,13 @@ describe("a report's page", () => {
       await world.t.run(async (ctx) => ctx.db.patch("reports", reportId, { fileAccess: { mode: "private" }, cover: { file: await ctx.storage.store(new Blob(["first page"])), at: 1 } }));
       expect(await page()).toMatchObject({ pdfUrl: null, coverUrl: null, fileAccess: { mode: "private" } });
       expect(await community("community-1")).toMatchObject({ hasPdf: false });
+      // Its workspace and the reviewers open it at an address that asks who they are, never the file store's own,
+      // which would open for anyone the owner passed it to.
+      expect(await read(world.author, world.own, key)).toMatchObject({ pdf: { url: `/api/reports/files/${key}` } });
+      const kept = (who: World["author"]) => who.query(api.reports.paper.keptFile, { key, part: "pdf" });
+      expect(await kept(world.author)).toEqual(expect.any(String));
+      expect(await kept(world.reviewer)).toEqual(expect.any(String));
+      expect(await kept(world.stranger)).toBeNull();
 
       await access({ mode: "embargo", until: "2026-11-21" });
       expect(await page()).toMatchObject({ pdfUrl: null });

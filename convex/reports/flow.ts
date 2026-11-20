@@ -17,7 +17,7 @@ import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { choosesLicence } from "../../lib/reports/agreement";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, isCalendarDay, keptAccess, opensFurther, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, fileOut, isCalendarDay, keptAccess, keptFileAddress, opensFurther, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
@@ -666,7 +666,7 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanRev
     // A picture of the PDF's first page: for those who may have the PDF, as the PDF's address is.
     ...(await (async () => {
       const seen = report.cover && (mayChange(actor, report) || readersGetFile(report));
-      return { coverUrl: seen ? await ctx.storage.getUrl(report.cover!.file) : null, ...(seen && report.cover!.shape && { coverShape: report.cover!.shape }) };
+      return { coverUrl: seen ? (fileOut(report) ? await ctx.storage.getUrl(report.cover!.file) : keptFileAddress(report.key, "cover")) : null, ...(seen && report.cover!.shape && { coverShape: report.cover!.shape }) };
     })()),
     mine: mayChange(actor, report),
   };
@@ -844,7 +844,7 @@ export const getAction = defineUserQuery({
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
         // A file its readers can't have is the address only of those who may change the report, not every member's.
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: readersGetFile(report) || mayChange(actor, report) ? await ctx.storage.getUrl(report.pdf.file) : null } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: fileOut(report) ? await ctx.storage.getUrl(report.pdf.file) : readersGetFile(report) || mayChange(actor, report) ? keptFileAddress(report.key, "pdf") : null } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

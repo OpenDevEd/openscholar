@@ -4,6 +4,7 @@
 import { v } from "convex/values";
 import { internalQuery, query, type QueryCtx } from "../_generated/server";
 import { getCurrentUser } from "../lib/auth";
+import { isAdmin } from "../admins/access";
 import { actorIn } from "../workspaces/actor";
 import { detailsOf, mayChange } from "./flow";
 import { reportSettings } from "./settings";
@@ -43,6 +44,25 @@ export const get = query({
       coverUrl: report.cover && readersGetFile(report) ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && readersGetFile(report) && { coverShape: report.cover.shape }),
       updatedAt: report.updatedAt,
     };
+  },
+});
+
+/**
+ * The file store's address of a report's PDF or first-page picture, for app/api/reports/files to pass on, so the address
+ * itself never reaches a browser: for whoever its workspace's page shows the file to (those who may change the report,
+ * and anyone there once its readers get it) and Openscholar's reviewers. Null for anyone else.
+ */
+export const keptFile = query({
+  args: { key: v.string(), part: v.union(v.literal("pdf"), v.literal("cover")) },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, { key, part }) => {
+    const user = await getCurrentUser(ctx);
+    const report = user ? await byKey(ctx, key) : null;
+    const file = part === "pdf" ? report?.pdf?.file : report?.cover?.file;
+    if (!user || !report || !file) return null;
+    const actor = await actorIn(ctx, user, report.workspaceId);
+    const sees = (actor && (mayChange(actor, report) || readersGetFile(report))) || (await isAdmin(ctx, user._id));
+    return sees ? await ctx.storage.getUrl(file) : null;
   },
 });
 
