@@ -18,6 +18,7 @@ import { institutions as contactInstitutions, send as sendContact } from "./cont
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
 import { COLLECTION_INVITATION_CALLS, serveCollectionInvitations } from "./evidenceLibraries/collectionInvitations";
 import { download as downloadExport } from "./exports";
+import { kept as keptReportFile } from "./reports/files";
 import { upload as uploadAssistantFile, uploadOptions as uploadAssistantFileOptions } from "./assistant/files";
 import { requireAppUrl } from "./lib/env";
 import { zoteroReturnUrl } from "./zotero/signInReturn";
@@ -30,6 +31,7 @@ import {
 
 const http = httpRouter();
 http.route({path: "/export", method: "GET", handler: downloadExport});
+http.route({path: "/reports/file", method: "GET", handler: keptReportFile});
 // A signed-out visitor's AI overview, streamed to the Next app that vouches for them (convex/research/signedOutOverviews.ts).
 http.route({path: "/overviews/signed-out", method: "POST", handler: signedOutOverview});
 // The contact form on openscholar.ai, through the Next app that vouches for its visitors (convex/contact.ts).

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { checked, live, passed, refused, row, setup, type World } from "./reports.test-support";
+import { checked, live, passed, read, refused, row, setup, type World } from "./reports.test-support";
 import { trimPaperData } from "../../lib/library/trim-paper-data";
 import { reportPaper } from "../../lib/reports/report-paper";
 
@@ -222,6 +222,16 @@ describe("a report's page", () => {
       await world.t.run(async (ctx) => ctx.db.patch("reports", reportId, { fileAccess: { mode: "private" }, cover: { file: await ctx.storage.store(new Blob(["first page"])), at: 1 } }));
       expect(await page()).toMatchObject({ pdfUrl: null, coverUrl: null, fileAccess: { mode: "private" } });
       expect(await community("community-1")).toMatchObject({ hasPdf: false });
+      // Its workspace and the reviewers open it at an address that asks who they are, never the file store's own,
+      // which would open for anyone the owner passed it to.
+      expect(await read(world.author, world.own, key)).toMatchObject({ pdf: { url: expect.stringMatching(new RegExp(`^/api/reports/files/${key}\\?at=\\d+$`)) } });
+      const kept = async (who: World["author"], part = "pdf") => (await who.fetch(`/reports/file?key=${key}&part=${part}`)).status;
+      expect(await kept(world.author)).toBe(200);
+      expect(await kept(world.author, "cover")).toBe(200);
+      expect(await kept(world.reviewer)).toBe(200);
+      expect(await kept(world.stranger)).toBe(404);
+      // An app holding the reviewer's token gets nothing: it would open every report's.
+      expect(await kept(world.t.withIdentity({ subject: "reviewer", client_id: "client_bee" }))).toBe(404);
 
       await access({ mode: "embargo", until: "2026-11-21" });
       expect(await page()).toMatchObject({ pdfUrl: null });

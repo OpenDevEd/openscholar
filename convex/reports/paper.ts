@@ -3,7 +3,9 @@
 // ever read here: a report that never went live has no page and nothing finds it.
 import { v } from "convex/values";
 import { internalQuery, query, type QueryCtx } from "../_generated/server";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, getIdentity } from "../lib/auth";
+import { appClientId } from "../lib/appCalls";
+import { isAdmin } from "../admins/access";
 import { actorIn } from "../workspaces/actor";
 import { detailsOf, mayChange } from "./flow";
 import { reportSettings } from "./settings";
@@ -43,6 +45,27 @@ export const get = query({
       coverUrl: report.cover && readersGetFile(report) ? await ctx.storage.getUrl(report.cover.file) : null, ...(report.cover?.shape && readersGetFile(report) && { coverShape: report.cover.shape }),
       updatedAt: report.updatedAt,
     };
+  },
+});
+
+/**
+ * A report's PDF or first-page picture, for whoever its workspace's page shows the file to (those who may change the
+ * report, and anyone there once its readers get it) and Openscholar's reviewers; null for anyone else. Read by
+ * convex/reports/files.ts `kept` as the person asking, which sends the bytes, so the file store's own address, which
+ * works for anyone it is passed to, never leaves the server. Never to an app signed in as someone: an admin's token
+ * held by an app would otherwise open every report's.
+ */
+export const keptFile = internalQuery({
+  args: { key: v.string(), part: v.union(v.literal("pdf"), v.literal("cover")) },
+  returns: v.union(v.null(), v.id("_storage")),
+  handler: async (ctx, { key, part }) => {
+    const user = appClientId(await getIdentity(ctx)) ? null : await getCurrentUser(ctx);
+    const report = user ? await byKey(ctx, key) : null;
+    const file = part === "pdf" ? report?.pdf?.file : report?.cover?.file;
+    if (!user || !report || !file) return null;
+    const actor = await actorIn(ctx, user, report.workspaceId);
+    const sees = (actor && (mayChange(actor, report) || readersGetFile(report))) || (await isAdmin(ctx, user._id));
+    return sees ? file : null;
   },
 });
 
