@@ -64,6 +64,8 @@ describe("public route auth matrix", () => {
       "/api/contact/institutions",
       // A signed-out visitor's AI overview (#1070), which checks for itself who's asking.
       "/api/overviews",
+      // A report's file before its readers may have it, which asks for itself who is signed in, and says the PDF is private to anyone else.
+      "/api/reports/files/x",
       "/authors",
       "/authors/x",
       "/bookmarks",
@@ -74,6 +76,8 @@ describe("public route auth matrix", () => {
       "/credits",
       // The public communities, for anyone (#1090).
       "/evidence-communities",
+      // Where a report's file sends someone it won't open: the PDF is private, and its owner may sign in.
+      "/files/private",
       "/history",
       // A paper's page, which search engines read signed out.
       // A paper's citation files, for reference managers and tools that follow a paper page's links.

@@ -6165,6 +6165,12 @@
     "sayMore": "Say more about your work in the message below, then send it again."
   },
   "publishReports": {
+    "privateFile": {
+      "title": "This PDF is private",
+      "signedOut": "Only the people publishing this report can open its PDF for now. If it's yours, sign in to open it.",
+      "signedIn": "Only the people publishing this report can open its PDF for now, and this account isn't one of them. Ask whoever sent you the link.",
+      "signIn": "Sign in"
+    },
     "withdrawn": {
       "status": "Withdrawn",
       "copyDoi": "Copy the DOI",
