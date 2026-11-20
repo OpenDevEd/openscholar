@@ -4,6 +4,7 @@
 import { v } from "convex/values";
 import { internalQuery, query, type QueryCtx } from "../_generated/server";
 import { getCurrentUser } from "../lib/auth";
+import { appClientId } from "../lib/appCalls";
 import { isAdmin } from "../admins/access";
 import { actorIn } from "../workspaces/actor";
 import { detailsOf, mayChange } from "./flow";
@@ -51,13 +52,14 @@ export const get = query({
  * A report's PDF or first-page picture, for whoever its workspace's page shows the file to (those who may change the
  * report, and anyone there once its readers get it) and Openscholar's reviewers; null for anyone else. Read by
  * convex/reports/files.ts `kept` as the person asking, which sends the bytes, so the file store's own address, which
- * works for anyone it is passed to, never leaves the server.
+ * works for anyone it is passed to, never leaves the server. Never to an app signed in as someone: an admin's token
+ * held by an app would otherwise open every report's.
  */
 export const keptFile = internalQuery({
   args: { key: v.string(), part: v.union(v.literal("pdf"), v.literal("cover")) },
   returns: v.union(v.null(), v.id("_storage")),
   handler: async (ctx, { key, part }) => {
-    const user = await getCurrentUser(ctx);
+    const user = appClientId(await ctx.auth.getUserIdentity()) ? null : await getCurrentUser(ctx);
     const report = user ? await byKey(ctx, key) : null;
     const file = part === "pdf" ? report?.pdf?.file : report?.cover?.file;
     if (!user || !report || !file) return null;

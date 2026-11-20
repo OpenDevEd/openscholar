@@ -230,6 +230,8 @@ describe("a report's page", () => {
       expect(await kept(world.author, "cover")).toBe(200);
       expect(await kept(world.reviewer)).toBe(200);
       expect(await kept(world.stranger)).toBe(404);
+      // An app holding the reviewer's token gets nothing: it would open every report's.
+      expect(await kept(world.t.withIdentity({ subject: "reviewer", client_id: "client_bee" }))).toBe(404);
 
       await access({ mode: "embargo", until: "2026-11-21" });
       expect(await page()).toMatchObject({ pdfUrl: null });
