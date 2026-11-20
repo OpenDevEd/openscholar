@@ -259,7 +259,7 @@ export const fileOut = (report: Parameters<typeof readersGetFile>[0] & { status:
  * address that asks who they are each time (app/api/reports/files). The file store's own address works for anyone it is
  * passed to, for good, so a private or embargoed PDF copied from its owner's page would be anyone's.
  */
-export const keptFileAddress = (key: string, part: "pdf" | "cover") => `/api/reports/files/${key}${part === "cover" ? "?part=cover" : ""}`;
+export const keptFileAddress = (key: string, part: "pdf" | "cover", at: number) => `/api/reports/files/${key}?${part === "cover" ? "part=cover&" : ""}at=${at}`;
 /** What a deposit says of the file: nothing when anyone may have it, else restricted, until a day under an embargo. */
 export function depositFileAccess(access: FileAccess): { restricted: true; until?: string } | undefined {
   if (access.mode === "open") return undefined;

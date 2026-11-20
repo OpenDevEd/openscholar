@@ -2,20 +2,21 @@
 // exists, and a live report's PDF and cover were handed to everyone who read its page. When the report is withdrawn
 // each is stored again under a new address and the old file is deleted, so the addresses already out stop working.
 import { v } from "convex/values";
-import { fileAccessOf, fileHidden, licenceOf } from "../../lib/reports/report";
+import { fileOut } from "../../lib/reports/report";
 import { internal } from "../_generated/api";
+import { httpAction } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internalAction, internalMutation, internalQuery } from "../lib/functions";
 
 const pairValidator = v.object({ from: v.id("_storage"), to: v.id("_storage") });
 
-/** The files a withdrawn report, or one whose file readers may no longer have, still holds under the addresses it was read by. */
+/** The files a report not out for everyone holds (withdrawn, private, embargoed, or not live yet), under the addresses they were read by. */
 export const held = internalQuery({
   args: { reportId: v.id("reports") },
   returns: v.union(v.null(), v.object({ pdf: v.optional(v.id("_storage")), cover: v.optional(v.id("_storage")) })),
   handler: async (ctx, { reportId }) => {
     const report = await ctx.db.get("reports", reportId);
-    if (!report || (report.withdrawnAt === undefined && !fileHidden(fileAccessOf(licenceOf(report), report.fileAccess)))) return null;
+    if (!report || fileOut(report)) return null;
     return { ...(report.pdf && { pdf: report.pdf.file }), ...(report.cover && { cover: report.cover.file }) };
   },
 });
@@ -61,4 +62,18 @@ export const rotate = internalAction({
     await ctx.runMutation(internal.reports.files.swap, { reportId, ...(pdf && { pdf }), ...(cover && { cover }) });
     return null;
   },
+});
+
+/**
+ * `GET /reports/file?key=…&part=pdf|cover`, as the person whose token it carries: a report's file for its workspace and
+ * the reviewers before its readers may have it (convex/reports/paper.ts `keptFile`), as its bytes. Called by
+ * app/api/reports/files, which reads who is signed in. Not found for anyone else.
+ */
+export const kept = httpAction(async (ctx, request) => {
+  const params = new URL(request.url).searchParams;
+  const part = params.get("part") === "cover" ? "cover" : "pdf";
+  const file = await ctx.runQuery(internal.reports.paper.keptFile, { key: params.get("key") ?? "", part });
+  const blob = file ? await ctx.storage.get(file) : null;
+  if (!blob) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  return new Response(blob, { headers: { "Content-Type": blob.type || (part === "pdf" ? "application/pdf" : "image/jpeg"), "Content-Length": String(blob.size), "Cache-Control": "no-store" } });
 });

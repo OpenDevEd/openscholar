@@ -365,6 +365,7 @@ import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_publicationBalance from "../migrations/publicationBalance.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
+import type * as migrations_rotateKeptFiles from "../migrations/rotateKeptFiles.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
 import type * as migrations_searchSuggestions from "../migrations/searchSuggestions.js";
@@ -888,6 +889,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/publicationBalance": typeof migrations_publicationBalance;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
+  "migrations/rotateKeptFiles": typeof migrations_rotateKeptFiles;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
   "migrations/searchSuggestions": typeof migrations_searchSuggestions;

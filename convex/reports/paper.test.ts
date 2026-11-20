@@ -224,11 +224,12 @@ describe("a report's page", () => {
       expect(await community("community-1")).toMatchObject({ hasPdf: false });
       // Its workspace and the reviewers open it at an address that asks who they are, never the file store's own,
       // which would open for anyone the owner passed it to.
-      expect(await read(world.author, world.own, key)).toMatchObject({ pdf: { url: `/api/reports/files/${key}` } });
-      const kept = (who: World["author"]) => who.query(api.reports.paper.keptFile, { key, part: "pdf" });
-      expect(await kept(world.author)).toEqual(expect.any(String));
-      expect(await kept(world.reviewer)).toEqual(expect.any(String));
-      expect(await kept(world.stranger)).toBeNull();
+      expect(await read(world.author, world.own, key)).toMatchObject({ pdf: { url: expect.stringMatching(new RegExp(`^/api/reports/files/${key}\\?at=\\d+$`)) } });
+      const kept = async (who: World["author"], part = "pdf") => (await who.fetch(`/reports/file?key=${key}&part=${part}`)).status;
+      expect(await kept(world.author)).toBe(200);
+      expect(await kept(world.author, "cover")).toBe(200);
+      expect(await kept(world.reviewer)).toBe(200);
+      expect(await kept(world.stranger)).toBe(404);
 
       await access({ mode: "embargo", until: "2026-11-21" });
       expect(await page()).toMatchObject({ pdfUrl: null });

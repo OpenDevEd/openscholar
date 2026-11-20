@@ -666,7 +666,7 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanRev
     // A picture of the PDF's first page: for those who may have the PDF, as the PDF's address is.
     ...(await (async () => {
       const seen = report.cover && (mayChange(actor, report) || readersGetFile(report));
-      return { coverUrl: seen ? (fileOut(report) ? await ctx.storage.getUrl(report.cover!.file) : keptFileAddress(report.key, "cover")) : null, ...(seen && report.cover!.shape && { coverShape: report.cover!.shape }) };
+      return { coverUrl: seen ? (fileOut(report) ? await ctx.storage.getUrl(report.cover!.file) : keptFileAddress(report.key, "cover", report.cover!.at)) : null, ...(seen && report.cover!.shape && { coverShape: report.cover!.shape }) };
     })()),
     mine: mayChange(actor, report),
   };
@@ -844,7 +844,7 @@ export const getAction = defineUserQuery({
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
         // A file its readers can't have is the address only of those who may change the report, not every member's.
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: fileOut(report) ? await ctx.storage.getUrl(report.pdf.file) : readersGetFile(report) || mayChange(actor, report) ? keptFileAddress(report.key, "pdf") : null } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.bylineBy && { bylineBy: report.pdf.bylineBy }), ...(report.pdf.kept && { kept: true }), url: fileOut(report) ? await ctx.storage.getUrl(report.pdf.file) : readersGetFile(report) || mayChange(actor, report) ? keptFileAddress(report.key, "pdf", report.pdf.at) : null } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

@@ -48,13 +48,14 @@ export const get = query({
 });
 
 /**
- * The file store's address of a report's PDF or first-page picture, for app/api/reports/files to pass on, so the address
- * itself never reaches a browser: for whoever its workspace's page shows the file to (those who may change the report,
- * and anyone there once its readers get it) and Openscholar's reviewers. Null for anyone else.
+ * A report's PDF or first-page picture, for whoever its workspace's page shows the file to (those who may change the
+ * report, and anyone there once its readers get it) and Openscholar's reviewers; null for anyone else. Read by
+ * convex/reports/files.ts `kept` as the person asking, which sends the bytes, so the file store's own address, which
+ * works for anyone it is passed to, never leaves the server.
  */
-export const keptFile = query({
+export const keptFile = internalQuery({
   args: { key: v.string(), part: v.union(v.literal("pdf"), v.literal("cover")) },
-  returns: v.union(v.null(), v.string()),
+  returns: v.union(v.null(), v.id("_storage")),
   handler: async (ctx, { key, part }) => {
     const user = await getCurrentUser(ctx);
     const report = user ? await byKey(ctx, key) : null;
@@ -62,7 +63,7 @@ export const keptFile = query({
     if (!user || !report || !file) return null;
     const actor = await actorIn(ctx, user, report.workspaceId);
     const sees = (actor && (mayChange(actor, report) || readersGetFile(report))) || (await isAdmin(ctx, user._id));
-    return sees ? await ctx.storage.getUrl(file) : null;
+    return sees ? file : null;
   },
 });
 
