@@ -30,6 +30,8 @@ export const ANOTHER = "another";
 const STANDARD = LICENCE_NAMES.filter((name) => LICENCES[name].tier === "standard");
 const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].tier !== "standard");
 const OWN = "own";
+/** Each licence in plain words: its name alone ("CC BY-NC 4.0") was a list of letters to someone choosing one. */
+const MEANING = { "CC BY 4.0": "by", "CC BY-SA 4.0": "bySa", "CC BY-NC 4.0": "byNc", "CC BY-ND 4.0": "byNd", "CC BY-NC-SA 4.0": "byNcSa", "CC BY-NC-ND 4.0": "byNcNd" } as const satisfies Record<LicenceName, string>;
 
 
 /** The ids of an own licence's fields, from the `id` the step gives: where its Next takes the person. */
@@ -42,7 +44,7 @@ export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabl
   // Each licence by its price, whatever pays it: what picking one leaves to pay is the bill's to say.
   const dollars = useMoney();
   const cards = [
-    ...STANDARD.map((name) => ({ id: name, title: name, body: t(name === "CC BY 4.0" ? "by" : "bySa"), price: prices.standard })),
+    ...STANDARD.map((name) => ({ id: name, title: name, body: t(MEANING[name]), price: prices.standard })),
     // An own licence that isn't open has its own price, which its card shows once the author says so.
     { id: "other", title: t("other"), body: t("otherBody"), price: other && value !== ANOTHER ? priceOf(pickedLicence(value), prices) : prices.other },
   ];
@@ -73,15 +75,18 @@ export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabl
             <div>
             <Select value={value === ANOTHER ? "" : typeof value === "string" ? value : OWN} disabled={disabled} onValueChange={(picked) => onChange(picked === OWN ? { name: "", url: "" } : (picked as LicenceName))}>
               <SelectTrigger id={fields.which} aria-label={t("which")} aria-invalid={errors.which ? true : undefined} aria-describedby={errors.which ? `${fields.which}-error` : undefined} className="w-full">
-                <SelectValue placeholder={t("chooseOther")} />
+                {/* The name alone once chosen: what it means is said in the list. */}
+                <SelectValue placeholder={t("chooseOther")}>{value === ANOTHER ? null : typeof value === "string" ? value : t("own")}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {OTHERS.map((name) => (
                   <SelectItem key={name} value={name}>
-                    {name}
+                    <Meaning name={name}>{t(MEANING[name])}</Meaning>
                   </SelectItem>
                 ))}
-                <SelectItem value={OWN}>{t("own")}</SelectItem>
+                <SelectItem value={OWN}>
+                  <Meaning name={t("own")}>{t("ownMeaning")}</Meaning>
+                </SelectItem>
               </SelectContent>
             </Select>
             {errors.which ? <FieldMessage id={`${fields.which}-error`}>{errors.which}</FieldMessage> : null}
@@ -219,5 +224,15 @@ function Taker({ name, does, href, children }: { name: string; does: string; hre
         <span className="flex items-center gap-2.5 px-2.5 py-1.5">{body}</span>
       )}
     </li>
+  );
+}
+
+/** A licence in the list: its name, and under it what it lets others do. */
+function Meaning({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <span className="flex min-w-0 flex-col items-start gap-0.5 whitespace-normal py-0.5">
+      <span>{name}</span>
+      <span className="text-xs text-muted-foreground">{children}</span>
+    </span>
   );
 }
