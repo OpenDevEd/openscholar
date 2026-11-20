@@ -6912,7 +6912,9 @@
         "ownName_known": "Essa é uma licença Creative Commons: escolha-a acima.",
         "ownUrl_missing": "Informe o endereço web do texto dela.",
         "ownUrl_invalid": "Informe um endereço web completo, começando com https://.",
-        "ownOpenMissing": "Diga se ela permite que qualquer pessoa compartilhe o relatório."
+        "ownOpenMissing": "Diga se ela permite que qualquer pessoa compartilhe o relatório.",
+        "chooseOther": "Escolha uma licença",
+        "whichMissing": "Escolha qual licença é."
       },
       "payment": {
         "payWith": "Pagar com",
@@ -7001,7 +7003,8 @@
       "noteIntro": "Seu relatório está com quem revisa. Conte o que as verificações não podiam saber, como onde ele já foi publicado.",
       "noteQuestion": "Sua nota",
       "sendNote": "Enviar a nota",
-      "yourNote": "Sua nota para quem revisa"
+      "yourNote": "Sua nota para quem revisa",
+      "uploadIntroAdded": "Envie o seu PDF como está: adicionamos esta linha numa última página quando ele é enviado."
     },
     "meta": {
       "publish": "Publicar | Openscholar",

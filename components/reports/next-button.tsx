@@ -17,9 +17,10 @@ export function NextButton({ children, busy = false, className, disabled, ...pro
       <Working busy={busy}>
         <span className="flex h-9 items-stretch max-sm:h-auto max-sm:min-h-9 max-sm:flex-wrap">
           <span className="flex shrink-0 items-center bg-white/25 ps-3 pe-2.5 font-normal max-sm:max-w-full max-sm:[overflow-wrap:anywhere]">{t("next")}</span>
-          <span className="flex min-w-0 items-center gap-2 ps-3 pe-3.5 max-sm:min-w-[min(8rem,100%)] max-sm:flex-1 max-sm:justify-between max-sm:py-1.5 max-sm:text-start max-sm:[overflow-wrap:anywhere]">
+          <span className="flex min-w-0 items-center gap-2 ps-3 pe-3.5 max-sm:grow max-sm:justify-between max-sm:py-1.5 max-sm:text-start max-sm:[overflow-wrap:anywhere]">
             {children}
-            <ArrowRight />
+            {/* Where Back keeps only its arrow (StepNav), this one goes: "Next" says it, and the words need the room. */}
+            <ArrowRight className="@max-[18rem]/nav:hidden" />
           </span>
         </span>
       </Working>

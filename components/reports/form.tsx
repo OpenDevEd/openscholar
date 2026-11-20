@@ -17,14 +17,19 @@ import { cn } from "@/lib/utils";
 export function StepNav({ onBack, backDisabled, between, next }: { onBack?: () => void; backDisabled?: boolean; between?: ReactNode; next?: ReactNode }) {
   const t = useTranslations("publishReports.flow");
   return (
-    <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-6">
-      {onBack ? (
-        <Button variant="ghost" className="order-1 -ms-3 shrink-0 text-muted-foreground" disabled={backDisabled} onClick={onBack}>
-          <ArrowLeft /> {t("back")}
-        </Button>
-      ) : null}
-      {between ? <div className="order-2 ms-auto flex flex-wrap items-center justify-end gap-2 max-sm:order-none max-sm:basis-full">{between}</div> : null}
-      <div className={cn("order-3 flex min-w-0 items-center justify-end gap-2", between ? "max-sm:ms-auto" : "ms-auto")}>{next}</div>
+    <div className="@container/nav mt-auto flex flex-col gap-2 pt-6 sm:flex-row sm:items-center sm:gap-3">
+      {/* On a phone what goes between has a row of its own, above; on a wide page it sits between Back and the way on. */}
+      {between ? <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:order-2 sm:ms-auto">{between}</div> : null}
+      {/* Back and the way on share one row at every width: a long way on wraps its own words (NextButton), never the row,
+          and where even that is too narrow (a small phone, large text) Back keeps its arrow and its name only for screen readers. */}
+      <div className="flex items-center gap-3 sm:contents">
+        {onBack ? (
+          <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground sm:order-1" disabled={backDisabled} onClick={onBack}>
+            <ArrowLeft /> <span className="@max-[18rem]/nav:sr-only">{t("back")}</span>
+          </Button>
+        ) : null}
+        <div className={cn("ms-auto flex min-w-0 items-center justify-end gap-2 sm:order-3", between && "sm:ms-0")}>{next}</div>
+      </div>
     </div>
   );
 }

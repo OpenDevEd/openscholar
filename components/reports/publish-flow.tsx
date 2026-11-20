@@ -58,7 +58,7 @@ import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
-import { LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
+import { ANOTHER, LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
 import { ArchiveChoice } from "@/components/reports/archive-choice";
 import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
@@ -1141,11 +1141,12 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const zenodoNeeded = archive === "own" && (!zenodo || zenodo.broken);
   const choosing = choosesLicence(agreement.text);
   // An own licence counts once it is named, has its address, and says whether it lets anyone share the report.
-  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : typeof pick === "string" ? pick : pick.open === undefined ? null : ownLicence(pick.name, pick.url, pick.open);
+  const licence: Licence | null = !choosing ? DEFAULT_LICENCE : pick === ANOTHER ? null : typeof pick === "string" ? pick : pick.open === undefined ? null : ownLicence(pick.name, pick.url, pick.open);
   // The licence as far as it is picked: the price, the file's choices, the bill and the agreement all read it.
-  const named: Licence = choosing ? pickedLicence(pick) : DEFAULT_LICENCE;
+  // "Another licence" with none chosen yet is priced and offered files as another licence is, until one is.
+  const named: Licence = choosing ? pickedLicence(pick === ANOTHER ? { name: "", url: "" } : pick) : DEFAULT_LICENCE;
   // The bill names an own licence not yet named as such, never "…".
-  const billed = typeof pick !== "string" && choosing && !pick.name.trim() ? t("licence.own") : licenceName(named);
+  const billed = pick === ANOTHER && choosing ? t("licence.other") : typeof pick !== "string" && choosing && !pick.name.trim() ? t("licence.own") : licenceName(named);
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
   const priceNow = priceOf(named, basics.prices);
   const sum = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: voucher?.off ?? 0, credit: starts.credit, cardSaved: starts.cardSaved }) : null;
@@ -1189,6 +1190,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const ownWrong = own ? ownLicenceProblems(own.name, own.url) : {};
   const untilWrong = embargoProblem(fileAccessOf(named, access));
   const wrong = {
+    which: choosing && pick === ANOTHER ? t("licence.whichMissing") : undefined,
     name: ownWrong.name && t(`licence.ownName_${ownWrong.name}`, { max: LICENCE_NAME_MAX }),
     url: ownWrong.url && t(`licence.ownUrl_${ownWrong.url}`),
     open: own && own.open === undefined ? t("licence.ownOpenMissing") : undefined,
@@ -1198,7 +1200,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
     agree: !agreed ? t("agreeMissing") : undefined,
     blocked: !!blocked,
   };
-  const firstWrong = ([["name", fields.name], ["url", fields.url], ["open", fields.open], ["until", fields.until], ["archive", fields.archive], ["blocked", fields.blocked], ["signer", fields.signer], ["agree", fields.agree]] as const).filter(([key]) => wrong[key]).map(([, field]) => field);
+  const firstWrong = ([["which", fields.which], ["name", fields.name], ["url", fields.url], ["open", fields.open], ["until", fields.until], ["archive", fields.archive], ["blocked", fields.blocked], ["signer", fields.signer], ["agree", fields.agree]] as const).filter(([key]) => wrong[key]).map(([, field]) => field);
   const shown: Partial<typeof wrong> = tried ? wrong : {};
   return (
     <div className="flex flex-1 flex-col">
@@ -1211,7 +1213,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           the first two come to is a bill beside them, under the cover, so the steps themselves stay short. */}
       {choosing ? (
         <section className="mb-7">
-          <LicenceChoice id={`${form}-licence`} value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} errors={{ name: shown.name || undefined, url: shown.url || undefined, open: shown.open }} />
+          <LicenceChoice id={`${form}-licence`} value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} errors={{ which: shown.which, name: shown.name || undefined, url: shown.url || undefined, open: shown.open }} />
         </section>
       ) : null}
       <section className="mb-7">
@@ -1269,7 +1271,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>
-      <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
+      {/* In the page, not a box of its own: scrolling down to sign caught in it, and people looked for the signature inside. */}
+      <div lang="en" dir="ltr" className="rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ paddingBlock: EDGE_FADE }}>
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
@@ -1701,7 +1704,8 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   return (
     // The drop area takes the height the step has to spare (`Screens`), so Back and Next sit at its foot.
     <div className="flex flex-1 flex-col">
-      <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
+      {/* With the line added for them, the PDF needn't carry it: said so, as people read "must carry" and went to edit theirs. */}
+      <StepHead title={t("uploadPdf")} help="byline">{t(by === "added" ? "uploadIntroAdded" : "uploadIntro")}</StepHead>
       <BylineChoice id={choice} byline={report.byline} by={by} disabled={busy} error={tried && !by ? t("bylineBy.choose") : null} onPick={pick} />
       <button
         id={drop}
@@ -1959,7 +1963,11 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   const fromCredit = Math.round(sum.fromCredit * 100);
   /** What a card is charged, in cents: nothing when the balance, a code or the Stripe credit covers it all. */
   const due = Math.round(sum.due * 100);
-  const activateNow = (otherCard = false) =>
+  // Paid on Stripe's page this once (another card): what the button is doing is opening it, not activating yet.
+  const [toStripe, setToStripe] = useState(false);
+  const activateNow = (otherCard = false) => {
+    // Set before the transition: inside it, React would hold it back until the activation is over.
+    setToStripe(otherCard);
     start(async () => {
       say(null);
       try {
@@ -1975,6 +1983,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
         else failed(t("activateFailed"))(error);
       }
     });
+  };
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
   const shut = terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
@@ -2085,7 +2094,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
               ) : null}
               {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again.
                   With something to pay and no saved card, what it is doing is opening Stripe's page: nothing is activated yet. */}
-              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t(due > 0 && !card ? "activation.onStripe" : "activatingNow")}</p> : null}</AutoHeight>
+              <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t(due > 0 && (!card || toStripe) ? "activation.onStripe" : "activatingNow")}</p> : null}</AutoHeight>
             </motion.div>
           ) : null}
         </AnimatePresence>

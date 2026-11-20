@@ -180,7 +180,9 @@ export const decide = mutation({
     // A word is given on the report as the reviewer saw it. Another reviewer's decision, or its author's change,
     // since then is shown to them first: two reviewers never overrule each other without knowing.
     if (report && seenAt !== undefined && report.updatedAt !== seenAt) throw createError("CONFLICT", "This report changed since you opened it: another reviewer decided on it, or its author changed it. It shows that now.");
-    if (!report || report.step !== "done") throw createError("CONFLICT", "This report isn't waiting on a reviewer any more: its author is working on it again.");
+    // One its author went back to look at, with nothing changed, still waits for this word, which puts it back on its checks.
+    if (!report || (report.step !== "done" && !report.reopened)) throw createError("CONFLICT", "This report isn't waiting on a reviewer any more: its author is working on it again.");
+    const back = report.reopened ? { step: "done" as const, reopened: undefined } : {};
     if (report.pdf?.at !== seenPdfAt) throw createError("CONFLICT", "The author uploaded a new PDF since you opened this. It is the one shown now.");
     const stage = stageOf(report, (await reportSettings(ctx)).humanReview);
     const words = said(note);
@@ -213,14 +215,14 @@ export const decide = mutation({
     if (decision === "approve") {
       if (stage !== "failed" && stage !== "review") throw createError("CONFLICT", "This report doesn't need approving any more. Its author can activate it.");
       // Approving lets the author activate it; the author decides when it goes live.
-      await touch(ctx, report, { approved: true });
+      await touch(ctx, report, { approved: true, ...back });
       await record(ctx, report._id, reviewer._id, "approve");
       await notify(ctx, report._id, "approved");
       await becameReady(ctx, report._id);
       return null;
     }
     // Declined, it is no longer approved, whoever approved it before.
-    await touch(ctx, report, { status: "declined", note: words, approved: undefined });
+    await touch(ctx, report, { status: "declined", note: words, approved: undefined, ...back });
     await record(ctx, report._id, reviewer._id, "decline", words);
     await notify(ctx, report._id, "declined");
     return null;

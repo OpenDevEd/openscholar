@@ -6911,7 +6911,9 @@
         "ownName_known": "それは Creative Commons のライセンスです。上から選んでください。",
         "ownUrl_missing": "本文のウェブアドレスを入力してください。",
         "ownUrl_invalid": "https:// で始まる完全なウェブアドレスを入力してください。",
-        "ownOpenMissing": "誰でもレポートを共有できるかどうかを選んでください。"
+        "ownOpenMissing": "誰でもレポートを共有できるかどうかを選んでください。",
+        "chooseOther": "ライセンスを選択",
+        "whichMissing": "どのライセンスかを選んでください。"
       },
       "payment": {
         "payWith": "支払い方法",
@@ -7000,7 +7002,8 @@
       "noteIntro": "レポートはレビュー担当者のもとにあります。以前の掲載先など、チェックでは分からないことを伝えてください。",
       "noteQuestion": "メモ",
       "sendNote": "メモを送信",
-      "yourNote": "レビュー担当者へのメモ"
+      "yourNote": "レビュー担当者へのメモ",
+      "uploadIntroAdded": "PDF はそのままアップロードしてください。アップロード時に最後のページとしてこの行を追加します。"
     },
     "meta": {
       "publish": "公開 | Openscholar",

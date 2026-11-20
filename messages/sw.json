@@ -6912,7 +6912,9 @@
         "ownName_known": "Hiyo ni leseni ya Creative Commons: ichague hapo juu badala yake.",
         "ownUrl_missing": "Andika anwani ya wavuti ya maandishi yake.",
         "ownUrl_invalid": "Andika anwani kamili ya wavuti inayoanza na https://.",
-        "ownOpenMissing": "Sema kama inamruhusu mtu yeyote kushiriki ripoti."
+        "ownOpenMissing": "Sema kama inamruhusu mtu yeyote kushiriki ripoti.",
+        "chooseOther": "Chagua leseni",
+        "whichMissing": "Chagua ni leseni gani."
       },
       "payment": {
         "payWith": "Lipa kwa",
@@ -7001,7 +7003,8 @@
       "noteIntro": "Ripoti yako iko kwa mkaguzi. Mweleze lolote ambalo ukaguzi haukuweza kujua, kama mahali ilipochapishwa awali.",
       "noteQuestion": "Ujumbe wako",
       "sendNote": "Tuma ujumbe",
-      "yourNote": "Ujumbe wako kwa mkaguzi"
+      "yourNote": "Ujumbe wako kwa mkaguzi",
+      "uploadIntroAdded": "Pakia PDF yako kama ilivyo: tunaongeza mstari huu kwenye ukurasa wa mwisho inapopakiwa."
     },
     "meta": {
       "publish": "Chapisha | Openscholar",
