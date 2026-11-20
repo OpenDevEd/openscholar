@@ -207,7 +207,7 @@ export default function CommunityReleasesPage() {
                           )}
                           <TooltipHint label={t("openOnGithub")}>
                             <Button asChild variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground">
-                              <a href={`https://github.com/Openscholar-ai/evidence-community/commit/${release.commit}`} target="_blank" rel="noopener noreferrer" aria-label={t("openOnGithub")}>
+                              <a href={`https://github.com/OpenDevEd/evidence-community/commit/${release.commit}`} target="_blank" rel="noopener noreferrer" aria-label={t("openOnGithub")}>
                                 <ExternalLink />
                               </a>
                             </Button>

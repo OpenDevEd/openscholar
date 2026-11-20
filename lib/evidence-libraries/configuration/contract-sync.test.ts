@@ -61,7 +61,7 @@ async function writeSourceArtifacts(publicRoot: string) {
 describe("createContractSnapshot", () => {
   test("locks every icon asset into the pinned contract", () => {
     const snapshot = createContractSnapshot({
-      repository: "https://github.com/Openscholar-ai/evidence-community",
+      repository: "https://github.com/OpenDevEd/evidence-community",
       commit: "4a07fd6176d827d3382b392f847639167ec741ed",
       schemaText,
       catalogText,
@@ -76,7 +76,7 @@ describe("createContractSnapshot", () => {
 
   test("keeps the full icon enum out of browser contract artifacts", () => {
     const snapshot = createContractSnapshot({
-      repository: "https://github.com/Openscholar-ai/evidence-community",
+      repository: "https://github.com/OpenDevEd/evidence-community",
       commit: "4a07fd6176d827d3382b392f847639167ec741ed",
       schemaText,
       catalogText,
@@ -95,7 +95,7 @@ describe("createContractSnapshot", () => {
   test("rejects icon files that do not match their catalog", () => {
     expect(() =>
       createContractSnapshot({
-        repository: "https://github.com/Openscholar-ai/evidence-community",
+        repository: "https://github.com/OpenDevEd/evidence-community",
         commit: "4a07fd6176d827d3382b392f847639167ec741ed",
         schemaText,
         catalogText,
@@ -107,7 +107,7 @@ describe("createContractSnapshot", () => {
   test("rejects a moving branch name", () => {
     expect(() =>
       createContractSnapshot({
-        repository: "https://github.com/Openscholar-ai/evidence-community",
+        repository: "https://github.com/OpenDevEd/evidence-community",
         commit: "main",
         schemaText,
         catalogText,
@@ -129,7 +129,7 @@ describe("createContractSnapshot", () => {
   test("rejects a source artifact whose expected digest does not match", () => {
     expect(() =>
       createContractSnapshot({
-        repository: "https://github.com/Openscholar-ai/evidence-community",
+        repository: "https://github.com/OpenDevEd/evidence-community",
         commit: "4a07fd6176d827d3382b392f847639167ec741ed",
         schemaText,
         catalogText,
@@ -149,7 +149,7 @@ describe("createContractSnapshot", () => {
 
     expect(() =>
       createContractSnapshot({
-        repository: "https://github.com/Openscholar-ai/evidence-community",
+        repository: "https://github.com/OpenDevEd/evidence-community",
         commit: "4a07fd6176d827d3382b392f847639167ec741ed",
         schemaText,
         catalogText: mismatchedCatalogText,
@@ -165,7 +165,7 @@ describe("createContractSnapshot", () => {
 
     expect(() =>
       createContractSnapshot({
-        repository: "https://github.com/Openscholar-ai/evidence-community",
+        repository: "https://github.com/OpenDevEd/evidence-community",
         commit: "4a07fd6176d827d3382b392f847639167ec741ed",
         schemaText: draftSevenSchemaText,
         catalogText,
@@ -178,7 +178,7 @@ test("writes exact artifact bytes and verifies them without rewriting", async ()
   const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
   const iconOutputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-icons-"));
   const snapshot = createContractSnapshot({
-    repository: "https://github.com/Openscholar-ai/evidence-community",
+    repository: "https://github.com/OpenDevEd/evidence-community",
     commit: "4a07fd6176d827d3382b392f847639167ec741ed",
     schemaText,
     catalogText,
@@ -262,7 +262,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
       "remote",
       "add",
       "origin",
-      "git@github.com:Openscholar-ai/evidence-community.git",
+      "git@github.com:OpenDevEd/evidence-community.git",
     ]);
     const artifactCommit = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
       encoding: "utf8",
@@ -278,7 +278,7 @@ test("produces identical output when only the local checkout HEAD changes", asyn
     const synchronizeFromCheckout = async () => {
       const checkout = await inspectContractCheckout({
         sourceRoot,
-        expectedRepository: "https://github.com/Openscholar-ai/evidence-community",
+        expectedRepository: "https://github.com/OpenDevEd/evidence-community",
         expectedBranch: "main",
         artifactCommit,
       });
@@ -320,7 +320,7 @@ test("check mode reports drift without repairing the file", async () => {
   const outputRoot = await mkdtemp(join(tmpdir(), "openscholar-library-contract-"));
   const schemaPath = join(outputRoot, "generated/library-config.schema.json");
   const snapshot = createContractSnapshot({
-    repository: "https://github.com/Openscholar-ai/evidence-community",
+    repository: "https://github.com/OpenDevEd/evidence-community",
     commit: "4a07fd6176d827d3382b392f847639167ec741ed",
     schemaText,
     catalogText,
@@ -390,7 +390,7 @@ test("normalizes the verified checkout origin", async () => {
       "remote",
       "add",
       "origin",
-      "git@github.com:Openscholar-ai/evidence-community.git",
+      "git@github.com:OpenDevEd/evidence-community.git",
     ]);
     const head = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
       encoding: "utf8",
@@ -406,12 +406,12 @@ test("normalizes the verified checkout origin", async () => {
     await expect(
       inspectContractCheckout({
         sourceRoot,
-        expectedRepository: "https://github.com/Openscholar-ai/evidence-community",
+        expectedRepository: "https://github.com/OpenDevEd/evidence-community",
         expectedBranch: "main",
         artifactCommit: head,
       }),
     ).resolves.toEqual({
-      repository: "https://github.com/Openscholar-ai/evidence-community",
+      repository: "https://github.com/OpenDevEd/evidence-community",
     });
   } finally {
     await rm(sourceRoot, { recursive: true, force: true });
@@ -435,7 +435,7 @@ test("rejects a checkout on the wrong branch", async () => {
       "remote",
       "add",
       "origin",
-      "git@github.com:Openscholar-ai/evidence-community.git",
+      "git@github.com:OpenDevEd/evidence-community.git",
     ]);
     const head = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
       encoding: "utf8",
@@ -451,7 +451,7 @@ test("rejects a checkout on the wrong branch", async () => {
     await expect(
       inspectContractCheckout({
         sourceRoot,
-        expectedRepository: "https://github.com/Openscholar-ai/evidence-community",
+        expectedRepository: "https://github.com/OpenDevEd/evidence-community",
         expectedBranch: "main",
         artifactCommit: head,
       }),
@@ -494,7 +494,7 @@ test("rejects a checkout from the wrong origin", async () => {
     await expect(
       inspectContractCheckout({
         sourceRoot,
-        expectedRepository: "https://github.com/Openscholar-ai/evidence-community",
+        expectedRepository: "https://github.com/OpenDevEd/evidence-community",
         expectedBranch: "main",
         artifactCommit: head,
       }),
@@ -521,7 +521,7 @@ test("rejects an artifact commit absent from origin/main", async () => {
       "remote",
       "add",
       "origin",
-      "git@github.com:Openscholar-ai/evidence-community.git",
+      "git@github.com:OpenDevEd/evidence-community.git",
     ]);
     const remoteHead = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
       encoding: "utf8",
@@ -544,7 +544,7 @@ test("rejects an artifact commit absent from origin/main", async () => {
     await expect(
       inspectContractCheckout({
         sourceRoot,
-        expectedRepository: "https://github.com/Openscholar-ai/evidence-community",
+        expectedRepository: "https://github.com/OpenDevEd/evidence-community",
         expectedBranch: "main",
         artifactCommit: localOnlyCommit,
       }),
@@ -571,7 +571,7 @@ test("rejects a checkout without origin/main", async () => {
       "remote",
       "add",
       "origin",
-      "git@github.com:Openscholar-ai/evidence-community.git",
+      "git@github.com:OpenDevEd/evidence-community.git",
     ]);
     const head = execFileSync("git", ["-C", sourceRoot, "rev-parse", "HEAD"], {
       encoding: "utf8",
@@ -580,7 +580,7 @@ test("rejects a checkout without origin/main", async () => {
     await expect(
       inspectContractCheckout({
         sourceRoot,
-        expectedRepository: "https://github.com/Openscholar-ai/evidence-community",
+        expectedRepository: "https://github.com/OpenDevEd/evidence-community",
         expectedBranch: "main",
         artifactCommit: head,
       }),

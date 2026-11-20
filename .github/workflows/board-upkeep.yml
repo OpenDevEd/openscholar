@@ -1,8 +1,8 @@
 name: Board upkeep
 
 # Keeps the Openscholar project board in step with the issues of openscholar
-# and evidence-community (scripts/board-upkeep.mts). It runs as the "Openscholar
-# Board" GitHub App, installed on the organization, because the job's own token
+# and evidence-community (scripts/board-upkeep.mts). It runs as the "OpenDevEd
+# board upkeep" GitHub App, installed on the organization, because the job's own token
 # can't edit the organization's board. evidence-community's own events are
 # caught by the schedule.
 on:
@@ -41,7 +41,7 @@ jobs:
         with:
           client-id: ${{ secrets.BOARD_APP_CLIENT_ID }}
           private-key: ${{ secrets.BOARD_APP_PRIVATE_KEY }}
-          owner: Openscholar-ai
+          owner: OpenDevEd
           repositories: openscholar,evidence-community
 
       - name: Bring the board in step

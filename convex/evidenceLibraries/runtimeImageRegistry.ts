@@ -1,9 +1,9 @@
 const REGISTRY_ORIGIN = "https://ghcr.io";
 const TOKEN_URL = "https://ghcr.io/token";
 const GITHUB_USER_URL = "https://api.github.com/user";
-// Releases were published under OpenDevEd until the repositories moved to Openscholar-ai, and communities set up
-// before then keep those images. A commit is looked up in the old repository first: GHCR refuses, rather than
-// answers "not found", in a repository that holds no image yet.
+// Releases are published under OpenDevEd. From 18 to 20 November 2026 the repositories sat in Openscholar-ai and
+// published there, and communities set up then keep those images. A commit is looked up under OpenDevEd first:
+// GHCR refuses, rather than answers "not found", in a repository that holds no image.
 const REPOSITORIES = [
   "opendeved/evidence-library-runtime",
   "openscholar-ai/evidence-library-runtime",

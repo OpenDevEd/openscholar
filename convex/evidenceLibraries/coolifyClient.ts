@@ -36,7 +36,7 @@ const SHA256 = /^[a-f0-9]{64}$/u;
 const COOLIFY_CONFIG_HASH = /^(?:[a-f0-9]{32}|[a-f0-9]{64})$/u;
 const LIBRARY_ID = /^[A-Za-z0-9]{1,64}$/u;
 
-const GIT_REPOSITORY = "Openscholar-ai/evidence-community";
+const GIT_REPOSITORY = "OpenDevEd/evidence-community";
 const GIT_BRANCH = "main";
 const BUILD_PACK = "dockercompose";
 const COMPOSE_PATH = "/docker/compose.library.yaml";

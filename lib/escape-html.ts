@@ -1,4 +1,4 @@
-// Generated from Openscholar-ai/evidence-community src/lib/escape-html.ts.
+// Generated from OpenDevEd/evidence-community src/lib/escape-html.ts.
 // Regenerate with: node scripts/sync-library-email-template.mjs <new-el checkout>
 /** Escapes text for safe insertion into HTML. */
 export function escapeHtml(value: string) {

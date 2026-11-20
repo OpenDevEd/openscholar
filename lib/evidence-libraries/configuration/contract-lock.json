@@ -1,7 +1,7 @@
 {
   "formatVersion": 3,
   "source": {
-    "repository": "https://github.com/Openscholar-ai/evidence-community",
+    "repository": "https://github.com/OpenDevEd/evidence-community",
     "commit": "2ef1dbc19f93fdf2836508b8d98f1a64cc6d3cca"
   },
   "contract": {
