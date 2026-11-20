@@ -367,7 +367,8 @@
     "accountSandbox": "Nécessite votre propre compte Crossref",
     "accountSandboxHint": "Les fiches archivées dans votre compte gardent le DOI Crossref de cette communauté : activez donc Crossref avec vos propres identifiants. Les DOI de test du bac à sable ne peuvent pas aller sur de vraies fiches Zenodo.",
     "archiveDoiHint": "DOI Zenodo : la copie archivée reçoit son propre DOI. DOI Crossref : la copie partage le DOI Crossref de la fiche.",
-    "accountCrossrefJoin": "Comment rejoindre Crossref"
+    "accountCrossrefJoin": "Comment rejoindre Crossref",
+    "accountConnectedAs": "Connecté : {name}"
   },
   "auth": {
     "backToSearch": "Retour à la recherche",
@@ -6678,7 +6679,7 @@
           },
           "published": {
             "name": "Jamais publié auparavant",
-            "fix": "S'il s'agit de votre propre publication antérieure, dites-le lorsque vous demandez une relecture."
+            "fix": "S'il s'agit de votre propre publication antérieure, indiquez à la relecture où elle est parue."
           },
           "harm": {
             "name": "Ni discours haineux ni harcèlement",
@@ -6796,7 +6797,8 @@
           "unknownCode": "{code} n’est pas un code que nous connaissons, ou il a déjà été utilisé.",
           "nothingOff": "{code} ne réduit pas le prix de publication d’un rapport.",
           "codeTooLong": "Ce code est trop long pour être l’un des nôtres.",
-          "applyFirst": "Appliquez le code, ou effacez-le, pour activer."
+          "applyFirst": "Appliquez le code, ou effacez-le, pour activer.",
+          "typeFirst": "Saisissez d'abord un code."
         },
         "card": {
           "bankAsked": "Votre banque demande de confirmer le paiement",
@@ -6884,7 +6886,6 @@
         "own": "Ma propre licence",
         "ownName": "Son nom",
         "ownUrl": "Adresse web de son texte",
-        "ownNeeded": "Donnez à votre licence un nom en lettres latines et l’adresse web de son texte, et dites si elle permet à tout le monde de partager le rapport.",
         "help": {
           "title": "Licences",
           "about": "À propos des licences",
@@ -6903,7 +6904,14 @@
         "ownOpenYes": "Oui, tout le monde peut le partager",
         "ownOpenNo": "Non, elle restreint le partage",
         "ownOpenYesBody": "Tout le monde peut lire et télécharger le PDF, comme avec Creative Commons.",
-        "ownOpenNoBody": "Au plus, les lecteurs d'Openscholar reçoivent le PDF : jamais Zenodo, et une communauté seulement avec votre accord."
+        "ownOpenNoBody": "Au plus, les lecteurs d'Openscholar reçoivent le PDF : jamais Zenodo, et une communauté seulement avec votre accord.",
+        "ownName_missing": "Indiquez le nom de votre licence.",
+        "ownName_long": "Raccourcissez son nom à {max} caractères.",
+        "ownName_latin": "Écrivez son nom en lettres latines : il est imprimé dans votre PDF.",
+        "ownName_known": "C'est une licence Creative Commons : choisissez-la plutôt ci-dessus.",
+        "ownUrl_missing": "Indiquez l'adresse web de son texte.",
+        "ownUrl_invalid": "Indiquez une adresse web complète commençant par https://.",
+        "ownOpenMissing": "Indiquez si elle permet à tout le monde de partager le rapport."
       },
       "payment": {
         "payWith": "Payer avec",
@@ -6963,7 +6971,9 @@
         "confirmBefore": "Rien n’est encore public : ce choix s’applique quand le rapport est mis en ligne, et peut changer d’ici là.",
         "until": "Privé jusqu'au {date}",
         "readersMost": "Sa licence ne permet pas à tout le monde de le partager : au plus, les lecteurs d'Openscholar peuvent avoir le fichier.",
-        "short": "Accès"
+        "short": "Accès",
+        "untilPast": "Choisissez un jour après aujourd'hui.",
+        "untilNotSooner": "Choisissez un jour avant le {date} : un embargo ne peut que se terminer plus tôt."
       },
       "archive": {
         "label": "Archive",
@@ -6973,7 +6983,6 @@
         "ownBody": "Conservé sur Zenodo à votre nom",
         "connectFirst": "Connectez votre compte Zenodo pour y conserver le rapport.",
         "connect": "Connecter Zenodo",
-        "connectNeeded": "Connectez Zenodo pour signer",
         "broken": "Zenodo n’accepte plus votre connexion. Connectez-le à nouveau.",
         "help": {
           "about": "Pourquoi les rapports sont archivés",
@@ -6983,7 +6992,15 @@
           "policies": "Comment Zenodo conserve les fiches"
         },
         "signers": "Le compte Zenodo du signataire"
-      }
+      },
+      "uploadFirst": "Téléversez le PDF de votre rapport pour continuer.",
+      "signedByMissing": "Saisissez votre nom pour signer.",
+      "agreeMissing": "Cochez cette case pour accepter.",
+      "noteForReviewer": "Ajouter une note pour la relecture",
+      "noteIntro": "Votre rapport est en relecture. Indiquez ce que les vérifications ne pouvaient pas savoir, par exemple où il a déjà été publié.",
+      "noteQuestion": "Votre note",
+      "sendNote": "Envoyer la note",
+      "yourNote": "Votre note pour la relecture"
     },
     "meta": {
       "publish": "Publier | Openscholar",
@@ -7114,7 +7131,10 @@
       "undo": "Annuler",
       "referencesTooBig": "Ce fichier dépasse 2 Mo. Une liste de références est bien plus petite.",
       "openItsDoi": "Ouvrir son DOI",
-      "openReferenceDoi": "Ouvrir le DOI de la référence {number}"
+      "openReferenceDoi": "Ouvrir le DOI de la référence {number}",
+      "titleMissing": "Indiquez le titre du rapport.",
+      "authorsMissing": "Indiquez au moins un auteur.",
+      "unchanged": "Modifiez d'abord un détail : rien n'a encore changé."
     },
     "kinds": {
       "author": "Auteur",

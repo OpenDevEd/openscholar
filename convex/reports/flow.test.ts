@@ -466,6 +466,15 @@ describe("a report's checks", () => {
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "done", status: "failed", asked: true, reviewRequest: { comment: "The byline is on page 2." } });
   });
 
+  it("takes one note for the reviewer of a report a check sent to review, as its flag may need words the check can't have", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("research", false, false)]);
+    expect(await read(world.author, world.own, key)).toMatchObject({ stage: "review" });
+    await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: " Published before in our newsletter. " });
+    await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "Again" });
+    expect(await read(world.author, world.own, key)).toMatchObject({ stage: "review", reviewRequest: { comment: "Published before in our newsletter." } });
+  });
+
   it("can't be asked about or discarded once it has passed", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

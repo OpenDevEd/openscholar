@@ -7,7 +7,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import type { FunctionReturnType } from "convex/server";
-import { FlaskConical, KeyRound, ShieldCheck, PublishIcon } from "@/components/icons";
+import { PersonIcon, FlaskConical, KeyRound, ShieldCheck, PublishIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -176,6 +176,13 @@ function OwnZenodoAccount({ testCrossref }: { testCrossref: boolean }) {
             <a className="text-primary hover:underline" href="https://www.crossref.org/membership/" target="_blank" rel="noreferrer">
               {t("accountCrossrefJoin")}
             </a>
+            {/* The account it would use is said too: without it, an owner went to Settings to see whether one was connected. */}
+            {usable ? (
+              <span className="mt-1 flex min-w-0 items-center gap-1">
+                <PersonIcon className="size-3 shrink-0" />
+                <span className="truncate">{t("accountConnectedAs", { name: usable.name ?? "Zenodo" })}</span>
+              </span>
+            ) : null}
           </>
         }
         leading={<ZenodoMark className="size-8 rounded-lg opacity-60" />}

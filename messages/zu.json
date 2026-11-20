@@ -367,7 +367,8 @@
     "accountSandbox": "Idinga i-akhawunti yakho ye-Crossref",
     "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo.",
     "archiveDoiHint": "I-DOI ye-Zenodo: ikhophi egciniwe ithola i-DOI yayo. I-DOI ye-Crossref: ikhophi isebenzisa i-DOI ye-Crossref yerekhodi.",
-    "accountCrossrefJoin": "Indlela yokujoyina i-Crossref"
+    "accountCrossrefJoin": "Indlela yokujoyina i-Crossref",
+    "accountConnectedAs": "Kuxhunyiwe: {name}"
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",
@@ -6678,7 +6679,7 @@
           },
           "published": {
             "name": "Akukaze kushicilelwe ngaphambili",
-            "fix": "Uma lokhu kuwukushicilela kwakho kwangaphambili, kusho lapho ucela ukubuyekezwa."
+            "fix": "Uma lokhu kungukushicilela kwakho kwangaphambili, tshela umhloli ukuthi kwavela kuphi."
           },
           "harm": {
             "name": "Akukho nkulumo yenzondo noma ukuhlukumeza",
@@ -6796,7 +6797,8 @@
           "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
           "nothingOff": "{code} ayehlisi inani lokushicilela umbiko.",
           "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu.",
-          "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze."
+          "applyFirst": "Sebenzisa ikhodi, noma uyisuse, ukuze wenze kusebenze.",
+          "typeFirst": "Thayipha ikhodi kuqala."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",
@@ -6884,7 +6886,6 @@
         "own": "Ilayisense yami",
         "ownName": "Igama layo",
         "ownUrl": "Ikheli lewebhu lombhalo wayo",
-        "ownNeeded": "Nikeza ilayisensi yakho igama ngezinhlamvu zesiLatini nekheli lewebhu lombhalo wayo, bese usho ukuthi ivumela noma ubani ukwabelana ngombiko yini.",
         "help": {
           "title": "Amalayisense",
           "about": "Mayelana namalayisense",
@@ -6903,7 +6904,14 @@
         "ownOpenYes": "Yebo, noma ubani angayabelana ngayo",
         "ownOpenNo": "Cha, ivimba ukwabelana",
         "ownOpenYesBody": "Noma ubani angafunda futhi alande i-PDF, njengakwi-Creative Commons.",
-        "ownOpenNoBody": "Kakhulu, abafundi be-Openscholar kuphela abathola i-PDF: i-Zenodo ayiyitholi neze, futhi umphakathi uyithola kuphela uma uvuma."
+        "ownOpenNoBody": "Kakhulu, abafundi be-Openscholar kuphela abathola i-PDF: i-Zenodo ayiyitholi neze, futhi umphakathi uyithola kuphela uma uvuma.",
+        "ownName_missing": "Faka igama lelayisense yakho.",
+        "ownName_long": "Finyeza igama layo libe izinhlamvu ezingu-{max}.",
+        "ownName_latin": "Bhala igama layo ngezinhlamvu zesiLatini: liphrintwa ku-PDF yakho.",
+        "ownName_known": "Leyo yilayisense ye-Creative Commons: yikhethe ngenhla esikhundleni salokho.",
+        "ownUrl_missing": "Faka ikheli lewebhu lombhalo wayo.",
+        "ownUrl_invalid": "Faka ikheli lewebhu eliphelele eliqala ngo-https://.",
+        "ownOpenMissing": "Sho ukuthi iyamvumela yini noma ubani ukwabelana ngombiko."
       },
       "payment": {
         "payWith": "Khokha nge-",
@@ -6963,7 +6971,9 @@
         "confirmBefore": "Akukho okusobala okwamanje: lokhu kusebenza uma umbiko uba ku-inthanethi, futhi kungashintsha kuze kube yileso sikhathi.",
         "until": "Okuyimfihlo kuze kube ngu-{date}",
         "readersMost": "Ilayisense yayo ayivumeli noma ubani ukwabelana ngayo, ngakho abafundi be-Openscholar yibo abaningi abangathola ifayela.",
-        "short": "Ukufinyelela"
+        "short": "Ukufinyelela",
+        "untilPast": "Khetha usuku olulandela namuhla.",
+        "untilNotSooner": "Khetha usuku olungaphambi kuka-{date}: ukuvinjelwa kungaphela ngaphambili kuphela."
       },
       "archive": {
         "label": "Inqolobane",
@@ -6973,7 +6983,6 @@
         "ownBody": "Igcinwa ku-Zenodo ngegama lakho",
         "connectFirst": "Xhuma i-akhawunti yakho ye-Zenodo ukuze ugcine umbiko lapho.",
         "connect": "Xhuma i-Zenodo",
-        "connectNeeded": "Xhuma i-Zenodo ukuze usayine",
         "broken": "I-Zenodo ayisakwamukeli ukuxhumana kwakho. Phinda uyixhume.",
         "help": {
           "about": "Kungani imibiko igcinwa",
@@ -6983,7 +6992,15 @@
           "policies": "Indlela i-Zenodo egcina ngayo amarekhodi"
         },
         "signers": "I-akhawunti ye-Zenodo yalowo osayinile"
-      }
+      },
+      "uploadFirst": "Layisha i-PDF yombiko wakho ukuze uqhubeke.",
+      "signedByMissing": "Thayipha igama lakho ukuze usayine.",
+      "agreeMissing": "Maka leli bhokisi ukuze uvume.",
+      "noteForReviewer": "Engeza inothi lomhloli",
+      "noteIntro": "Umbiko wakho usemhlolini. Mtshele noma yini ukuhlola okungakwazanga ukukwazi, njengalapho washicilelwa khona ngaphambili.",
+      "noteQuestion": "Inothi lakho",
+      "sendNote": "Thumela inothi",
+      "yourNote": "Inothi lakho lomhloli"
     },
     "meta": {
       "publish": "Shicilela | Openscholar",
@@ -7114,7 +7131,10 @@
       "undo": "Hlehlisa",
       "referencesTooBig": "Lelo fayela lingaphezu kuka-2 MB. Uhlu lwezinkomba luncane kakhulu kunalokho.",
       "openItsDoi": "Vula i-DOI yayo",
-      "openReferenceDoi": "Vula i-DOI yenkomba {number}"
+      "openReferenceDoi": "Vula i-DOI yenkomba {number}",
+      "titleMissing": "Faka isihloko sombiko.",
+      "authorsMissing": "Bala okungenani umbhali oyedwa.",
+      "unchanged": "Shintsha imininingwane kuqala: akukho okushintshile okwamanje."
     },
     "kinds": {
       "author": "Umbhali",

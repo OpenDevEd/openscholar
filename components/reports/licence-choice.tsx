@@ -19,6 +19,7 @@ import { LogoMark } from "@/components/logo";
 import { useMoney } from "@/lib/hooks/use-money";
 import { DETAIL_TEXT, LICENCE_NAME_MAX, LICENCES, LICENCE_NAMES, pickedLicence, priceOf, type LicenceName, type Prices } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
+import { FieldMessage } from "@/components/reports/form";
 
 /** What the author has picked: a Creative Commons licence by name, or their own, as typed and answered so far. */
 export type LicencePick = LicenceName | { name: string; url: string; /** Whether it lets anyone share the report: unanswered until the author says. */ open?: boolean };
@@ -29,9 +30,12 @@ const OTHERS = LICENCE_NAMES.filter((name) => LICENCES[name].tier !== "standard"
 const OWN = "own";
 
 
-export function LicenceChoice({ value, onChange, prices, disabled = false }: { value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; disabled?: boolean }) {
+/** The ids of an own licence's fields, from the `id` the step gives: where its Next takes the person. */
+export const licenceFields = (id: string) => ({ name: `${id}-own-name`, url: `${id}-own-url`, open: `${id}-own-yes` });
+
+export function LicenceChoice({ id, value, onChange, prices, errors = {}, disabled = false }: { /** From `useId`: the fields' ids are `licenceFields(id)`. */ id: string; value: LicencePick; onChange: (pick: LicencePick) => void; /** What a report costs under each kind of licence, in US dollars. */ prices: Prices; /** What is wrong with the own licence's fields, once Next was pressed. */ errors?: { name?: string; url?: string; open?: string }; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
-  const id = useId();
+  const fields = licenceFields(id);
   const other = typeof value !== "string" || !STANDARD.includes(value);
   // Each licence by its price, whatever pays it: what picking one leaves to pay is the bill's to say.
   const dollars = useMoney();
@@ -83,12 +87,18 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
                 <ExternalLink className="size-3.5 shrink-0" />
               </a>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Input value={value.name} maxLength={LICENCE_NAME_MAX} disabled={disabled} aria-label={t("ownName")} placeholder={t("ownName")} onChange={(e) => onChange({ ...value, name: e.target.value })} />
-                <Input value={value.url} maxLength={DETAIL_TEXT.link} disabled={disabled} type="url" inputMode="url" aria-label={t("ownUrl")} placeholder="https://" onChange={(e) => onChange({ ...value, url: e.target.value })} />
+              <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+                <div>
+                  <Input id={fields.name} value={value.name} maxLength={LICENCE_NAME_MAX} disabled={disabled} aria-label={t("ownName")} aria-invalid={errors.name ? true : undefined} aria-describedby={errors.name ? `${fields.name}-error` : undefined} placeholder={t("ownName")} onChange={(e) => onChange({ ...value, name: e.target.value })} />
+                  {errors.name ? <FieldMessage id={`${fields.name}-error`}>{errors.name}</FieldMessage> : null}
+                </div>
+                <div>
+                  <Input id={fields.url} value={value.url} maxLength={DETAIL_TEXT.link} disabled={disabled} type="url" inputMode="url" aria-label={t("ownUrl")} aria-invalid={errors.url ? true : undefined} aria-describedby={errors.url ? `${fields.url}-error` : undefined} placeholder="https://" onChange={(e) => onChange({ ...value, url: e.target.value })} />
+                  {errors.url ? <FieldMessage id={`${fields.url}-error`}>{errors.url}</FieldMessage> : null}
+                </div>
               </div>
             )}
-            {typeof value === "string" ? null : <OwnOpen value={value.open} prices={prices} disabled={disabled} onChange={(open) => onChange({ ...value, open })} />}
+            {typeof value === "string" ? null : <OwnOpen id={`${id}-own`} value={value.open} prices={prices} error={errors.open} disabled={disabled} onChange={(open) => onChange({ ...value, open })} />}
           </div>
         ) : null}
       </AutoHeight>
@@ -97,10 +107,10 @@ export function LicenceChoice({ value, onChange, prices, disabled = false }: { v
 }
 
 /** One choice of the step's: its title with its price, and what it means beneath. */
-function PricedCard({ id, value, on, disabled, title, price, body }: { id: string; value: string; on: boolean; disabled: boolean; title: string; price: string; body: string }) {
+function PricedCard({ id, value, on, disabled, title, price, body, invalid = false }: { id: string; value: string; on: boolean; disabled: boolean; title: string; price: string; body: string; invalid?: boolean }) {
   return (
-    <label htmlFor={id} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
-      <RadioGroupItem id={id} value={value} className="mt-0.5" />
+    <label htmlFor={id} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn(invalid ? "border-destructive" : "border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
+      <RadioGroupItem id={id} value={value} aria-invalid={invalid || undefined} className="mt-0.5" />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
           <span className="min-w-0 break-words">{title}</span>
@@ -116,19 +126,19 @@ function PricedCard({ id, value, on, disabled, title, price, body }: { id: strin
  * Whether the author's own licence lets anyone share the report: the answer sets its price and who may get its file,
  * so each answer shows both, as the licences above do.
  */
-function OwnOpen({ value, onChange, prices, disabled }: { value: boolean | undefined; onChange: (open: boolean) => void; prices: Prices; disabled: boolean }) {
+function OwnOpen({ id, value, onChange, prices, error, disabled }: { id: string; value: boolean | undefined; onChange: (open: boolean) => void; prices: Prices; error?: string; disabled: boolean }) {
   const t = useTranslations("publishReports.flow.licence");
   const dollars = useMoney();
-  const id = useId();
   return (
     <div className="space-y-2 sm:col-span-2">
       <p id={`${id}-label`} className="text-sm font-medium">
         {t("ownOpen")}
       </p>
-      <RadioGroup aria-labelledby={`${id}-label`} value={value === undefined ? "" : value ? "yes" : "no"} disabled={disabled} onValueChange={(answer) => onChange(answer === "yes")} className="grid-cols-1 gap-3 sm:grid-cols-2">
-        <PricedCard id={`${id}-yes`} value="yes" on={value === true} disabled={disabled} title={t("ownOpenYes")} price={dollars(prices.other)} body={t("ownOpenYesBody")} />
-        <PricedCard id={`${id}-no`} value="no" on={value === false} disabled={disabled} title={t("ownOpenNo")} price={dollars(prices.closed)} body={t("ownOpenNoBody")} />
+      <RadioGroup aria-labelledby={`${id}-label`} aria-describedby={error ? `${id}-error` : undefined} value={value === undefined ? "" : value ? "yes" : "no"} disabled={disabled} onValueChange={(answer) => onChange(answer === "yes")} className="grid-cols-1 gap-3 sm:grid-cols-2">
+        <PricedCard id={`${id}-yes`} value="yes" on={value === true} disabled={disabled} invalid={!!error} title={t("ownOpenYes")} price={dollars(prices.other)} body={t("ownOpenYesBody")} />
+        <PricedCard id={`${id}-no`} value="no" on={value === false} disabled={disabled} invalid={!!error} title={t("ownOpenNo")} price={dollars(prices.closed)} body={t("ownOpenNoBody")} />
       </RadioGroup>
+      {error ? <FieldMessage id={`${id}-error`} className="pt-0">{error}</FieldMessage> : null}
     </div>
   );
 }

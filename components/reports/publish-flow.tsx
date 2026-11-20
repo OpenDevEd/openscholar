@@ -43,6 +43,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
+import { FieldMessage, StepNav, useStepForm } from "@/components/reports/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -57,11 +58,11 @@ import { AiIcon, ArrowLeft, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
-import { LicenceChoice, type LicencePick } from "@/components/reports/licence-choice";
+import { LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
 import { ArchiveChoice } from "@/components/reports/archive-choice";
 import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
-import { FileAccessChange, FileAccessChoice } from "@/components/reports/file-access-choice";
+import { FileAccessChange, FileAccessChoice, embargoProblem } from "@/components/reports/file-access-choice";
 import { refusalOr } from "@/components/evidence-libraries/added-papers/add-papers-dialog";
 import { StripeIcon } from "@/components/icons/stripe-icon";
 import { Bill, PaidBill, PayWithSwitch } from "@/components/reports/payment-choice";
@@ -70,7 +71,7 @@ import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/compone
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
-import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, changesOf, fileAccessOf, licenceName, ownLicence, payment, pickedLicence, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, LICENCE_NAME_MAX, changesOf, fileAccessOf, licenceName, ownLicence, ownLicenceProblems, payment, pickedLicence, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -752,7 +753,20 @@ function Screens({ form, beside, preparing, onPrepared, onUnprepare, basics, rep
     <AutoHeight>
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
-        <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
+        {/* As tall as the window has to spare, or as the cover's column beside it if that is taller: a step's Back and
+            Next sit at its foot, at the bottom of the card, never above a gap the column leaves (`StepNav`). */}
+        <motion.div
+          ref={(node: HTMLDivElement | null) => {
+            toHeading(node);
+            return fillsWindow(node);
+          }}
+          key={`${report?.key ?? "new"}:${screen}`}
+          className="flex min-h-[max(var(--fill,0px),var(--cover-height,0px))] flex-col"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.25, ease: EASE }}
+        >
           <Problem className="pb-4">{trouble.problem}</Problem>
           {!report && preparing ? (
             <Overview series={basics.series.name} reviewed={basics.humanReview} prices={basics.prices} balance={starts ? starts.balance : 0} onStart={onPrepared} />
@@ -1165,8 +1179,29 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const blocked = dayBlocked ?? (foreign ? t("payment.currency", { currency: foreign }) : null);
   // The way on: the plans of the workspace picked, which isn't always the page's, or an email to us about its Stripe account.
   const way: WayOn = dayShut ? { label: t("seePlans"), href: workspaceHref(away ? chosen?.slug : slug, "/pricing") } : { label: t("emailUs"), href: SUPPORT_MAIL };
+  // A form: what is missing or wrong is said at its field once Sign was pressed, and Sign takes the person to the
+  // first of them (components/reports/form.tsx). Each is worked out from the form as it stands, so a field put right
+  // says nothing more.
+  const form = useId();
+  const { tried, go } = useStepForm();
+  const fields = { ...licenceFields(`${form}-licence`), until: `${form}-until`, archive: `${form}-archive`, signer: `${form}-signer`, agree: `${form}-agree`, blocked: `${form}-blocked` };
+  const own = choosing && typeof pick !== "string" ? pick : null;
+  const ownWrong = own ? ownLicenceProblems(own.name, own.url) : {};
+  const untilWrong = embargoProblem(fileAccessOf(named, access));
+  const wrong = {
+    name: ownWrong.name && t(`licence.ownName_${ownWrong.name}`, { max: LICENCE_NAME_MAX }),
+    url: ownWrong.url && t(`licence.ownUrl_${ownWrong.url}`),
+    open: own && own.open === undefined ? t("licence.ownOpenMissing") : undefined,
+    until: untilWrong ? fields.until : undefined,
+    archive: zenodoNeeded,
+    signer: !name.trim() ? t("signedByMissing") : undefined,
+    agree: !agreed ? t("agreeMissing") : undefined,
+    blocked: !!blocked,
+  };
+  const firstWrong = ([["name", fields.name], ["url", fields.url], ["open", fields.open], ["until", fields.until], ["archive", fields.archive], ["blocked", fields.blocked], ["signer", fields.signer], ["agree", fields.agree]] as const).filter(([key]) => wrong[key]).map(([, field]) => field);
+  const shown: Partial<typeof wrong> = tried ? wrong : {};
   return (
-    <div>
+    <div className="flex flex-1 flex-col">
       <StepHead title={t("agreementTitle", { series: basics.series.name })} help="agreement" aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t("agreementIntro")}
         {/* Said before it is read: the agreement's text is the same for everyone, whatever language the page is in. */}
@@ -1176,11 +1211,11 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           the first two come to is a bill beside them, under the cover, so the steps themselves stay short. */}
       {choosing ? (
         <section className="mb-7">
-          <LicenceChoice value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} />
+          <LicenceChoice id={`${form}-licence`} value={pick} onChange={setPick} disabled={busy || !!signed} prices={basics.prices} errors={{ name: shown.name || undefined, url: shown.url || undefined, open: shown.open }} />
         </section>
       ) : null}
       <section className="mb-7">
-        <FileAccessChoice licence={named} value={access} onChange={setAccess} disabled={busy || !!signed} />
+        <FileAccessChoice licence={named} value={access} onChange={setAccess} disabled={busy || !!signed} dateId={fields.until} />
       </section>
       {/* Where the permanent copy goes, said before the agreement that promises one. */}
       <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
@@ -1189,6 +1224,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           onChange={(chosen) => void setArchive(chosen === "openscholar" ? null : chosen)}
           account={zenodo ?? null}
           connecting={connecting}
+          connectId={fields.archive}
+          invalid={!!shown.archive}
           onConnect={() => {
             // Signed out, there is no one to connect Zenodo for yet: signing in comes first, back on this step.
             if (!user) return openSignIn();
@@ -1236,14 +1273,18 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
-        <label className="space-y-1.5">
-          <span className="text-xs font-medium text-muted-foreground">{t("signedBy")}</span>
-          <Input value={name} maxLength={SIGNER_NAME_MAX} onChange={(e) => setTyped(e.target.value)} autoComplete="name" />
-        </label>
-        <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={agreed} onCheckedChange={(v) => tick(v === true)} className="mt-0.5" />
-          <span className="text-pretty">{t("agree")}</span>
-        </label>
+        <div>
+          <label htmlFor={fields.signer} className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("signedBy")}</label>
+          <Input id={fields.signer} value={name} maxLength={SIGNER_NAME_MAX} onChange={(e) => setTyped(e.target.value)} autoComplete="name" aria-invalid={shown.signer ? true : undefined} aria-describedby={shown.signer ? `${fields.signer}-error` : undefined} />
+          {shown.signer ? <FieldMessage id={`${fields.signer}-error`}>{shown.signer}</FieldMessage> : null}
+        </div>
+        <div>
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+            <Checkbox id={fields.agree} checked={agreed} onCheckedChange={(v) => tick(v === true)} className="mt-0.5" aria-invalid={shown.agree ? true : undefined} aria-describedby={shown.agree ? `${fields.agree}-error` : undefined} />
+            <span className="text-pretty">{t("agree")}</span>
+          </label>
+          {shown.agree ? <FieldMessage id={`${fields.agree}-error`} className="ps-[1.625rem]">{shown.agree}</FieldMessage> : null}
+        </div>
       </div>
       {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
       {/* Not while signing, nor for the report signed here: the day reads it as reserved the moment it is, before the page moves on to it. */}
@@ -1265,27 +1306,23 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
         </p>
       ) : null}
       <Problem className="pt-4">{problem}</Problem>
-      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {onBack ? (
-          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
-            <ArrowLeft /> {t("back")}
-          </Button>
-        ) : null}
-        {/* Why Sign is shut while an own licence lacks its name or address, said beside it. */}
-        {!licence && !blocked ? <p className="text-sm text-muted-foreground">{t("licence.ownNeeded")}</p> : null}
-        {licence && zenodoNeeded && !blocked ? <p className="text-sm text-muted-foreground">{t("archive.connectNeeded")}</p> : null}
-        {blocked ? (
-          <>
-            <p className="text-sm text-muted-foreground">{blocked}</p>
-            <WayOnButton way={way} />
-          </>
-        ) : null}
-        {starts ? (
+      {/* What keeps the workspace from starting a report (its day used, its Stripe account's currency): not a field's,
+          said above the way on, with what to do about it. Sign takes the person here. */}
+      {blocked ? (
+        <div id={fields.blocked} tabIndex={-1} role="status" className={cn("mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border bg-inset px-4 py-3 text-sm outline-none", shown.blocked ? "border-destructive" : "border-transparent")}>
+          <p className="min-w-0 flex-1 basis-56">{blocked}</p>
+          <WayOnButton way={way} />
+        </div>
+      ) : null}
+      <StepNav
+        onBack={onBack}
+        next={
+          starts ? (
           <NextButton
             busy={busy || !!signed || leaving}
-            disabled={!agreed || !name.trim() || !licence || zenodoNeeded || busy || !!signed || leaving || settling || !!blocked || !workspaceId}
+            disabled={busy || !!signed || leaving || settling || !workspaceId}
             onClick={() =>
-              start(async () => {
+              go(firstWrong, () => start(async () => {
                 say(null);
                 try {
                   // The licence is the report's from here on; what pays and the code can still change until it is activated.
@@ -1297,17 +1334,18 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
                 } catch (error) {
                   failed(t("signFailed"))(error);
                 }
-              })
+              }))
             }
           >
             {t("sign")}
           </NextButton>
-        ) : (
-          <Button onClick={() => openSignIn()}>
-            <PenLine /> {t("signIn")}
-          </Button>
-        )}
-      </div>
+          ) : (
+            <Button onClick={() => openSignIn()}>
+              <PenLine /> {t("signIn")}
+            </Button>
+          )
+        }
+      />
     </div>
   );
 }
@@ -1322,6 +1360,10 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
   const by = chosen ?? report.pdf?.bylineBy ?? null;
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
+  // Next, pressed with the line's choice not made, says so at the choice and goes there.
+  const choice = useId();
+  const { tried, go } = useStepForm();
+  const next = () => go([!by && bylineField(choice)], onNext);
   const play = fresh && !reduce;
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
   // The prefix and what follows it: a narrow screen breaks the DOI between them, never inside one.
@@ -1330,7 +1372,7 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
   const LETTERS_AT = 0.55;
   const LETTER = 0.03;
   return (
-    <div>
+    <div className="flex flex-1 flex-col">
     {/* The DOI itself, centred and held to a readable width; what to do with it runs the page's full width below. */}
     <div className="flex flex-col items-center pb-2 pt-3 text-center">
       <div className="relative size-20">
@@ -1392,17 +1434,10 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
     </div>
       {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
           out as the upload's page is, which comes next. */}
-      <motion.div className="mt-8 border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
+      <motion.div className="mt-8 flex flex-1 flex-col border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
         <StepHead title={t("bylineFirst")} help="byline">{t("bylineFirstBody")}</StepHead>
-        <BylineChoice byline={report.byline} by={by} onPick={(picked) => void setBy(picked)} />
-        <StepNav
-          hint={by ? undefined : t("bylineBy.choose")}
-          next={
-            <NextButton disabled={!by} onClick={onNext}>
-              {t("nextUpload")}
-            </NextButton>
-          }
-        />
+        <BylineChoice id={choice} byline={report.byline} by={by} error={tried && !by ? t("bylineBy.choose") : null} onPick={(picked) => void setBy(picked)} />
+        <StepNav next={<NextButton onClick={next}>{t("nextUpload")}</NextButton>} />
       </motion.div>
     </div>
   );
@@ -1432,16 +1467,18 @@ const useBylineBy = () => useQueryState("byline", PLACE.byline);
  * The line, and the choice of who adds it. Neither is chosen for the author: the DOI's page and the upload's both
  * wait for one, so nobody uploads a PDF before knowing the line has to be in it.
  */
-function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string; by: BylineBy | null; onPick: (by: BylineBy) => void; disabled?: boolean }) {
+/** The ids a step takes the person to when the line's choice is missing: its first option. */
+const bylineField = (id: string) => `${id}-self`;
+
+function BylineChoice({ id, byline, by, onPick, error, disabled = false }: { /** From `useId`, so the step can take the person here (`bylineField`). */ id: string; byline: string; by: BylineBy | null; onPick: (by: BylineBy) => void; /** What is wrong, once Next was pressed. */ error?: string | null; disabled?: boolean }) {
   const t = useTranslations("publishReports.flow.bylineBy");
-  const id = useId();
   return (
     <div className="mb-5">
       <BylineBox byline={byline} />
-      <RadioGroup aria-label={t("label")} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
+      <RadioGroup aria-label={t("label")} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} value={by ?? ""} disabled={disabled} onValueChange={(picked) => onPick(picked as BylineBy)} className="mt-3 gap-3 sm:grid-cols-2">
         {([["self", PenLine], ["added", FileCheck2]] as const).map(([value, Icon]) => (
-          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
-            <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
+          <label key={value} htmlFor={`${id}-${value}`} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", disabled ? "opacity-60" : "cursor-pointer", by === value ? "border-primary bg-primary/[0.06]" : cn(error ? "border-destructive" : "border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50"))}>
+            <RadioGroupItem id={`${id}-${value}`} value={value} aria-invalid={error ? true : undefined} className="mt-0.5" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2 text-sm font-medium">
                 {t(`${value}.title`)}
@@ -1452,25 +1489,11 @@ function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string
           </label>
         ))}
       </RadioGroup>
+      {error ? <FieldMessage id={`${id}-error`}>{error}</FieldMessage> : null}
     </div>
   );
 }
 
-function StepNav({ onBack, next, hint }: { onBack?: () => void; next?: ReactNode; /** Why the way on is shut, said beside it. */ hint?: string }) {
-  const t = useTranslations("publishReports.flow");
-  return (
-    // A Next too wide to sit beside Back (a phone at large text) takes a line of its own.
-    <div className="mt-6 flex flex-wrap items-center gap-3">
-      {onBack ? (
-        <Button variant="ghost" className="-ms-3 text-muted-foreground" onClick={onBack}>
-          <ArrowLeft /> {t("back")}
-        </Button>
-      ) : null}
-      {hint ? <p className="ms-auto text-sm text-muted-foreground">{hint}</p> : null}
-      <div className={cn("min-w-0 max-w-full", !hint && "ms-auto")}>{next}</div>
-    </div>
-  );
-}
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
 function Overview({ series, reviewed, prices, balance, onStart }: { series: string; /** What a report costs under each kind of licence, in US dollars, said here so it is no surprise at the last step. */ prices: Prices; /** What the workspace's publication balance holds, which pays for the last step before a card does; null for no limit, 0 signed out. */ balance: number | null; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
@@ -1489,7 +1512,7 @@ function Overview({ series, reviewed, prices, balance, onStart }: { series: stri
   ] as const;
   const activating = t(spendable ? "activate.bodyPrices" : "activate.bodyCard", { price: money(prices.standard), priceOfThree: money(prices.other), priceClosed: money(prices.closed) });
   return (
-    <div>
+    <div className="flex flex-1 flex-col">
       <StepHead title={t("title", { series })}>{reviewed ? `${t("introReviewed")} ${flow("reviewTakes")}` : t("intro")}</StepHead>
       <ol className="relative space-y-1">
         {/* One line through the icons: the steps as one road. */}
@@ -1506,9 +1529,7 @@ function Overview({ series, reviewed, prices, balance, onStart }: { series: stri
           </li>
         ))}
       </ol>
-      <div className="mt-6 flex justify-end">
-        <NextButton onClick={onStart}>{t("start")}</NextButton>
-      </div>
+      <StepNav next={<NextButton onClick={onStart}>{t("start")}</NextButton>} />
     </div>
   );
 }
@@ -1622,6 +1643,11 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
   // The choice made on the way here, or the one the PDF already attached was uploaded with.
   const [chosen, setBy] = useBylineBy();
   const by = chosen ?? report.pdf?.bylineBy ?? null;
+  // Next or the drop area, pressed with something missing, says what at its field and goes there: the line's choice
+  // first, then the PDF.
+  const choice = useId();
+  const drop = useId();
+  const { tried, go } = useStepForm();
   const here = { workspaceId, key: report.key };
   // A PDF already here without the line gets its page as soon as its author asks for it, by the choice or the notice.
   // What went wrong with the last file or choice, said under the drop area until the next one.
@@ -1673,14 +1699,15 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
     }
   };
   return (
-    // The drop area takes the height the window has to spare, so Back and Next sit at its foot. Not the cover's column:
-    // that grows when the bill under it arrives, and the drop area would grow after it.
-    <div ref={fillsWindow} className="flex min-h-[var(--fill,0px)] flex-col">
+    // The drop area takes the height the step has to spare (`Screens`), so Back and Next sit at its foot.
+    <div className="flex flex-1 flex-col">
       <StepHead title={t("uploadPdf")} help="byline">{t("uploadIntro")}</StepHead>
-      <BylineChoice byline={report.byline} by={by} disabled={busy} onPick={pick} />
+      <BylineChoice id={choice} byline={report.byline} by={by} disabled={busy} error={tried && !by ? t("bylineBy.choose") : null} onPick={pick} />
       <button
+        id={drop}
         type="button"
-        onClick={() => input.current?.click()}
+        aria-describedby={tried && by && !onNext && !busy ? `${drop}-error` : undefined}
+        onClick={() => go([!by && bylineField(choice)], () => input.current?.click())}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
@@ -1689,10 +1716,11 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
-          void send(e.dataTransfer.files[0]);
+          const file = e.dataTransfer.files[0];
+          go([!by && bylineField(choice)], () => void send(file));
         }}
-        disabled={busy || !by}
-        className={cn("flex min-h-44 w-full flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", !by ? "border-border opacity-60" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
+        disabled={busy}
+        className={cn("flex min-h-44 w-full flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors", tried && by && !onNext && !busy ? "border-destructive" : !by ? "border-border" : over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50")}
       >
         {sending ? (
           <>
@@ -1715,6 +1743,7 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
         )}
       </button>
       <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => void send(e.target.files?.[0])} />
+      {tried && by && !onNext && !busy ? <FieldMessage id={`${drop}-error`}>{t("uploadFirst")}</FieldMessage> : null}
       <Problem className="ps-1 pt-3">{problem}</Problem>
       {report.pdf?.trouble === "unopened" && !busy ? (
         <p role="alert" className="mt-3 flex items-start gap-2 ps-1 text-sm text-destructive">
@@ -1751,12 +1780,14 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
           {t("replaces", { name: report.pdf.name })}
         </p>
       ) : null}
+      {/* Always both: Back waits while the PDF goes up; Next goes on once its details are read, and says what is missing before. */}
       <StepNav
-        onBack={busy ? undefined : onBack}
+        onBack={onBack}
+        backDisabled={busy}
         next={
-          onNext && !busy ? (
-            <NextButton onClick={onNext}>{t("nextDetails")}</NextButton>
-          ) : null
+          <NextButton busy={busy} onClick={() => go([!by && bylineField(choice), !onNext && drop], () => onNext?.())}>
+            {t("nextDetails")}
+          </NextButton>
         }
       />
     </div>
@@ -1946,7 +1977,10 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
     });
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
-  const shut = terms?.paused ? t("activation.paused") : unapplied ? t("activation.promo.applyFirst") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
+  const shut = terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
+  // A code typed and not applied is the code field's to say: Activate takes the person there (`useStepForm`).
+  const codeField = useId();
+  const { tried, go } = useStepForm();
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} help="checks" aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1978,7 +2012,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
     </StepHead>
   );
   return (
-    <div>
+    <div className="flex flex-1 flex-col">
       <AutoHeight>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={stage === "ready" && !admin ? "admin" : (stage ?? "running")} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -1986,7 +2020,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
           </motion.div>
         </AnimatePresence>
       </AutoHeight>
-      {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
+      {report?.reviewRequest && (stage === "failed" || stage === "review") ? <Said label={t(stage === "review" ? "yourNote" : "yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
       {terms?.kept && stage !== "live" ? (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
@@ -2021,7 +2055,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     <AutoHeight className="min-w-0 flex-1 basis-64 sm:max-w-sm">
                       {vouchers ? (
                         <div className={cn("py-1", terms.balance !== 0 && "px-3")}>
-                          <PromoCode fixed={terms.balance === 0} applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
+                          <PromoCode id={codeField} error={tried && unapplied ? t("activation.promo.applyFirst") : null} fixed={terms.balance === 0} applied={code} onApply={(quote) => onChoose?.({ voucher: quote })} onQuote={(typedCode) => onQuote(typedCode, sum.bought)} typed={typed} onTyped={setTyped} />
                         </div>
                       ) : null}
                     </AutoHeight>
@@ -2052,92 +2086,94 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
               {/* Activate turns to a spinner while it works: said in words too, so nobody wonders whether to press again.
                   With something to pay and no saved card, what it is doing is opening Stripe's page: nothing is activated yet. */}
               <AutoHeight>{activating ? <p role="status" className="pb-3 text-end text-xs text-muted-foreground">{t(due > 0 && !card ? "activation.onStripe" : "activatingNow")}</p> : null}</AutoHeight>
-              <div className="flex flex-wrap justify-end gap-2">
-                {/* Back to the details, as every other step has a way back to the one before it: wherever the server
-                    lets a checked report change (flow.ts `goTo`). */}
-                {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
-                  <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
-                    <ArrowLeft /> {t("back")}
-                  </Button>
-                ) : null}
-                {stage === "failed" ? (
-                  <>
-                    {report.asked ? null : (
-                      <Button variant="outline" onClick={() => setAsking(true)}>
-                        <ReviewQueueIcon /> {t("requestReview")}
-                      </Button>
-                    )}
-                    <Button variant="outline" onClick={onDetails}>
-                      <PenLine /> {t("changeDetails")}
-                    </Button>
-                    <Button onClick={onFix}>
-                      <RotateCcw /> {t("uploadNew")}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    {/* Declined before it ever went live, it can be changed and sent round again: the reviewer's note is a reason to, not the end of it. */}
-                    {reopens ? (
-                      <>
-                        <Button variant="outline" onClick={onFix}>
-                          <RotateCcw /> {t("uploadNew")}
-                        </Button>
-                        <Button onClick={onDetails}>
-                          <PenLine /> {t("changeDetails")}
-                        </Button>
-                      </>
-                    ) : null}
-                    {/* Only where this report has come to its end, declined for good or taken down: there it is the way
-                        on. Beside Pay, or beside the buttons that change the report, it read as one more thing to do with
-                        this report. A new one starts from the list, as ever. */}
-                    {onAnother && stage === "declined" && !reopens ? (
-                      <Button onClick={onAnother}>
-                        <Plus /> {t("publishAnother")}
-                      </Button>
-                    ) : null}
-                    {stage === "ready" && admin && terms && !pending ? (
-                      // What pressing it does, in a "?" beside it: people asked what Activate would do before they
-                      // pressed. It opens above the two, where it leaves the button in sight.
-                      <FieldHelp field="activation" side="top" around="flex min-w-0 max-w-full items-center justify-end gap-1.5">
-                        {shut ? (
-                          // Shut, with why: paused, a code typed and not applied, or nothing on sale to pay with.
-                          <TooltipHint label={shut}>
-                            <span tabIndex={0}>
-                              <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
-                            </span>
-                          </TooltipHint>
-                        ) : (
-                          // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
-                          // something due, it pays, and says how much.
-                          <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={due === 0 ? () => activateNow() : askToPay} />
-                        )}
-                      </FieldHelp>
-                    ) : null}
-                    {stage === "ready" && !admin ? (
-                      <TooltipHint label={t("activation.onlyAdmin")}>
-                        <span tabIndex={0}>
-                          <Button disabled>
-                            <BadgeCheck /> {t("activateFree")}
-                          </Button>
-                        </span>
-                      </TooltipHint>
-                    ) : stage === "review" ? (
-                      <TooltipHint label={t("needsApproval")}>
-                        <span tabIndex={0}>
-                          <Button disabled>
-                            <BadgeCheck /> {t("activateFree")}
-                          </Button>
-                        </span>
-                      </TooltipHint>
-                    ) : null}
-                  </>
-                )}
-              </div>
             </motion.div>
           ) : null}
         </AnimatePresence>
       </AutoHeight>
-      {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
+      {report ? (
+          // Back to the details, as every other step has a way back to the one before it: wherever the server lets a
+          // checked report change (flow.ts `goTo`). Its ways on, at the foot of the step as every step's are.
+          <StepNav
+            onBack={stage === "failed" || stage === "ready" || stage === "review" || reopens ? onDetails : undefined}
+            backDisabled={activating || charging}
+            between={
+              stage === "failed" ? (
+                <>
+                  {report.asked ? null : (
+                    <Button variant="outline" onClick={() => setAsking(true)}>
+                      <ReviewQueueIcon /> {t("requestReview")}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={onDetails}>
+                    <PenLine /> {t("changeDetails")}
+                  </Button>
+                </>
+              ) : reopens ? (
+                // Declined before it ever went live, it can be changed and sent round again: the reviewer's note is a reason to, not the end of it.
+                <Button variant="outline" onClick={onFix}>
+                  <RotateCcw /> {t("uploadNew")}
+                </Button>
+              ) : stage === "review" && onRequestReview && !report.reviewRequest ? (
+                // What a check flagged may need words it can't have (published before, say): said to the reviewer here.
+                <Button variant="outline" onClick={() => setAsking(true)}>
+                  <ReviewQueueIcon /> {t("noteForReviewer")}
+                </Button>
+              ) : null
+            }
+            next={
+              stage === "failed" ? (
+                <Button onClick={onFix}>
+                  <RotateCcw /> {t("uploadNew")}
+                </Button>
+              ) : reopens ? (
+                <Button onClick={onDetails}>
+                  <PenLine /> {t("changeDetails")}
+                </Button>
+              ) : onAnother && stage === "declined" ? (
+                // Only where this report has come to its end, declined for good or taken down: there it is the way
+                // on. Beside Pay, or beside the buttons that change the report, it read as one more thing to do with
+                // this report. A new one starts from the list, as ever.
+                <Button onClick={onAnother}>
+                  <Plus /> {t("publishAnother")}
+                </Button>
+              ) : stage === "ready" && admin && terms && !pending ? (
+                // What pressing it does, in a "?" beside it: people asked what Activate would do before they pressed.
+                <FieldHelp field="activation" side="top" around="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                  {shut ? (
+                    // Shut, with why, for what the person can't change here: paused, nothing on sale to pay with, or
+                    // its Stripe account's currency. A code typed and not applied is a field's: Activate goes there.
+                    <TooltipHint label={shut}>
+                      <span tabIndex={0}>
+                        <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                      </span>
+                    </TooltipHint>
+                  ) : (
+                    // With nothing due there is nothing to pay: the button activates, and no dialog asks. With
+                    // something due, it pays, and says how much.
+                    <ActivateButton label={t(due === 0 ? "activateFree" : "activate")} amount={due > 0 ? dollars(due) : null} busy={activating} disabled={false} onClick={() => go([unapplied && codeField], due === 0 ? () => activateNow() : askToPay)} />
+                  )}
+                </FieldHelp>
+              ) : stage === "ready" && !admin ? (
+                <TooltipHint label={t("activation.onlyAdmin")}>
+                  <span tabIndex={0}>
+                    <Button disabled>
+                      <BadgeCheck /> {t("activateFree")}
+                    </Button>
+                  </span>
+                </TooltipHint>
+              ) : stage === "review" ? (
+                <TooltipHint label={t("needsApproval")}>
+                  <span tabIndex={0}>
+                    <Button disabled>
+                      <BadgeCheck /> {t("activateFree")}
+                    </Button>
+                  </span>
+                </TooltipHint>
+              ) : null
+            }
+          />
+      ) : null}
+      {onRequestReview ? <ReviewRequestDialog open={asking} note={stage === "review"} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
       {report && terms ? (
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in
         // between. With none saved, confirming goes on to Stripe's page, and the dialog says so.
@@ -2225,7 +2261,7 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }: { /** The field is all the section holds (a card is the only way to pay): it stays open, with no way to shut it. */ fixed?: boolean; applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+function PromoCode({ id, error = null, applied, onApply, onQuote, typed, onTyped, fixed = false }: { /** The code's box, for the step's way on to take the person to. */ id?: string; /** What the step says is wrong with the field, once its way on was pressed. */ error?: string | null; /** The field is all the section holds (a card is the only way to pay): it stays open, with no way to shut it. */ fixed?: boolean; applied: Quote | null; onApply: (quote: Quote | null) => void; /** Quotes a code typed: the share it takes off what a card would pay. */ onQuote?: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
   // A code already typed (it came back from Stripe's page in the address) opens the field with it.
   const [opened, setOpen] = useState(typed !== "");
   const open = fixed || opened;
@@ -2269,11 +2305,17 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }:
             className="space-y-1.5 p-px"
             onSubmit={(e) => {
               e.preventDefault();
+              // Apply is never shut for an empty box (components/reports/form.tsx): pressed, it says what to do.
               if (typed.trim()) apply();
+              else {
+                setWrong(t("typeFirst"));
+                field.current?.focus();
+              }
             }}
           >
             <div className="flex gap-2">
               <Input
+                id={id}
                 // Opened by a press, it takes the keyboard; there from the start, it leaves the page where it is.
                 autoFocus={!fixed && finePointer()}
                 value={typed}
@@ -2285,12 +2327,12 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }:
                 placeholder={t("label")}
                 ref={field}
                 aria-label={t("label")}
-                aria-invalid={!!wrong}
-                aria-describedby={wrong ? wrongId : undefined}
+                aria-invalid={!!(wrong ?? error)}
+                aria-describedby={wrong ?? error ? wrongId : undefined}
                 className="font-mono placeholder:font-sans"
               />
               {/* A code typed and not yet applied: Apply stands out as what to press next, in place of a line saying so. */}
-              <Button type="submit" variant={typed.trim() ? "default" : "outline"} className="shrink-0" disabled={!typed.trim() || checking}>
+              <Button type="submit" variant={typed.trim() ? "default" : "outline"} className="shrink-0" disabled={checking}>
                 {t("apply")}
               </Button>
               {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
@@ -2311,11 +2353,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped, fixed = false }:
               </Button>
               )}
             </div>
-            {wrong ? (
-              <p id={wrongId} role="alert" className="text-xs text-destructive">
-                {wrong}
-              </p>
-            ) : null}
+            {wrong ?? error ? <FieldMessage id={wrongId} className="pt-0">{wrong ?? error}</FieldMessage> : null}
           </form>
         ) : (
           // As tall as the field it opens into and the code it ends as, so neither moves what is under or beside it.
@@ -2461,7 +2499,7 @@ function useAsking() {
   return [ask === "review", set] as const;
 }
 
-function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void> }) {
+function ReviewRequestDialog({ open, onClose, onSend, note = false }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void>; /** A note for the reviewer of a report already waiting for one, rather than asking for one. */ note?: boolean }) {
   const t = useTranslations("publishReports.flow");
   const [comment, setComment] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
@@ -2497,10 +2535,10 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         }}
       >
         <DialogHeader>
-          <DialogTitle>{t("requestReview")}</DialogTitle>
-          <DialogDescription>{t("reviewIntro")}</DialogDescription>
+          <DialogTitle>{t(note ? "noteForReviewer" : "requestReview")}</DialogTitle>
+          <DialogDescription>{t(note ? "noteIntro" : "reviewIntro")}</DialogDescription>
         </DialogHeader>
-        <Field label={t("reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
+        <Field label={t(note ? "noteQuestion" : "reviewQuestion")} counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea ref={box} id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} />}
         </Field>
         <Problem>{problem}</Problem>
@@ -2511,7 +2549,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
           <Button className="relative max-sm:h-auto max-sm:min-h-9 max-sm:shrink max-sm:py-1 max-sm:whitespace-normal" disabled={sending} onClick={send}>
             <Working busy={sending}>
               <span className="flex items-center gap-2">
-                <ReviewQueueIcon /> {t("sendForReview")}
+                <ReviewQueueIcon /> {t(note ? "sendNote" : "sendForReview")}
               </span>
             </Working>
           </Button>

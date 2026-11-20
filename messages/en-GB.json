@@ -367,7 +367,8 @@
     "accountSandbox": "Needs your own Crossref account",
     "accountSandboxHint": "Records archived in your account keep this community's Crossref DOI, so turn on Crossref with your own credentials. Test DOIs from the sandbox can't go on real Zenodo records.",
     "archiveDoiHint": "Zenodo DOI: the archived copy gets a DOI of its own. Crossref DOI: the copy shares the record's Crossref DOI.",
-    "accountCrossrefJoin": "How to join Crossref"
+    "accountCrossrefJoin": "How to join Crossref",
+    "accountConnectedAs": "Connected: {name}"
   },
   "auth": {
     "backToSearch": "Back to search",
@@ -6678,7 +6679,7 @@
           },
           "published": {
             "name": "Not published before",
-            "fix": "If this is your own earlier publication, say so when you ask for a review."
+            "fix": "If this is your own earlier publication, tell the reviewer where it appeared."
           },
           "harm": {
             "name": "No hate speech or harassment",
@@ -6796,7 +6797,8 @@
           "unknownCode": "{code} isn't a code we know, or it has been used up.",
           "nothingOff": "{code} doesn't take anything off publishing a report.",
           "codeTooLong": "That code is too long to be one of ours.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Apply the code, or clear it, to activate.",
+          "typeFirst": "Type a code first."
         },
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",
@@ -6884,7 +6886,6 @@
         "own": "My own licence",
         "ownName": "Its name",
         "ownUrl": "Web address of its text",
-        "ownNeeded": "Give your licence a name in Latin letters and the web address of its text, and say whether it lets anyone share the report.",
         "help": {
           "title": "Licences",
           "about": "About licences",
@@ -6903,7 +6904,14 @@
         "ownOpenYes": "Yes, anyone may share it",
         "ownOpenNo": "No, it holds sharing back",
         "ownOpenYesBody": "Anyone may read and download the PDF, as with Creative Commons.",
-        "ownOpenNoBody": "Openscholar's readers at most get the PDF: never Zenodo, and a community only if you agree."
+        "ownOpenNoBody": "Openscholar's readers at most get the PDF: never Zenodo, and a community only if you agree.",
+        "ownName_missing": "Give your licence its name.",
+        "ownName_long": "Shorten its name to {max} characters.",
+        "ownName_latin": "Write its name in Latin letters: it's printed in your PDF.",
+        "ownName_known": "That's a Creative Commons licence: pick it above instead.",
+        "ownUrl_missing": "Give the web address of its text.",
+        "ownUrl_invalid": "Give a full web address, starting with https://.",
+        "ownOpenMissing": "Say whether it lets anyone share the report."
       },
       "payment": {
         "payWith": "Pay with",
@@ -6963,7 +6971,9 @@
         "confirmBefore": "Nothing is public yet: this applies once the report goes live, and can change until then.",
         "until": "Private until {date}",
         "readersMost": "Its licence doesn't let anyone share it, so Openscholar's readers are the most who can have the file.",
-        "short": "Access"
+        "short": "Access",
+        "untilPast": "Pick a day after today.",
+        "untilNotSooner": "Pick a day before {date}: an embargo can only end sooner."
       },
       "archive": {
         "label": "Archive",
@@ -6973,7 +6983,6 @@
         "ownBody": "Kept on Zenodo under your name",
         "connectFirst": "Connect your Zenodo account to keep the report there.",
         "connect": "Connect Zenodo",
-        "connectNeeded": "Connect Zenodo to sign",
         "broken": "Zenodo stopped accepting your connection. Connect it again.",
         "help": {
           "about": "Why reports are archived",
@@ -6983,7 +6992,15 @@
           "policies": "How Zenodo keeps records"
         },
         "signers": "The signer's Zenodo account"
-      }
+      },
+      "uploadFirst": "Upload your report's PDF to go on.",
+      "signedByMissing": "Type your name to sign.",
+      "agreeMissing": "Tick this box to agree.",
+      "noteForReviewer": "Add a note for the reviewer",
+      "noteIntro": "Your report is with a reviewer. Tell them anything the checks couldn't know, such as where it was published before.",
+      "noteQuestion": "Your note",
+      "sendNote": "Send the note",
+      "yourNote": "Your note for the reviewer"
     },
     "meta": {
       "publish": "Publish | Openscholar",
@@ -7114,7 +7131,10 @@
       "undo": "Undo",
       "referencesTooBig": "That file is over 2 MB. A reference list is far smaller.",
       "openItsDoi": "Open its DOI",
-      "openReferenceDoi": "Open the DOI of reference {number}"
+      "openReferenceDoi": "Open the DOI of reference {number}",
+      "titleMissing": "Give the report its title.",
+      "authorsMissing": "Name at least one author.",
+      "unchanged": "Change a detail first: nothing has changed yet."
     },
     "kinds": {
       "author": "Author",

@@ -367,7 +367,8 @@
     "accountSandbox": "Het jou eie Crossref-rekening nodig",
     "accountSandboxHint": "Rekords wat in jou rekening geargiveer word, behou hierdie gemeenskap se Crossref-DOI, dus skakel Crossref aan met jou eie besonderhede. Toets-DOI's uit die sandput kan nie op regte Zenodo-rekords gaan nie.",
     "archiveDoiHint": "Zenodo-DOI: die geargiveerde kopie kry sy eie DOI. Crossref-DOI: die kopie deel die rekord se Crossref-DOI.",
-    "accountCrossrefJoin": "Hoe om by Crossref aan te sluit"
+    "accountCrossrefJoin": "Hoe om by Crossref aan te sluit",
+    "accountConnectedAs": "Gekoppel: {name}"
   },
   "auth": {
     "backToSearch": "Terug na soektog",
@@ -6679,7 +6680,7 @@
           },
           "published": {
             "name": "Nog nie vantevore gepubliseer nie",
-            "fix": "As dit jou eie vroeëre publikasie is, sê so wanneer jy om 'n hersiening vra."
+            "fix": "As dit jou eie vroeëre publikasie is, sê vir die beoordelaar waar dit verskyn het."
           },
           "harm": {
             "name": "Geen haatspraak of teistering nie",
@@ -6797,7 +6798,8 @@
           "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
           "nothingOff": "{code} neem niks af van die prys om ’n verslag te publiseer nie.",
           "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees.",
-          "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer."
+          "applyFirst": "Pas die kode toe, of vee dit uit, om te aktiveer.",
+          "typeFirst": "Tik eers 'n kode."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",
@@ -6885,7 +6887,6 @@
         "own": "My eie lisensie",
         "ownName": "Sy naam",
         "ownUrl": "Webadres van sy teks",
-        "ownNeeded": "Gee jou lisensie 'n naam in Latynse letters en die webadres van sy teks, en sê of dit enigiemand toelaat om die verslag te deel.",
         "help": {
           "title": "Lisensies",
           "about": "Oor lisensies",
@@ -6904,7 +6905,14 @@
         "ownOpenYes": "Ja, enigiemand mag dit deel",
         "ownOpenNo": "Nee, dit hou deel terug",
         "ownOpenYesBody": "Enigiemand mag die PDF lees en aflaai, soos met Creative Commons.",
-        "ownOpenNoBody": "Hoogstens Openscholar se lesers kry die PDF: nooit Zenodo nie, en 'n gemeenskap net as jy instem."
+        "ownOpenNoBody": "Hoogstens Openscholar se lesers kry die PDF: nooit Zenodo nie, en 'n gemeenskap net as jy instem.",
+        "ownName_missing": "Gee jou lisensie sy naam.",
+        "ownName_long": "Verkort sy naam tot {max} karakters.",
+        "ownName_latin": "Skryf sy naam in Latynse letters: dit word in jou PDF gedruk.",
+        "ownName_known": "Dis 'n Creative Commons-lisensie: kies dit eerder hierbo.",
+        "ownUrl_missing": "Gee die webadres van sy teks.",
+        "ownUrl_invalid": "Gee 'n volledige webadres wat met https:// begin.",
+        "ownOpenMissing": "Sê of dit enigiemand toelaat om die verslag te deel."
       },
       "payment": {
         "payWith": "Betaal met",
@@ -6964,7 +6972,9 @@
         "confirmBefore": "Niks is nog publiek nie: dit geld sodra die verslag lewendig gaan, en kan tot dan verander.",
         "until": "Privaat tot {date}",
         "readersMost": "Sy lisensie laat nie toe dat enigiemand dit deel nie, dus is Openscholar se lesers die meeste wat die lêer kan kry.",
-        "short": "Toegang"
+        "short": "Toegang",
+        "untilPast": "Kies 'n dag ná vandag.",
+        "untilNotSooner": "Kies 'n dag voor {date}: 'n embargo kan net vroeër eindig."
       },
       "archive": {
         "label": "Argief",
@@ -6974,7 +6984,6 @@
         "ownBody": "Op Zenodo onder jou naam bewaar",
         "connectFirst": "Koppel jou Zenodo-rekening om die verslag daar te bewaar.",
         "connect": "Koppel Zenodo",
-        "connectNeeded": "Koppel Zenodo om te teken",
         "broken": "Zenodo aanvaar nie meer jou koppeling nie. Koppel dit weer.",
         "help": {
           "about": "Waarom verslae geargiveer word",
@@ -6984,7 +6993,15 @@
           "policies": "Hoe Zenodo rekords bewaar"
         },
         "signers": "Die ondertekenaar se Zenodo-rekening"
-      }
+      },
+      "uploadFirst": "Laai jou verslag se PDF op om voort te gaan.",
+      "signedByMissing": "Tik jou naam om te teken.",
+      "agreeMissing": "Merk hierdie blokkie om in te stem.",
+      "noteForReviewer": "Voeg 'n nota vir die beoordelaar by",
+      "noteIntro": "Jou verslag is by 'n beoordelaar. Vertel hulle enigiets wat die kontroles nie kon weet nie, soos waar dit voorheen gepubliseer is.",
+      "noteQuestion": "Jou nota",
+      "sendNote": "Stuur die nota",
+      "yourNote": "Jou nota vir die beoordelaar"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",
@@ -7115,7 +7132,10 @@
       "undo": "Ontdoen",
       "referencesTooBig": "Daardie lêer is groter as 2 MB. ’n Verwysingslys is baie kleiner.",
       "openItsDoi": "Maak sy DOI oop",
-      "openReferenceDoi": "Maak die DOI van verwysing {number} oop"
+      "openReferenceDoi": "Maak die DOI van verwysing {number} oop",
+      "titleMissing": "Gee die verslag sy titel.",
+      "authorsMissing": "Noem ten minste een outeur.",
+      "unchanged": "Verander eers 'n besonderheid: niks het nog verander nie."
     },
     "kinds": {
       "author": "Skrywer",
