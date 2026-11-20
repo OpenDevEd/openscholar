@@ -6963,7 +6963,8 @@
         "confirmLive": "Leser dürfen eine Datei behalten, die sie einmal hatten, daher lässt sich das nicht rückgängig machen: Die Datei kann sich ab jetzt nur noch weiter öffnen. Zenodo und Crossref werden ebenfalls aktualisiert.",
         "confirmBefore": "Noch ist nichts öffentlich: Das gilt, sobald der Bericht live geht, und kann sich bis dahin ändern.",
         "until": "Privat bis {date}",
-        "readersMost": "Seine Lizenz erlaubt nicht, dass jeder ihn teilt, daher können höchstens die Leser auf Openscholar die Datei erhalten."
+        "readersMost": "Seine Lizenz erlaubt nicht, dass jeder ihn teilt, daher können höchstens die Leser auf Openscholar die Datei erhalten.",
+        "short": "Zugriff"
       },
       "archive": {
         "label": "Archiv",

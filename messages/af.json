@@ -6963,7 +6963,8 @@
         "confirmLive": "Lesers mag 'n lêer hou wat hulle al gehad het, dus kan dit nie ontdoen word nie: van nou af kan die lêer net verder oopmaak. Zenodo en Crossref word ook bygewerk.",
         "confirmBefore": "Niks is nog publiek nie: dit geld sodra die verslag lewendig gaan, en kan tot dan verander.",
         "until": "Privaat tot {date}",
-        "readersMost": "Sy lisensie laat nie toe dat enigiemand dit deel nie, dus is Openscholar se lesers die meeste wat die lêer kan kry."
+        "readersMost": "Sy lisensie laat nie toe dat enigiemand dit deel nie, dus is Openscholar se lesers die meeste wat die lêer kan kry.",
+        "short": "Toegang"
       },
       "archive": {
         "label": "Argief",

@@ -6962,7 +6962,8 @@
         "confirmLive": "Abafundi bangagcina ifayela abake baba nalo, ngakho lokhu akunakuhlehliswa: kusukela manje ifayela lingavuleka kakhulu kuphela. I-Zenodo ne-Crossref nazo ziyabuyekezwa.",
         "confirmBefore": "Akukho okusobala okwamanje: lokhu kusebenza uma umbiko uba ku-inthanethi, futhi kungashintsha kuze kube yileso sikhathi.",
         "until": "Okuyimfihlo kuze kube ngu-{date}",
-        "readersMost": "Ilayisense yayo ayivumeli noma ubani ukwabelana ngayo, ngakho abafundi be-Openscholar yibo abaningi abangathola ifayela."
+        "readersMost": "Ilayisense yayo ayivumeli noma ubani ukwabelana ngayo, ngakho abafundi be-Openscholar yibo abaningi abangathola ifayela.",
+        "short": "Ukufinyelela"
       },
       "archive": {
         "label": "Inqolobane",

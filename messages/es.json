@@ -6963,7 +6963,8 @@
         "confirmLive": "Los lectores pueden quedarse con un archivo que ya tuvieron, así que esto no se puede deshacer: desde ahora el archivo solo podrá abrirse más. Zenodo y Crossref también se actualizan.",
         "confirmBefore": "Aún no hay nada público: esto se aplica cuando el informe se publique y puede cambiar hasta entonces.",
         "until": "Privado hasta el {date}",
-        "readersMost": "Su licencia no permite que cualquiera lo comparta, así que como mucho los lectores de Openscholar pueden tener el archivo."
+        "readersMost": "Su licencia no permite que cualquiera lo comparta, así que como mucho los lectores de Openscholar pueden tener el archivo.",
+        "short": "Acceso"
       },
       "archive": {
         "label": "Archivo",

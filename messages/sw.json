@@ -6963,7 +6963,8 @@
         "confirmLive": "Wasomaji wanaweza kuweka faili waliyowahi kuwa nayo, kwa hivyo hili haliwezi kutenduliwa: kuanzia sasa faili inaweza tu kufunguka zaidi. Zenodo na Crossref zinasasishwa pia.",
         "confirmBefore": "Hakuna kilicho wazi bado: hili linatumika ripoti ikiwa hewani, na linaweza kubadilika hadi wakati huo.",
         "until": "Faragha hadi {date}",
-        "readersMost": "Leseni yake hairuhusu mtu yeyote kuishiriki, kwa hivyo wasomaji wa Openscholar ndio wengi zaidi wanaoweza kupata faili."
+        "readersMost": "Leseni yake hairuhusu mtu yeyote kuishiriki, kwa hivyo wasomaji wa Openscholar ndio wengi zaidi wanaoweza kupata faili.",
+        "short": "Ufikiaji"
       },
       "archive": {
         "label": "Hifadhi",
