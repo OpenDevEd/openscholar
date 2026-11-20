@@ -203,9 +203,9 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
 
   // The line under the name: what Zotero is for, why the last sign-in failed, the account it's connected to, or what disconnecting leaves in place.
   const line = failed ? (
-    <span className="line-clamp-2 text-destructive">{tc("zoteroSignInFailed")}</span>
+    <span className={`${WRAPS} text-destructive`}>{tc("zoteroSignInFailed")}</span>
   ) : !account.connected ? (
-    <span className="line-clamp-2">{t("zoteroAbout")}</span>
+    <span className={WRAPS}>{t("zoteroAbout")}</span>
   ) : step === "confirm" ? (
     <span className="text-pretty">{t("zoteroKeeps")}</span>
   ) : (
@@ -218,8 +218,8 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
   return (
     <li className={ROW} data-zotero={account.connected ? "connected" : "not-connected"}>
       <Tile icon={ZoteroIcon} tint="#cc2936" className="self-start" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">Zotero</p>
+      <div className={TEXT}>
+        <p className={NAME}>Zotero</p>
         <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className={LINE}>
           {line}
         </Swap>
@@ -264,7 +264,12 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
  * under the button. Its line keeps two lines' height there, so the account arriving never moves the rows below.
  */
 const ROW = "flex items-center gap-3 p-3 @max-[28rem]/integrations:flex-wrap";
-const ACTIONS = "flex w-40 shrink-0 justify-end gap-1 @max-[28rem]/integrations:w-full @max-[28rem]/integrations:justify-start @max-[28rem]/integrations:ps-12";
+// Under 14rem (a phone at 150% text or more; a phone at normal text is 15.9rem or wider) the name and the line under it
+// go under the logo and the buttons take the row's whole width, all wrapping instead of being cut.
+const ACTIONS = "flex w-40 shrink-0 justify-end gap-1 @max-[28rem]/integrations:w-full @max-[28rem]/integrations:justify-start @max-[28rem]/integrations:ps-12 @max-[14rem]/integrations:flex-wrap @max-[14rem]/integrations:ps-0 @max-[14rem]/integrations:[&_button]:h-auto @max-[14rem]/integrations:[&_button]:min-h-8 @max-[14rem]/integrations:[&_button]:whitespace-normal @max-[14rem]/integrations:[&_button]:wrap-anywhere @max-[14rem]/integrations:[&_button]:max-w-full";
+const TEXT = "min-w-0 flex-1 @max-[14rem]/integrations:basis-full";
+const NAME = "truncate text-sm font-semibold @max-[14rem]/integrations:whitespace-normal @max-[14rem]/integrations:wrap-anywhere";
+const WRAPS = "line-clamp-2 @max-[14rem]/integrations:line-clamp-none @max-[14rem]/integrations:wrap-anywhere";
 const LINE = "flex min-w-0 items-center text-xs text-muted-foreground @max-[28rem]/integrations:min-h-8 @max-[28rem]/integrations:items-start";
 
 function ZenodoRow() {
@@ -282,22 +287,22 @@ function ZenodoRow() {
   const connected = !!account && !account.broken;
 
   const line = !account ? (
-    <span className="line-clamp-2">{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
+    <span className={WRAPS}>{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
   ) : account.broken ? (
-    <span className="truncate text-destructive">{t("zenodoBroken")}</span>
+    <span className={`${WRAPS} text-destructive`}>{t("zenodoBroken")}</span>
   ) : step === "confirm" ? (
     <span className="text-pretty">{t("zenodoKeeps")}</span>
   ) : (
     // What it is for, with the account: once connected, the row still says why it is there.
     // Wraps on a phone rather than cutting the account off.
-    <span className="line-clamp-2">{t("zenodoIn", { name: account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo") })}</span>
+    <span className={WRAPS}>{t("zenodoIn", { name: account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo") })}</span>
   );
 
   return (
     <li className={ROW} data-zenodo={connected ? "connected" : "not-connected"}>
       <ZenodoMark className="size-9 shrink-0 self-start rounded-lg" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">Zenodo</p>
+      <div className={TEXT}>
+        <p className={NAME}>Zenodo</p>
         <Swap id={`${connected}-${step === "confirm"}`} className={LINE}>
           {line}
         </Swap>
