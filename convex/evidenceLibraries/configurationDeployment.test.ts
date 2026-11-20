@@ -205,7 +205,7 @@ function createRuntimeNetwork(input: {
     uuid: APPLICATION_UUID,
     name: createCoolifyLibraryTag(input.libraryId as never),
     config_hash: configHash,
-    git_repository: "Openscholar-ai/evidence-community",
+    git_repository: "OpenDevEd/evidence-community",
     git_branch: "main",
     git_commit_sha: commit,
     build_pack: "dockercompose",

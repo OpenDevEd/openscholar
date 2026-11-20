@@ -1,4 +1,4 @@
-// Keeps the Openscholar project board (Openscholar-ai project 1) in step with the
+// Keeps the Openscholar project board (OpenDevEd project 4) in step with the
 // work in openscholar and evidence-community, as the shared AGENTS.md asks: closed
 // issues are Done, an issue an open pull request closes is In review and goes
 // back to In progress when that pull request closes unmerged, an issue in
@@ -9,13 +9,13 @@
 //
 //   GH_TOKEN=<token with project and issue access> node scripts/board-upkeep.mts [--dry-run]
 //
-// CI runs it as the "Openscholar Board" GitHub App (.github/workflows/board-upkeep.yml).
+// CI runs it as the "OpenDevEd board upkeep" GitHub App (.github/workflows/board-upkeep.yml).
 
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const OWNER = "Openscholar-ai";
-const PROJECT = 1;
+const OWNER = "OpenDevEd";
+const PROJECT = 4;
 const REPOS = ["openscholar", "evidence-community"];
 const STALE_DAYS = 7;
 // An issue moves to In review from these; never out of Blocker.
@@ -193,7 +193,7 @@ async function readRepositories(): Promise<Repositories> {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  if (!process.env.GH_TOKEN) throw new Error("Set GH_TOKEN to a token that can edit the Openscholar-ai project and both repositories' issues.");
+  if (!process.env.GH_TOKEN) throw new Error("Set GH_TOKEN to a token that can edit the OpenDevEd project and both repositories' issues.");
   const { project, status, sprint, items } = await readBoard();
   const repositories = await readRepositories();
   const plan = planChanges({ items, ...repositories, iterations: sprint.configuration.iterations, today: new Date().toISOString().slice(0, 10) });
