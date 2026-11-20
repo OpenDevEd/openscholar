@@ -1778,7 +1778,8 @@
     "zenodoAbout": "公開したものを自分のアカウントにアーカイブ",
     "zenodoKeeps": "すでにアーカイブしたレコードは Zenodo アカウントに残ります",
     "zenodoBroken": "Zenodo がこの接続を受け付けなくなりました。そこにアーカイブするにはもう一度接続してください。",
-    "zenodoFailed": "Zenodo に接続できませんでした。もう一度お試しください。"
+    "zenodoFailed": "Zenodo に接続できませんでした。もう一度お試しください。",
+    "zenodoIn": "公開したものを {name} にアーカイブします"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

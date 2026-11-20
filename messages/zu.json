@@ -1778,7 +1778,8 @@
     "zenodoAbout": "Gcina okushicilelayo ku-akhawunti yakho",
     "zenodoKeeps": "Amarekhodi asegciniwe ahlala ku-akhawunti yakho ye-Zenodo",
     "zenodoBroken": "I-Zenodo ayisakwamukeli lokhu kuxhumana. Phinda uyixhume ukuze ugcine lapho.",
-    "zenodoFailed": "I-Zenodo ayikwazanga ukuxhunywa. Zama futhi."
+    "zenodoFailed": "I-Zenodo ayikwazanga ukuxhunywa. Zama futhi.",
+    "zenodoIn": "Igcina okushicilelayo ku-{name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

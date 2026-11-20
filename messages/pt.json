@@ -1779,7 +1779,8 @@
     "zenodoAbout": "Arquive o que você publica na sua própria conta",
     "zenodoKeeps": "Os registros já arquivados continuam na sua conta do Zenodo",
     "zenodoBroken": "O Zenodo deixou de aceitar esta conexão. Conecte-o novamente para arquivar lá.",
-    "zenodoFailed": "Não foi possível conectar o Zenodo. Tente novamente."
+    "zenodoFailed": "Não foi possível conectar o Zenodo. Tente novamente.",
+    "zenodoIn": "Arquiva o que você publica em {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

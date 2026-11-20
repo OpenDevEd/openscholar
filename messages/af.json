@@ -1779,7 +1779,8 @@
     "zenodoAbout": "Argiveer wat jy publiseer in jou eie rekening",
     "zenodoKeeps": "Rekords wat reeds geargiveer is, bly in jou Zenodo-rekening",
     "zenodoBroken": "Zenodo aanvaar nie meer hierdie koppeling nie. Koppel dit weer om daar te argiveer.",
-    "zenodoFailed": "Zenodo kon nie gekoppel word nie. Probeer weer."
+    "zenodoFailed": "Zenodo kon nie gekoppel word nie. Probeer weer.",
+    "zenodoIn": "Argiveer wat jy publiseer in {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

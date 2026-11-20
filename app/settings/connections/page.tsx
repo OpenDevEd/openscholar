@@ -207,7 +207,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
   ) : !account.connected ? (
     <span className="truncate">{t("zoteroAbout")}</span>
   ) : step === "confirm" ? (
-    <span className="truncate">{t("zoteroKeeps")}</span>
+    <span className="text-pretty">{t("zoteroKeeps")}</span>
   ) : (
     <span className="inline-flex min-w-0 items-center gap-1">
       <PersonIcon className="size-3 shrink-0" />
@@ -216,7 +216,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
   );
 
   return (
-    <li className="flex items-center gap-3 p-3" data-zotero={account.connected ? "connected" : "not-connected"}>
+    <li className={ROW} data-zotero={account.connected ? "connected" : "not-connected"}>
       <Tile icon={ZoteroIcon} tint="#cc2936" className="self-start" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">Zotero</p>
@@ -230,7 +230,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
           {t("connectedTime", { time: format.relativeTime(account.connectedAt, now) })}
         </span>
       ) : null}
-      <Swap id={account.connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className="flex w-40 shrink-0 justify-end gap-1">
+      <Swap id={account.connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className={ACTIONS}>
         {!account.connected ? (
           <Button size="sm" className="relative" disabled={step === "busy"} onClick={connect}>
             <Working busy={step === "busy"}>{t("connect")}</Working>
@@ -258,6 +258,13 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
  * Your Zenodo account: reports can archive into it instead of Openscholar's (#1237). Connect goes through Zenodo's
  * own sign-in and comes back here; one Zenodo stopped accepting says so and offers to connect again.
  */
+/**
+ * A connection's row. Under 16rem (a phone at large text) the buttons go under the text, which would otherwise be
+ * pushed past the screen's edge; at normal sizes the row is as it was.
+ */
+const ROW = "flex items-center gap-3 p-3 @max-[16rem]/integrations:flex-wrap";
+const ACTIONS = "flex w-40 shrink-0 justify-end gap-1 @max-[16rem]/integrations:w-full @max-[16rem]/integrations:justify-start";
+
 function ZenodoRow() {
   const t = useTranslations("connectionsPage");
   const tc = useTranslations("common");
@@ -277,16 +284,14 @@ function ZenodoRow() {
   ) : account.broken ? (
     <span className="truncate text-destructive">{t("zenodoBroken")}</span>
   ) : step === "confirm" ? (
-    <span className="truncate">{t("zenodoKeeps")}</span>
+    <span className="text-pretty">{t("zenodoKeeps")}</span>
   ) : (
-    <span className="inline-flex min-w-0 items-center gap-1">
-      <PersonIcon className="size-3 shrink-0" />
-      <span className="truncate">{account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo")}</span>
-    </span>
+    // What it is for, with the account: once connected, the row still says why it is there.
+    <span className="truncate">{t("zenodoIn", { name: account.name ?? (account.zenodoUserId ? `Zenodo ${account.zenodoUserId}` : "Zenodo") })}</span>
   );
 
   return (
-    <li className="flex items-center gap-3 p-3" data-zenodo={connected ? "connected" : "not-connected"}>
+    <li className={ROW} data-zenodo={connected ? "connected" : "not-connected"}>
       <ZenodoMark className="size-9 shrink-0 self-start rounded-lg" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">Zenodo</p>
@@ -299,7 +304,7 @@ function ZenodoRow() {
           {t("connectedTime", { time: format.relativeTime(Math.min(account.connectedAt, now.getTime()), now) })}
         </span>
       ) : null}
-      <Swap id={connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className="flex w-40 shrink-0 justify-end gap-1">
+      <Swap id={connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className={ACTIONS}>
         {!connected ? (
           <Button
             size="sm"
@@ -408,7 +413,7 @@ function SiteRow({ site, tint }: { site: Site; tint: string }) {
     : t("lastUsed", { time: format.relativeTime(Math.min(site.lastUsedAt, now.getTime()), now) });
 
   return (
-    <li className="flex items-center gap-3 p-3">
+    <li className={ROW}>
       <Tile icon={Globe} tint={site.disconnectedAt ? "#94a3b8" : tint} className="self-start transition-colors" />
       <div className="min-w-0 flex-1">
         <p className={`truncate text-sm font-semibold transition-colors ${site.disconnectedAt ? "text-muted-foreground" : ""}`}>{site.name}</p>
@@ -430,7 +435,7 @@ function SiteRow({ site, tint }: { site: Site; tint: string }) {
           </a>
         </Button>
       </TooltipHint>
-      <Swap id={site.disconnectedAt ? "gone" : String(confirm)} className="flex w-40 shrink-0 justify-end gap-1">
+      <Swap id={site.disconnectedAt ? "gone" : String(confirm)} className={ACTIONS}>
         {site.disconnectedAt ? (
           <Button variant="outline" size="sm" className="relative" disabled={busy} onClick={() => change(false)}>
             <Working busy={busy}>{t("allowAgain")}</Working>

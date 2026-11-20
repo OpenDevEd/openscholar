@@ -1778,7 +1778,8 @@
     "zenodoAbout": "Archive what you publish in your own account",
     "zenodoKeeps": "Records already archived stay in your Zenodo account",
     "zenodoBroken": "Zenodo stopped accepting this connection. Connect it again to archive there.",
-    "zenodoFailed": "Zenodo couldn't be connected. Try again."
+    "zenodoFailed": "Zenodo couldn't be connected. Try again.",
+    "zenodoIn": "Archives what you publish in {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
