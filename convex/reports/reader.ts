@@ -31,7 +31,9 @@ const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) =>
 const reading = z.object({
   title: z.string(),
   subtitle: z.string().describe("Empty when there is none"),
-  type: z.enum(ids(REPORT_TYPES)).describe("The kind of work it is; presentation for slides made to be shown, such as a talk or a briefing deck"),
+  // Every PDF here is being published in a report series: three first-use walkers on 20 Nov 2026 had their reports, laid
+  // out with an abstract and methods, read as articles and changed each one back.
+  type: z.enum(ids(REPORT_TYPES)).describe("The kind of work it is. report unless the PDF itself says it is another kind: article only when it names the journal it appeared in, dissertation when it says it was submitted for a degree, book or book-chapter when it says so; presentation for slides made to be shown, such as a talk or a briefing deck"),
   language: z.string().describe("ISO 639-1 code of the text's language"),
   date: z.string().describe("The publication date as the PDF states it, as YYYY-MM-DD, YYYY-MM or YYYY; empty when it states none"),
   authors: z.array(
