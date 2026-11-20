@@ -2644,6 +2644,10 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
   const url = `https://doi.org/${report.doi}`;
   const passed = report.results?.filter((r) => r.pass).length ?? 0;
+  const registering = stepsOf(report).some((step) => step.state === "working" || step.state === "waiting");
+  // Shown while the page is open, its place stays once the registrations are done and the words fade: closing it moved
+  // "Open its page" up under the pointer of someone about to press it. A page opened afterwards never has it.
+  const [noted] = useState(registering);
   return (
     // As tall as the cover's column beside it (`ReportCover`'s `--cover-height`): the seal takes the height it has to
     // spare, centred, and the DOI, the buttons and the way to take it down end level with the column's foot.
@@ -2682,8 +2686,13 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
           ) : null}
         </div>
         {/* "Live" beside "Sending to Crossref" left people unsure whether to wait: the page is open now, the DOI follows. */}
-        {/* It goes when the registrations are done: closed over a moment, so the buttons below don't jump under a finger. */}
-        <AutoHeight>{stepsOf(report).some((step) => step.state === "working" || step.state === "waiting") ? <p className="pt-3 text-xs text-muted-foreground">{t("registering")}</p> : null}</AutoHeight>
+        <AutoHeight>
+          {registering || noted ? (
+            <p aria-hidden={!registering || undefined} className={cn("pt-3 text-xs text-muted-foreground transition-opacity duration-300 motion-reduce:transition-none", !registering && "opacity-0")}>
+              {t("registering")}
+            </p>
+          ) : null}
+        </AutoHeight>
         {/* Its copy refused in the author's own Zenodo account: "Zenodo refused it" alone left them with nothing to do. */}
         <AutoHeight>{report.archiveIn === "mine" && report.archive === "failed" ? <OwnArchiveRefused /> : null}</AutoHeight>
       </motion.div>
