@@ -12,9 +12,11 @@ export const BAR_ACTION = "@max-3xl:w-8 @max-3xl:px-0";
 export const BAR_LABEL = "@max-3xl:sr-only";
 
 /**
- * The page's command bar: one row as tall as the sidebar's logo section. It never
- * wraps. It answers to the page's own width (the nearest `@container`), and the
- * page shell shows what no longer fits inside its card instead.
+ * The page's command bar: one row as tall as the sidebar's logo section. It answers to
+ * the page's own width (the nearest `@container`), and the page shell shows what no
+ * longer fits inside its card instead. Under 18rem (a phone at 150% text or more; a
+ * phone at normal text is 20rem or wider) the actions go on a line of their own under
+ * the title, and their labels wrap rather than run off the screen.
  */
 export function PanelHeader({
   icon: Icon,
@@ -48,8 +50,8 @@ export function PanelHeader({
 }) {
   const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
   return (
-    <div className="flex h-16 items-center gap-4">
-      <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">
+    <div className="flex h-16 items-center gap-4 @max-[18rem]:h-auto @max-[18rem]:min-h-16 @max-[18rem]:flex-wrap @max-[18rem]:gap-y-2 @max-[18rem]:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial @max-[18rem]:basis-full">
         {backHref ? (
           <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
             <Link href={backHref} aria-label={backLabel} onClick={onBackClick}>
@@ -75,7 +77,7 @@ export function PanelHeader({
       {/* The view switch and the filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
       {tabs ? <div className="hidden shrink-0 border-s border-border-subtle ps-4 not-dark:[--inset:var(--card)] @3xl:block max-lg:has-[[data-view-switch]]:hidden!">{tabs}</div> : null}
       {filters || children ? (
-        <div className="ms-auto flex shrink-0 items-center gap-2">
+        <div className="ms-auto flex shrink-0 items-center gap-2 @max-[18rem]:ms-0 @max-[18rem]:max-w-full @max-[18rem]:flex-wrap @max-[18rem]:[&_button]:h-auto @max-[18rem]:[&_button]:min-h-8 @max-[18rem]:[&_button]:max-w-full @max-[18rem]:[&_button]:whitespace-normal">
           {filters ? <div className="hidden items-center gap-2 not-dark:[--inset:var(--card)] @6xl:flex">{filters}</div> : null}
           {children}
         </div>
