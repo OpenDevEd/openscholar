@@ -6961,7 +6961,8 @@
         "confirmLive": "Readers may keep a file once they have had it, so this can't be undone: from now on the file can only open further. Zenodo and Crossref are updated too.",
         "confirmBefore": "Nothing is public yet: this applies once the report goes live, and can change until then.",
         "until": "Private until {date}",
-        "readersMost": "Its license doesn't let anyone share it, so Openscholar's readers are the most who can have the file."
+        "readersMost": "Its license doesn't let anyone share it, so Openscholar's readers are the most who can have the file.",
+        "short": "Access"
       },
       "archive": {
         "label": "Archive",

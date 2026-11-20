@@ -78,7 +78,8 @@ function CredentialMode<Mode extends string = ActiveMode>({
       onValueChange={(mode) => onChange(mode as Mode)}
       className="gap-4"
     >
-      <TabsList aria-label={t("credentials", { provider })}>
+      {/* Three ways don't fit a phone's width on one line: they wrap rather than being cut off. */}
+      <TabsList aria-label={t("credentials", { provider })} className="max-w-full flex-wrap justify-start group-data-[orientation=horizontal]/tabs:h-auto">
         <TabsTrigger value="sandbox">
           <FlaskConical />
           {t("sandbox")}
@@ -167,14 +168,17 @@ function OwnZenodoAccount({ testCrossref }: { testCrossref: boolean }) {
     return (
       <PanelRow
         title={t("accountSandbox")}
-        hint={t("accountSandboxHint")}
-        leading={<ZenodoMark className="size-8 rounded-lg opacity-60" />}
-        // Where its own Crossref account comes from: the one thing it still needs.
-        action={
-          <a className="text-xs text-primary hover:underline" href="https://www.crossref.org/membership/" target="_blank" rel="noreferrer">
-            {t("accountCrossrefJoin")}
-          </a>
+        // Where its own Crossref account comes from, the one thing it still needs: in the text, which keeps the row's
+        // width on a phone instead of a narrow column beside a link.
+        hint={
+          <>
+            {t("accountSandboxHint")}{" "}
+            <a className="text-primary hover:underline" href="https://www.crossref.org/membership/" target="_blank" rel="noreferrer">
+              {t("accountCrossrefJoin")}
+            </a>
+          </>
         }
+        leading={<ZenodoMark className="size-8 rounded-lg opacity-60" />}
       />
     );
   return usable ? (

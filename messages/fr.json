@@ -6961,7 +6961,8 @@
         "confirmLive": "Les lecteurs peuvent garder un fichier qu’ils ont eu, donc ce choix est définitif : le fichier ne pourra plus que s’ouvrir davantage. Zenodo et Crossref sont mis à jour aussi.",
         "confirmBefore": "Rien n’est encore public : ce choix s’applique quand le rapport est mis en ligne, et peut changer d’ici là.",
         "until": "Privé jusqu'au {date}",
-        "readersMost": "Sa licence ne permet pas à tout le monde de le partager : au plus, les lecteurs d'Openscholar peuvent avoir le fichier."
+        "readersMost": "Sa licence ne permet pas à tout le monde de le partager : au plus, les lecteurs d'Openscholar peuvent avoir le fichier.",
+        "short": "Accès"
       },
       "archive": {
         "label": "Archive",

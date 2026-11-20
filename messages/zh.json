@@ -6961,7 +6961,8 @@
         "confirmLive": "读者可以保留已获得的文件，因此此操作无法撤销：从现在起文件只能进一步开放。Zenodo 和 Crossref 也会更新。",
         "confirmBefore": "目前尚未公开任何内容：此设置在报告上线时生效，在此之前可以更改。",
         "until": "{date} 前不公开",
-        "readersMost": "其许可不允许任何人分享，因此最多只有 Openscholar 的读者能获得该文件。"
+        "readersMost": "其许可不允许任何人分享，因此最多只有 Openscholar 的读者能获得该文件。",
+        "short": "访问"
       },
       "archive": {
         "label": "存档",

@@ -1996,9 +1996,9 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
       ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
-          // What to do about a failed check shows only while it can still be done. Once a reviewer has approved the
-          // report, the checks it failed say so.
-          <CheckRow key={r.id} name={r.name} result={r.result} advice={stage === "failed"} overruled={!!report?.approved && stage !== "declined" && r.result?.pass === false} />
+          // What to do about a failed check shows while it can still be done: failed, or waiting for a reviewer, when the
+          // author can still go back and send another PDF. Once a reviewer has approved the report, its checks say so.
+          <CheckRow key={r.id} name={r.name} result={r.result} advice={stage === "failed" || stage === "review"} overruled={!!report?.approved && stage !== "declined" && r.result?.pass === false} />
         ))}
       </ul>
       <AutoHeight>
@@ -2705,7 +2705,7 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
       ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {correction.results.map((r) => (
-          <CheckRow key={r.checkId} name={r.name} result={r} advice={stage === "failed" && !overruled.has(r.checkId)} />
+          <CheckRow key={r.checkId} name={r.name} result={r} advice={(stage === "failed" || stage === "review") && !overruled.has(r.checkId)} />
         ))}
       </ul>
       <div className="mt-6 flex flex-wrap justify-end gap-2">
@@ -2778,7 +2778,7 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
     ...(report?.checksVersion ? [{ id: "checks", label: t("steps.checks"), value: t("version", { version: report.checksVersion }) }] : []),
     // What was chosen when it was signed, kept in sight on the steps after, where the choices are locked. Live, the
     // screen shows both itself: who gets the file, and the archive's chip.
-    ...(report && !live ? [{ id: "file", label: t("fileAccess.label"), value: report.fileAccess.mode === "embargo" ? t("fileAccess.until", { date: format.dateTime(new Date(`${report.fileAccess.until}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" }) }) : t(`fileAccess.${report.fileAccess.mode}`) }] : []),
+    ...(report && !live ? [{ id: "file", label: t("fileAccess.short"), value: report.fileAccess.mode === "embargo" ? t("fileAccess.until", { date: format.dateTime(new Date(`${report.fileAccess.until}T00:00:00Z`), { dateStyle: "medium", timeZone: "UTC" }) }) : t(`fileAccess.${report.fileAccess.mode}`) }] : []),
     ...(report?.registration.zenodo && !live ? [{ id: "archive", label: t("archive.label"), value: t(report.archiveIn === "openscholar" ? "archive.openscholar" : report.archiveIn === "mine" ? "archive.own" : "archive.signers") }] : []),
   ];
   return (
