@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import Link from "@/components/workspace-link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
+import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2, TriangleAlert } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "@/convex/_generated/api";
 import { standingOf, useStepWords } from "@/components/reports/registration";
@@ -152,6 +152,8 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
   const stepWords = useStepWords();
   const stageLabel = useStageLabel();
   const status = STATUS[stage];
+  /** A live report one of whose registrations was refused, and what it was isn't said by its changes instead. */
+  const refused = r.status === "live" && !r.changes && !r.withdrawn && standingOf(r).state === "failed";
   const title = r.title ?? t("untitled");
   /** The person sees this report and can't change it: its way in only opens it. */
   const watching = !r.mine;
@@ -196,8 +198,9 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
               <span className="truncate">{t(`changes.${r.changes}`)}</span>
             </span>
           ) : r.status === "live" ? (
-            <span className="flex min-w-0 items-center gap-1">
-              <Hash className="size-3 shrink-0" />
+            // A registration refused says so as a warning: "Live" beside grey words read as all done.
+            <span className={cn("flex min-w-0 items-center gap-1", refused && "ink-warning")}>
+              {refused ? <TriangleAlert className="size-3 shrink-0" /> : <Hash className="size-3 shrink-0" />}
               <span className="truncate">{stepWords(standingOf(r))}</span>
             </span>
           ) : null}
@@ -214,7 +217,8 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
           {onDiscard ? <EntryAction label={t("discard")} icon={Trash2} danger className="size-8" onClick={onDiscard} /> : null}
           {onCorrect ? <EntryAction label={t(r.changes ? "seeChanges" : "correct")} icon={PenLine} className={cn("size-8", r.changes && "text-primary")} onClick={onCorrect} /> : null}
           {r.status === "live" ? (
-            <EntryAction label={t("action.manage")} icon={FileText} className="size-8" onClick={onOpen} />
+            // Where a refused registration is put right: marked, as a correction waiting is.
+            <EntryAction label={t(refused ? "action.seeFailed" : "action.manage")} icon={refused ? TriangleAlert : FileText} className={cn("size-8", refused && "ink-warning")} onClick={onOpen} />
           ) : (
             <EntryAction label={action.label} icon={action.icon} className="size-8" onClick={onOpen} />
           )}
