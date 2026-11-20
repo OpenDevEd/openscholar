@@ -211,7 +211,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
   ) : (
     <span className="inline-flex min-w-0 items-center gap-1">
       <PersonIcon className="size-3 shrink-0" />
-      <span className="truncate">{account.username ?? account.zoteroUserId}</span>
+      <span className={CUTS}>{account.username ?? account.zoteroUserId}</span>
     </span>
   );
 
@@ -268,7 +268,8 @@ const ROW = "flex items-center gap-3 p-3 @max-[28rem]/integrations:flex-wrap";
 // go under the logo and the buttons take the row's whole width, all wrapping instead of being cut.
 const ACTIONS = "flex w-40 shrink-0 justify-end gap-1 @max-[28rem]/integrations:w-full @max-[28rem]/integrations:justify-start @max-[28rem]/integrations:ps-12 @max-[14rem]/integrations:flex-wrap @max-[14rem]/integrations:ps-0 @max-[14rem]/integrations:[&_button]:h-auto @max-[14rem]/integrations:[&_button]:min-h-8 @max-[14rem]/integrations:[&_button]:whitespace-normal @max-[14rem]/integrations:[&_button]:wrap-anywhere @max-[14rem]/integrations:[&_button]:max-w-full";
 const TEXT = "min-w-0 flex-1 @max-[14rem]/integrations:basis-full";
-const NAME = "truncate text-sm font-semibold @max-[14rem]/integrations:whitespace-normal @max-[14rem]/integrations:wrap-anywhere";
+const CUTS = "truncate @max-[14rem]/integrations:whitespace-normal @max-[14rem]/integrations:wrap-anywhere";
+const NAME = `${CUTS} text-sm font-semibold`;
 const WRAPS = "line-clamp-2 @max-[14rem]/integrations:line-clamp-none @max-[14rem]/integrations:wrap-anywhere";
 const LINE = "flex min-w-0 items-center text-xs text-muted-foreground @max-[28rem]/integrations:min-h-8 @max-[28rem]/integrations:items-start";
 
