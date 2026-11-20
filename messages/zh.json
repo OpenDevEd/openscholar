@@ -1778,7 +1778,8 @@
     "zenodoAbout": "将你发布的内容存档到你自己的账户",
     "zenodoKeeps": "已存档的记录会留在你的 Zenodo 账户中",
     "zenodoBroken": "Zenodo 不再接受此连接。请重新连接以在那里存档。",
-    "zenodoFailed": "无法连接 Zenodo。请重试。"
+    "zenodoFailed": "无法连接 Zenodo。请重试。",
+    "zenodoIn": "将你发布的内容存档到 {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

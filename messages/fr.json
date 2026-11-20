@@ -1778,7 +1778,8 @@
     "zenodoAbout": "Archivez ce que vous publiez dans votre propre compte",
     "zenodoKeeps": "Les fiches déjà archivées restent dans votre compte Zenodo",
     "zenodoBroken": "Zenodo n’accepte plus cette connexion. Connectez-le à nouveau pour y archiver.",
-    "zenodoFailed": "Zenodo n’a pas pu être connecté. Réessayez."
+    "zenodoFailed": "Zenodo n’a pas pu être connecté. Réessayez.",
+    "zenodoIn": "Archive ce que vous publiez dans {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

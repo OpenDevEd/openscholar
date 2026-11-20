@@ -1779,7 +1779,8 @@
     "zenodoAbout": "Archivieren Sie, was Sie veröffentlichen, in Ihrem eigenen Konto",
     "zenodoKeeps": "Bereits archivierte Einträge bleiben in Ihrem Zenodo-Konto",
     "zenodoBroken": "Zenodo akzeptiert diese Verbindung nicht mehr. Verbinden Sie es erneut, um dort zu archivieren.",
-    "zenodoFailed": "Zenodo konnte nicht verbunden werden. Versuchen Sie es erneut."
+    "zenodoFailed": "Zenodo konnte nicht verbunden werden. Versuchen Sie es erneut.",
+    "zenodoIn": "Archiviert, was Sie veröffentlichen, in {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

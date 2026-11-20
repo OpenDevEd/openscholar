@@ -1779,7 +1779,8 @@
     "zenodoAbout": "Hifadhi unachochapisha katika akaunti yako mwenyewe",
     "zenodoKeeps": "Rekodi zilizokwisha hifadhiwa zinabaki katika akaunti yako ya Zenodo",
     "zenodoBroken": "Zenodo haikubali tena muunganisho huu. Iunganishe tena ili kuhifadhi humo.",
-    "zenodoFailed": "Imeshindikana kuunganisha Zenodo. Jaribu tena."
+    "zenodoFailed": "Imeshindikana kuunganisha Zenodo. Jaribu tena.",
+    "zenodoIn": "Huhifadhi unachochapisha kwenye {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

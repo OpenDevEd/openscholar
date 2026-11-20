@@ -1779,7 +1779,8 @@
     "zenodoAbout": "أرشف ما تنشره في حسابك الخاص",
     "zenodoKeeps": "تبقى السجلات المؤرشفة في حسابك على Zenodo",
     "zenodoBroken": "لم يعد Zenodo يقبل هذا الربط. اربطه مرة أخرى للأرشفة فيه.",
-    "zenodoFailed": "تعذّر ربط Zenodo. حاول مرة أخرى."
+    "zenodoFailed": "تعذّر ربط Zenodo. حاول مرة أخرى.",
+    "zenodoIn": "يؤرشف ما تنشره في {name}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
