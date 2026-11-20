@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("server-only", () => ({}));
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: null }) }));
 let requestHeaders = new Headers();
 vi.mock("next/headers", () => ({ headers: async () => requestHeaders }));

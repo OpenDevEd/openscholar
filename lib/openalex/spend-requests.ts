@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { isVerifiedCrawler } from "@/lib/known-visitor";
+import { isVerifiedCrawler } from "@/lib/verified-crawler";
 import { OPENALEX_REQUEST_LIMITS, RequestLimiter } from "./request-limiter";
 import { OPENALEX_LIMITED, type OpenAlexLimited } from "./limited";
 
