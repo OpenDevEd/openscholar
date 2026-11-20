@@ -12,7 +12,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { fileAccessModes, fileAccessOf, licenceOpen, utcDay, type FileAccess, type Licence } from "@/lib/reports/report";
+import { fileAccessModes, fileAccessOf, isCalendarDay, licenceOpen, utcDay, type FileAccess, type Licence } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 import { FieldMessage, useStepForm } from "@/components/reports/form";
 
@@ -37,7 +37,7 @@ const tomorrowDay = () => utcDay(new Date(Date.now() + 24 * 60 * 60 * 1000));
  * The step that holds the choice stops its Next on it, and the field says it as it is typed.
  */
 export const embargoProblem = (access: FileAccess, from: FileAccess | null = null): "past" | "notSooner" | null =>
-  access.mode !== "embargo" ? null : access.until < tomorrowDay() ? "past" : from?.mode === "embargo" && access.until >= from.until ? "notSooner" : null;
+  access.mode !== "embargo" ? null : !isCalendarDay(access.until) || access.until < tomorrowDay() ? "past" : from?.mode === "embargo" && access.until >= from.until ? "notSooner" : null;
 
 export function FileAccessChoice({ licence, value, onChange, disabled = false, from = null, dateId }: { licence: Licence; /** The choice made, which the licence may not allow: then it gets the licence's own. */ value: FileAccess | null; onChange: (access: FileAccess) => void; disabled?: boolean; /** A live report's saved access, which it may only open further from: every other choice is off. */ from?: FileAccess | null; /** The embargo day's box, for the step's Next to take the person to. */ dateId?: string }) {
   const t = useTranslations("publishReports.flow.fileAccess");
@@ -50,7 +50,9 @@ export function FileAccessChoice({ licence, value, onChange, disabled = false, f
   const date = dateId ?? `${id}-date`;
   const wrong = embargoProblem(access, from);
   const meaning =
-    access.mode === "embargo"
+    access.mode === "embargo" && wrong
+      ? t("embargoBody")
+      : access.mode === "embargo"
       ? t("meaning.embargo", { date: format.dateTime(new Date(`${access.until}T00:00:00Z`), { dateStyle: "long", timeZone: "UTC" }) })
       : t(access.mode === "private" && !open ? "meaning.privateClosed" : `meaning.${access.mode}`);
   return (
@@ -99,10 +101,8 @@ export function FileAccessChoice({ licence, value, onChange, disabled = false, f
                 value={access.until}
                 aria-invalid={wrong ? true : undefined}
                 aria-describedby={wrong ? `${date}-error` : undefined}
-                onChange={(event) => {
-                  const until = event.currentTarget.value;
-                  if (until) onChange({ mode: "embargo", until });
-                }}
+                // Cleared or half typed, it is "" and kept so: the box never snaps back to a day the person changed.
+                onChange={(event) => onChange({ mode: "embargo", until: event.currentTarget.value })}
               />
             </label>
             {wrong ? (

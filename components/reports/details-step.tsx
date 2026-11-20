@@ -5,6 +5,7 @@
 
 import { useEffect, useId, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { flushSync } from "react-dom";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
@@ -81,7 +82,7 @@ const dateOf = (year: number, month?: number, day?: number) => `${year}${month ?
  * clears the date; leaving it unfinished puts the saved year back, so the box never shows what isn't saved. A day the
  * month doesn't have goes when the month changes.
  */
-function DateField({ yearId, date, typed, onTyped, onDate, invalid, children }: { /** The year's box, for the step's Next to take the person to. */ yearId: string; date: string; /** A year being typed that isn't one yet. */ typed: string | null; onTyped: (typed: string | null) => void; onDate: (date: string) => void; invalid: boolean; children?: ReactNode }) {
+function DateField({ yearId, errorId, date, typed, onTyped, onDate, invalid, children }: { /** The message under the date, which the year box names while it is wrong. */ errorId: string; /** The year's box, for the step's Next to take the person to. */ yearId: string; date: string; /** A year being typed that isn't one yet. */ typed: string | null; onTyped: (typed: string | null) => void; onDate: (date: string) => void; invalid: boolean; children?: ReactNode }) {
   const t = useTranslations("publishReports.details");
   const format = useFormatter();
   const id = useId();
@@ -112,6 +113,7 @@ function DateField({ yearId, date, typed, onTyped, onDate, invalid, children }: 
           autoComplete="off"
           value={typed ?? (year ? String(year) : "")}
           aria-invalid={typed !== null || !parts || invalid || undefined}
+          aria-describedby={typed !== null || !parts || invalid ? errorId : undefined}
           onChange={(e) => typeYear(e.target.value)}
           onBlur={() => {
             if (typed === null) return;
@@ -225,10 +227,10 @@ function usePage<T>(list: T[], size: number) {
   const [page, setPage] = useState(1);
   const pager = pagerOf(list.length, size, page, setPage);
   const offset = (pager.page - 1) * size;
-  return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))) };
+  return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))), show: (index: number) => setPage(Math.floor(index / size) + 1) };
 }
 
-function AuthorRow({ author, index, count, onChange, onMove, onRemove, nameId, nameError }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; /** The name's box, for the step's Next to take the person to (the first row's). */ nameId?: string; /** Said under the name: no author is named yet. */ nameError?: string }) {
+function AuthorRow({ author, index, count, onChange, onMove, onRemove, nameId, nameError }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; /** The name's box, for the step's Next to take the person to (the first row's). */ nameId?: string; /** No author is named yet: the list says so under it. */ nameError?: boolean }) {
   const t = useTranslations("publishReports.details");
   const tp = useTranslations("people");
   const roleName = useRoleName();
@@ -248,8 +250,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove, nameId, n
         <span className="mb-1 flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
         <div className="min-w-0 flex-1 basis-44 space-y-1.5">
           <FieldLabel label={t("name")} help="name" htmlFor={`${id}-name`} />
-          <Input id={nameId ?? `${id}-name`} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="font-medium" aria-invalid={nameError ? true : undefined} aria-describedby={nameError ? `${nameId}-error` : undefined} />
-          {nameError ? <FieldMessage id={`${nameId}-error`}>{nameError}</FieldMessage> : null}
+          <Input id={nameId ?? `${id}-name`} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="font-medium" aria-invalid={nameError || undefined} aria-describedby={nameError ? `${nameId?.replace(/-author-name$/, "-authors-error")}` : undefined} />
         </div>
         {/* What the person is to the report, in Crossref's own roles: an author unless set. */}
         <div className="w-full shrink-0 space-y-1.5 @md:w-44">
@@ -590,11 +591,15 @@ export function DetailsStep({
   const firstWrongLink = m.relations.findIndex((r) => r.target.trim() !== "" && !linkHref(r.target));
   // A correction with nothing changed yet has nothing to send: said beside the button once it is pressed.
   const unchanged = !!onCancel && !resend && !touched;
-  const wrongFields = [noTitle && `${id}-title`, noAuthor && `${id}-author-name`, (!dated || typedYear !== null || future || early) && `${id}-year`, wrongLinks && `${id}-link-${firstWrongLink}`, unchanged && `${id}-unchanged`];
+  const wrongFields = [noTitle && `${id}-title`, noAuthor && (m.authors.length ? `${id}-author-name` : `${id}-add-author`), (!dated || typedYear !== null || future || early) && `${id}-year`, wrongLinks && `${id}-link-${firstWrongLink}`, unchanged && `${id}-unchanged`];
   // Busy: a person being added, or a summary being written.
   const working = adding || writing;
   // Not in a transition: the page shows the checks running at once, which a transition would hold back until they end.
-  const tryRun = () => go(wrongFields, run);
+  const tryRun = () => {
+    // A wrong link on another page of the list is put on screen first, so Next can take the person to it.
+    if (wrongLinks && firstWrongLink >= 0) flushSync(() => links.show(firstWrongLink));
+    go(wrongFields, run);
+  };
   const run = () => {
     // The run carries the details as they are, so a save still waiting has nothing left to send.
     clearTimeout(held.current.timer);
@@ -660,12 +665,12 @@ export function DetailsStep({
                 </SelectContent>
               </Select>
             </Field>
-            <DateField yearId={`${id}-year`} date={m.date} typed={typedYear} onTyped={setTypedYear} onDate={(date) => set("date", date)} invalid={future || early}>
+            <DateField yearId={`${id}-year`} errorId={`${id}-date-error`} date={m.date} typed={typedYear} onTyped={setTypedYear} onDate={(date) => set("date", date)} invalid={future || early}>
               {/* A report is published by today, as the author's own calendar has it. A date past it says so here, before the checks are asked for. */}
               {(typedYear !== null && typedYear.length < 4) || (typedYear === null && !dated) ? (
-                <span className="block ps-1 text-xs text-destructive">{t("yearInvalid")}</span>
+                <FieldMessage id={`${id}-date-error`} className="pt-0">{t("yearInvalid")}</FieldMessage>
               ) : typedYear !== null || future || early ? (
-                <span className="block ps-1 text-xs text-destructive">{t(typedYear === null && future ? "future" : "tooEarly")}</span>
+                <FieldMessage id={`${id}-date-error`} className="pt-0">{t(typedYear === null && future ? "future" : "tooEarly")}</FieldMessage>
               ) : null}
             </DateField>
             <div className="space-y-1.5">
@@ -695,13 +700,16 @@ export function DetailsStep({
                 onMove={(by) => moveAuthor(i, by)}
                 onRemove={() => set("authors", m.authors.filter((_, other) => other !== i))}
                 nameId={i === 0 ? `${id}-author-name` : undefined}
-                nameError={i === 0 && tried && noAuthor ? t("authorsMissing") : undefined}
+                nameError={i === 0 && tried && noAuthor}
               />
               );
             })}
           </ul>
           </Paged>
+          {/* Said under the list, so it shows with no row too: Next goes to the first name, or to Add a person. */}
+          {tried && noAuthor ? <FieldMessage id={`${id}-authors-error`}>{t("authorsMissing")}</FieldMessage> : null}
           <Button
+            id={`${id}-add-author`}
             type="button"
             variant="ghost"
             size="sm"
@@ -916,7 +924,7 @@ export function DetailsStep({
         </Section>
 
         <Section title={t("links")} help="links">
-          {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">{t("wrongLink")}</p> : null}
+          {wrongLinks ? <FieldMessage id={`${id}-links-error`} className="pt-0">{t("wrongLink")}</FieldMessage> : null}
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label={t("linksPager")}>
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
@@ -938,7 +946,7 @@ export function DetailsStep({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input id={`${id}-link-${i}`} aria-label={t("linkLabel")} aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder={t("linkPlaceholder")} value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
+                  <Input id={`${id}-link-${i}`} aria-label={t("linkLabel")} aria-invalid={r.target.trim() !== "" && !href} aria-describedby={r.target.trim() !== "" && !href ? `${id}-links-error` : undefined} maxLength={DETAIL_TEXT.link} placeholder={t("linkPlaceholder")} value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
                   <span className="ms-auto flex items-center gap-2 @xl:ms-0">
                   {href ? (
                     <TooltipHint label={t("openLink")}>
@@ -970,9 +978,9 @@ export function DetailsStep({
         </Section>
       </div>
       {/* Back and the ways on: one row, at the foot of the step, which fills the card (publish-flow.tsx `Screens`). */}
-      <div className="mt-auto flex items-center justify-end gap-2 pt-8">
+      <div className="mt-auto flex items-end gap-2 pt-8">
         {onBack ? (
-          <Button variant="ghost" className="-ms-3 me-auto shrink-0 text-muted-foreground" onClick={() => {
+          <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground" onClick={() => {
             // An edit still waiting to be saved goes first: once the report is back at its PDF, a save of its details is refused.
             sendNow();
             onBack();
@@ -980,6 +988,8 @@ export function DetailsStep({
             <ArrowLeft /> {t("back")}
           </Button>
         ) : null}
+        {/* The ways on wrap upwards on a phone; Back stays on the bottom line, level with the last of them. */}
+        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
         {onReturn && !touched ? (
           <Button variant="outline" onClick={onReturn}>
             {t("backToChecks")}
@@ -1008,6 +1018,7 @@ export function DetailsStep({
         ) : (
           <NextButton busy={working} onClick={tryRun}>{t("runChecks")}</NextButton>
         )}
+        </div>
       </div>
     </div>
     </RegistrarsProvider>

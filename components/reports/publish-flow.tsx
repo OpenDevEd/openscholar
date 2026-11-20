@@ -1501,13 +1501,14 @@ function BylineChoice({ id, byline, by, onPick, error, disabled = false }: { /**
 function StepNav({ onBack, backDisabled, next, between }: { onBack?: () => void; backDisabled?: boolean; next?: ReactNode; between?: ReactNode }) {
   const t = useTranslations("publishReports.flow");
   return (
-    <div className="mt-auto flex items-center gap-3 pt-6">
+    // Several ways on that don't fit a phone's row wrap upwards: Back stays on the bottom line, level with Next.
+    <div className="mt-auto flex items-end gap-3 pt-6">
       {onBack ? (
         <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground" disabled={backDisabled} onClick={onBack}>
           <ArrowLeft /> {t("back")}
         </Button>
       ) : null}
-      <div className="ms-auto flex min-w-0 items-center justify-end gap-2">
+      <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
         {between}
         {next}
       </div>
@@ -2109,14 +2110,16 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
       </AutoHeight>
       {report ? (
           // Back and the ways on: one row, at the foot of the step, which fills the card (`Screens`).
-          <div className="mt-auto flex items-center justify-end gap-2 pt-6">
+          // The ways on wrap upwards on a phone; Back stays on the bottom line, level with the last of them (`StepNav`).
+          <div className="mt-auto flex items-end gap-2 pt-6">
             {/* Back to the details, as every other step has a way back to the one before it: wherever the server
                 lets a checked report change (flow.ts `goTo`). */}
             {stage === "failed" || stage === "ready" || stage === "review" || reopens ? (
-              <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
+              <Button variant="ghost" className="-ms-3 shrink-0 text-muted-foreground" disabled={activating || charging} onClick={onDetails}>
                 <ArrowLeft /> {t("back")}
               </Button>
             ) : null}
+            <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
             {stage === "failed" ? (
               <>
                 {report.asked ? null : (
@@ -2197,6 +2200,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                 ) : null}
               </>
             )}
+            </div>
           </div>
       ) : null}
       {onRequestReview ? <ReviewRequestDialog open={asking} note={stage === "review"} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
