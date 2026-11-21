@@ -11,6 +11,7 @@ import { AppWindow, ExternalLink, Globe, KeyRound, PersonIcon, Plug, Trash2 } fr
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -220,9 +221,11 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
       <Tile icon={ZoteroIcon} tint="#cc2936" className="self-start" />
       <div className={TEXT}>
         <p className={NAME}>Zotero</p>
-        <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className={LINE}>
-          {line}
-        </Swap>
+        <AutoHeight>
+          <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className={LINE}>
+            {line}
+          </Swap>
+        </AutoHeight>
       </div>
       {account.connected ? (
         // A narrow list keeps the account name and the buttons, and leaves out when it was connected.
@@ -272,6 +275,7 @@ const CUTS = "truncate @max-[14rem]/integrations:whitespace-normal @max-[14rem]/
 const NAME = `${CUTS} text-sm font-semibold`;
 const WRAPS = "line-clamp-2 @max-[14rem]/integrations:line-clamp-none @max-[14rem]/integrations:wrap-anywhere";
 // What went wrong is read whole, however many lines it takes: Zenodo's broken connection needs three on a 360px phone.
+// The line sits in an AutoHeight, so a third line arriving with the account slides the rows below instead of jumping.
 const FAILED = "@max-[14rem]/integrations:wrap-anywhere";
 const LINE = "flex min-w-0 items-center text-xs text-muted-foreground @max-[28rem]/integrations:min-h-8 @max-[28rem]/integrations:items-start";
 
@@ -306,9 +310,11 @@ function ZenodoRow() {
       <ZenodoMark className="size-9 shrink-0 self-start rounded-lg" />
       <div className={TEXT}>
         <p className={NAME}>Zenodo</p>
-        <Swap id={`${connected}-${step === "confirm"}`} className={LINE}>
-          {line}
-        </Swap>
+        <AutoHeight>
+          <Swap id={`${connected}-${step === "confirm"}`} className={LINE}>
+            {line}
+          </Swap>
+        </AutoHeight>
       </div>
       {account ? (
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground @max-[32rem]/integrations:hidden">
