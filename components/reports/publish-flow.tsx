@@ -1847,7 +1847,8 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
           </AnimatePresence>
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{shownName}</span>
+          {/* A check's name wraps rather than being cut: "Rights match the license" lost its last word on a 360px phone. */}
+          <span className="block break-words text-sm font-medium">{shownName}</span>
         </span>
         {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
         <span className="flex min-w-[4.75rem] justify-end">

@@ -203,7 +203,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
 
   // The line under the name: what Zotero is for, why the last sign-in failed, the account it's connected to, or what disconnecting leaves in place.
   const line = failed ? (
-    <span className={`${WRAPS} text-destructive`}>{tc("zoteroSignInFailed")}</span>
+    <span className={`${FAILED} text-destructive`}>{tc("zoteroSignInFailed")}</span>
   ) : !account.connected ? (
     <span className={WRAPS}>{t("zoteroAbout")}</span>
   ) : step === "confirm" ? (
@@ -271,6 +271,8 @@ const TEXT = "min-w-0 flex-1 @max-[14rem]/integrations:basis-full";
 const CUTS = "truncate @max-[14rem]/integrations:whitespace-normal @max-[14rem]/integrations:wrap-anywhere";
 const NAME = `${CUTS} text-sm font-semibold`;
 const WRAPS = "line-clamp-2 @max-[14rem]/integrations:line-clamp-none @max-[14rem]/integrations:wrap-anywhere";
+// What went wrong is read whole, however many lines it takes: Zenodo's broken connection needs three on a 360px phone.
+const FAILED = "text-pretty @max-[14rem]/integrations:wrap-anywhere";
 const LINE = "flex min-w-0 items-center text-xs text-muted-foreground @max-[28rem]/integrations:min-h-8 @max-[28rem]/integrations:items-start";
 
 function ZenodoRow() {
@@ -288,9 +290,9 @@ function ZenodoRow() {
   const connected = !!account && !account.broken;
 
   const line = !account ? (
-    <span className={WRAPS}>{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
+    <span className={failed ? FAILED : WRAPS}>{t(failed ? "zenodoFailed" : "zenodoAbout")}</span>
   ) : account.broken ? (
-    <span className={`${WRAPS} text-destructive`}>{t("zenodoBroken")}</span>
+    <span className={`${FAILED} text-destructive`}>{t("zenodoBroken")}</span>
   ) : step === "confirm" ? (
     <span className="text-pretty">{t("zenodoKeeps")}</span>
   ) : (
