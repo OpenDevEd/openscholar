@@ -272,7 +272,7 @@ const CUTS = "truncate @max-[14rem]/integrations:whitespace-normal @max-[14rem]/
 const NAME = `${CUTS} text-sm font-semibold`;
 const WRAPS = "line-clamp-2 @max-[14rem]/integrations:line-clamp-none @max-[14rem]/integrations:wrap-anywhere";
 // What went wrong is read whole, however many lines it takes: Zenodo's broken connection needs three on a 360px phone.
-const FAILED = "text-pretty @max-[14rem]/integrations:wrap-anywhere";
+const FAILED = "@max-[14rem]/integrations:wrap-anywhere";
 const LINE = "flex min-w-0 items-center text-xs text-muted-foreground @max-[28rem]/integrations:min-h-8 @max-[28rem]/integrations:items-start";
 
 function ZenodoRow() {
