@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { assistantPath, type UserAction } from "./userActions";
+import { toolName } from "../../lib/assistant/actions";
 
 /**
  * The validator with every Convex ID as a plain string. Zod's ID type has no JSON
@@ -37,9 +38,6 @@ function idsAsStrings(validator: GenericValidator): GenericValidator {
 function fieldsWithStringIds(fields: PropertyValidators): PropertyValidators {
   return Object.fromEntries(Object.entries(fields).map(([name, validator]) => [name, idsAsStrings(validator)]));
 }
-
-/** A tool's name: its action's path, in the characters a tool name takes. */
-export const toolName = (path: string) => path.replace(/[/:]/g, "_");
 
 const retryKeyOf = (entry: UserAction) => (entry.kind === "query" ? undefined : entry.retryKey);
 

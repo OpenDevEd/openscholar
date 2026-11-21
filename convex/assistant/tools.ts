@@ -4,15 +4,15 @@
  * actions most chats use are tools of their own. Two more reach every other registered
  * action: one finds it, one runs it. Only actions import this file, since it loads the AI SDK.
  */
-import { tool, type ToolSet } from "ai";
+import { NoSuchToolError, tool, type ToolCallRepairFunction, type ToolSet } from "ai";
 import { z } from "zod";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
-import { assistantTools, inputSchema, runAction, toolName } from "../lib/assistantTools";
+import { assistantTools, inputSchema, runAction } from "../lib/assistantTools";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
-import { variantIn, viewOf } from "../../lib/assistant/actions";
+import { toolName, variantIn, viewOf } from "../../lib/assistant/actions";
 import { CHUNK, TRIED } from "./bulk";
 import { readConvexErrorData } from "../lib/errors";
 import { COLLIDED, messageOf } from "./failures";
@@ -150,6 +150,24 @@ export function called(tool: string, input: unknown): { entry: UserAction; input
   return entry && parsed?.success ? { entry, input: parsed.data as Record<string, unknown> } : null;
 }
 const RUN_ACTION = "run_action";
+/**
+ * A call of an action by its own name, as if it were a tool, made into the run_action call it meant. The model
+ * reads actions' names in its instructions and in what find_action returns: after an extraction it called
+ * extraction/queries:summarizeJobResults itself, was told no such tool exists, and told the person "That summary
+ * tool isn't available to me". opencode repairs a tool's name the same way (its `experimental_repairToolCall`).
+ * Null for a name that is no action: the AI SDK then tells the model which tools there are.
+ */
+export const repairCall: ToolCallRepairFunction<ToolSet> = async ({ toolCall, error }) => {
+  const entry = NoSuchToolError.isInstance(error) ? REACHABLE.find((entry) => entry.path === toolCall.toolName || toolName(entry.path) === toolCall.toolName) : undefined;
+  if (!entry) return null;
+  let given: unknown = {};
+  try {
+    given = JSON.parse(toolCall.input || "{}");
+  } catch {
+    // Arguments that aren't JSON go as none, and run_action answers with the ones the action takes.
+  }
+  return { ...toolCall, toolName: RUN_ACTION, input: JSON.stringify({ name: entry.path, arguments: given }) };
+};
 const RUN_MANY = "run_many";
 const CHANGE_PAPERS = "change_papers";
 

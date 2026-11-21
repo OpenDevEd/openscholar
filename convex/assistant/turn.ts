@@ -8,7 +8,7 @@
  *   release the lock, always
  */
 import { listMessages, type Agent, type ContextHandler, type ContextOptions } from "@convex-dev/agent";
-import { isStepCount, type ToolSet } from "ai";
+import { isStepCount, type ToolCallRepairFunction, type ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
@@ -63,6 +63,8 @@ export type Turn = {
   answer?: boolean;
   /** The reply's rule for asking the person before a tool call runs (the AI SDK's `toolApproval`). A call it asks about ends the reply there, unanswered. */
   approval?: (options: { toolCall: { toolCallId: string; toolName: string; input: unknown } }) => unknown;
+  /** What a call of a tool that isn't there becomes, if anything (the AI SDK's `repairToolCall`). */
+  repair?: ToolCallRepairFunction<ToolSet>;
   /** IDs for the log lines. */
   log: Record<string, unknown>;
   /** Read every STOP_ABORT_POLL_INTERVAL_MS while the reply streams; true stops it. */
@@ -265,7 +267,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           // forced: taking the tools away voids the provider's cache of the conversation, and a
           // model that isn't told why can answer with nothing. Every other limit is the tools' own to refuse.
           ...(turn.tools
-            ? { tools: turn.tools, ...(turn.approval ? { toolApproval: turn.approval as never } : {}), stopWhen: isStepCount(1), ...(turn.answer ? { toolChoice: "none" as const } : {}) }
+            ? { tools: turn.tools, ...(turn.approval ? { toolApproval: turn.approval as never } : {}), ...(turn.repair ? { repairToolCall: turn.repair } : {}), stopWhen: isStepCount(1), ...(turn.answer ? { toolChoice: "none" as const } : {}) }
             : {}),
           // Retries serve no user when the stream is live — the user
           // is watching and would prefer a fast failure or a clean
