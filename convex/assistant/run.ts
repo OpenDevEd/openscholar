@@ -19,7 +19,7 @@ import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs, usedValidator } from "./replies";
-import { CIRCLING, MAX_FAILED_ROUNDS, TOO_MANY_FAILED, askedSteps, circling, toolsFor } from "./tools";
+import { CIRCLING, MAX_FAILED_ROUNDS, TOO_MANY_FAILED, askedSteps, circling, repairCall, toolsFor } from "./tools";
 import { RECENT_REQUESTS } from "./validators";
 import { runTurn } from "./turn";
 import type { ChatErrorEnvelope } from "../../lib/errors/taxonomy";
@@ -160,6 +160,7 @@ export const reply = internalAction({
       },
       tools,
       approval,
+      repair: repairCall,
       answer,
       log: { assistantThreadId: threadId },
       shouldStop,

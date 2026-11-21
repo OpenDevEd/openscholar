@@ -244,6 +244,11 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));
+/** A tool's name: its action's path, in the characters a tool name takes. */
+export const toolName = (path: string) => path.replace(/[/:]/g, "_");
+/** The action a name the model wrote is: an action's path, or the name of its tool. */
+const NAMED = new Map([...WORDED].filter((key) => !key.includes("#")).flatMap((path) => [[path, path], [toolName(path), path]] as const));
+export const actionNamed = (name: string) => NAMED.get(name);
 /** The actions that put a paper in a collection or take it out, by one argument. */
 const PLACES = new Set(["library/papers:collect", "library/mutations:setPaperInCollection"]);
 /** Whether an action does one of several jobs, which its arguments say. */

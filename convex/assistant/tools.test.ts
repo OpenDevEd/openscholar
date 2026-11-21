@@ -20,7 +20,8 @@ import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { detailsOf } from "./details";
-import { onlyReads } from "./tools";
+import { onlyReads, repairCall } from "./tools";
+import { NoSuchToolError } from "ai";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
 import { notePart } from "../../lib/assistant/view";
@@ -1888,5 +1889,23 @@ describe("the assistant's tools", () => {
     expect(await steps()).toHaveLength(1);
     await asAda.mutation(api.assistant.threads.remove, { threadId: threadId as Id<"assistantThreads"> });
     await waitFor(async () => (await steps()).length === 0 && (await results()).length === 0);
+  });
+});
+
+// After an extraction the model called extraction/queries:summarizeJobResults as if it were a tool, was told there
+// is no such tool, and told the person the summary wasn't available to it.
+describe("a call of an action by its own name", () => {
+  const repair = (toolName: string, input: string) =>
+    repairCall({ toolCall: { type: "tool-call", toolCallId: "c1", toolName, input }, error: new NoSuchToolError({ toolName }) } as never);
+
+  it("runs that action, with its arguments, by its path or its tool's name", async () => {
+    const meant = { toolName: "run_action", input: JSON.stringify({ name: "extraction/queries:summarizeJobResults", arguments: { jobId: "j1", questionKey: "q_0" } }) };
+    expect(await repair("extraction/queries:summarizeJobResults", '{"jobId":"j1","questionKey":"q_0"}')).toMatchObject(meant);
+    expect(await repair("extraction_queries_summarizeJobResults", '{"jobId":"j1","questionKey":"q_0"}')).toMatchObject(meant);
+  });
+
+  it("leaves a name that is no action, or arguments that aren't JSON, to the AI SDK's answer", async () => {
+    expect(await repair("summarize_results", "{}")).toBeNull();
+    expect(await repair("extraction/queries:summarizeJobResults", "{jobId: j1")).toBeNull();
   });
 });

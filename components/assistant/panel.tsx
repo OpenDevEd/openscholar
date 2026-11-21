@@ -50,6 +50,8 @@ import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, releas
 import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import { recordLinks } from "./record-links";
+import { actionNames } from "./action-names";
+import { viewOf } from "@/lib/assistant/actions";
 import { defaultRemarkPlugins } from "streamdown";
 import useSWR, { mutate, preload } from "swr";
 import { readWork } from "@/app/actions/topics";
@@ -984,8 +986,16 @@ function Thread({
 /** A reply: its text as it arrives, or "Thinking" until the first of it does. `acting`: one of its actions is running. */
 function Reply({ message, live, acting }: { message: Message; live: string; acting: boolean }) {
   const t = useTranslations("assistant");
-  // Streamdown's own plugins, then one that makes a record's address left bare a link (./record-links.ts). The same list until the language changes, so its blocks stay cached.
-  const remarkPlugins = useMemo(() => [...Object.values(defaultRemarkPlugins), recordLinks((kind) => t(`records.${kind}`))], [t]);
+  // Streamdown's own plugins, then one that makes a record's address left bare a link (./record-links.ts) and one that
+  // shows an action's own name as its step's (./action-names.ts). The same list until the language changes, so its blocks stay cached.
+  const remarkPlugins = useMemo(() => {
+    const stepName = (path: string) => {
+      const { words } = viewOf(path);
+      const ask = `steps.${words}.ask` as "steps.other.ask";
+      return t(t.has(ask) ? ask : (`steps.${words}.did` as "steps.other.did"));
+    };
+    return [...Object.values(defaultRemarkPlugins), recordLinks((kind) => t(`records.${kind}`)), actionNames(stepName)];
+  }, [t]);
   const pending = message.status === "pending";
   // One hook for the reply's whole life, so text still being revealed carries on when the reply is done.
   const [text, { isStreaming }] = useSmoothText(pending ? live : message.text, { startStreaming: pending });
