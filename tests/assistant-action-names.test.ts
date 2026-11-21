@@ -17,10 +17,12 @@ describe("action names in a reply", () => {
   it("show as the step's name, in code or not, by path or by tool name", () => {
     expect(shown("The extraction action is `extraction/start:extract`.")).toBe("The extraction action is [extraction/start:extract].");
     expect(shown("I used research_papers_search and extraction/queries:summarizeJobResults.")).toBe("I used [research/papers:search] and [extraction/queries:summarizeJobResults].");
+    expect(shown("It ran `extraction/start:extract({})`.")).toBe("It ran [extraction/start:extract]({}).");
   });
 
   it("leave addresses, unknown names and code blocks as they are", () => {
     expect(shown("See https://example.org/a/extraction/start:extract and `no/such:action` or snake_case_words")).toBe("See https://example.org/a/extraction/start:extract and no/such:action or snake_case_words");
     expect(shown("```\nextraction/start:extract\n```")).toBe("extraction/start:extract");
+    expect(shown("extraction/start:extract2 and `research_papers_search_all`")).toBe("extraction/start:extract2 and research_papers_search_all");
   });
 });

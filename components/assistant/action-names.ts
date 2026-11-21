@@ -8,8 +8,8 @@ import type { Emphasis, Root } from "mdast";
 import { findAndReplace } from "mdast-util-find-and-replace";
 import { actionNamed } from "@/lib/assistant/actions";
 
-/** What an action's name looks like: a path with its colon, or a tool's name with its underscores. */
-const NAME = /[A-Za-z]+(?:\/[A-Za-z]+)*:[A-Za-z]+|[a-z]+(?:_[A-Za-z]+)+/g;
+/** What an action's name looks like, whole: a path with its colon, or a tool's name with its underscores. */
+const NAME = /(?:[A-Za-z][A-Za-z0-9]*(?:\/[A-Za-z][A-Za-z0-9]*)*:[A-Za-z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[A-Za-z][A-Za-z0-9]*)+)(?![\w/:])/g;
 
 const shown = (label: string): Emphasis => ({ type: "emphasis", children: [{ type: "text", value: label }] });
 
@@ -30,12 +30,15 @@ export const actionNames = (labelOf: (path: string) => string) => () => (tree: R
     ],
     { ignore: ["link", "linkReference", "inlineCode", "code", "definition"] },
   );
-  // A name the model set in code, as it mostly does, is the whole of that code. After the text, so a step's name put in isn't read again.
+  // The model mostly sets a name in code: code that is only the name becomes the step's name, and a name inside longer
+  // code, such as `extraction/start:extract({})`, is swapped for it there. After the text, so a step's name put in isn't read again.
   const visit = (node: Root | Root["children"][number]) => {
     if (!("children" in node)) return;
     node.children = node.children.map((child) => {
-      const path = child.type === "inlineCode" ? actionNamed(child.value.trim()) : undefined;
-      return path ? shown(labelOf(path)) : child;
+      if (child.type !== "inlineCode") return child;
+      const path = actionNamed(child.value.trim());
+      if (path) return shown(labelOf(path));
+      return { ...child, value: child.value.replace(NAME, (name) => { const named = actionNamed(name); return named ? labelOf(named) : name; }) };
     }) as typeof node.children;
     node.children.forEach(visit);
   };

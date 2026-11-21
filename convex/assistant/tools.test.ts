@@ -1904,7 +1904,8 @@ describe("a call of an action by its own name", () => {
     expect(await repair("extraction_queries_summarizeJobResults", '{"jobId":"j1","questionKey":"q_0"}')).toMatchObject(meant);
   });
 
-  it("leaves a name that is no action to the AI SDK's answer", async () => {
+  it("leaves a name that is no action, or arguments that aren't JSON, to the AI SDK's answer", async () => {
     expect(await repair("summarize_results", "{}")).toBeNull();
+    expect(await repair("extraction/queries:summarizeJobResults", "{jobId: j1")).toBeNull();
   });
 });

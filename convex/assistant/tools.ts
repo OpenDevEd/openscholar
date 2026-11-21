@@ -160,13 +160,12 @@ const RUN_ACTION = "run_action";
 export const repairCall: ToolCallRepairFunction<ToolSet> = async ({ toolCall, error }) => {
   const entry = NoSuchToolError.isInstance(error) ? REACHABLE.find((entry) => entry.path === toolCall.toolName || toolName(entry.path) === toolCall.toolName) : undefined;
   if (!entry) return null;
-  let given: unknown = {};
   try {
-    given = JSON.parse(toolCall.input || "{}");
+    return { ...toolCall, toolName: RUN_ACTION, input: JSON.stringify({ name: entry.path, arguments: JSON.parse(toolCall.input || "{}") }) };
   } catch {
-    // Arguments that aren't JSON go as none, and run_action answers with the ones the action takes.
+    // Arguments that aren't JSON aren't run as none, which an action with optional ones would take: the model hears it named no tool.
+    return null;
   }
-  return { ...toolCall, toolName: RUN_ACTION, input: JSON.stringify({ name: entry.path, arguments: given }) };
 };
 const RUN_MANY = "run_many";
 const CHANGE_PAPERS = "change_papers";
