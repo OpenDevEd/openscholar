@@ -198,7 +198,8 @@ export function PaidBill({ licence, paid, onReceipt, boxed = false, className }:
 function Line({ label, hint, amount, off = false }: { label: ReactNode; /** Under the label, where what it is needs saying. */ hint?: ReactNode; amount: string; off?: boolean }) {
   return (
     <div className={cn("flex justify-between gap-3", hint ? "items-start" : "items-center")}>
-      <dt className="min-w-0 truncate text-muted-foreground">
+      {/* An own licence's name is the author's and can be long ("Field Data Licence 2.0" on a 360px phone): it wraps, never cut. */}
+      <dt className="min-w-0 break-words text-muted-foreground">
         {label}
         {hint ? <span className="mt-0.5 block whitespace-normal text-balance text-xs text-muted-foreground/80">{hint}</span> : null}
       </dt>
