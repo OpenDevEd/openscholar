@@ -60,6 +60,7 @@ supported process changed. Read the page back before claiming success.
   | A country shows its flag | `check:ui-rules` (`country-flag`) |
   | An icon or picture beside a title with a line under it sits at the title's top | `check:ui-rules` (`icon-top`) |
   | A scrolling grid sets its columns, so a long line never scrolls it sideways | `check:ui-rules` (`grid-scroll`) |
+  | A publishing step's Back and Next share one row at its foot, through `StepNav` | `check:ui-rules` (`step-nav`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
   | A dialog, sheet, popover or menu opens with its data in it | `npm run verify -- shift` with a `--do` step that opens it |
 
