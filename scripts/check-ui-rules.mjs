@@ -33,6 +33,11 @@
 // it on the title's line, and changes nothing while the picture is the taller
 // of the two. A picture after the text, such as a chevron, may stay centred.
 // new-el runs the same rule (tools/uiRules.ts); keep them in step.
+//
+// step-nav: a publishing step's NextButton goes in StepNav's `next`
+// (components/reports/form.tsx), which keeps Back and the way on in one row at
+// the foot of the step. Footers built by hand let a message or the sidebar's
+// height push Next off Back's row or leave a gap under the buttons.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -309,6 +314,7 @@ const FIX = {
   "country-flag": "a country is named without its flag; put CountryFlag from components/ui/country-flag before it.",
   "icon-top": "an icon or picture is centred beside a title with a line under it; put self-start on it (and mt-0.5 on a size-4 icon, to sit on a text-sm line).",
   "grid-scroll": "a scrolling grid with no columns sizes its column to its widest unwrapped line and scrolls sideways; add grid-cols-[minmax(0,1fr)] (or its real columns).",
+  "step-nav": "a step's NextButton sits outside StepNav; pass it as StepNav's next, with Back as onBack (components/reports/form.tsx), so both share the step's bottom row.",
 };
 
 /** Every string in a messages file, with the key that holds it. */
@@ -519,6 +525,13 @@ function check(file) {
     if (ts.isPropertyAccessExpression(value)) return value.name.text;
     return ts.isElementAccessExpression(value) ? lastName(value.expression) : "";
   };
+  // Whether a node is inside StepNav's `next`.
+  const inStepNav = (node) => {
+    for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
+      if (ts.isJsxAttribute(parent) && parent.name.getText(source) === "next" && parent.parent.parent.tagName.getText(source) === "StepNav") return true;
+    }
+    return false;
+  };
   // The JSX elements and fragments around a node, nearest first.
   const jsxAround = (node) => {
     const elements = [];
@@ -628,6 +641,7 @@ function check(file) {
     }
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(source);
+      if (tag === "NextButton" && !inStepNav(node)) report(node, "step-nav");
       let classes = [""];
       let framer = false;
       let style = "";
@@ -701,4 +715,4 @@ if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names, countries without flags, icons centred beside two lines or scrolling grids without columns.");
+console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names, countries without flags, icons centred beside two lines, scrolling grids without columns or step footers outside StepNav.");
