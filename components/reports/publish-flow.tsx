@@ -1831,8 +1831,11 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
   const need = Math.round((result?.threshold ?? 0) * 100);
   const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } };
   return (
-    <li className="px-4 py-3.5">
-      <div className="flex items-center gap-3">
+    <li className="@container/check px-4 py-3.5">
+      {/* A phone at large text leaves the name a column of 0 to 60px beside the mark and the chip, one letter a line. Under
+          12rem (150% text or more; 13.75rem at normal text on a 320px phone) the chip joins the mark and the name takes the
+          whole line under them. */}
+      <div className="flex items-center gap-3 max-sm:@max-[12rem]/check:flex-wrap max-sm:@max-[12rem]/check:gap-y-1.5">
         <span className="relative flex size-5 shrink-0 items-center justify-center">
           <AnimatePresence initial={false} mode="popLayout">
             {result ? (
@@ -1846,12 +1849,12 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
             )}
           </AnimatePresence>
         </span>
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0 flex-1 max-sm:@max-[12rem]/check:order-last max-sm:@max-[12rem]/check:basis-full">
           {/* A check's name wraps rather than being cut: "Rights match the license" lost its last word on a 360px phone. */}
           <span className="block break-words text-sm font-medium">{shownName}</span>
         </span>
         {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
-        <span className="flex min-w-[4.75rem] justify-end">
+        <span className="flex min-w-[4.75rem] justify-end max-sm:@max-[12rem]/check:ms-auto max-sm:@max-[12rem]/check:min-w-0">
           <AnimatePresence initial={false}>
             {result && tone ? (
               <motion.span key="chip" {...fade}>

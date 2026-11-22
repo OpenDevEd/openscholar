@@ -71,7 +71,8 @@ export function PanelHeader({
         ) : icon}
         {title ? (
           <TooltipHint label={title} onlyWhenClipped>
-            <h1 className="truncate text-base font-semibold">{title}</h1>
+            {/* On a line of its own (under 30rem) a title too long for the line wraps: "Verify Agent Library" was "Ver…" at 360px and 200% text. */}
+            <h1 className="truncate text-base font-semibold @max-[30rem]:whitespace-normal @max-[30rem]:wrap-break-word">{title}</h1>
           </TooltipHint>
         ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
