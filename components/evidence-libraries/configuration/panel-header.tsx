@@ -72,8 +72,9 @@ export function PanelHeader({
         ) : icon}
         {title ? (
           <TooltipHint label={title} onlyWhenClipped>
-            {/* On a line of its own (under 30rem) a title too long for the line wraps: "Verify Agent Library" was "Ver…" at 360px and 200% text. */}
-            <h1 className="truncate text-base font-semibold @max-[30rem]:whitespace-normal @max-[30rem]:wrap-break-word">{title}</h1>
+            {/* At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at
+                360px and 200% text. At normal text it stays one line, so a long title arriving after "New report" doesn't grow the bar. */}
+            <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
           </TooltipHint>
         ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
