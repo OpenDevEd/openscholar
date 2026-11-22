@@ -53,7 +53,8 @@ export function PanelHeader({
   const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
   return (
     <div className="flex h-16 items-center gap-4 @max-[30rem]:h-auto @max-[30rem]:min-h-16 @max-[30rem]:flex-wrap @max-[30rem]:gap-y-2 @max-[30rem]:py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial @max-[30rem]:basis-auto">
+      {/* Under 18rem (a phone at 150% text or more) a title that doesn't fit beside the back arrow, picture and chips takes a line of its own: beside them it had 46 to 86px and broke inside its words. */}
+      <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial @max-[30rem]:basis-auto @max-[18rem]:flex-wrap">
         {backHref ? (
           <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
             <Link href={backHref} aria-label={backLabel} onClick={onBackClick}>
