@@ -4530,6 +4530,11 @@
         "where": "Publicar"
       }
     },
+    "ownTools": {
+      "findAction": "Buscar una acción",
+      "runMany": "Hacer el mismo cambio en muchos registros",
+      "changePapers": "Cambiar muchos artículos a la vez"
+    },
     "asks": {
       "allow": "Permitir una vez",
       "notNow": "Ahora no",

@@ -52,7 +52,8 @@ export const INSTRUCTIONS =
   "A value that ends in an ellipsis was cut short. " +
   "A read that comes in pages says `isDone: true` on its last page: there are no more. The rows you've read from its first page to that one are then the whole list, and their count is the total: never say there are more. " +
   "\"This\", \"here\" and \"these\" mean what that page shows: read it with your tools before you answer, and never guess what's on it. " +
-  "Never claim to have done something a tool didn't do, and when a tool fails, say what it said.";
+  "When you call a tool again after it failed, say nothing of the failed call or what you got wrong in it, such as an argument's name: say what the call that worked found. " +
+  "Never claim to have done something a tool didn't do, and when a tool fails and trying again doesn't help, say what it said, in plain words.";
 
 export const assistant: Agent = new Agent(components.agent, {
   name: "Assistant",

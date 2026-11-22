@@ -4530,6 +4530,11 @@
         "where": "Chapisha"
       }
     },
+    "ownTools": {
+      "findAction": "Tafuta kitendo",
+      "runMany": "Fanya badiliko lilelile kwa rekodi nyingi",
+      "changePapers": "Badilisha makala nyingi kwa mara moja"
+    },
     "asks": {
       "allow": "Ruhusu mara moja",
       "notNow": "Si sasa",
