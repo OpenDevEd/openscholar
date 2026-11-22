@@ -56,6 +56,8 @@ describe("assistant chats", () => {
     expect(previewOf(`${" ".repeat(2399)}😀`)).toBe("");
     // The cut lands on an emoji, which is two code units: it stays whole.
     expect(previewOf(`${"a".repeat(118)}😀😀😀`)).toBe(`${"a".repeat(118)}😀…`);
+    // A word the cut would split is left out whole, so an action's name is never cut into another's.
+    expect(previewOf(`${"word ".repeat(22)}evidenceLibraries/library:sources next`)).toBe(`${"word ".repeat(22).trimEnd()}…`);
   });
 
   it("belong to the person who starts them, and a stranger can't open, rename or delete one", async () => {

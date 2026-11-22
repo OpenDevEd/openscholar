@@ -51,7 +51,7 @@ const LINK = /!?\[([^\]]*)\]\((?:[^()]|\([^()]*\))*\)/g;
 
 /**
  * The start of a message, on one line and without its markdown marks, for the list of chats.
- * Cut between characters, never inside one.
+ * Cut between words, or between characters when one word is longer than the preview; never inside a character.
  */
 export function previewOf(text: string) {
   // ponytail: a few patterns for the marks a message opens with, not a markdown parser. Use one if a preview ever has to read a table or a code block.
@@ -65,7 +65,12 @@ export function previewOf(text: string) {
     .map((part, index) => (index % 2 ? part : part.replace(LINK, "$1").replace(EMPHASIS, "$2").replace(EMPHASIS, "$2").replace(UNDERSCORES, "$1")))
     .join("");
   const characters = [...plain.trim().replace(/\s+/g, " ")];
-  return characters.length > PREVIEW_MAX ? `${characters.slice(0, PREVIEW_MAX - 1).join("").trimEnd()}…` : characters.join("");
+  if (characters.length <= PREVIEW_MAX) return characters.join("");
+  // A word the cut would split is left out whole: an action's name cut short ("…library:source") reads as another action's
+  // in the list of chats (components/assistant/action-names.ts). One word longer than the preview is cut.
+  const cut = characters.slice(0, PREVIEW_MAX - 1).join("");
+  const end = characters[PREVIEW_MAX - 1] === " " ? cut.length : cut.lastIndexOf(" ");
+  return `${(end > 0 ? cut.slice(0, end) : cut).trimEnd()}…`;
 }
 
 type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
