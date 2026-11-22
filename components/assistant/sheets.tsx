@@ -34,6 +34,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { WorkingText } from "./parts";
+import { stepNameOf, withStepNames } from "./action-names";
 import { KIND, KindTile, type Waiting } from "./steps";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
@@ -159,7 +160,8 @@ function Status({ chat }: { chat: Chat }) {
     );
   }
   if (here.length) return <span className="truncate text-xs font-medium text-foreground/90">{t("here", { count: here.length, names: format.list(here, { type: "conjunction" }) })}</span>;
-  return <span className="truncate text-xs text-muted-foreground">{chat.preview}</span>;
+  // The preview is the newest reply's start, so an action's own name in it shows as its step's, as in the reply (./action-names.ts).
+  return <span className="truncate text-xs text-muted-foreground">{withStepNames(chat.preview, stepNameOf(t))}</span>;
 }
 
 function ChatRow({ chat, index, current, when, onOpen, onShare, onMove }: { chat: Chat; index: number; current: boolean; when: string; onOpen: () => void; onShare: () => void; onMove?: () => void }) {

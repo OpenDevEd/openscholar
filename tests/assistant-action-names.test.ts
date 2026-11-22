@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Root } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { toString } from "mdast-util-to-string";
-import { actionNames } from "@/components/assistant/action-names";
+import { actionNames, withStepNames } from "@/components/assistant/action-names";
 
 /** The reply's text once the plugin has run, with each step's name in [brackets]. */
 function shown(markdown: string) {
@@ -24,5 +24,12 @@ describe("action names in a reply", () => {
     expect(shown("See https://example.org/a/extraction/start:extract and `no/such:action` or snake_case_words")).toBe("See https://example.org/a/extraction/start:extract and no/such:action or snake_case_words");
     expect(shown("```\nextraction/start:extract\n```")).toBe("extraction/start:extract");
     expect(shown("extraction/start:extract2 and `research_papers_search_all`")).toBe("extraction/start:extract2 and research_papers_search_all");
+  });
+
+  // A chat's preview in the list said "The action is library/queries:papers." while its reply showed the step's name.
+  it("show as the step's name in a chat's plain-text preview too", () => {
+    const label = (path: string) => `[${path}]`;
+    expect(withStepNames("The action is library/queries:papers. I ran it.", label)).toBe("The action is [library/queries:papers]. I ran it.");
+    expect(withStepNames("See https://example.org/library/queries:papers or no/such:action", label)).toBe("See https://example.org/library/queries:papers or no/such:action");
   });
 });
