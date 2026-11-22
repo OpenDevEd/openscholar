@@ -305,7 +305,8 @@ vi.mock("motion/react", () => {
           <div {...props}>{children}</div>,
     },
   );
-  return { motion };
+  // The page's bar takes its title in AutoHeight, which asks whether motion is reduced.
+  return { motion, useReducedMotion: () => false };
 });
 
 // The item bar (who ran it, who has it open, Activity) has its own tests; these are about the results.
