@@ -3,6 +3,7 @@
 import { ChevronLeft, type AppIcon } from "@/components/icons";
 import Link from "@/components/workspace-link";
 import type { MouseEventHandler, ReactNode } from "react";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { LibraryImage } from "../library-image";
@@ -71,11 +72,13 @@ export function PanelHeader({
           />
         ) : icon}
         {title ? (
-          <TooltipHint label={title} onlyWhenClipped>
-            {/* At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at
-                360px and 200% text. At normal text it stays one line, so a long title arriving after "New report" doesn't grow the bar. */}
-            <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
-          </TooltipHint>
+          // At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
+          // and 200% text. At normal text it stays one line. A long title arriving after "New report" slides the bar open there.
+          <AutoHeight className="min-w-0">
+            <TooltipHint label={title} onlyWhenClipped>
+              <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
+            </TooltipHint>
+          </AutoHeight>
         ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>

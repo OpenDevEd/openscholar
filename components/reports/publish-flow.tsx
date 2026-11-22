@@ -1853,8 +1853,8 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
           {/* A check's name wraps rather than being cut: "Rights match the license" lost its last word on a 360px phone. */}
           <span className="block break-words text-sm font-medium">{shownName}</span>
         </span>
-        {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
-        <span className="flex min-w-[4.75rem] justify-end max-sm:@max-[12rem]/check:ms-auto max-sm:@max-[12rem]/check:min-w-0">
+        {/* The chip's place is held while the check runs, so the row doesn't shift when it lands: its width beside the name, its height on the line above it. */}
+        <span className="flex min-w-[4.75rem] justify-end max-sm:@max-[12rem]/check:ms-auto max-sm:@max-[12rem]/check:min-h-[1.5625rem] max-sm:@max-[12rem]/check:min-w-0">
           <AnimatePresence initial={false}>
             {result && tone ? (
               <motion.span key="chip" {...fade}>
