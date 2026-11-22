@@ -4529,6 +4529,11 @@
         "where": "Shicilela"
       }
     },
+    "ownTools": {
+      "findAction": "Funa isenzo",
+      "runMany": "Yenza ushintsho olufanayo kumarekhodi amaningi",
+      "changePapers": "Shintsha amaphepha amaningi kanyekanye"
+    },
     "asks": {
       "allow": "Vumela kanye",
       "notNow": "Hhayi manje",

@@ -4530,6 +4530,11 @@
         "where": "Veröffentlichen"
       }
     },
+    "ownTools": {
+      "findAction": "Eine Aktion suchen",
+      "runMany": "Dieselbe Änderung an vielen Einträgen vornehmen",
+      "changePapers": "Viele Artikel auf einmal ändern"
+    },
     "asks": {
       "allow": "Einmal erlauben",
       "notNow": "Nicht jetzt",

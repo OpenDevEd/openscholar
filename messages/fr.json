@@ -4529,6 +4529,11 @@
         "where": "Publier"
       }
     },
+    "ownTools": {
+      "findAction": "Chercher une action",
+      "runMany": "Faire la même modification sur de nombreux éléments",
+      "changePapers": "Modifier de nombreux articles à la fois"
+    },
     "asks": {
       "allow": "Autoriser une fois",
       "notNow": "Pas maintenant",

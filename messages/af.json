@@ -4530,6 +4530,11 @@
         "where": "Publiseer"
       }
     },
+    "ownTools": {
+      "findAction": "Soek ’n aksie",
+      "runMany": "Maak dieselfde verandering aan baie rekords",
+      "changePapers": "Verander baie artikels gelyk"
+    },
     "asks": {
       "allow": "Laat eenkeer toe",
       "notNow": "Nie nou nie",

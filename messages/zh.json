@@ -4529,6 +4529,11 @@
         "where": "发布"
       }
     },
+    "ownTools": {
+      "findAction": "查找操作",
+      "runMany": "对多条记录做同一项更改",
+      "changePapers": "一次更改多篇论文"
+    },
     "asks": {
       "allow": "允许一次",
       "notNow": "暂不",

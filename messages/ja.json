@@ -4529,6 +4529,11 @@
         "where": "公開"
       }
     },
+    "ownTools": {
+      "findAction": "操作を探す",
+      "runMany": "多くの記録に同じ変更を加える",
+      "changePapers": "多くの論文をまとめて変更"
+    },
     "asks": {
       "allow": "今回だけ許可",
       "notNow": "今はしない",

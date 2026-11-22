@@ -26,6 +26,12 @@ describe("action names in a reply", () => {
     expect(shown("extraction/start:extract2 and `research_papers_search_all`")).toBe("extraction/start:extract2 and research_papers_search_all");
   });
 
+  // A reply on the Cheap preset listed "Bulk changes (change_papers)": the assistant's own tools aren't actions.
+  it("show the assistant's own tools by their names too", () => {
+    expect(shown("Bulk changes (change_papers), or `run_many`.")).toBe("Bulk changes ([change_papers]), or [run_many].");
+    expect(withStepNames("I used find_action and run_action.", (path) => `[${path}]`)).toBe("I used [find_action] and [run_action].");
+  });
+
   // A chat's preview in the list said "The action is library/queries:papers." while its reply showed the step's name.
   it("show as the step's name in a chat's plain-text preview too", () => {
     const label = (path: string) => `[${path}]`;

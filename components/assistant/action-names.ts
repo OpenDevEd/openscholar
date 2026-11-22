@@ -14,11 +14,24 @@ const NAME = /(?:[A-Za-z][A-Za-z0-9]*(?:\/[A-Za-z][A-Za-z0-9]*)*:[A-Za-z][A-Za-z
 
 const shown = (label: string): Emphasis => ({ type: "emphasis", children: [{ type: "text", value: label }] });
 
-/** The action a name found at `index` of `input` is; none after a word, a slash or a dot, where it's part of something else, such as an address. */
-const actionAt = (name: string, input: string, index: number) => (index > 0 && /[\w/.]/.test(input.charAt(index - 1)) ? undefined : actionNamed(name));
+/** The names the assistant's own tools, which aren't actions (convex/assistant/tools.ts), have in the chat. */
+const OWN_TOOLS = new Map<string, "ownTools.findAction" | "ownTools.runMany" | "ownTools.changePapers" | "steps.other.ask">([
+  ["find_action", "ownTools.findAction"],
+  ["run_action", "steps.other.ask"],
+  ["run_many", "ownTools.runMany"],
+  ["change_papers", "ownTools.changePapers"],
+]);
 
-/** The name an action's step has in the chat, such as "Start an extraction". */
+/** The action a name the model wrote is, by its path or its tool's name, or the name of one of the assistant's own tools. */
+const named = (name: string) => actionNamed(name) ?? (OWN_TOOLS.has(name) ? name : undefined);
+
+/** The action a name found at `index` of `input` is; none after a word, a slash or a dot, where it's part of something else, such as an address. */
+const actionAt = (name: string, input: string, index: number) => (index > 0 && /[\w/.]/.test(input.charAt(index - 1)) ? undefined : named(name));
+
+/** The name an action's step has in the chat, such as "Start an extraction", or the name of one of the assistant's own tools. */
 export const stepNameOf = (t: ReturnType<typeof useTranslations<"assistant">>) => (path: string) => {
+  const own = OWN_TOOLS.get(path);
+  if (own) return t(own);
   const { words } = viewOf(path);
   const ask = `steps.${words}.ask` as "steps.other.ask";
   return t(t.has(ask) ? ask : (`steps.${words}.did` as "steps.other.did"));
@@ -51,9 +64,9 @@ export const actionNames = (labelOf: (path: string) => string) => () => (tree: R
     if (!("children" in node)) return;
     node.children = node.children.map((child) => {
       if (child.type !== "inlineCode") return child;
-      const path = actionNamed(child.value.trim());
+      const path = named(child.value.trim());
       if (path) return shown(labelOf(path));
-      return { ...child, value: child.value.replace(NAME, (name) => { const named = actionNamed(name); return named ? labelOf(named) : name; }) };
+      return { ...child, value: child.value.replace(NAME, (name) => { const inner = named(name); return inner ? labelOf(inner) : name; }) };
     }) as typeof node.children;
     node.children.forEach(visit);
   };

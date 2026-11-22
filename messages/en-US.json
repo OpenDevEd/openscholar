@@ -4529,6 +4529,11 @@
         "where": "Publish"
       }
     },
+    "ownTools": {
+      "findAction": "Look for an action",
+      "runMany": "Make the same change to many records",
+      "changePapers": "Change many papers at once"
+    },
     "asks": {
       "allow": "Allow once",
       "notNow": "Not now",
