@@ -66,7 +66,7 @@ export const actionNames = (labelOf: (path: string) => string) => () => (tree: R
       if (child.type !== "inlineCode") return child;
       const path = named(child.value.trim());
       if (path) return shown(labelOf(path));
-      return { ...child, value: child.value.replace(NAME, (name) => { const inner = named(name); return inner ? labelOf(inner) : name; }) };
+      return { ...child, value: child.value.replace(NAME, (name: string, index: number) => { const inner = actionAt(name, child.value, index); return inner ? labelOf(inner) : name; }) };
     }) as typeof node.children;
     node.children.forEach(visit);
   };

@@ -30,6 +30,7 @@ describe("action names in a reply", () => {
   it("show the assistant's own tools by their names too", () => {
     expect(shown("Bulk changes (change_papers), or `run_many`.")).toBe("Bulk changes ([change_papers]), or [run_many].");
     expect(withStepNames("I used find_action and run_action.", (path) => `[${path}]`)).toBe("I used [find_action] and [run_action].");
+    expect(shown("`https://example.org/change_papers` and `prefix.run_many()`")).toBe("https://example.org/change_papers and prefix.run_many()");
   });
 
   // A chat's preview in the list said "The action is library/queries:papers." while its reply showed the step's name.
