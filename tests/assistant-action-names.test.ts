@@ -33,6 +33,7 @@ describe("action names in a reply", () => {
     expect(shown("`https://example.org/change_papers` and `prefix.run_many()`")).toBe("https://example.org/change_papers and prefix.run_many()");
     // A preview in the list of chats said "The two tools are: change_papers: makes one change…": a colon after the name kept it.
     expect(withStepNames("The two tools are: change_papers: makes one change. library/queries:papers: lists them.", (path) => `[${path}]`)).toBe("The two tools are: [change_papers]: makes one change. [library/queries:papers]: lists them.");
+    expect(withStepNames("change_papers::details and library/queries:papers:more", (path) => `[${path}]`)).toBe("change_papers::details and library/queries:papers:more");
   });
 
   // A chat's preview in the list said "The action is library/queries:papers." while its reply showed the step's name.
