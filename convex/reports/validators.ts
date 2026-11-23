@@ -32,6 +32,16 @@ export const seriesValidator = v.object({ name: v.string(), issn: v.string(), by
 
 /** What publishing a report costs, in whole US dollars: under CC BY or CC BY-SA, and under any other licence. */
 /** A closed own licence's price, missing from settings saved before it existed, is its default until set. */
+/** Identifier services (plans/identifier-services, lib/reports/identifiers.ts). */
+export const serviceIdValidator = v.union(v.literal("crossref"), v.literal("zenodo"), v.literal("docid"));
+const serviceValidator = v.object({ mode: v.union(v.literal("required"), v.literal("optional"), v.literal("off")), price: v.number() });
+export const identifiersValidator = v.object({
+  services: v.object({ crossref: serviceValidator, zenodo: serviceValidator, docid: serviceValidator }),
+  choose: v.object({ min: v.number(), max: v.number() }),
+  citeFirst: v.array(serviceIdValidator),
+  docidAtSigning: v.boolean(),
+});
+
 export const pricesValidator = v.object({ standard: v.number(), other: v.number(), closed: v.optional(v.number()) });
 /** The one settings row, once an admin changes something. Until then the series runs on `REPORT_DEFAULTS`. */
 export const reportSettingsFields = {
@@ -48,6 +58,8 @@ export const reportSettingsFields = {
   publicationSavedAt: v.optional(v.number()),
   /** What publishing a report costs, in whole US dollars, by its licence's tier. None saved yet is the defaults (`DEFAULT_PRICES`). */
   prices: v.optional(pricesValidator),
+  /** Which identifier services each report gets; none saved is DEFAULT_IDENTIFIERS (lib/reports/identifiers.ts). */
+  identifiers: v.optional(identifiersValidator),
   // Free activations a day, from before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
   perDay: v.optional(v.number()),
   orgPerDay: v.optional(v.number()),
