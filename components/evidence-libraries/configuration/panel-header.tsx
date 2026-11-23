@@ -71,15 +71,16 @@ export function PanelHeader({
             fallback={icon}
           />
         ) : icon}
-        {title ? (
-          // At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
-          // and 200% text. At normal text it stays one line. A long title arriving after "New report" slides the bar open there.
-          <AutoHeight className="min-w-0">
+        {/* At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
+            and 200% text. At normal text it stays one line. AutoHeight is there while a loading page names nothing, so a title
+            that arrives later slides the bar open: mounted with it, the bar grew 152px in one frame on /publish at 360px and 200%. */}
+        <AutoHeight className="min-w-0">
+          {title ? (
             <TooltipHint label={title} onlyWhenClipped>
               <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
             </TooltipHint>
-          </AutoHeight>
-        ) : null}
+          ) : null}
+        </AutoHeight>
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
       {/* The view switch and the filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
