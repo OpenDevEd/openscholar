@@ -60,7 +60,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** What a report published on Openscholar has beyond a paper's record: sections under the authors and in the sidebar, its PDF's cover, and what only its workspace does. */
-  extra?: { main?: ReactNode; side?: ReactNode; /** Under the cover: a report's PDF held back. */ fileNote?: ReactNode; cover?: string | null; /** The report's cover's width over its height, when kept. */ coverShape?: number | null; actions?: ReactNode; /** The licence its author chose, which may be their own. */ licence?: { name: string; url: string } };
+  extra?: { main?: ReactNode; side?: ReactNode; /** Under the DOI: a report's other identifiers, such as its DOCiD. */ identifiers?: ReactNode; /** Under the cover: a report's PDF held back. */ fileNote?: ReactNode; cover?: string | null; /** The report's cover's width over its height, when kept. */ coverShape?: number | null; actions?: ReactNode; /** The licence its author chose, which may be their own. */ licence?: { name: string; url: string } };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -139,6 +139,7 @@ export function PaperPage({ paper, id, detail, lists, communities: read, copyKey
               </p>
             ) : null}
             {detail.ids.doi ? <DoiLine doi={detail.ids.doi} /> : null}
+            {extra?.identifiers}
             <AutoHeight>
             {communities.length ? (
               <div className="flex flex-wrap items-center gap-2 pt-5" aria-label={tAuthors("evidenceLibraries")}>

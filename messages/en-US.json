@@ -6003,7 +6003,9 @@
     "share": "Share",
     "inCommunities": "In these communities",
     "fieldAverage": "× field average",
-    "freeToRead": "Free to read"
+    "freeToRead": "Free to read",
+    "copyDocid": "Copy the DOCiD",
+    "docidCopied": "DOCiD copied"
   },
   "addedPapers": {
     "name": "Added papers",
@@ -6482,7 +6484,8 @@
         "places": "Places",
         "funders": "Funders"
       },
-      "emailedAdmins": "Emailed to the organization's admins"
+      "emailedAdmins": "Emailed to the organization's admins",
+      "docidStays": "Its DOCiD can't be deleted. It will show a retired page instead of the report."
     },
     "common": {
       "failed": "Something went wrong"

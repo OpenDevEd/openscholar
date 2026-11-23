@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { PaperPage } from "@/components/papers/paper-page";
 import { CorrectReport, ReportFileNote, ReportMain, ReportSide } from "@/components/reports/report-extras";
 import { WithdrawnReport } from "@/components/reports/withdrawn-report";
+import { DocidLine, handleUrl } from "@/components/reports/docid-line";
 import { readReport } from "@/lib/reports/paper-data";
 import { fileHidden, licenceName, licenceUrl } from "@/lib/reports/report";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
@@ -152,11 +153,13 @@ export default async function Page({ params }: Params) {
       {detail.keywords.map((keyword) => <meta key={`k${keyword}`} name="citation_keywords" content={keyword} />)}
       {/* Signposting (signposting.org): the paper's persistent address, its files and its authors, for tools that follow links. */}
       {paper.doi && <link rel="cite-as" href={paper.doi} />}
+      {/* A report's DOCiD, beside its DOI, for tools that read a page's identifiers. */}
+      {live?.docid && <meta name="DC.identifier" content={handleUrl(live.docid)} />}
       {(Object.keys(CITATION_FILES) as CitationFile[]).map((kind) => <link key={kind} rel="describedby" type={CITATION_FILES[kind].type} href={citeFilePath(id, kind)} />)}
       {detail.copies.find((copy) => copy.pdf) && <link rel="item" type="application/pdf" href={detail.copies.find((copy) => copy.pdf)!.url} />}
       {detail.authors.flatMap((author) => author.orcid ? [<link key={author.orcid} rel="author" href={author.orcid} />] : [])}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} detail={detail} lists={lists} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={live ? { licence: { name: licenceName(live.metadata.licence), url: licenceUrl(live.metadata.licence) }, main: <ReportMain m={live.metadata} />, side: <ReportSide m={live.metadata} reportKey={id} />, ...(fileHidden(live.fileAccess) && { fileNote: <ReportFileNote access={live.fileAccess} /> }), cover: live.coverUrl, coverShape: live.coverShape ?? null, actions: mine ? <CorrectReport id={id} waiting={mine.waiting} slug={mine.slug} /> : undefined } : undefined} />
+      <PaperPage paper={paper} id={id} detail={detail} lists={lists} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={live ? { licence: { name: licenceName(live.metadata.licence), url: licenceUrl(live.metadata.licence) }, main: <ReportMain m={live.metadata} />, ...(live.docid && { identifiers: <DocidLine handle={live.docid} /> }), side: <ReportSide m={live.metadata} reportKey={id} />, ...(fileHidden(live.fileAccess) && { fileNote: <ReportFileNote access={live.fileAccess} /> }), cover: live.coverUrl, coverShape: live.coverShape ?? null, actions: mine ? <CorrectReport id={id} waiting={mine.waiting} slug={mine.slug} /> : undefined } : undefined} />
     </PageWrapper>
   );
 }

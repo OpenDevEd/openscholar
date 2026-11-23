@@ -142,6 +142,7 @@ export const get = query({
       ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       reviews: reviews.reverse().map(({ decision, by, at, note }) => ({ decision, by: reviewers.get(by)!, at, ...(note && { note }) })),
       ...(report.registrationError && { registrationError: report.registrationError }),
+      ...(report.registrations?.docid?.handle && { docid: report.registrations.docid.handle }),
       emails: emails.reverse().map(({ event, audience, at, error }) => ({ event, audience, at, ...(error && { failed: true }) })),
       humanReview: settings.humanReview,
     };
