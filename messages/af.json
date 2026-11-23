@@ -371,7 +371,18 @@
     "accountSandboxHint": "Rekords wat in jou rekening geargiveer word, behou hierdie gemeenskap se Crossref-DOI, dus skakel Crossref aan met jou eie besonderhede. Toets-DOI's uit die sandput kan nie op regte Zenodo-rekords gaan nie.",
     "archiveDoiHint": "Zenodo-DOI: die geargiveerde kopie kry sy eie DOI. Crossref-DOI: die kopie deel die rekord se Crossref-DOI.",
     "accountCrossrefJoin": "Hoe om by Crossref aan te sluit",
-    "accountConnectedAs": "Gekoppel: {name}"
+    "accountConnectedAs": "Gekoppel: {name}",
+    "docidHint": "Die Africa PID Alliance se identifiseerder, 'n Handle onder 20.500.14351.",
+    "enableDocid": "Gebruik DOCiD",
+    "docidPermanent": "DOCiD het geen toetsdiens nie. Elke DOCiD is 'n regte Handle wat nie uitgevee kan word nie, net teruggetrek.",
+    "docidChoose": "Kies een",
+    "docidListsFirst": "Verifieer en stoor die rekening om DOCiD se lyste te laai.",
+    "docidResourceType": "Hulpbrontipe",
+    "docidResourceTypeHint": "Waaronder DOCiD elke verslag lê. Jou rekening mag net sommige gebruik.",
+    "docidFileType": "Lêertipe",
+    "docidFileTypeHint": "Hoe DOCiD die PDF lys.",
+    "docidFunderType": "Befondsertipe",
+    "docidNoResourceTypes": "DOCiD laat hierdie rekening nog geen hulpbrontipe toe nie, so dit kan nie verslae deponeer nie. Vra die Africa PID Alliance om een toe te laat, verifieer en stoor dan weer."
   },
   "auth": {
     "backToSearch": "Terug na soektog",
@@ -5993,7 +6004,9 @@
     "share": "Deel",
     "inCommunities": "In hierdie gemeenskappe",
     "fieldAverage": "× veldgemiddeld",
-    "freeToRead": "Gratis om te lees"
+    "freeToRead": "Gratis om te lees",
+    "copyDocid": "Kopieer die DOCiD",
+    "docidCopied": "DOCiD gekopieer"
   },
   "addedPapers": {
     "name": "Bygevoegde artikels",
@@ -6200,6 +6213,13 @@
         "done": "By Crossref geregistreer",
         "failed": "Crossref het dit geweier",
         "withdrawn": "As teruggetrek by Crossref aangeteken"
+      },
+      "docid": {
+        "waiting": "DOCiD volgende",
+        "working": "Registreer sy DOCiD",
+        "done": "By DOCiD geregistreer",
+        "failed": "DOCiD het dit geweier",
+        "withdrawn": "DOCiD wys dit teruggetrek"
       }
     },
     "signedAgreement": {
@@ -6465,7 +6485,9 @@
         "places": "Plekke",
         "funders": "Befondsers"
       },
-      "emailedAdmins": "E-pos na die organisasie se admins gestuur"
+      "emailedAdmins": "E-pos na die organisasie se admins gestuur",
+      "docidStays": "Sy DOCiD kan nie uitgevee word nie. Dit sal 'n bladsy wys dat dit teruggetrek is, in plaas van die verslag.",
+      "docidStaysReserved": "Sy DOCiD, toegeken toe dit onderteken is, kan nie uitgevee word nie. Dit bly by DOCiD gereserveer."
     },
     "common": {
       "failed": "Iets het skeefgeloop"
@@ -6491,7 +6513,7 @@
       "bylineNeedsLicence": "Die reël het {licence} nodig, wat elke verslag se lisensie word.",
       "notIssn": "Dit is nie 'n ISSN nie. Een lyk soos 2049-3630, en sy laaste syfer kontroleer die res.",
       "byline": "Eienaarsreël",
-      "bylineHint": "{series}, {issn}, {doi} en {licence} word vir elke verslag ingevul",
+      "bylineHint": "{series}, {issn}, {doi} en {licence} word vir elke verslag ingevul. {doi} is die identifiseerder wat dit druk: sy DOI of sy DOCiD",
       "bylineSaved": "Eienaarsreël gestoor",
       "registration": "DOI-registrasie",
       "zenodoSandbox": "Zenodo-toetsomgewing",
@@ -7026,7 +7048,34 @@
       "noteQuestion": "Jou nota",
       "sendNote": "Stuur die nota",
       "yourNote": "Jou nota vir die beoordelaar",
-      "uploadIntroAdded": "Laai jou PDF op soos dit is: ons voeg hierdie reël op 'n laaste bladsy by wanneer dit opgelaai word."
+      "uploadIntroAdded": "Laai jou PDF op soos dit is: ons voeg hierdie reël op 'n laaste bladsy by wanneer dit opgelaai word.",
+      "identifiers": {
+        "title": "Identifiseerders",
+        "inByline": "In die reël",
+        "included": "Ingesluit",
+        "noExtra": "Geen ekstra koste",
+        "gives_crossref": "'n DOI, op die verslag gedruk",
+        "gives_zenodo": "'n Permanente kopie, onder die verslag se DOI",
+        "gives_zenodoOwn": "'n DOI van Zenodo, en 'n permanente kopie",
+        "gives_docid": "'n DOCiD, die Africa PID Alliance se Handle",
+        "always_crossref": "Elke verslag wat hier gepubliseer word, kry 'n Crossref-DOI. Jy kan dit nie weglaat nie.",
+        "always_zenodo": "Elke verslag wat hier gepubliseer word, word op Zenodo bewaar. Jy kan dit nie weglaat nie.",
+        "always_docid": "Elke verslag wat hier gepubliseer word, kry 'n DOCiD. Jy kan dit nie weglaat nie.",
+        "zenodoTied": "Elke Crossref-DOI moet na 'n permanente kopie lei, so Zenodo kom saam met Crossref.",
+        "pickOne": "Kies een.",
+        "pickOnlyOne": "Kies net een.",
+        "pickAtLeast": "Kies ten minste {count}.",
+        "pickAtMost": "Kies hoogstens {count}.",
+        "pickPrintable": "Kies een wat op die verslag gedruk kan word."
+      },
+      "docidReserved": "Jou DOCiD is gereserveer",
+      "docidReservedBody": "Dit behoort van nou af aan jou verslag en gaan saam daarmee lewendig. Sit dit op jou PDF soos die reël hieronder wys.",
+      "docidMinting": "DOCiD ken jou verslag se DOCiD toe",
+      "docidRefused": "DOCiD kon nie jou verslag se DOCiD toeken nie. Dit het gesê: {said}",
+      "docidAgain": "Vra DOCiD weer",
+      "reservedDocid": "Deur DOCiD toegeken",
+      "copyDocid": "Kopieer die DOCiD",
+      "docidCopied": "DOCiD gekopieer"
     },
     "meta": {
       "publish": "Publiseer | Openscholar",
@@ -7461,6 +7510,36 @@
           "note": "Wat verskuldig is, word eers betaal: uit jou werkruimte se publikasiebalans, per kaart, of albei. ’n Koeponkode verminder wat die kaart betaal. ’n Kaartbetaling word eers vir jou gewys om te bevestig, en jy kan dit daar met ’n ander kaart betaal."
         }
       }
+    },
+    "identifiers": {
+      "title": "Identifiseerders",
+      "always": "Altyd",
+      "authorPicks": "Outeur kies",
+      "off": "Af",
+      "when": "{service}: wanneer",
+      "addOn": "Wat {service} by die prys voeg",
+      "hint_crossref": "Die DOI wat op die verslag gedruk word.",
+      "hint_zenodo": "Bewaar die kopie waarna 'n Crossref-DOI lei, so dit kom saam met elke Crossref-DOI.",
+      "hint_docid": "Die Africa PID Alliance se identifiseerder. Elkeen is 'n permanente Handle.",
+      "notConnected": "Skakel dit onder Registrasie aan om dit te gebruik.",
+      "turnOnFirst": "Skakel {service} onder Registrasie aan om dit te gebruik.",
+      "zenodoTied": "Elke Crossref-DOI moet na 'n permanente kopie lei, so Zenodo is altyd aan solank Crossref gebruik word.",
+      "pick": "Outeurs kies",
+      "pickHint": "Uit {services}, wanneer hulle onderteken.",
+      "anyOf": "Enige daarvan",
+      "atLeastOne": "Ten minste een",
+      "exactlyOne": "Presies een",
+      "byline": "In die reël gedruk",
+      "bylineHint": "Die eerste hiervan wat 'n verslag het. Dit moet bestaan wanneer die outeur onderteken.",
+      "mintAtSigning": "Ken toe by ondertekening",
+      "mintAtSigningHint": "DOCiD's word toegeken wanneer die outeur onderteken. 'n Verslag wat afgekeur word, hou sy Handle, wat by DOCiD gereserveer bly.",
+      "notPrintable": "Nie drukbaar nie",
+      "notPrintableWhy": "'n DOCiD bestaan eers sodra dit toegeken is. Skakel Ken toe by ondertekening aan om dit in die reël te druk.",
+      "moveUp": "Skuif {service} op",
+      "moveDown": "Skuif {service} af",
+      "problem_noService": "Skakel ten minste een diens aan, anders kry verslae geen identifiseerder nie.",
+      "problem_rule": "Die reël vra meer keuses as wat daar dienste is.",
+      "problem_nothingPrinted": "Sommige keuses laat niks vir die reël om te druk nie. Sit Crossref eerste, of ken DOCiD's by ondertekening toe."
     }
   },
   "people": {

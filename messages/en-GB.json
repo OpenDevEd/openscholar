@@ -7531,7 +7531,7 @@
       "byline": "Printed in the byline",
       "bylineHint": "The first of these a report has. It has to exist when the author signs.",
       "mintAtSigning": "Mint at signing",
-      "mintAtSigningHint": "DOCiDs are minted when the author signs. A report that's declined keeps its Handle, which shows a retired page.",
+      "mintAtSigningHint": "DOCiDs are minted when the author signs. A report that's declined keeps its Handle, which stays reserved with DOCiD.",
       "notPrintable": "Not printable",
       "notPrintableWhy": "A DOCiD only exists once it's minted. Turn on Mint at signing to print it in the byline.",
       "moveUp": "Move {service} up",

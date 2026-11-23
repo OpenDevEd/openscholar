@@ -371,7 +371,18 @@
     "accountSandboxHint": "Im eigenen Konto archivierte Einträge behalten die Crossref-DOI dieser Community. Schalten Sie Crossref daher mit Ihren eigenen Zugangsdaten ein. Test-DOIs aus der Sandbox können nicht auf echte Zenodo-Einträge.",
     "archiveDoiHint": "Zenodo-DOI: Die archivierte Kopie erhält eine eigene DOI. Crossref-DOI: Die Kopie teilt die Crossref-DOI des Eintrags.",
     "accountCrossrefJoin": "So treten Sie Crossref bei",
-    "accountConnectedAs": "Verbunden: {name}"
+    "accountConnectedAs": "Verbunden: {name}",
+    "docidHint": "Die Kennung der Africa PID Alliance, ein Handle unter 20.500.14351.",
+    "enableDocid": "DOCiD verwenden",
+    "docidPermanent": "DOCiD hat keinen Testdienst. Jede DOCiD ist ein echter Handle, der nicht gelöscht, nur stillgelegt werden kann.",
+    "docidChoose": "Auswählen",
+    "docidListsFirst": "Konto prüfen und speichern, um die Listen von DOCiD zu laden.",
+    "docidResourceType": "Ressourcentyp",
+    "docidResourceTypeHint": "Als was DOCiD jeden Bericht ablegt. Ihr Konto darf nur einige verwenden.",
+    "docidFileType": "Dateityp",
+    "docidFileTypeHint": "Wie DOCiD das PDF führt.",
+    "docidFunderType": "Art des Geldgebers",
+    "docidNoResourceTypes": "DOCiD erlaubt diesem Konto noch keinen Ressourcentyp und kann deshalb keine Berichte hinterlegen. Bitten Sie die Africa PID Alliance, einen freizugeben, und prüfen und speichern Sie dann erneut."
   },
   "auth": {
     "backToSearch": "Zurück zur Suche",
@@ -5993,7 +6004,9 @@
     "share": "Teilen",
     "inCommunities": "In diesen Communities",
     "fieldAverage": "× Fachdurchschnitt",
-    "freeToRead": "Frei zugänglich"
+    "freeToRead": "Frei zugänglich",
+    "copyDocid": "DOCiD kopieren",
+    "docidCopied": "DOCiD kopiert"
   },
   "addedPapers": {
     "name": "Hinzugefügte Arbeiten",
@@ -6200,6 +6213,13 @@
         "done": "Bei Crossref registriert",
         "failed": "Crossref hat ihn abgelehnt",
         "withdrawn": "Bei Crossref als zurückgezogen markiert"
+      },
+      "docid": {
+        "waiting": "Als Nächstes DOCiD",
+        "working": "DOCiD wird registriert",
+        "done": "Bei DOCiD registriert",
+        "failed": "DOCiD hat abgelehnt",
+        "withdrawn": "Bei DOCiD als stillgelegt geführt"
       }
     },
     "signedAgreement": {
@@ -6465,7 +6485,9 @@
         "places": "Orte",
         "funders": "Fördergeber"
       },
-      "emailedAdmins": "Per E-Mail an die Admins der Organisation gesendet"
+      "emailedAdmins": "Per E-Mail an die Admins der Organisation gesendet",
+      "docidStays": "Die DOCiD lässt sich nicht löschen. Sie zeigt statt des Berichts eine Seite, dass er zurückgezogen wurde.",
+      "docidStaysReserved": "Die DOCiD, beim Unterzeichnen vergeben, lässt sich nicht löschen. Sie bleibt bei DOCiD reserviert."
     },
     "common": {
       "failed": "Etwas ist schiefgelaufen"
@@ -6491,7 +6513,7 @@
       "bylineNeedsLicence": "Die Zeile braucht {licence}, das zur Lizenz jedes Berichts wird.",
       "notIssn": "Das ist keine ISSN. Eine sieht aus wie 2049-3630, und ihre letzte Ziffer prüft die übrigen.",
       "byline": "Vermerk",
-      "bylineHint": "{series}, {issn}, {doi} und {licence} werden für jeden Bericht ausgefüllt",
+      "bylineHint": "{series}, {issn}, {doi} und {licence} werden für jeden Bericht ausgefüllt. {doi} ist die Kennung, die er druckt: seine DOI oder seine DOCiD",
       "bylineSaved": "Vermerk gespeichert",
       "registration": "DOI-Registrierung",
       "zenodoSandbox": "Zenodo-Testumgebung",
@@ -7026,7 +7048,34 @@
       "noteQuestion": "Ihre Notiz",
       "sendNote": "Notiz senden",
       "yourNote": "Ihre Notiz für die Prüfung",
-      "uploadIntroAdded": "Laden Sie Ihr PDF so hoch, wie es ist: Wir fügen diese Zeile beim Hochladen auf einer letzten Seite hinzu."
+      "uploadIntroAdded": "Laden Sie Ihr PDF so hoch, wie es ist: Wir fügen diese Zeile beim Hochladen auf einer letzten Seite hinzu.",
+      "identifiers": {
+        "title": "Kennungen",
+        "inByline": "In der Zeile",
+        "included": "Inbegriffen",
+        "noExtra": "Ohne Aufpreis",
+        "gives_crossref": "Eine DOI, auf dem Bericht gedruckt",
+        "gives_zenodo": "Eine dauerhafte Kopie, unter der DOI des Berichts",
+        "gives_zenodoOwn": "Eine DOI von Zenodo und eine dauerhafte Kopie",
+        "gives_docid": "Eine DOCiD, der Handle der Africa PID Alliance",
+        "always_crossref": "Jeder hier veröffentlichte Bericht erhält eine Crossref-DOI. Sie lässt sich nicht abwählen.",
+        "always_zenodo": "Jeder hier veröffentlichte Bericht wird auf Zenodo aufbewahrt. Das lässt sich nicht abwählen.",
+        "always_docid": "Jeder hier veröffentlichte Bericht erhält eine DOCiD. Sie lässt sich nicht abwählen.",
+        "zenodoTied": "Jede Crossref-DOI muss zu einer dauerhaften Kopie führen, deshalb gehört Zenodo zu Crossref.",
+        "pickOne": "Wählen Sie eine.",
+        "pickOnlyOne": "Wählen Sie nur eine.",
+        "pickAtLeast": "Wählen Sie mindestens {count}.",
+        "pickAtMost": "Wählen Sie höchstens {count}.",
+        "pickPrintable": "Wählen Sie eine, die auf den Bericht gedruckt werden kann."
+      },
+      "docidReserved": "Ihre DOCiD ist reserviert",
+      "docidReservedBody": "Sie gehört ab jetzt Ihrem Bericht und geht mit ihm online. Setzen Sie sie so auf Ihr PDF, wie die Zeile unten zeigt.",
+      "docidMinting": "DOCiD vergibt die DOCiD Ihres Berichts",
+      "docidRefused": "DOCiD konnte die DOCiD Ihres Berichts nicht vergeben. Antwort: {said}",
+      "docidAgain": "DOCiD erneut fragen",
+      "reservedDocid": "Von DOCiD vergeben",
+      "copyDocid": "DOCiD kopieren",
+      "docidCopied": "DOCiD kopiert"
     },
     "meta": {
       "publish": "Veröffentlichen | Openscholar",
@@ -7461,6 +7510,36 @@
           "note": "Der fällige Betrag wird zuerst bezahlt: aus dem Publikationsguthaben Ihres Arbeitsbereichs, mit Karte oder beidem. Ein Gutscheincode senkt, was die Karte zahlt. Eine Kartenzahlung wird Ihnen zuerst zur Bestätigung angezeigt; dort können Sie auch mit einer anderen Karte zahlen."
         }
       }
+    },
+    "identifiers": {
+      "title": "Kennungen",
+      "always": "Immer",
+      "authorPicks": "Autor wählt",
+      "off": "Aus",
+      "when": "{service}: wann",
+      "addOn": "Was {service} zum Preis hinzufügt",
+      "hint_crossref": "Die auf den Bericht gedruckte DOI.",
+      "hint_zenodo": "Bewahrt die Kopie auf, zu der eine Crossref-DOI führt, und gehört daher zu jeder Crossref-DOI.",
+      "hint_docid": "Die Kennung der Africa PID Alliance. Jede ist ein dauerhafter Handle.",
+      "notConnected": "Unter Registrierung einschalten, um sie zu verwenden.",
+      "turnOnFirst": "{service} unter Registrierung einschalten, um es zu verwenden.",
+      "zenodoTied": "Jede Crossref-DOI muss zu einer dauerhaften Kopie führen, deshalb ist Zenodo immer an, solange Crossref verwendet wird.",
+      "pick": "Autoren wählen",
+      "pickHint": "Aus {services}, beim Unterzeichnen.",
+      "anyOf": "Beliebige",
+      "atLeastOne": "Mindestens eine",
+      "exactlyOne": "Genau eine",
+      "byline": "In der Zeile gedruckt",
+      "bylineHint": "Die erste davon, die ein Bericht hat. Sie muss beim Unterzeichnen schon bestehen.",
+      "mintAtSigning": "Beim Unterzeichnen vergeben",
+      "mintAtSigningHint": "DOCiDs werden beim Unterzeichnen vergeben. Ein abgelehnter Bericht behält seinen Handle, der bei DOCiD reserviert bleibt.",
+      "notPrintable": "Nicht druckbar",
+      "notPrintableWhy": "Eine DOCiD gibt es erst, wenn sie vergeben ist. Schalten Sie Beim Unterzeichnen vergeben ein, um sie in die Zeile zu drucken.",
+      "moveUp": "{service} nach oben",
+      "moveDown": "{service} nach unten",
+      "problem_noService": "Schalten Sie mindestens einen Dienst ein, sonst erhalten Berichte keine Kennung.",
+      "problem_rule": "Die Regel verlangt mehr Auswahlen, als es Dienste gibt.",
+      "problem_nothingPrinted": "Bei manchen Auswahlen bleibt nichts für die Zeile. Setzen Sie Crossref nach vorn oder vergeben Sie DOCiDs beim Unterzeichnen."
     }
   },
   "people": {

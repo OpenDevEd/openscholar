@@ -371,7 +371,18 @@
     "accountSandboxHint": "Rekodi zinazohifadhiwa kwenye akaunti yako zinabaki na DOI ya Crossref ya jumuiya hii, kwa hivyo washa Crossref kwa vitambulisho vyako. DOI za majaribio za sandbox haziwezi kwenda kwenye rekodi halisi za Zenodo.",
     "archiveDoiHint": "DOI ya Zenodo: nakala iliyohifadhiwa inapata DOI yake. DOI ya Crossref: nakala inatumia DOI ya Crossref ya rekodi.",
     "accountCrossrefJoin": "Jinsi ya kujiunga na Crossref",
-    "accountConnectedAs": "Imeunganishwa: {name}"
+    "accountConnectedAs": "Imeunganishwa: {name}",
+    "docidHint": "Kitambulisho cha Africa PID Alliance, Handle chini ya 20.500.14351.",
+    "enableDocid": "Tumia DOCiD",
+    "docidPermanent": "DOCiD haina huduma ya majaribio. Kila DOCiD ni Handle halisi lisiloweza kufutwa, bali kuondolewa tu.",
+    "docidChoose": "Chagua moja",
+    "docidListsFirst": "Thibitisha na uhifadhi akaunti ili kupakia orodha za DOCiD.",
+    "docidResourceType": "Aina ya rasilimali",
+    "docidResourceTypeHint": "Jinsi DOCiD inavyohifadhi kila ripoti. Akaunti yako inaweza kutumia baadhi tu.",
+    "docidFileType": "Aina ya faili",
+    "docidFileTypeHint": "Jinsi DOCiD inavyoorodhesha PDF.",
+    "docidFunderType": "Aina ya mfadhili",
+    "docidNoResourceTypes": "DOCiD bado haijaruhusu akaunti hii aina yoyote ya rasilimali, kwa hiyo haiwezi kuweka ripoti. Iombe Africa PID Alliance iruhusu moja, kisha thibitisha na uhifadhi tena."
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",
@@ -5993,7 +6004,9 @@
     "share": "Shiriki",
     "inCommunities": "Katika jumuiya hizi",
     "fieldAverage": "× wastani wa fani",
-    "freeToRead": "Bure kusoma"
+    "freeToRead": "Bure kusoma",
+    "copyDocid": "Nakili DOCiD",
+    "docidCopied": "DOCiD imenakiliwa"
   },
   "addedPapers": {
     "name": "Makala zilizoongezwa",
@@ -6200,6 +6213,13 @@
         "done": "Imesajiliwa na Crossref",
         "failed": "Crossref imeikataa",
         "withdrawn": "Imerekodiwa kama iliyoondolewa kwenye Crossref"
+      },
+      "docid": {
+        "waiting": "Ifuatayo ni DOCiD",
+        "working": "Inasajili DOCiD yake",
+        "done": "Imesajiliwa na DOCiD",
+        "failed": "DOCiD imeikataa",
+        "withdrawn": "DOCiD inaonyesha imeondolewa"
       }
     },
     "signedAgreement": {
@@ -6465,7 +6485,9 @@
         "places": "Maeneo",
         "funders": "Wafadhili"
       },
-      "emailedAdmins": "Barua pepe imetumwa kwa wasimamizi wa shirika"
+      "emailedAdmins": "Barua pepe imetumwa kwa wasimamizi wa shirika",
+      "docidStays": "DOCiD yake haiwezi kufutwa. Itaonyesha ukurasa wa kuondolewa badala ya ripoti.",
+      "docidStaysReserved": "DOCiD yake, iliyotolewa iliposainiwa, haiwezi kufutwa. Inabaki imehifadhiwa na DOCiD."
     },
     "common": {
       "failed": "Kuna hitilafu"
@@ -6491,7 +6513,7 @@
       "bylineNeedsLicence": "Mstari unahitaji {licence}, ambayo huwa leseni ya kila ripoti.",
       "notIssn": "Hii si ISSN. Inaonekana kama 2049-3630, na tarakimu yake ya mwisho inakagua zilizobaki.",
       "byline": "Mstari wa utambulisho",
-      "bylineHint": "{series}, {issn}, {doi} na {licence} hujazwa kwa kila ripoti",
+      "bylineHint": "{series}, {issn}, {doi} na {licence} hujazwa kwa kila ripoti. {doi} ni kitambulisho kinachochapishwa: DOI yake au DOCiD yake",
       "bylineSaved": "Mstari wa utambulisho umehifadhiwa",
       "registration": "Usajili wa DOI",
       "zenodoSandbox": "Mazingira ya majaribio ya Zenodo",
@@ -7026,7 +7048,34 @@
       "noteQuestion": "Ujumbe wako",
       "sendNote": "Tuma ujumbe",
       "yourNote": "Ujumbe wako kwa mkaguzi",
-      "uploadIntroAdded": "Pakia PDF yako kama ilivyo: tunaongeza mstari huu kwenye ukurasa wa mwisho inapopakiwa."
+      "uploadIntroAdded": "Pakia PDF yako kama ilivyo: tunaongeza mstari huu kwenye ukurasa wa mwisho inapopakiwa.",
+      "identifiers": {
+        "title": "Vitambulisho",
+        "inByline": "Kwenye mstari",
+        "included": "Imejumuishwa",
+        "noExtra": "Bila gharama ya ziada",
+        "gives_crossref": "DOI, iliyochapishwa kwenye ripoti",
+        "gives_zenodo": "Nakala ya kudumu, chini ya DOI ya ripoti",
+        "gives_zenodoOwn": "DOI kutoka Zenodo, na nakala ya kudumu",
+        "gives_docid": "DOCiD, Handle ya Africa PID Alliance",
+        "always_crossref": "Kila ripoti inayochapishwa hapa inapata DOI ya Crossref. Huwezi kuiacha.",
+        "always_zenodo": "Kila ripoti inayochapishwa hapa inahifadhiwa kwenye Zenodo. Huwezi kuacha hilo.",
+        "always_docid": "Kila ripoti inayochapishwa hapa inapata DOCiD. Huwezi kuiacha.",
+        "zenodoTied": "Kila DOI ya Crossref lazima ielekeze kwenye nakala ya kudumu, kwa hiyo Zenodo huja pamoja na Crossref.",
+        "pickOne": "Chagua moja.",
+        "pickOnlyOne": "Chagua moja tu.",
+        "pickAtLeast": "Chagua angalau {count}.",
+        "pickAtMost": "Chagua zisizozidi {count}.",
+        "pickPrintable": "Chagua kinachoweza kuchapishwa kwenye ripoti."
+      },
+      "docidReserved": "DOCiD yako imehifadhiwa",
+      "docidReservedBody": "Kuanzia sasa ni ya ripoti yako, na itachapishwa pamoja nayo. Iweke kwenye PDF yako kama mstari ulio hapa chini unavyoonyesha.",
+      "docidMinting": "DOCiD inatoa DOCiD ya ripoti yako",
+      "docidRefused": "DOCiD haikuweza kutoa DOCiD ya ripoti yako. Ilisema: {said}",
+      "docidAgain": "Iombe DOCiD tena",
+      "reservedDocid": "Imetolewa na DOCiD",
+      "copyDocid": "Nakili DOCiD",
+      "docidCopied": "DOCiD imenakiliwa"
     },
     "meta": {
       "publish": "Chapisha | Openscholar",
@@ -7461,6 +7510,36 @@
           "note": "Kinachodaiwa hulipwa kwanza: kutoka kwenye salio la uchapishaji la eneo lako la kazi, kwa kadi, au vyote viwili. Msimbo wa vocha hupunguza kile kadi inacholipa. Malipo ya kadi huonyeshwa kwanza ili uyathibitishe, na hapo unaweza kuyalipa kwa kadi nyingine."
         }
       }
+    },
+    "identifiers": {
+      "title": "Vitambulisho",
+      "always": "Kila mara",
+      "authorPicks": "Mwandishi anachagua",
+      "off": "Imezimwa",
+      "when": "{service}: lini",
+      "addOn": "Kiasi {service} kinachoongeza kwenye bei",
+      "hint_crossref": "DOI iliyochapishwa kwenye ripoti.",
+      "hint_zenodo": "Huhifadhi nakala ambayo DOI ya Crossref inaelekeza, kwa hiyo huja na kila DOI ya Crossref.",
+      "hint_docid": "Kitambulisho cha Africa PID Alliance. Kila kimoja ni Handle ya kudumu.",
+      "notConnected": "Iwashe chini ya Usajili ili uitumie.",
+      "turnOnFirst": "Washa {service} chini ya Usajili ili uitumie.",
+      "zenodoTied": "Kila DOI ya Crossref lazima ielekeze kwenye nakala ya kudumu, kwa hiyo Zenodo huwa imewashwa kila mara Crossref inapotumika.",
+      "pick": "Waandishi wanachagua",
+      "pickHint": "Kutoka {services}, wanaposaini.",
+      "anyOf": "Yoyote kati yao",
+      "atLeastOne": "Angalau moja",
+      "exactlyOne": "Moja kamili",
+      "byline": "Imechapishwa kwenye mstari",
+      "bylineHint": "Cha kwanza kati ya hivi ambacho ripoti inacho. Lazima kiwepo mwandishi anaposaini.",
+      "mintAtSigning": "Toa wakati wa kusaini",
+      "mintAtSigningHint": "DOCiD hutolewa mwandishi anaposaini. Ripoti iliyokataliwa inabaki na Handle yake, inayobaki imehifadhiwa na DOCiD.",
+      "notPrintable": "Haiwezi kuchapishwa",
+      "notPrintableWhy": "DOCiD huwepo tu baada ya kutolewa. Washa Toa wakati wa kusaini ili ichapishwe kwenye mstari.",
+      "moveUp": "Panda {service}",
+      "moveDown": "Shusha {service}",
+      "problem_noService": "Washa angalau huduma moja, la sivyo ripoti hazitapata kitambulisho.",
+      "problem_rule": "Kanuni inaomba chaguo nyingi kuliko huduma zilizopo.",
+      "problem_nothingPrinted": "Baadhi ya chaguo haziachi chochote cha kuchapisha kwenye mstari. Weka Crossref kwanza, au toa DOCiD wakati wa kusaini."
     }
   },
   "people": {
