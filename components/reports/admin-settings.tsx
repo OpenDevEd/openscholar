@@ -198,6 +198,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
       >
         <div className="@container/settings space-y-5 rounded-2xl border border-border-subtle p-4">
           <PublicationForm
+            docid
             key={settings.publicationSavedAt}
             saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: settings.publicationSavedAt, custom: settings.publicationCustom }}
             words={{

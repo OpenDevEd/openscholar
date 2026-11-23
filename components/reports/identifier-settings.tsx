@@ -1,8 +1,8 @@
 "use client";
 
 // Identifier services (plans/identifier-services): how each registrar is used for a publisher's records, what it
-// adds to the price, what authors pick, and which identifier the byline prints. Reports show prices; communities,
-// which don't charge per record, don't.
+// adds to the price, what authors pick, and which identifier the byline prints. Reports only: communities show the
+// DOCiDs their records come with and never register one.
 // MOCK (mock/identifier-services): kept in this browser (identifiers-mock-store.ts), with English words.
 
 import { AnimatePresence, motion } from "motion/react";
@@ -48,15 +48,13 @@ export function ServiceMark({ id, className }: { id: ServiceId; className?: stri
   return <img src={SERVICES[id].logo} alt={SERVICES[id].name} className={cn("h-5 w-auto shrink-0", id === "crossref" && "rounded bg-white p-px", className)} />;
 }
 
-export function IdentifierSettings({ community = false, connected }: { /** A community's records: no prices, editors pick, and nothing is signed, so every identifier can be cited. */ community?: boolean; /** The services whose accounts are set above. */ connected: Record<ServiceId, boolean> }) {
-  const prices = !community;
-  const who = community ? "Editor" : "Author";
+export function IdentifierSettings({ connected }: { /** The services whose accounts are set above. */ connected: Record<ServiceId, boolean> }) {
+  const who = "Author";
   const ids = useMockIdentifiers();
   const set = (next: Identifiers) => setMockIdentifiers(next);
   const service = (id: ServiceId, patch: Partial<Identifiers["services"][ServiceId]>) => set({ ...ids, services: { ...ids.services, [id]: { ...ids.services[id], ...patch } } });
   const optional = optionalOf(ids);
-  // A community's records may have no identifier, and are cited by whatever they have: only the pick rule can be wrong.
-  const problem = community ? (settingsProblem(ids) === "rule" ? "rule" : null) : settingsProblem(ids);
+  const problem = settingsProblem(ids);
   const rules = [
     { id: "any", label: "Any of them", min: 0, max: optional.length },
     { id: "one", label: "At least one", min: 1, max: optional.length },
@@ -108,12 +106,12 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
               {why ? (
                 <Locked why={why}>
                   <Segmented label={`${SERVICES[id].name}: when`} value={tied ? "required" : "off"} onChange={() => undefined} options={modesFor(who)} />
-                  {prices && tied ? <span className="text-sm tabular-nums text-muted-foreground">+${s.price}</span> : null}
+                  {tied ? <span className="text-sm tabular-nums text-muted-foreground">+${s.price}</span> : null}
                 </Locked>
               ) : (
               <span className="flex shrink-0 items-center gap-3">
                 <Segmented label={`${SERVICES[id].name}: when`} value={s.mode} onChange={(mode) => service(id, { mode })} options={modesFor(who)} />
-                {prices ? (
+                {(
                   <span className={cn("flex items-center gap-1 transition-opacity", s.mode === "off" && "pointer-events-none opacity-40")}>
                     <span className="text-sm text-muted-foreground">+$</span>
                     <Input
@@ -127,7 +125,7 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
                       className="h-8 w-16 text-end tabular-nums"
                     />
                   </span>
-                ) : null}
+                )}
               </span>
               )}
             </li>
@@ -139,7 +137,7 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
               <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3.5">
                 <span className="min-w-0">
                   <span className="block text-sm font-medium">{who}s pick</span>
-                  <span className="block text-xs text-muted-foreground">From {optional.map((id) => SERVICES[id].name).join(" and ")}, {community ? "when they publish a record" : "when they sign"}.</span>
+                  <span className="block text-xs text-muted-foreground">From {optional.map((id) => SERVICES[id].name).join(" and ")}, when they sign.</span>
                 </span>
                 <Segmented label={`${who}s pick`} value={rule} onChange={(id) => { const r = rules.find((x) => x.id === id)!; set({ ...ids, choose: { min: r.min, max: r.max } }); }} options={rules.map(({ id, label }) => ({ id, label }))} />
               </div>
@@ -148,8 +146,8 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
         </AnimatePresence>
         <li className="space-y-2.5 px-4 py-3.5">
           <span className="block min-w-0">
-            <span className="block text-sm font-medium">{community ? "Cited first" : "Printed in the byline"}</span>
-            <span className="block text-xs text-muted-foreground">{community ? "The first of these a record has leads its citation." : "The first of these a report has. It has to exist when the author signs."}</span>
+            <span className="block text-sm font-medium">Printed in the byline</span>
+            <span className="block text-xs text-muted-foreground">The first of these a report has. It has to exist when the author signs.</span>
           </span>
           <ol className="space-y-1.5">
             {order.map((id, at) => (
@@ -158,13 +156,13 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
                 <span className="flex min-w-0 flex-1 items-center">
                   <ServiceMark id={id} />
                 </span>
-                {id === "docid" && !community ? (
+                {id === "docid" ? (
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     Mint at signing
                     <Switch checked={ids.docidAtSigning} onCheckedChange={(docidAtSigning) => set({ ...ids, docidAtSigning })} aria-label="Mint DOCiDs at signing" />
                   </label>
                 ) : null}
-                {community || printable(ids, id) ? null : (
+                {printable(ids, id) ? null : (
                   <Locked why="A DOCiD only exists once it's minted. Turn on Mint at signing to print it in the byline.">
                     <span className="text-xs text-muted-foreground">Not printable</span>
                   </Locked>
@@ -181,7 +179,7 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
             ))}
           </ol>
           <AutoHeight>
-            {!community && ids.docidAtSigning && ids.services.docid.mode !== "off" ? (
+            {ids.docidAtSigning && ids.services.docid.mode !== "off" ? (
               <p className="flex items-start gap-2 pt-0.5 text-xs text-pretty text-muted-foreground">
                 <FileText className="mt-px size-3.5 shrink-0" />
                 DOCiDs are minted when the author signs. A report that's declined keeps its Handle, which shows a retired page.
