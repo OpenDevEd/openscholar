@@ -35,7 +35,7 @@ import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { CriterionText, ReviewerMark, ReviewerStack, RuleExamples } from "./parts";
-import { credits, isReading, paperCredits, useMock } from "./store";
+import { credits, isReading, paperCredits, useMock, useModelsReading } from "./store";
 import { AddModel, AddPerson } from "./team";
 
 type Kind = Exclude<SourceKind, "pdf">;
@@ -108,6 +108,8 @@ function describe(before: Screening, after: Screening) {
 export function ScreeningForm({ id }: { id?: string }) {
   const store = useMock();
   const router = useRouter();
+  // A screening goes on while its settings are open: its models read, and a look that saving started runs.
+  useModelsReading(id ?? "");
   const [from] = useQueryState("from");
   const saved = id ? store.screenings.find((one) => one.id === id) : undefined;
   const copied = !id && from ? store.screenings.find((one) => one.id === from) : undefined;
@@ -180,6 +182,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const moves = saved ? effectMoves(saved, draft) : [];
   // A model answers criteria: with none it would include every paper it reads.
   const needsCriteria = models.length > 0 && draft.criteria.length === 0;
+  const lastLook = saved?.updates?.findLast((update) => update.added > 0);
   const dirty = saved ? describe(saved, draft) !== "" : false;
   const stop = !papers ? "Add papers to start" : !activeReviewers(draft).length ? "Add a reviewer to start" : needsCriteria ? "Add a criterion for the model" : cost > wallet ? `${credits(cost - wallet)} credits short` : null;
 
@@ -286,7 +289,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
         updates: now.updates,
         // Made living: it looks in its sources at once, and is open again.
-        ...(draft.living && !saved.living && growing(draft).length ? { checking: { done: 0, of: growing(draft).length, by: store.viewer } } : {}),
+        ...(draft.living && !saved.living && growing(draft).length ? { checking: { done: 0, of: growing(draft).length, by: SCHEDULE } } : {}),
         finishedAt: reopens || (draft.living && !saved.living) ? undefined : now.finishedAt,
       }),
       { what: describe(saved, draft), effect: [...lines, movesText(moves)].filter(Boolean).join(". ") || undefined },
@@ -396,7 +399,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-1.75rem)]">
                                   <p className="truncate text-sm font-medium max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
                                   <div className="flex flex-wrap gap-1.5">
-                                    <Chip>{source.scope === "all" ? `All ${baseTotal(source).toLocaleString("en-GB")}` : `Papers ${source.range[0].toLocaleString("en-GB")} to ${source.range[1].toLocaleString("en-GB")} of ${baseTotal(source).toLocaleString("en-GB")}`}</Chip>
+                                    <Chip>{source.scope === "all" ? (source.total > baseTotal(source) ? `${baseTotal(source).toLocaleString("en-GB")} at the start` : `All ${baseTotal(source).toLocaleString("en-GB")}`) : `Papers ${source.range[0].toLocaleString("en-GB")} to ${source.range[1].toLocaleString("en-GB")} of ${baseTotal(source).toLocaleString("en-GB")}`}</Chip>
                                     {source.total > baseTotal(source) ? <Chip icon={RefreshCw} className="bg-success/12 ink-success">{(source.total - baseTotal(source)).toLocaleString("en-GB")} more since it started</Chip> : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>Looked in again {EVERY_LABEL[draft.living.every].toLowerCase()}</Chip> : null}
                                     {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
                                     {source.duplicates && taken(source) ? <Chip>{Math.min(source.duplicates, taken(source))} already in another source</Chip> : null}
@@ -471,7 +474,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                           <Chip icon={RefreshCw}>{growing(draft).length} of {draft.sources.length} {draft.sources.length === 1 ? "source is" : "sources are"} looked in again</Chip>
                           {growing(draft).length < draft.sources.length ? <Chip>A file or a pasted list holds what it held</Chip> : null}
-                          <Chip>{saved?.living ? `Next on ${day(draft.living.next)}` : fresh ? `First look ${draft.living.every === "day" ? "a day" : draft.living.every === "week" ? "a week" : "a month"} after it starts` : "First look as soon as this is saved"}</Chip>
+                          <Chip>{saved?.living ? `Next on ${day(draft.living.next)}` : fresh ? `Its sources are read as they stand when it starts, then again ${draft.living.every === "day" ? "a day" : draft.living.every === "week" ? "a week" : "a month"} later` : "First look as soon as this is saved"}</Chip>
                           {models.length ? <Chip icon={Coins}>{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))} credits for each new paper</Chip> : <Chip>New papers cost nothing: people only</Chip>}
                           <Chip icon={Mail}>Reviewers are told by email</Chip>
                         </div>
@@ -804,6 +807,18 @@ export function ScreeningForm({ id }: { id?: string }) {
               <aside className="min-w-0 p-4 max-@4xl:border-t max-@4xl:border-border-subtle sm:p-6">
                 {/* It stays in view beside the form, and scrolls by itself when it holds more than the window: saving is never out of reach. */}
                 <div className="space-y-6 @4xl:sticky @4xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @4xl:-me-3 @4xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-3rem)] @4xl:overflow-y-auto @4xl:pe-3">
+                  {saved?.checking ? (
+                    <div className="flex items-center gap-2.5 rounded-2xl bg-inset px-3 py-2.5 text-sm">
+                      <RefreshCw className="size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
+                      <span className="min-w-0 flex-1">Looking for new papers: {saved.checking.done} of {saved.checking.of} {saved.checking.of === 1 ? "source" : "sources"} checked</span>
+                    </div>
+                  ) : saved?.updates?.length && saved.updates.at(-1)!.at > NOW ? (
+                    <div className="flex items-center gap-2.5 rounded-2xl bg-success/10 px-3 py-2.5 text-sm">
+                      <RefreshCw className="size-4 shrink-0 ink-success" />
+                      <span className="min-w-0 flex-1">{saved.updates.at(-1)!.added ? `The look added ${saved.updates.at(-1)!.added} new ${saved.updates.at(-1)!.added === 1 ? "paper" : "papers"}` : "The look found nothing new"}</span>
+                      <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs"><NextLink href={`/screening/mock/${id}`}>See</NextLink></Button>
+                    </div>
+                  ) : null}
                   {!fresh && !locked ? (
                     <div className="space-y-3 rounded-2xl border border-border-subtle p-3">
                       <div className="flex gap-2">
@@ -830,21 +845,28 @@ export function ScreeningForm({ id }: { id?: string }) {
                       <div key={model.id} className="flex items-center gap-2 text-sm">
                         <ReviewerMark reviewer={model} className="size-5" />
                         <span className="min-w-0 flex-1 truncate">{model.name}</span>
-                        <span className="tabular-nums">{due(model) ? credits(due(model)) : <span className="text-muted-foreground">{fresh ? "Free" : "Has read them all"}</span>}</span>
+                        <span className="w-20 shrink-0 text-end tabular-nums">{due(model) ? credits(due(model)) : <span className="text-muted-foreground">{fresh ? "Free" : "All read"}</span>}</span>
                       </div>
                     ))}
                     {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">Answering the new criterion on papers already read</span><span className="shrink-0 tabular-nums">{credits(reread)}</span></div> : null}
-                    <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">Up to</span><span className="tabular-nums">{credits(cost)} credits</span></div>
+                    <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? "Up to" : "Still to pay"}</span><span className="w-28 shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                     <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />
                     <div className="flex flex-wrap gap-1.5">
                       <WorkspaceTag size="sm" workspace={lookOf(workspace, saved?.createdBy ?? store.viewer)}>{credits(wallet)} in {workspace.name}</WorkspaceTag>
-                      {cost > wallet ? <Chip className="bg-destructive/10 text-destructive">{credits(cost - wallet)} short</Chip> : cost ? <Chip>{credits(wallet - cost)} left after</Chip> : null}
+                      {cost > wallet ? <Chip className="bg-destructive/10 text-destructive">{credits(cost - wallet)} short</Chip> : <Chip>{credits(wallet - cost)} left after</Chip>}
                       {saved?.spent ? <Chip>{credits(Object.values(saved.spent).reduce((sum, one) => sum + one, 0))} spent so far</Chip> : null}
                     </div>
                     {models.length && draft.living ? (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="min-w-0 flex-1 text-muted-foreground">Then, for each new paper it finds</span>
                         <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))}</span>
+                      </div>
+                    ) : null}
+                    {/* What a look comes to can't be known ahead. What the last one came to is the nearest thing. */}
+                    {models.length && draft.living && lastLook ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="min-w-0 flex-1 text-muted-foreground">The last look added {lastLook.added}, which came to</span>
+                        <span className="shrink-0 tabular-nums">{credits(lastLook.added * models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))}</span>
                       </div>
                     ) : null}
                     {models.length && draft.fullText ? (

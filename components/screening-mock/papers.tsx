@@ -199,6 +199,15 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
         ) : null}
       </AnimatePresence>
 
+      {/* A phone has no room for the filters' menus: what narrows the list is said here, and can be dropped. */}
+      {added !== "all" || yours !== "any" ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2 @2xl/papers:hidden">
+          <span className="text-xs text-muted-foreground">{rows.length.toLocaleString("en-GB")} of {papers.length.toLocaleString("en-GB")} papers</span>
+          {added !== "all" ? <Chip icon={RefreshCw}>{added === "start" ? "There from the start" : `Added ${Number(added) > NOW ? "just now" : day(Number(added))}`}</Chip> : null}
+          {yours !== "any" ? <Chip>{yours === "none" ? "Waiting for your vote" : `You voted ${yours}`}</Chip> : null}
+          <Button variant="ghost" size="sm" className="ms-auto h-7 text-xs" onClick={() => { setYours("any"); onAdded("all"); }}>Show every paper</Button>
+        </div>
+      ) : null}
       <div className={cn("grid", room && "grid-cols-[minmax(0,1fr)_30rem]")}>
         <div className="min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. */}

@@ -37,8 +37,8 @@ const HELP: Array<[string, string]> = [["Asterisk", "A must-have criterion: a pa
 const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
 
 /** Where someone is in a queue: the paper open, the page of the list, what they searched for and which of their own votes they asked for. */
-export type Place = { picked: string | null; page: number; find: string; voted: "any" | Decision };
-export const NO_PLACE: Place = { picked: null, page: 1, find: "", voted: "any" };
+export type Place = { picked: string | null; page: number; find: string; voted: "any" | Decision; /** The order of what is still to do: as added, the newest arrivals first, or the ones the models would include first. */ order: "dealt" | "fresh" | "lean" };
+export const NO_PLACE: Place = { picked: null, page: 1, find: "", voted: "any", order: "dealt" };
 // The files added by hand in this sitting, by screening and paper: the real viewer shows them. They last as long as the page does.
 const uploads = new Map<string, string>();
 const PdfViewer = dynamic(() => import("@/components/extraction/pdf-viewer").then((mod) => mod.PdfViewer), { ssr: false });
@@ -46,8 +46,7 @@ const PdfViewer = dynamic(() => import("@/components/extraction/pdf-viewer").the
 export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }: { open: Open; /** Whether a row sits under the stage switch, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; place: Place; onPlace: (change: (place: Place) => Place) => void }) {
   const { screening, stage, papers, votes, settled, yours, toDo, conflicts } = open;
   const criteria = screening.criteria;
-  const [order, setOrder] = useState<"dealt" | "lean">("dealt");
-  const { picked, page, find, voted } = place;
+  const { picked, page, find, voted, order } = place;
   const setFind = (next: string) => onPlace((now) => ({ ...now, find: next }));
   const setPicked = (next: string | null) => onPlace((now) => ({ ...now, picked: next }));
   const setPage = (next: number) => onPlace((now) => ({ ...now, page: next }));
@@ -59,7 +58,8 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
       const list = (which === "todo" ? toDo : which === "conflicts" ? conflicts : done).filter((paper) => (!words || `${paper.title} ${paper.authors.join(" ")} ${paper.sentences.join(" ")}`.toLowerCase().includes(words)) && (which !== "done" || voted === "any" || open.myVote(paper)?.decision === voted));
       // The models' votes say which papers are likely to be kept: those can come first.
       const lean = (paper: Paper) => votes[paper.id]!.filter((one) => one.reviewer.kind === "model" && one.vote?.decision === "include").length;
-      return (order === "lean" && which === "todo" ? [...list].sort((a, b) => lean(b) - lean(a)) : list).map((paper) => paper.id);
+      // Papers that came in after the start can come first too: the latest arrival at the top.
+      return (which !== "todo" || order === "dealt" ? list : [...list].sort((a, b) => (order === "lean" ? lean(b) - lean(a) : (b.batch ?? 0) - (a.batch ?? 0)))).map((paper) => paper.id);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the queue is read when it is opened, not on every vote
     [toDo, conflicts, yours, order, votes, find, voted],
@@ -269,10 +269,11 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
             </Select>
           ) : null}
           {queue === "todo" && toDo.length > 1 ? (
-            <Select value={order} onValueChange={(next) => { setPicked(null); setPage(1); setOrder(next as "dealt" | "lean"); }}>
+            <Select value={order} onValueChange={(next) => onPlace((now) => ({ ...now, order: next as Place["order"], picked: null, page: 1 }))}>
               <SelectTrigger aria-label="Order of the queue" className="h-8 w-full text-xs max-lg:hidden"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="dealt">As they were added</SelectItem>
+                {toDo.some((one) => one.batch !== undefined) ? <SelectItem value="fresh">New papers first</SelectItem> : null}
                 <SelectItem value="lean">Papers the models would include first</SelectItem>
               </SelectContent>
             </Select>
@@ -297,7 +298,16 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                 <h2 className="text-xl font-semibold leading-snug tracking-tight">{paper.title}</h2>
                 <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {source ? <ClippedChip icon={kindIcon(source.kind)} className="max-w-72">{source.name}</ClippedChip> : null}
+                  {source ? (
+                    <Popover>
+                      <PopoverTrigger asChild><button type="button" aria-label="Where this paper came from" className="flex min-w-0 rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><ClippedChip icon={kindIcon(source.kind)} className="max-w-72">{source.name}</ClippedChip></button></PopoverTrigger>
+                      <PopoverContent align="start" className="w-80 space-y-1.5 p-3 text-sm">
+                        <p className="font-medium">{source.name}</p>
+                        <p className="text-xs text-muted-foreground">{source.detail}</p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">{source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}{paper.batch !== undefined ? <Chip icon={RefreshCw}>Found by the look on {day(paper.batch)}</Chip> : <Chip>In it from the start</Chip>}</div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
                   <Chip icon={Quote}>{paper.cited} cited</Chip>
                   {paper.batch !== undefined ? <Chip icon={RefreshCw} className="bg-success/12 ink-success">Added {paper.batch > NOW ? "just now" : day(paper.batch)}</Chip> : null}
                   {stage === "fullText" && open.hasFullText(paper) ? <Chip icon={FileText}>{screening.fullTexts[paper.id] === "added" ? "PDF added by hand" : "Open-access PDF"}</Chip> : null}
@@ -467,7 +477,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                 </Popover>
                 {/* On a phone the last decision's way back sits here, and the rest folds into one menu. */}
                 {last ? <Button variant="ghost" size="icon" className="size-8 lg:hidden" aria-label="Undo the last decision" onClick={undo}><Undo2 /></Button> : null}
-                {last && differ ? <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-info/12 px-2 text-xs font-medium text-info lg:hidden"><GitCompare className="size-3.5" />Last: {differ} differ</button> : null}
+                {last && differ ? <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-info/12 px-2 text-xs font-medium text-info lg:hidden"><GitCompare className="size-3.5" />{differ} disagreed</button> : null}
                 <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground max-lg:hidden">
                   Go to the next one
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a decision" />
@@ -556,7 +566,9 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                     <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="min-w-0 flex-1 truncate text-start hover:underline">
                       Last paper: <span className="font-medium text-foreground">{DECISION_LABEL[last.decision]}</span>
                     </button>
-                    {differ ? <button type="button" aria-label={`${differ} of the others voted differently on the last paper: see it`} onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="shrink-0 rounded-md bg-info/12 px-2 py-1 font-medium text-info transition-opacity hover:opacity-75">{differ} differed</button> : null}
+                    {differ ? <button type="button" aria-label={`${differ} of the others voted differently on the last paper: see it`} onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="shrink-0 rounded-md bg-info/12 px-2 py-1 font-medium text-info transition-opacity hover:opacity-75">{differ} disagreed</button> : null}
+                    {/* The last of the papers a look brought: said once, where the decision is. */}
+                    {!differ && last.paper.batch !== undefined && !toDo.some((one) => one.batch !== undefined) ? <span className="shrink-0 rounded-md bg-success/12 px-2 py-1 font-medium ink-success">New papers done</span> : null}
                     <Button variant="ghost" size="xs" onClick={undo}><Undo2 />Undo<Kbd className="max-lg:hidden">Z</Kbd></Button>
                   </>
                 ) : null}

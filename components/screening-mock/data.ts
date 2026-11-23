@@ -829,8 +829,8 @@ function made(id: string, name: string, theme: ThemeId, seed: number, sources: S
     seed,
     reached: { abstract: reached, fullText: Object.fromEntries(reviewers.map((reviewer) => [reviewer.id, 0])) },
     ...blank(),
-    changes: [{ at: NOW - 6 * DAY, by: people[0] ?? "amina", what: "Started the screening" }],
     ...more,
+    changes: more.changes ?? [{ at: more.createdAt ?? NOW - 6 * DAY, by: more.createdBy ?? people[0] ?? "amina", what: "Started the screening" }],
   };
 }
 
@@ -954,7 +954,7 @@ export function checked(screening: Screening, at: number, by: string): Screening
     checking: undefined,
     updates: [...(screening.updates ?? []), { at, found, added, by }],
     // A look by hand leaves the schedule where it was.
-    living: screening.living && by === SCHEDULE ? { ...screening.living, next: Math.max(screening.living.next, at) + PERIOD[screening.living.every] } : screening.living,
+    living: screening.living && by === SCHEDULE ? { ...screening.living, next: at + PERIOD[screening.living.every] } : screening.living,
     finishedAt: added ? undefined : screening.finishedAt,
     changes: [...screening.changes, { at, by, what: found ? `${by === SCHEDULE ? `${EVERY_LABEL[screening.living?.every ?? "week"].replace("Every", "The")}'s check` : "Looked for new papers and"} found ${found}` : by === SCHEDULE ? "The scheduled check found nothing new" : "Looked for new papers and found none", effect: found ? `${found - added ? `${found - added} ${found - added === 1 ? "was" : "were"} in it already. ` : ""}${added} joined the queue, and the reviewers they were dealt to were told by email` : undefined }],
   };

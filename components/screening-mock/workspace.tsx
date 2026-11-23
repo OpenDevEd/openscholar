@@ -217,8 +217,8 @@ export function ScreeningWorkspace() {
                         label: STAGE_LABEL[one],
                         detail: (
                           <span className="flex items-center gap-1.5">
-                            {/* A phone has room for one number: what waits for you, where something does. */}
-                            <span className={`tabular-nums text-muted-foreground ${open.todoAt[one] ? "max-sm:hidden" : ""}`}>{(one === "abstract" ? open.first : open.second).papers.length}</span>
+                            {/* A phone has room for one number, and it always means the same: what waits for you. */}
+                            <span className="tabular-nums text-muted-foreground max-sm:hidden">{(one === "abstract" ? open.first : open.second).papers.length}</span>
                             {open.todoAt[one] ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs font-medium tabular-nums text-primary">{open.todoAt[one]}<span className="max-sm:sr-only"> for you</span></span> : null}
                           </span>
                         ),
@@ -258,7 +258,7 @@ export function ScreeningWorkspace() {
                 </div>
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => { void setStage(null); setQueue("todo"); void setView("screen"); }} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => { void setStage(null); void setQueueParam(null); setPlace({ ...NO_PLACE, order: "fresh" }); void setView("screen"); window.scrollTo({ top: 0 }); }} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
                 </AutoHeight>
               </>
             }
@@ -276,7 +276,7 @@ export function ScreeningWorkspace() {
                     }}
                     onStage={(next) => void setStage(next === "abstract" ? null : next)}
                     onExport={(what) => { setExportTab(what); setOver("export"); }}
-                    onAdded={(at) => { setFilter("all"); setAdded(at); void setStage(null); void setView("papers"); }}
+                    onAdded={(at) => { setFilter("all"); setAdded(at); void setStage(null); void setView("papers"); window.scrollTo({ top: 0 }); }}
                   />
                 ) : view === "screen" ? (
                   <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} place={place} onPlace={setPlace} onView={(next) => void setView(next === "overview" ? null : next)} />
@@ -371,8 +371,9 @@ function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quie
   if (!open.canChange) return "guest";
   // New papers that wait for you come before how far the models are.
   if (!quiet && open.latest?.mine) return "arrived";
-  if (!quiet && screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
   if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor && stage === "abstract" ? "waiting" : "reading";
+  // A look that found nothing says so, where nothing else has to be said.
+  if (!quiet && screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
   return null;
 }
 
@@ -405,7 +406,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScr
     return (
       <div className={row}>
         <RefreshCw className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1"><span className="font-medium">Nothing new.</span> <span className="text-muted-foreground">Its sources hold no paper they didn&apos;t hold on {day(before)}.</span></span>
+        <span className="min-w-0 flex-1"><span className="font-medium">Nothing new.</span> <span className="text-muted-foreground">No paper has joined its sources since {day(before)}.</span></span>
       </div>
     );
   }

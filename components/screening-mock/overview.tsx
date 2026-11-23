@@ -64,6 +64,8 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
   const matrix = useMemo(() => reviewers.map((a) => reviewers.map((b) => (a === b ? null : agreement(a.id, b.id, open)))), [reviewers, open]);
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
   const settledAll = papers.length > 0 && counts.conflict + counts.waiting === 0;
+  // People who read a share, beside models who read everything: the two counts in the table differ, and the page says why.
+  const peopleDealt = rows.some((row) => row.reviewer.kind === "person" && row.assigned < papers.length) && rows.some((row) => row.reviewer.kind === "model");
 
   if (!papers.length && open.gathering) {
     return (
@@ -95,7 +97,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
             {conflicts.length ? (
               <Button size="sm" variant={toDo.length || screening.finishedAt || !open.canResolve ? "outline" : "default"} onClick={() => onOpen("screen", "conflicts")}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</Button>
             ) : null}
-            {settledAll && stage === "abstract" ? <Button size="sm" onClick={() => onStage("fullText")}>Go on to full text<ArrowRight /></Button> : null}
+            {settledAll && stage === "abstract" && screening.fullText ? <Button size="sm" variant={screening.finishedAt ? "outline" : "default"} onClick={() => onStage("fullText")}>{screening.finishedAt ? "See the full-text stage" : "Go on to full text"}<ArrowRight /></Button> : null}
             {settledAll && stage === "fullText" ? (
               <>
                 <Button asChild size="sm" variant="outline"><NextLink href="/extraction/new">Extract from the included papers</NextLink></Button>
@@ -108,6 +110,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
           <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
+          {open.reading.length && !screening.paused && !open.outOfCredits && !screening.finishedAt ? <Chip className="self-center"><AiIcon working className="size-3.5" />Models are reading, so these move</Chip> : null}
           {stage === "fullText" && !screening.finishedAt ? <span className="text-sm text-muted-foreground">Papers arrive here one by one, as they are included or left as maybe on their abstract.</span> : null}
         </p>
         <ResultBar counts={counts} className="h-3" />
@@ -235,7 +238,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
           ) : (
             <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nobody reads these papers yet. Add a person or a model from the row above.</p>
           )}
-          {rows.length > 1 ? <p className="px-1 text-xs text-muted-foreground">Votes with the others: on the papers every reviewer has voted on, how often this one chose what most of the others chose.</p> : null}
+          {rows.length > 1 ? <p className="px-1 text-xs text-muted-foreground">{peopleDealt ? "Each person is dealt a share of the papers, and a model reads them all. " : ""}Votes with the others: on the papers every reviewer has voted on, how often this one chose what most of the others chose.</p> : null}
         </Zone>
 
         <Zone
@@ -342,7 +345,7 @@ function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => voi
           )}
           {open.canChange ? (
             <>
-              {!screening.living ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={`/screening/mock/${screening.id}/settings#new-papers`}>Make it a living screening</NextLink></Button> : null}
+              {!screening.living ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={`/screening/mock/${screening.id}/settings#new-papers`}>Look on a schedule</NextLink></Button> : null}
               <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Look now</Button>
             </>
           ) : null}
@@ -361,7 +364,7 @@ function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => voi
                   <p className="text-xs text-muted-foreground">{day(screening.createdAt)}</p>
                 </div>
                 <Chip>{papers.filter((paper) => paper.batch === undefined).length.toLocaleString("en-GB")} papers from {screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</Chip>
-                {fixed ? <Chip>{fixed} {fixed === 1 ? "is a file or a list, and holds" : "are files or lists, and hold"} what {fixed === 1 ? "it" : "they"} held</Chip> : null}
+                {fixed ? <Chip>{fixed} {fixed === 1 ? "is an uploaded file or a pasted list, which gets" : "are uploaded files or pasted lists, which get"} no new papers</Chip> : null}
               </div>
             );
           }
@@ -376,6 +379,8 @@ function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => voi
               <div className="min-w-0 flex-1 basis-40">
                 <p className="truncate text-sm font-medium">{who ? `${update.by === open.me ? "You" : who.name} looked` : "Scheduled check"}</p>
                 <p className="text-xs text-muted-foreground">{update.at > NOW ? "Just now" : day(update.at)}</p>
+                {/* Where the papers were found: each source that gained some, with how many. */}
+                {screening.sources.flatMap((source) => { const found = source.updates?.find((one) => one.at === update.at); return found ? [<p key={source.id} className="truncate text-xs text-muted-foreground">{found.added} in {source.name}</p>] : []; })}
               </div>
               {update.found ? (
                 <>

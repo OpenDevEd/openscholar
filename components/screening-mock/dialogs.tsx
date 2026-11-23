@@ -16,7 +16,7 @@ import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, STAGE_LABEL, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Paper, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, STAGE_LABEL, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Paper, type Result, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { ReviewerMark, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
@@ -262,7 +262,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // Assessed and not yet decided: a paper with no full text is counted with the ones not retrieved, not here.
   const openAtFullText = count(second.papers, (paper) => state.hasFullText(paper) && !["include", "exclude"].includes(second.settled[paper.id]!.result));
   const boxes: Array<{ title: string; n: number; side?: Array<{ label: string; n: number }> }> = [
-    { title: "Records identified", n: found, side: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) })), ...(later ? [{ label: `Of those, found by ${looks.length} later ${looks.length === 1 ? "look" : "looks"}, the last on ${day(looks.at(-1)!.at)}`, n: later }] : [])] },
+    { title: "Records identified", n: found, side: later ? [{ label: "When screening began", n: found - later }, { label: `By ${looks.length} later ${looks.length === 1 ? "search" : "searches"}, the last on ${day(looks.at(-1)!.at)}`, n: later }, ...screening.sources.map((source) => ({ label: source.name, n: taken(source) }))] : screening.sources.map((source) => ({ label: source.name, n: taken(source) })) },
     { title: "Records screened on title and abstract", n: kept, side: [{ label: "Duplicates removed before screening", n: found - kept }] },
     { title: screening.fullText ? "Reports sought for full text" : "Studies included", n: screening.fullText ? second.papers.length : first.counts.include, side: [...reasons(first), ...(first.counts.conflict + first.counts.waiting ? [{ label: "Still open: in conflict or waiting for votes", n: first.counts.conflict + first.counts.waiting }] : [])] },
     ...(screening.fullText
@@ -317,7 +317,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const methods = [
     openNow ? `Screening was still in progress when this was written: ${(first.papers.length - first.counts.conflict - first.counts.waiting).toLocaleString("en-GB")} of ${first.papers.length.toLocaleString("en-GB")} records had been settled on title and abstract.` : "",
     `Records from ${screening.sources.length} ${screening.sources.length === 1 ? "source" : "sources"} (n = ${found}) were brought into Openscholar. After ${found - kept} duplicates were merged, ${kept} were screened.`,
-    looks.length ? `The sources were searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
+    looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     screening.criteria.length ? `Each record was assessed on its title and abstract against ${screening.criteria.length} ${screening.criteria.length === 1 ? "criterion" : "criteria"}, ${screening.criteria.filter((c) => c.must).length} of which a record had to meet to be included.` : "Each record was assessed on its title and abstract.",
     readers ? `${readers} voted on each record${screening.rule.blind === "after" ? " without seeing the other votes" : ""}.` : "No human reviewer voted on the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) voted on the records as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}, giving an answer and a quoted passage for every criterion${unread ? `; ${unread} ${unread === 1 ? "record" : "records"} could not be read by a model and ${unread === 1 ? "was" : "were"} decided by the other reviewers` : ""}.` : "No AI model took part.",
@@ -349,6 +349,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
           {tab === "papers" && mine.length ? (
             <Segmented label="Which papers" value={which} onChange={(next) => { setDone(null); setPicked(next); }} options={[{ id: "settled" as const, label: "Settled as included", detail: <span className="tabular-nums text-muted-foreground">{settledIn.length}</span> }, { id: "mine" as const, label: "You voted to include", detail: <span className="tabular-nums text-muted-foreground">{mine.length}</span> }]} />
           ) : null}
+          {tab === "papers" && mine.length && which === "mine" ? <p className="px-1 text-xs text-muted-foreground">The papers you voted to include, at the furthest stage you have voted on each: a maybe you later included at full text counts.</p> : null}
           {tab === "papers" ? (
             included.length ? (
               <ul className={LIST}>
