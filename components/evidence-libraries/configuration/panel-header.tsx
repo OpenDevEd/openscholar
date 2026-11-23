@@ -54,35 +54,37 @@ export function PanelHeader({
   const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
   return (
     <div className="flex h-16 items-center gap-4 @max-[30rem]:h-auto @max-[30rem]:min-h-16 @max-[30rem]:flex-wrap @max-[30rem]:gap-y-2 @max-[30rem]:py-3">
-      {/* Under 18rem (a phone at 150% text or more) a title that doesn't fit beside the back arrow, picture and chips takes a line of its own: beside them it had 46 to 86px and broke inside its words. */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial @max-[30rem]:basis-auto @max-[18rem]:flex-wrap">
-        {backHref ? (
-          <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
-            <Link href={backHref} aria-label={backLabel} onClick={onBackClick}>
-              <ChevronLeft className="size-5" />
-            </Link>
-          </Button>
-        ) : null}
-        {image !== undefined ? (
-          <LibraryImage
-            src={image ?? "/icon.svg"}
-            className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md"
-            imageClassName={image ? "size-full object-cover" : "size-5 object-contain"}
-            fallback={icon}
-          />
-        ) : icon}
-        {/* At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
-            and 200% text. At normal text it stays one line. AutoHeight is there while a loading page names nothing, so a title
-            that arrives later slides the bar open: mounted with it, the bar grew 152px in one frame on /publish at 360px and 200%. */}
-        <AutoHeight className="min-w-0">
+      {/* Under 18rem (a phone at 150% text or more) a title that doesn't fit beside the back arrow, picture and chips takes a line of its own: beside them it had 46 to 86px and broke inside its words.
+          The row takes its height as a slide, so a title and chips that arrive after the loading page's empty bar open it
+          smoothly: on /publish at 360px and 200% text the bar grew from 129px to 281px in one frame. Across, nothing is clipped,
+          for the back arrow's negative margin. */}
+      <AutoHeight className="min-w-0 flex-1 overflow-x-visible @3xl:flex-initial @max-[30rem]:basis-auto">
+        <div className="flex min-w-0 items-center gap-2 @max-[18rem]:flex-wrap">
+          {backHref ? (
+            <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
+              <Link href={backHref} aria-label={backLabel} onClick={onBackClick}>
+                <ChevronLeft className="size-5" />
+              </Link>
+            </Button>
+          ) : null}
+          {image !== undefined ? (
+            <LibraryImage
+              src={image ?? "/icon.svg"}
+              className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md"
+              imageClassName={image ? "size-full object-cover" : "size-5 object-contain"}
+              fallback={icon}
+            />
+          ) : icon}
           {title ? (
+            // At large text on a phone (under 18rem) a title too long for its line wraps: "Verify Agent Library" was "Ver…" at 360px
+            // and 200% text. At normal text it stays one line.
             <TooltipHint label={title} onlyWhenClipped>
               <h1 className="truncate text-base font-semibold @max-[18rem]:whitespace-normal @max-[18rem]:wrap-break-word">{title}</h1>
             </TooltipHint>
           ) : null}
-        </AutoHeight>
-        {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
-      </div>
+          {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
+        </div>
+      </AutoHeight>
       {/* The view switch and the filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
       {tabs ? <div className="hidden shrink-0 border-s border-border-subtle ps-4 not-dark:[--inset:var(--card)] @3xl:block max-lg:has-[[data-view-switch]]:hidden!">{tabs}</div> : null}
       {filters || children ? (
