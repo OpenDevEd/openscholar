@@ -42,6 +42,12 @@ export function withNeeded(ids: Identifiers, chosen: ServiceId[]): ServiceId[] {
   return SERVICE_IDS.filter((id) => all.has(id));
 }
 
+/** The services a report registers with, as its route has them. */
+export const chosenOf = (r: { crossref: boolean; zenodo: boolean; docid?: boolean | undefined }): ServiceId[] => SERVICE_IDS.filter((id) => r[id] === true);
+
+/** What a report's services add to its price, in dollars, as the settings price them now. */
+export const routeAddOns = (ids: Identifiers, r: { crossref: boolean; zenodo: boolean; docid?: boolean | undefined }) => chosenOf(r).reduce((sum, id) => sum + ids.services[id].price, 0);
+
 /** What the services chosen add to a report's price, in dollars. */
 export const addOnsOf = (ids: Identifiers, chosen: ServiceId[]) => withNeeded(ids, chosen).reduce((sum, id) => sum + ids.services[id].price, 0);
 

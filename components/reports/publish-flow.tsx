@@ -11,7 +11,7 @@ import { useAction, useConvex, useMutation, useQueries, useQuery } from "convex/
 import { createPortal } from "react-dom";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
+import { parseAsArrayOf, parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
 import { useFormatter, useTranslations, useLocale } from "next-intl";
 import type { Locale } from "@/i18n/config";
 import { copyText } from "@/components/copy-text";
@@ -60,6 +60,8 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { ANOTHER, LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
 import { ArchiveChoice, OwnArchiveRefused } from "@/components/reports/archive-choice";
+import { IdentifierChoice, addOnLines, firstPick, showsIdentifiers } from "@/components/reports/identifier-choice";
+import { SERVICES, SERVICE_IDS, pickProblem } from "@/lib/reports/identifiers";
 import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { FileAccessChange, FileAccessChoice, embargoProblem } from "@/components/reports/file-access-choice";
@@ -137,10 +139,12 @@ function KeptBill({ report, terms, humanReview, beside }: { report: Report; term
   const atBar = report.step === "done" && stage === "ready" && terms.admin && !terms.pending;
   // Declined, nothing is due; a member who can't pay for it isn't shown what it comes to.
   if (stage === "declined" || atBar || !(report.mine || terms.admin)) return null;
-  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} price={terms.price} funds={terms} owner={terms.organization} payWith={payWithOf(terms)} code={terms.voucher} note={t("payment.later")} />, beside);
+  return createPortal(<Bill className="mt-5 border-t border-border-subtle pt-4" licence={licenceName(report.licence)} {...billOf(terms)} funds={terms} owner={terms.organization} payWith={payWithOf(terms)} code={terms.voucher} note={t("payment.later")} />, beside);
 }
 
 /** What pays for a report: as kept with it, else the balance while it holds something, else a card. */
+/** The bill's lines: the licence's price, and what each identifier service adds (plans/identifier-services). */
+const billOf = ({ price, addOns }: Pick<Terms, "price" | "addOns">) => ({ price: price - addOns.reduce((sum, line) => sum + line.price, 0), extras: addOns });
 const payWithOf = (terms: Pick<Terms, "payWith" | "balance">): PayWith => (terms.balance === 0 ? "card" : (terms.payWith ?? "balance"));
 
 /** A section's name inside a step: the step's own heading is above them all. */
@@ -1148,7 +1152,15 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // The bill names an own licence not yet named as such, never "…".
   const billed = pick === ANOTHER && choosing ? t("licence.other") : typeof pick !== "string" && choosing && !pick.name.trim() ? t("licence.own") : licenceName(named);
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
-  const priceNow = priceOf(named, basics.prices);
+  // The identifiers it gets (plans/identifier-services): the series' own and those picked here, kept in the address
+  // with the archive. Each that costs more is a line of the bill.
+  const ids = basics.identifiers;
+  const [pickedIds, setPickedIds] = useQueryState("ids", parseAsArrayOf(parseAsStringLiteral(SERVICE_IDS)));
+  const picks = pickedIds ?? firstPick(ids);
+  const addOns = addOnLines(ids, picks);
+  const licencePrice = priceOf(named, basics.prices);
+  const priceNow = licencePrice + addOns.reduce((sum, line) => sum + line.price, 0);
+  const extras = addOns.map((line) => ({ label: SERVICES[line.id].name, price: line.price }));
   const sum = starts ? payment({ price: priceNow, balance: starts.balance, payWith, off: voucher?.off ?? 0, credit: starts.credit, cardSaved: starts.cardSaved }) : null;
   const bought = sum?.bought ?? 0;
   // One tick agrees for the signer and any co-authors, as the agreement has one author sign for all: the authors
@@ -1185,7 +1197,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // says nothing more.
   const form = useId();
   const { tried, go } = useStepForm();
-  const fields = { ...licenceFields(`${form}-licence`), until: `${form}-until`, archive: `${form}-archive`, signer: `${form}-signer`, agree: `${form}-agree`, blocked: `${form}-blocked` };
+  const fields = { ...licenceFields(`${form}-licence`), until: `${form}-until`, archive: `${form}-archive`, identifiers: `${form}-identifiers`, signer: `${form}-signer`, agree: `${form}-agree`, blocked: `${form}-blocked` };
   const own = choosing && typeof pick !== "string" ? pick : null;
   const ownWrong = own ? ownLicenceProblems(own.name, own.url) : {};
   const untilWrong = embargoProblem(fileAccessOf(named, access));
@@ -1196,11 +1208,12 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
     open: own && own.open === undefined ? t("licence.ownOpenMissing") : undefined,
     until: untilWrong ? fields.until : undefined,
     archive: zenodoNeeded,
+    identifiers: showsIdentifiers(ids) && !!pickProblem(ids, picks),
     signer: !name.trim() ? t("signedByMissing") : undefined,
     agree: !agreed ? t("agreeMissing") : undefined,
     blocked: !!blocked,
   };
-  const firstWrong = ([["which", fields.which], ["name", fields.name], ["url", fields.url], ["open", fields.open], ["until", fields.until], ["archive", fields.archive], ["blocked", fields.blocked], ["signer", fields.signer], ["agree", fields.agree]] as const).filter(([key]) => wrong[key]).map(([, field]) => field);
+  const firstWrong = ([["which", fields.which], ["name", fields.name], ["url", fields.url], ["open", fields.open], ["until", fields.until], ["archive", fields.archive], ["identifiers", fields.identifiers], ["blocked", fields.blocked], ["signer", fields.signer], ["agree", fields.agree]] as const).filter(([key]) => wrong[key]).map(([, field]) => field);
   const shown: Partial<typeof wrong> = tried ? wrong : {};
   return (
     <div className="flex flex-1 flex-col">
@@ -1239,6 +1252,12 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           }}
         />
       </section>
+      {/* Which identifiers it gets, where the series offers a choice, charges for one, or registers a DOCiD. */}
+      {showsIdentifiers(ids) ? (
+        <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
+          <IdentifierChoice ids={ids} picked={picks} onChange={(next) => void setPickedIds(next)} id={fields.identifiers} invalid={!!shown.identifiers} />
+        </section>
+      ) : null}
       {/* Whose the report will be, for someone in more than one workspace: said before what pays, which is that workspace's balance. */}
       {here && workspaceId && list && list.length > 1 ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
@@ -1266,8 +1285,8 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
             </motion.div>
           </div>
           {/* The bill: under the cover on a wide page, here on a narrow one, where the cover is under the steps. */}
-          <Bill boxed className="mt-4 @3xl:hidden" licence={billed} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />
-          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={billed} price={priceNow} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
+          <Bill boxed className="mt-4 @3xl:hidden" licence={billed} price={licencePrice} extras={extras} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />
+          {beside ? createPortal(<Bill className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={billed} price={licencePrice} extras={extras} funds={starts} owner={payer} payWith={payWith} code={voucher} note={t("payment.later")} onSaveCard={saveCard} />, beside) : null}
         </section>
       ) : null}
       <h3 className={SECTION}>{t("payment.sign")}</h3>
@@ -1329,7 +1348,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
                 say(null);
                 try {
                   // The licence is the report's from here on; what pays and the code can still change until it is activated.
-                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, fileAccess: fileAccessOf(licence!, access), archive, payWith, ...(voucher && { voucher }) });
+                  const key = await sign({ workspaceId: workspaceId!, name, onBehalfOfAll: true, version: agreement.version, licence: licence!, fileAccess: fileAccessOf(licence!, access), archive, payWith, services: picks, ...(voucher && { voucher }) });
                   setMade(key);
                   // Signed, the tick has done its work: the next report's agreement starts unticked.
                   keepTicks(null);
@@ -2074,8 +2093,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
                     </AutoHeight>
                   </div>
                   {/* The bill: under the cover on a wide page, where it has been since the report was signed, and here on a narrow one. */}
-                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />
-                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} price={price} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />, beside) : null}
+                  <Bill now boxed className="mt-4 @3xl:hidden" licence={licenceName(report.licence)} {...billOf({ price, addOns: terms?.addOns ?? [] })} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />
+                  {beside ? createPortal(<Bill now className="mt-5 hidden border-t border-border-subtle pt-4 @3xl:block" licence={licenceName(report.licence)} {...billOf({ price, addOns: terms?.addOns ?? [] })} funds={terms} owner={organization} payWith={payWith} code={code} onSaveCard={admin ? manageBilling : undefined} />, beside) : null}
                   {terms.refused ? <p className="mt-2 ps-1 text-xs text-muted-foreground">{t("activation.card.refused")}</p> : null}
                 </section>
               ) : admin && pending && stage !== "live" ? (

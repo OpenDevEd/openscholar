@@ -7043,7 +7043,26 @@
       "noteQuestion": "Your note",
       "sendNote": "Send the note",
       "yourNote": "Your note for the reviewer",
-      "uploadIntroAdded": "Upload your PDF as it is: we add this line on a last page when it's uploaded."
+      "uploadIntroAdded": "Upload your PDF as it is: we add this line on a last page when it's uploaded.",
+      "identifiers": {
+        "title": "Identifiers",
+        "inByline": "In the byline",
+        "included": "Included",
+        "noExtra": "No extra cost",
+        "gives_crossref": "A DOI, printed on the report",
+        "gives_zenodo": "A permanent copy, under the report's DOI",
+        "gives_zenodoOwn": "A DOI from Zenodo, and a permanent copy",
+        "gives_docid": "A DOCiD, the Africa PID Alliance's Handle",
+        "always_crossref": "Every report published here gets a Crossref DOI. You can't leave it out.",
+        "always_zenodo": "Every report published here is kept on Zenodo. You can't leave it out.",
+        "always_docid": "Every report published here gets a DOCiD. You can't leave it out.",
+        "zenodoTied": "Every Crossref DOI has to lead to a permanent copy, so Zenodo comes with Crossref.",
+        "pickOne": "Pick one.",
+        "pickOnlyOne": "Pick only one.",
+        "pickAtLeast": "Pick at least {count}.",
+        "pickAtMost": "Pick at most {count}.",
+        "pickPrintable": "Pick one that can be printed on the report."
+      }
     },
     "meta": {
       "publish": "Publish | Openscholar",

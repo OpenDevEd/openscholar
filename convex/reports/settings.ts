@@ -1,7 +1,7 @@
 // Openscholar Reports' settings (plans/publish-reports): whether publishing is on, whether a person reviews every
 // report, the series, the model that reads a PDF's details, the checks and the agreement. Admins change them at
 // Settings > Admin > Publishing. Registrar accounts are saved by ./publicationActions.ts.
-import { SERVICES, SERVICE_IDS, SETTINGS_PROBLEM, settingsProblem, type Identifiers } from "../../lib/reports/identifiers";
+import { SERVICES, SERVICE_IDS, SETTINGS_PROBLEM, settingsProblem, withAccounts, type Identifiers } from "../../lib/reports/identifiers";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -166,6 +166,8 @@ export const forAuthors = query({
     series: seriesValidator,
     /** What publishing a report costs, in whole US dollars, by its licence's tier. */
     prices: pricesValidator,
+    /** Which identifier services a report gets, and what each adds to its price (lib/reports/identifiers.ts). */
+    identifiers: identifiersValidator,
     agreement: v.object({ version: v.number(), text: v.string() }),
     checks: checkNamesValidator,
   }),
@@ -176,6 +178,7 @@ export const forAuthors = query({
       humanReview: settings.humanReview,
       series: settings.series,
       prices: settings.prices,
+      identifiers: withAccounts(settings.identifiers, settings.publication),
       agreement: { version: settings.agreement.version, text: settings.agreement.text },
       checks: settings.checks.filter((check) => check.enabled).map(({ id, name, blocking }) => ({ id, name, blocking })),
     };

@@ -1,6 +1,7 @@
 // A report from its agreement to ready to activate (plans/publish-reports): what the Publish page reads and the
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
+import { DEFAULT_IDENTIFIERS, pickProblem, withAccounts, withNeeded, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
 import { v, type Infer } from "convex/values";
 import { fundsOf, readAccount } from "../billing/accounts";
 import { balancePartsValidator } from "../billing/validators";
@@ -25,7 +26,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { authorRowValidator, bylineByValidator, fileAccessValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator, payWithValidator } from "./validators";
+import { authorRowValidator, bylineByValidator, fileAccessValidator, licenceValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator, payWithValidator, serviceIdValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -227,9 +228,9 @@ export const startsForAssistant = assistantQuery(startsAction);
  * again before it's signed. Answers the new report's key.
  */
 export const sign = workspaceMutation({
-  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator), /** Who may get its PDF, as its licence allows (`fileAccessOf`). */ fileAccess: v.optional(fileAccessValidator), /** Where its copy is archived: Openscholar's Zenodo account, or the signer's own, connected. */ archive: v.optional(v.union(v.literal("openscholar"), v.literal("own"))) },
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number(), /** The licence the report is published under. */ licence: licenceValidator, /** A promotion code applied to the licence's price, kept for the activation. */ voucher: v.optional(voucherValidator), /** What pays for it, as chosen with the licence. */ payWith: v.optional(payWithValidator), /** Who may get its PDF, as its licence allows (`fileAccessOf`). */ fileAccess: v.optional(fileAccessValidator), /** Where its copy is archived: Openscholar's Zenodo account, or the signer's own, connected. */ archive: v.optional(v.union(v.literal("openscholar"), v.literal("own"))), /** The services it gets of those the series lets authors pick (lib/reports/identifiers.ts). */ services: v.optional(v.array(serviceIdValidator)) },
   returns: v.string(),
-  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith, fileAccess: asked, archive }) => {
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith, fileAccess: asked, archive, services = [] }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
@@ -251,11 +252,16 @@ export const sign = workspaceMutation({
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
     const { crossref, zenodo } = settings.publication;
+    // The services the report gets: the series' own, and those the author picked, as its rule allows.
+    const identifiers = withAccounts(settings.identifiers ?? DEFAULT_IDENTIFIERS, settings.publication);
+    const picked = problemOfPick(identifiers, services);
+    const gets = withNeeded(identifiers, picked);
+    const route = { crossref: gets.includes("crossref"), zenodo: ownArchive || gets.includes("zenodo"), docid: gets.includes("docid") };
     // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, zenodo: ownArchive || zenodo.mode !== "off", ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, ...route, ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -283,7 +289,7 @@ export const sign = workspaceMutation({
       ...(voucher && { voucher, voucherOff }),
       ...(payWith && { payWith }),
       // A copy in their own Zenodo account is always made, under the report's Crossref DOI.
-      registration: { crossref: true, zenodo: ownArchive || zenodo.mode !== "off", policy: ownArchive ? "reuse-crossref" : zenodo.defaultIdentifierPolicy },
+      registration: { ...route, policy: ownArchive ? "reuse-crossref" : zenodo.defaultIdentifierPolicy },
       ...(ownArchive && { archiveOwnerId: userId }),
       step: "doi",
       status: "draft",
@@ -298,6 +304,16 @@ export const sign = workspaceMutation({
     return key;
   },
 });
+
+/** The optional services an author picked, refused with what to change when the series' rule doesn't allow them. */
+function problemOfPick(identifiers: Identifiers, services: ServiceId[]) {
+  const picked = [...new Set(services)].filter((id) => identifiers.services[id].mode === "optional");
+  const problem = pickProblem(identifiers, picked);
+  if (problem === "tooFew") throw createError("VALIDATION_ERROR", identifiers.choose.max === 1 ? "Pick one of the identifiers." : `Pick at least ${identifiers.choose.min} of the identifiers.`);
+  if (problem === "tooMany") throw createError("VALIDATION_ERROR", identifiers.choose.max === 1 ? "Pick only one of the identifiers." : `Pick at most ${identifiers.choose.max} of the identifiers.`);
+  if (problem === "nothingPrinted") throw createError("VALIDATION_ERROR", "Pick an identifier that can be printed on the report.");
+  return picked;
+}
 
 /** A file access as it may be kept: an embargo to a day that exists, after today; null for one that can't be. */
 function keptFileAccess(asked: FileAccess | undefined): FileAccess | null {
