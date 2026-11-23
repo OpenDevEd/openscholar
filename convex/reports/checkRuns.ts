@@ -7,7 +7,7 @@ import { createError } from "../lib/errors";
 import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
-import { RUN_STUCK_MS, changeStageOf, licenceOf, stageOf } from "../../lib/reports/report";
+import { RUN_STUCK_MS, changeStageOf, licenceOf, printedOf, stageOf } from "../../lib/reports/report";
 import { seriesOf } from "../../lib/reports/settings";
 import { becameReady, notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
@@ -85,6 +85,7 @@ export const start = internalMutation({
     return {
       reportId: report._id,
       doi: report.doi,
+      printed: printedOf(report)?.url ?? "",
       byline: report.byline,
       text: report.pdf?.text ?? null,
       version,

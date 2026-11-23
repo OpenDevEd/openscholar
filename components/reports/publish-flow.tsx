@@ -73,7 +73,7 @@ import { useCurrentWorkspace, useWorkspaces, type WorkspaceRow } from "@/compone
 import { inSentence, useMoney } from "@/lib/hooks/use-money";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { reportPaper } from "@/lib/reports/report-paper";
-import { CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, LICENCE_NAME_MAX, changesOf, fileAccessOf, licenceName, ownLicence, ownLicenceProblems, payment, pickedLicence, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
+import { printedOf, CHECK_SAID, CHECK_WHERE, sameStudySure, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, DEFAULT_LICENCE, LICENCE_NAME_MAX, changesOf, fileAccessOf, licenceName, ownLicence, ownLicenceProblems, payment, pickedLicence, priceOf, type FileAccess, stageOf, stepsOf, isAuthor, type PayWith, type Prices, type CheckResult, type Licence, type Metadata } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -1292,7 +1292,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       <h3 className={SECTION}>{t("payment.sign")}</h3>
       {/* In the page, not a box of its own: scrolling down to sign caught in it, and people looked for the signature inside. */}
       <div lang="en" dir="ltr" className="rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "https://doi.org/…", named), licence: named })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <div>
@@ -1385,12 +1385,18 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
   // Next, pressed with the line's choice not made, says so at the choice and goes there.
   const choice = useId();
   const { tried, go } = useStepForm();
-  const next = () => go([!by && bylineField(choice)], onNext);
+  // The identifier the report prints (plans/identifier-services): its DOI, or its DOCiD, which DOCiD may still be minting.
+  const printed = printedOf(report);
+  const shown = printed?.value ?? "";
+  const minting = useId();
+  const mintAgain = useMutation(api.reports.flow.mintAgain);
+  const workspaceId = useWorkspace();
+  const next = () => go([!printed && minting, !by && bylineField(choice)], onNext);
   const play = fresh && !reduce;
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
-  // The prefix and what follows it: a narrow screen breaks the DOI between them, never inside one.
-  const slash = report.doi.indexOf("/") + 1;
-  const parts = [report.doi.slice(0, slash), report.doi.slice(slash)];
+  // The prefix and what follows it: a narrow screen breaks the identifier between them, never inside one.
+  const slash = shown.indexOf("/") + 1;
+  const parts = [shown.slice(0, slash), shown.slice(slash)];
   const LETTERS_AT = 0.55;
   const LETTER = 0.03;
   return (
@@ -1419,14 +1425,32 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
         className="mt-5 flex items-center gap-1 text-2xl font-semibold tracking-tight"
         {...rise(0.3)}
       >
-        {t("doiReserved")}
+        {t(printed?.kind === "DOI" ? "doiReserved" : "docidReserved")}
         <FieldHelp field="doi" />
       </motion.h2>
       <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.4)}>
-        {t("doiReservedBody")}
+        {t(printed?.kind === "DOI" ? "doiReservedBody" : "docidReservedBody")}
       </motion.p>
       <motion.div className="relative mt-7 w-full max-w-xl overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.06] px-5 py-6" {...rise(0.45)}>
-        <p className="sr-only">{report.doi}</p>
+        {/* A DOCiD minted at signing arrives a moment later: until then, and if DOCiD refused, the box says so in its place. */}
+        {printed ? null : (
+          <div id={minting} tabIndex={-1} className="flex flex-col items-center gap-3 outline-none">
+            {report.mintRefused ? (
+              <>
+                <p className={cn("max-w-md text-sm text-pretty", tried ? "text-destructive" : "text-muted-foreground")}>{t("docidRefused", { said: report.mintRefused })}</p>
+                <Button size="sm" variant="outline" onClick={() => workspaceId && void mintAgain({ workspaceId, key: report.key })}>
+                  {t("docidAgain")}
+                </Button>
+              </>
+            ) : (
+              <p className={cn("flex items-center gap-2 text-sm", tried ? "text-destructive" : "text-muted-foreground")}>
+                <Spinner className="size-4" />
+                {t("docidMinting")}
+              </p>
+            )}
+          </div>
+        )}
+        <p className="sr-only">{shown}</p>
         <p aria-hidden dir="ltr" className="flex flex-wrap justify-center font-mono text-xl font-semibold tracking-tight sm:text-[1.625rem]">
           {parts.map((part, group) => (
             <span key={group} className="whitespace-nowrap">
@@ -1444,19 +1468,19 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
             className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/70 to-transparent dark:via-white/15"
             initial={{ x: "-130%" }}
             animate={{ x: "430%" }}
-            transition={{ delay: LETTERS_AT + report.doi.length * LETTER + 0.1, duration: 0.9, ease: "easeInOut" }}
+            transition={{ delay: LETTERS_AT + shown.length * LETTER + 0.1, duration: 0.9, ease: "easeInOut" }}
           />
         ) : null}
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <StatusChip tone="neutral" icon={Hash}>
-            {t(report.registration.crossref ? "reservedCrossref" : "reservedZenodo")}
+            {t(printed?.kind === "DOCiD" ? "reservedDocid" : report.registration.crossref ? "reservedCrossref" : "reservedZenodo")}
           </StatusChip>
         </div>
       </motion.div>
     </div>
       {/* What the DOI is for, said where the author first meets it: the line their PDF needs, before they make it. Laid
           out as the upload's page is, which comes next. */}
-      <motion.div className="mt-8 flex flex-1 flex-col border-t border-border-subtle pt-6" {...rise(LETTERS_AT + report.doi.length * LETTER)}>
+      <motion.div className="mt-8 flex flex-1 flex-col border-t border-border-subtle pt-6" {...rise(LETTERS_AT + shown.length * LETTER)}>
         <StepHead title={t("bylineFirst")} help="byline">{t("bylineFirstBody")}</StepHead>
         <BylineChoice id={choice} byline={report.byline} by={by} error={tried && !by ? t("bylineBy.choose") : null} onPick={(picked) => void setBy(picked)} />
         <StepNav next={<NextButton onClick={next}>{t("nextUpload")}</NextButton>} />
@@ -2665,7 +2689,8 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
-  const url = `https://doi.org/${report.doi}`;
+  const printed = printedOf(report);
+  const url = printed?.url ?? `https://doi.org/${report.doi}`;
   const passed = report.results?.filter((r) => r.pass).length ?? 0;
   const registering = stepsOf(report).some((step) => step.state === "working" || step.state === "waiting");
   // Shown while the page is open, its place stays once the registrations are done and the words fade: closing it moved
@@ -2688,10 +2713,10 @@ function LiveReport({ report, series, fresh }: { report: Report; /** The series 
         <div className="flex min-w-0 items-center gap-3">
           <Hash className="size-4 shrink-0 text-primary" />
           <a href={url} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
-            doi.org/{report.doi}
+            {printed?.short ?? `doi.org/${report.doi}`}
           </a>
-          <TooltipHint label={t("copyDoi")}>
-            <Button variant="ghost" size="icon-sm" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void copyText(url, { copied: t("doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
+          <TooltipHint label={t(printed?.kind === "DOCiD" ? "copyDocid" : "copyDoi")}>
+            <Button variant="ghost" size="icon-sm" aria-label={t(printed?.kind === "DOCiD" ? "copyDocid" : "copyDoi")} className="text-muted-foreground" onClick={() => void copyText(url, { copied: t(printed?.kind === "DOCiD" ? "docidCopied" : "doiCopied"), failed: tToast("couldntCopy"), select: tToast("copyFailedDescription") })}>
               <Copy />
             </Button>
           </TooltipHint>
@@ -2887,8 +2912,8 @@ function ReportCover({ basics, report, slot }: { basics: Basics; report: Report 
         pdf={!!report?.pdf?.url}
       />
       <div className="min-w-0 flex-1 max-sm:@max-[18rem]:w-full max-sm:@max-[22rem]:[&_dl>div]:flex-wrap max-sm:@max-[22rem]:[&_dt]:whitespace-normal max-sm:@max-[22rem]:[&_dt_.truncate]:whitespace-normal @3xl:mt-4">
-        <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
-          <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
+        <TooltipHint label={report ? (printedOf(report)?.short ?? "") : ""} onlyWhenClipped>
+          <p dir="ltr" className={cn("truncate font-mono text-xs", report && printedOf(report) ? "text-foreground" : "text-muted-foreground")}>{(report && printedOf(report)?.short) || t("noDoi")}</p>
         </TooltipHint>
         <p className="mt-0.5 flex items-center gap-0.5 text-xs text-muted-foreground">
           {basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}

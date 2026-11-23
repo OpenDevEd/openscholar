@@ -1,7 +1,7 @@
 // A report from its agreement to ready to activate (plans/publish-reports): what the Publish page reads and the
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
-import { DEFAULT_IDENTIFIERS, pickProblem, withAccounts, withNeeded, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
+import { DEFAULT_IDENTIFIERS, citedOf, pickProblem, withAccounts, withNeeded, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
 import { v, type Infer } from "convex/values";
 import { fundsOf, readAccount } from "../billing/accounts";
 import { balancePartsValidator } from "../billing/validators";
@@ -16,7 +16,7 @@ import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { PLACES } from "../../lib/constants";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES } from "../../lib/openalex/vocabulary";
-import { bylineOf, canRegister } from "../../lib/reports/settings";
+import { bylineOf, canRegister, crossrefDoiOf } from "../../lib/reports/settings";
 import { choosesLicence } from "../../lib/reports/agreement";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, fileOut, isCalendarDay, keptAccess, keptFileAddress, opensFurther, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
@@ -233,7 +233,7 @@ export const sign = workspaceMutation({
   handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version, licence: chosen, voucher: applied, payWith, fileAccess: asked, archive, services = [] }) => {
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
-    if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
+    if (!settings.enabled || !canRegister(settings.publication, settings.identifiers)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
     if (version !== settings.agreement.version) throw createError("CONFLICT", "The agreement changed while you were reading it. Read the new one, then sign.");
     const signer = name.trim();
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
@@ -256,12 +256,19 @@ export const sign = workspaceMutation({
     const identifiers = withAccounts(settings.identifiers ?? DEFAULT_IDENTIFIERS, settings.publication);
     const picked = problemOfPick(identifiers, services);
     const gets = withNeeded(identifiers, picked);
-    const route = { crossref: gets.includes("crossref"), zenodo: ownArchive || gets.includes("zenodo"), docid: gets.includes("docid") };
+    // The identifier its byline prints: its Crossref DOI, or its DOCiD, which is then minted now (below).
+    const cited = citedOf(identifiers, picked) === "docid" ? ("docid" as const) : ("crossref" as const);
+    const route = { crossref: gets.includes("crossref"), zenodo: ownArchive || gets.includes("zenodo"), docid: gets.includes("docid"), cited };
+    const mintNow = route.docid && identifiers.docidAtSigning;
+    // The line its PDF carries: with its DOI, or with its DOCiD once DOCiD has given it (registration.ts `mintedAtSigning`).
+    const bylineFor = (doi: string) => bylineOf(settings.series, cited === "crossref" ? `https://doi.org/${doi}` : "…", licence);
     // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi, licence), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, ...route, ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
+      const doi = route.crossref ? untouched.doi || crossrefDoiOf(settings.publication, untouched.key)! : "";
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, doi, byline: bylineFor(doi), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, ...route, ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
+      if (mintNow) await ctx.scheduler.runAfter(0, internal.reports.registrar.mintAtSigning, { reportId: untouched._id });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -274,7 +281,8 @@ export const sign = workspaceMutation({
     else await ctx.db.insert("reportKeys", { next: next + 1 });
     const key = keyOf(next);
     const now = Date.now();
-    const doi = `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`;
+    // Signing reserves its Crossref DOI when it gets one; a report that only gets a DOCiD has none.
+    const doi = route.crossref ? `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}` : "";
     const reportId = await ctx.db.insert("reports", {
       key,
       workspaceId,
@@ -282,7 +290,7 @@ export const sign = workspaceMutation({
       // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
       // the report registers is fixed with it, and so is the line its PDF carries.
       doi,
-      byline: bylineOf(settings.series, doi, licence),
+      byline: bylineFor(doi),
       seriesName: settings.series.name,
       licence,
       ...keptAccess(fileAccess),
@@ -301,6 +309,7 @@ export const sign = workspaceMutation({
       updatedAt: now,
     });
     await ctx.db.insert("reportDetails", { reportId });
+    if (mintNow) await ctx.scheduler.runAfter(0, internal.reports.registrar.mintAtSigning, { reportId });
     return key;
   },
 });
@@ -314,6 +323,20 @@ function problemOfPick(identifiers: Identifiers, services: ServiceId[]) {
   if (problem === "nothingPrinted") throw createError("VALIDATION_ERROR", "Pick an identifier that can be printed on the report.");
   return picked;
 }
+
+/** Asks DOCiD again for the DOCiD a report's byline prints, after it refused at signing. */
+export const mintAgain = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (!report.registration.docid || report.registrations?.docid?.handle) return null;
+    await ctx.db.patch("reports", report._id, { registrationError: undefined });
+    await ctx.scheduler.runAfter(0, internal.reports.registrar.mintAtSigning, { reportId: report._id });
+    return null;
+  },
+});
 
 /** A file access as it may be kept: an embargo to a day that exists, after today; null for one that can't be. */
 function keptFileAccess(asked: FileAccess | undefined): FileAccess | null {
@@ -780,6 +803,8 @@ export const waitingElsewhere = userQuery(waitingElsewhereAction, { signedOut: {
 export const waitingElsewhereForAssistant = assistantQuery(waitingElsewhereAction);
 
 const reportValidator = v.object({
+  /** Why DOCiD couldn't mint the DOCiD its byline prints, while it has none (plans/identifier-services). */
+  mintRefused: v.optional(v.string()),
   ...rowValidator.fields,
   doi: v.string(),
   /** The line its PDF must carry, with its DOI and the series' ISSN as they are now. */
@@ -870,6 +895,7 @@ export const getAction = defineUserQuery({
         ...(details.trying && mayChange(actor, report) && { trying: details.trying }),
         ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
         ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
+        ...(report.registration.docid && !report.registrations?.docid?.handle && report.activatedAt === undefined && report.registrationError && { mintRefused: report.registrationError }),
       },
     };
   },

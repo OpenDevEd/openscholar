@@ -43,8 +43,8 @@ const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? co
 type Result = CheckResult & { model: string };
 
 /** One check's answer. A question goes to its model; Already published searches, then has its model compare. */
-async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string }, text: string, metadata: Metadata, communities: Community[], ours: Candidate[] | null): Promise<Result> {
-  const fill = (words: string) => words.replaceAll("{byline}", report.byline).replaceAll("{doi}", `https://doi.org/${report.doi}`).replaceAll("{licence}", licenceName(metadata.licence));
+async function runCheck(check: Check, on: CheckModel & { name: string }, report: { byline: string; doi: string; printed: string }, text: string, metadata: Metadata, communities: Community[], ours: Candidate[] | null): Promise<Result> {
+  const fill = (words: string) => words.replaceAll("{byline}", report.byline).replaceAll("{doi}", report.printed).replaceAll("{licence}", licenceName(metadata.licence));
   const base = { checkId: check.id, name: check.name, model: on.name, blocking: check.blocking };
   // What to do about it, for the author, when it fails.
   const failed = check.fix?.trim() ? { fix: fill(check.fix) } : {};

@@ -149,7 +149,7 @@ export const open = query({
   returns: v.boolean(),
   handler: async (ctx) => {
     const settings = await reportSettings(ctx);
-    return settings.enabled && canRegister(settings.publication);
+    return settings.enabled && canRegister(settings.publication, settings.identifiers);
   },
 });
 
@@ -174,7 +174,7 @@ export const forAuthors = query({
   handler: async (ctx) => {
     const settings = await reportSettings(ctx);
     return {
-      open: settings.enabled && canRegister(settings.publication),
+      open: settings.enabled && canRegister(settings.publication, settings.identifiers),
       humanReview: settings.humanReview,
       series: settings.series,
       prices: settings.prices,

@@ -83,7 +83,7 @@ export const keyByDoi = query({
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, { doi }) => {
     // A DOI is stored as it was reserved, in lower case.
-    const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+    const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).first();
     return report && (report.status === "live" || report.withdrawnAt !== undefined) ? report.key : null;
   },
 });
@@ -191,7 +191,8 @@ export const forCommunity = internalQuery({
       // A report's details can be large, and a query reads at most 16 MiB: the caller asks a few at a time.
       dois.slice(0, REPORTS_PER_READ).map(async (doi) => {
         // A DOI is stored as it was reserved, in lower case.
-        const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+        // A report with only a DOCiD has no DOI, and is never found by one.
+        const report = doi.trim() ? await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).first() : null;
         if (!report) return null;
         if (report.status !== "live") return report.withdrawnAt === undefined ? null : { state: "withdrawn" as const, key: report.key, doi: report.doi, ...docidOf(report), version: version(report.updatedAt) };
         const { metadata } = await detailsOf(ctx, report._id);

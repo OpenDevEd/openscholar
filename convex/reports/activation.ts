@@ -74,8 +74,11 @@ const PAUSED = "Publishing is paused for now, so nothing can go live. Your repor
  * Whether the report can't go live for now: its DOI needs the registrar it was reserved with (Crossref's, or Zenodo's
  * when Crossref had none), and the archive needs one switched on at all. Asked before anything is charged.
  */
-const paused = (report: Doc<"reports">, publication: PublicationSettings) =>
-  !canRegister(publication) || (report.registration.crossref ? publication.crossref.mode === "off" : publication.zenodo.mode === "off");
+const paused = (report: Doc<"reports">, publication: PublicationSettings) => {
+  // Each service the report registers with needs its account: a DOCiD with none connected would never be made.
+  const connected = { crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: publication.docid?.mode === "custom" };
+  return chosenOf(report.registration).some((id) => !connected[id]);
+};
 
 /** A report the actor may activate now: theirs to change, in a workspace they are an admin of, and ready to go live. */
 async function activatable(ctx: QueryCtx, actor: Actor, key: string) {

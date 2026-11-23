@@ -140,7 +140,7 @@ export const stepValidator = literals(STEPS);
 export const statusValidator = literals(STATUSES);
 export const changeStageValidator = literals(CHANGE_STAGES);
 export const stageValidator = literals(STAGES);
-export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")), /** It gets a DOCiD (plans/identifier-services). */ docid: v.optional(v.boolean()) });
+export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")), /** It gets a DOCiD (plans/identifier-services). */ docid: v.optional(v.boolean()), /** The identifier its byline prints; none kept is its Crossref DOI. */ cited: v.optional(v.union(v.literal("crossref"), v.literal("docid"))) });
 /**
  * Where a report's DOCiD stands: the Handle once minted and DOCiD's record of it once deposited, each kept the moment
  * DOCiD gives it, so a later try never mints or deposits twice; `retired` while its record shows a retired page.

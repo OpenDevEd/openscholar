@@ -70,7 +70,8 @@ const abstractOf = (inverted: Record<string, number[]> | null | undefined) =>
 type Missed = string[];
 
 /** Whether a record found is the report itself: one corrected after going live is in the indexes it is searched for in. */
-const isReport = (doi: string | null | undefined, ownDoi: string) => normalDoi(doi) === normalDoi(ownDoi);
+// A report with only a DOCiD has no DOI to be recognised by: no work found is taken for it.
+const isReport = (doi: string | null | undefined, ownDoi: string) => !!ownDoi && normalDoi(doi) === normalDoi(ownDoi);
 
 async function onOpenAlex(m: Report, ownDoi: string, missed: Missed): Promise<Found | null> {
   const sentence = m.abstract.split(/(?<=[.!?])\s+/).find((s) => s.length > 80 && s.length < 260);

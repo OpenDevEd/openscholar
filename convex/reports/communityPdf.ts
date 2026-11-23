@@ -15,7 +15,7 @@ import { fileAccessOf, licenceName, licenceOf, licenceUrl } from "../../lib/repo
 async function asked(ctx: QueryCtx, doi: string) {
   const user = await getCurrentUser(ctx);
   // A DOI is stored as it was reserved, in lower case.
-  const report = user && (await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique());
+  const report = user && (await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).first());
   if (!user || !report || report.status !== "live" || fileAccessOf(licenceOf(report), report.fileAccess).mode !== "readers") return null;
   const actor = await actorIn(ctx, user, report.workspaceId);
   return actor && mayChange(actor, report) ? report : null;

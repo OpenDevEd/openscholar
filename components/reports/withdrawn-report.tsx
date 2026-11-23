@@ -52,6 +52,7 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
                 <BookOpen aria-hidden className="mt-0.5 size-4 shrink-0" />
                 <span className="italic text-foreground">{report.series}</span>
               </p>
+              {report.doi ? (
               <div className="mt-2 flex min-w-0 items-center gap-2 text-sm">
                 <Hash aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                 <span dir="ltr" className="min-w-0 truncate font-mono">{report.doi}</span>
@@ -61,6 +62,7 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
                   </Button>
                 </TooltipHint>
               </div>
+              ) : null}
               {/* Its DOCiD stays too, as its DOI does: DOCiD shows a retired page there. */}
               {report.docid ? <DocidLine handle={report.docid} retired className="mt-2" /> : null}
               <p className="mt-6 max-w-xl text-sm/6 text-muted-foreground">

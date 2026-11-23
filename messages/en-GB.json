@@ -6511,7 +6511,7 @@
       "bylineNeedsLicence": "The byline needs {licence} in it, which becomes each report's licence.",
       "notIssn": "That isn't an ISSN. One looks like 2049-3630, and its last digit is a check on the rest.",
       "byline": "Byline",
-      "bylineHint": "{series}, {issn}, {doi} and {licence} are filled in for each report",
+      "bylineHint": "{series}, {issn}, {doi} and {licence} are filled in for each report. {doi} is the identifier it prints: its DOI, or its DOCiD",
       "bylineSaved": "Byline saved",
       "registration": "DOI registration",
       "zenodoSandbox": "Zenodo sandbox",
@@ -7065,7 +7065,15 @@
         "pickAtLeast": "Pick at least {count}.",
         "pickAtMost": "Pick at most {count}.",
         "pickPrintable": "Pick one that can be printed on the report."
-      }
+      },
+      "docidReserved": "Your DOCiD is reserved",
+      "docidReservedBody": "It's your report's from now on, and goes live with it. Put it on your PDF as the line below shows.",
+      "docidMinting": "DOCiD is minting your report's DOCiD",
+      "docidRefused": "DOCiD couldn't mint your report's DOCiD. It said: {said}",
+      "docidAgain": "Ask DOCiD again",
+      "reservedDocid": "Minted by DOCiD",
+      "copyDocid": "Copy the DOCiD",
+      "docidCopied": "DOCiD copied"
     },
     "meta": {
       "publish": "Publish | Openscholar",

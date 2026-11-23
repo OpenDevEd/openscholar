@@ -280,3 +280,35 @@ export const register = internalAction({
     return null;
   },
 });
+
+/**
+ * Mints a report's DOCiD when it is signed, where the series prints DOCiDs in bylines (plans/identifier-services):
+ * its PDF has to carry it. Its title isn't known yet, so DOCiD holds the series' name and the report's key until the
+ * deposit at activation. DOCiD answers a repeated key with the Handle it already minted, so asking again is safe.
+ */
+export const mintAtSigning = internalAction({
+  args: { reportId: v.id("reports") },
+  returns: v.null(),
+  handler: async (ctx, { reportId }) => {
+    const job = await ctx.runQuery(internal.reports.registration.toMint, { reportId });
+    if (!job) return null;
+    let password: string | undefined;
+    try {
+      const key = process.env.ENCRYPTION_KEY;
+      const secrets: PublicationSecrets = job.encryptedCredentials && key ? JSON.parse(decrypt(job.encryptedCredentials, key)) : {};
+      password = secrets.docidPassword;
+      const docid = job.publication.docid;
+      if (docid?.mode !== "custom" || !password) throw new Error("DOCiD isn't connected in the publishing settings.");
+      const client = docidClient();
+      const { token } = await client.signIn({ email: docid.email, password });
+      const handle = await client.mint({ token, title: `Openscholar Reports ${job.key}`, description: `A report in Openscholar Reports, ${job.key}.`, idempotencyKey: `openscholar-report-${job.key.toLowerCase()}` });
+      console.info(JSON.stringify({ event: "report-docid-mint-at-signing", reportId, key: job.key, handle }));
+      await ctx.runMutation(internal.reports.registration.mintedAtSigning, { reportId, handle });
+    } catch (error) {
+      const said = (error instanceof ProviderHttpError ? `DOCiD answered ${error.status}: ${error.body.slice(0, 300)}` : String(error)).replaceAll(password || "\u0000", "[hidden]");
+      console.error(JSON.stringify({ event: "report-docid-mint-at-signing-failed", reportId, key: job.key, error: said }));
+      await ctx.runMutation(internal.reports.registration.mintRefused, { reportId, error: said });
+    }
+    return null;
+  },
+});

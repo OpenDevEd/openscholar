@@ -133,7 +133,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
   };
 
   const { zenodo, crossref } = settings.publication;
-  const registers = canRegister(settings.publication);
+  const registers = canRegister(settings.publication, settings.identifiers);
   const sampleDoi = crossrefDoiOf(settings.publication, "R100015");
   const reader = cardOf(settings.metadataModel, settings.metadataEffort);
   const editing: CheckRow | "new" | null = nav.check === "new" ? "new" : (settings.checks.find((check) => check.id === nav.check) ?? null);
@@ -177,7 +177,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
             <SavedInput value={settings.series.byline} onSave={(byline) => series({ byline }, t("bylineSaved"))} className="w-full" ariaLabel={t("byline")} />
             <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-muted-foreground">
               <FileText className="mt-px size-3.5 shrink-0" />
-              <span className="min-w-0 break-words">{bylineOf(settings.series, sampleDoi ?? "…", DEFAULT_LICENCE)}</span>
+              <span className="min-w-0 break-words">{bylineOf(settings.series, `https://doi.org/${sampleDoi ?? "…"}`, DEFAULT_LICENCE)}</span>
             </p>
           </Row>
         </ul>
@@ -521,7 +521,7 @@ function AgreementDialog({ open, agreement, series, onClose }: { open: boolean; 
           {preview ? (
             <div className="h-full overflow-y-auto rounded-xl border border-border-subtle px-5 py-4">
               {/* Filled the way the sign step fills it, with the admin as the signer. */}
-              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "…", DEFAULT_LICENCE), licence: DEFAULT_LICENCE })} />
+              <MarkdownContent content={fillAgreement(text, { name: user?.fullName ?? "", date: today, byline: bylineOf(series, "https://doi.org/…", DEFAULT_LICENCE), licence: DEFAULT_LICENCE })} />
             </div>
           ) : (
             <Textarea value={text} maxLength={AGREEMENT_MAX} aria-label={t("agreementLabel")} onChange={(e) => setText(e.target.value)} className="h-full resize-none font-mono text-xs/5" />

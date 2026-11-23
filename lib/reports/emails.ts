@@ -9,6 +9,8 @@ import type { CheckResult } from "./report";
 export type MailFacts = {
   key: string;
   doi: string;
+  /** The identifier its byline prints, when it isn't its DOI: its DOCiD's address. */
+  printed?: string;
   title: string;
   /** It has gone live, so its DOI leads somewhere. */
   activated: boolean;
@@ -198,7 +200,7 @@ export function reportEmail(event: MailEvent, report: MailFacts, origin: string)
     subject: to === "team" ? `${label}: ${report.title} (${report.key})` : `${heading}: ${report.title}`,
     ...labelledEmail(heading, [
       // A DOI leads somewhere only once its report has gone live: until then it's given as text, not as a link.
-      ["Report", `${report.title}\n${report.key}, ${report.activated ? `https://doi.org/${report.doi}` : `DOI ${report.doi}, reserved`}`],
+      ["Report", `${report.title}\n${report.key}, ${report.printed ? report.printed : report.activated ? `https://doi.org/${report.doi}` : `DOI ${report.doi}, reserved`}`],
       ...(to === "team" ? ([["Author", `${report.signer}${author ? ` <${author}>` : ""}`]] as Row[]) : []),
       ...rows(report, site),
     ]),

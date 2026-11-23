@@ -4,7 +4,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
-import { internalMutation, mutation, type MutationCtx } from "../lib/functions";
+import { internalMutation, internalQuery, mutation, type MutationCtx } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -13,7 +13,7 @@ import { providersOf } from "../../lib/reports/report";
 import { detailsOf, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
-import { seriesOf } from "../../lib/reports/settings";
+import { bylineOf, seriesOf } from "../../lib/reports/settings";
 import { docidRegistrationValidator, fileAccessValidator, metadataValidator, registrationValidator } from "./validators";
 
 const providerValidator = v.union(v.literal("crossref"), v.literal("zenodo"), v.literal("docid"));
@@ -214,3 +214,47 @@ export async function registerAgain(ctx: MutationCtx, report: Doc<"reports">) {
   });
   await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id, rev });
 }
+
+/**
+ * What minting at signing needs (plans/identifier-services): the report's key, its DOCiD so far and the DOCiD
+ * account. Null for a report that no longer gets one, or already has its Handle.
+ */
+export const toMint = internalQuery({
+  args: { reportId: v.id("reports") },
+  returns: v.union(v.null(), v.object({ key: v.string(), publication: publicationSettingsValidator, encryptedCredentials: v.union(v.string(), v.null()) })),
+  handler: async (ctx, { reportId }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (!report?.registration.docid || report.registrations?.docid?.handle) return null;
+    const settings = await reportSettings(ctx);
+    return { key: report.key, publication: settings.publication, encryptedCredentials: settings.row?.encryptedCredentials ?? null };
+  },
+});
+
+/** Keeps the Handle DOCiD minted at signing and, when the report cites it, puts it in the line its PDF carries. */
+export const mintedAtSigning = internalMutation({
+  args: { reportId: v.id("reports"), handle: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { reportId, handle }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (!report || report.registrations?.docid?.handle) return null;
+    const settings = await reportSettings(ctx);
+    const cites = report.registration.cited === "docid" || !report.doi;
+    await touch(ctx, report, {
+      registrations: { ...report.registrations, docid: { state: report.registrations?.docid?.state ?? "none", handle } },
+      registrationError: undefined,
+      ...(cites && report.licence && { byline: bylineOf({ ...settings.series, ...seriesOf(report, settings.series) }, `https://hdl.handle.net/${handle}`, report.licence) }),
+    });
+    return null;
+  },
+});
+
+/** DOCiD refused minting at signing: the author is told why on the report, and can ask again. */
+export const mintRefused = internalMutation({
+  args: { reportId: v.id("reports"), error: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { reportId, error }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (report && !report.registrations?.docid?.handle) await ctx.db.patch("reports", reportId, { registrationError: error.slice(0, ERROR_MAX) });
+    return null;
+  },
+});

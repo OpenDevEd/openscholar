@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../lib/functions";
-import { changesOf } from "../../lib/reports/report";
+import { changesOf, printedOf } from "../../lib/reports/report";
 import { MAIL_EVENTS, type MailEvent } from "../../lib/reports/emails";
 import { detailsOf } from "./flow";
 import { checkResultsValidator, mailAudienceValidator } from "./validators";
@@ -29,6 +29,7 @@ const factsValidator = v.object({
   deposit: v.string(),
   archive: v.string(),
   docid: v.optional(v.string()),
+  printed: v.optional(v.string()),
   edited: v.optional(v.string()),
   prefix: v.string(),
   admins: v.optional(v.object({ emails: v.array(v.string()), organization: v.string() })),
@@ -52,6 +53,7 @@ export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: M
     report: {
       key: report.key,
       doi: report.doi,
+      ...(printedOf(report)?.kind === "DOCiD" && { printed: printedOf(report)!.url }),
       title: details.metadata?.title || report.pdf?.name || report.key,
       activated: report.activatedAt !== undefined,
       live: report.status === "live",
