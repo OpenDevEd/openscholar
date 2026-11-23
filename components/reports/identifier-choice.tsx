@@ -34,8 +34,9 @@ export function IdentifierChoice({ ids, picked, onChange, id: fieldId, invalid =
   const all = withNeeded(ids, picked);
   const cited = citedOf(ids, picked);
   const problem = pickProblem(ids, picked);
-  // Zenodo keeping the copy of a Crossref DOI is the archive, chosen above: here only while it gives the DOI itself.
-  const shown = SERVICE_IDS.filter((service) => ids.services[service].mode !== "off" && !(service === "zenodo" && all.includes("crossref")));
+  // Every service in use stays on screen whatever else is ticked: Zenodo keeps the copy of a Crossref DOI, or gives
+  // the report its own DOI without one, and its card says which.
+  const shown = SERVICE_IDS.filter((service) => ids.services[service].mode !== "off");
   const one = ids.choose.max === 1;
   const isLocked = (service: ServiceId) => ids.services[service].mode === "required" || (service === "zenodo" && all.includes("crossref"));
   const firstPick = shown.find((service) => !isLocked(service));
