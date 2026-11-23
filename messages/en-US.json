@@ -6485,7 +6485,8 @@
         "funders": "Funders"
       },
       "emailedAdmins": "Emailed to the organization's admins",
-      "docidStays": "Its DOCiD can't be deleted. It will show a retired page instead of the report."
+      "docidStays": "Its DOCiD can't be deleted. It will show a retired page instead of the report.",
+      "docidStaysReserved": "Its DOCiD, minted when it was signed, can't be deleted. It stays reserved with DOCiD."
     },
     "common": {
       "failed": "Something went wrong"

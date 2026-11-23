@@ -31,6 +31,8 @@ export const start = internalMutation({
   returns: v.union(v.object({ unchanged: v.literal(true), /** Changes are waiting, which these details don't give up. */ waiting: v.boolean() }), v.object({
     reportId: v.id("reports"),
     doi: v.string(),
+    /** The address of the identifier its byline prints, which a check's `{doi}` stands for. */
+    printed: v.string(),
     byline: v.string(),
     text: v.union(v.id("_storage"), v.null()),
     version: v.number(),

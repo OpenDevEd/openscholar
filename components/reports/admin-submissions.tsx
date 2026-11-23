@@ -606,7 +606,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                 {s?.docid && asking !== "decline-changes" ? (
                   <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-pretty text-muted-foreground">
                     <img src="/brands/docid.png" alt="DOCiD" className="mt-px h-3.5 w-auto shrink-0" />
-                    {t("docidStays")}
+                    {t(asking === "withdraw" ? "docidStays" : "docidStaysReserved")}
                   </p>
                 ) : null}
                 <Field label={t("noteLabel")} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
