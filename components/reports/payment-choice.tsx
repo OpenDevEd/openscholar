@@ -69,17 +69,22 @@ export function PayWithSwitch({ funds: balance, payWith, onPayWith, className }:
  * What a report's price comes to, as a bill reads: the price, what the balance and a code take off it, and what is
  * left to pay. `boxed` draws it as a slip of its own; without, it is lines under whatever it sits beside.
  */
-export function Bill({ licence, price, funds, owner, payWith, code, note, onSaveCard, now = false, boxed = false, className }: { /** Opens Stripe's page for the workspace's cards, where one is saved: offered where Stripe credit sits unused for want of one. */ onSaveCard?: () => void; /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; funds: Funds; /** The organisation whose Stripe account the credit is on; null for the person's own. */ owner: string | null; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
+export function Bill({ licence, price, extras = [], funds, owner, payWith, code, note, onSaveCard, now = false, boxed = false, className }: { /** MOCK (mock/identifier-services): what each identifier service adds, on its own line. */ extras?: Array<{ label: string; price: number }>; /** Opens Stripe's page for the workspace's cards, where one is saved: offered where Stripe credit sits unused for want of one. */ onSaveCard?: () => void; /** Where the report is activated: what is due is due now. */ now?: boolean; /** The licence the price is for, by name. */ licence: string; /** In dollars. */ price: number; funds: Funds; /** The organisation whose Stripe account the credit is on; null for the person's own. */ owner: string | null; payWith: PayWith; /** The code applied, with the share of what is bought it takes off. */ code: { code: string; off: number } | null; /** Said under the total. */ note?: string; boxed?: boolean; className?: string }) {
   const t = useTranslations("publishReports.flow.payment");
   const money = useMoney();
   const format = useFormatter();
+  const licencePrice = price;
+  price = price + extras.reduce((all, extra) => all + extra.price, 0);
   const sum = payment({ price, balance: funds.balance, payWith: funds.balance === 0 ? "card" : payWith, off: code?.off ?? 0, credit: funds.credit, cardSaved: funds.cardSaved });
   const held = <bdi dir="ltr" className="tabular-nums">{money(funds.credit)}</bdi>;
   return (
     <div className={cn("min-w-0 text-sm", boxed && "rounded-xl border border-border-subtle bg-background px-3.5 py-3", className)}>
       <AutoHeight>
         <dl className="space-y-2">
-          <Line label={licence} amount={money(price)} />
+          <Line label={licence} amount={money(licencePrice)} />
+          {extras.map((extra) => (
+            <Line key={extra.label} label={extra.label} amount={`+${money(extra.price)}`} />
+          ))}
           {sum.fromBalance > 0 ? <Line label={t("balance")} amount={`−${money(sum.fromBalance)}`} off /> : null}
           {/* A code lowers only what a card buys, never what the balance pays: said under it, as people expected it off the price. */}
           {code && sum.discount > 0 ? <Line label={t("code", { code: code.code })} hint={t("codeOff", { off: format.number(code.off, { style: "percent", maximumFractionDigits: 1 }), amount: money(sum.bought) })} amount={`−${money(sum.discount)}`} off /> : null}

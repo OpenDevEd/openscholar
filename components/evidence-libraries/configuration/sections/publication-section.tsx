@@ -33,6 +33,9 @@ import { Field, FieldError, SectionCard } from "../section-card";
 import { OptionSelect, type PickerOption } from "@/components/shared/option-picker";
 import { COMMON_ZENODO_LICENCES, ZENODO_LICENCES, isZenodoLicence, licenceShortName, zenodoLicenceTitle } from "@/lib/zenodo-licences";
 import { FieldGroup, PanelRow } from "../fields";
+import { DocidAccount } from "./docid-account";
+import { IdentifierSettings } from "@/components/reports/identifier-settings";
+import { useMockDocid } from "@/lib/reports/identifiers-mock-store";
 
 /**
  * Zenodo's licences as picker rows, the common ones first. A Creative Commons licence goes by its short name with its
@@ -134,13 +137,17 @@ export function PublicationSection({
       description={t("description")}
     >
       {data ? (
-        <PublicationForm
-          fileAccess
-          key={`${libraryId}:${data.updatedAt}`}
-          saved={data}
-          disabled={operationRunning}
-          onSave={(input) => save({ libraryId, ...input })}
-        />
+        <div className="space-y-8">
+          <PublicationForm
+            fileAccess
+            key={`${libraryId}:${data.updatedAt}`}
+            saved={data}
+            disabled={operationRunning}
+            onSave={(input) => save({ libraryId, ...input })}
+          />
+          {/* MOCK (mock/identifier-services): how each service is used for the community's records; no prices. */}
+          <CommunityIdentifiers zenodo={data.settings.zenodo.mode !== "off"} crossref={data.settings.crossref.mode !== "off"} />
+        </div>
       ) : (
         <div className="flex h-5 items-center">
           <Spinner className="size-4" aria-label={t("loading")} />
@@ -148,6 +155,11 @@ export function PublicationSection({
       )}
     </SectionCard>
   );
+}
+
+function CommunityIdentifiers({ zenodo, crossref }: { zenodo: boolean; crossref: boolean }) {
+  const docid = useMockDocid();
+  return <IdentifierSettings community connected={{ zenodo, crossref, docid: docid.on }} />;
 }
 
 /**
@@ -572,6 +584,8 @@ export function PublicationForm({
             </>
           )}
         </FieldGroup>
+        {/* MOCK (mock/identifier-services): DOCiD beside Zenodo and Crossref. */}
+        <DocidAccount />
       </fieldset>
       {error && <FieldError>{error}</FieldError>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">

@@ -18,6 +18,8 @@ import { ModelPicker } from "@/components/models/model-picker";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
+import { IdentifierSettings } from "@/components/reports/identifier-settings";
+import { useMockDocid } from "@/lib/reports/identifiers-mock-store";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -132,6 +134,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
   };
 
   const { zenodo, crossref } = settings.publication;
+  const docid = useMockDocid();
   const registers = canRegister(settings.publication);
   const sampleDoi = crossrefDoiOf(settings.publication, "R100015");
   const reader = cardOf(settings.metadataModel, settings.metadataEffort);
@@ -212,6 +215,9 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
           </p>
         </div>
       </Zone>
+
+      {/* MOCK (mock/identifier-services): which services each report gets, and what each adds to its price. */}
+      <IdentifierSettings connected={{ zenodo: zenodo.mode !== "off", crossref: crossref.mode !== "off", docid: docid.on }} />
 
       <Zone label={t("metadata")}>
         <div className="space-y-2">
