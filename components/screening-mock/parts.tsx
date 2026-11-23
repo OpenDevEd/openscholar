@@ -22,7 +22,8 @@ export const RESULT_STYLE: Record<Result, { bar: string; chip: string; icon: App
 };
 
 /** A person's photo, an envelope for someone invited who has no account yet, or a model's mark in its maker's colour. */
-export function ReviewerMark({ reviewer, className }: { reviewer: Pick<Reviewer, "kind" | "name" | "imageUrl" | "email" | "model">; className?: string }) {
+export function ReviewerMark({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name" | "imageUrl" | "email" | "model">; /** Rings your own face, where faces stand without names. */ you?: boolean; className?: string }) {
+  if (you) return <span className="flex shrink-0 rounded-full ring-2 ring-primary/70 ring-offset-1 ring-offset-card"><ReviewerMark reviewer={reviewer} className={className} /></span>;
   if (reviewer.email) {
     return (
       <span aria-hidden className={cn("flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground", className)}>
@@ -168,7 +169,7 @@ export function RuleExamples({ rule, people, models }: { rule: Rule; people: num
     [...fill("include", "include").slice(0, -1), null],
   ];
   return (
-    <div className="grid gap-x-5 gap-y-2 sm:grid-cols-3">
+    <div className="flex flex-wrap gap-x-6 gap-y-2">
       {examples.map((decisions, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="flex gap-0.5">

@@ -11,7 +11,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { PEOPLE } from "./data";
-import { KEPT, credits, useMock } from "./store";
+import { KEPT, credits, seeded, useMock } from "./store";
 
 const AS = [
   { id: "amina", what: "Started most of them" },
@@ -65,8 +65,8 @@ export function MockStates() {
         </div>
         <div role="radiogroup" aria-label="Workspace" className="space-y-0.5">
           <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">Workspace</p>
-          {option(!store.firstTime, "Has screenings", "Eight, in every state", () => store.set({ firstTime: false }))}
-          {option(store.firstTime, "First time", "Nothing screened yet", () => store.set({ firstTime: true }))}
+          {option(!store.firstTime, "Has screenings", "Eight, in every state", () => store.set({ firstTime: false, screenings: seeded(), drafts: {} }))}
+          {option(store.firstTime, "First time", "Starts with nothing screened", () => store.set({ firstTime: true, screenings: [], drafts: {} }))}
         </div>
         <Button variant="ghost" size="sm" className="w-full" onClick={() => { window.sessionStorage.removeItem(KEPT); window.location.reload(); }}><RotateCcw />Start the mock again</Button>
       </PopoverContent>

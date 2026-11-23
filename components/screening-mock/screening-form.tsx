@@ -9,12 +9,12 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { AiIcon, Ban, Check, ChevronDown, Clock, Coins, Copy, Eye, FileText, FileX, Folder, FolderPlus, Gauge, Hash, ListChecks, Plus, Search, Trash2, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { AiIcon, Ban, Check, ChevronDown, Clock, Coins, Copy, Eye, FileText, FileX, Folder, FolderPlus, Gauge, Globe, Hash, Link2, ListChecks, Lock, PenLine, Plus, Search, Trash2, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
-import { AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "@/components/screening/parts";
+import { AnimatedNumber, Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
 import { PaperScope, PickMark } from "@/components/screening/source-row";
 import { EASE, NodeCard } from "@/components/settings/model-map";
 import { LIST, Segmented, Zone, pagerOf } from "@/components/settings/parts";
@@ -30,9 +30,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { DEFAULT_CRITERIA, DEFAULT_RULE, HOME, NOW, accessOf, workspaceOf, activeReviewers, ago, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, taken, type Criterion, type Reviewer, type Screening, type Source, type SourceKind } from "./data";
-import { EffectList, effectLines } from "./effects";
-import { COLLECTIONS, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type Offer } from "./form-data";
+import { DEFAULT_RULE, HOME, NOW, accessOf, themeFor, workspaceOf, activeReviewers, ago, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, taken, type Criterion, type Reviewer, type Screening, type Source, type SourceKind } from "./data";
+import { EffectList, effectLines, effectMoves, movesText } from "./effects";
+import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { CriterionText, ReviewerMark, ReviewerStack, RuleExamples } from "./parts";
 import { credits, isReading, paperCredits, useMock } from "./store";
@@ -51,7 +51,7 @@ const KINDS: Array<{ id: Kind; label: string; icon: AppIcon }> = [
 ];
 const iconOf = (kind: SourceKind): AppIcon => (kind === "upload" || kind === "pdf" ? FileText : kind === "dois" ? Hash : SOURCE_ICON[kind]);
 const OFFER_PAGE = 5;
-const DEST_PAGE = 4;
+const DEST_PAGE = 5;
 const hashOf = (text: string) => [...text].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
 
 /** A screening nobody has started: the person making it as its one reviewer, the usual rule, and nothing else yet. */
@@ -97,7 +97,8 @@ function describe(before: Screening, after: Screening) {
   if (JSON.stringify(before.rule) !== JSON.stringify(after.rule)) parts.push("Changed how a paper is decided");
   if (before.fullText !== after.fullText) parts.push(after.fullText ? "Added the full-text stage" : "Took off the full-text stage");
   if (before.question !== after.question) parts.push("Changed the research question");
-  if (JSON.stringify(before.scoring) !== JSON.stringify(after.scoring)) parts.push("Changed the scoring");
+  // Points that come and go with a criterion are that criterion's change, not a change to the scoring.
+  if (JSON.stringify(before.scoring.stars) !== JSON.stringify(after.scoring.stars) || before.criteria.some((criterion) => after.criteria.some((one) => one.key === criterion.key) && JSON.stringify(before.scoring.points[criterion.key]) !== JSON.stringify(after.scoring.points[criterion.key]))) parts.push("Changed the scoring");
   if (JSON.stringify(before.destination) !== JSON.stringify(after.destination)) parts.push("Changed where included papers go");
   return parts.join(", ").replace(/, ([A-Z])/g, (_, letter: string) => `, ${letter.toLowerCase()}`);
 }
@@ -108,15 +109,13 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [from] = useQueryState("from");
   const saved = id ? store.screenings.find((one) => one.id === id) : undefined;
   const copied = !id && from ? store.screenings.find((one) => one.id === from) : undefined;
-  const [draft, setDraft] = useState<Screening>(() =>
-    saved ?? (copied ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, fullText: copied.fullText, sources: copied.sources, criteria: copied.criteria, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } } : blank(store.viewer)),
-  );
-  // Saved from here or changed from the open screening: the form starts again from what is saved.
-  const [seen, setSeen] = useState(saved);
-  if (saved && saved !== seen && JSON.stringify({ ...saved, reached: 0, cast: 0, resolved: 0, changes: 0 }) !== JSON.stringify({ ...seen, reached: 0, cast: 0, resolved: 0, changes: 0 })) {
-    setSeen(saved);
-    setDraft(saved);
-  }
+  // What the form starts from: the saved screening, a copy of another to run again, or nothing yet.
+  const [made] = useState<Screening>(() => (copied ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, fullText: copied.fullText, sources: copied.sources, criteria: copied.criteria, theme: copied.theme, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } } : blank(store.viewer)));
+  const origin = saved ?? made;
+  // What isn't saved yet is kept by the mock's store, so leaving the page and coming back loses nothing.
+  const key = id ?? `new:${from ?? ""}`;
+  const draft = store.drafts[key] ?? origin;
+  const setDraft = (next: Screening | ((now: Screening) => Screening)) => store.draft(key, (now) => (typeof next === "function" ? next(now ?? origin) : next));
   const [kind, setKind] = useState<Kind>("search");
   const [find, setFind] = useState("");
   const [offerPage, setOfferPage] = useState(1);
@@ -125,6 +124,12 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [rejected, setRejected] = useState<string[]>([]);
   const [dois, setDois] = useState("");
   const [dragging, setDragging] = useState(false);
+  // The Community tab: which community, which of its collections, and ones brought in by their address.
+  const [community, setCommunity] = useState(COMMUNITIES[0]!.id);
+  const [group, setGroup] = useState<"all" | CommunityRow["group"]>("all");
+  const [address, setAddress] = useState("");
+  const [addressProblem, setAddressProblem] = useState<string | null>(null);
+  const [pasted, setPasted] = useState<CommunityRow[]>([]);
   const [text, setText] = useState("");
   const [writing, setWriting] = useState(false);
   const [scoring, setScoring] = useState(false);
@@ -164,8 +169,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const each = draft.rule.each === "all" ? joined.length : Math.min(Number(draft.rule.each), joined.length);
   const cost = models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract") * papers, 0);
   const lines = saved ? effectLines(saved, draft) : [];
+  const moves = saved ? effectMoves(saved, draft) : [];
+  // A model answers criteria: with none it would include every paper it reads.
+  const needsCriteria = models.length > 0 && draft.criteria.length === 0;
   const dirty = saved ? describe(saved, draft) !== "" : false;
-  const stop = !papers ? "Add papers to start" : !activeReviewers(draft).length ? "Add a reviewer to start" : cost > wallet ? `${credits(cost - wallet)} credits short` : null;
+  const stop = !papers ? "Add papers to start" : !activeReviewers(draft).length ? "Add a reviewer to start" : needsCriteria ? "Add a criterion for the model" : cost > wallet ? `${credits(cost - wallet)} credits short` : null;
 
   const addSource = (kind: SourceKind, name: string, detail: string, total: number, facts?: string[]) =>
     setDraft((d) => {
@@ -196,7 +204,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     }, 1100);
   };
 
-  const addCriterion = (words: string, must = false) =>
+  // A criterion decides unless it is marked as nice to have: an inclusion criterion that excludes nothing is a surprise.
+  const addCriterion = (words: string, must = true) =>
     setDraft((d) => {
       const clean = words.trim();
       if (!clean || d.criteria.some((criterion) => criterion.text.toLowerCase() === clean.toLowerCase())) return d;
@@ -206,12 +215,18 @@ export function ScreeningForm({ id }: { id?: string }) {
   const patchCriterion = (key: string, patch: Partial<Criterion>) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === key ? { ...criterion, ...patch } : criterion)) }));
 
   const addReviewer = (reviewer: Reviewer) =>
-    setDraft((d) => ({
-      ...d,
+    setDraft((d) => {
       // Someone taken off and put back counts again from where they were.
-      reviewers: d.reviewers.some((one) => one.id === reviewer.id) ? d.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: undefined } : one)) : [...d.reviewers, { ...reviewer, addedAt: fresh ? d.createdAt : Date.now() }],
-      reached: { abstract: { [reviewer.id]: 0, ...d.reached.abstract }, fullText: { [reviewer.id]: 0, ...d.reached.fullText } },
-    }));
+      const reviewers = d.reviewers.some((one) => one.id === reviewer.id) ? d.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: undefined } : one)) : [...d.reviewers, { ...reviewer, addedAt: fresh ? d.createdAt : Date.now() }];
+      const here = reviewers.filter((one) => !one.left && one.kind === "person" && !one.email).length;
+      return {
+        ...d,
+        reviewers,
+        reached: { abstract: { [reviewer.id]: 0, ...d.reached.abstract }, fullText: { [reviewer.id]: 0, ...d.reached.fullText } },
+        // Two people on every paper is how a review is usually screened: a new screening takes that up when its second person is added.
+        ...(fresh && reviewer.kind === "person" && !reviewer.email && here === 2 && d.rule.each === "1" ? { rule: { ...d.rule, each: "2" as const } } : {}),
+      };
+    });
   const removeReviewer = (reviewer: Reviewer) =>
     setDraft((d) => {
       const kept = saved?.reviewers.some((one) => one.id === reviewer.id) ? d.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) : d.reviewers.filter((one) => one.id !== reviewer.id);
@@ -229,6 +244,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       name,
       createdAt: at,
       seed: 20 + store.screenings.length,
+      theme: draft.theme ?? themeFor(`${name} ${draft.question} ${draft.sources.map((source) => source.name).join(" ")}`),
       reviewers: draft.reviewers.map((reviewer) => ({ ...reviewer, addedAt: at })),
       reached: { abstract: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])), fullText: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])) },
       // Papers from a search, a community or a reference manager are fetched once it starts; the rest are to hand.
@@ -237,18 +253,68 @@ export function ScreeningForm({ id }: { id?: string }) {
       destination: { ...draft.destination, name: draft.destination.name || `Included in ${name}` },
       changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${papers.toLocaleString("en-GB")} papers from ${draft.sources.length} ${draft.sources.length === 1 ? "source" : "sources"}, ${people.length} ${people.length === 1 ? "person" : "people"} and ${models.length} ${models.length === 1 ? "model" : "models"}` }],
     });
+    store.draft(key, () => undefined);
     router.push(`/screening/mock/${newId}`);
   };
   const save = () => {
     if (!saved || !id) return;
-    store.update(id, (now) => ({ ...draft, reached: { abstract: { ...draft.reached.abstract, ...now.reached.abstract }, fullText: { ...draft.reached.fullText, ...now.reached.fullText } }, cast: now.cast, resolved: now.resolved, fullTexts: now.fullTexts, changes: now.changes, finishedAt: lines.some((line) => line.includes("open again") || line.includes("join")) ? undefined : now.finishedAt }), { what: describe(saved, draft), effect: lines.join(". ") || undefined });
+    // Models answer a new criterion on the papers they have read, and that reading is paid for.
+    const had = new Set(saved.criteria.map((criterion) => criterion.key));
+    const again = draft.criteria.some((criterion) => !had.has(criterion.key)) ? models.filter((model) => saved.reviewers.some((one) => one.id === model.id && !one.left)).map((model) => ({ id: model.id, cost: Math.min(saved.reached.abstract[model.id] ?? 0, papers) * paperCredits(model.model!, "abstract") })) : [];
+    const reopens = moves.some((move) => move.to === "conflict" || move.to === "waiting") || lines.some((line) => line.includes("join"));
+    store.update(
+      id,
+      (now) => ({
+        ...draft,
+        reached: { abstract: { ...draft.reached.abstract, ...now.reached.abstract }, fullText: { ...draft.reached.fullText, ...now.reached.fullText } },
+        cast: now.cast,
+        resolved: now.resolved,
+        fullTexts: now.fullTexts,
+        fullTextFiles: now.fullTextFiles,
+        changes: now.changes,
+        spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
+        finishedAt: reopens ? undefined : now.finishedAt,
+      }),
+      { what: describe(saved, draft), effect: [...lines, movesText(moves)].filter(Boolean).join(". ") || undefined },
+    );
+    if (again.length) store.set({ wallet: Math.max(0, store.wallet - again.reduce((sum, one) => sum + one.cost, 0)) });
   };
 
-  const offers = kind === "upload" || kind === "dois" ? [] : OFFERS[kind].filter((offer) => offer.name.toLowerCase().includes(find.trim().toLowerCase()));
+  const inCommunity = COMMUNITIES.find((one) => one.id === community)!;
+  const communityRows = [...pasted, ...inCommunity.rows].filter((row) => (group === "all" || row.group === group) && row.name.toLowerCase().includes(find.trim().toLowerCase()));
+  const communityPager = pagerOf(communityRows.length, OFFER_PAGE, offerPage, setOfferPage);
+  // A collection is brought in by its address when it isn't in the list: one of yours elsewhere, or one someone sent you.
+  const paste = () => {
+    const text = address.trim();
+    if (!/^https?:\/\/[^\s/]+\.[^\s/]+/.test(text)) return setAddressProblem("That isn't an address.");
+    if (!/openscholar\.ai(\/|$)/.test(text)) return setAddressProblem("Openscholar doesn't run that community.");
+    const name = decodeURIComponent(text.replace(/[?#].*$/, "").replace(/\/$/, "").split("/").pop() ?? "").replace(/[-_]+/g, " ").trim();
+    if (!name || /openscholar\.ai$/.test(name)) return setAddressProblem("That address is a community, not one of its collections.");
+    setPasted((rows) => (rows.some((row) => row.name.toLowerCase() === name.toLowerCase()) ? rows : [{ name: name.charAt(0).toUpperCase() + name.slice(1), total: 24 + (hashOf(name) % 160), group: "shared", access: "viewer", pasted: true }, ...rows]));
+    setAddress("");
+    setAddressProblem(null);
+    setGroup("all");
+    setOfferPage(1);
+  };
+  const offers = kind === "upload" || kind === "dois" || kind === "evidenceLibrary" ? [] : OFFERS[kind].filter((offer) => offer.name.toLowerCase().includes(find.trim().toLowerCase()));
   const offerPager = pagerOf(offers.length, OFFER_PAGE, offerPage, setOfferPage);
   const importable = draft.sources.flatMap((source) => (source.kind === "search" ? (OFFERS.search.find((offer) => offer.name === source.name)?.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text === question)).map((question) => ({ question, source })) : []));
   const collections = where === "community" ? COMMUNITY_COLLECTIONS : COLLECTIONS;
-  const destPager = pagerOf(collections.length, DEST_PAGE, destPage, setDestPage);
+  // Every place the included papers can go, as one list: a new collection first, the ones there are, and nowhere last.
+  const places = [
+    ...(where === "openscholar"
+      ? [
+          <Destination key="new" on={draft.destination.kind === "new"} onPick={() => set({ destination: { ...draft.destination, kind: "new", collection: undefined } })} icon={FolderPlus} facts={<Chip>New collection</Chip>}>
+            <Input value={draft.destination.name} onChange={(event) => set({ destination: { ...draft.destination, kind: "new", name: event.target.value } })} placeholder={draft.name || draft.sources[0] ? `Included in ${draft.name || draft.sources[0]!.name}` : "Name a new collection"} aria-label="Name of the new collection" className="h-8 border-transparent bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0" />
+          </Destination>,
+        ]
+      : []),
+    ...collections.map((collection) => (
+      <Destination key={collection.id} on={draft.destination.collection === collection.id} onPick={() => set({ destination: { ...draft.destination, kind: where === "community" ? "community" : "collection", collection: collection.id } })} icon={Folder} name={`Add to ${collection.name}`} facts={<Chip>{collection.papers} papers</Chip>} />
+    )),
+    <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere: keep them in the screening" />,
+  ];
+  const destPager = pagerOf(places.length, DEST_PAGE, destPage, setDestPage);
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
   const doiCount = dois.split(/[\s,;]+/).filter((word) => /^10\.\d{4,}\//.test(word.replace(/^https?:\/\/(dx\.)?doi\.org\//, ""))).length;
 
@@ -272,11 +338,18 @@ export function ScreeningForm({ id }: { id?: string }) {
             }
           >
             <div className="grid @4xl:grid-cols-[minmax(0,1fr)_21rem] @4xl:divide-x @4xl:divide-border-subtle">
-              <div className={cn("min-w-0 space-y-8 p-4 sm:p-6", locked && "[&_[data-adds]]:hidden")} inert={locked}>
-                <div className="space-y-1">
-                  <input value={draft.name} onChange={(event) => set({ name: event.target.value })} placeholder={draft.sources[0]?.name ?? "Name this screening"} aria-label="Name" maxLength={200} className="w-full rounded-lg bg-transparent text-xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60" />
+              <div className={cn("min-w-0 space-y-8 p-4 sm:p-6", locked && "[&_[data-adds]]:hidden [&_[role=radiogroup]]:opacity-60 [&_[role=switch]]:opacity-60")} inert={locked}>
+                <div className="flex flex-col gap-4">
                   <p className="text-sm text-muted-foreground">{fresh ? "Decide which papers are in, with your team and any AI models you add as reviewers." : locked ? "What this screening reads, asks and how it decides." : "Everything here can change while the screening runs and after it is finished. Nothing is saved until you say so."}</p>
-                  <Textarea ref={question} rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder="What does the review ask? (optional: criteria can be written from it)" aria-label="Research question" className="mt-3 min-h-9 resize-none py-1.5 text-sm field-sizing-content" />
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">Name</span>
+                    <Input value={draft.name} onChange={(event) => set({ name: event.target.value })} placeholder={draft.sources[0]?.name ?? "Such as “School meals and learning”"} maxLength={200} className="h-10 text-base font-semibold" />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">What the review asks</span>
+                    <Textarea ref={question} rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder="Such as “Do school meals improve learning in primary schools?”" className="min-h-9 resize-none py-1.5 text-sm field-sizing-content" />
+                    <span className="text-xs text-muted-foreground">Optional. Criteria can be written from it.</span>
+                  </label>
                 </div>
 
                 {/* Papers */}
@@ -315,7 +388,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   </Button>
                                 ) : null}
                                 <TooltipHint label="Remove this source">
-                                  <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Remove ${source.name}`} onClick={() => { setRemoved({ what: source.name, zone: "papers", back: draft }); set({ sources: draft.sources.filter((one) => one.id !== source.id) }); }}><Trash2 /></Button>
+                                  <Button data-adds variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Remove ${source.name}`} onClick={() => { setRemoved({ what: source.name, zone: "papers", back: draft }); set({ sources: draft.sources.filter((one) => one.id !== source.id) }); }}><Trash2 /></Button>
                                 </TooltipHint>
                               </div>
                               <AnimatePresence initial={false}>
@@ -396,6 +469,53 @@ export function ScreeningForm({ id }: { id?: string }) {
                           <Button variant="outline" size="sm" disabled={!doiCount} onClick={() => { addSource("dois", `${doiCount} pasted ${doiCount === 1 ? "DOI" : "DOIs"}`, "Looked up in Openscholar's index", doiCount, [`${Math.max(0, doiCount - 1)} found in Openscholar's index`]); setDois(""); }}><Plus />Add {doiCount || ""} {doiCount === 1 ? "paper" : "papers"}</Button>
                         </div>
                       </div>
+                    ) : kind === "evidenceLibrary" ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-start gap-2">
+                          <Select value={community} onValueChange={(next) => { setCommunity(next); setOfferPage(1); setGroup("all"); }}>
+                            <SelectTrigger aria-label="Evidence Community" className="h-9 w-full min-w-0 sm:w-72"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {COMMUNITIES.map((one) => <SelectItem key={one.id} value={one.id}><span className="flex min-w-0 items-center gap-2"><span className="truncate">{one.name}</span><span className="shrink-0 text-xs text-muted-foreground">{one.role}</span></span></SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <form className="min-w-0 flex-1 basis-56 space-y-1" onSubmit={(event) => { event.preventDefault(); paste(); }}>
+                            <div className="relative">
+                              <Link2 className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                              <Input value={address} onChange={(event) => { setAddress(event.target.value); setAddressProblem(null); }} placeholder="Paste a collection's address" aria-label="Paste a collection's address" aria-invalid={Boolean(addressProblem)} className="h-9 ps-8 text-sm" />
+                            </div>
+                            {/* The problem sits under the field it is about. */}
+                            {addressProblem ? <p role="alert" className="px-1 text-xs text-destructive">{addressProblem}</p> : null}
+                          </form>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Segmented label="Show" value={group} onChange={(next) => { setGroup(next); setOfferPage(1); }} options={[{ id: "all" as const, label: "All" }, { id: "yours" as const, label: "Yours" }, { id: "shared" as const, label: "Shared with you" }, { id: "library" as const, label: "The community's" }]} />
+                          <div className="relative min-w-40 flex-1">
+                            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input value={find} onChange={(event) => { setFind(event.target.value); setOfferPage(1); }} placeholder="Find" aria-label="Find a collection" className="h-8 rounded-full ps-8 text-sm" />
+                          </div>
+                        </div>
+                        <div className={LIST} style={{ minHeight: communityPager.pages > 1 ? OFFER_PAGE * 57 : undefined }}>
+                          {communityRows.slice((communityPager.page - 1) * OFFER_PAGE, communityPager.page * OFFER_PAGE).map((row) => (
+                            <OfferRow
+                              key={row.name}
+                              offer={{ name: row.name, detail: row.group === "library" && !row.parent ? `${inCommunity.records.toLocaleString("en-GB")} records` : `In ${inCommunity.name}`, total: row.total }}
+                              icon={iconOf("evidenceLibrary")}
+                              chips={
+                                <>
+                                  {row.pasted ? <Chip icon={Link2} className="h-5 px-1.5">From a link</Chip> : null}
+                                  {row.access ? <Chip icon={row.access === "editor" ? PenLine : Eye} className="h-5 px-1.5">{row.access === "editor" ? "Can edit" : "Can view"}</Chip> : null}
+                                  {row.private !== undefined ? <Chip icon={row.private ? Lock : Globe} className="h-5 px-1.5">{row.private ? "Private" : "Public"}</Chip> : null}
+                                  {row.parent ? <Chip icon={Folder} className="h-5 px-1.5">In {row.parent}</Chip> : null}
+                                </>
+                              }
+                              added={draft.sources.some((source) => source.kind === "evidenceLibrary" && source.name === row.name)}
+                              onAdd={() => { addSource("evidenceLibrary", row.name, `In ${inCommunity.name}`, row.total); setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === "evidenceLibrary" && source.name === row.name ? { ...source, filters: [inCommunity.name, "As it stands when the screening starts"] } : source)) })); }}
+                            />
+                          ))}
+                          {!communityRows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{find.trim() ? "Nothing by that name." : group === "yours" ? `You have no collections in ${inCommunity.name}.` : group === "shared" ? `Nobody has shared a collection in ${inCommunity.name} with you.` : `Nothing to read in ${inCommunity.name} yet.`}</p> : null}
+                        </div>
+                        {communityPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={communityPager.page} totalPages={communityPager.pages} onPageChange={setOfferPage} totalItems={communityRows.length} itemsPerPage={OFFER_PAGE} itemLabel="collections" /> : null}
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         {OFFERS[kind].length > OFFER_PAGE ? (
@@ -438,7 +558,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : null}
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={writing || WRITTEN.every((question) => draft.criteria.some((criterion) => criterion.text === question))} onClick={() => { if (!draft.question.trim()) { question.current?.focus(); return; } setWriting(true); setTimeout(() => { WRITTEN.forEach((written, i) => addCriterion(written, i === 0)); setWriting(false); }, 1200); }}>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={writing || WRITTEN.every((question) => draft.criteria.some((criterion) => criterion.text === question))} onClick={() => { if (!draft.question.trim()) { question.current?.focus(); return; } setWriting(true); setTimeout(() => { WRITTEN.forEach((written) => addCriterion(written)); setWriting(false); }, 1200); }}>
                         <AiIcon working={writing} />{draft.question.trim() ? "Write them from the research question" : "Write the research question first"}
                       </Button>
                     </span>
@@ -451,10 +571,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         <motion.div key={criterion.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
                           <div className="flex items-center gap-x-3 gap-y-1 px-4 py-2 max-sm:flex-wrap">
                             <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
-                            <Input value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: DEFAULT_CRITERIA.some((one) => one.key === criterion.key) ? criterion.short : shortOf(event.target.value) })} aria-label={`Criterion ${i + 1}`} className="h-8 min-w-0 flex-1 border-transparent bg-transparent px-1 text-sm shadow-none hover:border-border-subtle max-sm:basis-[calc(100%-1.75rem)]" />
+                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.addedAt === 0 ? criterion.short : shortOf(event.target.value) })} aria-label={`Criterion ${i + 1}`} className="min-h-8 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle max-sm:basis-[calc(100%-1.75rem)]" />
                             <Segmented label={`Criterion ${i + 1} is`} className="max-sm:ms-5" value={criterion.must ? "must" : "nice"} onChange={(next) => patchCriterion(criterion.key, { must: next === "must" })} options={[{ id: "must", label: "Must-have" }, { id: "nice", label: "Nice to have" }]} />
                             <TooltipHint label="Remove this criterion">
-                              <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Remove criterion ${i + 1}`} onClick={() => { setRemoved({ what: criterion.short, zone: "criteria", back: draft }); set({ criteria: draft.criteria.filter((one) => one.key !== criterion.key) }); }}><Trash2 /></Button>
+                              <Button data-adds variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Remove criterion ${i + 1}`} onClick={() => { setRemoved({ what: criterion.short, zone: "criteria", back: draft }); set({ criteria: draft.criteria.filter((one) => one.key !== criterion.key) }); }}><Trash2 /></Button>
                             </TooltipHint>
                           </div>
                         </motion.div>
@@ -532,10 +652,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                         {models.map((model) => (
                           <motion.div key={model.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
                             <div className="space-y-2 p-2.5">
-                              <NodeCard model={model.model!} paidBy="credits" tabIndex={-1} />
+                              <NodeCard model={model.model!} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(model.model!, "abstract"))} credits a paper</span>} />
                               <div className="flex items-center gap-2 ps-1.5">
-                                <span className="min-w-0 flex-1 text-xs tabular-nums text-muted-foreground">{credits(paperCredits(model.model!, "abstract"))} credits a paper, {credits(paperCredits(model.model!, "abstract") * papers)} for these</span>
-                                <TooltipHint label="Take this model off"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={`Take ${model.name} off`} onClick={() => removeReviewer(model)}><Trash2 /></Button></TooltipHint>
+                                <span className="min-w-0 flex-1 text-xs tabular-nums text-muted-foreground">{credits(paperCredits(model.model!, "abstract") * papers)} credits for these {papers.toLocaleString("en-GB")} papers</span>
+                                <TooltipHint label="Take this model off"><Button data-adds variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={`Take ${model.name} off`} onClick={() => removeReviewer(model)}><Trash2 /></Button></TooltipHint>
                               </div>
                             </div>
                           </motion.div>
@@ -614,21 +734,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                 </Zone>
 
                 {/* Where included papers go */}
-                <Zone label="Included papers go to" aside={<Segmented label="Where" value={where} onChange={(next) => { setWhere(next); setDestPage(1); set({ destination: { ...draft.destination, kind: next === "community" ? "community" : "new", collection: next === "community" ? COMMUNITY_COLLECTIONS[0]!.id : undefined } }); }} options={[{ id: "openscholar", label: "Openscholar" }, { id: "community", label: "An Evidence Community" }]} />}>
+                <Zone label="Included papers go to" aside={<Segmented label="Where" value={where} onChange={(next) => { setWhere(next); setDestPage(1); set({ destination: { ...draft.destination, kind: next === "community" ? "community" : "new", collection: next === "community" ? COMMUNITY_COLLECTIONS[0]!.id : undefined } }); }} options={[{ id: "openscholar", label: "Your library" }, { id: "community", label: "An Evidence Community" }]} />}>
                   <div id="goes-to" className={cn(LIST, "scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+3rem)]")} role="radiogroup" aria-label="Where included papers go">
-                    {where === "openscholar" ? (
-                      <>
-                        <Destination on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere yet" />
-                        <Destination on={draft.destination.kind === "new"} onPick={() => set({ destination: { ...draft.destination, kind: "new", collection: undefined } })} icon={FolderPlus} facts={<Chip>New</Chip>}>
-                          <Input value={draft.destination.name} onChange={(event) => set({ destination: { ...draft.destination, kind: "new", name: event.target.value } })} placeholder={draft.name || draft.sources[0] ? `Included in ${draft.name || draft.sources[0]!.name}` : "Name a new collection"} aria-label="Name of the new collection" className="h-8 border-transparent bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0" />
-                        </Destination>
-                      </>
-                    ) : null}
-                    {collections.slice((destPager.page - 1) * DEST_PAGE, destPager.page * DEST_PAGE).map((collection) => (
-                      <Destination key={collection.id} on={draft.destination.collection === collection.id} onPick={() => set({ destination: { ...draft.destination, kind: where === "community" ? "community" : "collection", collection: collection.id } })} icon={Folder} name={`Add to ${collection.name}`} facts={<Chip>{collection.papers} papers</Chip>} />
-                    ))}
+                    {places.slice((destPager.page - 1) * DEST_PAGE, destPager.page * DEST_PAGE)}
                   </div>
-                  {destPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={destPager.page} totalPages={destPager.pages} onPageChange={setDestPage} totalItems={collections.length} itemsPerPage={DEST_PAGE} itemLabel="collections" /> : null}
+                  {destPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={destPager.page} totalPages={destPager.pages} onPageChange={setDestPage} totalItems={places.length} itemsPerPage={DEST_PAGE} itemLabel="places" /> : null}
                   {fromCollection ? (
                     <label className="flex items-center gap-3 rounded-2xl border border-border-subtle px-4 py-3">
                       <span className="min-w-0 flex-1 space-y-1.5">
@@ -665,7 +775,12 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">Up to</span><span className="tabular-nums">{credits(cost)} credits</span></div>
                     <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />
                     <div className="flex flex-wrap gap-1.5"><WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }}>{credits(wallet)} in {workspace.name}</WorkspaceTag>{cost > wallet ? <Chip className="bg-destructive/10 text-destructive">{credits(cost - wallet)} short</Chip> : <Chip>{credits(wallet - cost)} left after</Chip>}</div>
-                    {models.length ? <p className="text-xs text-muted-foreground">Full text is charged as each paper is read there.</p> : null}
+                    {models.length && draft.fullText ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="min-w-0 flex-1 text-muted-foreground">Then, for each paper that reaches full text</span>
+                        <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "fullText"), 0))}</span>
+                      </div>
+                    ) : null}
                   </div>
                   {fresh ? (
                     <div className="space-y-2">
@@ -676,11 +791,12 @@ export function ScreeningForm({ id }: { id?: string }) {
                   ) : locked ? null : (
                     <div className="space-y-3 rounded-2xl border border-border-subtle p-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? "What saving does" : "Changes"}</p>
-                      {dirty ? <EffectList lines={lines} /> : <p className="text-sm text-muted-foreground">Nothing changed yet. Change anything on the left, and what it does shows here before you save.</p>}
+                      {dirty ? <EffectList lines={lines} moves={moves} /> : <p className="text-sm text-muted-foreground">Nothing changed yet. Change anything on the left, and what it does shows here before you save.</p>}
                       <div className="flex gap-2">
-                        <Button className="flex-1" disabled={!dirty} onClick={save}>Save changes</Button>
-                        <Button variant="ghost" disabled={!dirty} onClick={() => setDraft(saved)}>Discard</Button>
+                        <Button className="flex-1" disabled={!dirty || needsCriteria} onClick={save}>Save changes</Button>
+                        <Button variant="ghost" disabled={!dirty} onClick={() => store.draft(key, () => undefined)}>Discard</Button>
                       </div>
+                      {needsCriteria ? <p className="text-xs text-destructive">A model answers criteria, and this screening has none. Add one, or take the model off.</p> : null}
                     </div>
                   )}
                   {saved ? (
@@ -705,13 +821,13 @@ export function ScreeningForm({ id }: { id?: string }) {
   );
 }
 
-function OfferRow({ offer, icon: Icon, added, onAdd }: { offer: Offer; icon: AppIcon; added: boolean; onAdd: () => void }) {
+function OfferRow({ offer, icon: Icon, chips, added, onAdd }: { offer: Offer; icon: AppIcon; /** What else tells this row from the others, after its detail. */ chips?: ReactNode; added: boolean; onAdd: () => void }) {
   return (
     <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
       <Icon className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{offer.name}</p>
-        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-2xl:hidden">{filter}</Chip>)}</p>
+        <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-2xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5 @max-2xl:hidden">{chips}</span> : null}</p>
       </div>
       <Chip>{offer.total.toLocaleString("en-GB")} {offer.total === 1 ? "paper" : "papers"}</Chip>
       <Button variant="outline" size="sm" className="w-24" disabled={added || !offer.total} onClick={onAdd}>{added ? <><Check />Added</> : !offer.total ? "Empty" : <><Plus />Add</>}</Button>
@@ -729,7 +845,7 @@ function ReviewerRow({ reviewer, you, detail, onRemove }: { reviewer: Reviewer; 
           <p className="flex items-center gap-1.5 text-sm font-medium"><span className="truncate">{reviewer.name}</span>{you ? <YouTag /> : null}</p>
           <p className="truncate text-xs text-muted-foreground">{detail}</p>
         </div>
-        <TooltipHint label="Take off this screening"><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={`Take ${reviewer.name} off`} onClick={onRemove}><Trash2 /></Button></TooltipHint>
+        <TooltipHint label="Take off this screening"><Button data-adds variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={`Take ${reviewer.name} off`} onClick={onRemove}><Trash2 /></Button></TooltipHint>
       </div>
     </motion.div>
   );
@@ -758,5 +874,3 @@ function Destination({ on, onPick, icon: Icon, name, facts, children }: { on: bo
     </div>
   );
 }
-
-export { ClippedChip };

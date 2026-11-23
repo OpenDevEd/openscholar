@@ -18,8 +18,10 @@ type State = {
   viewer: string;
   /** The workspace's credits. */
   wallet: number;
-  /** A workspace that has never screened anything, to see the first-time pages. */
+  /** A workspace that started with nothing screened, to see the first-time pages. */
   firstTime: boolean;
+  /** Changes to a screening's settings that aren't saved yet, and a new screening being filled in, by where they are made. */
+  drafts: Record<string, Screening>;
 };
 
 type Store = State & {
@@ -29,6 +31,8 @@ type Store = State & {
   remove: (id: string) => void;
   set: (patch: Partial<State>) => void;
   tick: (id: string) => void;
+  /** Changes a draft, or drops it when `change` gives nothing back. */
+  draft: (key: string, change: (now: Screening | undefined) => Screening | undefined) => void;
 };
 
 const Context = createContext<Store | null>(null);
@@ -41,13 +45,26 @@ export function paperCredits(model: MapModel, stage: Stage) {
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : Math.ceil(n).toLocaleString("en-GB"));
 
 /** Where the tab keeps the mock's state. The name changes with its shape. */
-export const KEPT = "screening-mock:3";
+export const KEPT = "screening-mock:4";
+
+/** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
+const settingsOf = (screening: Screening) => JSON.stringify([screening.name, screening.question, screening.fullText, screening.sources, screening.criteria, screening.reviewers, screening.rule, screening.scoring, screening.destination]);
+
+/** What each model has cost by the time the mock opens: what it has read, at its price. */
+const withSpent = (screening: Screening): Screening => {
+  const models = modelsOf(screening);
+  if (!models.length) return screening;
+  const [first, second] = [standing(screening, "abstract").papers.length, standing(screening, "fullText").papers.length];
+  return { ...screening, spent: Object.fromEntries(models.map((model) => [model.id, Math.min(screening.reached.abstract[model.id] ?? 0, first) * paperCredits(model.model!, "abstract") + Math.min(screening.reached.fullText[model.id] ?? 0, second) * paperCredits(model.model!, "fullText")])) };
+};
+/** The screenings the mock opens with. */
+export const seeded = () => startingScreenings().map(withSpent);
 
 /** The mock's clock for what happens in it: later than everything it started with. */
 const now = () => Math.max(Date.now(), NOW + 1);
 
 export function ScreeningMockProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>(() => ({ screenings: startingScreenings(), viewer: PEOPLE[0]!.id, wallet: 18_420, firstTime: false }));
+  const [state, setState] = useState<State>(() => ({ screenings: seeded(), viewer: PEOPLE[0]!.id, wallet: 18_420, firstTime: false, drafts: {} }));
   // The tab's storage is the outside system: what was done in the mock is read back after a reload, and written as it changes.
   const [restored, setRestored] = useState(false);
   useEffect(() => {
@@ -89,13 +106,21 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
       update: (id: string, fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) =>
         setState((s) => ({
           ...s,
+          // Settings changed here, from the open screening or by a save: a draft started from the old ones is dropped.
+          drafts: s.drafts[id] && s.screenings.some((one) => one.id === id && settingsOf(fn(one)) !== settingsOf(one)) ? Object.fromEntries(Object.entries(s.drafts).filter(([key]) => key !== id)) : s.drafts,
           screenings: s.screenings.map((one) => {
             if (one.id !== id) return one;
             const next = fn(one);
             return log ? { ...next, changes: [...next.changes, { ...log, at: now(), by: s.viewer }] } : next;
           }),
         })),
-      add: (screening: Screening) => setState((s) => ({ ...s, firstTime: false, screenings: [screening, ...s.screenings] })),
+      add: (screening: Screening) => setState((s) => ({ ...s, screenings: [screening, ...s.screenings] })),
+      draft: (key: string, change: (now: Screening | undefined) => Screening | undefined) =>
+        setState((s) => {
+          const next = change(s.drafts[key]);
+          const { [key]: _dropped, ...rest } = s.drafts;
+          return { ...s, drafts: next ? { ...rest, [key]: next } : rest };
+        }),
       remove: (id: string) => setState((s) => ({ ...s, screenings: s.screenings.filter((one) => one.id !== id) })),
       set: (patch: Partial<State>) => setState((s) => ({ ...s, ...patch })),
       // One second of the models' reading: each running model gets through a few more papers, while the credits last.
@@ -117,6 +142,7 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
           const screening = waits ? ahead : open;
           let wallet = s.wallet;
           const reached = { abstract: { ...screening.reached.abstract }, fullText: { ...screening.reached.fullText } };
+          const spent = { ...screening.spent };
           let moved = false;
           for (const stage of ["abstract", "fullText"] as const) {
             const total = standing({ ...screening, reached }, stage).papers.length;
@@ -128,16 +154,17 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
               if (more <= 0) continue;
               reached[stage][reviewer.id] = at + more;
               wallet -= more * each;
+              spent[reviewer.id] = (spent[reviewer.id] ?? 0) + more * each;
               moved = true;
             }
           }
-          return moved ? { ...s, wallet, screenings: s.screenings.map((one) => (one.id === screening.id ? { ...one, reached } : one)) } : s;
+          return moved ? { ...s, wallet, screenings: s.screenings.map((one) => (one.id === screening.id ? { ...one, reached, spent } : one)) } : s;
         }),
     }),
     [],
   );
   const store = useMemo<Store>(
-    () => ({ ...state, screenings: state.firstTime ? [] : screenings, me: PEOPLE.find((person) => person.id === state.viewer) ?? PEOPLE[0]!, ...actions }),
+    () => ({ ...state, screenings, me: PEOPLE.find((person) => person.id === state.viewer) ?? PEOPLE[0]!, ...actions }),
     [state, screenings, actions],
   );
 
@@ -175,13 +202,18 @@ export function useOpenScreening(id: string, stage: Stage) {
   const mine = (paper: Paper) => dealtTo(screening, stage, paper, index.get(paper.id)!).some((one) => one.id === me);
   const myVote = (paper: Paper) => state.votes[paper.id]!.find((one) => one.reviewer.id === me)?.vote;
   const yours = reviewer ? state.papers.filter(mine) : [];
-  const toDo = yours.filter((paper) => !myVote(paper));
+  // A paper that has its final decision waits for nobody: settled by the first vote, or by the person who settles conflicts.
+  const toDo = yours.filter((paper) => !myVote(paper) && !state.settled[paper.id]!.final);
   const conflicts = state.papers.filter((paper) => state.settled[paper.id]!.result === "conflict");
   const models = modelsOf(screening);
   // A model still has papers to read at this stage, and the credits to read them with or not.
   const reading = models.filter((model) => (screening.reached[stage][model.id] ?? 0) < state.papers.length);
   const outOfCredits = !screening.finishedAt && !screening.paused && reading.length > 0 && reading.every((model) => paperCredits(model.model!, stage) > store.wallet);
-  const spent = (model: Reviewer) => STAGE_LIST.reduce((sum, one) => sum + Math.min(screening.reached[one][model.id] ?? 0, (one === "abstract" ? first : second).papers.length) * paperCredits(model.model!, one), 0);
+  const spent = (model: Reviewer) => screening.spent?.[model.id] ?? 0;
+  /** The most a model can come to: what it has cost, and the papers it has still to read. */
+  const most = (model: Reviewer) => spent(model) + STAGE_LIST.reduce((sum, one) => sum + Math.max(0, (one === "abstract" ? first : second).papers.length - (screening.reached[one][model.id] ?? 0)) * paperCredits(model.model!, one), 0);
+  /** The papers that wait for the person looking, at each stage. */
+  const waiting = (at: Standing) => (reviewer ? at.papers.filter((paper) => !at.settled[paper.id]!.final && at.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length : 0);
   return {
     screening,
     stage,
@@ -212,6 +244,8 @@ export function useOpenScreening(id: string, stage: Stage) {
     reading,
     outOfCredits,
     spent,
+    most,
+    todoAt: { abstract: waiting(first), fullText: waiting(second) },
     myVote,
     /** Other votes show on a paper that isn't yours to vote on, on one you've voted on, and always where the rule says so. */
     canSee: (paper: Paper) => screening.rule.blind === "always" || !mine(paper) || Boolean(myVote(paper)),
@@ -222,7 +256,7 @@ export function useOpenScreening(id: string, stage: Stage) {
       store.update(id, (s) => ({ ...s, cast: { ...s.cast, [stage]: { ...s.cast[stage], [paper.id]: { ...s.cast[stage][paper.id], [me]: vote } } } })),
     resolve: (paper: Paper, decision: Decision | null, note?: string, reason?: string) =>
       store.update(id, (s) => ({ ...s, resolved: { ...s.resolved, [stage]: { ...s.resolved[stage], [paper.id]: decision ? { decision, by: me, ...(note ? { note } : {}), ...(reason ? { reason } : {}) } : null } } })),
-    setFullText: (paper: Paper, value: "added" | "missing") => store.update(id, (s) => ({ ...s, fullTexts: { ...s.fullTexts, [paper.id]: value } })),
+    setFullText: (paper: Paper, value: "added" | "missing", file?: string) => store.update(id, (s) => ({ ...s, fullTexts: { ...s.fullTexts, [paper.id]: value }, ...(file ? { fullTextFiles: { ...s.fullTextFiles, [paper.id]: file } } : {}) })),
     update: (fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) => store.update(id, fn, log),
   };
 }

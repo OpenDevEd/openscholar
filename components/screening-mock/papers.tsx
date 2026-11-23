@@ -22,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, personOf, reasonLabel, reasonOf, scoreOf, type Decision, type Paper, type Result } from "./data";
+import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, personOf, failedLabel, reasonOf, scoreOf, type Decision, type Paper, type Result } from "./data";
 import { RESULT_STYLE, ResultChip, ReviewerMark, ReviewerStack, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import type { Open } from "./store";
@@ -94,7 +94,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
   };
   const conflictsPicked = chosen.filter((id) => settled[id]!.result === "conflict").length;
 
-  if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">No paper has reached this stage yet.</p>;
+  if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "No paper has reached this stage yet."}</p>;
 
   return (
     <div className="@container/papers">
@@ -320,7 +320,7 @@ function Why({ paper, open, visible }: { paper: Paper; open: Open; visible: bool
   }
   if (state.result === "exclude") {
     const reason = reasonOf(entries, state);
-    return reason ? <span className="block truncate text-xs text-muted-foreground">{reasonLabel(reason, open.screening.criteria)}</span> : null;
+    return reason ? <span className="block truncate text-xs text-muted-foreground">{failedLabel(reason, open.screening.criteria)}</span> : null;
   }
   const unclear = state.result === "maybe" ? open.screening.criteria.find((criterion) => criterion.must && cast.some((vote) => vote.answers[criterion.key] === "unclear")) : undefined;
   if (unclear) return <span className="block truncate text-xs text-muted-foreground">Unclear: {unclear.short}</span>;
@@ -350,7 +350,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const quoted = shown && visible ? screening.criteria.findIndex((c) => c.key === shown.criterion) : -1;
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
   const source = screening.sources.find((one) => one.id === paper.source);
-  const reasons = [...screening.criteria.map((criterion) => ({ key: criterion.key, label: criterion.short })), ...OTHER_REASONS[stage]];
+  const reasons = [...screening.criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS[stage]];
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string) => {
     if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers, ...(reason && screening.criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note: note.trim() || undefined, at: Date.now() });
     else open.resolve(paper, decision, note.trim() || undefined, reason);
@@ -362,7 +362,9 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
     reasonFor === kind ? (
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-muted-foreground">Why is it excluded?</p>
-        {reasons.map((reason) => <button key={reason.key} type="button" onClick={() => settle(kind, "exclude", reason.key)} className="flex h-9 w-full items-center rounded-lg border border-border-subtle px-2.5 text-start text-sm transition-colors hover:bg-muted"><span className="truncate">{reason.label}</span></button>)}
+        {/* A reason no criterion covers is written in the note before it is saved. */}
+        <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="A note with it. Needed for “Another reason”" aria-label="Note" className="h-8 text-sm" />
+        {reasons.map((reason) => <button key={reason.key} type="button" disabled={reason.key === "other" && !note.trim()} onClick={() => settle(kind, "exclude", reason.key)} className="flex min-h-9 w-full items-center rounded-lg border border-border-subtle px-2.5 py-1.5 text-start text-sm transition-colors hover:border-foreground/30 disabled:opacity-50"><span className="line-clamp-2">{reason.label}</span></button>)}
         <Button variant="ghost" size="sm" className="w-full" onClick={() => setReasonFor(null)}>Back</Button>
       </div>
     ) : (
@@ -406,10 +408,10 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       {stage === "fullText" ? (
         <div className="flex items-center gap-3 rounded-2xl border border-border-subtle px-3 py-2.5">
           <FileText className={cn("size-4 shrink-0", open.hasFullText(paper) ? "ink-success" : "text-muted-foreground")} />
-          <p className="min-w-0 flex-1 text-sm">{open.hasFullText(paper) ? (screening.fullTexts[paper.id] === "added" ? "Full text added by hand" : "Open-access full text found") : screening.fullTexts[paper.id] === "missing" ? "Marked as not retrieved" : "No full text yet"}</p>
+          <p className="min-w-0 flex-1 text-sm">{open.hasFullText(paper) ? (screening.fullTexts[paper.id] === "added" ? `Full text added by hand${screening.fullTextFiles?.[paper.id] ? `: ${screening.fullTextFiles[paper.id]}` : ""}` : "Open-access full text found") : screening.fullTexts[paper.id] === "missing" ? "Marked as not retrieved" : "No full text yet"}</p>
           {!open.hasFullText(paper) ? (
             <>
-              <input ref={file} type="file" accept="application/pdf" className="sr-only" aria-label="PDF of this paper" onChange={(event) => event.target.files?.length && open.setFullText(paper, "added")} />
+              <input ref={file} type="file" accept="application/pdf" className="sr-only" aria-label="PDF of this paper" onChange={(event) => event.target.files?.[0] && open.setFullText(paper, "added", event.target.files[0].name)} />
               <Button variant="outline" size="sm" onClick={() => file.current?.click()}><Upload />Upload its PDF</Button>
             </>
           ) : null}
@@ -423,7 +425,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
           {mine && deciding !== "vote" ? (
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who="You" />
-              <span className="min-w-0 flex-1">{DECISION_LABEL[mine.decision]}{mine.reason ? `, ${reasonLabel(mine.reason, screening.criteria).toLowerCase()}` : ""}</span>
+              <span className="min-w-0 flex-1">{DECISION_LABEL[mine.decision]}{mine.reason ? `, ${failedLabel(mine.reason, screening.criteria)}` : ""}</span>
               <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>Change it</Button>
             </div>
           ) : (
@@ -435,7 +437,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       <section className="space-y-2">
         <h3 className="text-xs font-medium text-muted-foreground">Votes</h3>
         {visible ? (
-          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} shown={shown} onShow={setShown} /></div>
+          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} /></div>
         ) : (
           <p className="rounded-2xl border border-border-subtle bg-inset px-3 py-3 text-sm text-muted-foreground">The other votes show once you have cast yours, above.</p>
         )}
@@ -451,7 +453,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
             {cast.filter((one) => one.vote).map(({ reviewer, vote }) => (
               <li key={reviewer.id} className="flex items-start gap-2 text-xs">
                 <ReviewerMark reviewer={reviewer} className="size-5" />
-                <span className="min-w-0 flex-1"><span className="font-medium">{reviewer.name}</span> <span className="text-muted-foreground">{DECISION_LABEL[vote!.decision].toLowerCase()}{vote!.reason ? `, ${reasonLabel(vote!.reason, screening.criteria).toLowerCase()}` : ""}, {ago(vote!.at)}</span>{vote!.note ? <span className="block text-muted-foreground">“{vote!.note}”</span> : null}</span>
+                <span className="min-w-0 flex-1"><span className="font-medium">{reviewer.name}</span>{reviewer.kind === "model" ? <span className="text-muted-foreground"> (AI model)</span> : null} <span className="text-muted-foreground">{DECISION_LABEL[vote!.decision].toLowerCase()}{vote!.reason ? `, ${failedLabel(vote!.reason, screening.criteria)}` : ""}, {ago(vote!.at)}</span>{vote!.note ? <span className="block text-muted-foreground">“{vote!.note}”</span> : null}</span>
               </li>
             ))}
           </ul>
@@ -462,7 +464,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       {state.resolvedBy ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <IdentityAvatar name={personOf(state.resolvedBy)?.name ?? ""} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
-          <span className="min-w-0 flex-1">Settled by {personOf(state.resolvedBy)?.name ?? "a reviewer"}{state.reason ? `, ${reasonLabel(state.reason, screening.criteria).toLowerCase()}` : ""}{state.note ? `: “${state.note}”` : ""}</span>
+          <span className="min-w-0 flex-1">Settled by {personOf(state.resolvedBy)?.name ?? "a reviewer"}{state.reason ? `, ${failedLabel(state.reason, screening.criteria)}` : ""}{state.note ? `: “${state.note}”` : ""}</span>
           {open.canResolve ? <Button variant="ghost" size="xs" onClick={() => open.resolve(paper, null)}><Undo2 />Reopen</Button> : null}
         </div>
       ) : !open.canResolve ? (

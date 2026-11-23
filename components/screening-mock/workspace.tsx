@@ -24,14 +24,14 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { HOME, workspaceOf, STAGES, STAGE_LABEL, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, type Stage } from "./data";
-import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog } from "./dialogs";
-import { EffectList, effectLines } from "./effects";
+import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
+import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { MockStates } from "./mock-states";
 import { Overview } from "./overview";
 import { Papers, type PapersFilter } from "./papers";
 import { ReviewerStack } from "./parts";
 import { Screen, type Queue } from "./screen";
-import { credits, useMock, useModelsReading, useOpenScreening } from "./store";
+import { credits, paperCredits, useMock, useModelsReading, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
 const VIEWS = ["overview", "screen", "papers"] as const;
@@ -43,7 +43,7 @@ function ruleFacts(screening: Screening) {
   const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
   const readers = [models ? (models === 1 ? "The model" : `All ${models} models`) : null, each ? `${each} ${each === 1 ? "person" : "people"}` : null].filter(Boolean).join(" and ");
   return {
-    who: [each ? `${each} ${each === 1 ? "person" : "people"}` : null, models ? `${models} ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(", ") || "No reviewer",
+    who: [each ? (each < people ? `${each} of ${people} people a paper` : `${people} ${people === 1 ? "person" : "people"}`) : null, models ? `${models} ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(", ") || "No reviewer",
     whoMeans: readers ? `${readers} read each paper` : "Nobody reads the papers yet",
     when: screening.rule.settle === "all" ? "All agree" : screening.rule.settle === "most" ? "Most agree" : "One vote",
     whenMeans: screening.rule.settle === "all" ? "A paper is settled when all its reviewers agree. Any disagreement is a conflict." : screening.rule.settle === "most" ? "A paper is settled by more than half of its reviewers. An even split is a conflict." : "The first vote on a paper settles it.",
@@ -91,7 +91,10 @@ export function ScreeningWorkspace() {
   const unsettled = open.counts.conflict + open.counts.waiting;
   const workspace = workspaceOf(screening);
   const banner = bannerKind(open, view === "screen");
-  const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).filter((one) => one.email || one.id !== screening.createdBy).length;
+  const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).length;
+  // Changes to its settings that were started and not saved.
+  const unsaved = Boolean(store.drafts[id]);
+  const [exportTab, setExportTab] = useState<ExportTab>("papers");
   const withAdded = (reviewer: Reviewer): Screening => ({
     ...screening,
     reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer],
@@ -192,7 +195,7 @@ export function ScreeningWorkspace() {
                   {shared ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{shared}</span> : null}
                 </Button>
                 <Button asChild variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`}>
-                  <NextLink href={`/screening/mock/${id}/settings`}><Settings2 /><span className={BAR_LABEL}>Settings</span></NextLink>
+                  <NextLink href={`/screening/mock/${id}/settings`}><Settings2 /><span className={BAR_LABEL}>Settings</span>{unsaved ? <span className="ms-0.5 rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : null}</NextLink>
                 </Button>
                 {more("max-sm:hidden")}
               </>
@@ -205,7 +208,16 @@ export function ScreeningWorkspace() {
                       label="Stage"
                       value={stage}
                       onChange={(next) => void setStage(next === "abstract" ? null : next)}
-                      options={STAGES.map((one) => ({ id: one, label: STAGE_LABEL[one], detail: <span className="tabular-nums text-muted-foreground">{(one === "abstract" ? open.first : open.second).papers.length}</span> }))}
+                      options={STAGES.map((one) => ({
+                        id: one,
+                        label: STAGE_LABEL[one],
+                        detail: (
+                          <span className="flex items-center gap-1.5">
+                            <span className="tabular-nums text-muted-foreground">{(one === "abstract" ? open.first : open.second).papers.length}</span>
+                            {open.todoAt[one] ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs font-medium tabular-nums text-primary">{open.todoAt[one]} for you</span> : null}
+                          </span>
+                        ),
+                      }))}
                     />
                   ) : (
                     <Chip className="h-8 px-3">{STAGE_LABEL.abstract} only</Chip>
@@ -219,7 +231,6 @@ export function ScreeningWorkspace() {
                   <span className="ms-auto flex sm:hidden">{more("")}</span>
                   <div className={`flex items-center gap-2 max-sm:w-full sm:ms-auto ${view === "screen" ? "max-lg:hidden" : ""}`}>
                     <ReviewerStack reviewers={reviewers} />
-                    {open.canChange && !open.isReviewer && !screening.finishedAt ? <Button variant="outline" size="sm" className="h-8 text-xs" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
                     {open.canChange ? (
                       <>
                         <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
@@ -250,6 +261,7 @@ export function ScreeningWorkspace() {
                       void setView(next);
                     }}
                     onStage={(next) => void setStage(next === "abstract" ? null : next)}
+                    onExport={(what) => { setExportTab(what); setOver("export"); }}
                   />
                 ) : view === "screen" ? (
                   <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} onView={(next) => void setView(next === "overview" ? null : next)} />
@@ -262,17 +274,17 @@ export function ScreeningWorkspace() {
         </div>
 
         <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} screening={screening} />
-        <ExportDialog open={over === "export"} onClose={() => setOver(null)} state={open} />
+        <ExportDialog open={over === "export"} onClose={() => setOver(null)} state={open} tab={exportTab} onTab={setExportTab} />
         <ShareDialog open={over === "share"} onClose={() => setOver(null)} state={open} onPromote={(viewer) => { setOver(null); setAdding({ ...viewer, addedAt: Date.now() }); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
-        <MoveDialog open={over === "move"} onClose={() => setOver(null)} state={open} />
+        <MoveDialog open={over === "move"} onClose={() => setOver(null)} screening={screening} me={open.me} onMove={(to, what) => open.update((s) => ({ ...s, workspace: to }), { what })} />
         <ConfirmChange
           open={demoting !== null}
           title={demoting ? `Stop ${demoting.name} voting?` : ""}
           confirm="Make them a viewer"
           onClose={() => setDemoting(null)}
-          onConfirm={() => demoting && store.update(id, () => demoted(demoting), { what: `Made ${demoting.name} a viewer`, effect: effectLines(screening, demoted(demoting)).join(". ") || undefined })}
+          onConfirm={() => demoting && store.update(id, () => demoted(demoting), { what: `Made ${demoting.name} a viewer`, effect: [...effectLines(screening, demoted(demoting)), movesText(effectMoves(screening, demoted(demoting)))].filter(Boolean).join(". ") || undefined })}
         >
-          {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting)), "They go on seeing every paper and every vote"]} /> : null}
+          {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting)), "They go on seeing every paper and every vote"]} moves={effectMoves(screening, demoted(demoting))} /> : null}
         </ConfirmChange>
         <ConfirmChange
           open={over === "finish"}
@@ -296,6 +308,7 @@ export function ScreeningWorkspace() {
           open={adding !== null}
           title={adding ? `Add ${adding.name} as a reviewer?` : ""}
           confirm="Add"
+          disabled={Boolean(adding?.model && !screening.criteria.length)}
           onClose={() => setAdding(null)}
           onConfirm={() => {
             if (!adding) return;
@@ -306,14 +319,18 @@ export function ScreeningWorkspace() {
           {adding ? (
             <>
               {adding.model ? (
-                <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} />
+                <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(adding.model, "abstract"))} credits a paper</span>} />
               ) : (
                 <div className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-inset p-3">
                   <IdentityAvatar name={adding.name} imageUrl={adding.imageUrl} className="size-9" />
                   <p className="min-w-0 truncate text-sm font-medium">{adding.name}</p>
                 </div>
               )}
-              <EffectList lines={effectLines(screening, withAdded(adding))} />
+              {adding.model && !screening.criteria.length ? (
+                <p className="rounded-xl bg-warning/10 px-3 py-2.5 text-sm ink-warning">A model answers criteria, and this screening has none: it would include every paper it reads. Add criteria in the settings first.</p>
+              ) : (
+                <EffectList lines={effectLines(screening, withAdded(adding))} moves={effectMoves(screening, withAdded(adding))} />
+              )}
               {adding.model ? <p className="text-xs tabular-nums text-muted-foreground">{credits(store.wallet)} credits in the workspace now</p> : null}
             </>
           ) : null}
@@ -332,9 +349,11 @@ function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quie
   if (open.gathering) return "gathering";
   if (open.outOfCredits) return "credits";
   if (screening.finishedAt) return "finished";
-  if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor && stage === "abstract" ? "waiting" : "reading";
+  // Who you are to the screening comes before what its models are doing: a notice that arrives later moves what is being pressed.
   if (!open.isReviewer) return "viewer";
-  return open.canChange ? null : "guest";
+  if (!open.canChange) return "guest";
+  if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor && stage === "abstract" ? "waiting" : "reading";
+  return null;
 }
 
 function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { kind: BannerKind | null; open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void }) {
@@ -375,7 +394,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
       <div className={row}>
         <CirclePause className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1"><span className="font-medium">The models are paused.</span> <span className="text-muted-foreground">They spend nothing, and people can go on voting.</span></span>
-        <Button variant="outline" size="sm" onClick={onResume}><Play />Let them read on</Button>
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Let them read on</Button> : null}
       </div>
     );
   }

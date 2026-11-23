@@ -85,7 +85,7 @@ export function AddModel({ exclude, onPick, children }: { exclude: string[]; onP
 }
 
 /** Asks before a change to a running screening, saying first what it will do. */
-export function ConfirmChange({ open, title, confirm, onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
+export function ConfirmChange({ open, title, confirm, disabled = false, onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className={`max-w-md ${AVATARS_FADE_IN}`}>
@@ -96,7 +96,7 @@ export function ConfirmChange({ open, title, confirm, onConfirm, onClose, childr
         <div className="space-y-3">{children}</div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>
+          <Button disabled={disabled} onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

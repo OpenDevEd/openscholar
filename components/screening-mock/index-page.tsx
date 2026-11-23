@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, GitCompare, ListChecks, MoreHorizontal, Plus, RotateCcw, Settings2, Trash2 } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, GitCompare, ListChecks, MoreHorizontal, Move, Plus, RotateCcw, Settings2, Trash2 } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { HOME, accessOf, activeReviewers, ago, modelsOf, personOf, standing, workspaceOf, type Screening } from "./data";
+import { MoveDialog } from "./dialogs";
 import { EffectList } from "./effects";
 import { MockStates } from "./mock-states";
 import { ResultBar, ReviewerStack } from "./parts";
@@ -43,6 +44,7 @@ export function ScreeningsIndex() {
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<Screening | null>(null);
   const [by, setBy] = useState("anyone");
+  const [moving, setMoving] = useState<Screening | null>(null);
   const me = store.viewer;
 
   const all = useMemo(
@@ -52,7 +54,10 @@ export function ScreeningsIndex() {
         const access = accessOf(screening, me);
         if (!access) return [];
         const state = standing(screening, "abstract");
-        const forYou = state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
+        const mine = (at: typeof state) => at.papers.filter((paper) => !at.settled[paper.id]!.final && at.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
+        const later = screening.fullText ? standing(screening, "fullText") : null;
+        const [onAbstract, onFullText] = [mine(state), later ? mine(later) : 0];
+        const forYou = onAbstract + onFullText;
         const conflicts = screening.rule.resolver === me || screening.createdBy === me ? state.counts.conflict : 0;
         const reading = !screening.finishedAt && modelsOf(screening).some((model) => (screening.reached.abstract[model.id] ?? 0) < state.papers.length);
         const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
@@ -60,8 +65,8 @@ export function ScreeningsIndex() {
         // What its models are doing, where they still have papers to read.
         const held = !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!, "abstract") > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : null;
         // What it has included: at full text where it has that stage.
-        const included = screening.fullText ? standing(screening, "fullText").counts.include : state.counts.include;
-        return [{ screening, state, included, access, forYou: screening.finishedAt ? 0 : forYou, conflicts: screening.finishedAt ? 0 : conflicts, reading, held, ahead }];
+        const included = later ? later.counts.include : state.counts.include;
+        return [{ screening, state, included, access, firstStage: onAbstract || !onFullText ? "" : "&stage=fullText", forYou: screening.finishedAt ? 0 : forYou, conflicts: screening.finishedAt ? 0 : conflicts, reading, held, ahead }];
       }),
     [store.screenings, store.wallet, me],
   );
@@ -123,7 +128,7 @@ export function ScreeningsIndex() {
                 </div>
                 {/* A full page's height while there are pages, so a short last page doesn't move the pager. */}
                 <ul className="divide-y divide-border-subtle" style={{ minHeight: pager.pages > 1 ? PAGE * ROW : undefined }}>
-                  {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map(({ screening, state, included, access, forYou, conflicts, reading, held, ahead }) => {
+                  {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map(({ screening, state, included, access, firstStage, forYou, conflicts, reading, held, ahead }) => {
                     const starter = personOf(screening.createdBy);
                     const workspace = workspaceOf(screening);
                     const atFullText = screening.fullText ? state.counts.include + state.counts.maybe : 0;
@@ -147,7 +152,7 @@ export function ScreeningsIndex() {
                         <span className="relative col-span-2 @3xl:col-span-1"><ResultBar counts={state.counts} /></span>
                         <span className="pointer-events-none col-span-2 flex flex-wrap items-center justify-end gap-1.5 @3xl:col-span-1">
                           {workspace !== HOME ? <span className="me-auto flex min-w-0 @3xl:hidden"><WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }} /></span> : null}
-                          {forYou ? <NextLink href={`/screening/mock/${screening.id}?view=screen`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
+                          {forYou ? <NextLink href={`/screening/mock/${screening.id}?view=screen${firstStage}`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
                           {conflicts ? <NextLink href={`/screening/mock/${screening.id}?view=screen&queue=conflicts`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={GitCompare} className="bg-info/12 text-info">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</Chip></NextLink> : null}
                           {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : "Every paper is settled"}</Chip>) : null}
                         </span>
@@ -161,6 +166,7 @@ export function ScreeningsIndex() {
                           <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuItem onSelect={() => router.push(`/screening/mock/${screening.id}/settings`)}><Settings2 />Settings</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => router.push(`/screening/mock/new?from=${screening.id}`)}><Copy />Run again with these settings</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setMoving(screening)}><Move />Move to another workspace</DropdownMenuItem>
                             {screening.finishedAt ? (
                               <DropdownMenuItem onSelect={() => store.update(screening.id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
                             ) : (
@@ -189,6 +195,7 @@ export function ScreeningsIndex() {
         <ConfirmChange open={deleting !== null} title={deleting ? `Delete “${deleting.name}”?` : ""} confirm="Delete" onClose={() => setDeleting(null)} onConfirm={() => deleting && store.remove(deleting.id)}>
           <EffectList lines={["Its votes and its settings go with it", "Papers it saved to a collection stay there"]} />
         </ConfirmChange>
+        {moving ? <MoveDialog open onClose={() => setMoving(null)} screening={moving} me={me} onMove={(to, what) => store.update(moving.id, (s) => ({ ...s, workspace: to }), { what })} /> : null}
         <MockStates />
       </PageWrapper>
     </MotionConfig>

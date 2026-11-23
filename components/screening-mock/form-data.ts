@@ -5,7 +5,7 @@ import type { SourceKind } from "./data";
 
 export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[] };
 
-export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois">, Offer[]> = {
+export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evidenceLibrary">, Offer[]> = {
   search: [
     { name: "structured pedagogy AND early grade reading", detail: "Searched yesterday", total: 318, filters: ["2010 to 2026", "Articles", "Open access"], questions: ["Does the study report reading outcomes?", "Was the programme delivered by government teachers?"] },
     { name: "teaching at the right level", detail: "Searched 3 days ago", total: 96, filters: ["2015 to 2026"] },
@@ -35,17 +35,45 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois">, Offe
     { name: "Included in Climate adaptation in schools", detail: "Finished screening", total: 29 },
     { name: "Included in Early childhood development and home visits", detail: "Finished screening", total: 74 },
   ],
-  evidenceLibrary: [
-    { name: "EdTech Hub Evidence Community", detail: "Whole community", total: 1280 },
-    { name: "EdTech Hub: Sub-Saharan Africa", detail: "A collection in EdTech Hub", total: 342 },
-    { name: "African Education Research Database", detail: "Whole community", total: 2140 },
-  ],
   zotero: [
     { name: "My library", detail: "Your Zotero account", total: 934 },
     { name: "Literacy review 2026", detail: "Group collection", total: 154 },
     { name: "CCT review 2026", detail: "Group collection", total: 96 },
   ],
 };
+
+/** What a community offers to screen: all of it, its own collections, yours in it, and the ones shared with you. */
+export type CommunityRow = { name: string; total: number; group: "yours" | "shared" | "library"; access?: "editor" | "viewer"; private?: boolean; parent?: string; pasted?: boolean };
+export const COMMUNITIES: Array<{ id: string; name: string; role: string; records: number; rows: CommunityRow[] }> = [
+  {
+    id: "hub",
+    name: "EdTech Hub Evidence Community",
+    role: "Editor",
+    records: 1280,
+    rows: [
+      { name: "Every record in EdTech Hub Evidence Community", total: 1280, group: "library" },
+      { name: "Sub-Saharan Africa", total: 342, group: "library", parent: "Regions" },
+      { name: "Foundational learning", total: 118, group: "library", parent: "Topics" },
+      { name: "Girls' education", total: 96, group: "library", parent: "Topics" },
+      { name: "My reading list for the EdTech review", total: 46, group: "yours", private: true },
+      { name: "Radio and audio, for the brief", total: 19, group: "yours", private: false },
+      { name: "Tablet programmes", total: 31, group: "shared", access: "viewer", private: true },
+      { name: "Teacher coaching, working set", total: 74, group: "shared", access: "editor", private: false },
+    ],
+  },
+  {
+    id: "aerd",
+    name: "African Education Research Database",
+    role: "Viewer",
+    records: 2140,
+    rows: [
+      { name: "Every record in African Education Research Database", total: 2140, group: "library" },
+      { name: "Kenya", total: 318, group: "library", parent: "Countries" },
+      { name: "Ghana", total: 241, group: "library", parent: "Countries" },
+      { name: "Early grade reading", total: 205, group: "library", parent: "Topics" },
+    ],
+  },
+];
 
 export const COLLECTIONS = [
   { id: "c1", name: "Foundational learning, core set", papers: 64 },
