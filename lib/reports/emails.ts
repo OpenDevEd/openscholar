@@ -26,6 +26,8 @@ export type MailFacts = {
   correction?: { changed: string[]; results: CheckResult[]; request?: string; declinedNote?: string };
   deposit: string;
   archive: string;
+  /** Where its DOCiD stands, when it gets one. */
+  docid?: string;
   /** What changed, for the email that says a reviewer edited the details or that the author's changes are live. */
   edited?: string;
   /** Where the report's workspace's pages are: `/o/<slug>` for an organisation's, empty for a person's own. */
@@ -116,8 +118,8 @@ const EVENTS = {
   "registration-refused": {
     to: "team",
     label: "Registration refused",
-    heading: "A DOI registration was refused",
-    rows: (r, origin) => [["Refused by", [r.deposit === "failed" ? "Crossref" : "", r.archive === "failed" ? "Zenodo" : ""].filter(Boolean).join(" and ")], reviewLink(r, origin)],
+    heading: "A registration was refused",
+    rows: (r, origin) => [["Refused by", [r.deposit === "failed" ? "Crossref" : "", r.archive === "failed" ? "Zenodo" : "", r.docid === "failed" ? "DOCiD" : ""].filter(Boolean).join(" and ")], reviewLink(r, origin)],
   },
   // To the admins of the organisation the report is in, who activate it (#1261).
   "waiting-for-admin": {

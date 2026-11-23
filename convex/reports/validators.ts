@@ -140,7 +140,19 @@ export const stepValidator = literals(STEPS);
 export const statusValidator = literals(STATUSES);
 export const changeStageValidator = literals(CHANGE_STAGES);
 export const stageValidator = literals(STAGES);
-export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")) });
+export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")), /** It gets a DOCiD (plans/identifier-services). */ docid: v.optional(v.boolean()) });
+/**
+ * Where a report's DOCiD stands: the Handle once minted and DOCiD's record of it once deposited, each kept the moment
+ * DOCiD gives it, so a later try never mints or deposits twice; `retired` while its record shows a retired page.
+ */
+export const docidRegistrationValidator = v.object({
+  state: v.union(v.literal("none"), v.literal("queued"), v.literal("registered"), v.literal("failed")),
+  handle: v.optional(v.string()),
+  publicationId: v.optional(v.number()),
+  retired: v.optional(v.boolean()),
+});
+/** Each service's registration beyond Crossref's and Zenodo's, which keep their own fields until they move here. */
+export const registrationsValidator = v.object({ docid: v.optional(docidRegistrationValidator) });
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
 export const pdfTroubleValidator = v.union(v.literal("unopened"), v.literal("textless"), v.literal("unread"));
@@ -230,6 +242,7 @@ export const reportFields = {
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
+  registrations: v.optional(registrationsValidator),
   /** Its record on Zenodo once there is one, which a correction edits, and the DOI Zenodo gave it when it mints its own. */
   zenodoRecordId: v.optional(v.string()),
   zenodoDoi: v.optional(v.string()),
@@ -295,6 +308,7 @@ export const reportRowValidator = v.object({
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
+  registrations: v.optional(registrationsValidator),
   updatedAt: v.number(),
   /** Who signed it. */
   signer: v.string(),

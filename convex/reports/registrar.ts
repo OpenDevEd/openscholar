@@ -5,12 +5,12 @@
 // registrars in the order its route fixed when its DOI was reserved, and each answer is kept as it comes
 // (./registration.ts). Every attempt is logged with what the registrar said, since it is the only record of a refusal.
 import { v } from "convex/values";
-import { CrossrefApiClient, ProviderHttpError, ZenodoApiClient, mapCrossrefRecord, type CrossrefDiagnosticResult } from "@opendeved/doi-sync-core";
+import { CrossrefApiClient, ProviderHttpError, ZenodoApiClient, buildDocidDeposit, mapCrossrefRecord, type CrossrefDiagnosticResult } from "@opendeved/doi-sync-core";
 import { internal } from "../_generated/api";
 import { zenodoAccessToken } from "../zenodo/connectionActions";
 import { internalAction } from "../_generated/server";
 import type { PublicationSecrets } from "../evidenceLibraries/publicationValidators";
-import { userAgent } from "../evidenceLibraries/publicationCredentialVerification";
+import { docidClient, userAgent } from "../evidenceLibraries/publicationCredentialVerification";
 import { decrypt } from "../lib/crypto";
 import { requireAppUrl } from "../lib/env";
 import { openAlexFetch } from "../../lib/openalex/fetch";
@@ -73,7 +73,7 @@ export const register = internalAction({
       const said = error instanceof ProviderHttpError ? `${error.provider} answered ${error.status}: ${error.body.slice(0, 300)}` : String(error);
       return Object.values(secrets).reduce((text, secret) => (secret ? text.replaceAll(secret, "[hidden]") : text), said).slice(0, 500);
     };
-    const settle = (provider: "crossref" | "zenodo", answer: { outcome: "done" | "refused" | "unreached"; error?: string; zenodoRecordId?: string; zenodoDoi?: string }) =>
+    const settle = (provider: "crossref" | "zenodo" | "docid", answer: { outcome: "done" | "refused" | "unreached"; error?: string; zenodoRecordId?: string; zenodoDoi?: string }) =>
       ctx.runMutation(internal.reports.registration.settle, { reportId, rev, provider, ...answer });
     try {
       // A report Zenodo already holds is changed there first: a restriction on its file never waits on Crossref.
@@ -143,7 +143,7 @@ export const register = internalAction({
             registered ||= await seen();
             console.info(JSON.stringify({ event: "report-crossref-verify", reportId, key: job.key, registered }));
             if (!(await settle(provider, registered ? { outcome: "done" } : { outcome: "unreached", error: "Crossref took the deposit and doesn't show the record yet." }))) return null;
-          } else {
+          } else if (provider === "zenodo") {
             // In its author's own Zenodo account (#1237), under their name: always zenodo.org, as sandbox.zenodo.org has
             // accounts of its own. A connection Zenodo no longer accepts refuses the report, which waits for them.
             const own = job.archiveOwnerId !== undefined;
@@ -207,6 +207,65 @@ export const register = internalAction({
               return null;
             }
             if (!(await settle(provider, { outcome: "done", zenodoRecordId: identifiers.latestRecordId, ...(identifiers.versionDoi && { zenodoDoi: identifiers.versionDoi }) }))) return null;
+          } else {
+            // DOCiD (plans/identifier-services): the Africa PID Alliance's Handle. Minted, then deposited under it with
+            // the DOI the report registered, each kept the moment DOCiD gives it, so a later try carries on and never
+            // makes a second. A withdrawn report's record shows a retired page; a reinstated one is restored.
+            const docid = job.publication.docid;
+            if (docid?.mode !== "custom" || !secrets.docidPassword) throw new Error("DOCiD isn't connected in the publishing settings.");
+            if (docid.resourceTypeId === undefined) throw new Error("Pick DOCiD's resource type in the publishing settings.");
+            const client = docidClient();
+            const { token } = await client.signIn({ email: docid.email, password: secrets.docidPassword });
+            const note = (kept: { docidHandle?: string; docidPublicationId?: number; docidRetired?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
+            const held = job.docid ?? { state: "queued" as const };
+            const doi = job.registration.crossref ? job.doi : job.zenodoDoi;
+            if (job.withdrawnAt !== undefined) {
+              // Its Handle can't be deleted: its record is retired, and a Handle never deposited has no record to retire.
+              if (held.publicationId !== undefined && !held.retired) {
+                await client.withdraw({ token, publicationId: held.publicationId, reason: "Withdrawn from Openscholar Reports." });
+                await note({ docidRetired: true });
+              }
+              console.info(JSON.stringify({ event: "report-docid-retire", reportId, key: job.key, handle: held.handle ?? null, record: held.publicationId ?? null }));
+              if (!(await settle(provider, { outcome: "done" }))) return null;
+              continue;
+            }
+            const authors = record.creators.filter((creator) => creator.creatorType === "author");
+            // DOCiD answers a repeated key with the Handle it already minted, so a try that lost its answer mints none.
+            let handle = held.handle;
+            if (!handle) {
+              handle = await client.mint({ token, title: record.title, description: record.abstract ?? record.title, idempotencyKey: `openscholar-report-${job.key.toLowerCase()}` });
+              await note({ docidHandle: handle });
+            }
+            if (held.publicationId === undefined) {
+              const openFile = !record.fileAccess && job.pdf ? await ctx.storage.get(job.pdf.file) : null;
+              const poster = job.cover ? await ctx.storage.get(job.cover) : null;
+              const deposited = await client.deposit({
+                token,
+                deposit: buildDocidDeposit(
+                  { title: record.title, abstract: record.abstract, ...(doi && { doi }), creators: authors, funding: record.funding },
+                  {
+                    docid: handle,
+                    resourceTypeId: docid.resourceTypeId,
+                    publicationTypeId: docid.publicationTypeId,
+                    funderTypeId: docid.funderTypeId,
+                    // Its file only when anyone may get it: DOCiD shows what it holds to everyone.
+                    ...(openFile && { file: { filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await openFile.arrayBuffer()) } }),
+                    ...(poster && { poster: { filename: `${job.key}-cover.png`, contentType: poster.type || "image/png", bytes: new Uint8Array(await poster.arrayBuffer()) } }),
+                  },
+                ),
+              });
+              await note({ docidPublicationId: deposited.publicationId });
+              console.info(JSON.stringify({ event: "report-docid-deposit", reportId, key: job.key, handle, record: deposited.publicationId }));
+            } else {
+              // A reinstated report's record comes back, and a corrected one takes its new title, abstract and DOI.
+              if (held.retired) {
+                await client.reinstate({ token, publicationId: held.publicationId });
+                await note({ docidRetired: false });
+              }
+              await client.update({ token, publicationId: held.publicationId, title: record.title, description: record.abstract ?? record.title, ...(doi && { doi }) });
+              console.info(JSON.stringify({ event: "report-docid-update", reportId, key: job.key, handle, record: held.publicationId }));
+            }
+            if (!(await settle(provider, { outcome: "done" }))) return null;
           }
         } catch (error) {
           console.error(JSON.stringify({ event: "report-registration-failed", reportId, key: job.key, provider, error: words(error) }));

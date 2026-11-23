@@ -652,9 +652,10 @@ export const discardChanges = workspaceMutation({
 const rowValidator = authorRowValidator;
 
 async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanReview: boolean): Promise<Infer<typeof rowValidator>> {
-  const { key, step, status, approved, flagged, changes, note, registration, deposit, archive, updatedAt } = report;
+  const { key, step, status, approved, flagged, changes, note, registration, deposit, archive, registrations, updatedAt } = report;
   return {
     key, step, status, registration, deposit, archive, updatedAt,
+    ...(registrations && { registrations }),
     stage: stageOf(report, humanReview),
     ...(approved && { approved }),
     ...(flagged && { flagged }),

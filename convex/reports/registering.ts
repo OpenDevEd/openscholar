@@ -11,12 +11,14 @@ import { providersOf } from "../../lib/reports/report";
  * which the registering action carries from start to finish, so an answer about the record as it stood before is
  * never taken for the record as it stands now.
  */
-export async function register(ctx: MutationCtx, report: Pick<Doc<"reports">, "_id" | "registration" | "registrationRev">) {
+export async function register(ctx: MutationCtx, report: Pick<Doc<"reports">, "_id" | "registration" | "registrationRev" | "registrations">) {
   const registers = providersOf(report.registration);
   const rev = (report.registrationRev ?? 0) + 1;
   await ctx.db.patch("reports", report._id, {
     deposit: registers.includes("crossref") ? "queued" : "none",
     archive: registers.includes("zenodo") ? "queued" : "none",
+    // Its DOCiD takes the report again too: what it holds, whether it's retired. Its Handle and record stay.
+    ...(registers.includes("docid") && { registrations: { ...report.registrations, docid: { ...report.registrations?.docid, state: "queued" as const } } }),
     registrationRev: rev,
     registrationError: undefined,
     registrationTries: undefined,

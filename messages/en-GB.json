@@ -6210,6 +6210,13 @@
         "done": "Registered with Crossref",
         "failed": "Crossref refused it",
         "withdrawn": "Marked withdrawn at Crossref"
+      },
+      "docid": {
+        "waiting": "DOCiD next",
+        "working": "Registering its DOCiD",
+        "done": "DOCiD registered",
+        "failed": "DOCiD refused it",
+        "withdrawn": "DOCiD shows it retired"
       }
     },
     "signedAgreement": {

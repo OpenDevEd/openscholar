@@ -28,6 +28,7 @@ const factsValidator = v.object({
   correction: v.optional(v.object({ changed: v.array(v.string()), results: checkResultsValidator, request: v.optional(v.string()), declinedNote: v.optional(v.string()) })),
   deposit: v.string(),
   archive: v.string(),
+  docid: v.optional(v.string()),
   edited: v.optional(v.string()),
   prefix: v.string(),
   admins: v.optional(v.object({ emails: v.array(v.string()), organization: v.string() })),
@@ -70,6 +71,7 @@ export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: M
       }),
       deposit: report.deposit,
       archive: report.archive,
+      ...(report.registrations?.docid && { docid: report.registrations.docid.state }),
       prefix: await prefixOf(ctx, report.workspaceId),
       ...(edited && { edited }),
       // An organisation's report is activated by its admins: its author's emails say so too, and name it.

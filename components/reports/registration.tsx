@@ -11,7 +11,7 @@ type Registered = Parameters<typeof stepsOf>[0];
 
 const TONE: Record<RegistrationStep["state"], StatusTone> = { waiting: "neutral", working: "running", done: "success", failed: "warning" };
 
-export const PROVIDER_NAME: Record<RegistrationStep["provider"], string> = { zenodo: "Zenodo", crossref: "Crossref" };
+export const PROVIDER_NAME: Record<RegistrationStep["provider"], string> = { zenodo: "Zenodo", crossref: "Crossref", docid: "DOCiD" };
 
 /** What a registration step says. A withdrawn report's registrars hold its record marked withdrawn: its DOI can't be removed. */
 export function useStepWords() {
