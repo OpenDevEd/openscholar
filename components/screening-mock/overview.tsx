@@ -4,10 +4,13 @@
 // the reviewers agree, and the counts a methods section asks for.
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
-import { AiIcon, ArrowRight, Ban, CircleCheck, CircleHelp, CirclePause, Clock, Coins, Download, Folder, GitCompare, ListChecks, Mail, MoreHorizontal, RotateCcw, Trash2, TriangleAlert } from "@/components/icons";
+import { AiIcon, ArrowRight, Ban, CircleCheck, CircleHelp, CirclePause, Clock, Coins, Download, Folder, RefreshCw, GitCompare, ListChecks, Mail, MoreHorizontal, RotateCcw, Trash2, TriangleAlert } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
-import { LIST, Zone } from "@/components/settings/parts";
+import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
+import { EASE } from "@/components/settings/model-map";
+import { LIST, Zone, pagerOf } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,14 +19,14 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, NOW, RESULTS, RESULT_LABEL, STAGE_LABEL, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Result, type Reviewer, type Screening, type Stage } from "./data";
+import { DECISIONS, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, STAGE_LABEL, day, growing, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Result, type Reviewer, type Screening, type Stage, lookOf } from "./data";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { RESULT_STYLE, ResultBar, ReviewerMark, Tally } from "./parts";
-import { credits, useMock, type Open } from "./store";
+import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 
-export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOpen: (view: "screen" | "papers", filter?: Result | "conflicts" | "todo") => void; onStage: (stage: Stage) => void; onExport: (what: "flow") => void }) {
+export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: Open; onOpen: (view: "screen" | "papers", filter?: Result | "conflicts" | "todo") => void; onStage: (stage: Stage) => void; onExport: (what: "flow") => void; /** Opens the papers one arrival brought. */ onAdded: (at: string) => void }) {
   const { screening, stage, papers, votes, settled, counts, toDo, conflicts } = open;
   const reviewers = activeReviewers(screening);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
@@ -128,6 +131,7 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
       </Zone>
 
       <Facts open={open} />
+      {stage === "abstract" ? <NewPapers open={open} onAdded={onAdded} /> : null}
 
       <div className="grid grid-cols-1 gap-7 @5xl/overview:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Zone label="Reviewers" aside={<Chip>{STAGE_LABEL[stage]}</Chip>}>
@@ -145,7 +149,8 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
                 <span />
               </div>
               {rows.map(({ reviewer, assigned, done, split, agrees, compared, missed, included }) => {
-                const unread = reviewer.kind === "model" ? open.unread(reviewer) : 0;
+                const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
+                const unread = unreadPapers.length;
                 const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
                 const held = open.outOfCredits ? { icon: Coins, text: "Stopped, out of credits" } : screening.paused ? { icon: CirclePause, text: "Paused" } : open.waitingFor && stage === "abstract" ? { icon: Clock, text: "Waiting its turn" } : null;
                 const person = personOf(reviewer.id);
@@ -154,10 +159,10 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
                     <div className="flex min-w-0 items-center gap-3">
                       <ReviewerMark reviewer={reviewer} className="size-8 self-start" />
                       <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 text-sm font-medium"><span className="truncate">{reviewer.name}</span>{reviewer.id === open.me ? <YouTag /> : reviewer.kind === "model" ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-2 text-2xs font-normal leading-5 text-muted-foreground">AI model</span> : null}</p>
+                        <p className="flex items-center gap-1.5 text-sm font-medium"><span className="truncate">{reviewer.name}</span>{reviewer.id === open.me ? <YouTag /> : reviewer.kind === "model" ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">AI</span> : null}</p>
                         {reviewer.kind === "model" ? (
                           // One line whatever it holds, so a paper that fails while it reads doesn't make the row taller.
-                          <div className="flex min-w-0 items-center gap-2">
+                          <div className="flex h-5 min-w-0 items-center gap-2">
                             <p className="flex min-w-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
                               {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
                               <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits`}</span>
@@ -169,19 +174,23 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
                                 </PopoverTrigger>
                                 <PopoverContent align="start" className="w-72 space-y-2.5 p-3 text-sm">
                                   <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}: the other reviewers settle {unread === 1 ? "it" : "them"}.</p>
-                                  {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer, unread)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again</Button> : null}
+                                  <ul className="space-y-1">
+                                    {unreadPapers.slice(0, 4).map((paper) => <li key={paper.id} className="line-clamp-2 text-xs text-muted-foreground">{paper.title} ({paper.year})</li>)}
+                                    {unread > 4 ? <li className="text-xs text-muted-foreground">and {unread - 4} more</li> : null}
+                                  </ul>
+                                  {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!, stage))} credits</Button> : null}
                                 </PopoverContent>
                               </Popover>
                             ) : null}
                           </div>
                         ) : (
-                          <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now, told by email" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : (person?.seen ?? "")}</p>
+                          <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : (person?.seen ?? "")}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 @max-2xl/overview:col-span-3 @max-2xl/overview:row-start-2">
                       <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-                      <span className="w-20 shrink-0 text-end text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={done} /> of {assigned}</span>
+                      <span className="shrink-0 text-end text-xs tabular-nums text-muted-foreground @2xl/overview:w-20"><AnimatedNumber value={done} /> of {assigned}<span className="@2xl/overview:hidden"> voted on</span></span>
                     </div>
                     <div className="flex items-center gap-2.5 @max-2xl/overview:hidden">
                       {DECISIONS.map((decision, i) => {
@@ -196,7 +205,8 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
                     </div>
                     <div className="text-end @max-2xl/overview:col-start-2 @max-2xl/overview:row-start-1">
                       <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : `${Math.round(agrees * 100)}%`}</p>
-                      {agrees !== null && reviewer.kind === "person" ? <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">of {compared} papers</p> : null}
+                      {agrees !== null ? <p className="whitespace-nowrap text-xs text-muted-foreground @2xl/overview:hidden">with the others</p> : null}
+                      {agrees !== null && reviewer.kind === "person" ? <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/overview:hidden">of {compared} papers</p> : null}
                       {reviewer.kind === "model" && included ? (
                         <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">missed {missed} of {included} included</p>
                       ) : null}
@@ -210,7 +220,7 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
                         </TooltipHint>
                         <DropdownMenuContent align="end" className="w-56">
                           <DropdownMenuItem onSelect={() => onOpen("papers")}><ListChecks />See their votes in Papers</DropdownMenuItem>
-                          {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer, unread)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
+                          {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
                           {reviewer.kind === "person" && reviewer.id !== open.me && done < assigned ? (
                             <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
                           ) : null}
@@ -225,6 +235,7 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
           ) : (
             <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nobody reads these papers yet. Add a person or a model from the row above.</p>
           )}
+          {rows.length > 1 ? <p className="px-1 text-xs text-muted-foreground">Votes with the others: on the papers every reviewer has voted on, how often this one chose what most of the others chose.</p> : null}
         </Zone>
 
         <Zone
@@ -280,6 +291,7 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
           ) : (
             <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">How far the reviewers agree shows here once two of them have voted on the same papers.</p>
           )}
+          {rows.length > 1 && matrix.some((row) => row.some(Boolean)) ? <p className="px-1 text-xs text-muted-foreground">Each square is two reviewers, on the papers both have voted on. 1.0 is the same vote every time, 0 is no better than chance.</p> : null}
         </Zone>
       </div>
 
@@ -295,6 +307,95 @@ export function Overview({ open, onOpen, onStage, onExport }: { open: Open; onOp
         {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} /> : null}
       </ConfirmChange>
     </div>
+  );
+}
+
+const UPDATE_PAGE = 4;
+
+/**
+ * New papers: whether the screening looks for them by itself, each time its sources were looked in
+ * again and what that brought, and where those papers stand now. Looking again is one press.
+ */
+function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => void }) {
+  const { screening, papers, settled } = open;
+  const [page, setPage] = useState(1);
+  const sources = growing(screening);
+  if (!sources.length) return null;
+  const updates = [...(screening.updates ?? [])].reverse();
+  const pager = pagerOf(updates.length + 1, UPDATE_PAGE, page, setPage);
+  const starter = personOf(screening.createdBy);
+  const fixed = screening.sources.length - sources.length;
+  // The row that says how it began closes the list, after every check.
+  const rows = [...updates.map((update) => ({ update })), { update: null }].slice((pager.page - 1) * UPDATE_PAGE, pager.page * UPDATE_PAGE);
+  return (
+    <Zone
+      label="New papers"
+      aside={
+        <span className="flex flex-wrap items-center justify-end gap-2">
+          {screening.living ? (
+            <>
+              <Chip icon={RefreshCw} className="bg-success/12 ink-success">Living: looks {EVERY_LABEL[screening.living.every].toLowerCase()}</Chip>
+              <Chip>Next on {day(screening.living.next)}</Chip>
+            </>
+          ) : (
+            <Chip>Looks only when asked</Chip>
+          )}
+          {open.canChange ? (
+            <>
+              {!screening.living ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={`/screening/mock/${screening.id}/settings#new-papers`}>Make it a living screening</NextLink></Button> : null}
+              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Look now</Button>
+            </>
+          ) : null}
+        </span>
+      }
+    >
+      <div className="overflow-hidden rounded-2xl border border-border-subtle" style={{ minHeight: pager.pages > 1 ? UPDATE_PAGE * 57 : undefined }}>
+        <AnimatePresence initial={false}>
+        {rows.map(({ update }) => {
+          if (!update) {
+            return (
+              <div key="start" className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border-subtle px-4 py-2.5 first:border-t-0">
+                <ReviewerMark reviewer={{ kind: "person", name: starter?.name ?? "", imageUrl: starter?.imageUrl }} className="size-7 self-start" />
+                <div className="min-w-0 flex-1 basis-40">
+                  <p className="truncate text-sm font-medium">Started by {starter?.name ?? "someone"}</p>
+                  <p className="text-xs text-muted-foreground">{day(screening.createdAt)}</p>
+                </div>
+                <Chip>{papers.filter((paper) => paper.batch === undefined).length.toLocaleString("en-GB")} papers from {screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</Chip>
+                {fixed ? <Chip>{fixed} {fixed === 1 ? "is a file or a list, and holds" : "are files or lists, and hold"} what {fixed === 1 ? "it" : "they"} held</Chip> : null}
+              </div>
+            );
+          }
+          const batch = papers.filter((paper) => paper.batch === update.at);
+          const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
+          for (const paper of batch) counts[settled[paper.id]!.result]++;
+          const who = update.by === SCHEDULE ? null : personOf(update.by);
+          return (
+            <motion.div key={update.at} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden border-t border-border-subtle first:border-t-0">
+            <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
+              {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7 self-start" /> : <span className="flex size-7 shrink-0 items-center justify-center self-start rounded-full bg-muted text-muted-foreground"><Clock className="size-3.5" /></span>}
+              <div className="min-w-0 flex-1 basis-40">
+                <p className="truncate text-sm font-medium">{who ? `${update.by === open.me ? "You" : who.name} looked` : "Scheduled check"}</p>
+                <p className="text-xs text-muted-foreground">{update.at > NOW ? "Just now" : day(update.at)}</p>
+              </div>
+              {update.found ? (
+                <>
+                  <Chip>{update.found} found</Chip>
+                  {update.found - update.added ? <Chip>{update.found - update.added} already in it</Chip> : null}
+                  <Chip className="bg-success/12 ink-success">{update.added} added</Chip>
+                  <span className="w-28 max-sm:hidden"><ResultBar counts={counts} /></span>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={!batch.length} onClick={() => onAdded(String(update.at))}>See them</Button>
+                </>
+              ) : (
+                <Chip>Nothing new</Chip>
+              )}
+            </div>
+            </motion.div>
+          );
+        })}
+        </AnimatePresence>
+      </div>
+      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={pager.total} itemsPerPage={UPDATE_PAGE} itemLabel="looks" /> : null}
+    </Zone>
   );
 }
 
@@ -322,7 +423,7 @@ function Facts({ open }: { open: Open }) {
             <p className="text-xs text-muted-foreground">{new Date(screening.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</p>
           </div>
         </div>
-        <WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }} />
+        <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} />
       </div>
       <div className={cell}>
         <p className="text-xs text-muted-foreground">Included papers go to</p>
@@ -341,11 +442,13 @@ function Facts({ open }: { open: Open }) {
         <p className="text-xs text-muted-foreground">Credits</p>
         {models.length ? (
           <>
-            <p className="flex items-baseline gap-1.5">
-              <span className="text-sm font-semibold tabular-nums"><AnimatedNumber value={Math.ceil(spent)} /></span>
-              <span className="text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `spent so far, ${credits(most)} once every paper is read` : "spent: every paper is read"}</span>
-              {open.reading.length && !screening.paused && !open.outOfCredits ? <AiIcon working className="size-3.5 self-center" /> : null}
-            </p>
+            <div>
+              <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
+                <AnimatedNumber value={Math.ceil(spent)} /> spent
+                {open.reading.length && !screening.paused && !open.outOfCredits ? <AiIcon working className="size-3.5" /> : null}
+              </p>
+              <p className="truncate text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `${credits(most)} once every paper is read` : "Every paper is read"}</p>
+            </div>
             <Meter value={spent} max={Math.max(most, 1)} />
             <div className="flex flex-wrap gap-1.5">
               <Chip icon={Coins}>{credits(workspace === HOME ? store.wallet : workspace.credits)} left in {workspace.name}</Chip>
@@ -388,7 +491,7 @@ function Yours({ open }: { open: Open }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-inset px-3 py-2 text-sm">
       <span className="font-medium">Your {mine.length.toLocaleString("en-GB")} {mine.length === 1 ? "vote" : "votes"}</span>
       <Tally votes={mine} />
-      <span className="min-w-0 flex-1 text-muted-foreground">{waiting.length.toLocaleString("en-GB")} of them {waiting.length === 1 ? "waits" : "wait"} for {others.slice(0, 2).join(" and ")}{others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote before {waiting.length === 1 ? "it settles" : "they settle"}.</span>
+      <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">{waiting.length.toLocaleString("en-GB")} of them {waiting.length === 1 ? "waits" : "wait"} for {others.slice(0, 2).join(" and ")}{others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote before {waiting.length === 1 ? "it settles" : "they settle"}.</span>
     </div>
   );
 }

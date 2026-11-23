@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, GitCompare, ListChecks, MoreHorizontal, Move, Plus, RotateCcw, Settings2, Trash2 } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, GitCompare, ListChecks, MoreHorizontal, Move, Plus, RefreshCw, RotateCcw, Settings2, Trash2 } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -22,7 +22,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { HOME, accessOf, activeReviewers, ago, modelsOf, personOf, standing, workspaceOf, type Screening } from "./data";
+import { HOME, accessOf, activeReviewers, ago, day, modelsOf, personOf, standing, workspaceOf, type Screening, lookOf } from "./data";
 import { MoveDialog } from "./dialogs";
 import { EffectList } from "./effects";
 import { MockStates } from "./mock-states";
@@ -139,22 +139,23 @@ export function ScreeningsIndex() {
                         <span className="pointer-events-none min-w-0">
                           <span className="flex min-w-0 items-center gap-2">
                             <span className="truncate text-sm font-semibold">{screening.name}</span>
-                            {workspace !== HOME ? <span className="flex min-w-0 @max-3xl:hidden"><WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }} /></span> : null}
+                            {workspace !== HOME ? <span className="flex min-w-0 @max-3xl:hidden"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
                           </span>
                           <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                             <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-4" />
                             <span className="truncate">{screening.createdBy === me ? "You" : (starter?.name ?? "Someone")}, {ago(screening.createdAt)}</span>
                             <Chip className="h-5 px-1.5">{state.papers.length.toLocaleString("en-GB")} papers</Chip>
                             {atFullText ? <Chip className="h-5 px-1.5 @max-3xl:hidden">{atFullText} at full text</Chip> : null}
+                            {screening.living ? <Chip icon={RefreshCw} className="h-5 bg-success/12 px-1.5 ink-success">Living</Chip> : null}
                           </span>
                         </span>
                         <span className="pointer-events-none flex justify-end @3xl:justify-start"><ReviewerStack reviewers={activeReviewers(screening)} max={6} /></span>
                         <span className="relative col-span-2 @3xl:col-span-1"><ResultBar counts={state.counts} /></span>
                         <span className="pointer-events-none col-span-2 flex flex-wrap items-center justify-end gap-1.5 @3xl:col-span-1">
-                          {workspace !== HOME ? <span className="me-auto flex min-w-0 @3xl:hidden"><WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }} /></span> : null}
+                          {workspace !== HOME ? <span className="me-auto flex min-w-0 @3xl:hidden"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
                           {forYou ? <NextLink href={`/screening/mock/${screening.id}?view=screen${firstStage}`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
                           {conflicts ? <NextLink href={`/screening/mock/${screening.id}?view=screen&queue=conflicts`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={GitCompare} className="bg-info/12 text-info">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</Chip></NextLink> : null}
-                          {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : "Every paper is settled"}</Chip>) : null}
+                          {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : screening.living ? `Up to date, looks again on ${day(screening.living.next)}` : "Every paper is settled"}</Chip>) : null}
                         </span>
                         {!access.member ? <span className="@max-3xl:hidden" /> : (
                         <DropdownMenu>

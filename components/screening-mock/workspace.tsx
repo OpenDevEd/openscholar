@@ -8,7 +8,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, MoreHorizontal, Move, Play, Plus, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
+import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -23,14 +23,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { HOME, workspaceOf, STAGES, STAGE_LABEL, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, type Stage } from "./data";
+import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, STAGES, STAGE_LABEL, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, type Stage, lookOf, ago } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { MockStates } from "./mock-states";
 import { Overview } from "./overview";
 import { Papers, type PapersFilter } from "./papers";
 import { ReviewerStack } from "./parts";
-import { Screen, type Queue } from "./screen";
+import { NO_PLACE, Screen, type Place, type Queue } from "./screen";
 import { credits, paperCredits, useMock, useModelsReading, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
@@ -66,8 +66,11 @@ export function ScreeningWorkspace() {
   useModelsReading(id);
   const [queueParam, setQueueParam] = useQueryState("queue");
   const queue: Queue = queueParam === "done" || queueParam === "conflicts" ? queueParam : "todo";
-  const setQueue = (next: Queue) => void setQueueParam(next === "todo" ? null : next);
+  const setQueue = (next: Queue) => { setPlace(NO_PLACE); void setQueueParam(next === "todo" ? null : next); };
   const [filter, setFilter] = useState<PapersFilter>("all");
+  const [added, setAdded] = useState("all");
+  // Where you are in the Screen view's queue, kept here so another view doesn't lose it.
+  const [place, setPlace] = useState<Place>(NO_PLACE);
   const [over, setOver] = useState<"activity" | "export" | "share" | "move" | "finish" | "delete" | null>(null);
   const [adding, setAdding] = useState<Reviewer | null>(null);
   // A reviewer being made a viewer from Share: they stop voting, and keep seeing it.
@@ -145,6 +148,7 @@ export function ScreeningWorkspace() {
           )
         ) : null}
         <DropdownMenuItem onSelect={() => router.push(`/screening/mock/new?from=${id}`)}><Copy />Run again with these settings</DropdownMenuItem>
+        {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Look for new papers now</DropdownMenuItem> : null}
         <DropdownMenuItem onSelect={() => setOver("move")}><Move />Move to another workspace</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={() => setOver("delete")}><Trash2 />Delete</DropdownMenuItem>
@@ -168,7 +172,7 @@ export function ScreeningWorkspace() {
               screening.finishedAt || workspace !== HOME ? (
                 <>
                   {screening.finishedAt ? <Chip icon={CircleCheck} className="bg-success/12 ink-success">Finished</Chip> : null}
-                  {workspace !== HOME ? <WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }} /> : null}
+                  {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
                 </>
               ) : null
             }
@@ -176,7 +180,7 @@ export function ScreeningWorkspace() {
               <Segmented
                 label="View"
                 value={view}
-                onChange={(next) => void setView(next === "overview" ? null : next)}
+                onChange={(next) => { void setView(next === "overview" ? null : next); window.scrollTo({ top: 0 }); }}
                 options={[
                   { id: "overview", label: "Overview", icon: BarChart3 },
                   { id: "screen", label: "Screen", icon: ListChecks, detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
@@ -213,8 +217,9 @@ export function ScreeningWorkspace() {
                         label: STAGE_LABEL[one],
                         detail: (
                           <span className="flex items-center gap-1.5">
-                            <span className="tabular-nums text-muted-foreground">{(one === "abstract" ? open.first : open.second).papers.length}</span>
-                            {open.todoAt[one] ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs font-medium tabular-nums text-primary">{open.todoAt[one]} for you</span> : null}
+                            {/* A phone has room for one number: what waits for you, where something does. */}
+                            <span className={`tabular-nums text-muted-foreground ${open.todoAt[one] ? "max-sm:hidden" : ""}`}>{(one === "abstract" ? open.first : open.second).papers.length}</span>
+                            {open.todoAt[one] ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs font-medium tabular-nums text-primary">{open.todoAt[one]}<span className="max-sm:sr-only"> for you</span></span> : null}
                           </span>
                         ),
                       }))}
@@ -228,6 +233,14 @@ export function ScreeningWorkspace() {
                     <TooltipHint label={facts.whenMeans}><span className="flex rounded-md"><Chip icon={Check}>{facts.when}</Chip></span></TooltipHint>
                     <TooltipHint label={facts.seeMeans}><span className="flex rounded-md"><Chip icon={Eye}>{facts.see}</Chip></span></TooltipHint>
                   </NextLink>
+                  {/* A living screening says so, and when it next looks for papers. */}
+                  {screening.living ? (
+                    <NextLink href={`/screening/mock/${id}/settings#new-papers`} className="flex rounded-md outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
+                      <TooltipHint label={`A living screening: it looks in its sources again ${EVERY_LABEL[screening.living.every].toLowerCase()}, and screens what is new. Next on ${day(screening.living.next)}.`}>
+                        <span className="flex rounded-md"><Chip icon={RefreshCw} className="bg-success/12 ink-success">Living, next {day(screening.living.next)}</Chip></span>
+                      </TooltipHint>
+                    </NextLink>
+                  ) : null}
                   <span className="ms-auto flex sm:hidden">{more("")}</span>
                   <div className={`flex items-center gap-2 max-sm:w-full sm:ms-auto ${view === "screen" ? "max-lg:hidden" : ""}`}>
                     <ReviewerStack reviewers={reviewers} />
@@ -245,7 +258,7 @@ export function ScreeningWorkspace() {
                 </div>
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => { void setStage(null); setQueue("todo"); void setView("screen"); }} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
                 </AutoHeight>
               </>
             }
@@ -259,21 +272,23 @@ export function ScreeningWorkspace() {
                       if (next === "screen") setQueue(what === "conflicts" ? "conflicts" : "todo");
                       else setFilter(what && what !== "conflicts" && what !== "todo" ? what : "all");
                       void setView(next);
+                      window.scrollTo({ top: 0 });
                     }}
                     onStage={(next) => void setStage(next === "abstract" ? null : next)}
                     onExport={(what) => { setExportTab(what); setOver("export"); }}
+                    onAdded={(at) => { setFilter("all"); setAdded(at); void setStage(null); void setView("papers"); }}
                   />
                 ) : view === "screen" ? (
-                  <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} onView={(next) => void setView(next === "overview" ? null : next)} />
+                  <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} place={place} onPlace={setPlace} onView={(next) => void setView(next === "overview" ? null : next)} />
                 ) : (
-                  <Papers open={open} filter={filter} onFilter={setFilter} />
+                  <Papers open={open} filter={filter} onFilter={setFilter} added={added} onAdded={setAdded} />
                 )}
               </motion.div>
             </AnimatePresence>
           </LibraryPageShell>
         </div>
 
-        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} screening={screening} />
+        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} state={open} onPaper={(paper, at) => { void setStage(at === "abstract" ? null : at); void setQueueParam("done"); setPlace({ ...NO_PLACE, picked: paper, page: 0 }); void setView("screen"); window.scrollTo({ top: 0 }); }} />
         <ExportDialog open={over === "export"} onClose={() => setOver(null)} state={open} tab={exportTab} onTab={setExportTab} />
         <ShareDialog open={over === "share"} onClose={() => setOver(null)} state={open} onPromote={(viewer) => { setOver(null); setAdding({ ...viewer, addedAt: Date.now() }); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
         <MoveDialog open={over === "move"} onClose={() => setOver(null)} screening={screening} me={open.me} onMove={(to, what) => open.update((s) => ({ ...s, workspace: to }), { what })} />
@@ -291,12 +306,13 @@ export function ScreeningWorkspace() {
           title="Mark this screening as finished?"
           confirm="Mark as finished"
           onClose={() => setOver(null)}
-          onConfirm={() => store.update(id, (s) => ({ ...s, finishedAt: Date.now() }), { what: "Marked the screening as finished", effect: unsettled ? `${unsettled} papers were not settled` : undefined })}
+          onConfirm={() => store.update(id, (s) => ({ ...s, finishedAt: Date.now(), living: undefined }), { what: "Marked the screening as finished", effect: [unsettled ? `${unsettled} papers were not settled` : "", screening.living ? "It stopped looking for new papers" : ""].filter(Boolean).join(". ") || undefined })}
         >
           <EffectList
             lines={[
               ...(unsettled ? [`${unsettled} ${unsettled === 1 ? "paper is" : "papers are"} not settled, and ${unsettled === 1 ? "stays" : "stay"} as ${unsettled === 1 ? "it is" : "they are"}`] : []),
               ...(open.reading.length ? ["The models stop reading"] : []),
+              ...(screening.living ? ["It stops looking for new papers"] : []),
               "It moves to Finished in the list, and can be reopened or changed at any time",
             ]}
           />
@@ -342,23 +358,57 @@ export function ScreeningWorkspace() {
 }
 
 /** What a person needs to know before anything else: the models are out of credits, still reading, or the screening is finished, or it isn't theirs to vote on. */
-type BannerKind = "gathering" | "credits" | "finished" | "paused" | "waiting" | "reading" | "viewer" | "guest";
+type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "waiting" | "reading" | "viewer" | "guest" | "arrived" | "nothing";
 /** Which one thing the row under the stage says. `quiet` leaves the models' progress out: screening paper after paper, that is the Overview's to show, and a row that came and went would move the paper being read. */
 function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quiet: boolean): BannerKind | null {
   const { screening, reading, stage } = open;
   if (open.gathering) return "gathering";
+  if (screening.checking) return "checking";
   if (open.outOfCredits) return "credits";
   if (screening.finishedAt) return "finished";
   // Who you are to the screening comes before what its models are doing: a notice that arrives later moves what is being pressed.
   if (!open.isReviewer) return "viewer";
   if (!open.canChange) return "guest";
+  // New papers that wait for you come before how far the models are.
+  if (!quiet && open.latest?.mine) return "arrived";
+  if (!quiet && screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
   if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor && stage === "abstract" ? "waiting" : "reading";
   return null;
 }
 
-function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { kind: BannerKind | null; open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void }) {
+function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScreen }: { kind: BannerKind | null; open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void; onScreen: () => void }) {
   const { screening, reading, papers, stage } = open;
-  const row = "flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6";
+  // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
+  const row = "flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6";
+  if (kind === "checking" && screening.checking) {
+    return (
+      <div className={row}>
+        <RefreshCw className="size-4 shrink-0 text-muted-foreground" />
+        <span className="font-medium">Looking for new papers</span>
+        <Meter value={screening.checking.done} max={screening.checking.of} className="w-40" />
+        <span className="text-xs tabular-nums text-muted-foreground">{screening.checking.done} of {screening.checking.of} {screening.checking.of === 1 ? "source" : "sources"} checked</span>
+      </div>
+    );
+  }
+  if (kind === "arrived" && open.latest) {
+    return (
+      <div className={`${row} bg-success/10`}>
+        <RefreshCw className="size-4 shrink-0 ink-success" />
+        <span className="font-medium">{open.latest.papers} new {open.latest.papers === 1 ? "paper" : "papers"} came in {ago(open.latest.at)}</span>
+        <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">{open.latest.mine} of them {open.latest.mine === 1 ? "waits" : "wait"} for you. The rest of the screening stands as it was.</span>
+        <Button size="sm" onClick={onScreen}><ListChecks />Screen {open.latest.mine === 1 ? "it" : "them"}</Button>
+      </div>
+    );
+  }
+  if (kind === "nothing") {
+    const before = screening.updates?.at(-2)?.at ?? screening.createdAt;
+    return (
+      <div className={row}>
+        <RefreshCw className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1"><span className="font-medium">Nothing new.</span> <span className="text-muted-foreground">Its sources hold no paper they didn&apos;t hold on {day(before)}.</span></span>
+      </div>
+    );
+  }
   if (kind === "gathering" && open.gathering) {
     return (
       <div className={row}>
@@ -385,7 +435,8 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
       <div className={row}>
         <CircleCheck className="size-4 shrink-0 ink-success" />
         <span className="min-w-0 flex-1"><span className="font-medium">Finished.</span> <span className="text-muted-foreground">Everything in it can still be read, exported and changed.</span></span>
-        <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />Reopen</Button>
+        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={open.check}><RefreshCw />Look for new papers</Button> : null}
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />Reopen</Button> : null}
       </div>
     );
   }
@@ -418,7 +469,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <AiIcon working className="size-4 shrink-0" />
         <span className="font-medium">{reading.length === 1 ? reading[0]!.name : `${reading.length} models`} reading</span>
         <Meter value={done} max={papers.length} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={done} /> of {papers.length}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{done} of {papers.length}</span>
       </div>
     );
   }

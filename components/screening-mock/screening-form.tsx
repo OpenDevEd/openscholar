@@ -9,7 +9,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { AiIcon, Ban, Check, ChevronDown, Clock, Coins, Copy, Eye, FileText, FileX, Folder, FolderPlus, Gauge, Globe, Hash, Link2, ListChecks, Lock, PenLine, Plus, Search, Trash2, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { AiIcon, Ban, Check, ChevronDown, Clock, Coins, Copy, Eye, FileText, FileX, Folder, FolderPlus, Gauge, Globe, Hash, Link2, ListChecks, Lock, Mail, PenLine, Plus, RefreshCw, Search, Trash2, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { DEFAULT_RULE, HOME, NOW, accessOf, themeFor, workspaceOf, activeReviewers, ago, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, taken, type Criterion, type Reviewer, type Screening, type Source, type SourceKind } from "./data";
+import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, SCHEDULE, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, ago, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, taken, type Criterion, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
@@ -95,6 +95,8 @@ function describe(before: Screening, after: Screening) {
   if (added(was, is)) parts.push(`Added ${n(added(was, is), "reviewer", "reviewers")}`);
   if (added(is, was)) parts.push(`Took off ${n(added(is, was), "reviewer", "reviewers")}`);
   if (JSON.stringify(before.rule) !== JSON.stringify(after.rule)) parts.push("Changed how a paper is decided");
+  if (Boolean(before.living) !== Boolean(after.living)) parts.push(after.living ? "Made it a living screening" : "Stopped it looking for new papers");
+  else if (before.living?.every !== after.living?.every) parts.push("Changed how often it looks for new papers");
   if (before.fullText !== after.fullText) parts.push(after.fullText ? "Added the full-text stage" : "Took off the full-text stage");
   if (before.question !== after.question) parts.push("Changed the research question");
   // Points that come and go with a criterion are that criterion's change, not a change to the scoring.
@@ -154,7 +156,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   const fresh = !saved;
   // Its workspace's members change it. Someone it is shared with from outside reads its settings.
   const locked = Boolean(saved && !accessOf(saved, store.viewer)?.member);
-  const workspace = saved ? workspaceOf(saved) : HOME;
+  // A new screening is made in the workspace you are in. Someone from outside this one is in their own.
+  const outsider = Boolean(personOf(store.viewer)?.guest);
+  const workspace = saved ? workspaceOf(saved) : outsider ? WORKSPACES.find((one) => one.id === "theirs")! : HOME;
   // The credits its models are paid from: its own workspace's.
   const wallet = workspace === HOME ? store.wallet : workspace.credits;
   // The workspace's models read so many papers at once: a screening started while another's are reading waits its turn.
@@ -167,7 +171,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const found = draft.sources.reduce((sum, source) => sum + taken(source), 0);
   const papers = paperTotal(draft.sources);
   const each = draft.rule.each === "all" ? joined.length : Math.min(Number(draft.rule.each), joined.length);
-  const cost = models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract") * papers, 0);
+  // What each model has still to read on the title and abstract: all of it for a new screening, what is left for a running one.
+  const due = (model: Reviewer) => paperCredits(model.model!, "abstract") * Math.max(0, papers - (saved && saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached.abstract[model.id] ?? 0, papers) : 0));
+  // A criterion added to a running screening is answered on the papers already read, which is paid for again.
+  const reread = saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)) ? models.reduce((sum, model) => sum + (saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached.abstract[model.id] ?? 0, papers) * paperCredits(model.model!, "abstract") : 0), 0) : 0;
+  const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
   const lines = saved ? effectLines(saved, draft) : [];
   const moves = saved ? effectMoves(saved, draft) : [];
   // A model answers criteria: with none it would include every paper it reads.
@@ -197,7 +205,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     setTimeout(() => {
       for (const file of references) {
         const total = 12 + (hashOf(file.name) % 140);
-        addSource("upload", file.name, "Reference file", total, [`${total - 2 - (hashOf(file.name) % 5)} found in Openscholar's index`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
+        const matched = total - 2 - (hashOf(file.name) % 5);
+        addSource("upload", file.name, "Reference file", total, [`${matched} matched to Openscholar's index`, `${total - matched} not in the index, kept as they came`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
       }
       if (pdfs.length) addSource("pdf", `${pdfs.length} ${pdfs.length === 1 ? "PDF" : "PDFs"}: ${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, "Read from the files", pdfs.length, ["Titles and abstracts read from the files", "Kept as each paper's full text"]);
       setReading((now) => now.filter((name) => !names.includes(name)));
@@ -244,6 +253,8 @@ export function ScreeningForm({ id }: { id?: string }) {
       name,
       createdAt: at,
       seed: 20 + store.screenings.length,
+      ...(draft.living ? { living: { every: draft.living.every, next: at + PERIOD[draft.living.every] } } : {}),
+      ...(outsider ? { workspace: "theirs" } : {}),
       theme: draft.theme ?? themeFor(`${name} ${draft.question} ${draft.sources.map((source) => source.name).join(" ")}`),
       reviewers: draft.reviewers.map((reviewer) => ({ ...reviewer, addedAt: at })),
       reached: { abstract: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])), fullText: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])) },
@@ -273,7 +284,10 @@ export function ScreeningForm({ id }: { id?: string }) {
         fullTextFiles: now.fullTextFiles,
         changes: now.changes,
         spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
-        finishedAt: reopens ? undefined : now.finishedAt,
+        updates: now.updates,
+        // Made living: it looks in its sources at once, and is open again.
+        ...(draft.living && !saved.living && growing(draft).length ? { checking: { done: 0, of: growing(draft).length, by: store.viewer } } : {}),
+        finishedAt: reopens || (draft.living && !saved.living) ? undefined : now.finishedAt,
       }),
       { what: describe(saved, draft), effect: [...lines, movesText(moves)].filter(Boolean).join(". ") || undefined },
     );
@@ -341,11 +355,17 @@ export function ScreeningForm({ id }: { id?: string }) {
               <div className={cn("min-w-0 space-y-8 p-4 sm:p-6", locked && "[&_[data-adds]]:hidden [&_[role=radiogroup]]:opacity-60 [&_[role=switch]]:opacity-60")} inert={locked}>
                 <div className="flex flex-col gap-4">
                   <p className="text-sm text-muted-foreground">{fresh ? "Decide which papers are in, with your team and any AI models you add as reviewers." : locked ? "What this screening reads, asks and how it decides." : "Everything here can change while the screening runs and after it is finished. Nothing is saved until you say so."}</p>
-                  <label className="flex flex-col gap-1.5">
+                  {locked ? (
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold">{draft.name}</p>
+                      <p className="text-sm text-muted-foreground">{draft.question || "No research question was written down for it."}</p>
+                    </div>
+                  ) : null}
+                  <label className={cn("flex flex-col gap-1.5", locked && "hidden")}>
                     <span className="text-xs font-medium text-muted-foreground">Name</span>
                     <Input value={draft.name} onChange={(event) => set({ name: event.target.value })} placeholder={draft.sources[0]?.name ?? "Such as “School meals and learning”"} maxLength={200} className="h-10 text-base font-semibold" />
                   </label>
-                  <label className="flex flex-col gap-1.5">
+                  <label className={cn("flex flex-col gap-1.5", locked && "hidden")}>
                     <span className="text-xs font-medium text-muted-foreground">What the review asks</span>
                     <Textarea ref={question} rows={1} value={draft.question} onChange={(event) => set({ question: event.target.value })} placeholder="Such as “Do school meals improve learning in primary schools?”" className="min-h-9 resize-none py-1.5 text-sm field-sizing-content" />
                     <span className="text-xs text-muted-foreground">Optional. Criteria can be written from it.</span>
@@ -376,13 +396,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-1.75rem)]">
                                   <p className="truncate text-sm font-medium max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
                                   <div className="flex flex-wrap gap-1.5">
-                                    <Chip>{source.scope === "all" ? `All ${source.total.toLocaleString("en-GB")}` : `Papers ${source.range[0].toLocaleString("en-GB")} to ${source.range[1].toLocaleString("en-GB")} of ${source.total.toLocaleString("en-GB")}`}</Chip>
+                                    <Chip>{source.scope === "all" ? `All ${baseTotal(source).toLocaleString("en-GB")}` : `Papers ${source.range[0].toLocaleString("en-GB")} to ${source.range[1].toLocaleString("en-GB")} of ${baseTotal(source).toLocaleString("en-GB")}`}</Chip>
+                                    {source.total > baseTotal(source) ? <Chip icon={RefreshCw} className="bg-success/12 ink-success">{(source.total - baseTotal(source)).toLocaleString("en-GB")} more since it started</Chip> : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>Looked in again {EVERY_LABEL[draft.living.every].toLowerCase()}</Chip> : null}
                                     {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
                                     {source.duplicates && taken(source) ? <Chip>{Math.min(source.duplicates, taken(source))} already in another source</Chip> : null}
-                                    {source.facts?.map((fact) => (/without/.test(fact) ? <Chip key={fact} className="bg-warning/12 ink-warning">{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
+                                    {source.facts?.map((fact) => (/without/.test(fact) ? <Chip key={fact} className="bg-warning/12 ink-warning">{fact}</Chip> : /not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
                                   </div>
                                 </div>
-                                {source.total > 1 ? (
+                                {baseTotal(source) > 1 ? (
                                   <Button variant="ghost" size="sm" aria-expanded={isOpen} className="h-8 shrink-0 text-xs text-muted-foreground max-sm:ms-auto" onClick={() => setOpenSource(isOpen ? null : source.id)}>
                                     Which papers<ChevronDown className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
                                   </Button>
@@ -402,9 +423,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                                         onScope={(scope) => patchSource(source.id, { scope: scope === "all" ? "all" : "range" })}
                                         range={source.range}
                                         onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
-                                        total={source.total}
+                                        total={baseTotal(source)}
                                         label={`Papers of ${source.name}`}
-                                        summary={<p className="text-xs text-muted-foreground">Every one of its {source.total.toLocaleString("en-GB")} papers.</p>}
+                                        summary={<p className="text-xs text-muted-foreground">Every one of its {baseTotal(source).toLocaleString("en-GB")} papers.</p>}
                                       />
                                       <ul className="space-y-1 border-t border-border-subtle pt-3">
                                         {papersOf({ seed: draft.seed, sources: [{ ...source, duplicates: 0 }] }).slice(0, 3).map((paper) => <li key={paper.id} className="truncate text-xs text-muted-foreground">{paper.title} ({paper.year})</li>)}
@@ -431,6 +452,34 @@ export function ScreeningForm({ id }: { id?: string }) {
                   ) : (
                     <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">No papers yet. Add a search, a collection or your own files below, as many as you need.</p>
                   )}
+                  {/* A living screening: its sources are looked in again on a schedule, and only what is new is screened. */}
+                  <div id="new-papers" className={cn(LIST, "scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+3rem)]")}>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                      <div className="min-w-48 flex-1">
+                        <p className="text-sm font-medium">Living screening</p>
+                        <p className="text-xs text-muted-foreground">Looks in its sources again on a schedule, and screens only the papers that are new</p>
+                      </div>
+                      <Segmented
+                        label="Look for new papers"
+                        value={draft.living?.every ?? "off"}
+                        onChange={(next) => set({ living: next === "off" ? undefined : { every: next, next: Date.now() + PERIOD[next] } })}
+                        options={[{ id: "off" as const, label: "Off" }, { id: "day" as const, label: "Every day" }, { id: "week" as const, label: "Every week" }, { id: "month" as const, label: "Every month" }]}
+                      />
+                    </div>
+                    {draft.living ? (
+                      growing(draft).length ? (
+                        <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
+                          <Chip icon={RefreshCw}>{growing(draft).length} of {draft.sources.length} {draft.sources.length === 1 ? "source is" : "sources are"} looked in again</Chip>
+                          {growing(draft).length < draft.sources.length ? <Chip>A file or a pasted list holds what it held</Chip> : null}
+                          <Chip>{saved?.living ? `Next on ${day(draft.living.next)}` : fresh ? `First look ${draft.living.every === "day" ? "a day" : draft.living.every === "week" ? "a week" : "a month"} after it starts` : "First look as soon as this is saved"}</Chip>
+                          {models.length ? <Chip icon={Coins}>{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))} credits for each new paper</Chip> : <Chip>New papers cost nothing: people only</Chip>}
+                          <Chip icon={Mail}>Reviewers are told by email</Chip>
+                        </div>
+                      ) : (
+                        <p className="bg-warning/10 px-4 py-2.5 text-sm ink-warning">{draft.sources.length ? "None of its sources gains papers over time. Add a search, a collection or a community for it to look in again." : "Add a search, a collection or a community first: those are what it looks in again."}</p>
+                      )
+                    ) : null}
+                  </div>
                   {removed?.zone === "papers" ? (
                     <div className="flex items-center gap-3 rounded-2xl bg-inset px-4 py-2 text-sm">
                       <span className="min-w-0 flex-1 truncate text-muted-foreground">Removed “{removed.what}”</span>
@@ -488,7 +537,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </form>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Segmented label="Show" value={group} onChange={(next) => { setGroup(next); setOfferPage(1); }} options={[{ id: "all" as const, label: "All" }, { id: "yours" as const, label: "Yours" }, { id: "shared" as const, label: "Shared with you" }, { id: "library" as const, label: "The community's" }]} />
+                          <Segmented label="Show" fill="labels" className="sm:w-auto" value={group} onChange={(next) => { setGroup(next); setOfferPage(1); }} options={[{ id: "all" as const, label: "All" }, { id: "yours" as const, label: "Yours" }, { id: "shared" as const, label: "Shared with you" }, { id: "library" as const, label: "The community's" }]} />
                           <div className="relative min-w-40 flex-1">
                             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                             <Input value={find} onChange={(event) => { setFind(event.target.value); setOfferPage(1); }} placeholder="Find" aria-label="Find a collection" className="h-8 rounded-full ps-8 text-sm" />
@@ -738,7 +787,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <div id="goes-to" className={cn(LIST, "scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+3rem)]")} role="radiogroup" aria-label="Where included papers go">
                     {places.slice((destPager.page - 1) * DEST_PAGE, destPager.page * DEST_PAGE)}
                   </div>
-                  {destPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={destPager.page} totalPages={destPager.pages} onPageChange={setDestPage} totalItems={places.length} itemsPerPage={DEST_PAGE} itemLabel="places" /> : null}
+                  {destPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={destPager.page} totalPages={destPager.pages} onPageChange={setDestPage} totalItems={places.length} itemsPerPage={DEST_PAGE} itemLabel="choices" /> : null}
                   {fromCollection ? (
                     <label className="flex items-center gap-3 rounded-2xl border border-border-subtle px-4 py-3">
                       <span className="min-w-0 flex-1 space-y-1.5">
@@ -753,31 +802,54 @@ export function ScreeningForm({ id }: { id?: string }) {
 
               {/* What it comes to, in view beside the form. */}
               <aside className="min-w-0 p-4 max-@4xl:border-t max-@4xl:border-border-subtle sm:p-6">
-                <div className="space-y-6 @4xl:sticky @4xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)]">
+                {/* It stays in view beside the form, and scrolls by itself when it holds more than the window: saving is never out of reach. */}
+                <div className="space-y-6 @4xl:sticky @4xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1.5rem)] @4xl:-me-3 @4xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-3rem)] @4xl:overflow-y-auto @4xl:pe-3">
+                  {!fresh && !locked ? (
+                    <div className="space-y-3 rounded-2xl border border-border-subtle p-3">
+                      <div className="flex gap-2">
+                        <Button className="flex-1" disabled={!dirty || needsCriteria || cost > wallet} onClick={save}>Save changes</Button>
+                        <Button variant="ghost" disabled={!dirty} onClick={() => store.draft(key, () => undefined)}>Discard</Button>
+                      </div>
+                      {needsCriteria ? <p className="text-xs text-destructive">A model answers criteria, and this screening has none. Add one, or take the model off.</p> : null}
+                      <p className="text-xs font-medium text-muted-foreground">{dirty ? "What saving does" : "Changes"}</p>
+                      {dirty ? <EffectList lines={lines} moves={moves} /> : <p className="text-sm text-muted-foreground">Nothing changed yet. Change anything on the left, and what it does shows here before you save.</p>}
+                    </div>
+                  ) : null}
                   <div>
                     <p className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers} /></p>
-                    <p className="text-sm text-muted-foreground">{papers === 1 ? "paper" : "papers"} to screen</p>
+                    <p className="text-sm text-muted-foreground">{papers === 1 ? "paper" : "papers"} {fresh ? "to screen" : "in it"}</p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">Reviewers</p>
                     {activeReviewers(draft).length ? <ReviewerStack reviewers={activeReviewers(draft)} max={9} /> : <p className="text-sm text-muted-foreground">Nobody yet</p>}
                   </div>
                   <div className="space-y-2.5">
-                    <p className="text-xs font-medium text-muted-foreground">Cost on title and abstract</p>
+                    <p className="text-xs font-medium text-muted-foreground">{fresh ? "Cost on title and abstract" : "Still to pay on title and abstract"}</p>
                     <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1 truncate">People</span><span className="text-muted-foreground">Free</span></div>
                     {models.map((model) => (
                       <div key={model.id} className="flex items-center gap-2 text-sm">
                         <ReviewerMark reviewer={model} className="size-5" />
                         <span className="min-w-0 flex-1 truncate">{model.name}</span>
-                        <span className="tabular-nums">{credits(paperCredits(model.model!, "abstract") * papers)}</span>
+                        <span className="tabular-nums">{due(model) ? credits(due(model)) : <span className="text-muted-foreground">{fresh ? "Free" : "Has read them all"}</span>}</span>
                       </div>
                     ))}
+                    {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">Answering the new criterion on papers already read</span><span className="shrink-0 tabular-nums">{credits(reread)}</span></div> : null}
                     <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">Up to</span><span className="tabular-nums">{credits(cost)} credits</span></div>
                     <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />
-                    <div className="flex flex-wrap gap-1.5"><WorkspaceTag size="sm" workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }}>{credits(wallet)} in {workspace.name}</WorkspaceTag>{cost > wallet ? <Chip className="bg-destructive/10 text-destructive">{credits(cost - wallet)} short</Chip> : <Chip>{credits(wallet - cost)} left after</Chip>}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <WorkspaceTag size="sm" workspace={lookOf(workspace, saved?.createdBy ?? store.viewer)}>{credits(wallet)} in {workspace.name}</WorkspaceTag>
+                      {cost > wallet ? <Chip className="bg-destructive/10 text-destructive">{credits(cost - wallet)} short</Chip> : cost ? <Chip>{credits(wallet - cost)} left after</Chip> : null}
+                      {saved?.spent ? <Chip>{credits(Object.values(saved.spent).reduce((sum, one) => sum + one, 0))} spent so far</Chip> : null}
+                    </div>
+                    {models.length && draft.living ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="min-w-0 flex-1 text-muted-foreground">Then, for each new paper it finds</span>
+                        <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))}</span>
+                      </div>
+                    ) : null}
                     {models.length && draft.fullText ? (
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="min-w-0 flex-1 text-muted-foreground">Then, for each paper that reaches full text</span>
+                        <span className="min-w-0 flex-1 text-muted-foreground">{draft.living ? "And" : "Then,"} for each paper that reaches full text</span>
                         <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "fullText"), 0))}</span>
                       </div>
                     ) : null}
@@ -788,23 +860,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                       {stop && cost > wallet ? <Button variant="outline" size="sm" className="w-full" onClick={() => store.set({ wallet: store.wallet + 20_000 })}>Add 20,000 credits</Button> : null}
                       <div className="flex flex-wrap gap-1.5">{models.length ? <TooltipHint label="The models read 40 papers at once, which is what this workspace's plan allows"><span tabIndex={0} className="flex rounded-md"><Chip icon={Gauge}>40 papers at a time</Chip></span></TooltipHint> : <Chip>No model, nothing to pay</Chip>}{busy && models.length ? <TooltipHint label={`${busy.name}'s models are still reading, and a workspace's models read 40 papers at once. Yours start when they are through; people can vote from the start.`}><span tabIndex={0} className="flex rounded-md"><Chip icon={Clock}>Models start after another screening</Chip></span></TooltipHint> : null}</div>
                     </div>
-                  ) : locked ? null : (
-                    <div className="space-y-3 rounded-2xl border border-border-subtle p-3">
-                      <p className="text-xs font-medium text-muted-foreground">{dirty ? "What saving does" : "Changes"}</p>
-                      {dirty ? <EffectList lines={lines} moves={moves} /> : <p className="text-sm text-muted-foreground">Nothing changed yet. Change anything on the left, and what it does shows here before you save.</p>}
-                      <div className="flex gap-2">
-                        <Button className="flex-1" disabled={!dirty || needsCriteria} onClick={save}>Save changes</Button>
-                        <Button variant="ghost" disabled={!dirty} onClick={() => store.draft(key, () => undefined)}>Discard</Button>
-                      </div>
-                      {needsCriteria ? <p className="text-xs text-destructive">A model answers criteria, and this screening has none. Add one, or take the model off.</p> : null}
-                    </div>
-                  )}
+                  ) : null}
                   {saved ? (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground">Latest changes</p>
                       <ul className="space-y-2">
                         {[...saved.changes].reverse().slice(0, 4).map((change, i) => (
-                          <li key={i} className="text-xs"><span className="font-medium">{personOf(change.by)?.name ?? change.by}</span> <span className="text-muted-foreground">{ago(change.at)}</span><span className="block text-muted-foreground">{change.what}</span></li>
+                          <li key={i} className="text-xs"><span className="font-medium">{change.by === SCHEDULE ? "Scheduled check" : (personOf(change.by)?.name ?? change.by)}</span> <span className="text-muted-foreground">{ago(change.at)}</span><span className="block text-muted-foreground">{change.what}</span></li>
                         ))}
                       </ul>
                       <Button asChild variant="ghost" size="sm" className="h-7 px-1.5 text-xs"><NextLink href={`/screening/mock/${id}`}>Back to the screening</NextLink></Button>
@@ -823,14 +885,14 @@ export function ScreeningForm({ id }: { id?: string }) {
 
 function OfferRow({ offer, icon: Icon, chips, added, onAdd }: { offer: Offer; icon: AppIcon; /** What else tells this row from the others, after its detail. */ chips?: ReactNode; added: boolean; onAdd: () => void }) {
   return (
-    <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
+    <div className="flex min-h-14 items-center gap-x-3 gap-y-1.5 px-4 py-2.5 max-sm:flex-wrap">
       <Icon className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{offer.name}</p>
+      <div className="min-w-0 flex-1 max-sm:basis-[calc(100%-1.75rem)]">
+        <p className="truncate text-sm font-medium max-sm:line-clamp-2 max-sm:whitespace-normal">{offer.name}</p>
         <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-2xl:hidden">{filter}</Chip>)}{chips ? <span className="flex shrink-0 items-center gap-1.5 @max-2xl:hidden">{chips}</span> : null}</p>
       </div>
-      <Chip>{offer.total.toLocaleString("en-GB")} {offer.total === 1 ? "paper" : "papers"}</Chip>
-      <Button variant="outline" size="sm" className="w-24" disabled={added || !offer.total} onClick={onAdd}>{added ? <><Check />Added</> : !offer.total ? "Empty" : <><Plus />Add</>}</Button>
+      <Chip className="max-sm:ms-7">{offer.total.toLocaleString("en-GB")} {offer.total === 1 ? "paper" : "papers"}</Chip>
+      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || !offer.total} onClick={onAdd}>{added ? <><Check />Added</> : !offer.total ? "Empty" : <><Plus />Add</>}</Button>
     </div>
   );
 }

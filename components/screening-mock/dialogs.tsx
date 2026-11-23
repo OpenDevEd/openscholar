@@ -3,7 +3,7 @@
 // What opens over an open screening: its activity, and what can be taken out of it.
 
 import { useState } from "react";
-import { Check, Copy, Download, Info, X } from "@/components/icons";
+import { Check, Clock, Copy, Download, Info, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { Chip } from "@/components/screening/parts";
 import { PickMark } from "@/components/screening/source-row";
@@ -16,7 +16,7 @@ import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { DECISION_LABEL, NOW, PEOPLE, RESULT_LABEL, STAGE_LABEL, WORKSPACES, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Paper, type Result, type Reviewer, type Screening } from "./data";
+import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, STAGE_LABEL, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Paper, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { EffectList } from "./effects";
 import { ReviewerMark, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
@@ -30,31 +30,64 @@ const save = (name: string, type: string, text: string) => {
 };
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-/** Every change made to the screening, newest first: who, what, and what it did. */
-export function ActivitySheet({ open, onClose, screening }: { open: boolean; onClose: () => void; screening: Open["screening"] }) {
+const DECISIONS_PAGE = 8;
+
+/**
+ * What has happened in the screening, newest first: every change to it, with who made it and what
+ * it did, and your own decisions, each of which opens its paper.
+ */
+export function ActivitySheet({ open, onClose, state, onPaper }: { open: boolean; onClose: () => void; state: Open; onPaper: (paper: string, stage: "abstract" | "fullText") => void }) {
+  const { screening } = state;
+  const [tab, setTab] = useState<"changes" | "mine">("changes");
+  const [page, setPage] = useState(1);
   const changes = [...screening.changes].reverse();
+  const mine = ([["abstract", state.first], ["fullText", state.second]] as const)
+    .flatMap(([stage, standing]) => standing.papers.flatMap((paper) => { const vote = standing.votes[paper.id]!.find((one) => one.reviewer.id === state.me)?.vote; return vote ? [{ stage, paper, vote }] : []; }))
+    .sort((a, b) => b.vote.at - a.vote.at);
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent className={`w-full gap-0 p-0 sm:max-w-md ${AVATARS_FADE_IN}`}>
-        <SheetHeader className="border-b border-border-subtle p-5">
+      <SheetContent className={`flex w-full flex-col gap-0 p-0 sm:max-w-md ${AVATARS_FADE_IN}`}>
+        <SheetHeader className="space-y-3 border-b border-border-subtle p-5">
           <SheetTitle>Activity</SheetTitle>
-          <SheetDescription>Every change to this screening, and what it did</SheetDescription>
+          <SheetDescription className="sr-only">Every change to this screening, and your own decisions</SheetDescription>
+          {state.isReviewer ? <Segmented label="What to show" value={tab} onChange={(next) => { setTab(next); setPage(1); }} options={[{ id: "changes" as const, label: "Changes to it" }, { id: "mine" as const, label: "Your decisions", detail: <span className="tabular-nums text-muted-foreground">{mine.length}</span> }]} /> : null}
         </SheetHeader>
-        <ol className="divide-y divide-border-subtle overflow-y-auto">
-          {changes.map((change, i) => {
-            const person = personOf(change.by);
-            return (
-              <li key={i} className="flex items-start gap-3 px-5 py-3.5">
-                <IdentityAvatar name={person?.name ?? change.by} imageUrl={person?.imageUrl} className="size-7" />
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="text-sm"><span className="font-medium">{person?.name ?? change.by}</span> <span className="text-muted-foreground">{ago(change.at)}</span></p>
-                  <p className="text-sm">{change.what}</p>
-                  {change.effect ? <p className="text-xs text-muted-foreground">{change.effect}</p> : null}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+        {tab === "mine" ? (
+          <>
+            <ol className="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto">
+              {mine.slice((page - 1) * DECISIONS_PAGE, page * DECISIONS_PAGE).map(({ stage, paper, vote }) => (
+                <li key={`${stage}:${paper.id}`}>
+                  <button type="button" onClick={() => { onPaper(paper.id, stage); onClose(); }} className="flex w-full items-start gap-3 px-5 py-3 text-start transition-colors hover:bg-muted">
+                    <VoteMark vote={vote} who="You" />
+                    <span className="min-w-0 flex-1 space-y-0.5">
+                      <span className="line-clamp-2 text-sm font-medium">{paper.title}</span>
+                      <span className="block text-xs text-muted-foreground">{DECISION_LABEL[vote.decision]}{vote.reason ? `, ${failedLabel(vote.reason, screening.criteria)}` : ""}</span>
+                      <span className="flex flex-wrap gap-1.5 pt-0.5"><Chip className="h-5 px-1.5">{ago(vote.at)}</Chip><Chip className="h-5 px-1.5">{STAGE_LABEL[stage]}</Chip></span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {!mine.length ? <li className="px-5 py-10 text-center text-sm text-muted-foreground">You haven&apos;t decided on a paper here yet.</li> : null}
+            </ol>
+            {mine.length > DECISIONS_PAGE ? <CommandCenterPagination className="border-t border-border-subtle p-4" currentPage={page} totalPages={Math.ceil(mine.length / DECISIONS_PAGE)} onPageChange={setPage} totalItems={mine.length} itemsPerPage={DECISIONS_PAGE} itemLabel="decisions" /> : null}
+          </>
+        ) : (
+          <ol className="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto">
+            {changes.map((change, i) => {
+              const person = personOf(change.by);
+              return (
+                <li key={i} className="flex items-start gap-3 px-5 py-3.5">
+                  {change.by === SCHEDULE ? <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Clock className="size-3.5" /></span> : <IdentityAvatar name={person?.name ?? change.by} imageUrl={person?.imageUrl} className="size-7" />}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="text-sm"><span className="font-medium">{change.by === SCHEDULE ? "Scheduled check" : (person?.name ?? change.by)}</span> <span className="text-muted-foreground">{ago(change.at)}</span></p>
+                    <p className="text-sm">{change.what}</p>
+                    {change.effect ? <p className="text-xs text-muted-foreground">{change.effect}</p> : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -78,7 +111,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
   const on = [...people, ...viewers];
   const words = query.trim().toLowerCase();
   // Someone added in this sitting is told so: the row says how they hear of it.
-  const detail = (one: Reviewer) => (one.email ? "Invited by email, joins when they accept" : one.addedAt > NOW ? "Told by email just now, with a link" : personOf(one.id)?.guest ? "From outside this workspace" : `In ${workspace.name}`);
+  const detail = (one: Reviewer) => (one.id === screening.createdBy ? "Started it" : one.email ? "Invited by email, joins when they accept" : one.addedAt > NOW ? "Told by email just now, with a link" : personOf(one.id)?.guest ? "From outside this workspace" : `In ${workspace.name}`);
   const share = (viewer: Reviewer) => state.update((s) => ({ ...s, viewers: [...(s.viewers ?? []), viewer] }), { what: `Shared it with ${viewer.name}`, effect: "They see every paper and every vote, and aren't dealt papers" });
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -105,7 +138,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
               : undefined
           }
           entries={[
-            { key: "workspace", avatar: <WorkspaceTile workspace={{ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id }} size="row" />, name: workspace.name, detail: workspace.members, role: { kind: "member", label: "See it and can change it" } },
+            { key: "workspace", avatar: <WorkspaceTile workspace={lookOf(workspace, screening.createdBy)} size="row" />, name: workspace.name, detail: workspace.members, role: { kind: "member", label: "See it and can change it" } },
             ...people.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one), role: "reviewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "viewer" && onDemote(one) : undefined })),
             ...viewers.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one), role: "viewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "reviewer" && onPromote(one) : undefined, onRemove: state.canChange ? () => state.update((s) => ({ ...s, viewers: s.viewers?.filter((viewer) => viewer.id !== one.id) }), { what: `Stopped sharing it with ${one.name}` }) : undefined })),
           ]}
@@ -141,7 +174,7 @@ export function MoveDialog({ open, onClose, screening, me, onMove }: { open: boo
             <p className="pb-1 text-xs font-medium text-muted-foreground">From {from.name} to</p>
             {WORKSPACES.filter((one) => one.mine && one.id !== from.id).map((one) => (
               <button key={one.id} type="button" role="radio" aria-checked={to === one.id} onClick={() => setTo(one.id)} className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-start transition-colors hover:bg-muted ${to === one.id ? "bg-primary/5" : ""}`}>
-                <WorkspaceTile workspace={{ kind: one.kind, name: one.name, imageUrl: one.imageUrl, colour: one.colour, workspaceId: one.id }} size="row" className="self-start" />
+                <WorkspaceTile workspace={lookOf(one)} size="row" className="self-start" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{one.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{one.members}</span>
@@ -183,6 +216,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // What was last taken out, so its button says so: a download gives no other sign.
   const [done, setDone] = useState<string | null>(null);
   const setTab = (next: ExportTab) => { setDone(null); onTab(next); };
+  // Which included papers: the screening's, or your own. Unset, it is whichever has some.
+  const [picked, setPicked] = useState<"settled" | "mine" | null>(null);
   const { screening, first, second } = state;
   const reviewers = activeReviewers(screening);
 
@@ -205,6 +240,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
 
   const found = screening.sources.reduce((sum, source) => sum + taken(source), 0);
   const kept = screening.sources.reduce((sum, source) => sum + keptOf(source), 0);
+  // The times its sources were looked in again, and what those looks found.
+  const looks = screening.updates ?? [];
+  const later = looks.reduce((sum, look) => sum + look.found, 0);
   const reasons = (state: typeof first) => {
     const tally = new Map<string, number>();
     for (const paper of state.papers) if (state.settled[paper.id]!.final === "exclude") { const key = reasonOf(state.votes[paper.id]!, state.settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
@@ -212,14 +250,19 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   };
   // What a researcher takes away: the papers kept at the last stage the screening has.
   const last = screening.fullText ? second : first;
-  const included: Paper[] = last.papers.filter((paper) => last.settled[paper.id]!.final === "include");
+  const settledIn: Paper[] = last.papers.filter((paper) => last.settled[paper.id]!.final === "include");
+  // Your own includes, at the furthest stage you have voted on each paper: there before the others have voted too.
+  const myVoteAt = (stage: typeof first, paper: Paper) => stage.votes[paper.id]?.find((one) => one.reviewer.id === state.me)?.vote;
+  const mine: Paper[] = first.papers.filter((paper) => (myVoteAt(second, paper) ?? myVoteAt(first, paper))?.decision === "include");
+  const which = picked ?? (settledIn.length || !mine.length ? "settled" : "mine");
+  const included = which === "mine" ? mine : settledIn;
   const ris = () => included.map((paper) => ["TY  - JOUR", `TI  - ${paper.title}`, ...paper.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${paper.year}`, `JO  - ${paper.venue}`, ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
   const bib = () => included.map((paper, i) => `@article{${paper.authors[0]!.split(" ").pop()!.toLowerCase()}${paper.year}${String.fromCharCode(97 + (i % 26))},\n  title = {${paper.title}},\n  author = {${paper.authors.filter((a) => a !== "and others").join(" and ")}},\n  year = {${paper.year}},\n  journal = {${paper.venue}}\n}`).join("\n\n");
   const noText = count(second.papers, (paper) => !state.hasFullText(paper));
   // Assessed and not yet decided: a paper with no full text is counted with the ones not retrieved, not here.
   const openAtFullText = count(second.papers, (paper) => state.hasFullText(paper) && !["include", "exclude"].includes(second.settled[paper.id]!.result));
   const boxes: Array<{ title: string; n: number; side?: Array<{ label: string; n: number }> }> = [
-    { title: "Records identified", n: found, side: screening.sources.map((source) => ({ label: source.name, n: taken(source) })) },
+    { title: "Records identified", n: found, side: [...screening.sources.map((source) => ({ label: source.name, n: taken(source) })), ...(later ? [{ label: `Of those, found by ${looks.length} later ${looks.length === 1 ? "look" : "looks"}, the last on ${day(looks.at(-1)!.at)}`, n: later }] : [])] },
     { title: "Records screened on title and abstract", n: kept, side: [{ label: "Duplicates removed before screening", n: found - kept }] },
     { title: screening.fullText ? "Reports sought for full text" : "Studies included", n: screening.fullText ? second.papers.length : first.counts.include, side: [...reasons(first), ...(first.counts.conflict + first.counts.waiting ? [{ label: "Still open: in conflict or waiting for votes", n: first.counts.conflict + first.counts.waiting }] : [])] },
     ...(screening.fullText
@@ -267,15 +310,22 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const openNow = first.counts.conflict + first.counts.waiting + (screening.fullText ? openAtFullText : 0);
   const fullPair = people.length > 1 && screening.fullText ? agreement(people[0]!.id, people[1]!.id, second) : null;
   const excludedAtFullText = count(second.papers, (paper) => second.settled[paper.id]!.final === "exclude" && state.hasFullText(paper));
+  const n = (count: number, one: string, many: string) => `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
+  // How far every pair of reviewers agreed, people and models: the lowest and the highest kappa.
+  const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => agreement(a.id, b.id, first)?.kappa ?? [])).sort((a, b) => a - b);
+  const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
   const methods = [
     openNow ? `Screening was still in progress when this was written: ${(first.papers.length - first.counts.conflict - first.counts.waiting).toLocaleString("en-GB")} of ${first.papers.length.toLocaleString("en-GB")} records had been settled on title and abstract.` : "",
     `Records from ${screening.sources.length} ${screening.sources.length === 1 ? "source" : "sources"} (n = ${found}) were brought into Openscholar. After ${found - kept} duplicates were merged, ${kept} were screened.`,
+    looks.length ? `The sources were searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     screening.criteria.length ? `Each record was assessed on its title and abstract against ${screening.criteria.length} ${screening.criteria.length === 1 ? "criterion" : "criteria"}, ${screening.criteria.filter((c) => c.must).length} of which a record had to meet to be included.` : "Each record was assessed on its title and abstract.",
     readers ? `${readers} voted on each record${screening.rule.blind === "after" ? " without seeing the other votes" : ""}.` : "No human reviewer voted on the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) voted on the records as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}, giving an answer and a quoted passage for every criterion${unread ? `; ${unread} ${unread === 1 ? "record" : "records"} could not be read by a model and ${unread === 1 ? "was" : "were"} decided by the other reviewers` : ""}.` : "No AI model took part.",
     screening.rule.settle === "all" ? `A record was settled when all of its reviewers agreed, and disagreements went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}${first.counts.conflict ? `; ${first.counts.conflict} ${first.counts.conflict === 1 ? "was" : "were"} still open` : ""}.` : screening.rule.settle === "most" ? `A record was settled by the majority of its reviewers, and ties went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}.` : "The first vote on a record settled it.",
+    lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: the votes people had cast were kept, the models answered ${lateCriteria.length === 1 ? "it" : "them"} on every record, and records where that changed the outcome went to ${personOf(screening.rule.resolver)?.name ?? "the named reviewer"}.` : "",
     pair ? `Agreement between ${people[0]!.name} and ${people[1]!.name} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (Cohen's kappa ${pair.kappa.toFixed(2)}).` : "",
-    screening.fullText ? `${second.papers.length} records went on to full text${noText ? `, of which ${noText} could not be retrieved` : ""}. Of the ${second.papers.length - noText} assessed, ${excludedAtFullText} were excluded and ${second.counts.include} studies were included${openAtFullText ? `, with ${openAtFullText} still to be decided` : ""}.` : `${first.counts.include} studies were included.`,
+    kappas.length > 1 ? `Across all ${reviewers.length} reviewers, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}.` : "",
+    screening.fullText ? `${n(second.papers.length, "record", "records")} went on to full text${noText ? `, of which ${noText} could not be retrieved` : ""}. Of the ${second.papers.length - noText} assessed, ${n(excludedAtFullText, "was", "were")} excluded and ${n(second.counts.include, "study was", "studies were")} included${openAtFullText ? `, with ${openAtFullText} still to be decided` : ""}.` : `${n(first.counts.include, "study was", "studies were")} included.`,
     fullPair ? `At full text, agreement between ${people[0]!.name} and ${people[1]!.name} was ${Math.round(fullPair.same * 100)}% (Cohen's kappa ${fullPair.kappa.toFixed(2)}).` : "",
   ].filter(Boolean).join(" ");
 
@@ -290,11 +340,14 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           {/* What is taken out now is what stands now: it says so while papers are still open. */}
-          {last.counts.conflict + last.counts.waiting > 0 && !screening.finishedAt ? (
+          {openNow && !screening.finishedAt ? (
             <p className="flex items-start gap-2.5 rounded-2xl bg-warning/10 px-3.5 py-2.5 text-sm ink-warning">
               <Info className="mt-0.5 size-4 shrink-0" />
-              <span>This screening isn&apos;t finished: {(last.counts.conflict + last.counts.waiting).toLocaleString("en-GB")} {last.counts.conflict + last.counts.waiting === 1 ? "paper is" : "papers are"} still waiting for votes or in conflict, so what you export now is part of the result.</span>
+              <span>This screening isn&apos;t finished: {(first.counts.conflict + first.counts.waiting).toLocaleString("en-GB")} on title and abstract{screening.fullText && openAtFullText ? ` and ${openAtFullText.toLocaleString("en-GB")} at full text` : ""} {openNow === 1 ? "is" : "are"} still waiting for votes or in conflict, so what you export now is part of the result.</span>
             </p>
+          ) : null}
+          {tab === "papers" && mine.length ? (
+            <Segmented label="Which papers" value={which} onChange={(next) => { setDone(null); setPicked(next); }} options={[{ id: "settled" as const, label: "Settled as included", detail: <span className="tabular-nums text-muted-foreground">{settledIn.length}</span> }, { id: "mine" as const, label: "You voted to include", detail: <span className="tabular-nums text-muted-foreground">{mine.length}</span> }]} />
           ) : null}
           {tab === "papers" ? (
             included.length ? (
@@ -308,7 +361,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 {included.length > 8 ? <li className="px-4 py-2.5 text-xs text-muted-foreground">and {included.length - 8} more</li> : null}
               </ul>
             ) : (
-              <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">No paper is included yet. The list fills as papers settle.</p>
+              <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">{which === "mine" ? "You haven't voted to include a paper yet." : "No paper is settled as included yet. A paper settles once its reviewers have voted."}</p>
             )
           ) : tab === "votes" ? (
             <div className="space-y-3">
@@ -325,21 +378,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
               <CommandCenterPagination className="pt-0" currentPage={page} totalPages={Math.max(1, Math.ceil(rows.length / VOTES_PAGE))} onPageChange={setPage} totalItems={rows.length} itemsPerPage={VOTES_PAGE} itemLabel="votes" />
             </div>
           ) : tab === "flow" ? (
-            <ol className="space-y-2">
-              {boxes.map((box) => (
-                <li key={box.title} className="grid gap-x-6 gap-y-2 rounded-2xl border border-border-subtle p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-                  <div>
-                    <p className="text-sm font-medium">{box.title}</p>
-                    <p className="text-2xl font-semibold tabular-nums tracking-tight">{box.n.toLocaleString("en-GB")}</p>
-                  </div>
-                  <ul className="space-y-1 self-center">
-                    {(box.side ?? []).map((one) => (
-                      <li key={one.label} className="flex items-baseline justify-between gap-3 text-xs"><span className="truncate text-muted-foreground">{one.label}</span><span className="shrink-0 font-medium tabular-nums">{one.n.toLocaleString("en-GB")}</span></li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ol>
+            // The drawing itself, as it will be saved: what you see is what your co-author gets.
+            <img alt={`Flow diagram: ${boxes.map((box) => `${box.title}, ${box.n}`).join("; ")}`} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`} className="w-full rounded-2xl border border-border-subtle bg-white" />
           ) : (
             <p className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
           )}

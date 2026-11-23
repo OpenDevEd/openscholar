@@ -44,7 +44,11 @@ export const WORKSPACES: Workspace[] = [
   { id: "network", kind: "organization", name: "Open Learning Network", colour: "#db2777", members: "23 members", credits: 41_800, mine: true },
   { id: "own", kind: "personal", name: "Your own workspace", imageUrl: face("amina"), members: "Only you", credits: 2_300, mine: true },
   { id: "lab", kind: "organization", name: "Learning Evidence Lab", colour: "#6366f1", members: "12 members", credits: 64_000, mine: false },
+  // The own workspace of someone from outside these: what they start is theirs alone.
+  { id: "theirs", kind: "personal", name: "Your own workspace", members: "Only you", credits: 1_200, mine: false },
 ];
+/** A workspace as its tile draws it: an own workspace carries its owner's face. */
+export const lookOf = (workspace: Workspace, owner?: string) => ({ kind: workspace.kind, name: workspace.name, imageUrl: workspace.id === "theirs" ? personOf(owner ?? "")?.imageUrl : workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id });
 export const HOME = WORKSPACES[0]!;
 export const workspaceOf = (screening: Pick<Screening, "workspace">) => WORKSPACES.find((one) => one.id === screening.workspace) ?? HOME;
 
@@ -83,18 +87,24 @@ export const SEED_MODELS: MapModel[] = [
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
 
 export type Criterion = { key: string; text: string; short: string; must: boolean; terms: string[]; addedAt: number };
-/** A short name for a criterion written by hand: its words without the question around them. */
+/** A short name for a criterion written by hand: its own words, cut where they run long. */
 export const shortOf = (text: string) => {
-  const words = text.replace(/[?.]$/, "").replace(/^(is|are|was|were|does|do|did|has|have) (the |it |they |there )?/i, "").trim();
-  const cut = words.length > 46 ? `${words.slice(0, 44).trimEnd()}…` : words;
-  return cut.charAt(0).toUpperCase() + cut.slice(1);
+  const words = text.replace(/[?.]$/, "").trim();
+  return words.length > 46 ? `${words.slice(0, 44).trimEnd()}…` : words;
 };
 
 export type SourceKind = "search" | "collection" | "saved" | "screening" | "evidenceLibrary" | "zotero" | "upload" | "pdf" | "dois";
 /** Papers from one place. `total` is what it holds, `range` the ones taken, `duplicates` how many of those another source already brought. */
-export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; addedAt: number };
-export const taken = (source: Source) => (source.scope === "all" ? source.total : Math.max(0, source.range[1] - source.range[0] + 1));
-export const keptOf = (source: Source) => Math.max(0, taken(source) - Math.min(source.duplicates, taken(source)));
+export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; /** What each later check found in it: `total` counts these too. */ updates?: Array<{ at: number; added: number; duplicates: number }>; addedAt: number };
+/** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
+export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
+const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
+/** What a source held when it was added, before any check found more. */
+export const baseTotal = (source: Source) => source.total - grown(source);
+/** The papers taken from what it held at first: all of them, or a range. */
+const baseTaken = (source: Source) => (source.scope === "all" ? baseTotal(source) : Math.max(0, source.range[1] - source.range[0] + 1));
+export const taken = (source: Source) => baseTaken(source) + grown(source);
+export const keptOf = (source: Source) => Math.max(0, baseTaken(source) - Math.min(source.duplicates, baseTaken(source))) + (source.updates ?? []).reduce((sum, update) => sum + update.added - update.duplicates, 0);
 export const paperTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + keptOf(source), 0);
 
 export type Rule = {
@@ -130,7 +140,13 @@ export function reasonOf(cast: Array<{ vote: Vote | undefined }>, settled?: Sett
 
 export type Vote = { decision: Decision; answers: Record<string, Answer>; reason?: string; note?: string; at: number };
 export type Settled = { result: Result; final?: Decision; resolvedBy?: string; note?: string; reason?: string };
-export type Change = { at: number; by: string; what: string; effect?: string };
+export type Change = { at: number; /** A person, or SCHEDULE for something that happened by itself. */ by: string; what: string; effect?: string };
+export type Every = "day" | "week" | "month";
+export const EVERY_LABEL: Record<Every, string> = { day: "Every day", week: "Every week", month: "Every month" };
+/** A check of a screening's sources: how many papers it found, and how many of those were new to the screening. */
+export type Update = { at: number; found: number; added: number; by: string };
+/** Who a scheduled check is by: nobody. */
+export const SCHEDULE = "schedule";
 
 export type Screening = {
   id: string;
@@ -175,6 +191,12 @@ export type Screening = {
   retried?: string[];
   /** How many of its papers have arrived, while they are still being fetched from its sources. */
   gathered?: number;
+  /** A living screening looks in its sources again on a schedule, and screens only what is new. */
+  living?: { every: Every; next: number };
+  /** Each time its sources were looked in again, on the schedule or by hand, and what that found. */
+  updates?: Update[];
+  /** A check under way: how many of its sources have answered. */
+  checking?: { done: number; of: number; by: string };
   /** The screening whose models read first: a workspace's models read so many papers at once. */
   after?: string;
 };
@@ -187,7 +209,8 @@ export type Screening = {
 export function accessOf(screening: Screening, viewer: string): { reviewer: boolean; member: boolean } | null {
   const reviewer = activeReviewers(screening).some((one) => one.id === viewer);
   const workspace = workspaceOf(screening);
-  const member = !personOf(viewer)?.guest && (workspace === HOME || (workspace.mine && viewer === PEOPLE[0]!.id));
+  // The own workspace of someone from outside is theirs alone. An organisation's is every member's.
+  const member = workspace.id === "theirs" ? screening.createdBy === viewer : !personOf(viewer)?.guest && (workspace === HOME || (workspace.mine && viewer === PEOPLE[0]!.id));
   return reviewer || member || screening.viewers?.some((one) => one.id === viewer) ? { reviewer, member } : null;
 }
 
@@ -221,6 +244,8 @@ export type Paper = {
   source: string;
   hasPdf: boolean;
   truth: Record<string, Answer>;
+  /** When it joined, for a paper that came after the screening started: from a later source or a check. */
+  batch?: number;
 };
 
 type Topic = { title: string; means: string; outcome: string; flag: boolean };
@@ -531,39 +556,54 @@ function paperAt(seed: number, slot: number, i: number, themeId: ThemeId): Omit<
 
 const papersCache = new Map<string, Paper[]>();
 /** A screening's papers: as many as its sources bring, each from the source whose turn it is. */
-export function papersOf(screening: Pick<Screening, "seed" | "sources" | "theme">): Paper[] {
+export function papersOf(screening: Pick<Screening, "seed" | "sources" | "theme"> & { createdAt?: number }): Paper[] {
   const theme = screening.theme ?? "edtech";
-  const key = `${theme}:${screening.seed}:${screening.sources.map((source) => `${source.slot}=${source.scope === "all" ? 1 : source.range[0]}+${keptOf(source)}`).join(",")}`;
+  const since = screening.createdAt ?? Infinity;
+  const key = `${theme}:${screening.seed}:${since}:${screening.sources.map((source) => `${source.slot}@${source.addedAt}=${source.scope === "all" ? 1 : source.range[0]}+${keptOf(source)}/${(source.updates ?? []).map((update) => `${update.at}+${update.added}-${update.duplicates}`).join("|")}`).join(",")}`;
   const kept = papersCache.get(key);
   if (kept) return kept;
-  const papers: Paper[] = [];
+  const first: Paper[] = [];
+  const later: Array<{ at: number; papers: Paper[] }> = [];
   for (const source of screening.sources) {
-    const first = source.scope === "all" ? 0 : source.range[0] - 1;
-    for (let i = 0; i < keptOf(source); i++) papers.push({ ...paperAt(screening.seed, source.slot, first + i, theme), source: source.id });
+    const start = source.scope === "all" ? 0 : source.range[0] - 1;
+    const base = Array.from({ length: Math.max(0, baseTaken(source) - Math.min(source.duplicates, baseTaken(source))) }, (_, i) => ({ ...paperAt(screening.seed, source.slot, start + i, theme), source: source.id }));
+    if (source.addedAt <= since) first.push(...base);
+    else later.push({ at: source.addedAt, papers: base.map((paper) => ({ ...paper, batch: source.addedAt })) });
+    // What a check found sits after everything the source held before it, so no earlier paper changes.
+    let from = baseTotal(source);
+    for (const update of source.updates ?? []) {
+      later.push({ at: update.at, papers: Array.from({ length: update.added - update.duplicates }, (_, i) => ({ ...paperAt(screening.seed, source.slot, from + i, theme), source: source.id, batch: update.at })) });
+      from += update.added;
+    }
   }
-  // Sources take turns down the list, as merged search results do, without changing which paper is which.
-  const mixed = papers.map((paper, index) => ({ paper, order: hash(paper.id) % 997, index })).sort((a, b) => a.order - b.order || a.index - b.index).map((one) => one.paper);
+  // The sources it started with take turns down the list, as merged search results do. What came later follows in the order it came,
+  // so a paper's place, and with it who has voted on it, never moves.
+  const mixed = [
+    ...first.map((paper, index) => ({ paper, order: hash(paper.id) % 997, index })).sort((a, b) => a.order - b.order || a.index - b.index).map((one) => one.paper),
+    ...later.sort((a, b) => a.at - b.at).flatMap((one) => one.papers),
+  ];
   papersCache.set(key, mixed);
   return mixed;
 }
 /** The papers that have arrived so far: all of them, once they are fetched. */
-const arrived = (screening: Pick<Screening, "seed" | "sources" | "theme" | "gathered">) => (screening.gathered === undefined ? papersOf(screening) : papersOf(screening).slice(0, screening.gathered));
+const arrived = (screening: Pick<Screening, "seed" | "sources" | "theme" | "gathered" | "createdAt">) => (screening.gathered === undefined ? papersOf(screening) : papersOf(screening).slice(0, screening.gathered));
 
 // ── Votes ────────────────────────────────────────────────────────────────────────────────────────
 
 /** What a paper really is for a criterion: known for the first five, drawn from the paper for one added by hand. */
-export const truthOf = (paper: Paper, criterion: Criterion): Answer => {
-  const known = paper.truth[criterion.key];
-  if (known) return known;
-  // A criterion about when a paper was published is answered from its year.
+/** The answer a criterion about the year of publication has, from the paper's own record. Undefined for any other criterion. */
+function byYear(paper: Paper, criterion: Criterion): Answer | undefined {
+  if (paper.truth[criterion.key]) return undefined;
   const year = Number(criterion.text.match(/\b(?:19|20)\d\d\b/)?.[0]);
   const words = criterion.text.toLowerCase();
-  if (year && /or later|or after|since|from|onwards/.test(words)) return paper.year >= year ? "yes" : "no";
-  if (year && /\bafter\b/.test(words)) return paper.year > year ? "yes" : "no";
-  if (year && /or earlier|or before|up to|until/.test(words)) return paper.year <= year ? "yes" : "no";
-  if (year && /\bbefore\b/.test(words)) return paper.year < year ? "yes" : "no";
-  return (["yes", "yes", "yes", "no", "unclear"] as const)[hash(paper.id + criterion.key) % 5]!;
-};
+  if (!year) return undefined;
+  if (/or later|or after|since|from|onwards/.test(words)) return paper.year >= year ? "yes" : "no";
+  if (/\bafter\b/.test(words)) return paper.year > year ? "yes" : "no";
+  if (/or earlier|or before|up to|until/.test(words)) return paper.year <= year ? "yes" : "no";
+  if (/\bbefore\b/.test(words)) return paper.year < year ? "yes" : "no";
+  return undefined;
+}
+export const truthOf = (paper: Paper, criterion: Criterion): Answer => paper.truth[criterion.key] ?? byYear(paper, criterion) ?? (["yes", "yes", "yes", "no", "unclear"] as const)[hash(paper.id + criterion.key) % 5]!;
 
 /** A reviewer's decision, from their answers: a must-have criterion answered no excludes, an unclear one leaves it open. */
 export function decide(answers: Record<string, Answer>, criteria: Criterion[]): Pick<Vote, "decision" | "reason"> {
@@ -579,7 +619,6 @@ const noiseOf = (reviewer: Reviewer) => (reviewer.kind === "person" ? 0.03 + (ha
 function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], stage: Stage, since: number): Vote {
   // A person voted on the criteria there were: one added later is the models' to answer, and their vote stands.
   const criteria = reviewer.kind === "person" ? every.filter((criterion) => criterion.addedAt <= since) : every;
-  const rand = seeded(hash(paper.id) + hash(reviewer.id) * 3 + (stage === "fullText" ? 1000 : 0));
   const answers = Object.fromEntries(criteria.map((criterion) => [criterion.key, truthOf(paper, criterion)]));
   // The full text settles what the abstract left open, and shows some papers kept on their abstract not to belong after all.
   if (stage === "fullText") {
@@ -589,10 +628,14 @@ function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], stage:
   }
   // With no abstract there is little to go on: a model can't tell, and says so.
   if (!paper.sentences.length && stage === "abstract" && reviewer.kind === "model") for (const criterion of criteria.slice(0, 2)) answers[criterion.key] = "unclear";
-  // At full text there is more to go on, so fewer misreadings.
-  else if (criteria.length && rand() < noiseOf(reviewer) * (stage === "fullText" ? 0.5 : 1)) {
-    const criterion = pick(rand, criteria);
-    answers[criterion.key] = pick(rand, OTHER[answers[criterion.key]!]);
+  else {
+    // A reviewer misreads a criterion now and then, less often at full text where there is more to go on. Each criterion is
+    // misread or not by itself, so one added later changes no earlier answer, and a fact on the record, like the year, is never misread.
+    const rate = (noiseOf(reviewer) * (stage === "fullText" ? 0.5 : 1)) / 3;
+    for (const criterion of criteria) {
+      const roll = hash(`${paper.id}${reviewer.id}${criterion.key}${stage}`);
+      if (byYear(paper, criterion) === undefined && (roll % 1000) / 1000 < rate) answers[criterion.key] = OTHER[answers[criterion.key]!][(roll >> 10) % 2]!;
+    }
   }
   // Cast some time in the four days before the mock opens, never after.
   return { ...decide(answers, criteria), answers, at: NOW - (45 + (hash(`${paper.id}${reviewer.id}`) % 5600)) * 60_000 };
@@ -756,8 +799,10 @@ export const count = <T,>(list: T[], test: (item: T) => boolean) => list.reduce(
 const DAY = 86_400_000;
 /** The mock's "now", fixed so the server and the browser agree on every date. */
 export const NOW = Date.UTC(2026, 10, 23, 13, 0);
+/** When the weekly checks run: this morning at six. */
+const THIS_MORNING = NOW - 7 * 60 * 60_000;
 let slots = 0;
-const source = (id: string, kind: SourceKind, name: string, detail: string, total: number, duplicates: number, facts?: string[]): Source => ({ id, slot: slots++ % 12, kind, name, detail, total, scope: "all", range: [1, total], duplicates, addedAt: NOW - 6 * DAY, ...(facts ? { facts } : {}) });
+const source = (id: string, kind: SourceKind, name: string, detail: string, total: number, duplicates: number, facts?: string[]): Source => ({ id, slot: slots++ % 12, kind, name, detail, total, scope: "all", range: [1, total], duplicates, addedAt: 0, ...(facts ? { facts } : {}) });
 const blank = () => ({ cast: { abstract: {}, fullText: {} }, resolved: { abstract: {}, fullText: {} }, fullTexts: {} });
 export const DEFAULT_RULE: Rule = { each: "2", settle: "all", resolver: "amina", blind: "after" };
 export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), minimum: criteria.filter((c) => c.must).length, stars: [1, 2, 3, 4, 5].map((k) => Math.max(1, Math.ceil((k / 5) * criteria.length))) });
@@ -797,8 +842,9 @@ export function startingScreenings(): Screening[] {
     "edtech",
     1,
     [
-      source("s1", "search", "tablet OR software AND literacy AND primary school", "Openscholar search", 75, 0),
-      source("s2", "search", "EdTech numeracy sub-Saharan Africa", "Openscholar search", 38, 6),
+      // This morning's weekly check found nine papers in the two searches, two of which the screening had already.
+      { ...source("s1", "search", "tablet OR software AND literacy AND primary school", "Openscholar search", 81, 0), updates: [{ at: THIS_MORNING, added: 6, duplicates: 1 }] },
+      { ...source("s2", "search", "EdTech numeracy sub-Saharan Africa", "Openscholar search", 41, 6), updates: [{ at: THIS_MORNING, added: 3, duplicates: 1 }] },
       source("s3", "upload", "pubmed-export-2026-11.ris", "Reference file", 25, 5, ["22 found in Openscholar's index", "2 without an abstract"]),
       source("s4", "pdf", "7 PDFs from the team drive", "Read from the files", 7, 2, ["Titles and abstracts read from the files"]),
     ],
@@ -807,6 +853,10 @@ export function startingScreenings(): Screening[] {
     { amina: 0.79, jonas: 1, thandiwe: 0.64, [modelReviewer(SEED_MODELS[2]!, 0).id]: 0.78 },
   );
   edtech.viewers = [personReviewer(personOf("rahul")!, NOW - 3 * DAY)];
+  edtech.living = { every: "week", next: THIS_MORNING + 7 * DAY };
+  edtech.updates = [{ at: THIS_MORNING, found: 9, added: 7, by: SCHEDULE }];
+  // The people had read what they had read before the new papers came: none of them has got to those yet.
+  for (const person of edtech.reviewers) if (person.kind === "person") edtech.reached.abstract[person.id] = Math.min(edtech.reached.abstract[person.id] ?? 0, 132);
   edtech.question = "Do digital tools improve foundational literacy and numeracy for primary-school children in sub-Saharan Africa?";
   // Full text has begun: the models are through, the people have started.
   edtech.reached.fullText = Object.fromEntries(edtech.reviewers.map((reviewer) => [reviewer.id, reviewer.kind === "model" ? 999 : reviewer.id === "jonas" ? 12 : reviewer.id === "amina" ? 6 : 0]));
@@ -815,6 +865,7 @@ export function startingScreenings(): Screening[] {
     { at: NOW - 4 * DAY, by: "jonas", what: "Changed “Is the intervention delivered with digital technology?” from must-have to nice to have", effect: "3 excluded papers became included" },
     { at: NOW - 2 * DAY, by: "amina", what: "Added a third model as a reviewer", effect: "It reads all 132 papers" },
     { at: NOW - DAY, by: "amina", what: "Moved the included papers on to full text" },
+    { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
   ];
   // Half of the splits found so far were settled before the mock opens.
   const state = standing(edtech, "abstract");
@@ -875,13 +926,61 @@ function finished(start: Screening): Screening {
   return screening;
 }
 
+export const PERIOD: Record<Every, number> = { day: DAY, week: 7 * DAY, month: 30 * DAY };
+/** The sources a check looks in again. */
+export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind));
+
+/**
+ * One check of a screening's sources: each one that grows is looked in again, what it gained joins
+ * the end of the queue unless the screening has it already, and a screening that was finished is
+ * open again when something new came in.
+ */
+export function checked(screening: Screening, at: number, by: string): Screening {
+  let [found, added] = [0, 0];
+  const sources = screening.sources.map((source) => {
+    if (!GROWS.includes(source.kind)) return source;
+    // A scheduled look covers a whole period and finds more than a look by hand soon after one. Some looks find nothing in a source.
+    const roll = hash(`${screening.id}:${source.id}:${source.updates?.length ?? 0}`) % (by === SCHEDULE ? 13 : 6);
+    const fresh = roll < 2 ? 0 : roll;
+    if (!fresh) return source;
+    const duplicates = fresh > 4 ? hash(`${source.id}${fresh}`) % 3 : 0;
+    found += fresh;
+    added += fresh - duplicates;
+    return { ...source, total: source.total + fresh, updates: [...(source.updates ?? []), { at, added: fresh, duplicates }] };
+  });
+  return {
+    ...screening,
+    sources,
+    checking: undefined,
+    updates: [...(screening.updates ?? []), { at, found, added, by }],
+    // A look by hand leaves the schedule where it was.
+    living: screening.living && by === SCHEDULE ? { ...screening.living, next: Math.max(screening.living.next, at) + PERIOD[screening.living.every] } : screening.living,
+    finishedAt: added ? undefined : screening.finishedAt,
+    changes: [...screening.changes, { at, by, what: found ? `${by === SCHEDULE ? `${EVERY_LABEL[screening.living?.every ?? "week"].replace("Every", "The")}'s check` : "Looked for new papers and"} found ${found}` : by === SCHEDULE ? "The scheduled check found nothing new" : "Looked for new papers and found none", effect: found ? `${found - added ? `${found - added} ${found - added === 1 ? "was" : "were"} in it already. ` : ""}${added} joined the queue, and the reviewers they were dealt to were told by email` : undefined }],
+  };
+}
+
+/** Settings being changed, brought up to date with what the screening's checks have found since: its sources keep the papers they gained. */
+export const withUpdates = (draft: Screening, live: Screening): Screening => ({
+  ...draft,
+  updates: live.updates,
+  sources: draft.sources.map((source) => {
+    const now = live.sources.find((one) => one.id === source.id);
+    return now?.updates ? { ...source, total: baseTotal(source) + now.updates.reduce((sum, update) => sum + update.added, 0), updates: now.updates } : source;
+  }),
+});
+
+/** A day as the mock writes it: 23 Nov. */
+export const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
 /** A date as the mock shows it: how long ago for the last week, the day before that. */
 export function ago(at: number) {
   const minutes = Math.max(0, Math.round((NOW - at) / 60_000));
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
-  if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
-  const days = Math.round(minutes / (24 * 60));
+  // Days are counted on the calendar: a vote cast late yesterday was cast yesterday, not "18 h ago".
+  const days = Math.floor(NOW / DAY) - Math.floor(at / DAY);
+  if (days <= 0) return `${Math.round(minutes / 60)} h ago`;
   if (days === 1) return "yesterday";
   if (days < 7) return `${days} days ago`;
   return new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });

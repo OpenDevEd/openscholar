@@ -4,8 +4,9 @@
 // One paper at a time, decided with a key. Splits are settled in the same place.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronLeft, ChevronRight, CircleHelp, Eye, FileText, GitCompare, Quote, Search, TranslateIcon, Undo2, Upload, X, MoreHorizontal } from "@/components/icons";
+import { Check, ChevronLeft, ChevronRight, CircleHelp, Eye, FileText, GitCompare, ListChecks, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, Undo2, Upload, X } from "@/components/icons";
 import { ANSWER, AnswerMark, Chip, ClippedChip, Meter, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
@@ -13,6 +14,8 @@ import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
@@ -20,7 +23,7 @@ import { YouTag } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, ago, confidenceOf, decide, evidence, failedLabel, personOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { DECISIONS, DECISION_LABEL, NOW, OTHER_REASONS, ago, day, confidenceOf, decide, evidence, failedLabel, personOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { CriterionText, Kbd, RESULT_STYLE, ResultChip, ReviewerMark, VoteMark } from "./parts";
 import type { Open } from "./store";
 
@@ -30,37 +33,53 @@ const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" 
 const NOT_RETRIEVED = "not-retrieved";
 const SHORTCUTS: Array<[string, string]> = [["I", "Include"], ["M", "Maybe"], ["E", "Exclude, then a number for the reason"], ["S", "Leave it for later"], ["Z", "Undo, one decision at a time"], ["← →", "Previous and next paper"], ["Esc", "Back from the reason"]];
 const OTHER = "other";
-const HELP: Array<[string, string]> = [["Asterisk", "A must-have criterion: a paper that fails it is excluded"], ["Marked words", "Words from your criteria, found in the text"], ["Faces and model marks", "The reviewers of this paper, each with their answer. Press them to see who is who"], ["Your answers", "Optional. One decision is enough, and Exclude asks for the reason"]];
+const HELP: Array<[string, string]> = [["Asterisk", "A must-have criterion: a paper that fails it is excluded"], ["Marked words", "Words from your criteria, found in the text"], ["Faces and model marks", "The reviewers of this paper, each with their answer. Press them to see who is who"], ["A lock", "A vote that is cast, and hidden until you have cast yours"], ["A dashed square", "No vote yet"], ["Your answers", "Optional. One decision is enough, and Exclude asks for the reason"]];
 const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
 
-export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /** Whether a row sits under the stage switch, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void }) {
+/** Where someone is in a queue: the paper open, the page of the list, what they searched for and which of their own votes they asked for. */
+export type Place = { picked: string | null; page: number; find: string; voted: "any" | Decision };
+export const NO_PLACE: Place = { picked: null, page: 1, find: "", voted: "any" };
+// The files added by hand in this sitting, by screening and paper: the real viewer shows them. They last as long as the page does.
+const uploads = new Map<string, string>();
+const PdfViewer = dynamic(() => import("@/components/extraction/pdf-viewer").then((mod) => mod.PdfViewer), { ssr: false });
+
+export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }: { open: Open; /** Whether a row sits under the stage switch, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; place: Place; onPlace: (change: (place: Place) => Place) => void }) {
   const { screening, stage, papers, votes, settled, yours, toDo, conflicts } = open;
   const criteria = screening.criteria;
   const [order, setOrder] = useState<"dealt" | "lean">("dealt");
-  const [find, setFind] = useState("");
+  const { picked, page, find, voted } = place;
+  const setFind = (next: string) => onPlace((now) => ({ ...now, find: next }));
+  const setPicked = (next: string | null) => onPlace((now) => ({ ...now, picked: next }));
+  const setPage = (next: number) => onPlace((now) => ({ ...now, page: next }));
   const listed = useCallback(
     (which: Queue) => {
       const done = yours.filter((paper) => open.myVote(paper)).sort((a, b) => open.myVote(b)!.at - open.myVote(a)!.at);
-      const list = (which === "todo" ? toDo : which === "conflicts" ? conflicts : done).filter((paper) => !find.trim() || paper.title.toLowerCase().includes(find.trim().toLowerCase()));
+      // Found by its title, its authors or what its abstract says. Among the ones you have decided, also by what you decided.
+      const words = find.trim().toLowerCase();
+      const list = (which === "todo" ? toDo : which === "conflicts" ? conflicts : done).filter((paper) => (!words || `${paper.title} ${paper.authors.join(" ")} ${paper.sentences.join(" ")}`.toLowerCase().includes(words)) && (which !== "done" || voted === "any" || open.myVote(paper)?.decision === voted));
       // The models' votes say which papers are likely to be kept: those can come first.
       const lean = (paper: Paper) => votes[paper.id]!.filter((one) => one.reviewer.kind === "model" && one.vote?.decision === "include").length;
       return (order === "lean" && which === "todo" ? [...list].sort((a, b) => lean(b) - lean(a)) : list).map((paper) => paper.id);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the queue is read when it is opened, not on every vote
-    [toDo, conflicts, yours, order, votes, find],
+    [toDo, conflicts, yours, order, votes, find, voted],
   );
   // The queue as it was when it was opened: a paper you decide stays in its place, with your vote on it, until you change lists.
-  const holding = `${screening.id}:${stage}:${queue}:${order}:${open.me}:${find.trim().toLowerCase()}`;
+  const holding = `${screening.id}:${stage}:${queue}:${order}:${open.me}:${find.trim().toLowerCase()}:${voted}`;
   const [held, setHeld] = useState<{ of: string; ids: string[] }>(() => ({ of: holding, ids: listed(queue) }));
   if (held.of !== holding) setHeld({ of: holding, ids: listed(queue) });
+  else if (queue !== "done") {
+    // Papers that join while the list is open, from a look for new papers or a conflict that just arose, are added at its end.
+    const joined = listed(queue).filter((id) => !held.ids.includes(id));
+    if (joined.length) setHeld({ of: holding, ids: [...held.ids, ...joined] });
+  }
   const items = useMemo(() => held.ids.flatMap((id) => papers.find((paper) => paper.id === id) ?? []), [held, papers]);
 
-  const [picked, setPicked] = useState<string | null>(null);
   const paper = items.find((one) => one.id === picked) ?? items[0];
   const at = paper ? items.indexOf(paper) : -1;
-  const [page, setPage] = useState(1);
   const pages = Math.max(1, Math.ceil(items.length / QUEUE_PAGE));
-  const shownPage = Math.min(pages, page);
+  // Page 0 stands for "the page the open paper is on": a paper opened from elsewhere brings its page with it.
+  const shownPage = Math.min(pages, page || (at >= 0 ? Math.floor(at / QUEUE_PAGE) + 1 : 1));
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   // "Another reason" is written before it is saved: the paper whose reason is being written.
   const [writing, setWriting] = useState<string | null>(null);
@@ -82,6 +101,8 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
   const [advance, setAdvance] = useState(true);
   // On a phone the note field opens when asked for, so the paper keeps the room.
   const [noting, setNoting] = useState(false);
+  // On a phone the queue's list opens over the paper.
+  const [listing, setListing] = useState(false);
   const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; before: Vote | null; resolved: boolean; queue: Queue }>>([]);
@@ -172,13 +193,30 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
   const source = paper ? screening.sources.find((one) => one.id === paper.source) : undefined;
   const differ = last && !last.resolved && open.canSee(last.paper) ? votes[last.paper.id]!.filter((one) => one.reviewer.id !== open.me && one.vote && one.vote.decision !== last.decision).length : 0;
   // What a paper can be excluded for: the criteria first, then what no criterion covers.
-  const reasons = [...criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS[stage]];
+  const reasons = [...criteria.filter((criterion) => criterion.must).map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS[stage]];
   // Everything in this queue is decided: say so, where the buttons are.
   const through = queue !== "done" && items.length > 0 && items.every((one) => (resolving ? settled[one.id]!.result !== "conflict" : Boolean(open.myVote(one))));
   const state = paper ? settled[paper.id]! : undefined;
   const waitsOn = paper && state?.result === "waiting" ? cast.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer.name) : [];
   // What the counter says: how many are left to do, or where you are among the ones done.
   const left = resolving ? conflicts.length : toDo.length;
+
+  // One paper of the queue, in the column beside the paper and in the sheet a phone opens.
+  const row = (one: Paper, pick: (paper: Paper) => void) => {
+    const vote = open.myVote(one);
+    return (
+      <li key={one.id}>
+        <button type="button" aria-current={one === paper} onClick={() => pick(one)} className={cn("flex w-full items-start gap-3 px-4 py-3 text-start transition-colors hover:bg-muted", one === paper && "bg-muted")}>
+          <span className="min-w-0 flex-1">
+            <span className={cn("line-clamp-2 text-sm leading-5", one === paper ? "font-semibold" : "font-medium")}>{one.title}</span>
+            {one.batch !== undefined && queue === "todo" ? <span className="mt-1 inline-flex rounded-full bg-success/12 px-1.5 text-2xs font-medium leading-5 ink-success">New, added {one.batch > NOW ? "just now" : day(one.batch)}</span> : null}
+            <span className="mt-0.5 flex gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate">{one.authors[0]}, {one.year}</span>{queue === "done" && vote ? <span className="ms-auto shrink-0">{ago(vote.at)}</span> : null}</span>
+          </span>
+          {resolving ? (settled[one.id]!.result === "conflict" ? <GitCompare className="mt-0.5 size-4 shrink-0 text-info" /> : <VoteMark vote={{ decision: settled[one.id]!.final! }} who="Final decision" />) : vote ? <VoteMark vote={vote} who="You" /> : null}
+        </button>
+      </li>
+    );
+  };
 
   return (
     <div className={cn("grid min-h-[34rem] grid-cols-1 max-lg:pb-40 lg:grid-cols-[19rem_minmax(0,1fr)_25rem] lg:divide-x lg:divide-border-subtle", banner ? "lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-9.9375rem)]" : "lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-7.125rem)]")}>
@@ -196,10 +234,40 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
               { id: "conflicts", label: "Conflicts", detail: <span className="tabular-nums text-muted-foreground">{conflicts.length}</span> },
             ]}
           />
+          {/* A phone shows one paper at a time: the whole list, to find a paper in, opens over it. */}
+          {items.length > 1 ? <Button variant="outline" size="sm" className="w-full lg:hidden" onClick={() => setListing(true)}><ListChecks />See all {items.length.toLocaleString("en-GB")} in this list</Button> : null}
+          <Sheet open={listing} onOpenChange={setListing}>
+            <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col gap-0 p-0 lg:hidden">
+              <SheetHeader className="space-y-3 border-b border-border-subtle p-4">
+                <SheetTitle>{queue === "todo" ? "To do" : queue === "done" ? "Done" : "Conflicts"}</SheetTitle>
+                <SheetDescription className="sr-only">Every paper in this list. Press one to open it.</SheetDescription>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={find} onChange={(event) => { setPicked(null); setPage(1); setFind(event.target.value); }} placeholder="Find in this list" aria-label="Find in this list" className="h-9 rounded-full ps-8 text-sm" />
+                </div>
+              </SheetHeader>
+              <ul className="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto">
+                {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, (paper) => { go(items.indexOf(paper)); setListing(false); }))}
+                {!items.length ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing by that name in this list.</li> : null}
+              </ul>
+              {pages > 1 ? <PageStepper className="border-t border-border-subtle px-3 py-2" page={shownPage} pageCount={pages} canPrevious={shownPage > 1} canNext={shownPage < pages} onPrevious={() => setPage(shownPage - 1)} onNext={() => setPage(shownPage + 1)} /> : null}
+            </SheetContent>
+          </Sheet>
           <div className="relative max-lg:hidden">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input value={find} onChange={(event) => { setPicked(null); setPage(1); setFind(event.target.value); }} placeholder="Find in this queue" aria-label="Find in this queue" className="h-8 rounded-full ps-8 text-sm" />
           </div>
+          {queue === "done" ? (
+            <Select value={voted} onValueChange={(next) => onPlace((now) => ({ ...now, voted: next as Place["voted"], picked: null, page: 1 }))}>
+              <SelectTrigger aria-label="Which of your decisions" className="h-8 w-full text-xs max-lg:hidden"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Every decision, latest first</SelectItem>
+                <SelectItem value="include">The ones you included</SelectItem>
+                <SelectItem value="maybe">The ones you left as maybe</SelectItem>
+                <SelectItem value="exclude">The ones you excluded</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
           {queue === "todo" && toDo.length > 1 ? (
             <Select value={order} onValueChange={(next) => { setPicked(null); setPage(1); setOrder(next as "dealt" | "lean"); }}>
               <SelectTrigger aria-label="Order of the queue" className="h-8 w-full text-xs max-lg:hidden"><SelectValue /></SelectTrigger>
@@ -211,20 +279,7 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
           ) : null}
         </div>
         <ul className="hidden min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto border-t border-border-subtle lg:block">
-          {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => {
-            const vote = open.myVote(one);
-            return (
-              <li key={one.id}>
-                <button type="button" aria-current={one === paper} onClick={() => go(items.indexOf(one))} className={cn("flex w-full items-start gap-3 px-4 py-3 text-start transition-colors hover:bg-muted", one === paper && "bg-muted")}>
-                  <span className="min-w-0 flex-1">
-                    <span className={cn("line-clamp-2 text-sm leading-5", one === paper ? "font-semibold" : "font-medium")}>{one.title}</span>
-                    <span className="mt-0.5 flex gap-2 text-xs text-muted-foreground"><span className="min-w-0 truncate">{one.authors[0]}, {one.year}</span>{queue === "done" && vote ? <span className="ms-auto shrink-0">{ago(vote.at)}</span> : null}</span>
-                  </span>
-                  {resolving ? (settled[one.id]!.result === "conflict" ? <GitCompare className="mt-0.5 size-4 shrink-0 text-info" /> : <VoteMark vote={{ decision: settled[one.id]!.final! }} who="Final decision" />) : vote ? <VoteMark vote={vote} who="You" /> : null}
-                </button>
-              </li>
-            );
-          })}
+          {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, (paper) => go(items.indexOf(paper))))}
         </ul>
         {pages > 1 ? (
           <PageStepper className="hidden border-t border-border-subtle px-3 py-2 lg:flex" page={shownPage} pageCount={pages} canPrevious={shownPage > 1} canNext={shownPage < pages} onPrevious={() => setPage(shownPage - 1)} onNext={() => setPage(shownPage + 1)} />
@@ -232,7 +287,7 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
       </div>
 
       {!paper ? (
-        <Empty open={open} queue={queue} onQueue={onQueue} onView={onView} />
+        <Empty open={open} queue={queue} onQueue={onQueue} onView={onView} narrowed={Boolean(find.trim()) || (queue === "done" && voted !== "any")} onClear={() => onPlace(() => NO_PLACE)} />
       ) : (
         <>
           {/* The paper */}
@@ -244,12 +299,13 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
                 <div className="flex flex-wrap items-center gap-1.5">
                   {source ? <ClippedChip icon={kindIcon(source.kind)} className="max-w-72">{source.name}</ClippedChip> : null}
                   <Chip icon={Quote}>{paper.cited} cited</Chip>
+                  {paper.batch !== undefined ? <Chip icon={RefreshCw} className="bg-success/12 ink-success">Added {paper.batch > NOW ? "just now" : day(paper.batch)}</Chip> : null}
                   {stage === "fullText" && open.hasFullText(paper) ? <Chip icon={FileText}>{screening.fullTexts[paper.id] === "added" ? "PDF added by hand" : "Open-access PDF"}</Chip> : null}
                 </div>
-                {stage === "fullText" ? <input ref={file} type="file" accept="application/pdf" className="sr-only" aria-label="PDF of this paper" onChange={(event) => { if (event.target.files?.[0]) open.setFullText(paper, "added", event.target.files[0].name); event.target.value = ""; }} /> : null}
+                {stage === "fullText" ? <input ref={file} type="file" accept="application/pdf" className="sr-only" aria-label="PDF of this paper" onChange={(event) => { const picked = event.target.files?.[0]; if (picked) { uploads.set(`${screening.id}:${paper.id}`, URL.createObjectURL(picked)); open.setFullText(paper, "added", picked.name); } event.target.value = ""; }} /> : null}
                 {stage === "fullText" ? (
                   open.hasFullText(paper) ? (
-                    <FullText paper={paper} quoted={quoted} file={screening.fullTextFiles?.[paper.id]} onReplace={open.isReviewer && screening.fullTexts[paper.id] === "added" ? () => file.current?.click() : undefined} />
+                    <FullText paper={paper} quoted={quoted} file={screening.fullTextFiles?.[paper.id]} url={uploads.get(`${screening.id}:${paper.id}`)} onReplace={open.isReviewer && screening.fullTexts[paper.id] === "added" ? () => file.current?.click() : undefined} onRemove={open.isReviewer && screening.fullTexts[paper.id] === "added" ? () => { uploads.delete(`${screening.id}:${paper.id}`); open.clearFullText(paper); } : undefined} />
                   ) : (
                     <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-12 text-center">
                       <FileText className="size-6 text-muted-foreground" />
@@ -299,11 +355,12 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
               <ul key={paper.id} className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
                 <li className="space-y-2 bg-inset px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <span className="shrink-0 text-sm font-medium">Decisions</span>
+                    <span className="shrink-0 text-sm font-medium">Everyone&apos;s decisions</span>
                     {visible ? (
                       <Popover>
                         <PopoverTrigger asChild>
                           <button type="button" aria-label="Who voted what" className="ms-auto flex flex-wrap items-center justify-end gap-1.5 rounded-lg outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50">
+                            <span className="me-1 self-end text-xs text-muted-foreground underline decoration-dotted underline-offset-2">Who voted what</span>
                             {cast.map(({ reviewer, vote, failed }) => (
                               <span key={reviewer.id} className="flex flex-col items-center gap-1"><ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} className="size-6" /><VoteMark vote={vote} failed={failed} who={reviewer.name} /></span>
                             ))}
@@ -333,7 +390,7 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
                   {visible && state ? (
                     <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <ResultChip result={state.result} />
-                      {state.result === "waiting" ? `on ${waitsOn.slice(0, 2).join(" and ")}${waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}` : state.result === "conflict" ? `goes to ${personOf(screening.rule.resolver)?.name ?? "the person who settles them"}` : state.resolvedBy ? `settled by ${personOf(state.resolvedBy)?.name ?? "a reviewer"}${state.note ? `: “${state.note}”` : ""}` : state.result === "exclude" && cast.some((one) => one.vote?.reason) ? failedLabel(cast.find((one) => one.vote?.reason)!.vote!.reason!, criteria) : stage === "abstract" && screening.fullText && state.result !== "exclude" ? "goes on to full text" : null}
+                      {state.result === "waiting" ? `from ${waitsOn.slice(0, 2).join(" and ")}${waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}` : state.result === "conflict" ? `goes to ${personOf(screening.rule.resolver)?.name ?? "the person who settles them"}` : state.resolvedBy ? `settled by ${personOf(state.resolvedBy)?.name ?? "a reviewer"}${state.note ? `: “${state.note}”` : ""}` : state.result === "exclude" && cast.some((one) => one.vote?.reason) ? failedLabel(cast.find((one) => one.vote?.reason)!.vote!.reason!, criteria) : stage === "abstract" && screening.fullText && state.result !== "exclude" ? "goes on to full text" : null}
                     </p>
                   ) : null}
                 </li>
@@ -353,7 +410,7 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
                             const Icon = ANSWER[answer].icon;
                             const on = answered === answer;
                             return (
-                              <button key={answer} type="button" role="radio" aria-checked={on} aria-label={answer} onClick={() => answerIt(criterion.key, answer)} className={cn("flex size-7 items-center justify-center rounded-md border transition-colors", on ? cn(ANSWER[answer].className, "border-transparent ring-2 ring-current/50", answer === "no" && "bg-foreground/15 text-foreground") : "border-border-subtle text-muted-foreground hover:border-foreground/30 hover:text-foreground")}>
+                              <button key={answer} type="button" role="radio" aria-checked={on} aria-label={answer} onClick={() => answerIt(criterion.key, answer)} className={cn("flex size-7 items-center justify-center rounded-md border transition-colors", on ? cn(ANSWER[answer].className, "border-transparent ring-2 ring-current/50", answer === "no" && "bg-foreground/15 text-foreground") : "border-border-subtle text-muted-foreground hover:text-foreground")}>
                                 <Icon className="size-3.5" />
                               </button>
                             );
@@ -409,8 +466,8 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
                   </PopoverContent>
                 </Popover>
                 {/* On a phone the last decision's way back sits here, and the rest folds into one menu. */}
-                {last ? <Button variant="ghost" size="xs" className="lg:hidden" onClick={undo}><Undo2 />Undo</Button> : null}
-                {last && differ ? <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-info/12 px-2 text-xs font-medium text-info lg:hidden"><GitCompare className="size-3.5" />{differ} differ</button> : null}
+                {last ? <Button variant="ghost" size="icon" className="size-8 lg:hidden" aria-label="Undo the last decision" onClick={undo}><Undo2 /></Button> : null}
+                {last && differ ? <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-info/12 px-2 text-xs font-medium text-info lg:hidden"><GitCompare className="size-3.5" />Last: {differ} differ</button> : null}
                 <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground max-lg:hidden">
                   Go to the next one
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a decision" />
@@ -469,17 +526,19 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
                 <div className="space-y-2">
                   {resolving ? <p className="text-xs text-muted-foreground">Your decision is the paper&apos;s result. {stage === "abstract" && screening.fullText ? "Maybe sends it on to full text." : "Maybe leaves it open."}{mine ? ` Your own vote here was ${DECISION_LABEL[mine.decision]}.` : ""}</p> : null}
                   {against && mine ? (
-                    <p className="rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs ink-warning">Your decision is {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{failing ? `: ${failing.short}` : ""}.</p>
-                  ) : !mine && pointsTo && pointsTo.decision !== "include" && failing ? (
-                    <p className="rounded-lg bg-inset px-2.5 py-1.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointsTo.decision]}</span>: {failing.short} is a must-have.</p>
+                    <p className="rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs ink-warning">Your decision is {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{failing ? `: you answered ${given[failing.key] === "no" ? "no" : "unclear"} to criterion ${criteria.indexOf(failing) + 1}, a must-have` : ""}.</p>
+                  ) : !mine && pointsTo && failing ? (
+                    <p className="rounded-lg bg-inset px-2.5 py-1.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointsTo.decision]}</span>: you answered {given[failing.key] === "no" ? "no" : "unclear"} to criterion {criteria.indexOf(failing) + 1}, a must-have.</p>
+                  ) : !mine && pointsTo?.decision === "include" && criteria.filter((criterion) => criterion.must).every((criterion) => given[criterion.key] === "yes") ? (
+                    <p className="rounded-lg bg-inset px-2.5 py-1.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">Include</span>: every must-have is met.</p>
                   ) : null}
-                  <Input value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className={cn("h-8 text-sm", !noting && "max-lg:hidden")} />
+                  <Textarea rows={1} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className={cn("max-h-28 min-h-8 resize-none py-1.5 text-sm field-sizing-content", !noting && "max-lg:hidden")} />
                   <div className="grid grid-cols-3 gap-2">
                     {[...DECISIONS].reverse().map((decision) => {
                       const Icon = decision === "include" ? Check : decision === "maybe" ? CircleHelp : X;
                       const on = resolving ? Boolean(settled[paper.id]!.resolvedBy) && settled[paper.id]!.final === decision : mine?.decision === decision;
                       return (
-                        <button key={decision} type="button" data-decision aria-pressed={on} onClick={() => press(decision)} className={cn("flex h-11 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? cn(RESULT_STYLE[decision].chip, "border-transparent ring-1 ring-current") : "border-border-subtle hover:border-foreground/40", !on && !mine && pointsTo?.decision === decision && decision !== "include" && "border-dashed border-foreground/50")}>
+                        <button key={decision} type="button" data-decision aria-pressed={on} onClick={() => press(decision)} className={cn("flex h-11 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? cn(RESULT_STYLE[decision].chip, "border-transparent ring-1 ring-current") : "border-border-subtle hover:bg-foreground/[0.03]", !on && !mine && pointsTo?.decision === decision && decision !== "include" && "border-dashed border-foreground/50")}>
                           <Icon className={cn("size-4", !on && (decision === "include" ? "ink-success" : decision === "maybe" ? "ink-warning" : "text-muted-foreground"))} />
                           {DECISION_LABEL[decision]}
                           <Kbd className="max-lg:hidden">{KEYS[decision]}</Kbd>
@@ -493,12 +552,11 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
               <div className="flex h-12 items-center gap-2 pe-[4.5rem] text-xs text-muted-foreground max-lg:hidden">
                 {last ? (
                   <>
-                    <VoteMark vote={{ decision: last.decision }} who={last.resolved ? "Final decision" : "You"} className="size-5" />
                     {/* What was just decided, in as few words as say it; the paper itself is one press away. */}
-                    <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="min-w-0 flex-1 truncate text-start font-medium text-foreground hover:underline">
-                      {DECISION_LABEL[last.decision]}{last.reason ? `: ${criteria.find((criterion) => criterion.key === last.reason)?.short ?? failedLabel(last.reason, criteria)}` : ""}
+                    <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="min-w-0 flex-1 truncate text-start hover:underline">
+                      Last paper: <span className="font-medium text-foreground">{DECISION_LABEL[last.decision]}</span>
                     </button>
-                    {differ ? <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="shrink-0 rounded-md bg-info/12 px-2 py-1 font-medium text-info transition-opacity hover:opacity-75">{differ} voted differently</button> : null}
+                    {differ ? <button type="button" aria-label={`${differ} of the others voted differently on the last paper: see it`} onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="shrink-0 rounded-md bg-info/12 px-2 py-1 font-medium text-info transition-opacity hover:opacity-75">{differ} differed</button> : null}
                     <Button variant="ghost" size="xs" onClick={undo}><Undo2 />Undo<Kbd className="max-lg:hidden">Z</Kbd></Button>
                   </>
                 ) : null}
@@ -512,7 +570,16 @@ export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /
 }
 
 /** What a queue says when it holds nothing, and where to go from there. */
-function Empty({ open, queue, onQueue, onView }: { open: Open; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void }) {
+function Empty({ open, queue, onQueue, onView, narrowed, onClear }: { open: Open; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; /** The list is empty because of what was searched or asked for, not because it holds nothing. */ narrowed: boolean; onClear: () => void }) {
+  if (narrowed) {
+    return (
+      <div className="col-span-2 flex flex-col items-center justify-center gap-2 p-10 text-center">
+        <p className="text-sm font-medium">Nothing in this list matches</p>
+        <p className="max-w-sm text-sm text-muted-foreground">The search reads each paper&apos;s title, authors and abstract.</p>
+        <Button size="sm" variant="outline" className="mt-1" onClick={onClear}>Show the whole list</Button>
+      </div>
+    );
+  }
   const text = !open.isReviewer && queue !== "conflicts"
     ? ["No paper waits for you", "You are not one of this screening's reviewers. You can read every paper and how it was voted on in Papers."]
     : queue === "todo"
@@ -547,7 +614,7 @@ function Sentence({ text, quoted, terms }: { text: string; quoted: boolean; term
 }
 
 /** Stands in for the PDF viewer the extraction pages use: the paper's pages under a bar that steps through them, with the quoted passage marked on the page it is on. */
-function FullText({ paper, quoted, file, onReplace }: { paper: Paper; quoted: number; /** The name of the file it was added from, when a person added it. */ file?: string; onReplace?: () => void }) {
+function FullText({ paper, quoted, file, url, onReplace, onRemove }: { paper: Paper; quoted: number; /** The name of the file it was added from, when a person added it. */ file?: string; /** That file itself, while the page that took it is open. */ url?: string; onReplace?: () => void; onRemove?: () => void }) {
   const body = paper.sentences.length ? paper.sentences : [`${paper.title}.`];
   const pages = [
     { heading: "Abstract", text: body.map((_, i) => i), more: "" },
@@ -564,12 +631,30 @@ function FullText({ paper, quoted, file, onReplace }: { paper: Paper; quoted: nu
     if (pageOf >= 0) setAt(pageOf);
   }
   const page = pages[at]!;
+  // A file a person added is that file: the app's own viewer shows it, so it can be checked against the paper.
+  if (file) {
+    return (
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-subtle bg-inset px-3 py-1.5">
+          <FileText className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate text-xs font-medium">{file}</span>
+          <Chip>Added by hand</Chip>
+          {onReplace ? <Button variant="ghost" size="xs" className="shrink-0" onClick={onReplace}>Replace it</Button> : null}
+          {onRemove ? <Button variant="ghost" size="xs" className="shrink-0" onClick={onRemove}>Take it off</Button> : null}
+        </div>
+        {url ? (
+          <div className="h-[40rem]"><PdfViewer key={url} pdfUrl={url} initialPageNumber={1} /></div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">This mock holds an added file only while its page stays open. Replace it to read it here again.</p>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="overflow-hidden rounded-xl border border-border-subtle">
       <div className="flex items-center gap-2 border-b border-border-subtle bg-inset px-3 py-1.5">
         <FileText className="size-4 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{file ?? `${paper.authors[0]!.split(" ").pop()} ${paper.year}.pdf`}</span>
-        {onReplace ? <Button variant="ghost" size="xs" className="shrink-0" onClick={onReplace}>Wrong file? Replace it</Button> : null}
         <PageStepper page={at + 1} pageCount={pages.length} canPrevious={at > 0} canNext={at < pages.length - 1} onPrevious={() => setAt(at - 1)} onNext={() => setAt(at + 1)} />
       </div>
       <div className="bg-muted p-4 sm:p-6">

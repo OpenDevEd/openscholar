@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronLeft, ChevronRight, CircleHelp, Download, FileText, GitCompare, Quote, Search, Undo2, Upload, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, CircleHelp, Download, FileText, GitCompare, Quote, RefreshCw, Search, Undo2, Upload, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, AnswerMark, Chip, ClippedChip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -22,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, personOf, failedLabel, reasonOf, scoreOf, type Decision, type Paper, type Result } from "./data";
+import { DECISIONS, DECISION_LABEL, NOW, OTHER_REASONS, RESULTS, RESULT_LABEL, day, activeReviewers, ago, personOf, failedLabel, reasonOf, scoreOf, type Decision, type Paper, type Result } from "./data";
 import { RESULT_STYLE, ResultChip, ReviewerMark, ReviewerStack, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import type { Open } from "./store";
@@ -32,7 +32,7 @@ type Sort = "added" | "title" | "newest" | "split" | "points";
 const PAGE = 20;
 const ROW = 57;
 
-export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersFilter; onFilter: (filter: PapersFilter) => void }) {
+export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open; filter: PapersFilter; onFilter: (filter: PapersFilter) => void; /** Which arrival of papers is shown: all of them, the ones it started with ("start"), or the ones a check brought (its time). */ added: string; onAdded: (added: string) => void }) {
   const { screening, papers, votes, settled, counts } = open;
   const reviewers = activeReviewers(screening);
   const criteria = screening.criteria;
@@ -40,24 +40,30 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
   const [columns, setColumns] = useState<"reviewers" | "criteria">("reviewers");
   const [sort, setSort] = useState<Sort>("added");
   const [from, setFrom] = useState("all");
+  // Your own vote, as a way to find papers: the results above count only what has settled.
+  const [yours, setYours] = useState<"any" | Decision | "none">("any");
   const [page, setPage] = useState(1);
   const [opened, setOpened] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   // A paper opens beside the table where there is room for both, and over the page where there isn't.
   const beside = useMediaQuery("(min-width: 1280px)");
+  const top = useRef<HTMLDivElement>(null);
   // The table keeps the room it gave the paper until the paper has finished leaving, so the two never change places.
   const [made, setMade] = useState(false);
 
   const rows = useMemo(() => {
     const words = query.trim().toLowerCase();
-    const list = papers.filter((paper) => (filter === "all" || settled[paper.id]!.result === filter) && (from === "all" || paper.source === from) && (!words || `${paper.title} ${paper.authors.join(" ")}`.toLowerCase().includes(words)));
+    const list = papers.filter((paper) => (filter === "all" || settled[paper.id]!.result === filter) && (from === "all" || paper.source === from) && (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) && (yours === "any" || (yours === "none" ? votes[paper.id]!.some((one) => one.reviewer.id === open.me && !one.vote) : open.myVote(paper)?.decision === yours)) && (!words || `${paper.title} ${paper.authors.join(" ")}`.toLowerCase().includes(words)));
     const split = (paper: Paper) => new Set(votes[paper.id]!.flatMap((one) => one.vote?.decision ?? [])).size;
     if (sort === "title") return [...list].sort((a, b) => a.title.localeCompare(b.title));
     if (sort === "newest") return [...list].sort((a, b) => b.year - a.year);
     if (sort === "split") return [...list].sort((a, b) => split(b) - split(a));
     if (sort === "points") return [...list].sort((a, b) => scoreOf(screening, votes[b.id]!).points - scoreOf(screening, votes[a.id]!).points);
     return list;
-  }, [papers, settled, votes, filter, from, query, sort, screening]);
+  }, [papers, settled, votes, filter, from, added, yours, query, sort, screening, open]);
+  // When papers joined after the start: each check that brought some, and each source added later.
+  const arrivals = [...new Set(papers.flatMap((paper) => paper.batch ?? []))].sort((a, b) => b - a);
+  const newest = arrivals[0];
   const pager = pagerOf(rows.length, PAGE, page, setPage);
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   const paper = papers.find((one) => one.id === opened);
@@ -81,14 +87,15 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
     }
     setPicked([]);
   };
-  const exportPicked = () => {
-    const lines = [["paper", "year", "result", ...reviewers.map((r) => r.name)], ...chosen.flatMap((id) => {
-      const one = papers.find((p) => p.id === id);
-      return one ? [[one.title, one.year, RESULT_LABEL[settled[id]!.result], ...reviewers.map((r) => { const vote = votes[id]!.find((v) => v.reviewer.id === r.id)?.vote; return vote ? DECISION_LABEL[vote.decision] : ""; })]] : [];
-    })];
+  const exportPicked = (as: "csv" | "ris") => {
+    const picks = chosen.flatMap((id) => papers.find((p) => p.id === id) ?? []);
+    const lines = [["paper", "year", "result", ...reviewers.map((r) => r.name)], ...picks.map((one) => [one.title, one.year, RESULT_LABEL[settled[one.id]!.result], ...reviewers.map((r) => { const vote = votes[one.id]!.find((v) => v.reviewer.id === r.id)?.vote; return vote ? DECISION_LABEL[vote.decision] : ""; })])];
+    const text = as === "csv"
+      ? lines.map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")
+      : picks.map((paper) => ["TY  - JOUR", `TI  - ${paper.title}`, ...paper.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${paper.year}`, `JO  - ${paper.venue}`, ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([lines.map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")], { type: "text/csv" }));
-    link.download = "selected-papers.csv";
+    link.href = URL.createObjectURL(new Blob([text], { type: as === "csv" ? "text/csv" : "application/x-research-info-systems" }));
+    link.download = `selected-papers.${as}`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -97,7 +104,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
   if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "No paper has reached this stage yet."}</p>;
 
   return (
-    <div className="@container/papers">
+    <div ref={top} className="@container/papers scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-subtle p-4 sm:px-6">
         <Segmented
           label="Where the papers stand"
@@ -118,6 +125,28 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
               <SelectContent>
                 <SelectItem value="all">Every source</SelectItem>
                 {screening.sources.map((source) => <SelectItem key={source.id} value={source.id}>{source.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          ) : null}
+          {open.isReviewer ? (
+            <Select value={yours} onValueChange={(next) => { setPage(1); setYours(next as typeof yours); }}>
+              <SelectTrigger aria-label="Your vote" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Whatever you voted</SelectItem>
+                <SelectItem value="include">You voted include</SelectItem>
+                <SelectItem value="maybe">You voted maybe</SelectItem>
+                <SelectItem value="exclude">You voted exclude</SelectItem>
+                <SelectItem value="none">Waiting for your vote</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
+          {arrivals.length ? (
+            <Select value={added} onValueChange={(next) => { setPage(1); onAdded(next); }}>
+              <SelectTrigger aria-label="When they were added" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Added at any time</SelectItem>
+                {arrivals.map((at) => <SelectItem key={at} value={String(at)}>Added {at > NOW ? "just now" : day(at)}</SelectItem>)}
+                <SelectItem value="start">There from the start</SelectItem>
               </SelectContent>
             </Select>
           ) : null}
@@ -150,19 +179,20 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
         </div>
       </div>
 
-      {/* What can be done with the chosen papers. The row opens only while some are chosen. */}
-      <AnimatePresence initial={false}>
+      {/* What can be done with the chosen papers. It floats over the foot of the page, so ticking a row moves no row. */}
+      <AnimatePresence>
         {chosen.length ? (
-          <motion.div key="chosen" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
-            <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle bg-primary/5 px-4 py-2 sm:px-6">
-              <span className="text-sm font-medium tabular-nums">{chosen.length} chosen</span>
+          <motion.div key="chosen" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.2, ease: EASE }} className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-4 max-lg:bottom-24">
+            <div className="flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-border-subtle bg-card px-3 py-2 shadow-lg">
+              <span className="px-1 text-sm font-medium tabular-nums">{chosen.length} chosen</span>
               {conflictsPicked && open.canResolve ? (
                 <>
-                  <span className="ms-2 text-xs text-muted-foreground">Settle the {conflictsPicked} in conflict as</span>
+                  <span className="text-xs text-muted-foreground">Settle the {conflictsPicked} in conflict as</span>
                   {[...DECISIONS].reverse().map((decision) => <Button key={decision} variant="outline" size="sm" className="h-7" onClick={() => settleAll(decision)}>{DECISION_LABEL[decision]}</Button>)}
                 </>
               ) : null}
-              <Button variant="outline" size="sm" className="ms-auto h-7" onClick={exportPicked}><Download />Download as CSV</Button>
+              <Button variant="outline" size="sm" className="h-7" onClick={() => exportPicked("ris")}><Download />RIS, for a reference manager</Button>
+              <Button variant="outline" size="sm" className="h-7" onClick={() => exportPicked("csv")}><Download />CSV</Button>
               <Button variant="ghost" size="sm" className="h-7" onClick={() => setPicked([])}>Clear</Button>
             </div>
           </motion.div>
@@ -230,7 +260,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
                           </TableCell>
                           <TableCell className="py-2">
                             <button type="button" aria-expanded={opened === one.id} className="block w-full min-w-0 text-start outline-none focus-visible:underline">
-                              <span className="block truncate text-sm font-medium">{one.title}</span>
+                              <span className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-medium">{one.title}</span>{one.batch !== undefined && one.batch === newest ? <span className="shrink-0 rounded-full bg-success/12 px-1.5 text-2xs font-medium leading-5 ink-success">New</span> : null}</span>
                               <span className="block truncate text-xs text-muted-foreground">{one.authors.join(", ")}, {one.year}, {one.venue}</span>
                             </button>
                           </TableCell>
@@ -279,11 +309,11 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
                 <p className="text-sm text-muted-foreground">No paper here matches.</p>
-                <Button variant="outline" size="sm" onClick={() => { setQuery(""); setFrom("all"); onFilter("all"); }}>Show every paper</Button>
+                <Button variant="outline" size="sm" onClick={() => { setQuery(""); setFrom("all"); setYours("any"); onFilter("all"); onAdded("all"); }}>Show every paper</Button>
               </div>
             )}
           </div>
-          {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="papers" /> : null}
+          {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={(next) => { setPage(next); top.current?.scrollIntoView({ block: "start" }); }} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="papers" /> : null}
         </div>
 
         <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
@@ -328,7 +358,7 @@ function Why({ paper, open, visible }: { paper: Paper; open: Open; visible: bool
   const score = state.result === "include" && open.screening.criteria.length ? scoreOf(open.screening, entries) : null;
   return score ? (
     <TooltipHint label={`${score.points} of ${score.of} points from its reviewers' answers`}>
-      <span tabIndex={0} className="inline-flex rounded-md"><Stars count={score.stars} /></span>
+      <span tabIndex={0} className="inline-flex items-center gap-1.5 rounded-md text-xs tabular-nums text-muted-foreground"><Stars count={score.stars} />{score.points} of {score.of} points</span>
     </TooltipHint>
   ) : null;
 }
@@ -397,6 +427,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         <ResultChip result={state.result} />
         {state.result === "include" && visible && screening.criteria.length ? <Chip><Stars count={scoreOf(screening, cast).stars} />{scoreOf(screening, cast).points} of {scoreOf(screening, cast).of} points</Chip> : null}
         <Chip icon={Quote}>{paper.cited} cited</Chip>
+        {paper.batch !== undefined ? <Chip icon={RefreshCw}>Added {paper.batch > NOW ? "just now" : day(paper.batch)}</Chip> : null}
         {source ? <ClippedChip className="max-w-56">{source.name}</ClippedChip> : null}
       </div>
       {paper.sentences.length ? (
