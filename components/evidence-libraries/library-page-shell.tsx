@@ -30,6 +30,7 @@ export function LibraryPageShell({
   intro,
   filtersInCard = false,
   allowOverflow = false,
+  wide = false,
   children,
 }: {
   icon?: AppIcon | null;
@@ -49,6 +50,8 @@ export function LibraryPageShell({
   filtersInCard?: boolean;
   /** Let the card's content overflow, for a sticky footer or popovers inside it. */
   allowOverflow?: boolean;
+  /** Work across the whole window, not the site's 72rem strip: the open screening. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   // A tab can drop its filters. The last ones stay rendered while their row closes.
@@ -60,7 +63,7 @@ export function LibraryPageShell({
   const cardToolbar = filtersInCard && filters ? OPEN : filtersInBar ? "grid-rows-[1fr] @6xl:invisible @6xl:grid-rows-[0fr]" : "grid-rows-[1fr] @3xl:invisible @3xl:grid-rows-[0fr]";
   return (
     <div className="@container w-full pb-16">
-      <StickyPageHeader>
+      <StickyPageHeader wide={wide}>
         <PanelHeader
           icon={icon}
           image={image}
@@ -76,7 +79,7 @@ export function LibraryPageShell({
         </PanelHeader>
       </StickyPageHeader>
 
-      <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+      <div className={wide ? "p-4 sm:p-6" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
         {/* Its pages come from the server (papers, topics, authors): the card rises in CSS from the first paint, not once the code loads. */}
         <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn>
           {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
