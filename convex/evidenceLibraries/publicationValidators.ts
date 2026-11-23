@@ -1,4 +1,8 @@
 import { v, type Infer } from "convex/values";
+import { capped } from "../lib/listCaps";
+
+/** The most entries kept of each of DOCiD's lists: it has under twenty of each. */
+export const DOCID_OPTIONS_MAX = 200;
 
 const mode = v.union(
   v.literal("off"),
@@ -42,9 +46,9 @@ export const publicationSettingsValidator = v.object({
       /** DOCiD's lists as the account saw them when last verified, for the pickers; written by the server only. */
       options: v.optional(
         v.object({
-          resourceTypes: v.array(v.object({ id: v.number(), name: v.string() })),
-          publicationTypes: v.array(v.object({ id: v.number(), name: v.string() })),
-          funderTypes: v.array(v.object({ id: v.number(), name: v.string() })),
+          resourceTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),
+          publicationTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),
+          funderTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),
         }),
       ),
     }),

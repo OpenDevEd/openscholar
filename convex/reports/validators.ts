@@ -38,7 +38,7 @@ const serviceValidator = v.object({ mode: v.union(v.literal("required"), v.liter
 export const identifiersValidator = v.object({
   services: v.object({ crossref: serviceValidator, zenodo: serviceValidator, docid: serviceValidator }),
   choose: v.object({ min: v.number(), max: v.number() }),
-  citeFirst: v.array(serviceIdValidator),
+  citeFirst: capped(v.array(serviceIdValidator), 3),
   docidAtSigning: v.boolean(),
 });
 

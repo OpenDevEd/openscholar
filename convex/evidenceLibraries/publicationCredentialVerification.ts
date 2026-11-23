@@ -1,7 +1,7 @@
 "use node";
 
 import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
-import type { CustomCrossref, PublicationSecrets, PublicationSettings } from "./publicationValidators";
+import { DOCID_OPTIONS_MAX, type CustomCrossref, type PublicationSecrets, type PublicationSettings } from "./publicationValidators";
 import { isZenodoLicence } from "../../lib/zenodo-licences";
 import { DocidApiClient } from "@opendeved/doi-sync-core";
 
@@ -185,7 +185,7 @@ export async function docidLists(email: string, password: string): Promise<Docid
     const response = await fetch(`${DOCID_ENDPOINT}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error(`DOCiD answered ${response.status} when asked for its ${list.replaceAll("-", " ")}.`);
     const rows = (await response.json()) as Array<Record<string, unknown>>;
-    return rows.flatMap((row) => (typeof row.id === "number" && typeof row[name] === "string" ? [{ id: row.id, name: (row[name] as string).trim() }] : []));
+    return rows.flatMap((row) => (typeof row.id === "number" && typeof row[name] === "string" ? [{ id: row.id, name: (row[name] as string).trim() }] : [])).slice(0, DOCID_OPTIONS_MAX);
   };
   const [resourceTypes, publicationTypes, funderTypes] = await Promise.all([read("resource-types", "resource_type"), read("publication-types", "publication_type_name"), read("funder-types", "funder_type_name")]);
   return { resourceTypes, publicationTypes, funderTypes };
