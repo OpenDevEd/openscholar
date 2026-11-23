@@ -56,9 +56,10 @@ export function PanelHeader({
     <div className="flex h-16 items-center gap-4 @max-[30rem]:h-auto @max-[30rem]:min-h-16 @max-[30rem]:flex-wrap @max-[30rem]:gap-y-2 @max-[30rem]:py-3">
       {/* Under 18rem (a phone at 150% text or more) a title that doesn't fit beside the back arrow, picture and chips takes a line of its own: beside them it had 46 to 86px and broke inside its words.
           The row takes its height as a slide, so a title and chips that arrive after the loading page's empty bar open it
-          smoothly: on /publish at 360px and 200% text the bar grew from 129px to 281px in one frame. Across, nothing is clipped,
+          smoothly: on /publish at 360px and 200% text the bar grew from 129px to 281px in one frame. From 18rem up the bar keeps its
+          height and the row shows at once, as before. Across, nothing is clipped,
           for the back arrow's negative margin. */}
-      <AutoHeight className="min-w-0 flex-1 overflow-x-visible @3xl:flex-initial @max-[30rem]:basis-auto">
+      <AutoHeight className="min-w-0 flex-1 overflow-x-visible @3xl:flex-initial @min-[18rem]:h-auto! @max-[30rem]:basis-auto">
         <div className="flex min-w-0 items-center gap-2 @max-[18rem]:flex-wrap">
           {backHref ? (
             <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
