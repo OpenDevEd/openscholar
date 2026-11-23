@@ -4,6 +4,7 @@
 // keeps leading here, to a page that says the report was withdrawn and how it was cited.
 
 import { copyText } from "@/components/copy-text";
+import { WithdrawnDocid } from "@/components/reports/docid-identifier";
 import { useFormatter, useTranslations } from "next-intl";
 import { IntroGlow } from "@/components/entity-cards";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
@@ -60,6 +61,8 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
                   </Button>
                 </TooltipHint>
               </div>
+              {/* MOCK (mock/identifier-services): its DOCiD stays too, showing a retired page. */}
+              <WithdrawnDocid reportKey={report.key} />
               <p className="mt-6 max-w-xl text-sm/6 text-muted-foreground">
                 {t("body", { series: report.series })}
               </p>

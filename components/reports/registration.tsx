@@ -6,6 +6,7 @@
 import { useTranslations } from "next-intl";
 import { StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
 import { stepsOf, type RegistrationStep } from "@/lib/reports/report";
+import { DocidChip } from "@/components/reports/docid-identifier";
 
 type Registered = Parameters<typeof stepsOf>[0];
 
@@ -40,6 +41,8 @@ export function RegistrationChips({ report, withdrawn = false, own }: { report: 
           {own && step.provider === "zenodo" && step.state === "done" && !withdrawn ? t(own === "mine" ? "zenodo.doneMine" : "zenodo.doneSigner") : stepWords(step, withdrawn)}
         </StatusChip>
       ))}
+      {/* MOCK (mock/identifier-services): its DOCiD's registration, once the others are done. */}
+      {stepsOf(report).every((step) => step.state === "done") ? <DocidChip withdrawn={withdrawn} /> : null}
     </>
   );
 }

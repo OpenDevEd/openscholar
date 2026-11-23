@@ -18,6 +18,8 @@ import { StatusChip, StatusIcon } from "@/components/evidence-libraries/configur
 import { FunderName } from "@/components/papers/paper-entities";
 import { CheckRow } from "@/components/reports/publish-flow";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, useStepWords } from "@/components/reports/registration";
+import { DocidRefusal, DocidWhenTakenDown, mockHandleOf, useDocidOn } from "@/components/reports/docid-identifier";
+import { useMockIdentifiers } from "@/lib/reports/identifiers-mock-store";
 import { useChangeLabel, useFailed } from "@/components/reports/words";
 import { useStageLabel } from "@/components/reports/your-reports";
 import { Enter, LIST, Paged, Segmented, Working, Zone, pagerOf } from "@/components/settings/parts";
@@ -286,6 +288,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
   // question stood are never what the answer is given on.
   const [asked, setAsked] = useState<{ report: string; what: (typeof ASKS)[number]; at: number; pdfAt?: number; changesAt?: number } | null>(null);
   const asking = asked && asked.report === s?.key ? asked.what : null;
+  const mockIds = useMockIdentifiers();
+  const docidOn = useDocidOn();
   const setAsking = (what: (typeof ASKS)[number] | null) => setAsked(what && s ? { report: s.key, what, at: s.updatedAt, pdfAt: s.pdf?.at, changesAt: s.status === "live" ? s.correction?.at : undefined } : null);
   const decide = (decision: "approve" | "reinstate" | "withdraw" | "decline") => {
     const seenPdfAt = asking ? asked!.pdfAt : s?.pdf?.at;
@@ -439,6 +443,12 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                 <Fact icon={Hash} label={t("doi")} wide>
                   <span className="font-mono text-xs">{s.doi}</span>
                 </Fact>
+                {/* MOCK (mock/identifier-services): its DOCiD, once it has one: minted at signing, or registered when live. */}
+                {docidOn && (s.status === "live" || s.withdrawn || mockIds.docidAtSigning) ? (
+                  <Fact icon={Hash} label="DOCiD" wide>
+                    <span className="font-mono text-xs">{mockHandleOf(s.key)}</span>
+                  </Fact>
+                ) : null}
                 <Fact icon={FileText} label={t("pdf")}>
                   {s.pdf?.url ? (
                     <a href={s.pdf.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1 font-medium underline decoration-border underline-offset-4 hover:decoration-foreground">
@@ -480,6 +490,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                 <div className="flex flex-wrap items-center gap-2">
                   <RegistrationChips report={s} withdrawn={s.withdrawn} />
                   {s.registrationError ? <p className="basis-full break-words text-xs text-muted-foreground">{s.registrationError}</p> : null}
+                  {/* MOCK (mock/identifier-services): what DOCiD said when it refused the report, and sending it again. */}
+                  {s.status === "live" ? <div className="basis-full"><DocidRefusal onRetry={() => toast.success("Sent to DOCiD again")} /></div> : null}
                   {s.correctedAt ? <StatusChip tone="neutral" icon={PenLine}>{t("corrected", { date: format.dateTime(s.correctedAt, DAY) })}</StatusChip> : null}
                 </div>
               ) : null}
@@ -597,6 +609,8 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   <AlertDialogTitle>{asking ? t(`ask.${asking}.title`) : ""}</AlertDialogTitle>
                   <AlertDialogDescription>{asking ? t(`ask.${asking}.says`) : ""}</AlertDialogDescription>
                 </AlertDialogHeader>
+                {/* MOCK (mock/identifier-services): a DOCiD that exists stays, retired: minted at signing, or the report is live. */}
+                <DocidWhenTakenDown minted={asking === "withdraw" || (asking === "decline" && mockIds.docidAtSigning)} />
                 <Field label={t("noteLabel")} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
                   {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={REVIEW_TEXT_MAX} placeholder={t("notePlaceholder")} autoFocus={finePointer()} />}
                 </Field>
