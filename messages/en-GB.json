@@ -371,7 +371,18 @@
     "accountSandboxHint": "Records archived in your account keep this community's Crossref DOI, so turn on Crossref with your own credentials. Test DOIs from the sandbox can't go on real Zenodo records.",
     "archiveDoiHint": "Zenodo DOI: the archived copy gets a DOI of its own. Crossref DOI: the copy shares the record's Crossref DOI.",
     "accountCrossrefJoin": "How to join Crossref",
-    "accountConnectedAs": "Connected: {name}"
+    "accountConnectedAs": "Connected: {name}",
+    "docidHint": "The Africa PID Alliance's identifier, a Handle under 20.500.14351.",
+    "enableDocid": "Use DOCiD",
+    "docidPermanent": "DOCiD has no test service. Every DOCiD it mints is a real Handle that can't be deleted, only retired.",
+    "docidChoose": "Choose one",
+    "docidListsFirst": "Verify and save the account to load DOCiD's lists.",
+    "docidResourceType": "Resource type",
+    "docidResourceTypeHint": "What DOCiD files each report as. Your account may use only some.",
+    "docidFileType": "File type",
+    "docidFileTypeHint": "How DOCiD lists the PDF.",
+    "docidFunderType": "Funder type",
+    "docidNoResourceTypes": "DOCiD allows this account no resource type yet, so it can't deposit reports. Ask the Africa PID Alliance to allow one, then verify and save again."
   },
   "auth": {
     "backToSearch": "Back to search",
@@ -7460,6 +7471,36 @@
           "note": "What's due is paid first: from your workspace's publication balance, by card, or both. A voucher code lowers what the card pays. A card payment is shown for you to confirm first, and you can pay it with another card there."
         }
       }
+    },
+    "identifiers": {
+      "title": "Identifiers",
+      "always": "Always",
+      "authorPicks": "Author picks",
+      "off": "Off",
+      "when": "{service}: when",
+      "addOn": "What {service} adds to the price",
+      "hint_crossref": "The DOI printed on the report.",
+      "hint_zenodo": "Keeps the copy a Crossref DOI leads to, so it goes with every Crossref DOI.",
+      "hint_docid": "The Africa PID Alliance's identifier. Every one is a permanent Handle.",
+      "notConnected": "Turn it on under Registration to use it.",
+      "turnOnFirst": "Turn {service} on under Registration to use it.",
+      "zenodoTied": "Every Crossref DOI has to lead to a permanent copy, so Zenodo is always on while Crossref is used.",
+      "pick": "Authors pick",
+      "pickHint": "From {services}, when they sign.",
+      "anyOf": "Any of them",
+      "atLeastOne": "At least one",
+      "exactlyOne": "Exactly one",
+      "byline": "Printed in the byline",
+      "bylineHint": "The first of these a report has. It has to exist when the author signs.",
+      "mintAtSigning": "Mint at signing",
+      "mintAtSigningHint": "DOCiDs are minted when the author signs. A report that's declined keeps its Handle, which shows a retired page.",
+      "notPrintable": "Not printable",
+      "notPrintableWhy": "A DOCiD only exists once it's minted. Turn on Mint at signing to print it in the byline.",
+      "moveUp": "Move {service} up",
+      "moveDown": "Move {service} down",
+      "problem_noService": "Turn on at least one service, or reports get no identifier.",
+      "problem_rule": "The rule asks for more picks than there are services to pick.",
+      "problem_nothingPrinted": "Some picks leave the byline nothing to print. Put Crossref first, or mint DOCiDs at signing."
     }
   },
   "people": {

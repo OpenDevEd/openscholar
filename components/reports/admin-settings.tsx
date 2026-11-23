@@ -18,6 +18,7 @@ import { ModelPicker } from "@/components/models/model-picker";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
+import { IdentifierSettings } from "@/components/reports/identifier-settings";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -195,6 +196,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
       >
         <div className="@container/settings space-y-5 rounded-2xl border border-border-subtle p-4">
           <PublicationForm
+            docid
             key={settings.publicationSavedAt}
             saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: settings.publicationSavedAt, custom: settings.publicationCustom }}
             words={{
@@ -212,6 +214,8 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
           </p>
         </div>
       </Zone>
+
+      <IdentifierSettings identifiers={settings.identifiers} connected={{ zenodo: zenodo.mode !== "off", crossref: crossref.mode !== "off", docid: settings.publication.docid?.mode === "custom" }} />
 
       <Zone label={t("metadata")}>
         <div className="space-y-2">
