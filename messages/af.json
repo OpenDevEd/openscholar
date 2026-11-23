@@ -3477,6 +3477,7 @@
       "undoFailed": "Kon nie dit ongedaan maak nie",
       "earlier": "Vroeëre stappe",
       "interrupted": "Die antwoord het geëindig voordat hierdie klaar was",
+      "misfit": "Die assistent het die verkeerde besonderhede ingevul, so dit het nie geloop nie",
       "found": "gevind",
       "times": "{count, plural, one {keer} other {keer}}",
       "unfold": "Wys elkeen",

@@ -3477,6 +3477,7 @@
       "undoFailed": "Hilo halikuweza kutenduliwa",
       "earlier": "Hatua za awali",
       "interrupted": "Jibu lilimalizika kabla hili halijakamilika",
+      "misfit": "Msaidizi alijaza maelezo yasiyo sahihi, kwa hivyo hili halikuendeshwa",
       "found": "imepatikana",
       "times": "{count, plural, one {mara} other {mara}}",
       "unfold": "Onyesha kila moja",

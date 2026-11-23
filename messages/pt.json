@@ -3477,6 +3477,7 @@
       "undoFailed": "Não foi possível anular isso",
       "earlier": "Passos anteriores",
       "interrupted": "A resposta terminou antes de isto ficar concluído",
+      "misfit": "O assistente preencheu os dados errados, por isso isto não foi executado",
       "found": "encontrado",
       "times": "{count, plural, one {vez} other {vezes}}",
       "unfold": "Mostrar cada um",

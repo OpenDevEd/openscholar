@@ -35,6 +35,9 @@ export const messageOf = (error: unknown) => {
  * validator", named none of them: given a collection's name where its ID goes, the model
  * was told nothing it could correct. Null for any other error.
  */
+/** Whether a step's error is one `misfit` wrote: the model's own arguments not fitting, its to correct and nothing a person can act on. */
+export const isMisfit = (error: string) => /^(?:The argument \S+ doesn't fit: |These arguments don't fit)/.test(error);
+
 export function misfit(text: string) {
   if (!text.includes("ArgumentValidationError")) return null;
   const line = (label: string) => text.match(new RegExp(`^\\s*${label}: (.*)$`, "m"))?.[1]?.trim();

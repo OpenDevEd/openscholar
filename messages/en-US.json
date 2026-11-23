@@ -3476,6 +3476,7 @@
       "undoFailed": "Couldn't undo that",
       "earlier": "Earlier steps",
       "interrupted": "The reply ended before this finished",
+      "misfit": "The assistant filled in the wrong details, so it didn't run",
       "found": "found",
       "times": "{count, plural, one {time} other {times}}",
       "unfold": "Show each one",
