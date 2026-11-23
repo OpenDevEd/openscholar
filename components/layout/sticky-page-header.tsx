@@ -14,11 +14,13 @@ export function StickyPageHeader({ children }: { children: ReactNode }) {
     const header = ref.current;
     const page = header?.parentElement;
     if (!header || !page) return;
-    // Wrapped titles, actions and notices change the space the header occupies. Taller than half the screen under the
-    // navigation (large text on a phone: 459px of a 568px screen on a configuration page, a paper's 741px), it scrolls
-    // with the page instead of covering it, and takes no room from the page's sticky offsets.
+    // Wrapped titles, actions and notices change the space the header occupies. On a phone (under Tailwind's `sm`), taller
+    // than half the screen under the navigation (large text: 459px of a 568px screen on a configuration page, a paper's
+    // 741px), it scrolls with the page instead of covering it, and takes no room from the page's sticky offsets. Desktop
+    // bars stay sticky at any height.
+    const phone = window.matchMedia("(width < 40rem)");
     const measure = () => {
-      const scrolls = header.offsetHeight > (window.innerHeight - parseFloat(getComputedStyle(header).top)) / 2;
+      const scrolls = phone.matches && header.offsetHeight > (window.innerHeight - parseFloat(getComputedStyle(header).top)) / 2;
       header.toggleAttribute("data-scrolls", scrolls);
       page.style.setProperty("--page-header-height", scrolls ? "0px" : `${header.offsetHeight}px`);
     };
