@@ -7,7 +7,7 @@ import { createError } from "../lib/errors";
 import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
-import { RUN_STUCK_MS, changeStageOf, licenceOf, stageOf } from "../../lib/reports/report";
+import { RUN_STUCK_MS, changeStageOf, licenceOf, printedOf, stageOf } from "../../lib/reports/report";
 import { seriesOf } from "../../lib/reports/settings";
 import { becameReady, notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
@@ -30,7 +30,10 @@ export const start = internalMutation({
   },
   returns: v.union(v.object({ unchanged: v.literal(true), /** Changes are waiting, which these details don't give up. */ waiting: v.boolean() }), v.object({
     reportId: v.id("reports"),
+    key: v.string(),
     doi: v.string(),
+    /** The address of the identifier its byline prints, which a check's `{doi}` stands for. */
+    printed: v.string(),
     byline: v.string(),
     text: v.union(v.id("_storage"), v.null()),
     version: v.number(),
@@ -84,7 +87,9 @@ export const start = internalMutation({
     const on = checks.filter((check) => check.enabled);
     return {
       reportId: report._id,
+      key: report.key,
       doi: report.doi,
+      printed: printedOf(report)?.url ?? "",
       byline: report.byline,
       text: report.pdf?.text ?? null,
       version,

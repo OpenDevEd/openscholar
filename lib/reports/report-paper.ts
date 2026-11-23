@@ -21,7 +21,8 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
   const free = report.pdfUrl !== null;
   const location = {
     is_oa: free,
-    landing_page_url: `https://doi.org/${report.doi}`,
+    // Its DOI's address, or its own page for a report that only has a DOCiD.
+    landing_page_url: report.doi ? `https://doi.org/${report.doi}` : `/papers/${report.key}`,
     // Its own lasting address, which leads to the file while the report is live (app/papers/[id]/report.pdf).
     pdf_url: report.pdfUrl ? `/papers/${report.key}/report.pdf` : null,
     // As OpenAlex writes a licence: the author's own has no such code, and the report's page names it (`extra.licence`).
@@ -37,7 +38,7 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     title,
     display_name: title,
     abstract: m.abstract,
-    doi: `https://doi.org/${report.doi}`,
+    doi: report.doi ? `https://doi.org/${report.doi}` : null,
     publication_date: m.date,
     // When its details last changed, as our index stamps a record: a correction shows as one.
     updated_date: new Date(report.updatedAt).toISOString(),

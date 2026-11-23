@@ -439,22 +439,35 @@ export type Archive = "none" | "draft" | "queued" | "archived" | "failed";
 /** How a report registers, fixed when its DOI is reserved, as a community's record is once it's sent to Zenodo:
  * with Crossref alone, with Zenodo alone under the DOI Zenodo reserves, or with both, the file archived on Zenodo
  * under the Crossref DOI or under one of Zenodo's. */
-export type Registration = { crossref: boolean; zenodo: boolean; policy: "mint-zenodo" | "reuse-crossref" };
-export type Provider = "zenodo" | "crossref";
+export type Registration = { crossref: boolean; zenodo: boolean; policy: "mint-zenodo" | "reuse-crossref"; docid?: boolean | undefined; cited?: "crossref" | "docid" | undefined };
+export type Provider = "zenodo" | "crossref" | "docid";
+/** Where a report's DOCiD stands (convex/reports/validators.ts `docidRegistrationValidator`). */
+export type DocidState = "none" | "queued" | "registered" | "failed";
+export type Registrations = { docid?: { state: DocidState; handle?: string | undefined; publicationId?: number | undefined; retired?: boolean | undefined } | undefined };
 export type RegistrationStep = { provider: Provider; state: "waiting" | "working" | "done" | "failed" };
+/** The identifier a report prints in its byline and shows as its own: its DOCiD where that is the one it cites, else its DOI. Null while a DOCiD it cites isn't minted yet. */
+export type Printed = { kind: "DOI" | "DOCiD"; value: string; url: string; short: string };
+/** A DOCiD's address: a Handle, opened on hdl.handle.net. */
+export const handleUrl = (handle: string) => `https://hdl.handle.net/${handle}`;
+export function printedOf(r: { doi: string; registration: Registration; registrations?: Registrations | undefined }): Printed | null {
+  const handle = r.registrations?.docid?.handle;
+  if (r.registration.cited === "docid" || !r.doi) return handle ? { kind: "DOCiD", value: handle, url: `https://hdl.handle.net/${handle}`, short: `hdl.handle.net/${handle}` } : null;
+  return { kind: "DOI", value: r.doi, url: `https://doi.org/${r.doi}`, short: `doi.org/${r.doi}` };
+}
+
 /** The order a live report registers in. Reusing the Crossref DOI, Zenodo archives once Crossref has it, as in a
  * community; with a DOI of its own, Zenodo goes first and Crossref's record links to the archive. */
 export function providersOf(r: Registration): Provider[] {
-  if (!r.crossref) return ["zenodo"];
-  if (!r.zenodo) return ["crossref"];
-  return r.policy === "reuse-crossref" ? ["crossref", "zenodo"] : ["zenodo", "crossref"];
+  const base: Provider[] = r.crossref && r.zenodo ? (r.policy === "reuse-crossref" ? ["crossref", "zenodo"] : ["zenodo", "crossref"]) : r.crossref ? ["crossref"] : r.zenodo ? ["zenodo"] : [];
+  // DOCiD goes last, so its deposit carries the DOI Crossref or Zenodo registered.
+  return r.docid ? [...base, "docid"] : base;
 }
 /** Each registration of a live report and where it stands; one waits while the one before it isn't done. */
-export function stepsOf(report: { registration: Registration; deposit: Deposit; archive: Archive }): RegistrationStep[] {
+export function stepsOf(report: { registration: Registration; deposit: Deposit; archive: Archive; registrations?: Registrations | undefined }): RegistrationStep[] {
   let before = true;
   return providersOf(report.registration).map((provider) => {
-    const at = provider === "crossref" ? report.deposit : report.archive;
-    const done = at === "deposited" || at === "archived";
+    const at = provider === "crossref" ? report.deposit : provider === "zenodo" ? report.archive : (report.registrations?.docid?.state ?? "none");
+    const done = at === "deposited" || at === "archived" || at === "registered";
     const state = done ? "done" : at === "failed" ? "failed" : before ? "working" : "waiting";
     before &&= done;
     return { provider, state };

@@ -1,6 +1,8 @@
 // Openscholar Reports' settings (plans/publish-reports): whether publishing is on, whether a person reviews every
 // report, the series, the model that reads a PDF's details, the checks and the agreement. Admins change them at
 // Settings > Admin > Publishing. Registrar accounts are saved by ./publicationActions.ts.
+import { SERVICES, SERVICE_IDS, SETTINGS_PROBLEM, connectedOf, settingsProblem, withAccounts, type Identifiers } from "../../lib/reports/identifiers";
+import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
@@ -14,7 +16,7 @@ import { keptCustomOf, keptCustomValidator, publicationSettingsValidator } from 
 import type { Effort } from "../../lib/ai/core/call-options";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, isIssn, type Check } from "../../lib/reports/settings";
 import { DEFAULT_PRICES, PRICE_MAX, isPrice } from "../../lib/reports/report";
-import { checkNamesValidator, checkSummariesValidator, pricesValidator, seriesValidator } from "./validators";
+import { checkNamesValidator, checkSummariesValidator, identifiersValidator, pricesValidator, seriesValidator } from "./validators";
 
 /** What a check runs as: a decision model answers it, or an LLM that returns a structured answer. */
 const CHECK_TASK = "screening";
@@ -43,6 +45,28 @@ export async function settingsRow(ctx: MutationCtx) {
 
 const save = (ctx: MutationCtx, id: Awaited<ReturnType<typeof settingsRow>>["_id"], fields: Partial<Omit<Awaited<ReturnType<typeof settingsRow>>, "_id" | "_creationTime">>) =>
   ctx.db.patch("reportSettings", id, { ...fields, updatedAt: Date.now() });
+
+/**
+ * Identifier settings as they may be kept: a service is used only with its account set under Registration, Zenodo
+ * goes with every Crossref DOI, an add-on is whole dollars, and every pick an author can make leaves the byline
+ * something to print. Anything else is refused with what to change.
+ */
+function keptIdentifiers(asked: Identifiers, publication: PublicationSettings): Identifiers {
+  const connected = connectedOf(publication);
+  const ids = structuredClone(asked);
+  for (const id of SERVICE_IDS) {
+    const service = ids.services[id];
+    if (service.mode !== "off" && !connected[id]) throw createError("VALIDATION_ERROR", id === "docid" ? "Set DOCiD's account and its resource, file and funder types under Registration before reports use it." : `Set ${SERVICES[id].name}'s account under Registration before reports use it.`);
+    if (!Number.isInteger(service.price) || service.price < 0 || service.price > PRICE_MAX) throw createError("VALIDATION_ERROR", `What ${SERVICES[id].name} adds is a whole number of dollars, from 0 to ${PRICE_MAX}.`);
+  }
+  // The copy a Crossref DOI leads to (#1465).
+  if (ids.services.crossref.mode !== "off" && connected.zenodo) ids.services.zenodo.mode = "required";
+  const printables = SERVICE_IDS.filter((id) => SERVICES[id].printable !== false);
+  if (ids.citeFirst.length !== printables.length || printables.some((id) => !ids.citeFirst.includes(id))) throw createError("VALIDATION_ERROR", "List each service that can be printed in the byline once.");
+  const problem = settingsProblem(ids);
+  if (problem) throw createError("VALIDATION_ERROR", SETTINGS_PROBLEM[problem]);
+  return ids;
+}
 
 /** Text an admin typed, trimmed, refused when it is empty or longer than its box allows. */
 function text(value: string, what: string, max: number, { empty = false } = {}) {
@@ -79,6 +103,7 @@ export const admin = query({
     series: seriesValidator,
     /** What publishing a report costs, in whole US dollars, by its licence's tier. */
     prices: pricesValidator,
+    identifiers: identifiersValidator,
     publication: publicationSettingsValidator,
     publicationSavedAt: v.union(v.number(), v.null()),
     publicationCustom: keptCustomValidator,
@@ -98,6 +123,7 @@ export const admin = query({
       humanReview: settings.humanReview,
       series: settings.series,
       prices: settings.prices,
+      identifiers: settings.identifiers,
       publication: settings.publication,
       publicationSavedAt: settings.row?.publicationSavedAt ?? null,
       publicationCustom: keptCustomOf(settings.publication, settings.row?.customAccounts),
@@ -123,7 +149,7 @@ export const open = query({
   returns: v.boolean(),
   handler: async (ctx) => {
     const settings = await reportSettings(ctx);
-    return settings.enabled && canRegister(settings.publication);
+    return settings.enabled && canRegister(settings.publication, settings.identifiers);
   },
 });
 
@@ -140,16 +166,19 @@ export const forAuthors = query({
     series: seriesValidator,
     /** What publishing a report costs, in whole US dollars, by its licence's tier. */
     prices: pricesValidator,
+    /** Which identifier services a report gets, and what each adds to its price (lib/reports/identifiers.ts). */
+    identifiers: identifiersValidator,
     agreement: v.object({ version: v.number(), text: v.string() }),
     checks: checkNamesValidator,
   }),
   handler: async (ctx) => {
     const settings = await reportSettings(ctx);
     return {
-      open: settings.enabled && canRegister(settings.publication),
+      open: settings.enabled && canRegister(settings.publication, settings.identifiers),
       humanReview: settings.humanReview,
       series: settings.series,
       prices: settings.prices,
+      identifiers: withAccounts(settings.identifiers, settings.publication),
       agreement: { version: settings.agreement.version, text: settings.agreement.text },
       checks: settings.checks.filter((check) => check.enabled).map(({ id, name, blocking }) => ({ id, name, blocking })),
     };
@@ -164,9 +193,11 @@ export const update = mutation({
     // Each part on its own, so two boxes saved one after the other never undo each other.
     series: v.optional(seriesValidator.partial()),
     prices: v.optional(pricesValidator.partial()),
+    /** The whole of it at once: its parts depend on each other (lib/reports/identifiers.ts `settingsProblem`). */
+    identifiers: v.optional(identifiersValidator),
   },
   returns: v.null(),
-  handler: async (ctx, { enabled, humanReview, series, prices }) => {
+  handler: async (ctx, { enabled, humanReview, series, prices, identifiers }) => {
     await refuseApps(ctx);
     await requireAdmin(ctx);
     const row = await settingsRow(ctx);
@@ -186,7 +217,9 @@ export const update = mutation({
     };
     // Every report's saved copies name the series and its ISSN (./saved.ts).
     if (named && (named.name !== row.series.name || named.issn !== row.series.issn)) await ctx.scheduler.runAfter(0, internal.reports.saved.followAll, {});
+    const kept = identifiers && keptIdentifiers(identifiers, row.publication);
     await save(ctx, row._id, {
+      ...(kept && { identifiers: kept }),
       ...(prices && { prices: { ...(row.prices ?? DEFAULT_PRICES), ...prices } }),
       ...(enabled !== undefined && { enabled }),
       ...(humanReview !== undefined && { humanReview }),

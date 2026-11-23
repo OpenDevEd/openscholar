@@ -2,6 +2,7 @@
 // the DOI a community is given for a link to that page. Only a live report, or one withdrawn after going live, is
 // ever read here: a report that never went live has no page and nothing finds it.
 import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import { internalQuery, query, type QueryCtx } from "../_generated/server";
 import { getCurrentUser, getIdentity } from "../lib/auth";
 import { appClientId } from "../lib/appCalls";
@@ -15,6 +16,9 @@ import { liveReportValidator, metadataValidator, withdrawnReportValidator } from
 import { REPORTS_PER_READ, communityGetsFile, fileAccessOf, fileHidden, fullTitle, isAuthor, licenceName, licenceOf, licenceOpen, readersGetFile } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
+
+/** A report's DOCiD, once DOCiD gave it one. */
+const docidOf = (report: Doc<"reports">) => (report.registrations?.docid?.handle ? { docid: report.registrations.docid.handle } : {});
 
 /**
  * What a report's address shows, to anyone: a live report's details, its PDF and its cover, or that it was withdrawn,
@@ -30,12 +34,13 @@ export const get = query({
     if (!metadata) return null;
     const { series } = await reportSettings(ctx);
     if (report.status !== "live") {
-      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.filter(isAuthor).map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: seriesOf(report, series).name, withdrawnAt: report.withdrawnAt! };
+      return { state: "withdrawn" as const, key, doi: report.doi, ...docidOf(report), title: metadata.title, authors: metadata.authors.filter(isAuthor).map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: seriesOf(report, series).name, withdrawnAt: report.withdrawnAt! };
     }
     return {
       state: "live" as const,
       key,
       doi: report.doi,
+      ...docidOf(report),
       metadata,
       series: seriesOf(report, series),
       // A file its readers can't have yet has no address here, so its page offers none and report.pdf answers not found.
@@ -78,7 +83,7 @@ export const keyByDoi = query({
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, { doi }) => {
     // A DOI is stored as it was reserved, in lower case.
-    const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+    const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).first();
     return report && (report.status === "live" || report.withdrawnAt !== undefined) ? report.key : null;
   },
 });
@@ -139,11 +144,13 @@ export const record = internalQuery({
 const communityReportValidator = v.union(
   v.null(),
   // Withdrawn after going live: a community that holds it withdraws it too, and is told nothing more of it.
-  v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), version: v.string() }),
+  v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), docid: v.optional(v.string()), version: v.string() }),
   v.object({
     state: v.literal("live"),
     key: v.string(),
     doi: v.string(),
+    /** Its DOCiD's Handle, which the community shows and keeps as it came (EL-41). */
+    docid: v.optional(v.string()),
     /** When anything this answer says of the report last changed, as an ISO time: a community that holds an earlier one takes this one. */
     version: v.string(),
     title: v.string(),
@@ -184,15 +191,17 @@ export const forCommunity = internalQuery({
       // A report's details can be large, and a query reads at most 16 MiB: the caller asks a few at a time.
       dois.slice(0, REPORTS_PER_READ).map(async (doi) => {
         // A DOI is stored as it was reserved, in lower case.
-        const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+        // A report with only a DOCiD has no DOI, and is never found by one.
+        const report = doi.trim() ? await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).first() : null;
         if (!report) return null;
-        if (report.status !== "live") return report.withdrawnAt === undefined ? null : { state: "withdrawn" as const, key: report.key, doi: report.doi, version: version(report.updatedAt) };
+        if (report.status !== "live") return report.withdrawnAt === undefined ? null : { state: "withdrawn" as const, key: report.key, doi: report.doi, ...docidOf(report), version: version(report.updatedAt) };
         const { metadata } = await detailsOf(ctx, report._id);
         if (!metadata) return null;
         return {
           state: "live" as const,
           key: report.key,
           doi: report.doi,
+          ...docidOf(report),
           // Every change to a report moves its `updatedAt`: an edit made while it was withdrawn, and its reinstatement, too.
           version: version(report.updatedAt),
           title: metadata.title,

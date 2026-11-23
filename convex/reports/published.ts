@@ -70,7 +70,8 @@ const abstractOf = (inverted: Record<string, number[]> | null | undefined) =>
 type Missed = string[];
 
 /** Whether a record found is the report itself: one corrected after going live is in the indexes it is searched for in. */
-const isReport = (doi: string | null | undefined, ownDoi: string) => normalDoi(doi) === normalDoi(ownDoi);
+// A report with only a DOCiD has no DOI to be recognised by: no work found is taken for it.
+const isReport = (doi: string | null | undefined, ownDoi: string) => !!ownDoi && normalDoi(doi) === normalDoi(ownDoi);
 
 async function onOpenAlex(m: Report, ownDoi: string, missed: Missed): Promise<Found | null> {
   const sentence = m.abstract.split(/(?<=[.!?])\s+/).find((s) => s.length > 80 && s.length < 260);
@@ -99,14 +100,15 @@ async function onOpenAlex(m: Report, ownDoi: string, missed: Missed): Promise<Fo
 }
 
 /** The works our index finds closest in meaning to the report's abstract. */
-async function inOurIndex(m: Report, ownDoi: string, missed: Missed): Promise<Candidate[]> {
+async function inOurIndex(m: Report, ownDoi: string, missed: Missed, ownKey?: string): Promise<Candidate[]> {
   try {
     const response = await openAlexFetch(searchUrl("openscholar", "works", { "search.semantic": (reportSays(m) || m.title).slice(0, 1500), per_page: String(INDEX_CANDIDATES) }), { headers: USER_AGENT, timeoutMs: 20_000 });
     if (!response.ok) throw new Error(`our index ${response.status}: ${(await response.text()).slice(0, 200)}`);
     const { results } = (await response.json()) as { results: Array<{ id: string; title: string; doi: string | null; publication_year?: number; abstract_inverted_index?: Record<string, number[]> | null }> };
     return results.flatMap((w) => {
       const text = abstractOf(w.abstract_inverted_index);
-      return text && !isReport(w.doi, ownDoi) ? [{ title: w.title, abstract: text, url: w.doi ?? `/papers/${w.id.split("/").at(-1)}`, where: CHECK_WHERE.ourIndex, year: String(w.publication_year ?? "") }] : [];
+      // The report itself, once our index holds it: by its DOI, or by its key for one that only has a DOCiD.
+      return text && !isReport(w.doi, ownDoi) && w.id.split("/").at(-1) !== ownKey ? [{ title: w.title, abstract: text, url: w.doi ?? `/papers/${w.id.split("/").at(-1)}`, where: CHECK_WHERE.ourIndex, year: String(w.publication_year ?? "") }] : [];
     });
   } catch (error) {
     console.error(JSON.stringify({ event: "report-index-search-failed", error: String(error).slice(0, 300) }));
@@ -187,14 +189,14 @@ async function sameWork(m: Report, c: Candidate, { model, effort, language }: Ch
  * couldn't be searched, or a candidate couldn't be judged, and nothing was found, it throws: the report is held for a
  * reviewer rather than called new.
  */
-export async function alreadyPublished(m: Report, ownDoi: string, judge: CheckModel, communities: Community[], ours: Candidate[] | null = []): Promise<Found | null> {
+export async function alreadyPublished(m: Report, ownDoi: string, judge: CheckModel, communities: Community[], ours: Candidate[] | null = [], ownKey?: string): Promise<Found | null> {
   const missed: Missed = [];
   // Our own reports couldn't be read: nothing found elsewhere makes the report new.
   if (ours === null) missed.push("Openscholar Reports");
   const exact = await onOpenAlex(m, ownDoi, missed);
   if (exact) return exact;
   // Openscholar Reports' own live reports first (`ours`, reports/ownReports.ts): one published here is in no other place for days.
-  const candidates = [...(ours ?? []), ...(await inOurIndex(m, ownDoi, missed)), ...(await inOurCommunities(m, ownDoi, communities, missed))].filter((c) => c.abstract || c.title);
+  const candidates = [...(ours ?? []), ...(await inOurIndex(m, ownDoi, missed, ownKey)), ...(await inOurCommunities(m, ownDoi, communities, missed))].filter((c) => c.abstract || c.title);
   // The very same title from the same year is the work: no model needed. Both years must be known. The judge decides the
   // near matches, where on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
   const year = m.date.slice(0, 4);

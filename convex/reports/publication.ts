@@ -1,5 +1,6 @@
 // The Zenodo and Crossref accounts Openscholar Reports registers with, read and saved for ./publicationActions.ts,
 // which verifies them first.
+import { DEFAULT_IDENTIFIERS, withAccounts } from "../../lib/reports/identifiers";
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
@@ -35,7 +36,9 @@ export const saveVerified = internalMutation({
     // Another admin saved while this one's accounts were being verified.
     if ((row.publicationSavedAt ?? null) !== expectedUpdatedAt) throw createError("CONFLICT", CHANGED);
     const now = Date.now();
-    await ctx.db.patch("reportSettings", row._id, { publication: settings, encryptedCredentials, customAccounts, encryptedCustomCredentials, publicationSavedAt: now, updatedAt: now });
+    // A service whose account was switched off here stops being used for reports at once (lib/reports/identifiers.ts).
+    const identifiers = withAccounts(row.identifiers ?? DEFAULT_IDENTIFIERS, settings);
+    await ctx.db.patch("reportSettings", row._id, { publication: settings, identifiers, encryptedCredentials, customAccounts, encryptedCustomCredentials, publicationSavedAt: now, updatedAt: now });
     return null;
   },
 });

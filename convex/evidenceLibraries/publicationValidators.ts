@@ -1,4 +1,8 @@
 import { v, type Infer } from "convex/values";
+import { capped } from "../lib/listCaps";
+
+/** The most entries kept of each of DOCiD's lists: it has under twenty of each. */
+export const DOCID_OPTIONS_MAX = 200;
 
 const mode = v.union(
   v.literal("off"),
@@ -27,6 +31,28 @@ export const publicationSettingsValidator = v.object({
     email: v.string(),
     registrant: v.string(),
   }),
+  /**
+   * DOCiD, the Africa PID Alliance's Handles (plans/identifier-services): Openscholar Reports' account only, as
+   * communities show the DOCiDs their records come with and never register one. It has no test service, so it is
+   * off or a real account. The type ids are DOCiD's own, read from its lists with the account.
+   */
+  docid: v.optional(
+    v.object({
+      mode: v.union(v.literal("off"), v.literal("custom")),
+      email: v.string(),
+      resourceTypeId: v.optional(v.number()),
+      publicationTypeId: v.optional(v.number()),
+      funderTypeId: v.optional(v.number()),
+      /** DOCiD's lists as the account saw them when last verified, for the pickers; written by the server only. */
+      options: v.optional(
+        v.object({
+          resourceTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),
+          publicationTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),
+          funderTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),
+        }),
+      ),
+    }),
+  ),
 });
 export type PublicationSettings = Infer<typeof publicationSettingsValidator>;
 
@@ -34,6 +60,7 @@ export const publicationSecretsValidator = v.object({
   zenodoToken: v.optional(v.string()),
   crossrefLoginId: v.optional(v.string()),
   crossrefPassword: v.optional(v.string()),
+  docidPassword: v.optional(v.string()),
 });
 export type PublicationSecrets = Infer<typeof publicationSecretsValidator>;
 

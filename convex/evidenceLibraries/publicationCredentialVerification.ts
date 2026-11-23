@@ -1,8 +1,9 @@
 "use node";
 
 import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
-import type { CustomCrossref, PublicationSecrets, PublicationSettings } from "./publicationValidators";
+import { DOCID_OPTIONS_MAX, type CustomCrossref, type PublicationSecrets, type PublicationSettings } from "./publicationValidators";
 import { isZenodoLicence } from "../../lib/zenodo-licences";
+import { DocidApiClient } from "@opendeved/doi-sync-core";
 
 const timeout = () => AbortSignal.timeout(15_000);
 // zenodo.org answers 403 with an HTML page to Node fetch's default `node` User-Agent; its sandbox does not.
@@ -166,6 +167,30 @@ function sandboxValue(name: string) {
  * when none is typed. Throws, saving nothing, when a provider refuses.
  */
 /** The own accounts kept so far: as stored, or, from before they were kept apart, the ones in use if they were custom. */
+/** DOCiD's production API: it has no test service, so every account is a real one. */
+const DOCID_ENDPOINT = "https://docid.africapidalliance.org";
+export const docidClient = () =>
+  new DocidApiClient({ endpoint: DOCID_ENDPOINT, fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) }) });
+
+export type DocidOption = { id: number; name: string };
+export type DocidLists = { resourceTypes: DocidOption[]; publicationTypes: DocidOption[]; funderTypes: DocidOption[] };
+
+/**
+ * Signs in to DOCiD and reads the lists its deposits take ids from. The resource types are only the ones the account
+ * may use: DOCiD filters them by its category, and an account it hasn't allowed any gets none.
+ */
+export async function docidLists(email: string, password: string): Promise<DocidLists> {
+  const { token } = await docidClient().signIn({ email, password });
+  const read = async (list: string, name: string) => {
+    const response = await fetch(`${DOCID_ENDPOINT}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) throw new Error(`DOCiD answered ${response.status} when asked for its ${list.replaceAll("-", " ")}.`);
+    const rows = (await response.json()) as Array<Record<string, unknown>>;
+    return rows.flatMap((row) => (typeof row.id === "number" && typeof row[name] === "string" ? [{ id: row.id, name: (row[name] as string).trim() }] : [])).slice(0, DOCID_OPTIONS_MAX);
+  };
+  const [resourceTypes, publicationTypes, funderTypes] = await Promise.all([read("resource-types", "resource_type"), read("publication-types", "publication_type_name"), read("funder-types", "funder_type_name")]);
+  return { resourceTypes, publicationTypes, funderTypes };
+}
+
 export type KeptCustom = { crossref?: CustomCrossref; credentials: PublicationSecrets };
 const CUSTOM_CROSSREF = ["prefix", "depositorName", "email", "registrant"] as const;
 
@@ -195,6 +220,7 @@ export async function verifiedPublication(
     credentials: {
       ...(kept.settings?.zenodo.mode === "custom" && { zenodoToken: kept.credentials.zenodoToken }),
       ...(kept.settings?.crossref.mode === "custom" && { crossrefLoginId: kept.credentials.crossrefLoginId, crossrefPassword: kept.credentials.crossrefPassword }),
+      ...(kept.settings?.docid?.mode === "custom" && { docidPassword: kept.credentials.docidPassword }),
     },
   };
   const custom: KeptCustom = { ...(before.crossref && { crossref: before.crossref }), credentials: { ...before.credentials } };
@@ -223,8 +249,13 @@ export async function verifiedPublication(
     custom.credentials.crossrefPassword = credentials.crossrefPassword =
       asked.credentials.crossrefPassword || before.credentials.crossrefPassword;
   }
+  if (settings.docid?.mode === "custom") {
+    settings.docid.email = settings.docid.email.trim();
+    custom.credentials.docidPassword = credentials.docidPassword = asked.credentials.docidPassword || before.credentials.docidPassword;
+  }
   // Switching a registrar off forgets its own account too: off is how an admin removes stored credentials.
   if (settings.zenodo.mode === "off") delete custom.credentials.zenodoToken;
+  if (settings.docid?.mode !== "custom") delete custom.credentials.docidPassword;
   if (settings.crossref.mode === "off") {
     delete custom.credentials.crossrefLoginId;
     delete custom.credentials.crossrefPassword;
@@ -243,6 +274,17 @@ export async function verifiedPublication(
       credentials.crossrefPassword!,
       settings.crossref.mode === "sandbox",
     );
+  if (settings.docid?.mode === "custom") {
+    const { email, resourceTypeId, publicationTypeId, funderTypeId } = settings.docid;
+    if (!email || !credentials.docidPassword) throw new Error("Give the email and password of the DOCiD account.");
+    // Signing in checks the account; each type picked must be one of DOCiD's own, and a resource type one it allows.
+    const lists = await docidLists(email, credentials.docidPassword);
+    const known = (id: number | undefined, options: DocidOption[]) => id === undefined || options.some((option) => option.id === id);
+    if (!known(resourceTypeId, lists.resourceTypes)) throw new Error("Your DOCiD account may not use this resource type. Pick one from the list.");
+    if (!known(publicationTypeId, lists.publicationTypes)) throw new Error("DOCiD has no such file type. Pick one from the list.");
+    if (!known(funderTypeId, lists.funderTypes)) throw new Error("DOCiD has no such funder type. Pick one from the list.");
+    settings.docid.options = lists;
+  }
   return { settings, credentials, custom };
 }
 

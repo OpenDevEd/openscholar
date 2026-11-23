@@ -4,7 +4,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
-import { internalMutation, mutation, type MutationCtx } from "../lib/functions";
+import { internalMutation, internalQuery, mutation, type MutationCtx } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -13,10 +13,14 @@ import { providersOf } from "../../lib/reports/report";
 import { detailsOf, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
-import { seriesOf } from "../../lib/reports/settings";
-import { fileAccessValidator, metadataValidator, registrationValidator } from "./validators";
+import { bylineOf, seriesOf } from "../../lib/reports/settings";
+import { docidRegistrationValidator, fileAccessValidator, metadataValidator, registrationValidator } from "./validators";
 
-const providerValidator = v.union(v.literal("crossref"), v.literal("zenodo"));
+const providerValidator = v.union(v.literal("crossref"), v.literal("zenodo"), v.literal("docid"));
+/** Where one registration of a report stands, in its own words: "queued" while it is to be done. */
+export const stateOf = (report: Pick<Doc<"reports">, "deposit" | "archive" | "registrations">, provider: "crossref" | "zenodo" | "docid") =>
+  provider === "crossref" ? report.deposit : provider === "zenodo" ? report.archive : (report.registrations?.docid?.state ?? "none");
+
 /** Times a registration is tried again by itself when its registrar couldn't be reached, a few minutes apart. */
 export const REGISTRATION_TRIES = 5;
 const RETRY_AFTER_MS = 3 * 60 * 1000;
@@ -44,6 +48,8 @@ export const begin = internalMutation({
       registration: registrationValidator,
       waiting: v.array(providerValidator),
       zenodoRecordId: v.optional(v.string()),
+      /** The DOI Zenodo gave it, when it minted its own. */
+      zenodoDoi: v.optional(v.string()),
       /** A draft Zenodo already made for this report and never published: it is carried on from, not made again. */
       zenodoDraftId: v.optional(v.string()),
       /** Crossref took this record's deposit, and hasn't shown the record yet. */
@@ -53,6 +59,10 @@ export const begin = internalMutation({
       /** Who may get its file, which Zenodo keeps private, or private until a day, when not anyone. */
       fileAccess: v.optional(fileAccessValidator),
       pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), pages: v.optional(v.number()) })),
+      /** Its cover, which DOCiD shows as the record's poster. */
+      cover: v.optional(v.id("_storage")),
+      /** Where its DOCiD stands: its Handle and DOCiD's record of it, once each exists. */
+      docid: v.optional(docidRegistrationValidator),
       publication: publicationSettingsValidator,
       encryptedCredentials: v.union(v.string(), v.null()),
     }),
@@ -68,7 +78,7 @@ export const begin = internalMutation({
     }
     const { metadata } = await detailsOf(ctx, reportId);
     // In the order they happen, and only those still to do.
-    const waiting = providersOf(report.registration).filter((provider) => (provider === "crossref" ? report.deposit : report.archive) === "queued");
+    const waiting = providersOf(report.registration).filter((provider) => stateOf(report, provider) === "queued");
     if (!metadata || !waiting.length) return null;
     await ctx.db.patch("reports", reportId, { registrationLease: now + LEASE_MS });
     // An action that dies holding the report leaves nothing behind to try again: one more is asked for when its hold
@@ -84,11 +94,14 @@ export const begin = internalMutation({
       registration: report.registration,
       waiting,
       ...(report.zenodoRecordId && { zenodoRecordId: report.zenodoRecordId }),
+      ...(report.zenodoDoi && { zenodoDoi: report.zenodoDoi }),
       ...(report.zenodoDraftId && { zenodoDraftId: report.zenodoDraftId }),
       depositSent: report.depositSent === true,
       ...(report.fileAccess && { fileAccess: report.fileAccess }),
       ...(report.archiveOwnerId && { archiveOwnerId: report.archiveOwnerId }),
       pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }) } : null,
+      ...(report.cover && { cover: report.cover.file }),
+      ...(report.registrations?.docid && { docid: report.registrations.docid }),
       publication: settings.publication,
       encryptedCredentials: settings.row?.encryptedCredentials ?? null,
     };
@@ -110,12 +123,21 @@ export const end = internalMutation({
  * Crossref took the deposit (it is then looked for, not sent again), or Zenodo made a draft (it is carried on from).
  */
 export const noted = internalMutation({
-  args: { reportId: v.id("reports"), rev: v.number(), depositSent: v.optional(v.boolean()), zenodoDraftId: v.optional(v.string()) },
+  args: { reportId: v.id("reports"), rev: v.number(), depositSent: v.optional(v.boolean()), zenodoDraftId: v.optional(v.string()), docidHandle: v.optional(v.string()), docidPublicationId: v.optional(v.number()), docidRetired: v.optional(v.boolean()), docidDepositTried: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { reportId, rev, depositSent, zenodoDraftId }) => {
+  handler: async (ctx, { reportId, rev, depositSent, zenodoDraftId, docidHandle, docidPublicationId, docidRetired, docidDepositTried }) => {
     const report = await ctx.db.get("reports", reportId);
+    if (!report) return null;
     // A draft is the report's whichever asking made it; a deposit is of the record as that asking had it.
-    if (report) await ctx.db.patch("reports", reportId, { ...(zenodoDraftId && { zenodoDraftId }), ...(depositSent && report.registrationRev === rev && { depositSent: true }) });
+    await ctx.db.patch("reports", reportId, { ...(zenodoDraftId && { zenodoDraftId }), ...(depositSent && report.registrationRev === rev && { depositSent: true }) });
+    // A DOCiD and its record are the report's whichever asking made them: kept at once, never made twice. A Handle
+    // is part of what the report's page and the search index show, so it counts as a change.
+    if (docidHandle !== undefined || docidPublicationId !== undefined || docidRetired !== undefined || docidDepositTried !== undefined) {
+      const docid = report.registrations?.docid ?? { state: "queued" as const };
+      const kept = { registrations: { ...report.registrations, docid: { ...docid, ...(docidHandle && { handle: docidHandle }), ...(docidPublicationId !== undefined && { publicationId: docidPublicationId }), ...(docidRetired !== undefined && { retired: docidRetired }), ...(docidDepositTried !== undefined && { depositTried: docidDepositTried }) } } };
+      if (docidHandle && docidHandle !== docid.handle) await touch(ctx, report, kept);
+      else await ctx.db.patch("reports", reportId, kept);
+    }
     return null;
   },
 });
@@ -139,10 +161,10 @@ export const settle = internalMutation({
       else await ctx.db.patch("reports", reportId, kept);
     }
     // Asked to register again since this attempt began: this answer is about an older record.
-    if (report.registrationRev !== rev || (provider === "crossref" ? report.deposit : report.archive) !== "queued") return false;
-    const field = provider === "crossref" ? "deposit" : "archive";
+    if (report.registrationRev !== rev || stateOf(report, provider) !== "queued") return false;
+    const mark = (state: "done" | "failed") => (provider === "docid" ? { registrations: { ...report.registrations, docid: { ...report.registrations?.docid, state: state === "done" ? ("registered" as const) : ("failed" as const) } } } : { [provider === "crossref" ? "deposit" : "archive"]: state === "failed" ? "failed" : provider === "crossref" ? "deposited" : "archived" });
     if (outcome === "done") {
-      await ctx.db.patch("reports", reportId, { [field]: provider === "crossref" ? "deposited" : "archived", registrationError: undefined, registrationTries: undefined, ...(provider === "crossref" && { depositSent: undefined }) });
+      await ctx.db.patch("reports", reportId, { ...mark("done"), registrationError: undefined, registrationTries: undefined, ...(provider === "crossref" && { depositSent: undefined }) });
       return true;
     }
     const tries = (report.registrationTries ?? 0) + 1;
@@ -151,7 +173,7 @@ export const settle = internalMutation({
       await ctx.scheduler.runAfter(RETRY_AFTER_MS, internal.reports.registrar.register, { reportId, rev });
       return false;
     }
-    await ctx.db.patch("reports", reportId, { [field]: "failed", registrationTries: undefined, registrationError: (error ?? "The registrar refused it.").slice(0, ERROR_MAX) });
+    await ctx.db.patch("reports", reportId, { ...mark("failed"), registrationTries: undefined, registrationError: (error ?? "The registrar refused it.").slice(0, ERROR_MAX) });
     await notify(ctx, reportId, "registration-refused");
     return false;
   },
@@ -166,7 +188,7 @@ export const retry = mutation({
     await requireAdmin(ctx);
     const report = await ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
     if (!report || report.activatedAt === undefined) throw createError("NOT_FOUND", "This report isn't live, so it has nothing registered.");
-    if (report.deposit !== "failed" && report.archive !== "failed") throw createError("CONFLICT", "Nothing was refused: its registrations are done or under way.");
+    if (report.deposit !== "failed" && report.archive !== "failed" && report.registrations?.docid?.state !== "failed") throw createError("CONFLICT", "Nothing was refused: its registrations are done or under way.");
     await registerAgain(ctx, report);
     return null;
   },
@@ -183,6 +205,7 @@ export async function registerAgain(ctx: MutationCtx, report: Doc<"reports">) {
   await touch(ctx, report, {
     ...(registers.includes("crossref") && { deposit: again(report.deposit, "deposited") as Doc<"reports">["deposit"] }),
     ...(registers.includes("zenodo") && { archive: again(report.archive, "archived") as Doc<"reports">["archive"] }),
+    ...(registers.includes("docid") && { registrations: { ...report.registrations, docid: { ...report.registrations?.docid, state: again(report.registrations?.docid?.state ?? "none", "registered") as "registered" | "queued" } } }),
     registrationRev: rev,
     registrationError: undefined,
     registrationTries: undefined,
@@ -191,3 +214,47 @@ export async function registerAgain(ctx: MutationCtx, report: Doc<"reports">) {
   });
   await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id, rev });
 }
+
+/**
+ * What minting at signing needs (plans/identifier-services): the report's key, its DOCiD so far and the DOCiD
+ * account. Null for a report that no longer gets one, or already has its Handle.
+ */
+export const toMint = internalQuery({
+  args: { reportId: v.id("reports") },
+  returns: v.union(v.null(), v.object({ key: v.string(), publication: publicationSettingsValidator, encryptedCredentials: v.union(v.string(), v.null()) })),
+  handler: async (ctx, { reportId }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (!report?.registration.docid || report.registrations?.docid?.handle) return null;
+    const settings = await reportSettings(ctx);
+    return { key: report.key, publication: settings.publication, encryptedCredentials: settings.row?.encryptedCredentials ?? null };
+  },
+});
+
+/** Keeps the Handle DOCiD minted at signing and, when the report cites it, puts it in the line its PDF carries. */
+export const mintedAtSigning = internalMutation({
+  args: { reportId: v.id("reports"), handle: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { reportId, handle }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (!report || report.registrations?.docid?.handle) return null;
+    const settings = await reportSettings(ctx);
+    const cites = report.registration.cited === "docid" || !report.doi;
+    await touch(ctx, report, {
+      registrations: { ...report.registrations, docid: { state: report.registrations?.docid?.state ?? "none", handle } },
+      registrationError: undefined,
+      ...(cites && report.licence && { byline: bylineOf({ ...settings.series, ...seriesOf(report, settings.series) }, `https://hdl.handle.net/${handle}`, report.licence) }),
+    });
+    return null;
+  },
+});
+
+/** DOCiD refused minting at signing: the author is told why on the report, and can ask again. */
+export const mintRefused = internalMutation({
+  args: { reportId: v.id("reports"), error: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { reportId, error }) => {
+    const report = await ctx.db.get("reports", reportId);
+    if (report && !report.registrations?.docid?.handle) await ctx.db.patch("reports", reportId, { registrationError: error.slice(0, ERROR_MAX) });
+    return null;
+  },
+});

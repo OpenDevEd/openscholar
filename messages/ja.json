@@ -371,7 +371,18 @@
     "accountSandboxHint": "あなたのアカウントにアーカイブされたレコードは、このコミュニティの Crossref DOI をそのまま使います。ご自身の認証情報で Crossref をオンにしてください。サンドボックスのテスト用 DOI を実際の Zenodo レコードに付けることはできません。",
     "archiveDoiHint": "Zenodo DOI：アーカイブされたコピーに独自の DOI が付きます。Crossref DOI：コピーはレコードの Crossref DOI を共有します。",
     "accountCrossrefJoin": "Crossref への参加方法",
-    "accountConnectedAs": "接続済み: {name}"
+    "accountConnectedAs": "接続済み: {name}",
+    "docidHint": "Africa PID Alliance の識別子で、20.500.14351 配下の Handle です。",
+    "enableDocid": "DOCiD を使う",
+    "docidPermanent": "DOCiD にはテスト環境がありません。発行される DOCiD はすべて本物の Handle で、削除はできず、取り下げのみできます。",
+    "docidChoose": "選択",
+    "docidListsFirst": "アカウントを確認して保存すると、DOCiD の一覧を読み込みます。",
+    "docidResourceType": "リソースの種類",
+    "docidResourceTypeHint": "DOCiD が各レポートを何として登録するか。アカウントが使えるのは一部だけです。",
+    "docidFileType": "ファイルの種類",
+    "docidFileTypeHint": "DOCiD での PDF の扱い。",
+    "docidFunderType": "助成元の種類",
+    "docidNoResourceTypes": "DOCiD はこのアカウントにまだリソースの種類を許可していないため、レポートを登録できません。Africa PID Alliance に許可を依頼し、もう一度確認して保存してください。"
   },
   "auth": {
     "backToSearch": "検索に戻る",
@@ -5992,7 +6003,9 @@
     "share": "共有",
     "inCommunities": "収録されているコミュニティ",
     "fieldAverage": "× 分野平均",
-    "freeToRead": "無料で読める"
+    "freeToRead": "無料で読める",
+    "copyDocid": "DOCiD をコピー",
+    "docidCopied": "DOCiD をコピーしました"
   },
   "addedPapers": {
     "name": "追加した論文",
@@ -6199,6 +6212,13 @@
         "done": "Crossref に登録済み",
         "failed": "Crossref に拒否されました",
         "withdrawn": "Crossref で撤回済みと記録"
+      },
+      "docid": {
+        "waiting": "次は DOCiD",
+        "working": "DOCiD を登録中",
+        "done": "DOCiD に登録済み",
+        "failed": "DOCiD が拒否しました",
+        "withdrawn": "DOCiD では取り下げ済みと表示"
       }
     },
     "signedAgreement": {
@@ -6464,7 +6484,9 @@
         "places": "地域",
         "funders": "助成機関"
       },
-      "emailedAdmins": "組織の管理者にメールで送信"
+      "emailedAdmins": "組織の管理者にメールで送信",
+      "docidStays": "DOCiD は削除できません。レポートの代わりに取り下げを示すページが表示されます。",
+      "docidStaysReserved": "署名時に発行された DOCiD は削除できません。DOCiD で予約されたままになります。"
     },
     "common": {
       "failed": "問題が発生しました"
@@ -6490,7 +6512,7 @@
       "bylineNeedsLicence": "この行には {licence} が必要です。各レポートのライセンスになります。",
       "notIssn": "これは ISSN ではありません。ISSN は 2049-3630 のような形で、最後の桁が残りの桁を検証します。",
       "byline": "表記",
-      "bylineHint": "{series}、{issn}、{doi}、{licence} はレポートごとに埋められます",
+      "bylineHint": "{series}、{issn}、{doi}、{licence} はレポートごとに埋められます. {doi} はそのレポートが印字する識別子で、DOI または DOCiD です",
       "bylineSaved": "表記を保存しました",
       "registration": "DOI 登録",
       "zenodoSandbox": "Zenodo テスト環境",
@@ -7025,7 +7047,34 @@
       "noteQuestion": "メモ",
       "sendNote": "メモを送信",
       "yourNote": "レビュー担当者へのメモ",
-      "uploadIntroAdded": "PDF はそのままアップロードしてください。アップロード時に最後のページとしてこの行を追加します。"
+      "uploadIntroAdded": "PDF はそのままアップロードしてください。アップロード時に最後のページとしてこの行を追加します。",
+      "identifiers": {
+        "title": "識別子",
+        "inByline": "記載行に入る",
+        "included": "含まれます",
+        "noExtra": "追加料金なし",
+        "gives_crossref": "レポートに印字される DOI",
+        "gives_zenodo": "レポートの DOI のもとでの永続的なコピー",
+        "gives_zenodoOwn": "Zenodo の DOI と永続的なコピー",
+        "gives_docid": "Africa PID Alliance の Handle である DOCiD",
+        "always_crossref": "ここで公開されるレポートはすべて Crossref の DOI を受け取ります。外すことはできません。",
+        "always_zenodo": "ここで公開されるレポートはすべて Zenodo に保存されます。外すことはできません。",
+        "always_docid": "ここで公開されるレポートはすべて DOCiD を受け取ります。外すことはできません。",
+        "zenodoTied": "Crossref の DOI は永続的なコピーにつながる必要があるため、Zenodo は Crossref と一緒に使われます。",
+        "pickOne": "1つ選んでください。",
+        "pickOnlyOne": "1つだけ選んでください。",
+        "pickAtLeast": "{count}つ以上選んでください。",
+        "pickAtMost": "{count}つまで選んでください。",
+        "pickPrintable": "レポートに印字できるものを選んでください。"
+      },
+      "docidReserved": "DOCiD を予約しました",
+      "docidReservedBody": "これからはあなたのレポートのもので、レポートとともに公開されます。下の行のとおり PDF に記載してください。",
+      "docidMinting": "DOCiD がレポートの DOCiD を発行しています",
+      "docidRefused": "DOCiD はレポートの DOCiD を発行できませんでした。応答: {said}",
+      "docidAgain": "DOCiD にもう一度依頼",
+      "reservedDocid": "DOCiD が発行",
+      "copyDocid": "DOCiD をコピー",
+      "docidCopied": "DOCiD をコピーしました"
     },
     "meta": {
       "publish": "公開 | Openscholar",
@@ -7460,6 +7509,36 @@
           "note": "まず支払いが行われます。ワークスペースの出版残高、カード、またはその両方から支払います。クーポンコードはカードで支払う金額を減らします。カードでの支払いは、まず確認画面に表示されます。そこで別のカードで支払うこともできます。"
         }
       }
+    },
+    "identifiers": {
+      "title": "識別子",
+      "always": "常に",
+      "authorPicks": "著者が選択",
+      "off": "オフ",
+      "when": "{service}: いつ",
+      "addOn": "{service} が価格に加える額",
+      "hint_crossref": "レポートに印字される DOI。",
+      "hint_zenodo": "Crossref の DOI がつながるコピーを保存するため、すべての Crossref の DOI に伴います。",
+      "hint_docid": "Africa PID Alliance の識別子。それぞれが永続的な Handle です。",
+      "notConnected": "使うには登録で設定してください。",
+      "turnOnFirst": "使うには登録で {service} を設定してください。",
+      "zenodoTied": "Crossref の DOI は永続的なコピーにつながる必要があるため、Crossref を使う間 Zenodo は常にオンです。",
+      "pick": "著者が選択",
+      "pickHint": "署名時に {services} から。",
+      "anyOf": "どれでも",
+      "atLeastOne": "1つ以上",
+      "exactlyOne": "ちょうど1つ",
+      "byline": "記載行に印字",
+      "bylineHint": "レポートが持つこのうち最初のもの。著者が署名する時点で存在している必要があります。",
+      "mintAtSigning": "署名時に発行",
+      "mintAtSigningHint": "DOCiD は著者が署名した時に発行されます。却下されたレポートも Handle を保持し、DOCiD で予約されたままになります。",
+      "notPrintable": "印字できません",
+      "notPrintableWhy": "DOCiD は発行されて初めて存在します。記載行に印字するには「署名時に発行」をオンにしてください。",
+      "moveUp": "{service} を上へ",
+      "moveDown": "{service} を下へ",
+      "problem_noService": "少なくとも1つのサービスをオンにしてください。そうしないとレポートに識別子が付きません。",
+      "problem_rule": "ルールが求める選択数がサービスの数より多くなっています。",
+      "problem_nothingPrinted": "選び方によっては記載行に印字するものが残りません。Crossref を先頭にするか、DOCiD を署名時に発行してください。"
     }
   },
   "people": {

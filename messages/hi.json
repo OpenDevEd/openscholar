@@ -371,7 +371,18 @@
     "accountSandboxHint": "आपके खाते में संग्रहित रिकॉर्ड इस समुदाय का Crossref DOI रखते हैं, इसलिए अपने क्रेडेंशियल से Crossref चालू करें। सैंडबॉक्स के परीक्षण DOI असली Zenodo रिकॉर्ड पर नहीं जा सकते।",
     "archiveDoiHint": "Zenodo DOI: संग्रहित प्रति को अपना DOI मिलता है। Crossref DOI: प्रति रिकॉर्ड का Crossref DOI साझा करती है।",
     "accountCrossrefJoin": "Crossref से कैसे जुड़ें",
-    "accountConnectedAs": "जुड़ा हुआ: {name}"
+    "accountConnectedAs": "जुड़ा हुआ: {name}",
+    "docidHint": "Africa PID Alliance का पहचानकर्ता, 20.500.14351 के अंतर्गत एक Handle।",
+    "enableDocid": "DOCiD का उपयोग करें",
+    "docidPermanent": "DOCiD की कोई परीक्षण सेवा नहीं है। हर DOCiD एक असली Handle है जिसे हटाया नहीं जा सकता, केवल वापस लिया जा सकता है।",
+    "docidChoose": "एक चुनें",
+    "docidListsFirst": "DOCiD की सूचियाँ लोड करने के लिए खाते को सत्यापित करें और सहेजें।",
+    "docidResourceType": "संसाधन प्रकार",
+    "docidResourceTypeHint": "DOCiD हर रिपोर्ट को किस रूप में दर्ज करता है। आपका खाता केवल कुछ का उपयोग कर सकता है।",
+    "docidFileType": "फ़ाइल प्रकार",
+    "docidFileTypeHint": "DOCiD PDF को कैसे सूचीबद्ध करता है।",
+    "docidFunderType": "वित्तपोषक प्रकार",
+    "docidNoResourceTypes": "DOCiD ने अभी इस खाते को कोई संसाधन प्रकार नहीं दिया है, इसलिए यह रिपोर्टें जमा नहीं कर सकता। Africa PID Alliance से एक अनुमति देने को कहें, फिर दोबारा सत्यापित करें और सहेजें।"
   },
   "auth": {
     "backToSearch": "खोज पर वापस जाएँ",
@@ -5992,7 +6003,9 @@
     "share": "साझा करें",
     "inCommunities": "इन समुदायों में",
     "fieldAverage": "× क्षेत्र औसत",
-    "freeToRead": "मुफ़्त में पढ़ें"
+    "freeToRead": "मुफ़्त में पढ़ें",
+    "copyDocid": "DOCiD कॉपी करें",
+    "docidCopied": "DOCiD कॉपी हो गया"
   },
   "addedPapers": {
     "name": "जोड़े गए पेपर",
@@ -6199,6 +6212,13 @@
         "done": "Crossref में पंजीकृत",
         "failed": "Crossref ने इसे अस्वीकार किया",
         "withdrawn": "Crossref पर वापस लिया गया दर्ज"
+      },
+      "docid": {
+        "waiting": "आगे DOCiD",
+        "working": "इसका DOCiD दर्ज हो रहा है",
+        "done": "DOCiD में दर्ज",
+        "failed": "DOCiD ने अस्वीकार किया",
+        "withdrawn": "DOCiD पर वापस लिया गया दिखता है"
       }
     },
     "signedAgreement": {
@@ -6464,7 +6484,9 @@
         "places": "स्थान",
         "funders": "अनुदानदाता"
       },
-      "emailedAdmins": "संगठन के एडमिन को ईमेल किया गया"
+      "emailedAdmins": "संगठन के एडमिन को ईमेल किया गया",
+      "docidStays": "इसका DOCiD हटाया नहीं जा सकता। यह रिपोर्ट की जगह वापस लिए जाने का पृष्ठ दिखाएगा।",
+      "docidStaysReserved": "हस्ताक्षर के समय दिया गया इसका DOCiD हटाया नहीं जा सकता। यह DOCiD में आरक्षित रहता है।"
     },
     "common": {
       "failed": "कुछ गलत हो गया"
@@ -6490,7 +6512,7 @@
       "bylineNeedsLicence": "पंक्ति में {licence} होना चाहिए, जो हर रिपोर्ट का लाइसेंस बनता है।",
       "notIssn": "यह ISSN नहीं है। ISSN 2049-3630 जैसा दिखता है, और उसका अंतिम अंक बाकी अंकों की जाँच करता है।",
       "byline": "उल्लेख",
-      "bylineHint": "{series}, {issn}, {doi} और {licence} हर रिपोर्ट के लिए भरे जाते हैं",
+      "bylineHint": "{series}, {issn}, {doi} और {licence} हर रिपोर्ट के लिए भरे जाते हैं. {doi} वह पहचानकर्ता है जिसे यह छापता है: इसका DOI या इसका DOCiD",
       "bylineSaved": "उल्लेख सहेजा गया",
       "registration": "DOI पंजीकरण",
       "zenodoSandbox": "Zenodo परीक्षण परिवेश",
@@ -7025,7 +7047,34 @@
       "noteQuestion": "आपका नोट",
       "sendNote": "नोट भेजें",
       "yourNote": "समीक्षक के लिए आपका नोट",
-      "uploadIntroAdded": "अपना PDF जैसा है वैसा अपलोड करें: अपलोड होने पर हम यह पंक्ति एक अंतिम पृष्ठ पर जोड़ देते हैं।"
+      "uploadIntroAdded": "अपना PDF जैसा है वैसा अपलोड करें: अपलोड होने पर हम यह पंक्ति एक अंतिम पृष्ठ पर जोड़ देते हैं।",
+      "identifiers": {
+        "title": "पहचानकर्ता",
+        "inByline": "पंक्ति में",
+        "included": "शामिल",
+        "noExtra": "कोई अतिरिक्त शुल्क नहीं",
+        "gives_crossref": "एक DOI, रिपोर्ट पर छपा हुआ",
+        "gives_zenodo": "एक स्थायी प्रति, रिपोर्ट के DOI के अंतर्गत",
+        "gives_zenodoOwn": "Zenodo से एक DOI, और एक स्थायी प्रति",
+        "gives_docid": "एक DOCiD, Africa PID Alliance का Handle",
+        "always_crossref": "यहाँ प्रकाशित हर रिपोर्ट को Crossref DOI मिलता है। आप इसे छोड़ नहीं सकते।",
+        "always_zenodo": "यहाँ प्रकाशित हर रिपोर्ट Zenodo पर रखी जाती है। आप इसे छोड़ नहीं सकते।",
+        "always_docid": "यहाँ प्रकाशित हर रिपोर्ट को DOCiD मिलता है। आप इसे छोड़ नहीं सकते।",
+        "zenodoTied": "हर Crossref DOI को एक स्थायी प्रति तक ले जाना होता है, इसलिए Zenodo Crossref के साथ आता है।",
+        "pickOne": "एक चुनें।",
+        "pickOnlyOne": "केवल एक चुनें।",
+        "pickAtLeast": "कम से कम {count} चुनें।",
+        "pickAtMost": "अधिकतम {count} चुनें।",
+        "pickPrintable": "ऐसा एक चुनें जो रिपोर्ट पर छप सके।"
+      },
+      "docidReserved": "आपका DOCiD आरक्षित है",
+      "docidReservedBody": "अब से यह आपकी रिपोर्ट का है, और उसके साथ प्रकाशित होगा। इसे अपने PDF पर वैसे ही लगाएँ जैसा नीचे की पंक्ति दिखाती है।",
+      "docidMinting": "DOCiD आपकी रिपोर्ट का DOCiD दे रहा है",
+      "docidRefused": "DOCiD आपकी रिपोर्ट का DOCiD नहीं दे सका। उसने कहा: {said}",
+      "docidAgain": "DOCiD से फिर पूछें",
+      "reservedDocid": "DOCiD द्वारा दिया गया",
+      "copyDocid": "DOCiD कॉपी करें",
+      "docidCopied": "DOCiD कॉपी हो गया"
     },
     "meta": {
       "publish": "प्रकाशित करें | Openscholar",
@@ -7460,6 +7509,36 @@
           "note": "जो बकाया है वह पहले चुकाया जाता है: आपके वर्कस्पेस के प्रकाशन शेष से, कार्ड से, या दोनों से। वाउचर कोड कार्ड से चुकाई जाने वाली रकम कम करता है। कार्ड से भुगतान पहले आपको पुष्टि के लिए दिखाया जाता है, और वहाँ आप दूसरे कार्ड से भुगतान कर सकते हैं।"
         }
       }
+    },
+    "identifiers": {
+      "title": "पहचानकर्ता",
+      "always": "हमेशा",
+      "authorPicks": "लेखक चुनता है",
+      "off": "बंद",
+      "when": "{service}: कब",
+      "addOn": "{service} कीमत में कितना जोड़ता है",
+      "hint_crossref": "रिपोर्ट पर छपा DOI।",
+      "hint_zenodo": "उस प्रति को रखता है जिस तक Crossref DOI ले जाता है, इसलिए हर Crossref DOI के साथ आता है।",
+      "hint_docid": "Africa PID Alliance का पहचानकर्ता। हर एक स्थायी Handle है।",
+      "notConnected": "इसका उपयोग करने के लिए पंजीकरण में इसे सेट करें।",
+      "turnOnFirst": "इसका उपयोग करने के लिए पंजीकरण में {service} सेट करें।",
+      "zenodoTied": "हर Crossref DOI को एक स्थायी प्रति तक ले जाना होता है, इसलिए जब तक Crossref उपयोग में है, Zenodo हमेशा चालू रहता है।",
+      "pick": "लेखक चुनते हैं",
+      "pickHint": "{services} में से, हस्ताक्षर करते समय।",
+      "anyOf": "इनमें से कोई भी",
+      "atLeastOne": "कम से कम एक",
+      "exactlyOne": "ठीक एक",
+      "byline": "पंक्ति में छपा",
+      "bylineHint": "रिपोर्ट के पास इनमें से जो पहला हो। लेखक के हस्ताक्षर करते समय यह मौजूद होना चाहिए।",
+      "mintAtSigning": "हस्ताक्षर पर दें",
+      "mintAtSigningHint": "लेखक के हस्ताक्षर करते ही DOCiD दिए जाते हैं। अस्वीकृत रिपोर्ट अपना Handle रखती है, जो DOCiD में आरक्षित रहता है।",
+      "notPrintable": "छपने योग्य नहीं",
+      "notPrintableWhy": "DOCiD दिए जाने के बाद ही मौजूद होता है। इसे पंक्ति में छापने के लिए हस्ताक्षर पर दें चालू करें।",
+      "moveUp": "{service} ऊपर ले जाएँ",
+      "moveDown": "{service} नीचे ले जाएँ",
+      "problem_noService": "कम से कम एक सेवा चालू करें, नहीं तो रिपोर्टों को कोई पहचानकर्ता नहीं मिलेगा।",
+      "problem_rule": "नियम सेवाओं की संख्या से अधिक चुनाव माँगता है।",
+      "problem_nothingPrinted": "कुछ चुनाव पंक्ति में छापने के लिए कुछ नहीं छोड़ते। Crossref को पहले रखें, या हस्ताक्षर पर DOCiD दें।"
     }
   },
   "people": {

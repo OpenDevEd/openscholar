@@ -9,6 +9,8 @@ import type { CheckResult } from "./report";
 export type MailFacts = {
   key: string;
   doi: string;
+  /** The identifier its byline prints, when it isn't its DOI: its DOCiD's address. */
+  printed?: string;
   title: string;
   /** It has gone live, so its DOI leads somewhere. */
   activated: boolean;
@@ -26,6 +28,8 @@ export type MailFacts = {
   correction?: { changed: string[]; results: CheckResult[]; request?: string; declinedNote?: string };
   deposit: string;
   archive: string;
+  /** Where its DOCiD stands, when it gets one. */
+  docid?: string;
   /** What changed, for the email that says a reviewer edited the details or that the author's changes are live. */
   edited?: string;
   /** Where the report's workspace's pages are: `/o/<slug>` for an organisation's, empty for a person's own. */
@@ -116,8 +120,8 @@ const EVENTS = {
   "registration-refused": {
     to: "team",
     label: "Registration refused",
-    heading: "A DOI registration was refused",
-    rows: (r, origin) => [["Refused by", [r.deposit === "failed" ? "Crossref" : "", r.archive === "failed" ? "Zenodo" : ""].filter(Boolean).join(" and ")], reviewLink(r, origin)],
+    heading: "A registration was refused",
+    rows: (r, origin) => [["Refused by", [r.deposit === "failed" ? "Crossref" : "", r.archive === "failed" ? "Zenodo" : "", r.docid === "failed" ? "DOCiD" : ""].filter(Boolean).join(" and ")], reviewLink(r, origin)],
   },
   // To the admins of the organisation the report is in, who activate it (#1261).
   "waiting-for-admin": {
@@ -196,7 +200,7 @@ export function reportEmail(event: MailEvent, report: MailFacts, origin: string)
     subject: to === "team" ? `${label}: ${report.title} (${report.key})` : `${heading}: ${report.title}`,
     ...labelledEmail(heading, [
       // A DOI leads somewhere only once its report has gone live: until then it's given as text, not as a link.
-      ["Report", `${report.title}\n${report.key}, ${report.activated ? `https://doi.org/${report.doi}` : `DOI ${report.doi}, reserved`}`],
+      ["Report", `${report.title}\n${report.key}, ${report.printed ? report.printed : report.activated ? `https://doi.org/${report.doi}` : `DOI ${report.doi}, reserved`}`],
       ...(to === "team" ? ([["Author", `${report.signer}${author ? ` <${author}>` : ""}`]] as Row[]) : []),
       ...rows(report, site),
     ]),

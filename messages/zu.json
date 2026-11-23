@@ -371,7 +371,18 @@
     "accountSandboxHint": "Amarekhodi agcinwe ku-akhawunti yakho agcina i-DOI ye-Crossref yalo mphakathi, ngakho vula i-Crossref ngemininingwane yakho. Ama-DOI okuhlola asesandbox awakwazi ukuya kumarekhodi angempela e-Zenodo.",
     "archiveDoiHint": "I-DOI ye-Zenodo: ikhophi egciniwe ithola i-DOI yayo. I-DOI ye-Crossref: ikhophi isebenzisa i-DOI ye-Crossref yerekhodi.",
     "accountCrossrefJoin": "Indlela yokujoyina i-Crossref",
-    "accountConnectedAs": "Kuxhunyiwe: {name}"
+    "accountConnectedAs": "Kuxhunyiwe: {name}",
+    "docidHint": "Isihlonzi se-Africa PID Alliance, i-Handle ngaphansi kuka-20.500.14351.",
+    "enableDocid": "Sebenzisa i-DOCiD",
+    "docidPermanent": "I-DOCiD ayinayo insizakalo yokuhlola. I-DOCiD ngayinye iyi-Handle yangempela engeke isuswe, ihoxiswe kuphela.",
+    "docidChoose": "Khetha eyodwa",
+    "docidListsFirst": "Qinisekisa futhi ulondoloze i-akhawunti ukuze ulayishe uhlu lwe-DOCiD.",
+    "docidResourceType": "Uhlobo lwensiza",
+    "docidResourceTypeHint": "Lokho i-DOCiD efaka ngakho umbiko ngamunye. I-akhawunti yakho ingasebenzisa ezinye kuphela.",
+    "docidFileType": "Uhlobo lwefayela",
+    "docidFileTypeHint": "Indlela i-DOCiD ebala ngayo i-PDF.",
+    "docidFunderType": "Uhlobo lomxhasi",
+    "docidNoResourceTypes": "I-DOCiD ayikayivumeli le akhawunti uhlobo lwensiza, ngakho ayikwazi ukufaka imibiko. Cela i-Africa PID Alliance ivumele olulodwa, bese uqinisekisa futhi ulondoloza futhi."
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",
@@ -5992,7 +6003,9 @@
     "share": "Yabelana",
     "inCommunities": "Kule mimphakathi",
     "fieldAverage": "× isilinganiso somkhakha",
-    "freeToRead": "Mahhala ukufunda"
+    "freeToRead": "Mahhala ukufunda",
+    "copyDocid": "Kopisha i-DOCiD",
+    "docidCopied": "I-DOCiD ikopishiwe"
   },
   "addedPapers": {
     "name": "Amaphepha engeziwe",
@@ -6199,6 +6212,13 @@
         "done": "Kubhaliswe ku-Crossref",
         "failed": "I-Crossref iwenqabile",
         "withdrawn": "Kubhalwe njengokuhoxisiwe ku-Crossref"
+      },
+      "docid": {
+        "waiting": "I-DOCiD elandelayo",
+        "working": "Kubhaliswa i-DOCiD yawo",
+        "done": "Kubhaliswe ku-DOCiD",
+        "failed": "I-DOCiD iwunqabile",
+        "withdrawn": "I-DOCiD iwubonisa uhoxisiwe"
       }
     },
     "signedAgreement": {
@@ -6464,7 +6484,9 @@
         "places": "Izindawo",
         "funders": "Abaxhasi"
       },
-      "emailedAdmins": "I-imeyili ithunyelwe kubaphathi benhlangano"
+      "emailedAdmins": "I-imeyili ithunyelwe kubaphathi benhlangano",
+      "docidStays": "I-DOCiD yawo ayikwazi ukususwa. Izobonisa ikhasi lokuhoxiswa esikhundleni sombiko.",
+      "docidStaysReserved": "I-DOCiD yawo, enikezwe lapho usayinwa, ayikwazi ukususwa. Ihlala igodliwe ku-DOCiD."
     },
     "common": {
       "failed": "Kukhona okungahambanga kahle"
@@ -6490,7 +6512,7 @@
       "bylineNeedsLicence": "Umugqa udinga i-{licence}, eba ilayisense yombiko ngamunye.",
       "notIssn": "Lokhu akuyona i-ISSN. Ibukeka njenge-2049-3630, futhi idijithi yayo yokugcina ihlola ezinye.",
       "byline": "Umugqa womnikazi",
-      "bylineHint": "I-{series}, i-{issn}, i-{doi} ne-{licence} kugcwaliswa embikweni ngamunye",
+      "bylineHint": "I-{series}, i-{issn}, i-{doi} ne-{licence} kugcwaliswa embikweni ngamunye. {doi} yisihlonzi esiphrintwayo: i-DOI yawo noma i-DOCiD yawo",
       "bylineSaved": "Umugqa womnikazi ulondoloziwe",
       "registration": "Ukubhaliswa kwe-DOI",
       "zenodoSandbox": "Indawo yokuhlola ye-Zenodo",
@@ -7025,7 +7047,34 @@
       "noteQuestion": "Inothi lakho",
       "sendNote": "Thumela inothi",
       "yourNote": "Inothi lakho lomhloli",
-      "uploadIntroAdded": "Layisha i-PDF yakho njengoba injalo: sengeza lo mugqa ekhasini lokugcina lapho ilayishwa."
+      "uploadIntroAdded": "Layisha i-PDF yakho njengoba injalo: sengeza lo mugqa ekhasini lokugcina lapho ilayishwa.",
+      "identifiers": {
+        "title": "Izihlonzi",
+        "inByline": "Emugqeni",
+        "included": "Kufakiwe",
+        "noExtra": "Akukho zindleko ezengeziwe",
+        "gives_crossref": "I-DOI, ephrintwe embikweni",
+        "gives_zenodo": "Ikhophi yaphakade, ngaphansi kwe-DOI yombiko",
+        "gives_zenodoOwn": "I-DOI evela ku-Zenodo, nekhophi yaphakade",
+        "gives_docid": "I-DOCiD, i-Handle ye-Africa PID Alliance",
+        "always_crossref": "Umbiko ngamunye oshicilelwe lapha uthola i-DOI ye-Crossref. Awukwazi ukuyishiya.",
+        "always_zenodo": "Umbiko ngamunye oshicilelwe lapha ugcinwa ku-Zenodo. Awukwazi ukukushiya.",
+        "always_docid": "Umbiko ngamunye oshicilelwe lapha uthola i-DOCiD. Awukwazi ukuyishiya.",
+        "zenodoTied": "I-DOI ngayinye ye-Crossref kufanele iholele ekhophini yaphakade, ngakho i-Zenodo ihamba ne-Crossref.",
+        "pickOne": "Khetha eyodwa.",
+        "pickOnlyOne": "Khetha eyodwa kuphela.",
+        "pickAtLeast": "Khetha okungenani {count}.",
+        "pickAtMost": "Khetha okungeqi ku-{count}.",
+        "pickPrintable": "Khetha esingaphrintwa embikweni."
+      },
+      "docidReserved": "I-DOCiD yakho igodliwe",
+      "docidReservedBody": "Kusukela manje ingeyombiko wakho, futhi izoshicilelwa nawo. Yibeke ku-PDF yakho njengoba umugqa ongezansi ubonisa.",
+      "docidMinting": "I-DOCiD inikeza umbiko wakho i-DOCiD",
+      "docidRefused": "I-DOCiD ayikwazanga ukunikeza umbiko wakho i-DOCiD. Ithe: {said}",
+      "docidAgain": "Cela i-DOCiD futhi",
+      "reservedDocid": "Inikezwe yi-DOCiD",
+      "copyDocid": "Kopisha i-DOCiD",
+      "docidCopied": "I-DOCiD ikopishiwe"
     },
     "meta": {
       "publish": "Shicilela | Openscholar",
@@ -7460,6 +7509,36 @@
           "note": "Okukweletwayo kukhokhwa kuqala: ngebhalansi yokushicilela yendawo yakho yokusebenza, ngekhadi, noma ngakho kokubili. Ikhodi yevawusha yehlisa lokho okukhokhwa yikhadi. Inkokhelo yekhadi iboniswa kuqala ukuze uyiqinisekise, futhi lapho ungayikhokha ngelinye ikhadi."
         }
       }
+    },
+    "identifiers": {
+      "title": "Izihlonzi",
+      "always": "Njalo",
+      "authorPicks": "Umbhali uyakhetha",
+      "off": "Kucishiwe",
+      "when": "{service}: nini",
+      "addOn": "Lokho {service} ekwengeza entengweni",
+      "hint_crossref": "I-DOI ephrintwe embikweni.",
+      "hint_zenodo": "Igcina ikhophi i-DOI ye-Crossref eholela kuyo, ngakho ihamba ne-DOI ngayinye ye-Crossref.",
+      "hint_docid": "Isihlonzi se-Africa PID Alliance. Ngasinye siyi-Handle yaphakade.",
+      "notConnected": "Yisethe ngaphansi kokuBhalisa ukuze uyisebenzise.",
+      "turnOnFirst": "Setha i-{service} ngaphansi kokuBhalisa ukuze uyisebenzise.",
+      "zenodoTied": "I-DOI ngayinye ye-Crossref kufanele iholele ekhophini yaphakade, ngakho i-Zenodo ihlala ivuliwe uma kusetshenziswa i-Crossref.",
+      "pick": "Ababhali bayakhetha",
+      "pickHint": "Kokuthi {services}, lapho besayina.",
+      "anyOf": "Noma yisiphi",
+      "atLeastOne": "Okungenani esisodwa",
+      "exactlyOne": "Esisodwa ncamashi",
+      "byline": "Iphrintwe emugqeni",
+      "bylineHint": "Esokuqala salezi umbiko onaso. Kufanele sibe khona lapho umbhali esayina.",
+      "mintAtSigning": "Nikeza lapho kusayinwa",
+      "mintAtSigningHint": "Ama-DOCiD anikezwa lapho umbhali esayina. Umbiko onqatshiwe ugcina i-Handle yawo, ehlala igodliwe ku-DOCiD.",
+      "notPrintable": "Ayiphrinteki",
+      "notPrintableWhy": "I-DOCiD iba khona kuphela uma isinikeziwe. Vula Nikeza lapho kusayinwa ukuze iphrintwe emugqeni.",
+      "moveUp": "Nyusa i-{service}",
+      "moveDown": "Ehlisa i-{service}",
+      "problem_noService": "Vula okungenani insizakalo eyodwa, uma kungenjalo imibiko ngeke ithole isihlonzi.",
+      "problem_rule": "Umthetho ucela ukukhetha okuningi kunezinsizakalo ezikhona.",
+      "problem_nothingPrinted": "Okunye ukukhetha akushiyi lutho lokuphrinta emugqeni. Beka i-Crossref kuqala, noma unikeze ama-DOCiD lapho kusayinwa."
     }
   },
   "people": {

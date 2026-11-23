@@ -32,6 +32,16 @@ export const seriesValidator = v.object({ name: v.string(), issn: v.string(), by
 
 /** What publishing a report costs, in whole US dollars: under CC BY or CC BY-SA, and under any other licence. */
 /** A closed own licence's price, missing from settings saved before it existed, is its default until set. */
+/** Identifier services (plans/identifier-services, lib/reports/identifiers.ts). */
+export const serviceIdValidator = v.union(v.literal("crossref"), v.literal("zenodo"), v.literal("docid"));
+const serviceValidator = v.object({ mode: v.union(v.literal("required"), v.literal("optional"), v.literal("off")), price: v.number() });
+export const identifiersValidator = v.object({
+  services: v.object({ crossref: serviceValidator, zenodo: serviceValidator, docid: serviceValidator }),
+  choose: v.object({ min: v.number(), max: v.number() }),
+  citeFirst: capped(v.array(serviceIdValidator), 3),
+  docidAtSigning: v.boolean(),
+});
+
 export const pricesValidator = v.object({ standard: v.number(), other: v.number(), closed: v.optional(v.number()) });
 /** The one settings row, once an admin changes something. Until then the series runs on `REPORT_DEFAULTS`. */
 export const reportSettingsFields = {
@@ -48,6 +58,8 @@ export const reportSettingsFields = {
   publicationSavedAt: v.optional(v.number()),
   /** What publishing a report costs, in whole US dollars, by its licence's tier. None saved yet is the defaults (`DEFAULT_PRICES`). */
   prices: v.optional(pricesValidator),
+  /** Which identifier services each report gets; none saved is DEFAULT_IDENTIFIERS (lib/reports/identifiers.ts). */
+  identifiers: v.optional(identifiersValidator),
   // Free activations a day, from before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
   perDay: v.optional(v.number()),
   orgPerDay: v.optional(v.number()),
@@ -128,7 +140,21 @@ export const stepValidator = literals(STEPS);
 export const statusValidator = literals(STATUSES);
 export const changeStageValidator = literals(CHANGE_STAGES);
 export const stageValidator = literals(STAGES);
-export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")) });
+export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")), /** It gets a DOCiD (plans/identifier-services). */ docid: v.optional(v.boolean()), /** The identifier its byline prints; none kept is its Crossref DOI. */ cited: v.optional(v.union(v.literal("crossref"), v.literal("docid"))) });
+/**
+ * Where a report's DOCiD stands: the Handle once minted and DOCiD's record of it once deposited, each kept the moment
+ * DOCiD gives it, so a later try never mints or deposits twice; `retired` while its record shows a retired page.
+ */
+export const docidRegistrationValidator = v.object({
+  state: v.union(v.literal("none"), v.literal("queued"), v.literal("registered"), v.literal("failed")),
+  handle: v.optional(v.string()),
+  publicationId: v.optional(v.number()),
+  retired: v.optional(v.boolean()),
+  /** A deposit was sent: until DOCiD's record of it is kept, the next try looks for it before sending another. */
+  depositTried: v.optional(v.boolean()),
+});
+/** Each service's registration beyond Crossref's and Zenodo's, which keep their own fields until they move here. */
+export const registrationsValidator = v.object({ docid: v.optional(docidRegistrationValidator) });
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
 export const pdfTroubleValidator = v.union(v.literal("unopened"), v.literal("textless"), v.literal("unread"));
@@ -218,6 +244,7 @@ export const reportFields = {
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
+  registrations: v.optional(registrationsValidator),
   /** Its record on Zenodo once there is one, which a correction edits, and the DOI Zenodo gave it when it mints its own. */
   zenodoRecordId: v.optional(v.string()),
   zenodoDoi: v.optional(v.string()),
@@ -283,6 +310,7 @@ export const reportRowValidator = v.object({
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
+  registrations: v.optional(registrationsValidator),
   updatedAt: v.number(),
   /** Who signed it. */
   signer: v.string(),
@@ -338,6 +366,7 @@ export const adminReportValidator = v.object({
   reviews: capped(v.array(v.object({ decision: reviewDecisionValidator, by: v.string(), at: v.number(), note: v.optional(v.string()) })), 50),
   /** What a registrar said when it refused the report, or couldn't be reached. */
   registrationError: v.optional(v.string()),
+  /** Its DOCiD's Handle, once DOCiD gave one. */ docid: v.optional(v.string()),
   /** The emails about it, oldest first: what each was and who it went to. `failed` when it couldn't be sent. */
   emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author"), v.literal("admins")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
@@ -345,8 +374,8 @@ export const adminReportValidator = v.object({
 export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), licence: licenceValidator, doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
-export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), /** Who may get its file: its page says why it offers none. */ fileAccess: fileAccessValidator, coverUrl: v.union(v.string(), v.null()), coverShape: v.optional(v.number()), updatedAt: v.number() });
-export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
+export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), /** Its DOCiD's Handle, once DOCiD gave one (plans/identifier-services). */ docid: v.optional(v.string()), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), /** Who may get its file: its page says why it offers none. */ fileAccess: fileAccessValidator, coverUrl: v.union(v.string(), v.null()), coverShape: v.optional(v.number()), updatedAt: v.number() });
+export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), docid: v.optional(v.string()), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
 
 /** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */
 export const mailAudienceValidator = v.union(v.literal("team"), v.literal("author"), v.literal("admins"));

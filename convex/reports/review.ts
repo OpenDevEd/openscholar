@@ -31,11 +31,12 @@ const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex(
 const said = (note: string | undefined) => note?.trim().slice(0, REVIEW_TEXT_MAX) || undefined;
 
 async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof adminRowValidator>> {
-  const { key, doi, step, status, approved, flagged, asked, changes, note, registration, deposit, archive, updatedAt } = report;
+  const { key, doi, step, status, approved, flagged, asked, changes, note, registration, deposit, archive, registrations, updatedAt } = report;
   // Its first author, with where they work, as the list names a report's people.
   const first = (await detailsOf(ctx, report._id)).metadata?.authors.find(isAuthor);
   return {
     key, doi, step, status, registration, deposit, archive, updatedAt,
+    ...(registrations && { registrations }),
     ...(approved && { approved }),
     ...(flagged && { flagged }),
     ...(asked && { asked }),
@@ -141,6 +142,7 @@ export const get = query({
       ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       reviews: reviews.reverse().map(({ decision, by, at, note }) => ({ decision, by: reviewers.get(by)!, at, ...(note && { note }) })),
       ...(report.registrationError && { registrationError: report.registrationError }),
+      ...(report.registrations?.docid?.handle && { docid: report.registrations.docid.handle }),
       emails: emails.reverse().map(({ event, audience, at, error }) => ({ event, audience, at, ...(error && { failed: true }) })),
       humanReview: settings.humanReview,
     };

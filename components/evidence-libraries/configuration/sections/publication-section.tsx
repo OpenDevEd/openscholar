@@ -33,6 +33,7 @@ import { Field, FieldError, SectionCard } from "../section-card";
 import { OptionSelect, type PickerOption } from "@/components/shared/option-picker";
 import { COMMON_ZENODO_LICENCES, ZENODO_LICENCES, isZenodoLicence, licenceShortName, zenodoLicenceTitle } from "@/lib/zenodo-licences";
 import { FieldGroup, PanelRow } from "../fields";
+import { DocidAccount } from "./docid-account";
 
 /**
  * Zenodo's licences as picker rows, the common ones first. A Creative Commons licence goes by its short name with its
@@ -220,7 +221,10 @@ export function PublicationForm({
   onSave,
   words,
   fileAccess = false,
+  docid = false,
 }: {
+  /** Openscholar Reports' form: its DOCiD account too. Communities show the DOCiDs their records come with and never register one. */
+  docid?: boolean;
   saved: Saved;
   disabled?: boolean;
   /** A community's form: who gets its new records' files is set beside their licence. Reports choose per report. */
@@ -572,6 +576,15 @@ export function PublicationForm({
             </>
           )}
         </FieldGroup>
+        {docid ? (
+          <DocidAccount
+            docid={settings.docid}
+            onChange={(next) => change((current) => ({ ...current, docid: next }))}
+            password={credentials.docidPassword ?? ""}
+            onPassword={(value) => credential("docidPassword", value)}
+            stored={saved.settings.docid?.mode === "custom"}
+          />
+        ) : null}
       </fieldset>
       {error && <FieldError>{error}</FieldError>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">

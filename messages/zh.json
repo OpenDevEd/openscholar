@@ -371,7 +371,18 @@
     "accountSandboxHint": "存档到你账户中的记录会沿用本社区的 Crossref DOI，因此请用你自己的凭据开启 Crossref。沙盒中的测试 DOI 不能用于真实的 Zenodo 记录。",
     "archiveDoiHint": "Zenodo DOI：存档副本获得自己的 DOI。Crossref DOI：副本与记录共用 Crossref DOI。",
     "accountCrossrefJoin": "如何加入 Crossref",
-    "accountConnectedAs": "已连接：{name}"
+    "accountConnectedAs": "已连接：{name}",
+    "docidHint": "Africa PID Alliance 的标识符，即 20.500.14351 下的 Handle。",
+    "enableDocid": "使用 DOCiD",
+    "docidPermanent": "DOCiD 没有测试服务。它发放的每个 DOCiD 都是真实的 Handle，无法删除，只能撤回。",
+    "docidChoose": "请选择",
+    "docidListsFirst": "验证并保存账户以加载 DOCiD 的列表。",
+    "docidResourceType": "资源类型",
+    "docidResourceTypeHint": "DOCiD 将每份报告归入的类型。您的账户只能使用其中一部分。",
+    "docidFileType": "文件类型",
+    "docidFileTypeHint": "DOCiD 如何列出 PDF。",
+    "docidFunderType": "资助方类型",
+    "docidNoResourceTypes": "DOCiD 尚未允许此账户使用任何资源类型，因此无法提交报告。请请求 Africa PID Alliance 允许一种类型，然后再次验证并保存。"
   },
   "auth": {
     "backToSearch": "返回搜索",
@@ -5992,7 +6003,9 @@
     "share": "分享",
     "inCommunities": "收录于这些社区",
     "fieldAverage": "× 领域平均",
-    "freeToRead": "可免费阅读"
+    "freeToRead": "可免费阅读",
+    "copyDocid": "复制 DOCiD",
+    "docidCopied": "已复制 DOCiD"
   },
   "addedPapers": {
     "name": "已添加的论文",
@@ -6199,6 +6212,13 @@
         "done": "已在 Crossref 注册",
         "failed": "Crossref 拒绝了它",
         "withdrawn": "已在 Crossref 标记为撤回"
+      },
+      "docid": {
+        "waiting": "接下来是 DOCiD",
+        "working": "正在登记 DOCiD",
+        "done": "已在 DOCiD 登记",
+        "failed": "DOCiD 拒绝了",
+        "withdrawn": "DOCiD 显示已撤回"
       }
     },
     "signedAgreement": {
@@ -6464,7 +6484,9 @@
         "places": "地点",
         "funders": "资助方"
       },
-      "emailedAdmins": "已发送邮件给组织的管理员"
+      "emailedAdmins": "已发送邮件给组织的管理员",
+      "docidStays": "它的 DOCiD 无法删除。它将显示撤回页面，而不是报告。",
+      "docidStaysReserved": "签署时发放的 DOCiD 无法删除，会在 DOCiD 保持预留。"
     },
     "common": {
       "failed": "出了点问题"
@@ -6490,7 +6512,7 @@
       "bylineNeedsLicence": "署名行需要包含 {licence}，它会成为每份报告的许可。",
       "notIssn": "这不是 ISSN。ISSN 形如 2049-3630，最后一位用于校验其余数字。",
       "byline": "署名",
-      "bylineHint": "{series}、{issn}、{doi} 和 {licence} 会为每份报告填入",
+      "bylineHint": "{series}、{issn}、{doi} 和 {licence} 会为每份报告填入. {doi} 是它印上的标识符：其 DOI 或其 DOCiD",
       "bylineSaved": "署名已保存",
       "registration": "DOI 注册",
       "zenodoSandbox": "Zenodo 测试环境",
@@ -7025,7 +7047,34 @@
       "noteQuestion": "你的留言",
       "sendNote": "发送留言",
       "yourNote": "你给审核人的留言",
-      "uploadIntroAdded": "按原样上传你的 PDF：上传时我们会在最后一页加上这一行。"
+      "uploadIntroAdded": "按原样上传你的 PDF：上传时我们会在最后一页加上这一行。",
+      "identifiers": {
+        "title": "标识符",
+        "inByline": "在署名行中",
+        "included": "已包含",
+        "noExtra": "无额外费用",
+        "gives_crossref": "印在报告上的 DOI",
+        "gives_zenodo": "报告 DOI 下的永久副本",
+        "gives_zenodoOwn": "来自 Zenodo 的 DOI 和永久副本",
+        "gives_docid": "DOCiD，即 Africa PID Alliance 的 Handle",
+        "always_crossref": "在此发表的每份报告都会获得 Crossref DOI，无法去掉。",
+        "always_zenodo": "在此发表的每份报告都会保存在 Zenodo，无法去掉。",
+        "always_docid": "在此发表的每份报告都会获得 DOCiD，无法去掉。",
+        "zenodoTied": "每个 Crossref DOI 都必须指向永久副本，因此 Zenodo 随 Crossref 一起使用。",
+        "pickOne": "请选择一个。",
+        "pickOnlyOne": "只能选择一个。",
+        "pickAtLeast": "请至少选择 {count} 个。",
+        "pickAtMost": "最多选择 {count} 个。",
+        "pickPrintable": "请选择一个可以印在报告上的。"
+      },
+      "docidReserved": "您的 DOCiD 已预留",
+      "docidReservedBody": "从现在起它属于您的报告，并随报告一同上线。请按下方署名行所示将其放在 PDF 上。",
+      "docidMinting": "DOCiD 正在为您的报告发放 DOCiD",
+      "docidRefused": "DOCiD 无法为您的报告发放 DOCiD。它的回复：{said}",
+      "docidAgain": "再次请求 DOCiD",
+      "reservedDocid": "由 DOCiD 发放",
+      "copyDocid": "复制 DOCiD",
+      "docidCopied": "已复制 DOCiD"
     },
     "meta": {
       "publish": "发布 | Openscholar",
@@ -7460,6 +7509,36 @@
           "note": "先支付应付金额：从工作区的出版余额、银行卡，或两者一起支付。优惠码可以减少银行卡支付的金额。银行卡付款会先显示供你确认，届时也可改用其他银行卡支付。"
         }
       }
+    },
+    "identifiers": {
+      "title": "标识符",
+      "always": "始终",
+      "authorPicks": "作者选择",
+      "off": "关闭",
+      "when": "{service}：何时",
+      "addOn": "{service} 在价格上增加的金额",
+      "hint_crossref": "印在报告上的 DOI。",
+      "hint_zenodo": "保存 Crossref DOI 所指向的副本，因此与每个 Crossref DOI 一起使用。",
+      "hint_docid": "Africa PID Alliance 的标识符。每个都是永久 Handle。",
+      "notConnected": "在“登记”中完成设置后即可使用。",
+      "turnOnFirst": "在“登记”中完成 {service} 的设置后即可使用。",
+      "zenodoTied": "每个 Crossref DOI 都必须指向永久副本，因此只要使用 Crossref，Zenodo 就始终开启。",
+      "pick": "作者选择",
+      "pickHint": "签署时从 {services} 中选择。",
+      "anyOf": "任意",
+      "atLeastOne": "至少一个",
+      "exactlyOne": "恰好一个",
+      "byline": "印在署名行中",
+      "bylineHint": "报告所拥有的其中第一个。作者签署时它必须已存在。",
+      "mintAtSigning": "签署时发放",
+      "mintAtSigningHint": "DOCiD 在作者签署时发放。被拒绝的报告保留其 Handle，在 DOCiD 保持预留。",
+      "notPrintable": "无法印上",
+      "notPrintableWhy": "DOCiD 只有在发放后才存在。开启“签署时发放”即可将其印在署名行中。",
+      "moveUp": "上移 {service}",
+      "moveDown": "下移 {service}",
+      "problem_noService": "请至少开启一项服务，否则报告将没有标识符。",
+      "problem_rule": "该规则要求的选择数多于可选服务数。",
+      "problem_nothingPrinted": "有些选择会让署名行无可印之物。请将 Crossref 放在首位，或在签署时发放 DOCiD。"
     }
   },
   "people": {

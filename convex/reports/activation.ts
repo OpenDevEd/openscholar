@@ -8,6 +8,7 @@
 // on Stripe's own page, which comes back to the report. A payment still to be made, there or at the bank, waits as
 // `pending`, and the report goes live once Stripe has it paid (`settle`). What a card bought for a report that can't
 // go live any more stays in the balance for the next one.
+import { SERVICES, chosenOf, connectedOf, routeAddOns } from "../../lib/reports/identifiers";
 import { ConvexError, v, type Infer } from "convex/values";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -44,7 +45,10 @@ async function placeOf(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
 }
 
 /** What putting the report live costs, in US dollars, by its licence. */
-const priceFor = async (ctx: QueryCtx, report: Doc<"reports">) => priceOf(licenceOf(report), (await reportSettings(ctx)).prices);
+const priceFor = async (ctx: QueryCtx, report: Doc<"reports">) => {
+  const settings = await reportSettings(ctx);
+  return priceOf(licenceOf(report), settings.prices) + routeAddOns(settings.identifiers, report.registration);
+};
 
 /** The report's activation that waits on the bank. */
 const pendingOf = (ctx: QueryCtx, reportId: Id<"reports">) =>
@@ -70,8 +74,12 @@ const PAUSED = "Publishing is paused for now, so nothing can go live. Your repor
  * Whether the report can't go live for now: its DOI needs the registrar it was reserved with (Crossref's, or Zenodo's
  * when Crossref had none), and the archive needs one switched on at all. Asked before anything is charged.
  */
-const paused = (report: Doc<"reports">, publication: PublicationSettings) =>
-  !canRegister(publication) || (report.registration.crossref ? publication.crossref.mode === "off" : publication.zenodo.mode === "off");
+const paused = (report: Doc<"reports">, publication: PublicationSettings) => {
+  // Each service the report registers with needs its account: a DOCiD with none connected would never be made.
+  // A copy kept in the author's own Zenodo account (#1237) needs their connection, not Openscholar's Zenodo account.
+  const connected = connectedOf(publication);
+  return chosenOf(report.registration).some((id) => !connected[id] && !(id === "zenodo" && report.archiveOwnerId !== undefined));
+};
 
 /** A report the actor may activate now: theirs to change, in a workspace they are an admin of, and ready to go live. */
 async function activatable(ctx: QueryCtx, actor: Actor, key: string) {
@@ -132,6 +140,8 @@ export const terms = workspaceQuery({
       currency: v.union(v.string(), v.null()),
       /** What the report costs, in US dollars, by its licence. */
       price: v.number(),
+      /** What its identifier services add to the price, each on its own line of the bill; included in `price`. */
+      addOns: v.array(v.object({ label: v.string(), price: v.number() })),
       /** What the workspace's publication balance holds, in US dollars, as last read from Autumn; null for no limit. */
       balance: v.union(v.number(), v.null()),
       /** That balance by part: what refills, by when, and what stays until used. */
@@ -175,7 +185,8 @@ export const terms = workspaceQuery({
       admin: actor.role === "admin",
       organization: (await placeOf(ctx, actor.workspaceId)).organization,
       card: account?.card ?? null,
-      price: priceOf(licenceOf(report), settings.prices),
+      price: priceOf(licenceOf(report), settings.prices) + routeAddOns(settings.identifiers, report.registration),
+      addOns: chosenOf(report.registration).flatMap((id) => (settings.identifiers.services[id].price > 0 ? [{ label: SERVICES[id].name, price: settings.identifiers.services[id].price }] : [])),
       ...fundsOf(account),
       payWith: report.payWith ?? null,
       voucher: report.voucher ? { code: report.voucher, off: report.voucherOff ?? 0 } : null,

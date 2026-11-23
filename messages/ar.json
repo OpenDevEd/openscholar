@@ -371,7 +371,18 @@
     "accountSandboxHint": "تحتفظ السجلات المؤرشفة في حسابك بمعرّف DOI من Crossref الخاص بهذا المجتمع، لذا شغّل Crossref ببيانات اعتمادك الخاصة. لا يمكن وضع معرّفات DOI التجريبية من البيئة التجريبية على سجلات Zenodo حقيقية.",
     "archiveDoiHint": "معرّف DOI من Zenodo: تحصل النسخة المؤرشفة على معرّف DOI خاص بها. معرّف DOI من Crossref: تشارك النسخة السجلَّ معرّف DOI الخاص به من Crossref.",
     "accountCrossrefJoin": "كيفية الانضمام إلى Crossref",
-    "accountConnectedAs": "متصل: {name}"
+    "accountConnectedAs": "متصل: {name}",
+    "docidHint": "معرّف تحالف Africa PID Alliance، وهو Handle تحت 20.500.14351.",
+    "enableDocid": "استخدام DOCiD",
+    "docidPermanent": "لا توجد لدى DOCiD خدمة تجريبية. كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
+    "docidChoose": "اختر واحدًا",
+    "docidListsFirst": "تحقّق من الحساب واحفظه لتحميل قوائم DOCiD.",
+    "docidResourceType": "نوع المورد",
+    "docidResourceTypeHint": "النوع الذي يصنّف DOCiD كل تقرير تحته. يمكن لحسابك استخدام بعضها فقط.",
+    "docidFileType": "نوع الملف",
+    "docidFileTypeHint": "كيف يعرض DOCiD ملف PDF.",
+    "docidFunderType": "نوع الجهة المموّلة",
+    "docidNoResourceTypes": "لا يسمح DOCiD لهذا الحساب بأي نوع مورد بعد، لذا لا يمكنه إيداع التقارير. اطلب من Africa PID Alliance السماح بنوع، ثم تحقّق واحفظ مرة أخرى."
   },
   "auth": {
     "backToSearch": "العودة إلى البحث",
@@ -5993,7 +6004,9 @@
     "share": "مشاركة",
     "inCommunities": "ضمن هذه المجتمعات",
     "fieldAverage": "× متوسط المجال",
-    "freeToRead": "متاحة مجانًا"
+    "freeToRead": "متاحة مجانًا",
+    "copyDocid": "نسخ DOCiD",
+    "docidCopied": "تم نسخ DOCiD"
   },
   "addedPapers": {
     "name": "الأوراق المضافة",
@@ -6200,6 +6213,13 @@
         "done": "مسجَّل في Crossref",
         "failed": "رفضه Crossref",
         "withdrawn": "مسجَّل كمسحوب في Crossref"
+      },
+      "docid": {
+        "waiting": "DOCiD التالي",
+        "working": "جارٍ تسجيل DOCiD الخاص به",
+        "done": "مسجَّل لدى DOCiD",
+        "failed": "رفضه DOCiD",
+        "withdrawn": "يظهر مسحوبًا لدى DOCiD"
       }
     },
     "signedAgreement": {
@@ -6465,7 +6485,9 @@
         "places": "الأماكن",
         "funders": "الجهات المموّلة"
       },
-      "emailedAdmins": "أُرسل بريد إلى مشرفي المؤسسة"
+      "emailedAdmins": "أُرسل بريد إلى مشرفي المؤسسة",
+      "docidStays": "لا يمكن حذف DOCiD الخاص به. سيعرض صفحة تفيد بسحبه بدلًا من التقرير.",
+      "docidStaysReserved": "لا يمكن حذف DOCiD الخاص به الذي مُنح عند التوقيع. يبقى محجوزًا لدى DOCiD."
     },
     "common": {
       "failed": "حدث خطأ ما"
@@ -6491,7 +6513,7 @@
       "bylineNeedsLicence": "يحتاج السطر إلى {licence}، التي تصبح رخصة كل تقرير.",
       "notIssn": "هذا ليس ISSN. يبدو مثل 2049-3630، ورقمه الأخير يتحقق من بقية الأرقام.",
       "byline": "سطر الإسناد",
-      "bylineHint": "تُملأ {series} و{issn} و{doi} و{licence} لكل تقرير",
+      "bylineHint": "تُملأ {series} و{issn} و{doi} و{licence} لكل تقرير. {doi} هو المعرّف الذي يطبعه: معرّف DOI الخاص به أو DOCiD الخاص به",
       "bylineSaved": "تم حفظ سطر الإسناد",
       "registration": "تسجيل DOI",
       "zenodoSandbox": "بيئة اختبار Zenodo",
@@ -7026,7 +7048,34 @@
       "noteQuestion": "ملاحظتك",
       "sendNote": "أرسل الملاحظة",
       "yourNote": "ملاحظتك للمراجع",
-      "uploadIntroAdded": "ارفع ملف PDF كما هو: نضيف هذا السطر في صفحة أخيرة عند رفعه."
+      "uploadIntroAdded": "ارفع ملف PDF كما هو: نضيف هذا السطر في صفحة أخيرة عند رفعه.",
+      "identifiers": {
+        "title": "المعرّفات",
+        "inByline": "في السطر",
+        "included": "مشمول",
+        "noExtra": "بلا تكلفة إضافية",
+        "gives_crossref": "معرّف DOI مطبوع على التقرير",
+        "gives_zenodo": "نسخة دائمة تحت معرّف DOI الخاص بالتقرير",
+        "gives_zenodoOwn": "معرّف DOI من Zenodo ونسخة دائمة",
+        "gives_docid": "DOCiD، وهو Handle تحالف Africa PID Alliance",
+        "always_crossref": "كل تقرير يُنشر هنا يحصل على معرّف DOI من Crossref. لا يمكنك تركه.",
+        "always_zenodo": "كل تقرير يُنشر هنا يُحفظ على Zenodo. لا يمكنك ترك ذلك.",
+        "always_docid": "كل تقرير يُنشر هنا يحصل على DOCiD. لا يمكنك تركه.",
+        "zenodoTied": "يجب أن يقود كل معرّف DOI من Crossref إلى نسخة دائمة، لذا يأتي Zenodo مع Crossref.",
+        "pickOne": "اختر واحدًا.",
+        "pickOnlyOne": "اختر واحدًا فقط.",
+        "pickAtLeast": "اختر {count} على الأقل.",
+        "pickAtMost": "اختر {count} على الأكثر.",
+        "pickPrintable": "اختر معرّفًا يمكن طباعته على التقرير."
+      },
+      "docidReserved": "DOCiD الخاص بك محجوز",
+      "docidReservedBody": "أصبح لتقريرك من الآن، ويُنشر معه. ضعه على ملف PDF كما يبيّن السطر أدناه.",
+      "docidMinting": "يمنح DOCiD تقريرك معرّف DOCiD الخاص به",
+      "docidRefused": "تعذّر على DOCiD منح تقريرك معرّف DOCiD. قال: {said}",
+      "docidAgain": "اطلب من DOCiD مجددًا",
+      "reservedDocid": "مُنح من DOCiD",
+      "copyDocid": "نسخ DOCiD",
+      "docidCopied": "تم نسخ DOCiD"
     },
     "meta": {
       "publish": "نشر | Openscholar",
@@ -7461,6 +7510,36 @@
           "note": "يُدفع المبلغ المستحق أولاً: من رصيد النشر في مساحة عملك، أو بالبطاقة، أو بكليهما. ورمز القسيمة يخفض ما تدفعه البطاقة. تُعرض عليك أي دفعة بالبطاقة أولاً لتأكيدها، ويمكنك هناك دفعها ببطاقة أخرى."
         }
       }
+    },
+    "identifiers": {
+      "title": "المعرّفات",
+      "always": "دائمًا",
+      "authorPicks": "يختار المؤلف",
+      "off": "متوقف",
+      "when": "{service}: متى",
+      "addOn": "ما يضيفه {service} إلى السعر",
+      "hint_crossref": "معرّف DOI المطبوع على التقرير.",
+      "hint_zenodo": "يحفظ النسخة التي يقود إليها معرّف DOI من Crossref، لذا يرافق كل معرّف DOI من Crossref.",
+      "hint_docid": "معرّف تحالف Africa PID Alliance. كل واحد منها Handle دائم.",
+      "notConnected": "اضبطه في التسجيل لاستخدامه.",
+      "turnOnFirst": "اضبط {service} في التسجيل لاستخدامه.",
+      "zenodoTied": "يجب أن يقود كل معرّف DOI من Crossref إلى نسخة دائمة، لذا يبقى Zenodo مفعّلًا ما دام Crossref مستخدمًا.",
+      "pick": "يختار المؤلفون",
+      "pickHint": "من بين {services}، عند التوقيع.",
+      "anyOf": "أيٌّ منها",
+      "atLeastOne": "واحد على الأقل",
+      "exactlyOne": "واحد بالضبط",
+      "byline": "مطبوع في السطر",
+      "bylineHint": "أول ما يملكه التقرير من هذه. يجب أن يكون موجودًا عندما يوقّع المؤلف.",
+      "mintAtSigning": "المنح عند التوقيع",
+      "mintAtSigningHint": "تُمنح معرّفات DOCiD عندما يوقّع المؤلف. يحتفظ التقرير المرفوض بمعرّف Handle الخاص به، ويبقى محجوزًا لدى DOCiD.",
+      "notPrintable": "غير قابل للطباعة",
+      "notPrintableWhy": "لا يوجد DOCiD إلا بعد منحه. فعّل المنح عند التوقيع لطباعته في السطر.",
+      "moveUp": "انقل {service} لأعلى",
+      "moveDown": "انقل {service} لأسفل",
+      "problem_noService": "فعّل خدمة واحدة على الأقل، وإلا فلن تحصل التقارير على أي معرّف.",
+      "problem_rule": "تطلب القاعدة اختيارات أكثر من عدد الخدمات المتاحة.",
+      "problem_nothingPrinted": "بعض الاختيارات لا تترك شيئًا لطباعته في السطر. ضع Crossref أولًا، أو امنح معرّفات DOCiD عند التوقيع."
     }
   },
   "people": {

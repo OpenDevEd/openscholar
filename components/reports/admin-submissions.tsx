@@ -439,6 +439,11 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                 <Fact icon={Hash} label={t("doi")} wide>
                   <span className="font-mono text-xs">{s.doi}</span>
                 </Fact>
+                {s.docid ? (
+                  <Fact icon={Hash} label="DOCiD" wide>
+                    <span className="font-mono text-xs">{s.docid}</span>
+                  </Fact>
+                ) : null}
                 <Fact icon={FileText} label={t("pdf")}>
                   {s.pdf?.url ? (
                     <a href={s.pdf.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1 font-medium underline decoration-border underline-offset-4 hover:decoration-foreground">
@@ -597,6 +602,13 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   <AlertDialogTitle>{asking ? t(`ask.${asking}.title`) : ""}</AlertDialogTitle>
                   <AlertDialogDescription>{asking ? t(`ask.${asking}.says`) : ""}</AlertDialogDescription>
                 </AlertDialogHeader>
+                {/* A DOCiD can't be deleted: taking the report down leaves it showing a retired page. */}
+                {s?.docid && asking !== "decline-changes" ? (
+                  <p className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-pretty text-muted-foreground">
+                    <img src="/brands/docid.png" alt="DOCiD" className="mt-px h-3.5 w-auto shrink-0" />
+                    {t(asking === "withdraw" ? "docidStays" : "docidStaysReserved")}
+                  </p>
+                ) : null}
                 <Field label={t("noteLabel")} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
                   {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={REVIEW_TEXT_MAX} placeholder={t("notePlaceholder")} autoFocus={finePointer()} />}
                 </Field>
