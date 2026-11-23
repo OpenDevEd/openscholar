@@ -136,10 +136,13 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
                 <span className="block text-xs text-muted-foreground">{ready ? hint(id) : t("notConnected")}</span>
               </span>
               {why ? (
-                <Locked why={why}>
-                  <Segmented label={t("when", { service: SERVICES[id].name })} value={tied ? "required" : "off"} onChange={() => undefined} options={modes} />
-                  {tied ? <span className="text-sm tabular-nums text-muted-foreground">+${s.price}</span> : null}
-                </Locked>
+                <span className="flex shrink-0 items-center gap-3">
+                  <Locked why={why}>
+                    <Segmented label={t("when", { service: SERVICES[id].name })} value={tied ? "required" : "off"} onChange={() => undefined} options={modes} />
+                  </Locked>
+                  {/* Only its mode is locked: Zenodo with Crossref still adds what its price says. */}
+                  {tied ? <AddOn id={id} price={s.price} onSave={(price) => service(id, { price })} /> : null}
+                </span>
               ) : (
                 <span className="flex shrink-0 items-center gap-3">
                   <Segmented label={t("when", { service: SERVICES[id].name })} value={s.mode} onChange={(mode) => void service(id, { mode })} options={modes} />

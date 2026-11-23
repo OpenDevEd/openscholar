@@ -76,8 +76,9 @@ const PAUSED = "Publishing is paused for now, so nothing can go live. Your repor
  */
 const paused = (report: Doc<"reports">, publication: PublicationSettings) => {
   // Each service the report registers with needs its account: a DOCiD with none connected would never be made.
+  // A copy kept in the author's own Zenodo account (#1237) needs their connection, not Openscholar's Zenodo account.
   const connected = connectedOf(publication);
-  return chosenOf(report.registration).some((id) => !connected[id]);
+  return chosenOf(report.registration).some((id) => !connected[id] && !(id === "zenodo" && report.archiveOwnerId !== undefined));
 };
 
 /** A report the actor may activate now: theirs to change, in a workspace they are an admin of, and ready to go live. */

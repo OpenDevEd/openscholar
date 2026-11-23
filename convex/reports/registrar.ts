@@ -227,7 +227,17 @@ export const register = internalAction({
             const client = docidClient();
             const { token, userId } = await client.signIn({ email: docid.email, password: secrets.docidPassword });
             const note = (kept: { docidHandle?: string; docidPublicationId?: number; docidRetired?: boolean; docidDepositTried?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
-            const held = job.docid ?? { state: "queued" as const };
+            const held = { ...(job.docid ?? { state: "queued" as const }) };
+            // A deposit sent before whose answer never came is found in the account's records first: it may need
+            // retiring, and it is never sent twice.
+            if (held.handle && held.publicationId === undefined && held.depositTried) {
+              const found = await client.findDeposit({ token, userId, docid: held.handle });
+              if (found !== null) {
+                await note({ docidPublicationId: found });
+                held.publicationId = found;
+                console.info(JSON.stringify({ event: "report-docid-deposit-found", reportId, key: job.key, handle: held.handle, record: found }));
+              }
+            }
             const doi = job.registration.crossref ? job.doi : zenodoDoi;
             if (job.withdrawnAt !== undefined) {
               // Its Handle can't be deleted: its record is retired, and a Handle never deposited has no record to retire.
@@ -246,12 +256,7 @@ export const register = internalAction({
               handle = await client.mint({ token, title: record.title, description: record.abstract ?? record.title, idempotencyKey: mintKey(job.key) });
               await note({ docidHandle: handle });
             }
-            // A deposit sent before whose answer never came is found in the account's records, never sent twice.
-            const found = held.publicationId === undefined && held.depositTried ? await client.findDeposit({ token, userId, docid: handle }) : null;
-            if (found !== null) {
-              await note({ docidPublicationId: found });
-              console.info(JSON.stringify({ event: "report-docid-deposit-found", reportId, key: job.key, handle, record: found }));
-            } else if (held.publicationId === undefined) {
+            if (held.publicationId === undefined) {
               await note({ docidDepositTried: true });
               const openFile = !record.fileAccess && job.pdf ? await ctx.storage.get(job.pdf.file) : null;
               const poster = job.cover ? await ctx.storage.get(job.cover) : null;
