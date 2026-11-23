@@ -7,7 +7,8 @@
 import { useId } from "react";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, Lock } from "@/components/icons";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { Lock } from "@/components/icons";
 import { ServiceMark } from "@/components/reports/identifier-settings";
 import { SERVICES, SERVICE_IDS, citedOf, pickProblem, withNeeded, type Identifiers, type ServiceId } from "@/lib/reports/identifiers";
 import { useMoney } from "@/lib/hooks/use-money";
@@ -40,6 +41,13 @@ export function IdentifierChoice({ ids, picked, onChange, id: fieldId, invalid =
   const one = ids.choose.max === 1;
   const isLocked = (service: ServiceId) => ids.services[service].mode === "required" || (service === "zenodo" && all.includes("crossref"));
   const firstPick = shown.find((service) => !isLocked(service));
+  // Why a card can't be unticked, said on it when hovered: it looks locked, and this says what locked it.
+  const lockedWhy = (service: ServiceId) =>
+    service === "zenodo" && all.includes("crossref") && ids.services.zenodo.mode !== "required"
+      ? "Every Crossref DOI has to lead to a permanent copy, so Zenodo comes with Crossref."
+      : service === "zenodo" && all.includes("crossref")
+        ? "Every report published here is kept on Zenodo, and every Crossref DOI has to lead to a permanent copy."
+        : `Every report published here gets ${service === "docid" ? "a DOCiD" : service === "crossref" ? "a Crossref DOI" : "a Zenodo copy"}. You can't leave it out.`;
   return (
     <div className="space-y-3">
       <h3 id={label} className="text-sm font-semibold">Identifiers</h3>
@@ -49,12 +57,10 @@ export function IdentifierChoice({ ids, picked, onChange, id: fieldId, invalid =
           const locked = isLocked(service);
           const on = all.includes(service);
           const boxId = service === firstPick ? fieldId : undefined;
-          return (
-            <label key={service} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", locked || disabled ? "cursor-default" : "cursor-pointer", on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && !locked && "hover:border-foreground/25 hover:bg-muted/50"), invalid && !locked && "border-destructive")}>
+          const card = (
+            <label key={service} tabIndex={locked ? 0 : undefined} className={cn("flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-colors", locked ? "cursor-default border-border opacity-50" : disabled ? "cursor-default" : "cursor-pointer", !locked && (on ? "border-primary bg-primary/[0.06]" : cn("border-border", !disabled && "hover:border-foreground/25 hover:bg-muted/50")), invalid && !locked && "border-destructive")}>
               {locked ? (
-                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] bg-primary text-primary-foreground">
-                  <Check className="size-3" />
-                </span>
+                <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               ) : (
                 <Checkbox
                   id={boxId}
@@ -72,12 +78,19 @@ export function IdentifierChoice({ ids, picked, onChange, id: fieldId, invalid =
                 </span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">{service === "zenodo" && !all.includes("crossref") ? "A DOI from Zenodo, and a permanent copy" : GIVES[service]}</span>
                 <span className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {locked ? <Lock className="size-3" /> : null}
-                  {s.price > 0 ? <bdi dir="ltr" className="tabular-nums">+{money(s.price)}</bdi> : <span>{locked ? "Included" : "No extra cost"}</span>}
+                  {locked ? <span>Included</span> : null}
+                  {s.price > 0 ? <bdi dir="ltr" className="tabular-nums">{locked ? money(s.price) : `+${money(s.price)}`}</bdi> : locked ? null : <span>No extra cost</span>}
                 </span>
               </span>
             </label>
-          );
+            );
+            return locked ? (
+              <TooltipHint key={service} label={lockedWhy(service)}>
+                {card}
+              </TooltipHint>
+            ) : (
+              card
+            );
         })}
       </div>
       <AutoHeight className="!mt-0">

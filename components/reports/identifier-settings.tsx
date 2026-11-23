@@ -12,7 +12,8 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { ArrowDown, ArrowUp, FileText, TriangleAlert } from "@/components/icons";
+import { ArrowDown, ArrowUp, FileText, Lock, TriangleAlert } from "@/components/icons";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/ui/opening";
 import { SERVICES, SERVICE_IDS, optionalOf, printable, settingsProblem, type Identifiers, type ServiceId, type ServiceMode } from "@/lib/reports/identifiers";
 import { setMockIdentifiers, useMockIdentifiers } from "@/lib/reports/identifiers-mock-store";
@@ -29,6 +30,18 @@ const PROBLEM: Record<NonNullable<ReturnType<typeof settingsProblem>>, string> =
   rule: "The rule asks for more picks than there are services to pick.",
   nothingPrinted: "Some picks leave the byline nothing to print. Put Crossref first, or mint DOCiDs at signing.",
 };
+
+/** What can't be changed here, drawn as the app draws a locked control: a lock, faded, with why on hover. */
+function Locked({ why, children }: { why: string; children: React.ReactNode }) {
+  return (
+    <TooltipHint label={why}>
+      <span tabIndex={0} className="flex cursor-default items-center gap-2 opacity-50">
+        <Lock className="size-3.5 shrink-0 text-muted-foreground" />
+        <span inert className="flex items-center gap-3">{children}</span>
+      </span>
+    </TooltipHint>
+  );
+}
 
 /** A service's mark, at the height its row's text needs. */
 export function ServiceMark({ id, className }: { id: ServiceId; className?: string }) {
@@ -76,6 +89,9 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
         {SERVICE_IDS.map((id) => {
           const s = ids.services[id];
           const ready = connected[id];
+          // Zenodo keeps the copy every Crossref DOI leads to, so it stays on while Crossref is used.
+          const tied = id === "zenodo" && ready && ids.services.crossref.mode !== "off" && connected.crossref;
+          const why = !ready ? `Turn ${SERVICES[id].name} on above to use it.` : tied ? "Every Crossref DOI has to lead to a permanent copy, so Zenodo is always on while Crossref is used." : null;
           return (
             <li key={id} className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5">
               <span className="flex min-w-0 flex-1 basis-52 items-start gap-3">
@@ -89,10 +105,16 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
                   </span>
                 </span>
               </span>
+              {why ? (
+                <Locked why={why}>
+                  <Segmented label={`${SERVICES[id].name}: when`} value={tied ? "required" : "off"} onChange={() => undefined} options={modesFor(who)} />
+                  {prices && tied ? <span className="text-sm tabular-nums text-muted-foreground">+${s.price}</span> : null}
+                </Locked>
+              ) : (
               <span className="flex shrink-0 items-center gap-3">
-                <Segmented label={`${SERVICES[id].name}: when`} value={ready ? s.mode : "off"} onChange={(mode) => ready && service(id, { mode })} options={modesFor(who)} />
+                <Segmented label={`${SERVICES[id].name}: when`} value={s.mode} onChange={(mode) => service(id, { mode })} options={modesFor(who)} />
                 {prices ? (
-                  <span className={cn("flex items-center gap-1 transition-opacity", (s.mode === "off" || !ready) && "pointer-events-none opacity-40")}>
+                  <span className={cn("flex items-center gap-1 transition-opacity", s.mode === "off" && "pointer-events-none opacity-40")}>
                     <span className="text-sm text-muted-foreground">+$</span>
                     <Input
                       aria-label={`${SERVICES[id].name}: added to the price`}
@@ -107,6 +129,7 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
                   </span>
                 ) : null}
               </span>
+              )}
             </li>
           );
         })}
@@ -141,7 +164,11 @@ export function IdentifierSettings({ community = false, connected }: { /** A com
                     <Switch checked={ids.docidAtSigning} onCheckedChange={(docidAtSigning) => set({ ...ids, docidAtSigning })} aria-label="Mint DOCiDs at signing" />
                   </label>
                 ) : null}
-                {community || printable(ids, id) ? null : <span className="text-xs text-muted-foreground">Not printable</span>}
+                {community || printable(ids, id) ? null : (
+                  <Locked why="A DOCiD only exists once it's minted. Turn on Mint at signing to print it in the byline.">
+                    <span className="text-xs text-muted-foreground">Not printable</span>
+                  </Locked>
+                )}
                 <span className="flex">
                   <Button variant="ghost" size="icon-xs" aria-label={`Move ${SERVICES[id].name} up`} disabled={at === 0} onClick={() => move(id, -1)}>
                     <ArrowUp />
