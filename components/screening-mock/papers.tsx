@@ -10,6 +10,7 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { AnimatedNumber, AnswerMark, Chip, ClippedChip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented, pagerOf } from "@/components/settings/parts";
+import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,8 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
   const [picked, setPicked] = useState<string[]>([]);
   // A paper opens beside the table where there is room for both, and over the page where there isn't.
   const beside = useMediaQuery("(min-width: 1280px)");
+  // The table keeps the room it gave the paper until the paper has finished leaving, so the two never change places.
+  const [made, setMade] = useState(false);
 
   const rows = useMemo(() => {
     const words = query.trim().toLowerCase();
@@ -58,6 +61,8 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
   const pager = pagerOf(rows.length, PAGE, page, setPage);
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   const paper = papers.find((one) => one.id === opened);
+  if (paper && beside && !made) setMade(true);
+  const room = made && beside;
   const chosen = picked.filter((id) => papers.some((one) => one.id === id));
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
 
@@ -126,7 +131,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
               <SelectItem value="newest">Newest first</SelectItem>
             </SelectContent>
           </Select>
-          {query.trim() || from !== "all" ? <span className="text-xs tabular-nums text-muted-foreground">{rows.length.toLocaleString()} of {(filter === "all" ? papers.length : counts[filter]).toLocaleString()}</span> : null}
+          {query.trim() || from !== "all" ? <span className="text-xs tabular-nums text-muted-foreground">{rows.length.toLocaleString("en-GB")} of {(filter === "all" ? papers.length : counts[filter]).toLocaleString("en-GB")}</span> : null}
           <div className="relative w-52 @max-2xl/papers:w-full">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={(event) => { setPage(1); setQuery(event.target.value); }} placeholder="Find a paper" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
@@ -164,7 +169,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
         ) : null}
       </AnimatePresence>
 
-      <div className={cn("grid", paper && beside && "grid-cols-[minmax(0,1fr)_30rem]")}>
+      <div className={cn("grid", room && "grid-cols-[minmax(0,1fr)_30rem]")}>
         <div className="min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. */}
           <div className="overflow-x-auto" style={{ minHeight: pager.pages > 1 ? (PAGE + 1) * ROW : undefined }}>
@@ -187,7 +192,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
                     );
                   })}
                 </ul>
-                <Table className="table-fixed @max-2xl/papers:hidden" style={{ minWidth: columns === "criteria" ? `${(paper ? 26 : 36) + criteria.length * 6}rem` : `${(paper ? 28 : 40) + reviewers.length * 2.75}rem` }}>
+                <Table className="table-fixed @max-2xl/papers:hidden" style={{ minWidth: columns === "criteria" ? `${(room ? 26 : 36) + criteria.length * 6}rem` : `${(room ? 28 : 40) + reviewers.length * 2.75}rem` }}>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="w-10 ps-4 sm:ps-6">
@@ -210,8 +215,8 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
                             </TableHead>
                           ))}
                       {open.stage === "fullText" ? <TableHead className="w-20 px-1 text-center">Full text</TableHead> : null}
-                      <TableHead className={cn("w-52 ps-6", paper || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}>Why</TableHead>
-                      <TableHead className={cn("pe-4 text-end sm:pe-6", paper ? "w-40" : "w-48")}>Result</TableHead>
+                      <TableHead className={cn("w-52 ps-6", room || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}>Why</TableHead>
+                      <TableHead className={cn("pe-4 text-end sm:pe-6", room ? "w-40" : "w-48")}>Result</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -253,7 +258,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
                               {open.hasFullText(one) ? <FileText role="img" aria-label="Full text to hand" className="inline size-4 ink-success" /> : <span className="text-xs text-muted-foreground">{screening.fullTexts[one.id] === "missing" ? "Not got" : "Missing"}</span>}
                             </TableCell>
                           ) : null}
-                          <TableCell className={cn("ps-6", paper || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}><Why paper={one} open={open} visible={visible} /></TableCell>
+                          <TableCell className={cn("ps-6", room || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}><Why paper={one} open={open} visible={visible} /></TableCell>
                           <TableCell className="pe-4 text-end sm:pe-6">
                             <span className="inline-flex items-center gap-1.5">
                               {/* A result a person settled, against the votes, carries their face. */}
@@ -281,7 +286,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
           {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="papers" /> : null}
         </div>
 
-        <AnimatePresence initial={false}>
+        <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
           {paper && beside ? (
             <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
               <PaperPanel key={paper.id} paper={paper} open={open} onClose={() => setOpened(null)} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) setOpened(next.id); }} />
@@ -290,7 +295,7 @@ export function Papers({ open, filter, onFilter }: { open: Open; filter: PapersF
         </AnimatePresence>
       </div>
       <Sheet open={Boolean(paper) && !beside} onOpenChange={(next) => !next && setOpened(null)}>
-        <SheetContent showCloseButton={false} className="w-full gap-0 overflow-y-auto p-0 sm:max-w-lg">
+        <SheetContent showCloseButton={false} className={`w-full gap-0 overflow-y-auto p-0 sm:max-w-lg ${AVATARS_FADE_IN}`}>
           <SheetTitle className="sr-only">{paper?.title ?? "Paper"}</SheetTitle>
           <SheetDescription className="sr-only">Its abstract, its votes and its result</SheetDescription>
           {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={() => setOpened(null)} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) setOpened(next.id); }} /> : null}

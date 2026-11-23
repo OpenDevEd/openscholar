@@ -12,6 +12,7 @@ import { WorkspaceTile } from "@/components/workspaces/parts";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -34,7 +35,7 @@ export function ActivitySheet({ open, onClose, screening }: { open: boolean; onC
   const changes = [...screening.changes].reverse();
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent className="w-full gap-0 p-0 sm:max-w-md">
+      <SheetContent className={`w-full gap-0 p-0 sm:max-w-md ${AVATARS_FADE_IN}`}>
         <SheetHeader className="border-b border-border-subtle p-5">
           <SheetTitle>Activity</SheetTitle>
           <SheetDescription>Every change to this screening, and what it did</SheetDescription>
@@ -80,7 +81,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
   const share = (viewer: Reviewer) => state.update((s) => ({ ...s, viewers: [...(s.viewers ?? []), viewer] }), { what: `Shared it with ${viewer.name}`, effect: "They see every paper and every vote, and aren't dealt papers" });
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent showCloseButton={false} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
+      <DialogContent showCloseButton={false} className={`top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0 ${AVATARS_FADE_IN}`}>
         <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-base">Share this screening</DialogTitle>
@@ -125,7 +126,7 @@ export function MoveDialog({ open, onClose, state }: { open: boolean; onClose: (
   const staying = peopleOf(screening).filter((one) => one.id !== state.me).length;
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) { onClose(); setTo(null); } }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={`max-w-md ${AVATARS_FADE_IN}`}>
         <DialogHeader>
           <DialogTitle>Move this screening</DialogTitle>
           <DialogDescription className="truncate">{screening.name}</DialogDescription>
@@ -258,7 +259,7 @@ export function ExportDialog({ open, onClose, state }: { open: boolean; onClose:
           {last.counts.conflict + last.counts.waiting > 0 && !screening.finishedAt ? (
             <p className="flex items-start gap-2.5 rounded-2xl bg-warning/10 px-3.5 py-2.5 text-sm ink-warning">
               <Info className="mt-0.5 size-4 shrink-0" />
-              <span>This screening isn&apos;t finished: {(last.counts.conflict + last.counts.waiting).toLocaleString()} {last.counts.conflict + last.counts.waiting === 1 ? "paper is" : "papers are"} still waiting for votes or in conflict, so what you export now is part of the result.</span>
+              <span>This screening isn&apos;t finished: {(last.counts.conflict + last.counts.waiting).toLocaleString("en-GB")} {last.counts.conflict + last.counts.waiting === 1 ? "paper is" : "papers are"} still waiting for votes or in conflict, so what you export now is part of the result.</span>
             </p>
           ) : null}
           {tab === "papers" ? (
@@ -295,11 +296,11 @@ export function ExportDialog({ open, onClose, state }: { open: boolean; onClose:
                 <li key={box.title} className="grid gap-x-6 gap-y-2 rounded-2xl border border-border-subtle p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
                   <div>
                     <p className="text-sm font-medium">{box.title}</p>
-                    <p className="text-2xl font-semibold tabular-nums tracking-tight">{box.n.toLocaleString()}</p>
+                    <p className="text-2xl font-semibold tabular-nums tracking-tight">{box.n.toLocaleString("en-GB")}</p>
                   </div>
                   <ul className="space-y-1 self-center">
                     {(box.side ?? []).map((one) => (
-                      <li key={one.label} className="flex items-baseline justify-between gap-3 text-xs"><span className="truncate text-muted-foreground">{one.label}</span><span className="shrink-0 font-medium tabular-nums">{one.n.toLocaleString()}</span></li>
+                      <li key={one.label} className="flex items-baseline justify-between gap-3 text-xs"><span className="truncate text-muted-foreground">{one.label}</span><span className="shrink-0 font-medium tabular-nums">{one.n.toLocaleString("en-GB")}</span></li>
                     ))}
                   </ul>
                 </li>
@@ -311,7 +312,7 @@ export function ExportDialog({ open, onClose, state }: { open: boolean; onClose:
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle p-4">
           <p className="text-xs text-muted-foreground">
-            {tab === "papers" ? `${included.length.toLocaleString()} ${included.length === 1 ? "paper" : "papers"} included at ${screening.fullText ? "full text" : "title and abstract"}, for a reference manager` : tab === "votes" ? `${rows.length.toLocaleString()} votes by ${reviewers.length} reviewers, one row each` : tab === "flow" ? "The counts a PRISMA 2020 flow diagram is drawn from" : "Written from this screening's own record"}
+            {tab === "papers" ? `${included.length.toLocaleString("en-GB")} ${included.length === 1 ? "paper" : "papers"} included at ${screening.fullText ? "full text" : "title and abstract"}, for a reference manager` : tab === "votes" ? `${rows.length.toLocaleString("en-GB")} votes by ${reviewers.length} reviewers, one row each` : tab === "flow" ? "The counts a PRISMA 2020 flow diagram is drawn from" : "Written from this screening's own record"}
           </p>
           <div className="flex gap-2">
             {tab === "papers" ? (

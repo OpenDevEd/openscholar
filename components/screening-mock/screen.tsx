@@ -31,7 +31,7 @@ const SHORTCUTS: Array<[string, string]> = [["I", "Include"], ["M", "Maybe"], ["
 const HELP: Array<[string, string]> = [["Asterisk", "A must-have criterion: a paper that fails it is excluded"], ["Marked words", "Words from your criteria, found in the text"], ["Faces and model marks", "The reviewers of this paper, each with their answer"], ["Your answers", "Optional. One decision is enough, and Exclude asks for the reason"]];
 const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
 
-export function Screen({ open, queue, onQueue, onView }: { open: Open; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void }) {
+export function Screen({ open, banner, queue, onQueue, onView }: { open: Open; /** Whether a row sits under the stage switch, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void }) {
   const { screening, stage, papers, votes, settled, yours, toDo, conflicts } = open;
   const criteria = screening.criteria;
   const [order, setOrder] = useState<"dealt" | "lean">("dealt");
@@ -156,7 +156,7 @@ export function Screen({ open, queue, onQueue, onView }: { open: Open; queue: Qu
   const waitsOn = paper && state?.result === "waiting" ? cast.filter((one) => !one.vote).map((one) => one.reviewer.name) : [];
 
   return (
-    <div className="grid min-h-[34rem] grid-cols-1 max-lg:pb-40 lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-7.25rem)] lg:grid-cols-[19rem_minmax(0,1fr)_25rem] lg:divide-x lg:divide-border-subtle">
+    <div className={cn("grid min-h-[34rem] grid-cols-1 max-lg:pb-40 lg:grid-cols-[19rem_minmax(0,1fr)_25rem] lg:divide-x lg:divide-border-subtle", banner ? "lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-9.9375rem)]" : "lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-7.125rem)]")}>
       {/* The queue */}
       <div className="flex min-h-0 flex-col border-b border-border-subtle lg:border-b-0">
         <div className="space-y-2 p-3">

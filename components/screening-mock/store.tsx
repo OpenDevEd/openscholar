@@ -74,6 +74,8 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
     const named = (name: string) => catalog.find((row) => stripProviderPrefix(row.name) === name);
     const cheapest = (vendor: string) => catalog.filter((row) => row.modelId.startsWith(vendor) && !/free/i.test(row.name) && row.inputPricePerMillion > 0).sort((a, b) => a.inputPricePerMillion - b.inputPricePerMillion)[0];
     const real = [named(SEED_MODELS[0]!.name), named(SEED_MODELS[1]!.name) ?? cheapest("anthropic/"), named(SEED_MODELS[2]!.name) ?? cheapest("google/")];
+    // Nothing to put in place while the catalogue still has them as they were written down.
+    if (real.every((row, i) => row?.modelId === SEED_MODELS[i]!.id && row.inputPricePerMillion === SEED_MODELS[i]!.inputPricePerMillion && row.outputPricePerMillion === SEED_MODELS[i]!.outputPricePerMillion)) return state.screenings;
     const swap = (reviewer: Reviewer): Reviewer => {
       const row = real[SEED_MODELS.findIndex((seed) => seed.id === reviewer.model?.id)];
       return row ? { ...reviewer, name: stripProviderPrefix(row.name), model: { ...toMapModel(row), name: stripProviderPrefix(row.name) } } : reviewer;

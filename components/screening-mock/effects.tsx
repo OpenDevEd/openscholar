@@ -15,11 +15,11 @@ export function effectLines(before: Screening, after: Screening): string[] {
   const is = new Set(activeReviewers(after).map((reviewer) => reviewer.id));
   for (const reviewer of activeReviewers(after)) {
     if (was.has(reviewer.id)) continue;
-    if (reviewer.kind === "model") lines.push(`${reviewer.name} reads all ${total.toLocaleString()} papers, for up to ${credits(total * paperCredits(reviewer.model!, "abstract"))} credits`);
+    if (reviewer.kind === "model") lines.push(`${reviewer.name} reads all ${total.toLocaleString("en-GB")} papers, for up to ${credits(total * paperCredits(reviewer.model!, "abstract"))} credits`);
     else if (reviewer.email) lines.push(`${reviewer.name} gets an invitation, and papers once they join`);
     else {
       const dealt = now.papers.filter((paper, index) => dealtTo(after, "abstract", paper, index).some((one) => one.id === reviewer.id)).length;
-      lines.push(dealt ? `${reviewer.name} is dealt ${dealt.toLocaleString()} papers nobody has voted on yet` : `${reviewer.name} joins, with no paper left to deal`);
+      lines.push(dealt ? `${reviewer.name} is dealt ${dealt.toLocaleString("en-GB")} papers nobody has voted on yet` : `${reviewer.name} joins, with no paper left to deal`);
     }
   }
   for (const reviewer of activeReviewers(before)) if (!is.has(reviewer.id)) lines.push(`${reviewer.name}'s votes stay on record and stop counting`);
@@ -33,11 +33,11 @@ export function effectLines(before: Screening, after: Screening): string[] {
   }
 
   const effect = effectOf(before, after);
-  if (effect.added) lines.push(`${effect.added.toLocaleString()} ${effect.added === 1 ? "paper joins" : "papers join"} the queue`);
-  if (effect.removed) lines.push(`${effect.removed.toLocaleString()} ${effect.removed === 1 ? "paper leaves" : "papers leave"}, with ${effect.removed === 1 ? "its" : "their"} votes kept on record`);
-  if (effect.reopened) lines.push(`${effect.reopened.toLocaleString()} settled ${effect.reopened === 1 ? "paper opens" : "papers open"} again`);
-  if (effect.moved) lines.push(`${effect.moved.toLocaleString()} settled ${effect.moved === 1 ? "paper changes" : "papers change"} result`);
-  if (effect.settled) lines.push(`${effect.settled.toLocaleString()} ${effect.settled === 1 ? "paper becomes" : "papers become"} settled`);
+  if (effect.added) lines.push(`${effect.added.toLocaleString("en-GB")} ${effect.added === 1 ? "paper joins" : "papers join"} the queue`);
+  if (effect.removed) lines.push(`${effect.removed.toLocaleString("en-GB")} ${effect.removed === 1 ? "paper leaves" : "papers leave"}, with ${effect.removed === 1 ? "its" : "their"} votes kept on record`);
+  if (effect.reopened) lines.push(`${effect.reopened.toLocaleString("en-GB")} settled ${effect.reopened === 1 ? "paper opens" : "papers open"} again`);
+  if (effect.moved) lines.push(`${effect.moved.toLocaleString("en-GB")} settled ${effect.moved === 1 ? "paper changes" : "papers change"} result`);
+  if (effect.settled) lines.push(`${effect.settled.toLocaleString("en-GB")} ${effect.settled === 1 ? "paper becomes" : "papers become"} settled`);
   return lines;
 }
 

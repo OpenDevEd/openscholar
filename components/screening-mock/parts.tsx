@@ -97,7 +97,7 @@ export function ResultChip({ result, className }: { result: Result; className?: 
 /** A screening's papers as one bar, split by where they stand. */
 export function ResultBar({ counts, className }: { counts: Record<Result, number>; className?: string }) {
   const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
-  const label = RESULTS.filter((result) => counts[result]).map((result) => `${counts[result].toLocaleString()} ${RESULT_LABEL[result].toLowerCase()}`).join(", ") || "No papers yet";
+  const label = RESULTS.filter((result) => counts[result]).map((result) => `${counts[result].toLocaleString("en-GB")} ${RESULT_LABEL[result].toLowerCase()}`).join(", ") || "No papers yet";
   return (
     <TooltipHint label={label}>
       <div role="img" aria-label={label} tabIndex={0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>

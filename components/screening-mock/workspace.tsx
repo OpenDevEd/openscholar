@@ -16,6 +16,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
 import { EASE, NodeCard } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -89,6 +90,7 @@ export function ScreeningWorkspace() {
   const total = open.papers.length;
   const unsettled = open.counts.conflict + open.counts.waiting;
   const workspace = workspaceOf(screening);
+  const banner = bannerKind(open, view === "screen");
   const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).filter((one) => one.email || one.id !== screening.createdBy).length;
   const withAdded = (reviewer: Reviewer): Screening => ({
     ...screening,
@@ -230,7 +232,10 @@ export function ScreeningWorkspace() {
                     ) : null}
                   </div>
                 </div>
-                <Banner open={open} workspace={workspace.name} quiet={view === "screen"} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
+                <AutoHeight>
+                  <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                </AutoHeight>
               </>
             }
           >
@@ -247,7 +252,7 @@ export function ScreeningWorkspace() {
                     onStage={(next) => void setStage(next === "abstract" ? null : next)}
                   />
                 ) : view === "screen" ? (
-                  <Screen open={open} queue={queue} onQueue={setQueue} onView={(next) => void setView(next === "overview" ? null : next)} />
+                  <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} onView={(next) => void setView(next === "overview" ? null : next)} />
                 ) : (
                   <Papers open={open} filter={filter} onFilter={setFilter} />
                 )}
@@ -320,22 +325,33 @@ export function ScreeningWorkspace() {
 }
 
 /** What a person needs to know before anything else: the models are out of credits, still reading, or the screening is finished, or it isn't theirs to vote on. */
-function Banner({ open, workspace, quiet, onAddCredits, onReopen, onResume }: { open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; /** A phone's Screen view leaves the models' progress to the Overview, so the paper has the room. */ quiet: boolean; onAddCredits: () => void; onReopen: () => void; onResume: () => void }) {
+type BannerKind = "gathering" | "credits" | "finished" | "paused" | "waiting" | "reading" | "viewer" | "guest";
+/** Which one thing the row under the stage says. `quiet` leaves the models' progress out: screening paper after paper, that is the Overview's to show, and a row that came and went would move the paper being read. */
+function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quiet: boolean): BannerKind | null {
+  const { screening, reading, stage } = open;
+  if (open.gathering) return "gathering";
+  if (open.outOfCredits) return "credits";
+  if (screening.finishedAt) return "finished";
+  if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor && stage === "abstract" ? "waiting" : "reading";
+  if (!open.isReviewer) return "viewer";
+  return open.canChange ? null : "guest";
+}
+
+function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { kind: BannerKind | null; open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void }) {
   const { screening, reading, papers, stage } = open;
-  const base = "flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6";
-  const row = quiet && !open.outOfCredits && open.isReviewer ? `${base} max-lg:hidden` : base;
-  if (open.gathering) {
+  const row = "flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6";
+  if (kind === "gathering" && open.gathering) {
     return (
       <div className={row}>
         <Search className="size-4 shrink-0 text-muted-foreground" />
         <span className="font-medium">Getting its papers</span>
         <Meter value={open.gathering.done} max={open.gathering.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {open.gathering.of.toLocaleString()}</span>
+        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {open.gathering.of.toLocaleString("en-GB")}</span>
         <span className="min-w-0 flex-1 text-muted-foreground">You can start screening the ones that are in.</span>
       </div>
     );
   }
-  if (open.outOfCredits) {
+  if (kind === "credits") {
     return (
       <div className={`${row} bg-warning/10`}>
         <Coins className="size-4 shrink-0 ink-warning" />
@@ -345,7 +361,7 @@ function Banner({ open, workspace, quiet, onAddCredits, onReopen, onResume }: { 
       </div>
     );
   }
-  if (screening.finishedAt) {
+  if (kind === "finished") {
     return (
       <div className={row}>
         <CircleCheck className="size-4 shrink-0 ink-success" />
@@ -354,7 +370,7 @@ function Banner({ open, workspace, quiet, onAddCredits, onReopen, onResume }: { 
       </div>
     );
   }
-  if (reading.length && screening.paused) {
+  if (kind === "paused") {
     return (
       <div className={row}>
         <CirclePause className="size-4 shrink-0 text-muted-foreground" />
@@ -363,20 +379,20 @@ function Banner({ open, workspace, quiet, onAddCredits, onReopen, onResume }: { 
       </div>
     );
   }
-  if (reading.length && open.waitingFor && stage === "abstract") {
+  if (kind === "waiting" && open.waitingFor) {
     return (
       <div className={row}>
         <Clock className="size-4 shrink-0 text-muted-foreground" />
         <span className="font-medium">{reading.length === 1 ? "Its model starts" : "Its models start"} after {open.waitingFor.screening.name}</span>
         <Meter value={open.waitingFor.done} max={open.waitingFor.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.waitingFor.done} /> of {open.waitingFor.of.toLocaleString()}</span>
+        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.waitingFor.done} /> of {open.waitingFor.of.toLocaleString("en-GB")}</span>
         <TooltipHint label={`${workspace}'s models read 40 papers at once, so a screening started behind another waits its turn. People can vote in the meantime.`}>
           <span tabIndex={0} className="flex rounded-md"><Chip>40 papers at once</Chip></span>
         </TooltipHint>
       </div>
     );
   }
-  if (reading.length) {
+  if (kind === "reading") {
     const done = Math.min(...reading.map((model) => screening.reached[stage][model.id] ?? 0));
     return (
       <div className={row}>
@@ -387,7 +403,7 @@ function Banner({ open, workspace, quiet, onAddCredits, onReopen, onResume }: { 
       </div>
     );
   }
-  if (!open.isReviewer) {
+  if (kind === "viewer") {
     return (
       <div className={row}>
         <Eye className="size-4 shrink-0 text-muted-foreground" />
@@ -396,7 +412,7 @@ function Banner({ open, workspace, quiet, onAddCredits, onReopen, onResume }: { 
       </div>
     );
   }
-  if (!open.canChange) {
+  if (kind === "guest") {
     return (
       <div className={row}>
         <Users className="size-4 shrink-0 text-muted-foreground" />

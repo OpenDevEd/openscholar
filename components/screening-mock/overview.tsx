@@ -85,7 +85,7 @@ export function Overview({ open, onOpen, onStage }: { open: Open; onOpen: (view:
       >
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
-          <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString()} papers settled</span>
+          <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
           {stage === "fullText" ? <span className="text-sm text-muted-foreground">Papers arrive here one by one, as they are included or left as maybe on their abstract.</span> : null}
         </p>
         <ResultBar counts={counts} className="h-3" />
@@ -134,10 +134,11 @@ export function Overview({ open, onOpen, onStage }: { open: Open; onOpen: (view:
                       <div className="min-w-0">
                         <p className="flex items-center gap-1.5 text-sm font-medium"><span className="truncate">{reviewer.name}</span>{reviewer.id === open.me ? <YouTag /> : null}</p>
                         {reviewer.kind === "model" ? (
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <p className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                              {reading ? (held ? <held.icon className="size-3.5" /> : <AiIcon working className="size-3.5" />) : <Coins className="size-3.5" />}
-                              {reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits`}
+                          // One line whatever it holds, so a paper that fails while it reads doesn't make the row taller.
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="flex min-w-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
+                              {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
+                              <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits`}</span>
                             </p>
                             {unread ? (
                               <TooltipHint label="Its provider gave an error on these papers, so it has no say in them and their other reviewers settle them. Send it back to them from the menu at the end of this row.">

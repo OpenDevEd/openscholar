@@ -235,7 +235,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       ...(draft.sources.some((source) => ["search", "evidenceLibrary", "zotero", "dois"].includes(source.kind)) ? { gathered: 0 } : {}),
       ...(busy && models.length ? { after: busy.id } : {}),
       destination: { ...draft.destination, name: draft.destination.name || `Included in ${name}` },
-      changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${papers.toLocaleString()} papers from ${draft.sources.length} ${draft.sources.length === 1 ? "source" : "sources"}, ${people.length} ${people.length === 1 ? "person" : "people"} and ${models.length} ${models.length === 1 ? "model" : "models"}` }],
+      changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${papers.toLocaleString("en-GB")} papers from ${draft.sources.length} ${draft.sources.length === 1 ? "source" : "sources"}, ${people.length} ${people.length === 1 ? "person" : "people"} and ${models.length} ${models.length === 1 ? "model" : "models"}` }],
     });
     router.push(`/screening/mock/${newId}`);
   };
@@ -303,7 +303,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-1.75rem)]">
                                   <p className="truncate text-sm font-medium max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
                                   <div className="flex flex-wrap gap-1.5">
-                                    <Chip>{source.scope === "all" ? `All ${source.total.toLocaleString()}` : `Papers ${source.range[0].toLocaleString()} to ${source.range[1].toLocaleString()} of ${source.total.toLocaleString()}`}</Chip>
+                                    <Chip>{source.scope === "all" ? `All ${source.total.toLocaleString("en-GB")}` : `Papers ${source.range[0].toLocaleString("en-GB")} to ${source.range[1].toLocaleString("en-GB")} of ${source.total.toLocaleString("en-GB")}`}</Chip>
                                     {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
                                     {source.duplicates && taken(source) ? <Chip>{Math.min(source.duplicates, taken(source))} already in another source</Chip> : null}
                                     {source.facts?.map((fact) => (/without/.test(fact) ? <Chip key={fact} className="bg-warning/12 ink-warning">{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
@@ -331,11 +331,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                                         onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
                                         total={source.total}
                                         label={`Papers of ${source.name}`}
-                                        summary={<p className="text-xs text-muted-foreground">Every one of its {source.total.toLocaleString()} papers.</p>}
+                                        summary={<p className="text-xs text-muted-foreground">Every one of its {source.total.toLocaleString("en-GB")} papers.</p>}
                                       />
                                       <ul className="space-y-1 border-t border-border-subtle pt-3">
                                         {papersOf({ seed: draft.seed, sources: [{ ...source, duplicates: 0 }] }).slice(0, 3).map((paper) => <li key={paper.id} className="truncate text-xs text-muted-foreground">{paper.title} ({paper.year})</li>)}
-                                        {taken(source) > 3 ? <li className="text-xs text-muted-foreground">and {(taken(source) - 3).toLocaleString()} more</li> : null}
+                                        {taken(source) > 3 ? <li className="text-xs text-muted-foreground">and {(taken(source) - 3).toLocaleString("en-GB")} more</li> : null}
                                       </ul>
                                     </div>
                                   </motion.div>
@@ -557,7 +557,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <RuleRow name="Models" detail="Every model reads every paper">
                       {models.length ? <ReviewerStack reviewers={models} max={8} /> : <span className="text-sm text-muted-foreground">None</span>}
                     </RuleRow>
-                    <RuleRow name="People on each paper" detail={joined.length ? `About ${Math.ceil((papers * each) / joined.length).toLocaleString()} papers for each person` : "Add a person to choose"}>
+                    <RuleRow name="People on each paper" detail={joined.length ? `About ${Math.ceil((papers * each) / joined.length).toLocaleString("en-GB")} papers for each person` : "Add a person to choose"}>
                       {joined.length === 1 ? (
                         <Chip>{joined[0]!.id === store.viewer ? "You read" : `${joined[0]!.name.split(" ")[0]} reads`} every paper</Chip>
                       ) : joined.length ? (
@@ -713,7 +713,7 @@ function OfferRow({ offer, icon: Icon, added, onAdd }: { offer: Offer; icon: App
         <p className="truncate text-sm font-medium">{offer.name}</p>
         <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{offer.detail}</span>{offer.filters?.map((filter) => <Chip key={filter} className="h-5 px-1.5 @max-2xl:hidden">{filter}</Chip>)}</p>
       </div>
-      <Chip>{offer.total.toLocaleString()} {offer.total === 1 ? "paper" : "papers"}</Chip>
+      <Chip>{offer.total.toLocaleString("en-GB")} {offer.total === 1 ? "paper" : "papers"}</Chip>
       <Button variant="outline" size="sm" className="w-24" disabled={added || !offer.total} onClick={onAdd}>{added ? <><Check />Added</> : !offer.total ? "Empty" : <><Plus />Add</>}</Button>
     </div>
   );

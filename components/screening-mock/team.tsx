@@ -10,6 +10,7 @@ import { usePresetModels, type MapModel } from "@/components/settings/model-map"
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
@@ -44,7 +45,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children ?? <Button variant="outline" size="sm"><UserPlus />Add a person</Button>}</PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-0">
+      <PopoverContent align="start" className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
         <Command>
           <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
           <CommandList className="max-h-72">
@@ -87,7 +88,7 @@ export function AddModel({ exclude, onPick, children }: { exclude: string[]; onP
 export function ConfirmChange({ open, title, confirm, onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={`max-w-md ${AVATARS_FADE_IN}`}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="sr-only">What this change does to the screening</DialogDescription>

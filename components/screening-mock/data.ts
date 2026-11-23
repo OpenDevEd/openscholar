@@ -69,11 +69,15 @@ export const personReviewer = (person: Person, addedAt: number): Reviewer => ({ 
 export const invitedReviewer = (email: string, addedAt: number): Reviewer => ({ id: `invite:${email}`, kind: "person", name: email, email, addedAt });
 export const modelReviewer = (model: MapModel, addedAt: number): Reviewer => ({ id: `model:${model.id}:${model.effort ?? ""}`, kind: "model", name: model.name, model, addedAt });
 
-/** Stand-ins for the models a made-up screening runs, until the catalogue's own rows take their place (./store.tsx). */
+/**
+ * The models a made-up screening runs, as the catalogue has them on 23 November 2026, so the page is
+ * drawn with their names, marks and prices from its first frame. The catalogue's own rows take their
+ * place once it is read (./store.tsx), which changes nothing on screen while these still match.
+ */
 export const SEED_MODELS: MapModel[] = [
-  { id: "openscholar/jev-1.13", name: "Jev 1.13", inputPricePerMillion: 0.04, outputPricePerMillion: 0 },
-  { id: "anthropic/claude-haiku-5.5", name: "Claude Haiku 5.5", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5 },
-  { id: "google/gemini-3-flash", name: "Gemini 3 Flash", inputPricePerMillion: 0.15, outputPricePerMillion: 0.6 },
+  { id: "typesafe/jev-1.13", name: "Jev 1.13", inputPricePerMillion: 0.041999999999999996, outputPricePerMillion: 0 },
+  { id: "anthropic/claude-haiku-5.5", name: "Claude Haiku 5.5", inputPricePerMillion: 0.09999999999999999, outputPricePerMillion: 0.5 },
+  { id: "google/gemma-3-4b-it", name: "Gemma 3 4B", inputPricePerMillion: 0.04, outputPricePerMillion: 0.049999999999999996 },
 ];
 
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
