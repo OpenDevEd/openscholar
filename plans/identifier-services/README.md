@@ -21,6 +21,12 @@ DOI, or let authors choose. Adding DOCiD as a third hard-wired name would repeat
    a setting too. A DOCiD printed in the byline must exist at signing, so that setting mints it then.
 4. Price is the licence price plus the add-on of each service chosen. No bundle discounts.
 5. Communities get this in the same build as Reports.
+6. 2026-11-23, later the same day (Mohammed): communities don't register DOCiDs for now. They show the DOCiD a
+   record comes with (an Openscholar report added to the community, or a source record that has one) and handle it
+   properly: record page, record editor, search. Communities get no DOCiD account. Replaces the community part of 5.
+   Proof: evidence-community #934 rewritten, #935.
+7. 2026-11-23 (Mohammed): nothing mints a real DOCiD until a deposit and a retirement can follow it, so the first
+   real mint waits for TCC to allow our account a resource type.
 
 ## Settings shape
 
@@ -85,23 +91,23 @@ Sample deposits: `~/Documents/docid-samples/*.docid-deposit.json`.
 - Admin > Publications: the services table (mode, price), the choose rule, `citeFirst` and the DOCiD account.
 - The report page and its metadata list every identifier it has.
 
-## Communities (openscholar and evidence-community)
+## Communities (evidence-community)
 
-- Openscholar's community configuration Publication section gets the same services table and DOCiD account, and
-  assembly writes `services.publication.docid` and `services.publication.identifiers`.
-- new-el's config schema (`src/config/library-config/schema.ts`) accepts them; the publication worker plans DOCiD
-  through doi-sync-core; the record editor's Identifiers card offers optional services under the choose rule and
-  shows the DOCiD. Communities don't charge per record, so their price fields stay hidden.
-- Openscholar re-pins the configuration contract to the new-el commit.
+Display only (decision 6). A record keeps its DOCiD as an Extra line `DOCiD: 20.500.14351/…`, as Zotero keeps
+identifiers it has no field for, or as its hdl.handle.net address (`src/lib/docid.ts`). Openscholar sends a report's
+`docid` with the reports a community adds by DOI; new-el's schema takes it as optional, so either side can ship first.
+The record page's Identifiers list it, the record editor shows it read-only, and search finds it through Extra.
 
 ## Data migration
 
-- Reports: widen (add `registrations` and `chosen` beside the old fields, all new writes fill both), migrate existing
-  rows with `@convex-dev/migrations` on shared dev, then prod, verifying each batch, then narrow (remove the old fields
-  and their reads). Saved report settings get `identifiers` from their current Crossref and Zenodo modes on the same
-  path.
-- Communities: the config section is new; assembly writes defaults (DOCiD off, current Crossref and Zenodo modes as
-  services) so saved configurations validate without hand edits.
+None needed for this build. Every new field is optional with a default read in code: `reportSettings.identifiers`
+(DEFAULT_IDENTIFIERS), `publication.docid` (absent is off, and communities never set it), `registration.docid` and
+`registration.cited` (absent is no DOCiD and a cited Crossref DOI), and `reports.registrations.docid`. A report with
+only a DOCiD has an empty `doi`; lookups by DOI skip empty ones.
+
+Crossref and Zenodo still keep their own report fields (`deposit`, `archive`, `zenodo*`) beside the `registrations`
+map that DOCiD uses. Moving them into the map is a separate widen, migrate and narrow, with `@convex-dev/migrations`
+on shared dev and then prod, after this build is live.
 
 ## Order
 
