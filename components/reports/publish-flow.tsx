@@ -61,7 +61,7 @@ import { choosesLicence, fillAgreement } from "@/lib/reports/agreement";
 import { ANOTHER, LicenceChoice, licenceFields, type LicencePick } from "@/components/reports/licence-choice";
 import { ArchiveChoice, OwnArchiveRefused } from "@/components/reports/archive-choice";
 import { IdentifierChoice, addOnLines, firstPick, showsIdentifiers } from "@/components/reports/identifier-choice";
-import { SERVICES, SERVICE_IDS, pickProblem } from "@/lib/reports/identifiers";
+import { SERVICES, SERVICE_IDS, pickProblem, routeOf } from "@/lib/reports/identifiers";
 import { useConnectZenodo, useZenodoAccount } from "@/lib/zenodo/account";
 import { preloadZenodoMark } from "@/components/icons/zenodo-mark";
 import { FileAccessChange, FileAccessChoice, embargoProblem } from "@/components/reports/file-access-choice";
@@ -1135,7 +1135,15 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   const payWith: PayWith = starts?.balance === 0 ? "card" : (picked ?? "balance");
   // Where the report's permanent copy is kept (#1237): Openscholar's Zenodo account, or the author's own. Kept in
   // the address, so it is still picked after connecting Zenodo in the page itself.
-  const [archive, setArchive] = useQueryState("archive", parseAsStringLiteral(["openscholar", "own"] as const).withDefault("openscholar"));
+  const [archivePicked, setArchive] = useQueryState("archive", parseAsStringLiteral(["openscholar", "own"] as const).withDefault("openscholar"));
+  // The identifiers it gets (plans/identifier-services): the series' own and those picked here, kept in the address
+  // with the archive. Each that costs more is a line of the bill.
+  const ids = basics.identifiers;
+  const [pickedIds, setPickedIds] = useQueryState("ids", parseAsArrayOf(parseAsStringLiteral(SERVICE_IDS)));
+  const picks = pickedIds ?? firstPick(ids);
+  // An own Zenodo account keeps a copy under the report's Crossref DOI (#1237): offered only while it gets one.
+  const crossrefChosen = routeOf(ids, picks, false).crossref;
+  const archive = crossrefChosen ? archivePicked : "openscholar";
   const zenodo = useZenodoAccount();
   const connectZenodo = useConnectZenodo();
   const [connecting, setConnecting] = useState(false);
@@ -1152,12 +1160,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
   // The bill names an own licence not yet named as such, never "…".
   const billed = pick === ANOTHER && choosing ? t("licence.other") : typeof pick !== "string" && choosing && !pick.name.trim() ? t("licence.own") : licenceName(named);
   // What the licence picked costs, in dollars, and how many of them a card would buy, before any code.
-  // The identifiers it gets (plans/identifier-services): the series' own and those picked here, kept in the address
-  // with the archive. Each that costs more is a line of the bill.
-  const ids = basics.identifiers;
-  const [pickedIds, setPickedIds] = useQueryState("ids", parseAsArrayOf(parseAsStringLiteral(SERVICE_IDS)));
-  const picks = pickedIds ?? firstPick(ids);
-  const addOns = addOnLines(ids, picks);
+  const addOns = addOnLines(ids, picks, archive === "own");
   const licencePrice = priceOf(named, basics.prices);
   const priceNow = licencePrice + addOns.reduce((sum, line) => sum + line.price, 0);
   const extras = addOns.map((line) => ({ label: SERVICES[line.id].name, price: line.price }));
@@ -1232,7 +1235,9 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
       <section className="mb-7">
         <FileAccessChoice licence={named} value={access} onChange={setAccess} disabled={busy || !!signed} dateId={fields.until} />
       </section>
-      {/* Where the permanent copy goes, said before the agreement that promises one. */}
+      {/* Where the permanent copy goes, said before the agreement that promises one: a copy kept under its Crossref DOI,
+          so only while it gets one. */}
+      {crossrefChosen ? (
       <section className="mb-7" inert={busy || !!signed || leaving || undefined}>
         <ArchiveChoice
           value={archive}
@@ -1252,6 +1257,7 @@ function AgreementStep({ basics, starts: here, workspaceId: pageWorkspace, signe
           }}
         />
       </section>
+      ) : null}
       {/* Which identifiers it gets, where the series offers a choice, charges for one, or registers a DOCiD. */}
       {showsIdentifiers(ids) ? (
         <section className="mb-7" inert={busy || !!signed || leaving || undefined}>

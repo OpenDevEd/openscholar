@@ -447,6 +447,8 @@ export type Registrations = { docid?: { state: DocidState; handle?: string | und
 export type RegistrationStep = { provider: Provider; state: "waiting" | "working" | "done" | "failed" };
 /** The identifier a report prints in its byline and shows as its own: its DOCiD where that is the one it cites, else its DOI. Null while a DOCiD it cites isn't minted yet. */
 export type Printed = { kind: "DOI" | "DOCiD"; value: string; url: string; short: string };
+/** A DOCiD's address: a Handle, opened on hdl.handle.net. */
+export const handleUrl = (handle: string) => `https://hdl.handle.net/${handle}`;
 export function printedOf(r: { doi: string; registration: Registration; registrations?: Registrations | undefined }): Printed | null {
   const handle = r.registrations?.docid?.handle;
   if (r.registration.cited === "docid" || !r.doi) return handle ? { kind: "DOCiD", value: handle, url: `https://hdl.handle.net/${handle}`, short: `hdl.handle.net/${handle}` } : null;

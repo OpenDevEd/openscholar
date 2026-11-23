@@ -48,6 +48,26 @@ export const chosenOf = (r: { crossref: boolean; zenodo: boolean; docid?: boolea
 /** What a report's services add to its price, in dollars, as the settings price them now. */
 export const routeAddOns = (ids: Identifiers, r: { crossref: boolean; zenodo: boolean; docid?: boolean | undefined }) => chosenOf(r).reduce((sum, id) => sum + ids.services[id].price, 0);
 
+/**
+ * A report's route as signing fixes it, and as its price is reckoned before and after: the series' services and the
+ * author's picks, Zenodo with any Crossref DOI, and Zenodo too when the author archives in their own account.
+ */
+export function routeOf(ids: Identifiers, picked: ServiceId[], ownArchive: boolean) {
+  const gets = withNeeded(ids, picked);
+  return { crossref: gets.includes("crossref"), zenodo: ownArchive || gets.includes("zenodo"), docid: gets.includes("docid") };
+}
+
+/**
+ * The pick rule kept possible as services move between modes: never more picks than there are optional services, and
+ * "any of them" (a maximum of all of them) staying all of them.
+ */
+export function clampChoose(next: Identifiers, before: Identifiers): Identifiers {
+  const now = optionalOf(next).length;
+  const all = (ids: Identifiers) => optionalOf(ids).length;
+  const max = before.choose.max >= all(before) ? now : Math.min(before.choose.max, now);
+  return { ...next, choose: { min: Math.min(next.choose.min, max), max } };
+}
+
 /** What the services chosen add to a report's price, in dollars. */
 export const addOnsOf = (ids: Identifiers, chosen: ServiceId[]) => withNeeded(ids, chosen).reduce((sum, id) => sum + ids.services[id].price, 0);
 
@@ -72,15 +92,25 @@ export function pickProblem(ids: Identifiers, picked: ServiceId[]): "tooFew" | "
 export function settingsProblem(ids: Identifiers): "noService" | "rule" | "nothingPrinted" | null {
   const optional = optionalOf(ids);
   if (!requiredOf(ids).length && !optional.length) return "noService";
-  if (ids.choose.min > ids.choose.max || ids.choose.min > optional.length) return "rule";
-  // The weakest pick: the required services alone, or with the fewest optional ones the rule allows.
-  const picks = subsets(optional).filter((pick) => pick.length >= ids.choose.min && pick.length <= ids.choose.max);
+  const { min, max } = ids.choose;
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || min > max || min > optional.length) return "rule";
+  // Every pick the rule allows has to leave the byline something to print, and the rule has to allow one.
+  const picks = subsets(optional).filter((pick) => pick.length >= min && pick.length <= max);
+  if (!picks.length) return "rule";
   return picks.every((pick) => citedOf(ids, pick)) ? null : "nothingPrinted";
 }
 
+type Accounts = { crossref: { mode: string }; zenodo: { mode: string }; docid?: { mode: string; resourceTypeId?: number | undefined; publicationTypeId?: number | undefined; funderTypeId?: number | undefined } | undefined };
+
+/** Whether DOCiD can take a deposit: its account set, with the resource, file and funder types every deposit may need. */
+export const docidReady = (publication: Accounts) => publication.docid?.mode === "custom" && publication.docid.resourceTypeId !== undefined && publication.docid.publicationTypeId !== undefined && publication.docid.funderTypeId !== undefined;
+
+/** Which services' accounts are set under Registration, ready to register a report. */
+export const connectedOf = (publication: Accounts): Record<ServiceId, boolean> => ({ crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: docidReady(publication) });
+
 /** The settings with every service whose account is off under Registration switched off too. */
-export function withAccounts(ids: Identifiers, publication: { crossref: { mode: string }; zenodo: { mode: string }; docid?: { mode: string } | undefined }): Identifiers {
-  const connected: Record<ServiceId, boolean> = { crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: publication.docid?.mode === "custom" };
+export function withAccounts(ids: Identifiers, publication: Accounts): Identifiers {
+  const connected = connectedOf(publication);
   return { ...ids, services: Object.fromEntries(SERVICE_IDS.map((id) => [id, connected[id] ? ids.services[id] : { ...ids.services[id], mode: "off" as const }])) as Identifiers["services"] };
 }
 

@@ -26,6 +26,8 @@ export const verifyAndSave = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Communities show the DOCiDs their records come with and never register one: DOCiD is Openscholar Reports' only.
+    if (args.settings.docid) throw createError("VALIDATION_ERROR", "Communities don't register DOCiDs.");
     await refuseApps(ctx);
     const prepared = await ctx.runQuery(
       internal.evidenceLibraries.publicationProviders.prepare,

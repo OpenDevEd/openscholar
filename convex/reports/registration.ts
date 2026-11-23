@@ -123,18 +123,18 @@ export const end = internalMutation({
  * Crossref took the deposit (it is then looked for, not sent again), or Zenodo made a draft (it is carried on from).
  */
 export const noted = internalMutation({
-  args: { reportId: v.id("reports"), rev: v.number(), depositSent: v.optional(v.boolean()), zenodoDraftId: v.optional(v.string()), docidHandle: v.optional(v.string()), docidPublicationId: v.optional(v.number()), docidRetired: v.optional(v.boolean()) },
+  args: { reportId: v.id("reports"), rev: v.number(), depositSent: v.optional(v.boolean()), zenodoDraftId: v.optional(v.string()), docidHandle: v.optional(v.string()), docidPublicationId: v.optional(v.number()), docidRetired: v.optional(v.boolean()), docidDepositTried: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { reportId, rev, depositSent, zenodoDraftId, docidHandle, docidPublicationId, docidRetired }) => {
+  handler: async (ctx, { reportId, rev, depositSent, zenodoDraftId, docidHandle, docidPublicationId, docidRetired, docidDepositTried }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report) return null;
     // A draft is the report's whichever asking made it; a deposit is of the record as that asking had it.
     await ctx.db.patch("reports", reportId, { ...(zenodoDraftId && { zenodoDraftId }), ...(depositSent && report.registrationRev === rev && { depositSent: true }) });
     // A DOCiD and its record are the report's whichever asking made them: kept at once, never made twice. A Handle
     // is part of what the report's page and the search index show, so it counts as a change.
-    if (docidHandle !== undefined || docidPublicationId !== undefined || docidRetired !== undefined) {
+    if (docidHandle !== undefined || docidPublicationId !== undefined || docidRetired !== undefined || docidDepositTried !== undefined) {
       const docid = report.registrations?.docid ?? { state: "queued" as const };
-      const kept = { registrations: { ...report.registrations, docid: { ...docid, ...(docidHandle && { handle: docidHandle }), ...(docidPublicationId !== undefined && { publicationId: docidPublicationId }), ...(docidRetired !== undefined && { retired: docidRetired }) } } };
+      const kept = { registrations: { ...report.registrations, docid: { ...docid, ...(docidHandle && { handle: docidHandle }), ...(docidPublicationId !== undefined && { publicationId: docidPublicationId }), ...(docidRetired !== undefined && { retired: docidRetired }), ...(docidDepositTried !== undefined && { depositTried: docidDepositTried }) } } };
       if (docidHandle && docidHandle !== docid.handle) await touch(ctx, report, kept);
       else await ctx.db.patch("reports", reportId, kept);
     }

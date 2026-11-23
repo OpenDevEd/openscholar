@@ -7,12 +7,12 @@ import { refused, row, setup, type World } from "./reports.test-support";
 async function withDocid(world: World, identifiers: Identifiers) {
   await world.t.run(async (ctx) => {
     const settings = (await ctx.db.query("reportSettings").first())!;
-    await ctx.db.patch("reportSettings", settings._id, { identifiers, publication: { ...settings.publication, docid: { mode: "custom", email: "docid@test.local", resourceTypeId: 18 } } });
+    await ctx.db.patch("reportSettings", settings._id, { identifiers, publication: { ...settings.publication, docid: { mode: "custom", email: "docid@test.local", resourceTypeId: 18, publicationTypeId: 5, funderTypeId: 1 } } });
   });
 }
 
-const sign = (world: World, services: Array<"crossref" | "zenodo" | "docid">) =>
-  world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0", services });
+const sign = (world: World, services: Array<"crossref" | "zenodo" | "docid">, archive?: "own") =>
+  world.author.mutation(api.reports.flow.sign, { workspaceId: world.own, name: "Ada Author", onBehalfOfAll: true, version: 1, licence: "CC BY 4.0", services, ...(archive && { archive }) });
 
 describe("identifier services on reports", () => {
   it("gives a report the DOCiD its author picked, after its Crossref DOI", async () => {
@@ -40,6 +40,12 @@ describe("identifier services on reports", () => {
     // DOCiD mints it in the background; once it has, the line the PDF carries names it.
     await world.t.mutation(internal.reports.registration.mintedAtSigning, { reportId: report._id, handle: "20.500.14351/abc123" });
     expect((await row(world.t, key)).byline).toContain("https://hdl.handle.net/20.500.14351/abc123");
+  });
+
+  it("refuses an own Zenodo archive for a report with no Crossref DOI to keep it under", async () => {
+    const world = await setup();
+    await withDocid(world, { ...DEFAULT_IDENTIFIERS, services: { crossref: { mode: "optional", price: 0 }, zenodo: { mode: "off", price: 0 }, docid: { mode: "optional", price: 0 } }, choose: { min: 1, max: 1 }, docidAtSigning: true });
+    await expect(sign(world, ["docid"], "own")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
   });
 
   it("keeps DOCiD's refusal for the reviewer, and sends it again", async () => {

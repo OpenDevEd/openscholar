@@ -8,7 +8,7 @@
 // on Stripe's own page, which comes back to the report. A payment still to be made, there or at the bank, waits as
 // `pending`, and the report goes live once Stripe has it paid (`settle`). What a card bought for a report that can't
 // go live any more stays in the balance for the next one.
-import { SERVICES, chosenOf, routeAddOns } from "../../lib/reports/identifiers";
+import { SERVICES, chosenOf, connectedOf, routeAddOns } from "../../lib/reports/identifiers";
 import { ConvexError, v, type Infer } from "convex/values";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -76,7 +76,7 @@ const PAUSED = "Publishing is paused for now, so nothing can go live. Your repor
  */
 const paused = (report: Doc<"reports">, publication: PublicationSettings) => {
   // Each service the report registers with needs its account: a DOCiD with none connected would never be made.
-  const connected = { crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: publication.docid?.mode === "custom" };
+  const connected = connectedOf(publication);
   return chosenOf(report.registration).some((id) => !connected[id]);
 };
 

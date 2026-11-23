@@ -1,7 +1,7 @@
 // Openscholar Reports' settings (plans/publish-reports): whether publishing is on, whether a person reviews every
 // report, the series, the model that reads a PDF's details, the checks and the agreement. Admins change them at
 // Settings > Admin > Publishing. Registrar accounts are saved by ./publicationActions.ts.
-import { SERVICES, SERVICE_IDS, SETTINGS_PROBLEM, settingsProblem, withAccounts, type Identifiers } from "../../lib/reports/identifiers";
+import { SERVICES, SERVICE_IDS, SETTINGS_PROBLEM, connectedOf, settingsProblem, withAccounts, type Identifiers } from "../../lib/reports/identifiers";
 import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -52,11 +52,11 @@ const save = (ctx: MutationCtx, id: Awaited<ReturnType<typeof settingsRow>>["_id
  * something to print. Anything else is refused with what to change.
  */
 function keptIdentifiers(asked: Identifiers, publication: PublicationSettings): Identifiers {
-  const connected = { crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: publication.docid?.mode === "custom" };
+  const connected = connectedOf(publication);
   const ids = structuredClone(asked);
   for (const id of SERVICE_IDS) {
     const service = ids.services[id];
-    if (service.mode !== "off" && !connected[id]) throw createError("VALIDATION_ERROR", `Set ${SERVICES[id].name}'s account under Registration before reports use it.`);
+    if (service.mode !== "off" && !connected[id]) throw createError("VALIDATION_ERROR", id === "docid" ? "Set DOCiD's account and its resource, file and funder types under Registration before reports use it." : `Set ${SERVICES[id].name}'s account under Registration before reports use it.`);
     if (!Number.isInteger(service.price) || service.price < 0 || service.price > PRICE_MAX) throw createError("VALIDATION_ERROR", `What ${SERVICES[id].name} adds is a whole number of dollars, from 0 to ${PRICE_MAX}.`);
   }
   // The copy a Crossref DOI leads to (#1465).

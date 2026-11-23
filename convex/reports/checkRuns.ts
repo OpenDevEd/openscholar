@@ -30,6 +30,7 @@ export const start = internalMutation({
   },
   returns: v.union(v.object({ unchanged: v.literal(true), /** Changes are waiting, which these details don't give up. */ waiting: v.boolean() }), v.object({
     reportId: v.id("reports"),
+    key: v.string(),
     doi: v.string(),
     /** The address of the identifier its byline prints, which a check's `{doi}` stands for. */
     printed: v.string(),
@@ -86,6 +87,7 @@ export const start = internalMutation({
     const on = checks.filter((check) => check.enabled);
     return {
       reportId: report._id,
+      key: report.key,
       doi: report.doi,
       printed: printedOf(report)?.url ?? "",
       byline: report.byline,

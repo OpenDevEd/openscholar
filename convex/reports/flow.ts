@@ -1,7 +1,7 @@
 // A report from its agreement to ready to activate (plans/publish-reports): what the Publish page reads and the
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
-import { DEFAULT_IDENTIFIERS, citedOf, pickProblem, withAccounts, withNeeded, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
+import { DEFAULT_IDENTIFIERS, citedOf, pickProblem, routeOf, withAccounts, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
 import { v, type Infer } from "convex/values";
 import { fundsOf, readAccount } from "../billing/accounts";
 import { balancePartsValidator } from "../billing/validators";
@@ -242,12 +242,7 @@ export const sign = workspaceMutation({
     const licence = typeof chosen === "string" ? chosen : ownLicence(chosen.name, chosen.url, chosen.open);
     if (!licence) throw createError("VALIDATION_ERROR", "Give your licence a name in Latin letters and the web address of its text.");
     const fileAccess = fileAccessOf(licence, keptFileAccess(asked));
-    // Their own Zenodo account must be connected, and still accepted, to archive in it: never Openscholar's instead.
     const ownArchive = archive === "own";
-    if (ownArchive) {
-      const connection = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
-      if (!connection || connection.broken) throw createError("CONFLICT", "Connect your Zenodo account to archive the report there, or choose Openscholar's archive.");
-    }
     const { voucher, voucherOff } = keptVoucher(applied);
     // An agreement that names its own licence binds the author to it: the choice is only the agreement's to offer.
     if (licence !== DEFAULT_LICENCE && !choosesLicence(settings.agreement.text)) throw createError("CONFLICT", `This agreement publishes under ${DEFAULT_LICENCE} only.`);
@@ -255,19 +250,25 @@ export const sign = workspaceMutation({
     // The services the report gets: the series' own, and those the author picked, as its rule allows.
     const identifiers = withAccounts(settings.identifiers ?? DEFAULT_IDENTIFIERS, settings.publication);
     const picked = problemOfPick(identifiers, services);
-    const gets = withNeeded(identifiers, picked);
     // The identifier its byline prints: its Crossref DOI, or its DOCiD, which is then minted now (below).
     const cited = citedOf(identifiers, picked) === "docid" ? ("docid" as const) : ("crossref" as const);
-    const route = { crossref: gets.includes("crossref"), zenodo: ownArchive || gets.includes("zenodo"), docid: gets.includes("docid"), cited };
+    const route = { ...routeOf(identifiers, picked, ownArchive), cited };
+    // An own Zenodo account keeps a copy under the report's Crossref DOI (#1237): without one there is nothing to keep it under.
+    if (ownArchive && !route.crossref) throw createError("VALIDATION_ERROR", "Your own Zenodo account keeps a copy under the report's Crossref DOI. Pick Crossref, or keep the copy in Openscholar's archive.");
+    // Their own Zenodo account must be connected, and still accepted, to archive in it: never Openscholar's instead.
+    if (ownArchive) {
+      const connection = await ctx.db.query("zenodoConnections").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+      if (!connection || connection.broken) throw createError("CONFLICT", "Connect your Zenodo account to archive the report there, or choose Openscholar's archive.");
+    }
     const mintNow = route.docid && identifiers.docidAtSigning;
     // The line its PDF carries: with its DOI, or with its DOCiD once DOCiD has given it (registration.ts `mintedAtSigning`).
-    const bylineFor = (doi: string) => bylineOf(settings.series, cited === "crossref" ? `https://doi.org/${doi}` : "…", licence);
+    const bylineFor = (doi: string, handle?: string) => bylineOf(settings.series, cited === "crossref" ? `https://doi.org/${doi}` : handle ? `https://hdl.handle.net/${handle}` : "…", licence);
     // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
       const doi = route.crossref ? untouched.doi || crossrefDoiOf(settings.publication, untouched.key)! : "";
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, doi, byline: bylineFor(doi), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, ...route, ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, doi, byline: bylineFor(doi, untouched.registrations?.docid?.handle), seriesName: settings.series.name, licence, ...keptAccess(fileAccess), archiveOwnerId: ownArchive ? userId : undefined, registration: { ...untouched.registration, ...route, ...(ownArchive && { policy: "reuse-crossref" as const }) }, voucher, voucherOff, payWith });
       if (mintNow) await ctx.scheduler.runAfter(0, internal.reports.registrar.mintAtSigning, { reportId: untouched._id });
       return untouched.key;
     }

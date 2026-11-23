@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_IDENTIFIERS, citedOf, pickProblem, settingsProblem, withAccounts, withNeeded, type Identifiers } from "./identifiers";
+import { DEFAULT_IDENTIFIERS, citedOf, clampChoose, pickProblem, settingsProblem, withAccounts, withNeeded, type Identifiers } from "./identifiers";
 import { printedOf, providersOf } from "./report";
 
 const settings = (patch: Partial<Record<"crossref" | "zenodo" | "docid", Identifiers["services"]["crossref"]["mode"]>>, rest: Partial<Identifiers> = {}): Identifiers => ({
@@ -36,7 +36,22 @@ describe("identifier services", () => {
     expect(withNeeded(optional, ["crossref"])).toEqual(["crossref", "zenodo", "docid"]);
   });
 
-  it("switches off a service whose account is off", () => {
+  it("refuses a pick rule no author could meet", () => {
+    const optional = settings({ crossref: "required", docid: "optional" });
+    expect(settingsProblem({ ...optional, choose: { min: 0.5, max: 0.5 } })).toBe("rule");
+    expect(settingsProblem({ ...optional, choose: { min: 2, max: 2 } })).toBe("rule");
+  });
+
+  it("keeps the pick rule possible as a service moves from the author's pick to always", () => {
+    const either = settings({ crossref: "optional", docid: "optional" }, { choose: { min: 1, max: 1 }, docidAtSigning: true });
+    const moved = clampChoose({ ...either, services: { ...either.services, crossref: { mode: "required", price: 0 } } }, either);
+    expect(moved.choose).toEqual({ min: 1, max: 1 });
+    const any = settings({ crossref: "required", docid: "optional" });
+    expect(clampChoose({ ...any, services: { ...any.services, docid: { mode: "required", price: 5 } } }, any).choose).toEqual({ min: 0, max: 0 });
+  });
+
+  it("switches off a service whose account is off, or DOCiD's until its types are set", () => {
+    expect(withAccounts(settings({ docid: "required" }), { crossref: { mode: "custom" }, zenodo: { mode: "custom" }, docid: { mode: "custom", resourceTypeId: 18 } }).services.docid.mode).toBe("off");
     const off = withAccounts(settings({ docid: "required" }), { crossref: { mode: "custom" }, zenodo: { mode: "custom" } });
     expect(off.services.docid.mode).toBe("off");
   });

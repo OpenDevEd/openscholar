@@ -20,7 +20,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { ArrowDown, ArrowUp, FileText, Lock } from "@/components/icons";
 import { EASE } from "@/components/ui/opening";
 import { useFailed } from "@/components/reports/words";
-import { SERVICES, SERVICE_IDS, optionalOf, printable, settingsProblem, type Identifiers, type ServiceId, type ServiceMode } from "@/lib/reports/identifiers";
+import { SERVICES, SERVICE_IDS, clampChoose, optionalOf, printable, settingsProblem, type Identifiers, type ServiceId, type ServiceMode } from "@/lib/reports/identifiers";
 import { PRICE_MAX } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
@@ -82,7 +82,8 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
       (error) => (failed(error), false),
     );
   };
-  const service = (id: ServiceId, patch: Partial<Identifiers["services"][ServiceId]>) => set({ ...ids, services: { ...ids.services, [id]: { ...ids.services[id], ...patch } } });
+  // A mode moved keeps the pick rule possible: never more picks than there are services to pick from.
+  const service = (id: ServiceId, patch: Partial<Identifiers["services"][ServiceId]>) => set(clampChoose({ ...ids, services: { ...ids.services, [id]: { ...ids.services[id], ...patch } } }, ids));
   const optional = optionalOf(ids);
   const modes: Array<{ id: ServiceMode; label: string }> = [
     { id: "required", label: t("always") },

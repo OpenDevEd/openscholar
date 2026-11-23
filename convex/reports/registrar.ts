@@ -19,6 +19,13 @@ import type { Metadata } from "../../lib/reports/report";
 import { openAlexKey, registrationRecord, rorKey, zenodoRecord, type RegistryIds } from "../../lib/reports/registration-record";
 import { fundrefOf } from "../../lib/people/identifiers";
 
+/**
+ * The key DOCiD knows a report's mint by: its key on this Openscholar, whose address names it, since shared dev and
+ * production number their reports alike and may share a DOCiD account. DOCiD answers a repeated key with the Handle
+ * it already minted.
+ */
+const mintKey = (key: string) => `openscholar:${new URL(requireAppUrl()).host}:${key.toLowerCase()}`;
+
 /** OpenAlex couldn't say who a report's funders and institutions are in the Funder Registry and ROR: worth trying again, like a registrar that couldn't be reached. */
 class IdsUnread extends Error {}
 
@@ -75,6 +82,8 @@ export const register = internalAction({
     };
     const settle = (provider: "crossref" | "zenodo" | "docid", answer: { outcome: "done" | "refused" | "unreached"; error?: string; zenodoRecordId?: string; zenodoDoi?: string }) =>
       ctx.runMutation(internal.reports.registration.settle, { reportId, rev, provider, ...answer });
+    // The DOI Zenodo gave the report, as it stands after Zenodo's step in this run: DOCiD's deposit carries it.
+    let zenodoDoi = job.zenodoDoi;
     try {
       // A report Zenodo already holds is changed there first: a restriction on its file never waits on Crossref.
       for (const provider of job.zenodoRecordId ? [...job.waiting].sort((a, b) => (a === "zenodo" ? -1 : b === "zenodo" ? 1 : 0)) : job.waiting) {
@@ -206,6 +215,7 @@ export const register = internalAction({
               await settle(provider, { outcome: "unreached", error: `Zenodo shows the file as ${shown ?? "unknown"}, not ${wanted}.` });
               return null;
             }
+            zenodoDoi = identifiers.versionDoi ?? zenodoDoi;
             if (!(await settle(provider, { outcome: "done", zenodoRecordId: identifiers.latestRecordId, ...(identifiers.versionDoi && { zenodoDoi: identifiers.versionDoi }) }))) return null;
           } else {
             // DOCiD (plans/identifier-services): the Africa PID Alliance's Handle. Minted, then deposited under it with
@@ -215,10 +225,10 @@ export const register = internalAction({
             if (docid?.mode !== "custom" || !secrets.docidPassword) throw new Error("DOCiD isn't connected in the publishing settings.");
             if (docid.resourceTypeId === undefined) throw new Error("Pick DOCiD's resource type in the publishing settings.");
             const client = docidClient();
-            const { token } = await client.signIn({ email: docid.email, password: secrets.docidPassword });
-            const note = (kept: { docidHandle?: string; docidPublicationId?: number; docidRetired?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
+            const { token, userId } = await client.signIn({ email: docid.email, password: secrets.docidPassword });
+            const note = (kept: { docidHandle?: string; docidPublicationId?: number; docidRetired?: boolean; docidDepositTried?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
             const held = job.docid ?? { state: "queued" as const };
-            const doi = job.registration.crossref ? job.doi : job.zenodoDoi;
+            const doi = job.registration.crossref ? job.doi : zenodoDoi;
             if (job.withdrawnAt !== undefined) {
               // Its Handle can't be deleted: its record is retired, and a Handle never deposited has no record to retire.
               if (held.publicationId !== undefined && !held.retired) {
@@ -233,10 +243,16 @@ export const register = internalAction({
             // DOCiD answers a repeated key with the Handle it already minted, so a try that lost its answer mints none.
             let handle = held.handle;
             if (!handle) {
-              handle = await client.mint({ token, title: record.title, description: record.abstract ?? record.title, idempotencyKey: `openscholar-report-${job.key.toLowerCase()}` });
+              handle = await client.mint({ token, title: record.title, description: record.abstract ?? record.title, idempotencyKey: mintKey(job.key) });
               await note({ docidHandle: handle });
             }
-            if (held.publicationId === undefined) {
+            // A deposit sent before whose answer never came is found in the account's records, never sent twice.
+            const found = held.publicationId === undefined && held.depositTried ? await client.findDeposit({ token, userId, docid: handle }) : null;
+            if (found !== null) {
+              await note({ docidPublicationId: found });
+              console.info(JSON.stringify({ event: "report-docid-deposit-found", reportId, key: job.key, handle, record: found }));
+            } else if (held.publicationId === undefined) {
+              await note({ docidDepositTried: true });
               const openFile = !record.fileAccess && job.pdf ? await ctx.storage.get(job.pdf.file) : null;
               const poster = job.cover ? await ctx.storage.get(job.cover) : null;
               const deposited = await client.deposit({
@@ -301,7 +317,7 @@ export const mintAtSigning = internalAction({
       if (docid?.mode !== "custom" || !password) throw new Error("DOCiD isn't connected in the publishing settings.");
       const client = docidClient();
       const { token } = await client.signIn({ email: docid.email, password });
-      const handle = await client.mint({ token, title: `Openscholar Reports ${job.key}`, description: `A report in Openscholar Reports, ${job.key}.`, idempotencyKey: `openscholar-report-${job.key.toLowerCase()}` });
+      const handle = await client.mint({ token, title: `Openscholar Reports ${job.key}`, description: `A report in Openscholar Reports, ${job.key}.`, idempotencyKey: mintKey(job.key) });
       console.info(JSON.stringify({ event: "report-docid-mint-at-signing", reportId, key: job.key, handle }));
       await ctx.runMutation(internal.reports.registration.mintedAtSigning, { reportId, handle });
     } catch (error) {

@@ -150,6 +150,8 @@ export const docidRegistrationValidator = v.object({
   handle: v.optional(v.string()),
   publicationId: v.optional(v.number()),
   retired: v.optional(v.boolean()),
+  /** A deposit was sent: until DOCiD's record of it is kept, the next try looks for it before sending another. */
+  depositTried: v.optional(v.boolean()),
 });
 /** Each service's registration beyond Crossref's and Zenodo's, which keep their own fields until they move here. */
 export const registrationsValidator = v.object({ docid: v.optional(docidRegistrationValidator) });

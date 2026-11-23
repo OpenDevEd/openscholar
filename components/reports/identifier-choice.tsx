@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Lock } from "@/components/icons";
 import { ServiceMark } from "@/components/reports/identifier-settings";
-import { SERVICE_IDS, citedOf, pickProblem, withNeeded, type Identifiers, type ServiceId } from "@/lib/reports/identifiers";
+import { SERVICE_IDS, chosenOf, citedOf, pickProblem, routeOf, withNeeded, type Identifiers, type ServiceId } from "@/lib/reports/identifiers";
 import { useMoney } from "@/lib/hooks/use-money";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +20,9 @@ export const showsIdentifiers = (ids: Identifiers) => SERVICE_IDS.some((id) => i
 /** The author's first pick: as few optional services as the rule asks for. */
 export const firstPick = (ids: Identifiers): ServiceId[] => (ids.choose.min > 0 ? SERVICE_IDS.filter((id) => ids.services[id].mode === "optional").slice(0, ids.choose.min) : []);
 
-/** What each service chosen adds to the price, for the bill. */
-export function addOnLines(ids: Identifiers, picked: ServiceId[]) {
-  return withNeeded(ids, picked).flatMap((id) => (ids.services[id].price > 0 ? [{ id, price: ids.services[id].price }] : []));
+/** What each service of the report's route adds to the price, for the bill: as signing fixes it and activation charges it. */
+export function addOnLines(ids: Identifiers, picked: ServiceId[], ownArchive: boolean) {
+  return chosenOf(routeOf(ids, picked, ownArchive)).flatMap((id) => (ids.services[id].price > 0 ? [{ id, price: ids.services[id].price }] : []));
 }
 
 export function IdentifierChoice({ ids, picked, onChange, id: fieldId, invalid = false, disabled = false }: { ids: Identifiers; picked: ServiceId[]; onChange: (picked: ServiceId[]) => void; /** The first box, for the step's Next to take the person to. */ id?: string; /** Sign was pressed with a pick that can't be signed. */ invalid?: boolean; disabled?: boolean }) {

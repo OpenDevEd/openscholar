@@ -11,8 +11,8 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { Check, Copy } from "@/components/icons";
 import { copyText } from "@/components/copy-text";
 import { cn } from "@/lib/utils";
+import { handleUrl } from "@/lib/reports/report";
 
-export const handleUrl = (handle: string) => `https://hdl.handle.net/${handle}`;
 
 export function DocidLine({ handle, retired = false, className }: { handle: string; /** The report was withdrawn: its DOCiD shows a retired page. */ retired?: boolean; className?: string }) {
   const t = useTranslations("paperPage");
