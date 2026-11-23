@@ -9,8 +9,9 @@ import { findAndReplace } from "mdast-util-find-and-replace";
 import type { useTranslations } from "next-intl";
 import { actionNamed, viewOf } from "@/lib/assistant/actions";
 
-/** What an action's name looks like, whole: a path with its colon, or a tool's name with its underscores. */
-const NAME = /(?:[A-Za-z][A-Za-z0-9]*(?:\/[A-Za-z][A-Za-z0-9]*)*:[A-Za-z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[A-Za-z][A-Za-z0-9]*)+)(?![\w/:])/g;
+/** What an action's name looks like, whole: a path with its colon, or a tool's name with its underscores. A colon after it ends it, as in
+ * "change_papers: makes one change…"; one that goes on into a word makes it part of something longer. */
+const NAME = /(?:[A-Za-z][A-Za-z0-9]*(?:\/[A-Za-z][A-Za-z0-9]*)*:[A-Za-z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[A-Za-z][A-Za-z0-9]*)+)(?![\w/]|:\w)/g;
 
 const shown = (label: string): Emphasis => ({ type: "emphasis", children: [{ type: "text", value: label }] });
 
