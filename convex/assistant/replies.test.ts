@@ -14,6 +14,7 @@ import schema from "../schema";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { endStep } from "./steps";
+import { COLLISION, misfit } from "./failures";
 import { insertJob } from "../screening/createJob.test-support";
 import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
@@ -674,6 +675,26 @@ describe("assistant replies", () => {
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Hi" })).rejects.toThrow(/disabled/);
     await expect(asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).rejects.toThrow(/disabled/);
     await expect(asAda.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/disabled/);
+  });
+
+  // A Cheap chat's "Saving 2 papers" card said "The argument collectionId doesn't fit: it takes v.id("collections")…", words written for the model.
+  it("mark a step that failed on the assistant's own arguments, so its card says so in plain words, and keep the error the assistant was told", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Saved them"]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Put both papers in tutoring-qa" });
+    await ended(t, threadId);
+    const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    const wrong = misfit('Uncaught ArgumentValidationError: Value does not match validator.\nPath: .collectionId\nValue: "tutoring-qa"\nValidator: v.id("collections")')!;
+    await t.run(async (ctx) => {
+      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, input: "{}", status: "failed" as const, startedAt: 1, endedAt: 2 };
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "wrong", path: "library/collections:addToCollection", subject: "wrong", error: wrong });
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "collided", path: "library/collections:createCollection", subject: "collided", error: COLLISION });
+    });
+    const steps = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(steps.find((step) => step.subject === "wrong")).toMatchObject({ misfit: true, error: wrong });
+    expect(steps.find((step) => step.subject === "collided")).toMatchObject({ error: COLLISION });
+    expect(steps.find((step) => step.subject === "collided")).not.toHaveProperty("misfit");
   });
 
   it("link what the reply looked up to its results, by a query or by filters alone, as a new search, and say how many papers it matched", async () => {

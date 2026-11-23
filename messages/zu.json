@@ -3476,6 +3476,7 @@
       "undoFailed": "Lokho akukwazanga ukuhlehliswa",
       "earlier": "Izinyathelo zangaphambilini",
       "interrupted": "Impendulo iphele ingakaqedi lokhu",
+      "misfit": "Umsizi ufake imininingwane engalungile, ngakho lokhu akuzange kusebenze",
       "found": "kutholakele",
       "times": "{count, plural, one {ukuhlola} other {izikhathi}}",
       "unfold": "Bonisa ngayinye",

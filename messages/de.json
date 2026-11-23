@@ -3477,6 +3477,7 @@
       "undoFailed": "Das konnte nicht rückgängig gemacht werden",
       "earlier": "Frühere Schritte",
       "interrupted": "Die Antwort endete, bevor dies abgeschlossen war",
+      "misfit": "Der Assistent hat falsche Angaben gemacht, daher wurde es nicht ausgeführt",
       "found": "gefunden",
       "times": "{count, plural, one {Mal} other {Mal}}",
       "unfold": "Jeden einzeln anzeigen",

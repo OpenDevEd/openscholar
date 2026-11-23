@@ -531,6 +531,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   };
   // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  /** Why a step failed, as the person reads it: the assistant's own arguments not fitting (`misfit`) is said in plain words, not as the assistant was told it. */
+  const whyFailed = (one: StepItem) => (one.misfit ? t("steps.misfit") : one.error);
   /** Each step of a folded run as its line: what it was about, or where its card's action looks. */
   const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? (unqueried(one) ? tc("noQuery") : t(`steps.${viewOf(one.action, one.variant).words}.where`)));
   /** What tells a folded run of searches apart: each one's settings the others don't share. */
@@ -542,7 +544,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   // failed, or the filters its searches differ by; or when more than one can be undone, each by its own line.
   // Six lines that all read "Extraction" tell the person nothing more.
   const opensOf = (run: StepItem[]) =>
-    run.length > 1 && (new Set(linesOf(run)).size > 1 || new Set(run.map((one) => one.error)).size > 1 || run.filter((one) => one.canUndo).length > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
+    run.length > 1 && (new Set(linesOf(run)).size > 1 || new Set(run.map(whyFailed)).size > 1 || run.filter((one) => one.canUndo).length > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
   // One that stops opening, when the step that told it apart fails and leaves it, closes with it.
   const isOpen = (run: StepItem[]) => opensOf(run) && run.some((one) => opened.has(one.id));
   const runs = runsOf(steps);
@@ -638,7 +640,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                             {state ? <Fact>{state}</Fact> : null}
                             {saysMany(words, step) ? null : <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>}
                             {step.status === "failed" ? (
-                              <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
+                              <span className="truncate">{whyFailed(step) ?? t("steps.interrupted")}</span>
                             ) : step.subject ? (
                               <Subject text={step.subject} step={step} className={cn("truncate", step.undone && "line-through")} />
                             ) : unqueried(step) ? (
@@ -648,7 +650,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                             )}
                           </>
                         ) : (step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
-                          <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
+                          <span className="truncate">{whyFailed(step) ?? t("steps.interrupted")}</span>
                         ) : state ? (
                           <>
                             <Fact>{state}</Fact>
@@ -703,9 +705,9 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
                             </span>
                           ) : null}
-                          {one.error ? (
-                            <TooltipHint label={one.error} onlyWhenClipped>
-                              <span className="min-w-0 max-w-[55%] truncate">{one.error}</span>
+                          {whyFailed(one) ? (
+                            <TooltipHint label={whyFailed(one)!} onlyWhenClipped>
+                              <span className="min-w-0 max-w-[55%] truncate">{whyFailed(one)}</span>
                             </TooltipHint>
                           ) : null}
                           {one.canUndo ? (

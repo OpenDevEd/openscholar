@@ -3477,6 +3477,7 @@
       "undoFailed": "No se pudo deshacer",
       "earlier": "Pasos anteriores",
       "interrupted": "La respuesta terminó antes de que esto acabara",
+      "misfit": "El asistente rellenó mal los datos, así que no se ejecutó",
       "found": "encontrados",
       "times": "{count, plural, one {vez} other {veces}}",
       "unfold": "Mostrar cada uno",

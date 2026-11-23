@@ -47,6 +47,7 @@ import { TOOL_OF, allowAlways, allowTool, carriedOn, covers, noteReply, pausedAt
 import { MAX_ASKS, STEPS_SHOWN, aboutOf, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { filesOf, partsFor, sent } from "./files";
+import { isMisfit } from "./failures";
 import { readsImages, readsPdfs } from "../../lib/assistant/files";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
 import { askedDetailsValidator, askedEachValidator, askedPapersValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator, webSourcesValidator } from "./validators";
@@ -754,6 +755,8 @@ const stepValidator = v.object({
   each: askedEachValidator,
   /** Why it failed, as the assistant was told. */
   error: v.optional(v.string()),
+  /** Its error is the assistant's own arguments not fitting (./failures.ts `isMisfit`): the step says so in plain words, and the error stays the assistant's. */
+  misfit: v.optional(v.literal(true)),
   /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
   canUndo: v.boolean(),
   /** Its undo reaches outside the account, and runs on its own (./undo.ts `runAction`). */
@@ -1046,7 +1049,7 @@ function shownStep(
     ...(step.batch === undefined ? {} : { batch: step.batch }),
     canAnswer: asked !== undefined,
     ...(asked ? { details: asked.details, ...(asked.each ? { each: asked.each } : {}) } : {}),
-    ...(step.error ? { error: step.error } : {}),
+    ...(step.error ? { error: step.error, ...(isMisfit(step.error) ? { misfit: true as const } : {}) } : {}),
     canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
     ...(step.undo?.action ? { undoAction: true as const } : {}),
     undone: step.undone === true,

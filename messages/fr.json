@@ -3476,6 +3476,7 @@
       "undoFailed": "Impossible d'annuler",
       "earlier": "Étapes précédentes",
       "interrupted": "La réponse s'est terminée avant la fin de cette étape",
+      "misfit": "L'assistant a saisi de mauvaises informations, cette étape n'a donc pas été lancée",
       "found": "trouvés",
       "times": "fois",
       "unfold": "Afficher chacune",
