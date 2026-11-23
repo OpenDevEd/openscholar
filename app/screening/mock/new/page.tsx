@@ -1,6 +1,6 @@
-import { ScreeningSetup } from "@/components/screening-mock/setup-page";
+import { ScreeningForm } from "@/components/screening-mock/screening-form";
 
 // Mock (mock/screening-reviewers): a new screening's form, with placeholder data.
-export default function ScreeningSetupMockPage() {
-  return <ScreeningSetup />;
+export default function ScreeningNewMockPage() {
+  return <ScreeningForm />;
 }

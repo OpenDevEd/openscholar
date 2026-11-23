@@ -27,7 +27,7 @@ const useQueryHistoryIndexStore = create<{
 /** Whether this screen can't hover, so what opens on hover has to open on a tap. */
 export const useNoHover = () => useMediaQuery("(hover: none)");
 
-function useMediaQuery(query: string): boolean {
+export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback((onChange: () => void) => {
     const media = window.matchMedia(query);
     media.addEventListener("change", onChange);
