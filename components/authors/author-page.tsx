@@ -678,7 +678,7 @@ export default function AuthorPage({
               {/* A phone at large text (under 14rem of card; 15.5rem or more at normal text on a 320px phone) puts the photo above the name
                   and lets the counts wrap: beside a 144 to 192px photo, the name had a few pixels and ran out of the card, and the
                   column it set pushed the counts and topics past the card's edge. Stacked, the name is a size smaller: at 360px and 200%
-                  "Piwowar" broke inside the word. */}
+                  "Piwowar" broke inside the word; under 6rem (320px at 200%) it is one size smaller again. */}
               <header className="@container/intro relative isolate overflow-hidden p-5 sm:p-6">
                 <IntroGlow />
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14 max-sm:@max-[14rem]/intro:grid-cols-1">
@@ -686,7 +686,7 @@ export default function AuthorPage({
                     <div className="flex items-center gap-5 max-sm:@max-[14rem]/intro:flex-col max-sm:@max-[14rem]/intro:items-start max-sm:@max-[14rem]/intro:gap-4">
                       <AuthorAvatar photo={profile.photo} className="size-24 self-start border border-border-subtle sm:size-28 max-sm:@max-[14rem]/intro:aspect-square max-sm:@max-[14rem]/intro:h-auto max-sm:@max-[14rem]/intro:max-w-full" />
                       <div className="min-w-0 max-sm:@max-[14rem]/intro:max-w-full">
-                        <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl max-sm:@max-[14rem]/intro:text-2xl max-sm:@max-[14rem]/intro:wrap-break-word">
+                        <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl max-sm:@max-[14rem]/intro:text-2xl max-sm:@max-[6rem]/intro:text-xl max-sm:@max-[14rem]/intro:wrap-break-word">
                           {profile.name}
                         </p>
                         {profile.affiliation && (
