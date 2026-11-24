@@ -1,6 +1,7 @@
 // Identifier services (plans/identifier-services): which registrars a publisher's records get identifiers from, how
 // each is used (required, optional, off), what each adds to the price, what authors may pick, and which identifier
 // the byline prints. Reports and communities share the shape; only Reports charge.
+import { docidResourceType, type DocidOption } from "@opendeved/doi-sync-core/docid";
 
 export const SERVICES = {
   crossref: { name: "Crossref", identifier: "DOI", logo: "/brands/crossref.svg", printable: true },
@@ -100,10 +101,10 @@ export function settingsProblem(ids: Identifiers): "noService" | "rule" | "nothi
   return picks.every((pick) => citedOf(ids, pick)) ? null : "nothingPrinted";
 }
 
-type Accounts = { crossref: { mode: string }; zenodo: { mode: string }; docid?: { mode: string; resourceTypeId?: number | undefined; publicationTypeId?: number | undefined; funderTypeId?: number | undefined } | undefined };
+type Accounts = { crossref: { mode: string }; zenodo: { mode: string }; docid?: { mode: string; options?: { resourceTypes: DocidOption[] } | undefined } | undefined };
 
-/** Whether DOCiD can take a deposit: its account set, with the resource, file and funder types every deposit may need. */
-export const docidReady = (publication: Accounts) => publication.docid?.mode === "custom" && publication.docid.resourceTypeId !== undefined && publication.docid.publicationTypeId !== undefined && publication.docid.funderTypeId !== undefined;
+/** Whether DOCiD can take a deposit: its account set, and allowed to file a report under the resource type reports map to. */
+export const docidReady = (publication: Accounts) => publication.docid?.mode === "custom" && docidResourceType("Report", publication.docid.options?.resourceTypes ?? []) !== undefined;
 
 /** Which services' accounts are set under Registration, ready to register a report. */
 export const connectedOf = (publication: Accounts): Record<ServiceId, boolean> => ({ crossref: publication.crossref.mode !== "off", zenodo: publication.zenodo.mode !== "off", docid: docidReady(publication) });

@@ -17,7 +17,7 @@ import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import type { Metadata } from "../../lib/reports/report";
 import { openAlexKey, registrationRecord, rorKey, zenodoRecord, type RegistryIds } from "../../lib/reports/registration-record";
-import { fundrefOf } from "../../lib/people/identifiers";
+import { rorFacts } from "../../lib/people/identifiers";
 
 /**
  * The key DOCiD knows a report's mint by: its key on this Openscholar, whose address names it, since shared dev and
@@ -59,7 +59,7 @@ async function registryIds(m: Metadata): Promise<RegistryIds> {
   ]);
   // A funder only ROR knows: its Funder Registry ID, which ROR lists as "fundref" where Crossref has the funder.
   const onRor = [...new Set(m.funding.flatMap((f) => (!f.funder.id && f.funder.ror ? (rorKey(f.funder.ror) ?? []) : [])))];
-  const rorFunders = Object.fromEntries((await Promise.all(onRor.map(async (ror) => [ror, await fundrefOf(ror).catch((error: unknown) => { throw new IdsUnread(`ROR couldn't say whether funder ${ror} is in the Funder Registry: ${String(error).slice(0, 200)}`); })] as const))).flatMap(([ror, fundref]) => (fundref ? [[ror, `10.13039/${fundref}`]] : [])));
+  const rorFunders = Object.fromEntries((await Promise.all(onRor.map(async (ror) => [ror, await rorFacts(ror).then((facts) => facts.fundref).catch((error: unknown) => { throw new IdsUnread(`ROR couldn't say whether funder ${ror} is in the Funder Registry: ${String(error).slice(0, 200)}`); })] as const))).flatMap(([ror, fundref]) => (fundref ? [[ror, `10.13039/${fundref}`]] : [])));
   return {
     rorFunders,
     funders: Object.fromEntries(funders.map((funder) => [openAlexKey(funder.id), { ...(funder.ids?.doi && { doi: funder.ids.doi }), ...(funder.ids?.ror && { ror: funder.ids.ror }) }])),
@@ -222,8 +222,7 @@ export const register = internalAction({
             // the DOI the report registered, each kept the moment DOCiD gives it, so a later try carries on and never
             // makes a second. A withdrawn report's record shows a retired page; a reinstated one is restored.
             const docid = job.publication.docid;
-            if (docid?.mode !== "custom" || !secrets.docidPassword) throw new Error("DOCiD isn't connected in the publishing settings.");
-            if (docid.resourceTypeId === undefined) throw new Error("Pick DOCiD's resource type in the publishing settings.");
+            if (docid?.mode !== "custom" || !secrets.docidPassword || !docid.options) throw new Error("DOCiD isn't connected in the publishing settings.");
             const client = docidClient();
             const { token, userId } = await client.signIn({ email: docid.email, password: secrets.docidPassword });
             const note = (kept: { docidHandle?: string; docidPublicationId?: number; docidRetired?: boolean; docidDepositTried?: boolean }) => ctx.runMutation(internal.reports.registration.noted, { reportId, rev, ...kept });
@@ -249,7 +248,6 @@ export const register = internalAction({
               if (!(await settle(provider, { outcome: "done" }))) return null;
               continue;
             }
-            const authors = record.creators.filter((creator) => creator.creatorType === "author");
             // DOCiD answers a repeated key with the Handle it already minted, so a try that lost its answer mints none.
             let handle = held.handle;
             if (!handle) {
@@ -260,15 +258,19 @@ export const register = internalAction({
               await note({ docidDepositTried: true });
               const openFile = !record.fileAccess && job.pdf ? await ctx.storage.get(job.pdf.file) : null;
               const poster = job.cover ? await ctx.storage.get(job.cover) : null;
+              // DOCiD keeps each organisation's type, as ROR gives it; one ROR can't say goes without.
+              const rors = [...new Set(record.creators.flatMap((creator) => (creator.type === "personal" ? (creator.affiliations?.flatMap((affiliation) => affiliation.ror ?? []) ?? []) : [])))];
+              const organizationTypes = Object.fromEntries((await Promise.all(rors.map(async (ror) => [ror, (await rorFacts(ror).catch(() => null))?.type] as const))).flatMap(([ror, type]) => (type ? [[ror, type]] : [])));
+              const { doi: _, ...sent } = zenodoRecord(record, job.metadata);
               const deposited = await client.deposit({
                 token,
+                // The record Crossref and Zenodo are sent, of the kind its author chose, as Zenodo files it.
                 deposit: buildDocidDeposit(
-                  { title: record.title, abstract: record.abstract, ...(doi && { doi }), creators: authors, funding: record.funding },
+                  { ...sent, ...(doi && { doi }) },
                   {
                     docid: handle,
-                    resourceTypeId: docid.resourceTypeId,
-                    publicationTypeId: docid.publicationTypeId,
-                    funderTypeId: docid.funderTypeId,
+                    lists: docid.options,
+                    organizationTypes,
                     // Its file only when anyone may get it: DOCiD shows what it holds to everyone.
                     ...(openFile && { file: { filename: `${job.key}.pdf`, contentType: "application/pdf", bytes: new Uint8Array(await openFile.arrayBuffer()) } }),
                     ...(poster && { poster: { filename: `${job.key}-cover.png`, contentType: poster.type || "image/png", bytes: new Uint8Array(await poster.arrayBuffer()) } }),

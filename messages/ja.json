@@ -375,14 +375,7 @@
     "docidHint": "Africa PID Alliance の識別子で、20.500.14351 配下の Handle です。",
     "enableDocid": "DOCiD を使う",
     "docidPermanent": "DOCiD にはテスト環境がありません。発行される DOCiD はすべて本物の Handle で、削除はできず、取り下げのみできます。",
-    "docidChoose": "選択",
-    "docidListsFirst": "アカウントを確認して保存すると、DOCiD の一覧を読み込みます。",
-    "docidResourceType": "リソースの種類",
-    "docidResourceTypeHint": "DOCiD が各レポートを何として登録するか。アカウントが使えるのは一部だけです。",
-    "docidFileType": "ファイルの種類",
-    "docidFileTypeHint": "DOCiD での PDF の扱い。",
-    "docidFunderType": "助成元の種類",
-    "docidNoResourceTypes": "DOCiD はこのアカウントにまだリソースの種類を許可していないため、レポートを登録できません。Africa PID Alliance に許可を依頼し、もう一度確認して保存してください。"
+    "docidNoResourceTypes": "DOCiD はこのアカウントにまだレポートを Manuscripts として登録することを許可していないため、登録できません。Africa PID Alliance に Manuscripts の許可を依頼し、もう一度確認して保存してください。"
   },
   "auth": {
     "backToSearch": "検索に戻る",
@@ -7151,6 +7144,13 @@
       "fundersPager": "件の助成機関",
       "grants": "助成番号",
       "addGrant": "{name}の助成番号を追加",
+      "funderType": "資金提供者の種類",
+      "funderTypeOf": "{name} の資金提供者の種類",
+      "funderTypes": {
+        "grantor": "助成機関",
+        "investor": "投資家",
+        "corporation": "企業"
+      },
       "references": "参考文献",
       "referencesPager": "件の参考文献",
       "editReference": "参考文献を編集",
@@ -7244,7 +7244,8 @@
       "does": {
         "crossref": "DOI を登録",
         "zenodo": "コピーを保存",
-        "openscholar": "報告書を表示"
+        "openscholar": "報告書を表示",
+        "docid": "Handle を付与"
       },
       "sent": "{name}、これを受け取る：{does}",
       "notSent": "{name}、これは受け取らない：{does}",
@@ -7462,6 +7463,11 @@
           "title": "助成",
           "about": "研究の費用を出した組織と、印刷されている助成番号。",
           "note": "助成機関は OpenAlex と ROR で検索されます。見つかった機関は ROR ID とともに、ある場合は Funder Registry ID とともに送られます。手で入力した機関は名前だけが送られます。"
+        },
+        "funderType": {
+          "title": "資金提供者の種類",
+          "about": "研究に資金を出した組織の種類：助成金を出す組織、投資する組織、または企業。",
+          "note": "記録するのは DOCiD だけです。そのままにした資金提供者は助成機関として送られます。"
         },
         "references": {
           "title": "参考文献",

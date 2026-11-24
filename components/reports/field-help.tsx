@@ -60,33 +60,36 @@ type Help = {
   filled?: keyof typeof FILLED;
   entry?: keyof typeof ENTRY;
   sources?: readonly SourceKey[];
-  /** Whether each registrar is sent it; a part that is never sent anywhere, such as a step, says neither. */
-  sent?: { crossref: boolean; zenodo: boolean };
+  /** Whether each registrar is sent it; a part that is never sent anywhere, such as a step, says neither. DOCiD is sent only what says so. */
+  sent?: { crossref: boolean; zenodo: boolean; docid?: true };
 };
 const BOTH = { crossref: true, zenodo: true } as const;
+/** Sent to all three: DOCiD takes a report's title, abstract, authors (with their ORCID iDs and affiliations), kind and funders. */
+const ALL = { crossref: true, zenodo: true, docid: true } as const;
 
 /** Each part's facts. Its title, what it is and its note are in messages/ under publishReports.help.parts. */
 const HELP = {
-  title: { filled: "pdf", entry: "typed", sent: BOTH },
+  title: { filled: "pdf", entry: "typed", sent: ALL },
   subtitle: { note: true, filled: "pdf", entry: "typed", sent: BOTH },
-  type: { note: true, filled: "pdf", entry: "list", sources: ["openalexWorkTypes", "zenodoTypes", "crossrefReports"], sent: { crossref: false, zenodo: true } },
+  type: { note: true, filled: "pdf", entry: "list", sources: ["openalexWorkTypes", "zenodoTypes", "crossrefReports"], sent: { crossref: false, zenodo: true, docid: true } },
   language: { filled: "pdf", entry: "list", sources: ["iso639"], sent: BOTH },
   date: { note: true, filled: "pdf", entry: "typed", sent: BOTH },
   licence: { sources: ["ccLicences"], sent: BOTH },
-  authors: { note: true, filled: "pdf", entry: "typed", sources: ["crossrefContributors"], sent: BOTH },
-  name: { note: true, filled: "pdf", entry: "typed", sent: BOTH },
+  authors: { note: true, filled: "pdf", entry: "typed", sources: ["crossrefContributors"], sent: ALL },
+  name: { note: true, filled: "pdf", entry: "typed", sent: ALL },
   kind: { note: true, filled: "author", entry: "list", sources: ["crossrefRoles"], sent: BOTH },
-  orcid: { note: true, filled: "matched", entry: "either", sources: ["orcid", "orcidRegister"], sent: BOTH },
-  affiliations: { note: true, filled: "matched", entry: "either", sources: ["openalexInstitutions", "ror", "rorAdd"], sent: BOTH },
+  orcid: { note: true, filled: "matched", entry: "either", sources: ["orcid", "orcidRegister"], sent: ALL },
+  affiliations: { note: true, filled: "matched", entry: "either", sources: ["openalexInstitutions", "ror", "rorAdd"], sent: ALL },
   contributions: { note: true, filled: "pdf", entry: "list", sources: ["credit"], sent: { crossref: true, zenodo: false } },
   corresponding: { note: true, filled: "pdf", entry: "toggle", sources: ["crossrefRoles"], sent: BOTH },
-  abstract: { note: true, filled: "pdf", entry: "typed", sources: ["crossrefAbstracts"], sent: BOTH },
+  abstract: { note: true, filled: "pdf", entry: "typed", sources: ["crossrefAbstracts"], sent: ALL },
   topics: { note: true, filled: "classified", entry: "list", sources: ["openalexTopics"], sent: { crossref: false, zenodo: true } },
   keywords: { note: true, filled: "pdf", entry: "typed", sent: { crossref: false, zenodo: true } },
   sdgs: { note: true, filled: "judged", entry: "list", sources: ["sdgs"], sent: { crossref: false, zenodo: true } },
   design: { note: true, filled: "judged", entry: "list", sources: ["openalexDesigns"], sent: { crossref: false, zenodo: true } },
   places: { filled: "judged", entry: "list", sources: ["iso3166"], sent: { crossref: false, zenodo: true } },
-  funding: { note: true, filled: "matched", entry: "either", sources: ["openalexFunders", "rorFunders", "funderRegistry", "rorAdd"], sent: BOTH },
+  funding: { note: true, filled: "matched", entry: "either", sources: ["openalexFunders", "rorFunders", "funderRegistry", "rorAdd"], sent: ALL },
+  funderType: { note: true, entry: "list", sent: { crossref: false, zenodo: false, docid: true } },
   references: { note: true, filled: "pdf", entry: "pasted", sources: ["doi", "crossrefReferences"], sent: BOTH },
   links: { note: true, filled: "pdf", entry: "either", sources: ["crossrefRelations"], sent: BOTH },
   agreement: { note: true, sources: ["ccLicences"] },
@@ -100,7 +103,7 @@ const HELP = {
 export type HelpKey = keyof typeof HELP;
 
 /** The registrars a report is sent to, as its series has them set: a "?" leaves out the one that isn't used. */
-const Registrars = createContext<{ crossref: boolean; zenodo: boolean }>(BOTH);
+const Registrars = createContext<{ crossref: boolean; zenodo: boolean; docid?: boolean | undefined }>(BOTH);
 export const RegistrarsProvider = Registrars.Provider;
 
 const MARK: Record<Mark, ReactNode> = {
@@ -239,6 +242,11 @@ export function FieldHelp({
               {registrars.zenodo ? (
                 <Taker takes={help.sent.zenodo} name="Zenodo" does={t("does.zenodo")} href="https://zenodo.org/">
                   <FadeImage src="/brands/zenodo.svg" className="h-4 w-11" />
+                </Taker>
+              ) : null}
+              {registrars.docid ? (
+                <Taker takes={help.sent.docid === true} name="DOCiD" does={t("does.docid")} href="https://docid.africapidalliance.org/">
+                  <FadeImage src="/brands/docid.png" className="h-4 w-[58px]" />
                 </Taker>
               ) : null}
               <Taker takes name="Openscholar" does={t("does.openscholar")}>

@@ -50,8 +50,10 @@ describe("identifier services", () => {
     expect(clampChoose({ ...any, services: { ...any.services, docid: { mode: "required", price: 5 } } }, any).choose).toEqual({ min: 0, max: 0 });
   });
 
-  it("switches off a service whose account is off, or DOCiD's until its types are set", () => {
-    expect(withAccounts(settings({ docid: "required" }), { crossref: { mode: "custom" }, zenodo: { mode: "custom" }, docid: { mode: "custom", resourceTypeId: 18 } }).services.docid.mode).toBe("off");
+  it("switches off a service whose account is off, or DOCiD's until it may file reports", () => {
+    const docid = (resourceTypes: Array<{ id: number; name: string }>) => withAccounts(settings({ docid: "required" }), { crossref: { mode: "custom" }, zenodo: { mode: "custom" }, docid: { mode: "custom", options: { resourceTypes } } }).services.docid.mode;
+    expect(docid([{ id: 18, name: "PhD Thesis" }])).toBe("off");
+    expect(docid([{ id: 21, name: "Manuscripts" }])).toBe("required");
     const off = withAccounts(settings({ docid: "required" }), { crossref: { mode: "custom" }, zenodo: { mode: "custom" } });
     expect(off.services.docid.mode).toBe("off");
   });

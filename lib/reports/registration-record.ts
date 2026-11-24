@@ -126,7 +126,7 @@ export function registrationRecord(
       // OpenAlex has given the DOI bare and documents it as an address: either way it goes in once, behind one resolver.
       // A funder only ROR knows takes the Funder Registry ID ROR lists for it, where it lists one.
       const registryDoi = doiIn(known?.doi ?? "") ?? (ror ? doiIn(ids.rorFunders?.[ror] ?? "") : null);
-      return { funderName: f.funder.name, ...(registryDoi && { funderIdentifier: `https://doi.org/${registryDoi}` }), ...(ror && { funderRor: ror }), awards: f.awards };
+      return { funderName: f.funder.name, ...(registryDoi && { funderIdentifier: `https://doi.org/${registryDoi}` }), ...(ror && { funderRor: ror }), ...(f.type && { funderType: f.type }), awards: f.awards };
     }),
     // Each work cited by its DOI, or as its reference list writes it when it has none.
     references: m.citations ? m.citations.map((c) => c.doi ?? c.text.trim()).filter(Boolean) : m.references,

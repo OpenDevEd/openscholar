@@ -375,14 +375,7 @@
     "docidHint": "Die Kennung der Africa PID Alliance, ein Handle unter 20.500.14351.",
     "enableDocid": "DOCiD verwenden",
     "docidPermanent": "DOCiD hat keinen Testdienst. Jede DOCiD ist ein echter Handle, der nicht gelöscht, nur stillgelegt werden kann.",
-    "docidChoose": "Auswählen",
-    "docidListsFirst": "Konto prüfen und speichern, um die Listen von DOCiD zu laden.",
-    "docidResourceType": "Ressourcentyp",
-    "docidResourceTypeHint": "Als was DOCiD jeden Bericht ablegt. Ihr Konto darf nur einige verwenden.",
-    "docidFileType": "Dateityp",
-    "docidFileTypeHint": "Wie DOCiD das PDF führt.",
-    "docidFunderType": "Art des Geldgebers",
-    "docidNoResourceTypes": "DOCiD erlaubt diesem Konto noch keinen Ressourcentyp und kann deshalb keine Berichte hinterlegen. Bitten Sie die Africa PID Alliance, einen freizugeben, und prüfen und speichern Sie dann erneut."
+    "docidNoResourceTypes": "DOCiD erlaubt diesem Konto noch nicht, Berichte als Manuscripts abzulegen, deshalb kann es sie nicht hinterlegen. Bitten Sie die Africa PID Alliance, Manuscripts freizugeben, und prüfen und speichern Sie dann erneut."
   },
   "auth": {
     "backToSearch": "Zurück zur Suche",
@@ -7152,6 +7145,13 @@
       "fundersPager": "Fördergeber",
       "grants": "Förderkennzeichen",
       "addGrant": "Ein Förderkennzeichen für {name} hinzufügen",
+      "funderType": "Art des Geldgebers",
+      "funderTypeOf": "Art des Geldgebers {name}",
+      "funderTypes": {
+        "grantor": "Fördergeber",
+        "investor": "Investor",
+        "corporation": "Unternehmen"
+      },
       "references": "Literatur",
       "referencesPager": "Literaturangaben",
       "editReference": "Literaturangabe bearbeiten",
@@ -7245,7 +7245,8 @@
       "does": {
         "crossref": "Registriert den DOI",
         "zenodo": "Archiviert eine Kopie",
-        "openscholar": "Zeigt den Bericht"
+        "openscholar": "Zeigt den Bericht",
+        "docid": "Vergibt einen Handle"
       },
       "sent": "{name}, bekommt das: {does}",
       "notSent": "{name}, bekommt das nicht: {does}",
@@ -7463,6 +7464,11 @@
           "title": "Förderung",
           "about": "Wer die Arbeit bezahlt hat, mit den Fördernummern wie gedruckt.",
           "note": "Förderer werden bei OpenAlex und ROR gesucht. Einer, der dort gefunden wird, geht mit seiner ROR-ID und, wo vorhanden, seiner Funder-Registry-ID. Einer, der von Hand eingegeben wird, geht nur mit seinem Namen."
+        },
+        "funderType": {
+          "title": "Art des Geldgebers",
+          "about": "Welche Art von Stelle die Arbeit finanziert hat: eine, die Fördermittel vergibt, eine, die investiert, oder ein Unternehmen.",
+          "note": "Nur DOCiD erfasst sie. Ein Geldgeber ohne Angabe gilt als Fördergeber."
         },
         "references": {
           "title": "Literatur",

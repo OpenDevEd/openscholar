@@ -34,16 +34,13 @@ export const publicationSettingsValidator = v.object({
   /**
    * DOCiD, the Africa PID Alliance's Handles (plans/identifier-services): Openscholar Reports' account only, as
    * communities show the DOCiDs their records come with and never register one. It has no test service, so it is
-   * off or a real account. The type ids are DOCiD's own, read from its lists with the account.
+   * off or a real account. Its types are mapped from each report, by name, against DOCiD's lists.
    */
   docid: v.optional(
     v.object({
       mode: v.union(v.literal("off"), v.literal("custom")),
       email: v.string(),
-      resourceTypeId: v.optional(v.number()),
-      publicationTypeId: v.optional(v.number()),
-      funderTypeId: v.optional(v.number()),
-      /** DOCiD's lists as the account saw them when last verified, for the pickers; written by the server only. */
+      /** DOCiD's lists as the account saw them when last verified, which deposits find their types in; written by the server only. */
       options: v.optional(
         v.object({
           resourceTypes: capped(v.array(v.object({ id: v.number(), name: v.string() })), DOCID_OPTIONS_MAX),

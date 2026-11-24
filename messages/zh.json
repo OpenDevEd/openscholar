@@ -375,14 +375,7 @@
     "docidHint": "Africa PID Alliance 的标识符，即 20.500.14351 下的 Handle。",
     "enableDocid": "使用 DOCiD",
     "docidPermanent": "DOCiD 没有测试服务。它发放的每个 DOCiD 都是真实的 Handle，无法删除，只能撤回。",
-    "docidChoose": "请选择",
-    "docidListsFirst": "验证并保存账户以加载 DOCiD 的列表。",
-    "docidResourceType": "资源类型",
-    "docidResourceTypeHint": "DOCiD 将每份报告归入的类型。您的账户只能使用其中一部分。",
-    "docidFileType": "文件类型",
-    "docidFileTypeHint": "DOCiD 如何列出 PDF。",
-    "docidFunderType": "资助方类型",
-    "docidNoResourceTypes": "DOCiD 尚未允许此账户使用任何资源类型，因此无法提交报告。请请求 Africa PID Alliance 允许一种类型，然后再次验证并保存。"
+    "docidNoResourceTypes": "DOCiD 尚未允许此账户将报告登记为 Manuscripts，因此无法提交。请请求 Africa PID Alliance 允许 Manuscripts，然后再次验证并保存。"
   },
   "auth": {
     "backToSearch": "返回搜索",
@@ -7151,6 +7144,13 @@
       "fundersPager": "个资助方",
       "grants": "资助编号",
       "addGrant": "为{name}添加资助编号",
+      "funderType": "资助方类型",
+      "funderTypeOf": "{name} 的资助方类型",
+      "funderTypes": {
+        "grantor": "资助机构",
+        "investor": "投资方",
+        "corporation": "企业"
+      },
       "references": "参考文献",
       "referencesPager": "条参考文献",
       "editReference": "编辑参考文献",
@@ -7244,7 +7244,8 @@
       "does": {
         "crossref": "注册 DOI",
         "zenodo": "存档一份副本",
-        "openscholar": "展示报告"
+        "openscholar": "展示报告",
+        "docid": "分配 Handle"
       },
       "sent": "{name}，会收到：{does}",
       "notSent": "{name}，不会收到：{does}",
@@ -7462,6 +7463,11 @@
           "title": "资助",
           "about": "谁资助了这项工作，以及印出的资助编号。",
           "note": "会在 OpenAlex 和 ROR 中查找资助方。在那里找到的资助方会连同 ROR 标识符一起发送，如有资助方注册库标识符也会一起发送。手动输入的资助方只发送名称。"
+        },
+        "funderType": {
+          "title": "资助方类型",
+          "about": "资助这项工作的机构类型：提供资助金的机构、对其投资的机构，或企业。",
+          "note": "只有 DOCiD 记录此项。保持不变的资助方按资助机构发送。"
         },
         "references": {
           "title": "参考文献",

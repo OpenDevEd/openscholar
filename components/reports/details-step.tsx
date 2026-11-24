@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FUNDER_TYPES, type FunderType } from "@opendeved/doi-sync-core/docid";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -404,8 +405,8 @@ export function DetailsStep({
 }: {
   /** The report an abstract is written from, and the workspace its author asks from; none for a reviewer. Without it the form offers none. */
   writing?: { key: string; workspaceId?: Id<"workspaces"> };
-  /** The registrars the report is sent to, so each part's "?" leaves out one that isn't used. */
-  registrars?: { crossref: boolean; zenodo: boolean };
+  /** The registrars the report is sent to, so each part's "?" leaves out one that isn't used, and DOCiD's funder types show where it is one. */
+  registrars?: { crossref: boolean; zenodo: boolean; docid?: boolean | undefined };
   initial: Metadata;
   /** Given the details, and the `version` the form opened on. */
   onRun: (m: Metadata, version: number | undefined) => Promise<void>;
@@ -810,7 +811,12 @@ export function DetailsStep({
           <CountrySelector label={t("places")} placeholder={t("addPlace")} selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
         </Section>
 
-        <Section title={t("funding")} help="funding">
+        <Section
+          title={t("funding")}
+          help="funding"
+          // Names the funder type each row ends with, where the report goes to DOCiD.
+          aside={registrars?.docid ? <span className="ms-auto flex items-center gap-0.5 text-xs font-medium text-muted-foreground">{t("funderType")}<FieldHelp field="funderType" /></span> : undefined}
+        >
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(funderChip(f.funder))))}
@@ -832,7 +838,7 @@ export function DetailsStep({
               {funders.shown.map((f, at) => {
                 const i = funders.offset + at;
                 return (
-                <li key={funderChip(f.funder)} className="grid grid-cols-[minmax(0,1fr)] items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                <li key={funderChip(f.funder)} className={cn("grid grid-cols-[minmax(0,1fr)] items-center gap-2 px-3 py-2.5", registrars?.docid ? "@2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_auto]" : "@2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]")}>
                   <span className="flex min-w-0 items-center gap-1">
                     {/* The full name shows on hover once the ROR mark beside it leaves too little room for it. */}
                     <TooltipHint label={f.funder.name} onlyWhenClipped>
@@ -849,6 +855,21 @@ export function DetailsStep({
                     label={t("addGrant", { name: f.funder.name })}
                     mono
                   />
+                  {/* Only DOCiD records what kind of funder it is: a grantor unless its author says otherwise. */}
+                  {registrars?.docid ? (
+                    <Select value={f.type ?? "grantor"} onValueChange={(type) => set("funding", m.funding.map((x, n) => (n === i ? { ...x, type: type as FunderType } : x)))}>
+                      <SelectTrigger size="sm" className="w-full @2xl:w-36" aria-label={t("funderTypeOf", { name: f.funder.name })}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FUNDER_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {t(`funderTypes.${type}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
                 </li>
                 );
               })}

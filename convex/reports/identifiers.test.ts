@@ -7,7 +7,7 @@ import { refused, row, setup, type World } from "./reports.test-support";
 async function withDocid(world: World, identifiers: Identifiers) {
   await world.t.run(async (ctx) => {
     const settings = (await ctx.db.query("reportSettings").first())!;
-    await ctx.db.patch("reportSettings", settings._id, { identifiers, publication: { ...settings.publication, docid: { mode: "custom", email: "docid@test.local", resourceTypeId: 18, publicationTypeId: 5, funderTypeId: 1 } } });
+    await ctx.db.patch("reportSettings", settings._id, { identifiers, publication: { ...settings.publication, docid: { mode: "custom", email: "docid@test.local", options: { resourceTypes: [{ id: 21, name: "Manuscripts" }], publicationTypes: [{ id: 5, name: "Monograph" }], funderTypes: [{ id: 1, name: "Grantor" }] } } } });
   });
 }
 
