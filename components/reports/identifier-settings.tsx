@@ -24,13 +24,20 @@ import { SERVICES, SERVICE_IDS, clampChoose, optionalOf, printable, settingsProb
 import { PRICE_MAX } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
+/**
+ * On a phone at large text a service's controls are wider than its row: there they shrink and wrap, the choices onto
+ * a second line, rather than widening the page. Where they fit, nothing changes.
+ */
+const CONTROLS = "flex shrink-0 items-center gap-3 max-sm:min-w-0 max-sm:shrink max-sm:flex-wrap";
+const WRAPS = "max-sm:max-w-full max-sm:flex-wrap max-sm:rounded-[1.375rem]";
+
 /** What can't be changed here, drawn as the app draws a locked control: a lock, faded, with why on hover. */
 function Locked({ why, children }: { why: string; children: React.ReactNode }) {
   return (
     <TooltipHint label={why}>
-      <span tabIndex={0} className="flex cursor-default items-center gap-2 opacity-50">
+      <span tabIndex={0} className="flex cursor-default items-center gap-2 opacity-50 max-sm:min-w-0">
         <Lock className="size-3.5 shrink-0 text-muted-foreground" />
-        <span inert className="flex items-center gap-3">
+        <span inert className="flex items-center gap-3 max-sm:min-w-0 max-sm:flex-wrap">
           {children}
         </span>
       </span>
@@ -136,16 +143,16 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
                 <span className="block text-xs text-muted-foreground">{ready ? hint(id) : t("notConnected")}</span>
               </span>
               {why ? (
-                <span className="flex shrink-0 items-center gap-3">
+                <span className={CONTROLS}>
                   <Locked why={why}>
-                    <Segmented label={t("when", { service: SERVICES[id].name })} value={tied ? "required" : "off"} onChange={() => undefined} options={modes} />
+                    <Segmented label={t("when", { service: SERVICES[id].name })} value={tied ? "required" : "off"} onChange={() => undefined} options={modes} className={WRAPS} />
                   </Locked>
                   {/* Only its mode is locked: Zenodo with Crossref still adds what its price says. */}
                   {tied ? <AddOn id={id} price={s.price} onSave={(price) => service(id, { price })} /> : null}
                 </span>
               ) : (
-                <span className="flex shrink-0 items-center gap-3">
-                  <Segmented label={t("when", { service: SERVICES[id].name })} value={s.mode} onChange={(mode) => void service(id, { mode })} options={modes} />
+                <span className={CONTROLS}>
+                  <Segmented label={t("when", { service: SERVICES[id].name })} value={s.mode} onChange={(mode) => void service(id, { mode })} options={modes} className={WRAPS} />
                   <span className={cn("transition-opacity", s.mode === "off" && "pointer-events-none opacity-40")}>
                     <AddOn id={id} price={s.price} onSave={(price) => service(id, { price })} />
                   </span>
@@ -163,6 +170,7 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
                   <span className="block text-xs text-muted-foreground">{t("pickHint", { services: optional.map((id) => SERVICES[id].name).join(" + ") })}</span>
                 </span>
                 <Segmented
+                  className={WRAPS}
                   label={t("pick")}
                   value={rule}
                   onChange={(picked) => {
