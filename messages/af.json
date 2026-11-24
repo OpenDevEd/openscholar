@@ -375,14 +375,7 @@
     "docidHint": "Die Africa PID Alliance se identifiseerder, 'n Handle onder 20.500.14351.",
     "enableDocid": "Gebruik DOCiD",
     "docidPermanent": "DOCiD het geen toetsdiens nie. Elke DOCiD is 'n regte Handle wat nie uitgevee kan word nie, net teruggetrek.",
-    "docidChoose": "Kies een",
-    "docidListsFirst": "Verifieer en stoor die rekening om DOCiD se lyste te laai.",
-    "docidResourceType": "Hulpbrontipe",
-    "docidResourceTypeHint": "Waaronder DOCiD elke verslag lê. Jou rekening mag net sommige gebruik.",
-    "docidFileType": "Lêertipe",
-    "docidFileTypeHint": "Hoe DOCiD die PDF lys.",
-    "docidFunderType": "Befondsertipe",
-    "docidNoResourceTypes": "DOCiD laat hierdie rekening nog geen hulpbrontipe toe nie, so dit kan nie verslae deponeer nie. Vra die Africa PID Alliance om een toe te laat, verifieer en stoor dan weer."
+    "docidNoResourceTypes": "DOCiD laat hierdie rekening nog nie toe om verslae as Manuscripts te liasseer nie, so dit kan dit nie deponeer nie. Vra die Africa PID Alliance om Manuscripts toe te laat, verifieer en stoor dan weer."
   },
   "auth": {
     "backToSearch": "Terug na soektog",
@@ -7152,6 +7145,13 @@
       "fundersPager": "befondsers",
       "grants": "Toekenningsnommers",
       "addGrant": "Voeg toekenningsnommer vir {name} by",
+      "funderType": "Soort befondser",
+      "funderTypeOf": "Soort befondser vir {name}",
+      "funderTypes": {
+        "grantor": "Toekenner",
+        "investor": "Belegger",
+        "corporation": "Maatskappy"
+      },
       "references": "Verwysings",
       "referencesPager": "verwysings",
       "editReference": "Wysig verwysing",
@@ -7245,7 +7245,8 @@
       "does": {
         "crossref": "Registreer die DOI",
         "zenodo": "Argiveer ’n kopie",
-        "openscholar": "Wys die verslag"
+        "openscholar": "Wys die verslag",
+        "docid": "Gee 'n Handle"
       },
       "sent": "{name}, kry dit: {does}",
       "notSent": "{name}, kry dit nie: {does}",
@@ -7463,6 +7464,11 @@
           "title": "Befondsing",
           "about": "Wie vir die werk betaal het, met die toekenningsnommers soos gedruk.",
           "note": "Befondsers word op OpenAlex en ROR opgesoek. Een wat daar gevind word, gaan met sy ROR-ID, en met sy Funder Registry-ID as hy een het. Een wat met die hand getik is, gaan net as ’n naam."
+        },
+        "funderType": {
+          "title": "Soort befondser",
+          "about": "Watter soort liggaam die werk befonds het: een wat toekennings gee, een wat daarin belê, of 'n maatskappy.",
+          "note": "Net DOCiD hou dit by. 'n Befondser wat so gelaat word, gaan as 'n toekenner."
         },
         "references": {
           "title": "Verwysings",

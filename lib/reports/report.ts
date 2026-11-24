@@ -1,6 +1,7 @@
 // A report in Openscholar Reports (plans/publish-reports): the steps it goes through, where it stands, and the rules
 // its pages and its Convex functions share. Nothing here reads a database or the clock.
 
+import type { FunderType } from "@opendeved/doi-sync-core/docid";
 import { WORK_TYPES } from "../openalex/vocabulary";
 
 export type Answer = "yes" | "no" | "unclear";
@@ -99,8 +100,11 @@ export type Author = {
 };
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
-/** A funder: OpenAlex's where it has it (F…), with its ROR ID (https://ror.org/…) where OpenAlex or ROR know it, or the name as typed. */
-export type Funding = { funder: { id: string | null; name: string; ror?: string }; awards: string[] };
+/**
+ * A funder: OpenAlex's where it has it (F…), with its ROR ID (https://ror.org/…) where OpenAlex or ROR know it, or the name
+ * as typed, and what kind of funder it is, for DOCiD: a grantor where it isn't said.
+ */
+export type Funding = { funder: { id: string | null; name: string; ror?: string }; awards: string[]; type?: FunderType };
 export const RELATION_KINDS = [
   { id: "data", name: "Data" },
   { id: "code", name: "Code" },

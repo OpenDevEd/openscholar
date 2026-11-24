@@ -172,14 +172,12 @@ const DOCID_ENDPOINT = "https://docid.africapidalliance.org";
 export const docidClient = () =>
   new DocidApiClient({ endpoint: DOCID_ENDPOINT, fetch: (url, init) => fetch(url, { ...init, headers: { ...init.headers, "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) }) });
 
-export type DocidOption = { id: number; name: string };
-export type DocidLists = { resourceTypes: DocidOption[]; publicationTypes: DocidOption[]; funderTypes: DocidOption[] };
 
 /**
  * Signs in to DOCiD and reads the lists its deposits take ids from. The resource types are only the ones the account
  * may use: DOCiD filters them by its category, and an account it hasn't allowed any gets none.
  */
-export async function docidLists(email: string, password: string): Promise<DocidLists> {
+export async function docidLists(email: string, password: string) {
   const { token } = await docidClient().signIn({ email, password });
   const read = async (list: string, name: string) => {
     const response = await fetch(`${DOCID_ENDPOINT}/api/v1/publications/get-list-${list}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "User-Agent": userAgent }, signal: AbortSignal.timeout(20_000) });
@@ -275,15 +273,10 @@ export async function verifiedPublication(
       settings.crossref.mode === "sandbox",
     );
   if (settings.docid?.mode === "custom") {
-    const { email, resourceTypeId, publicationTypeId, funderTypeId } = settings.docid;
+    const { email } = settings.docid;
     if (!email || !credentials.docidPassword) throw new Error("Give the email and password of the DOCiD account.");
-    // Signing in checks the account; each type picked must be one of DOCiD's own, and a resource type one it allows.
-    const lists = await docidLists(email, credentials.docidPassword);
-    const known = (id: number | undefined, options: DocidOption[]) => id === undefined || options.some((option) => option.id === id);
-    if (!known(resourceTypeId, lists.resourceTypes)) throw new Error("Your DOCiD account may not use this resource type. Pick one from the list.");
-    if (!known(publicationTypeId, lists.publicationTypes)) throw new Error("DOCiD has no such file type. Pick one from the list.");
-    if (!known(funderTypeId, lists.funderTypes)) throw new Error("DOCiD has no such funder type. Pick one from the list.");
-    settings.docid.options = lists;
+    // Signing in checks the account; its lists are kept, as each deposit finds its types in them.
+    settings.docid.options = await docidLists(email, credentials.docidPassword);
   }
   return { settings, credentials, custom };
 }

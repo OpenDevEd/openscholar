@@ -52,7 +52,7 @@ describe("a report's record for its registrars", () => {
       sdgs: ["2"],
       studyDesigns: ["observational-study"],
       countries: ["MW", "eastern_africa"],
-      funding: [{ funder: { id: "https://openalex.org/F4320306076", name: "National Science Foundation" }, awards: ["CHE-1152342"] }, { funder: { id: null, name: "A local trust" }, awards: [] }],
+      funding: [{ funder: { id: "https://openalex.org/F4320306076", name: "National Science Foundation" }, awards: ["CHE-1152342"] }, { funder: { id: null, name: "A local trust" }, awards: [], type: "investor" as const }],
       references: ["10.1000/cited.1"],
       relations: [
         { kind: "data" as const, target: "https://doi.org/10.5281/zenodo.42" },
@@ -64,7 +64,7 @@ describe("a report's record for its registrars", () => {
       subjects: ["Climate change impacts on agriculture", "SDG 2: Zero hunger"],
       methods: "Observational study",
       locations: [{ place: "Malawi", country: "MW" }, { place: "Eastern Africa" }],
-      funding: [{ funderName: "National Science Foundation", funderIdentifier: "https://doi.org/10.13039/100000001", funderRor: "021nxhr62", awards: ["CHE-1152342"] }, { funderName: "A local trust", awards: [] }],
+      funding: [{ funderName: "National Science Foundation", funderIdentifier: "https://doi.org/10.13039/100000001", funderRor: "021nxhr62", awards: ["CHE-1152342"] }, { funderName: "A local trust", funderType: "investor", awards: [] }],
       references: ["10.1000/cited.1"],
       relations: [
         { type: "isSupplementedBy", identifierType: "doi", identifier: "10.5281/zenodo.42", description: "Data" },

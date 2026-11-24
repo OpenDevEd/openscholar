@@ -99,16 +99,17 @@ export async function findRorOrganisations(words: string): Promise<RorOrganisati
 }
 
 /**
- * The Funder Registry ID ROR lists for an organisation (`100000001`), which Crossref's funder DOIs are made from, or none
- * when Crossref has no such funder. Unreadable answers throw, so a deposit waits rather than going without it.
+ * What ROR says of an organisation: the Funder Registry ID it lists (`100000001`), which Crossref's funder DOIs are made
+ * from, or none when Crossref has no such funder; and its first type ("education", "funder"…). Both are null for an
+ * organisation ROR doesn't have. Unreadable answers throw, so a deposit waits rather than going without them.
  */
-export async function fundrefOf(ror: string): Promise<string | null> {
+export async function rorFacts(ror: string): Promise<{ fundref: string | null; type: string | null }> {
   const response = await fetch(`${ROR_API}/${encodeURIComponent(ror)}`, { headers: { Accept: "application/json", "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(10_000) });
-  if (response.status === 404) return null;
+  if (response.status === 404) return { fundref: null, type: null };
   if (!response.ok) throw new Error(`ROR ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  const record = (await response.json()) as { external_ids?: Array<{ type: string; preferred: string | null; all: string[] }> };
+  const record = (await response.json()) as { types?: string[]; external_ids?: Array<{ type: string; preferred: string | null; all: string[] }> };
   const fundref = record.external_ids?.find((id) => id.type === "fundref");
-  return fundref?.preferred ?? fundref?.all[0] ?? null;
+  return { fundref: fundref?.preferred ?? fundref?.all[0] ?? null, type: record.types?.[0] ?? null };
 }
 
 /** An organisation's name as letters and digits alone, "&" read as "and", without a leading "The": "The Data Lab" is "Data Lab". */

@@ -375,14 +375,7 @@
     "docidHint": "O identificador da Africa PID Alliance, um Handle sob 20.500.14351.",
     "enableDocid": "Usar DOCiD",
     "docidPermanent": "O DOCiD não tem serviço de teste. Cada DOCiD é um Handle real que não pode ser apagado, apenas retirado.",
-    "docidChoose": "Escolha um",
-    "docidListsFirst": "Verifique e salve a conta para carregar as listas do DOCiD.",
-    "docidResourceType": "Tipo de recurso",
-    "docidResourceTypeHint": "Como o DOCiD arquiva cada relatório. Sua conta só pode usar alguns.",
-    "docidFileType": "Tipo de arquivo",
-    "docidFileTypeHint": "Como o DOCiD lista o PDF.",
-    "docidFunderType": "Tipo de financiador",
-    "docidNoResourceTypes": "O DOCiD ainda não permite nenhum tipo de recurso a esta conta, então ela não pode depositar relatórios. Peça à Africa PID Alliance que permita um e verifique e salve de novo."
+    "docidNoResourceTypes": "O DOCiD ainda não permite que esta conta registre relatórios como Manuscripts, então ela não pode depositá-los. Peça à Africa PID Alliance que permita Manuscripts e verifique e salve de novo."
   },
   "auth": {
     "backToSearch": "Voltar à pesquisa",
@@ -7152,6 +7145,13 @@
       "fundersPager": "financiadores",
       "grants": "Números de subvenção",
       "addGrant": "Adicionar um número de subvenção para {name}",
+      "funderType": "Tipo de financiador",
+      "funderTypeOf": "Tipo de financiador de {name}",
+      "funderTypes": {
+        "grantor": "Concedente",
+        "investor": "Investidor",
+        "corporation": "Empresa"
+      },
       "references": "Referências",
       "referencesPager": "referências",
       "editReference": "Editar a referência",
@@ -7245,7 +7245,8 @@
       "does": {
         "crossref": "Regista o DOI",
         "zenodo": "Arquiva uma cópia",
-        "openscholar": "Mostra o relatório"
+        "openscholar": "Mostra o relatório",
+        "docid": "Atribui um Handle"
       },
       "sent": "{name}, recebe isto: {does}",
       "notSent": "{name}, não recebe isto: {does}",
@@ -7463,6 +7464,11 @@
           "title": "Financiamento",
           "about": "Quem pagou o trabalho, com os números de financiamento tal como impressos.",
           "note": "Os financiadores são procurados no OpenAlex e no ROR. Um encontrado aí vai com o seu identificador ROR e, quando o tem, o do Funder Registry. Um escrito à mão vai só com o nome."
+        },
+        "funderType": {
+          "title": "Tipo de financiador",
+          "about": "Que tipo de entidade financiou o trabalho: uma que concede subsídios, uma que investe nele ou uma empresa.",
+          "note": "Só o DOCiD o registra. Um financiador deixado como está vai como concedente."
         },
         "references": {
           "title": "Referências",

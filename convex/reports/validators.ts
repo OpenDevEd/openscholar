@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { keptCustomValidator, publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
+import { FUNDER_TYPES } from "@opendeved/doi-sync-core/docid";
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
@@ -130,7 +131,7 @@ export const metadataValidator = v.object({
   sdgs: capped(v.array(v.string()), DETAIL_CAPS.sdgs),
   studyDesigns: capped(v.array(v.string()), DETAIL_CAPS.studyDesigns),
   countries: capped(v.array(v.string()), DETAIL_CAPS.countries),
-  funding: capped(v.array(v.object({ funder: v.object({ id: v.union(v.string(), v.null()), name: v.string(), ror: v.optional(v.string()) }), awards: capped(v.array(v.string()), DETAIL_CAPS.awards) })), DETAIL_CAPS.funding),
+  funding: capped(v.array(v.object({ funder: v.object({ id: v.union(v.string(), v.null()), name: v.string(), ror: v.optional(v.string()) }), awards: capped(v.array(v.string()), DETAIL_CAPS.awards), type: v.optional(literals(FUNDER_TYPES)) })), DETAIL_CAPS.funding),
   references: capped(v.array(v.string()), DETAIL_CAPS.references),
   citations: capped(v.optional(v.array(v.object({ text: v.string(), doi: v.optional(v.string()) }))), DETAIL_CAPS.references),
   relations: capped(v.array(v.object({ kind: literals(RELATION_KINDS.map((kind) => kind.id)), target: v.string() })), DETAIL_CAPS.relations),

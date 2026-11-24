@@ -375,14 +375,7 @@
     "docidHint": "Isihlonzi se-Africa PID Alliance, i-Handle ngaphansi kuka-20.500.14351.",
     "enableDocid": "Sebenzisa i-DOCiD",
     "docidPermanent": "I-DOCiD ayinayo insizakalo yokuhlola. I-DOCiD ngayinye iyi-Handle yangempela engeke isuswe, ihoxiswe kuphela.",
-    "docidChoose": "Khetha eyodwa",
-    "docidListsFirst": "Qinisekisa futhi ulondoloze i-akhawunti ukuze ulayishe uhlu lwe-DOCiD.",
-    "docidResourceType": "Uhlobo lwensiza",
-    "docidResourceTypeHint": "Lokho i-DOCiD efaka ngakho umbiko ngamunye. I-akhawunti yakho ingasebenzisa ezinye kuphela.",
-    "docidFileType": "Uhlobo lwefayela",
-    "docidFileTypeHint": "Indlela i-DOCiD ebala ngayo i-PDF.",
-    "docidFunderType": "Uhlobo lomxhasi",
-    "docidNoResourceTypes": "I-DOCiD ayikayivumeli le akhawunti uhlobo lwensiza, ngakho ayikwazi ukufaka imibiko. Cela i-Africa PID Alliance ivumele olulodwa, bese uqinisekisa futhi ulondoloza futhi."
+    "docidNoResourceTypes": "I-DOCiD ayikayivumeli le akhawunti ukufaka imibiko njenge-Manuscripts, ngakho ayikwazi ukuyifaka. Cela i-Africa PID Alliance ivumele i-Manuscripts, bese uqinisekisa futhi ulondoloza futhi."
   },
   "auth": {
     "backToSearch": "Buyela ekusesheni",
@@ -7151,6 +7144,13 @@
       "fundersPager": "abaxhasi",
       "grants": "Izinombolo zoxhaso",
       "addGrant": "Engeza inombolo yoxhaso ka-{name}",
+      "funderType": "Uhlobo lomxhasi",
+      "funderTypeOf": "Uhlobo lomxhasi we-{name}",
+      "funderTypes": {
+        "grantor": "Umniki-sibonelelo",
+        "investor": "Umtshalizimali",
+        "corporation": "Inkampani"
+      },
       "references": "Izinkomba",
       "referencesPager": "izinkomba",
       "editReference": "Hlela inkomba",
@@ -7244,7 +7244,8 @@
       "does": {
         "crossref": "Ibhalisa i-DOI",
         "zenodo": "Igcina ikhophi",
-        "openscholar": "Ibonisa umbiko"
+        "openscholar": "Ibonisa umbiko",
+        "docid": "Inikeza i-Handle"
       },
       "sent": "{name}, iyakuthola lokhu: {does}",
       "notSent": "{name}, ayikutholi lokhu: {does}",
@@ -7462,6 +7463,11 @@
           "title": "Uxhaso",
           "about": "Ubani owakhokhela umsebenzi, nezinombolo zoxhaso njengoba ziphrintiwe.",
           "note": "Abaxhasi bayabhekwa ku-OpenAlex naku-ROR. Otholakala lapho uhamba ne-ID yakhe ye-ROR, kanye ne-ID ye-Funder Registry uma enayo. Othayiphwe ngesandla uhamba nje ngegama."
+        },
+        "funderType": {
+          "title": "Uhlobo lomxhasi",
+          "about": "Uhlobo lwesikhungo esixhase umsebenzi: esinikeza izibonelelo, esitshala imali kuwo, noma inkampani.",
+          "note": "Yi-DOCiD kuphela eyirekhodayo. Umxhasi oshiywe njengoba enjalo uthunyelwa njengomniki-sibonelelo."
         },
         "references": {
           "title": "Izinkomba",

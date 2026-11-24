@@ -375,14 +375,7 @@
     "docidHint": "Kitambulisho cha Africa PID Alliance, Handle chini ya 20.500.14351.",
     "enableDocid": "Tumia DOCiD",
     "docidPermanent": "DOCiD haina huduma ya majaribio. Kila DOCiD ni Handle halisi lisiloweza kufutwa, bali kuondolewa tu.",
-    "docidChoose": "Chagua moja",
-    "docidListsFirst": "Thibitisha na uhifadhi akaunti ili kupakia orodha za DOCiD.",
-    "docidResourceType": "Aina ya rasilimali",
-    "docidResourceTypeHint": "Jinsi DOCiD inavyohifadhi kila ripoti. Akaunti yako inaweza kutumia baadhi tu.",
-    "docidFileType": "Aina ya faili",
-    "docidFileTypeHint": "Jinsi DOCiD inavyoorodhesha PDF.",
-    "docidFunderType": "Aina ya mfadhili",
-    "docidNoResourceTypes": "DOCiD bado haijaruhusu akaunti hii aina yoyote ya rasilimali, kwa hiyo haiwezi kuweka ripoti. Iombe Africa PID Alliance iruhusu moja, kisha thibitisha na uhifadhi tena."
+    "docidNoResourceTypes": "DOCiD bado haijaruhusu akaunti hii kuweka ripoti kama Manuscripts, kwa hiyo haiwezi kuziweka. Iombe Africa PID Alliance iruhusu Manuscripts, kisha thibitisha na uhifadhi tena."
   },
   "auth": {
     "backToSearch": "Rudi kwenye utafutaji",
@@ -7152,6 +7145,13 @@
       "fundersPager": "wafadhili",
       "grants": "Namba za ruzuku",
       "addGrant": "Ongeza namba ya ruzuku kwa {name}",
+      "funderType": "Aina ya mfadhili",
+      "funderTypeOf": "Aina ya mfadhili {name}",
+      "funderTypes": {
+        "grantor": "Mtoa ruzuku",
+        "investor": "Mwekezaji",
+        "corporation": "Kampuni"
+      },
       "references": "Marejeo",
       "referencesPager": "marejeo",
       "editReference": "Hariri rejeo",
@@ -7245,7 +7245,8 @@
       "does": {
         "crossref": "Husajili DOI",
         "zenodo": "Huhifadhi nakala",
-        "openscholar": "Huonyesha ripoti"
+        "openscholar": "Huonyesha ripoti",
+        "docid": "Hutoa Handle"
       },
       "sent": "{name}, hupokea hiki: {does}",
       "notSent": "{name}, haipokei hiki: {does}",
@@ -7463,6 +7464,11 @@
           "title": "Ufadhili",
           "about": "Nani alilipia kazi hii, pamoja na namba za ruzuku kama zilivyochapishwa.",
           "note": "Wafadhili hutafutwa kwenye OpenAlex na ROR. Anayepatikana huko hutumwa na kitambulisho chake cha ROR, na cha Funder Registry ikiwa anacho. Aliyeandikwa kwa mkono hutumwa kwa jina pekee."
+        },
+        "funderType": {
+          "title": "Aina ya mfadhili",
+          "about": "Aina ya taasisi iliyofadhili kazi: inayotoa ruzuku, inayowekeza ndani yake, au kampuni.",
+          "note": "Ni DOCiD pekee inayoirekodi. Mfadhili aliyeachwa kama alivyo hutumwa kama mtoa ruzuku."
         },
         "references": {
           "title": "Marejeleo",

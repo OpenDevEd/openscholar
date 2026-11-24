@@ -375,14 +375,7 @@
     "docidHint": "The Africa PID Alliance's identifier, a Handle under 20.500.14351.",
     "enableDocid": "Use DOCiD",
     "docidPermanent": "DOCiD has no test service. Every DOCiD it mints is a real Handle that can't be deleted, only retired.",
-    "docidChoose": "Choose one",
-    "docidListsFirst": "Verify and save the account to load DOCiD's lists.",
-    "docidResourceType": "Resource type",
-    "docidResourceTypeHint": "What DOCiD files each report as. Your account may use only some.",
-    "docidFileType": "File type",
-    "docidFileTypeHint": "How DOCiD lists the PDF.",
-    "docidFunderType": "Funder type",
-    "docidNoResourceTypes": "DOCiD allows this account no resource type yet, so it can't deposit reports. Ask the Africa PID Alliance to allow one, then verify and save again."
+    "docidNoResourceTypes": "DOCiD doesn't let this account file reports as Manuscripts yet, so it can't deposit them. Ask the Africa PID Alliance to allow Manuscripts, then verify and save again."
   },
   "auth": {
     "backToSearch": "Back to search",
@@ -7151,6 +7144,13 @@
       "fundersPager": "funders",
       "grants": "Grant numbers",
       "addGrant": "Add a grant number for {name}",
+      "funderType": "Funder type",
+      "funderTypeOf": "Funder type of {name}",
+      "funderTypes": {
+        "grantor": "Grantor",
+        "investor": "Investor",
+        "corporation": "Corporation"
+      },
       "references": "References",
       "referencesPager": "references",
       "editReference": "Edit reference",
@@ -7244,7 +7244,8 @@
       "does": {
         "crossref": "Registers the DOI",
         "zenodo": "Archives a copy",
-        "openscholar": "Shows the report"
+        "openscholar": "Shows the report",
+        "docid": "Gives a Handle"
       },
       "sent": "{name}, sent this: {does}",
       "notSent": "{name}, not sent this: {does}",
@@ -7462,6 +7463,11 @@
           "title": "Funding",
           "about": "Who paid for the work, with the grant numbers as printed.",
           "note": "Funders are looked up on OpenAlex and ROR. One found there goes with its ROR ID, and with its Funder Registry ID where it has one. One typed by hand goes as a name alone."
+        },
+        "funderType": {
+          "title": "Funder type",
+          "about": "What kind of body funded the work: one that gives grants, one that invests in it, or a company.",
+          "note": "Only DOCiD records it. A funder left as it is goes as a grantor."
         },
         "references": {
           "title": "References",

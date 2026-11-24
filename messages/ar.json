@@ -375,14 +375,7 @@
     "docidHint": "معرّف تحالف Africa PID Alliance، وهو Handle تحت 20.500.14351.",
     "enableDocid": "استخدام DOCiD",
     "docidPermanent": "لا توجد لدى DOCiD خدمة تجريبية. كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
-    "docidChoose": "اختر واحدًا",
-    "docidListsFirst": "تحقّق من الحساب واحفظه لتحميل قوائم DOCiD.",
-    "docidResourceType": "نوع المورد",
-    "docidResourceTypeHint": "النوع الذي يصنّف DOCiD كل تقرير تحته. يمكن لحسابك استخدام بعضها فقط.",
-    "docidFileType": "نوع الملف",
-    "docidFileTypeHint": "كيف يعرض DOCiD ملف PDF.",
-    "docidFunderType": "نوع الجهة المموّلة",
-    "docidNoResourceTypes": "لا يسمح DOCiD لهذا الحساب بأي نوع مورد بعد، لذا لا يمكنه إيداع التقارير. اطلب من Africa PID Alliance السماح بنوع، ثم تحقّق واحفظ مرة أخرى."
+    "docidNoResourceTypes": "لا يسمح DOCiD لهذا الحساب بعد بتسجيل التقارير بنوع Manuscripts، لذا لا يمكنه إيداعها. اطلب من Africa PID Alliance السماح بـ Manuscripts، ثم تحقّق واحفظ مرة أخرى."
   },
   "auth": {
     "backToSearch": "العودة إلى البحث",
@@ -7152,6 +7145,13 @@
       "fundersPager": "الجهات المموّلة",
       "grants": "أرقام المنح",
       "addGrant": "إضافة رقم منحة لـ {name}",
+      "funderType": "نوع المموّل",
+      "funderTypeOf": "نوع المموّل {name}",
+      "funderTypes": {
+        "grantor": "مانح",
+        "investor": "مستثمر",
+        "corporation": "شركة"
+      },
       "references": "المراجع",
       "referencesPager": "المراجع",
       "editReference": "تعديل المرجع",
@@ -7245,7 +7245,8 @@
       "does": {
         "crossref": "يسجّل معرّف DOI",
         "zenodo": "يؤرشف نسخة",
-        "openscholar": "يعرض التقرير"
+        "openscholar": "يعرض التقرير",
+        "docid": "يمنح Handle"
       },
       "sent": "{name}، يُرسل إليه هذا: {does}",
       "notSent": "{name}، لا يُرسل إليه هذا: {does}",
@@ -7463,6 +7464,11 @@
           "title": "التمويل",
           "about": "من موّل العمل، مع أرقام المنح كما طُبعت.",
           "note": "يُبحث عن الممولين في OpenAlex وROR. ومن يُعثر عليه هناك يُرسل بمعرّف ROR، وبمعرّف سجل الممولين إن كان له. ومن يُكتب يدويًا يُرسل باسمه وحده."
+        },
+        "funderType": {
+          "title": "نوع المموّل",
+          "about": "نوع الجهة التي موّلت العمل: جهة تقدّم المنح، أو جهة تستثمر فيه، أو شركة.",
+          "note": "يسجّله DOCiD وحده. المموّل الذي يُترك كما هو يُرسل بوصفه مانحًا."
         },
         "references": {
           "title": "المراجع",
