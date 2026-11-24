@@ -375,6 +375,8 @@
     "docidHint": "El identificador de la Africa PID Alliance, un Handle bajo 20.500.14351.",
     "enableDocid": "Usar DOCiD",
     "docidPermanent": "DOCiD no tiene servicio de pruebas. Cada DOCiD es un Handle real que no se puede borrar, solo retirar.",
+    "docidEmail": "Correo de la cuenta",
+    "docidPassword": "Contraseña",
     "docidNoResourceTypes": "DOCiD aún no permite a esta cuenta registrar informes como Manuscripts, así que no puede depositarlos. Pide a la Africa PID Alliance que permita Manuscripts y vuelve a verificar y guardar."
   },
   "auth": {

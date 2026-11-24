@@ -375,6 +375,8 @@
     "docidHint": "Kitambulisho cha Africa PID Alliance, Handle chini ya 20.500.14351.",
     "enableDocid": "Tumia DOCiD",
     "docidPermanent": "DOCiD haina huduma ya majaribio. Kila DOCiD ni Handle halisi lisiloweza kufutwa, bali kuondolewa tu.",
+    "docidEmail": "Barua pepe ya akaunti",
+    "docidPassword": "Nenosiri",
     "docidNoResourceTypes": "DOCiD bado haijaruhusu akaunti hii kuweka ripoti kama Manuscripts, kwa hiyo haiwezi kuziweka. Iombe Africa PID Alliance iruhusu Manuscripts, kisha thibitisha na uhifadhi tena."
   },
   "auth": {
