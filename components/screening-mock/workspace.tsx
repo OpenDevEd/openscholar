@@ -1,13 +1,12 @@
 "use client";
 
-// An open screening, across the whole window: Overview, Screen and Papers over the same votes.
-// Its reviewers, its settings and its state can change at any time from here.
+// An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
+// and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
-import { useState } from "react";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { createContext, use, useState, type ReactNode } from "react";
+import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useQueryState } from "nuqs";
+import { useParams, useRouter, useSelectedLayoutSegment } from "next/navigation";
 import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -26,16 +25,21 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
+import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
-import { Overview } from "./overview";
-import { Papers, type PapersFilter } from "./papers";
 import { ReviewerStack } from "./parts";
-import { NO_PLACE, Screen, type Place, type Queue } from "./screen";
-import { credits, paperCredits, useMock, useModelsReading, useOpenScreening } from "./store";
+import { credits, paperCredits, useMock, useModelsReading, useOpenScreening, type Open } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
-const VIEWS = ["overview", "screen", "papers"] as const;
-type View = (typeof VIEWS)[number];
+type View = "overview" | "screen" | "papers" | "settings";
+
+/** What the frame gives the page inside it: the screening as the person sees it, and the way to open its export. */
+const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void } | null>(null);
+export function useWorkspace() {
+  const workspace = use(Workspace);
+  if (!workspace) throw new Error("A screening's page is shown inside its frame");
+  return workspace;
+}
 
 /** How a paper is decided here, as the three facts the row under the bar shows. */
 function ruleFacts(screening: Screening) {
@@ -52,21 +56,15 @@ function ruleFacts(screening: Screening) {
   };
 }
 
-export function ScreeningWorkspace() {
+export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const store = useMock();
-  const [viewParam, setView] = useQueryState("view");
-  const view: View = VIEWS.includes(viewParam as View) ? (viewParam as View) : "overview";
+  // Which of its pages is open: each has its own address, so Back returns to the one before.
+  const segment = useSelectedLayoutSegment();
+  const view: View = segment === "screen" || segment === "papers" || segment === "settings" ? segment : "overview";
   const open = useOpenScreening(id);
   useModelsReading(id);
-  const [queueParam, setQueueParam] = useQueryState("queue");
-  const queue: Queue = queueParam === "done" || queueParam === "conflicts" ? queueParam : "todo";
-  const setQueue = (next: Queue) => { setPlace(NO_PLACE); void setQueueParam(next === "todo" ? null : next); };
-  const [filter, setFilter] = useState<PapersFilter>("all");
-  const [added, setAdded] = useState("all");
-  // Where you are in the Screen view's queue, kept here so another view doesn't lose it.
-  const [place, setPlace] = useState<Place>(NO_PLACE);
   const [over, setOver] = useState<"activity" | "export" | "share" | "move" | "finish" | "delete" | null>(null);
   const [adding, setAdding] = useState<Reviewer | null>(null);
   // A reviewer being made a viewer from Share: they stop voting, and keep seeing it.
@@ -75,7 +73,7 @@ export function ScreeningWorkspace() {
   if (!open) {
     return (
       <PageWrapper>
-        <LibraryPageShell icon={ListChecks} title="Screening" backHref="/screening/mock" backLabel="All screenings">
+        <LibraryPageShell icon={ListChecks} title="Not found" trail={[SCREENINGS_CRUMB]}>
           <ListEmpty icon={Unlink}>This screening was deleted, or isn&apos;t shared with you</ListEmpty>
           <MockStates />
         </LibraryPageShell>
@@ -89,7 +87,8 @@ export function ScreeningWorkspace() {
   const total = open.papers.length;
   const unsettled = open.counts.conflict + open.counts.waiting;
   const workspace = workspaceOf(screening);
-  const banner = bannerKind(open, view === "screen");
+  // On Screen and in the settings a row that came and went would move what is being read or changed.
+  const banner = bannerKind(open, view === "screen" || view === "settings");
   const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).length;
   // Changes to its settings that were started and not saved.
   const unsaved = Boolean(store.drafts[id]);
@@ -108,7 +107,6 @@ export function ScreeningWorkspace() {
       <DropdownMenuItem className="sm:hidden" onSelect={() => setOver("activity")}><History />Activity</DropdownMenuItem>
       <DropdownMenuItem className="sm:hidden" onSelect={() => setOver("export")}><Download />Export</DropdownMenuItem>
       <DropdownMenuItem className="sm:hidden" onSelect={() => setOver("share")}><Share2 />Share</DropdownMenuItem>
-      <DropdownMenuItem className="sm:hidden" onSelect={() => router.push(`/screening/mock/${id}/settings`)}><Settings2 />Settings</DropdownMenuItem>
       <DropdownMenuSeparator className="sm:hidden" />
     </>
   );
@@ -126,7 +124,7 @@ export function ScreeningWorkspace() {
       {!open.canChange ? (
         <DropdownMenuContent align="end" className="w-64">
           {phoneItems}
-          <DropdownMenuItem onSelect={() => router.push(`/screening/mock/new?from=${id}`)}><Copy />Start your own with these settings</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push(newHref(id))}><Copy />Start your own with these settings</DropdownMenuItem>
         </DropdownMenuContent>
       ) : (
       <DropdownMenuContent align="end" className="w-56">
@@ -143,7 +141,7 @@ export function ScreeningWorkspace() {
             <DropdownMenuItem onSelect={() => store.update(id, (s) => ({ ...s, paused: true }), { what: "Paused the models", effect: "They spend nothing until they are let on" })}><CirclePause />Pause the models</DropdownMenuItem>
           )
         ) : null}
-        <DropdownMenuItem onSelect={() => router.push(`/screening/mock/new?from=${id}`)}><Copy />Run again with these settings</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => router.push(newHref(id))}><Copy />Run again with these settings</DropdownMenuItem>
         {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Look for new papers now</DropdownMenuItem> : null}
         <DropdownMenuItem onSelect={() => setOver("move")}><Move />Move to another workspace</DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -162,8 +160,7 @@ export function ScreeningWorkspace() {
             wide
             icon={ListChecks}
             title={screening.name}
-            backHref="/screening/mock"
-            backLabel="All screenings"
+            trail={[SCREENINGS_CRUMB]}
             titleAside={
               screening.finishedAt || workspace !== HOME ? (
                 <>
@@ -174,13 +171,13 @@ export function ScreeningWorkspace() {
             }
             tabs={
               <Segmented
-                label="View"
+                label="Pages of this screening"
                 value={view}
-                onChange={(next) => { void setView(next === "overview" ? null : next); window.scrollTo({ top: 0 }); }}
                 options={[
-                  { id: "overview", label: "Overview", icon: BarChart3 },
-                  { id: "screen", label: "Screen", icon: ListChecks, detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
-                  { id: "papers", label: "Papers", icon: Table2, detail: <span className="tabular-nums text-muted-foreground">{total}</span> },
+                  { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
+                  { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
+                  { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{total}</span> },
+                  { id: "settings", label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <span className="rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : undefined },
                 ]}
               />
             }
@@ -194,30 +191,28 @@ export function ScreeningWorkspace() {
                   <Share2 /><span className={BAR_LABEL}>Share</span>
                   {shared ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{shared}</span> : null}
                 </Button>
-                <Button asChild variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`}>
-                  <NextLink href={`/screening/mock/${id}/settings`}><Settings2 /><span className={BAR_LABEL}>Settings</span>{unsaved ? <span className="ms-0.5 rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : null}</NextLink>
-                </Button>
                 {more("max-sm:hidden")}
               </>
             }
             intro={
               <>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+                {/* In the settings the same facts are the form itself: the row keeps only a phone's menu. */}
+                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6 ${view === "settings" ? "sm:hidden [&>:not([data-more])]:hidden" : ""}`}>
                   {/* How a paper is decided here, in three facts. They open the place where each is set. */}
-                  <NextLink href={`/screening/mock/${id}/settings#decided`} className="flex min-w-0 items-center gap-1.5 rounded-lg outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
+                  <NextLink href={settingsHref(id, "decided")} className="flex min-w-0 items-center gap-1.5 rounded-lg outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
                     <TooltipHint label={facts.whoMeans}><span className="flex rounded-md"><Chip icon={Users}>{facts.who}</Chip></span></TooltipHint>
                     <TooltipHint label={facts.whenMeans}><span className="flex rounded-md"><Chip icon={Check}>{facts.when}</Chip></span></TooltipHint>
                     <TooltipHint label={facts.seeMeans}><span className="flex rounded-md"><Chip icon={Eye}>{facts.see}</Chip></span></TooltipHint>
                   </NextLink>
                   {/* A living screening says so, and when it next looks for papers. */}
                   {screening.living ? (
-                    <NextLink href={`/screening/mock/${id}/settings#new-papers`} className="flex rounded-md outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
+                    <NextLink href={settingsHref(id, "new-papers")} className="flex rounded-md outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
                       <TooltipHint label={`A living screening: it looks in its sources again ${EVERY_LABEL[screening.living.every].toLowerCase()}, and screens what is new. Next on ${day(screening.living.next)}.`}>
                         <span className="flex rounded-md"><Chip icon={RefreshCw} className="bg-success/12 ink-success">Living, next {day(screening.living.next)}</Chip></span>
                       </TooltipHint>
                     </NextLink>
                   ) : null}
-                  <span className="ms-auto flex sm:hidden">{more("")}</span>
+                  <span data-more className="ms-auto flex sm:hidden">{more("")}</span>
                   <div className={`flex items-center gap-2 max-sm:w-full sm:ms-auto ${view === "screen" ? "max-lg:hidden" : ""}`}>
                     <ReviewerStack reviewers={reviewers} />
                     {open.canChange ? (
@@ -234,36 +229,19 @@ export function ScreeningWorkspace() {
                 </div>
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => { void setQueueParam(null); setPlace({ ...NO_PLACE, order: "fresh" }); void setView("screen"); window.scrollTo({ top: 0 }); }} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => router.push(screenHref(id, { order: "fresh" }))} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
                 </AutoHeight>
               </>
             }
           >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }}>
-                {view === "overview" ? (
-                  <Overview
-                    open={open}
-                    onOpen={(next, what) => {
-                      if (next === "screen") setQueue(what === "conflicts" ? "conflicts" : "todo");
-                      else setFilter(what && what !== "conflicts" && what !== "todo" ? what : "all");
-                      void setView(next);
-                      window.scrollTo({ top: 0 });
-                    }}
-                    onExport={(what) => { setExportTab(what); setOver("export"); }}
-                    onAdded={(at) => { setFilter("all"); setAdded(at); void setView("papers"); window.scrollTo({ top: 0 }); }}
-                  />
-                ) : view === "screen" ? (
-                  <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} place={place} onPlace={setPlace} onView={(next) => void setView(next === "overview" ? null : next)} />
-                ) : (
-                  <Papers open={open} filter={filter} onFilter={setFilter} added={added} onAdded={setAdded} />
-                )}
-              </motion.div>
-            </AnimatePresence>
+            {/* Each page rises in as it opens. */}
+            <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
+              <Workspace value={{ open, exportTo: (tab) => { setExportTab(tab); setOver("export"); } }}>{children}</Workspace>
+            </motion.div>
           </LibraryPageShell>
         </div>
 
-        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} state={open} onPaper={(paper) => { void setQueueParam("done"); setPlace({ ...NO_PLACE, picked: paper, page: 0 }); void setView("screen"); window.scrollTo({ top: 0 }); }} />
+        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} state={open} onPaper={(paper) => router.push(screenHref(id, { queue: "done", paper }))} />
         <ExportDialog open={over === "export"} onClose={() => setOver(null)} state={open} tab={exportTab} onTab={setExportTab} />
         <ShareDialog open={over === "share"} onClose={() => setOver(null)} state={open} onPromote={(viewer) => { setOver(null); setAdding({ ...viewer, addedAt: Date.now() }); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
         <MoveDialog open={over === "move"} onClose={() => setOver(null)} screening={screening} me={open.me} onMove={(to, what) => open.update((s) => ({ ...s, workspace: to }), { what })} />
@@ -292,7 +270,7 @@ export function ScreeningWorkspace() {
             ]}
           />
         </ConfirmChange>
-        <ConfirmChange open={over === "delete"} title={`Delete “${screening.name}”?`} confirm="Delete" onClose={() => setOver(null)} onConfirm={() => { store.remove(id); router.push("/screening/mock"); }}>
+        <ConfirmChange open={over === "delete"} title={`Delete “${screening.name}”?`} confirm="Delete" onClose={() => setOver(null)} onConfirm={() => { store.remove(id); router.replace(SCREENINGS); }}>
           <EffectList lines={["Its votes and its settings go with it", "Papers it saved to a collection stay there"]} />
         </ConfirmChange>
         <ConfirmChange

@@ -1,11 +1,14 @@
 "use client";
 
-// The open screening's Screen view: your queue, the paper, and the criteria with everyone's votes.
-// One paper at a time, decided with a key. Splits are settled in the same place.
+// The open screening's Screen page: your queue, the paper, and the criteria with everyone's votes.
+// One paper at a time, decided with a key. Splits are settled in the same place. The page is as long
+// as the paper and its queue are, and the decision stays at the foot of the window.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronLeft, ChevronRight, CircleHelp, Eye, GitCompare, ListChecks, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, Undo2, X } from "@/components/icons";
+import NextLink from "next/link";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { Check, ChevronLeft, ChevronRight, CircleHelp, Eye, GitCompare, ListChecks, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, Undo2 } from "@/components/icons";
 import { ANSWER, AnswerMark, Chip, ClippedChip, Meter, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
@@ -17,16 +20,17 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { YouTag } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, NOW, OTHER_REASONS, ago, day, confidenceOf, decide, evidence, failedLabel, personOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
-import { CriterionText, Kbd, RESULT_STYLE, ResultChip, ReviewerMark, VoteMark } from "./parts";
+import { overviewHref, papersHref } from "./links";
+import { ActionBar, CriterionText, Kbd, RESULT_STYLE, ResultChip, ReviewerMark, VoteMark } from "./parts";
 import type { Open } from "./store";
+import { useWorkspace } from "./workspace";
 
-export type Queue = "todo" | "done" | "conflicts";
+type Queue = "todo" | "done" | "conflicts";
 const QUEUE_PAGE = 9;
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
 const SHORTCUTS: Array<[string, string]> = [["I", "Include"], ["M", "Maybe"], ["E", "Exclude, then a number for the reason"], ["S", "Leave it for later"], ["Z", "Undo, one decision at a time"], ["← →", "Previous and next paper"], ["Esc", "Back from the reason"]];
@@ -34,18 +38,36 @@ const OTHER = "other";
 const HELP: Array<[string, string]> = [["Asterisk", "A must-have criterion: a paper that fails it is excluded"], ["Marked words", "Words from your criteria, found in the text"], ["Faces and model marks", "The reviewers of this paper, each with their answer. Press them to see who is who"], ["A lock", "A vote that is cast, and hidden until you have cast yours"], ["A dashed square", "No vote yet"], ["Your answers", "Optional. One decision is enough, and Exclude asks for the reason"]];
 const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
 
-/** Where someone is in a queue: the paper open, the page of the list, what they searched for and which of their own votes they asked for. */
-export type Place = { picked: string | null; page: number; find: string; voted: "any" | Decision; /** The order of what is still to do: as added, the newest arrivals first, or the ones the models would include first. */ order: "dealt" | "fresh" | "lean" };
-export const NO_PLACE: Place = { picked: null, page: 1, find: "", voted: "any", order: "dealt" };
-// The files added by hand in this sitting, by screening and paper: the real viewer shows them. They last as long as the page does.
+/**
+ * Where someone is, kept in the address: the queue, the paper open in it, what they searched for, which
+ * of their own votes they asked for, and the order of what is still to do (as added, the newest
+ * arrivals first, or the ones the models would include first).
+ */
+const PLACE = {
+  queue: parseAsStringLiteral(["todo", "done", "conflicts"] as const).withDefault("todo"),
+  paper: parseAsString,
+  q: parseAsString.withDefault(""),
+  voted: parseAsStringLiteral(["any", ...DECISIONS] as const).withDefault("any"),
+  order: parseAsStringLiteral(["dealt", "fresh", "lean"] as const).withDefault("dealt"),
+};
 
-export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }: { open: Open; /** Whether a row sits under the bar, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; place: Place; onPlace: (change: (place: Place) => Place) => void }) {
+/** Screen as a page of the open screening. */
+export function ScreenPage() {
+  const { open } = useWorkspace();
+  return <Screen open={open} />;
+}
+
+function Screen({ open }: { open: Open }) {
   const { screening, papers, votes, settled, yours, toDo, conflicts } = open;
   const criteria = screening.criteria;
-  const { picked, page, find, voted, order } = place;
-  const setFind = (next: string) => onPlace((now) => ({ ...now, find: next }));
-  const setPicked = (next: string | null) => onPlace((now) => ({ ...now, picked: next }));
-  const setPage = (next: number) => onPlace((now) => ({ ...now, page: next }));
+  // Another queue, order or choice of votes is a step Back returns from. Going from paper to paper and typing in the search box change the address in place, so Back leaves the queue in one step.
+  const [{ queue, paper: picked, q: find, voted, order }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  // The page of the queue's list. 0 stands for "the page the open paper is on": a paper opened from elsewhere brings its page with it.
+  const [page, setPage] = useState(0);
+  const setFind = (next: string) => { setPage(1); void setPlace({ q: next, paper: null }, { history: "replace" }); };
+  const setPicked = (next: string | null) => void setPlace({ paper: next }, { history: "replace" });
+  /** Opens another queue from its start. */
+  const onQueue = (next: Queue) => { setPage(1); void setPlace({ queue: next, paper: null, q: null, voted: null, order: null }); };
   const listed = useCallback(
     (which: Queue) => {
       const done = yours.filter((paper) => open.myVote(paper)).sort((a, b) => open.myVote(b)!.at - open.myVote(a)!.at);
@@ -74,7 +96,6 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
   const paper = items.find((one) => one.id === picked) ?? items[0];
   const at = paper ? items.indexOf(paper) : -1;
   const pages = Math.max(1, Math.ceil(items.length / QUEUE_PAGE));
-  // Page 0 stands for "the page the open paper is on": a paper opened from elsewhere brings its page with it.
   const shownPage = Math.min(pages, page || (at >= 0 ? Math.floor(at / QUEUE_PAGE) + 1 : 1));
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   // "Another reason" is written before it is saved: the paper whose reason is being written.
@@ -90,8 +111,11 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
     setTranslated(false);
     // The button just pressed keeps neither the keyboard nor a pressed look on the next paper.
     if (document.activeElement instanceof HTMLElement && document.activeElement.closest("[data-decision]")) document.activeElement.blur();
-    // On a phone the page is the scroller: the next paper starts at its title.
-    if (window.matchMedia("(max-width: 1023px)").matches) requestAnimationFrame(() => article.current?.scrollIntoView({ block: "start" }));
+    // The page is the scroller: where the next paper's title is out of sight, above or below, the page moves to it.
+    requestAnimationFrame(() => {
+      const top = article.current?.getBoundingClientRect().top;
+      if (top !== undefined && (top < 0 || top > window.innerHeight / 2)) article.current?.scrollIntoView({ block: "start" });
+    });
   };
 
   const [advance, setAdvance] = useState(true);
@@ -214,14 +238,15 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
   };
 
   return (
-    <div className={cn("grid min-h-[34rem] grid-cols-1 max-lg:pb-40 lg:grid-cols-[19rem_minmax(0,1fr)_25rem] lg:divide-x lg:divide-border-subtle", banner ? "lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-9.9375rem)]" : "lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-7.125rem)]")}>
+    <>
+    <div className="grid min-h-[34rem] grid-cols-1 max-lg:pb-40 lg:grid-cols-[19rem_minmax(0,1fr)_25rem] lg:divide-x lg:divide-border-subtle">
       {/* The queue */}
-      <div className="flex min-h-0 flex-col border-b border-border-subtle lg:border-b-0">
+      <div className="border-b border-border-subtle lg:border-b-0">
         <div className="space-y-2 p-3">
           <Segmented
             label="Queue"
             value={queue}
-            onChange={(next) => { setPicked(null); setPage(1); setReasonFor(null); onQueue(next); }}
+            onChange={(next) => { setReasonFor(null); onQueue(next); }}
             fill="labels"
             options={[
               { id: "todo", label: "To do", detail: <span className="tabular-nums text-muted-foreground">{toDo.length}</span> },
@@ -238,7 +263,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                 <SheetDescription className="sr-only">Every paper in this list. Press one to open it.</SheetDescription>
                 <div className="relative">
                   <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={find} onChange={(event) => { setPicked(null); setPage(1); setFind(event.target.value); }} placeholder="Find in this list" aria-label="Find in this list" className="h-9 rounded-full ps-8 text-sm" />
+                  <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder="Find in this list" aria-label="Find in this list" className="h-9 rounded-full ps-8 text-sm" />
                 </div>
               </SheetHeader>
               <ul className="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto">
@@ -250,10 +275,10 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
           </Sheet>
           <div className="relative max-lg:hidden">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={find} onChange={(event) => { setPicked(null); setPage(1); setFind(event.target.value); }} placeholder="Find in this queue" aria-label="Find in this queue" className="h-8 rounded-full ps-8 text-sm" />
+            <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder="Find in this queue" aria-label="Find in this queue" className="h-8 rounded-full ps-8 text-sm" />
           </div>
           {queue === "done" ? (
-            <Select value={voted} onValueChange={(next) => onPlace((now) => ({ ...now, voted: next as Place["voted"], picked: null, page: 1 }))}>
+            <Select value={voted} onValueChange={(next) => { setPage(1); void setPlace({ voted: next as typeof voted, paper: null }); }}>
               <SelectTrigger aria-label="Which of your decisions" className="h-8 w-full text-xs max-lg:hidden"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="any">Every decision, latest first</SelectItem>
@@ -264,7 +289,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
             </Select>
           ) : null}
           {queue === "todo" && toDo.length > 1 ? (
-            <Select value={order} onValueChange={(next) => onPlace((now) => ({ ...now, order: next as Place["order"], picked: null, page: 1 }))}>
+            <Select value={order} onValueChange={(next) => { setPage(1); void setPlace({ order: next as typeof order, paper: null }); }}>
               <SelectTrigger aria-label="Order of the queue" className="h-8 w-full text-xs max-lg:hidden"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="dealt">As they were added</SelectItem>
@@ -274,7 +299,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
             </Select>
           ) : null}
         </div>
-        <ul className="hidden min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto border-t border-border-subtle lg:block">
+        <ul className="hidden divide-y divide-border-subtle border-t border-border-subtle lg:block">
           {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, (paper) => go(items.indexOf(paper))))}
         </ul>
         {pages > 1 ? (
@@ -283,11 +308,11 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
       </div>
 
       {!paper ? (
-        <Empty open={open} queue={queue} onQueue={onQueue} onView={onView} narrowed={Boolean(find.trim()) || (queue === "done" && voted !== "any")} onClear={() => onPlace(() => NO_PLACE)} />
+        <Empty open={open} queue={queue} onQueue={onQueue} narrowed={Boolean(find.trim()) || (queue === "done" && voted !== "any")} onClear={() => { setPage(1); void setPlace({ paper: null, q: null, voted: null, order: null }, { history: "replace" }); }} />
       ) : (
         <>
           {/* The paper */}
-          <div ref={article} className="min-h-0 scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] overflow-y-auto">
+          <div ref={article} className="min-w-0 scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))]">
             <AnimatePresence mode="wait" initial={false}>
               <motion.article key={paper.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="mx-auto max-w-3xl space-y-4 p-5 sm:p-8">
                 <h2 className="text-xl font-semibold leading-snug tracking-tight">{paper.title}</h2>
@@ -325,9 +350,9 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
             </AnimatePresence>
           </div>
 
-          {/* The criteria, the votes and the decision */}
-          <div className="flex min-h-0 flex-col border-t border-border-subtle lg:border-t-0">
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-4 lg:[mask-image:linear-gradient(to_bottom,black_calc(100%-var(--fade)),transparent)]" style={{ "--fade": `${EDGE_FADE}px`, paddingBottom: EDGE_FADE } as React.CSSProperties}>
+          {/* The criteria and the votes */}
+          <div className="min-w-0 border-t border-border-subtle lg:border-t-0">
+            <div className="space-y-2 p-4">
               <div className="flex h-6 items-center justify-between">
                 <h3 className="text-xs font-medium text-muted-foreground">Criteria</h3>
                 {criteria.some((criterion) => criterion.must) ? <span className="me-auto ms-3 flex items-center text-xs text-muted-foreground"><RequiredMark />must-have</span> : null}
@@ -440,9 +465,15 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
               </ul>
             </div>
 
-            {/* The decision, pinned to the foot of the column, and to the foot of the screen on a phone, where its buttons sit clear of the assistant's button in the corner. */}
-            <div className="flex flex-col gap-3 border-t border-border-subtle bg-card p-4 pb-5 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:gap-2 max-lg:px-3 max-lg:pt-3 max-lg:pb-[max(1.75rem,env(safe-area-inset-bottom))] max-lg:shadow-[0_-10px_30px_-18px_rgb(0_0_0/0.35)]">
-              <div className="flex items-center gap-1 max-lg:order-last max-lg:h-11 max-lg:pe-[4.25rem]">
+          </div>
+        </>
+      )}
+    </div>
+    {paper ? (
+      /* The decision stays at the foot of the window however long the paper and the queue are, under the column each part belongs to: where you are in the queue, the decision, the last one with its way back. On a phone its buttons sit clear of the assistant's button in the corner. */
+      <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30 max-lg:shadow-[0_-10px_30px_-18px_rgb(0_0_0/0.35)]">
+        <div className="flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:grid-cols-[19rem_minmax(0,1fr)_25rem] lg:items-end lg:gap-0 lg:p-0">
+            <div className="flex items-center gap-1 max-lg:order-last max-lg:h-11 max-lg:pe-[4.25rem] lg:h-[4.75rem] lg:px-4">
                 <span className="me-1 text-xs tabular-nums text-muted-foreground">{queue === "done" ? `${at + 1} of ${items.length}` : `${left.toLocaleString("en-GB")} left`}</span>
                 <TooltipHint label="Previous paper"><Button variant="ghost" size="icon" className="size-7" aria-label="Previous paper" disabled={at <= 0} onClick={() => go(at - 1)}><ChevronLeft /></Button></TooltipHint>
                 <TooltipHint label="Next paper"><Button variant="ghost" size="icon" className="size-7" aria-label="Next paper" disabled={at >= items.length - 1} onClick={() => go(at + 1)}><ChevronRight /></Button></TooltipHint>
@@ -457,10 +488,6 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                 {/* On a phone the last decision's way back sits here, and the rest folds into one menu. */}
                 {last ? <Button variant="ghost" size="icon" className="size-8 lg:hidden" aria-label="Undo the last decision" onClick={undo}><Undo2 /></Button> : null}
                 {last && differ ? <button type="button" onClick={() => go(items.findIndex((one) => one.id === last.paper.id))} className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-info/12 px-2 text-xs font-medium text-info lg:hidden"><GitCompare className="size-3.5" />{differ} disagreed</button> : null}
-                <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground max-lg:hidden">
-                  Go to the next one
-                  <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a decision" />
-                </label>
                 <Popover>
                   <PopoverTrigger asChild><Button variant="ghost" size="icon" className="ms-auto size-8 text-muted-foreground lg:hidden" aria-label="More for this paper"><MoreHorizontal /></Button></PopoverTrigger>
                   <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
@@ -475,6 +502,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                   </PopoverContent>
                 </Popover>
               </div>
+            <div className="min-w-0 lg:px-5 lg:py-3 xl:px-8">
               {!mayDecide ? (
                 <p className="rounded-xl bg-inset px-3 py-3 text-sm text-muted-foreground">
                   {resolving ? `${personOf(screening.rule.resolver)?.name ?? "The person named in the settings"} settles conflicts on this screening.` : "You are not one of this screening's reviewers, so you don't vote on its papers."}
@@ -485,7 +513,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                   <div className="flex flex-wrap gap-2">
                     {!resolving && conflicts.length ? <Button size="sm" variant={open.canResolve ? "default" : "outline"} onClick={() => onQueue("conflicts")}><GitCompare />{open.canResolve ? "Settle" : "See"} {conflicts.length} {conflicts.length === 1 ? "conflict" : "conflicts"}</Button> : null}
                     {resolving && toDo.length ? <Button size="sm" onClick={() => onQueue("todo")}>Screen {toDo.length} {toDo.length === 1 ? "paper" : "papers"}</Button> : null}
-                    <Button size="sm" variant="outline" onClick={() => onView("overview")}>Back to the overview</Button>
+                    <Button asChild size="sm" variant="outline"><NextLink href={overviewHref(open.screening.id)}>Back to the overview</NextLink></Button>
                   </div>
                 </div>
               ) : writing === paper.id ? (
@@ -524,7 +552,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                   <Textarea rows={1} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className={cn("max-h-28 min-h-8 resize-none py-1.5 text-sm field-sizing-content", !noting && "max-lg:hidden")} />
                   <div className="grid grid-cols-3 gap-2">
                     {[...DECISIONS].reverse().map((decision) => {
-                      const Icon = decision === "include" ? Check : decision === "maybe" ? CircleHelp : X;
+                      const Icon = RESULT_STYLE[decision].icon;
                       const on = resolving ? Boolean(settled[paper.id]!.resolvedBy) && settled[paper.id]!.final === decision : mine?.decision === decision;
                       return (
                         <button key={decision} type="button" data-decision aria-pressed={on} onClick={() => press(decision)} className={cn("flex h-11 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? cn(RESULT_STYLE[decision].chip, "border-transparent ring-1 ring-current") : "border-border-subtle hover:bg-foreground/[0.03]", !on && !mine && pointsTo?.decision === decision && decision !== "include" && "border-dashed border-foreground/50")}>
@@ -537,8 +565,9 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                   </div>
                 </div>
               )}
-              {/* The last decision, with the way back. The row keeps its height whether or not there is one, and is as tall as the assistant's button in the corner, which it keeps clear of: the buttons above it are never covered. */}
-              <div className="flex h-12 items-center gap-2 pe-[4.5rem] text-xs text-muted-foreground max-lg:hidden">
+            </div>
+            {/* The last decision, with the way back, and whether a decision moves on to the next paper. It keeps clear of the assistant's button in the corner. */}
+            <div className="flex h-[4.75rem] items-center gap-2 px-4 pe-[4.5rem] text-xs text-muted-foreground max-lg:hidden">
                 {last ? (
                   <>
                     {/* What was just decided, in as few words as say it; the paper itself is one press away. */}
@@ -551,17 +580,20 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                     <Button variant="ghost" size="xs" onClick={undo}><Undo2 />Undo<Kbd className="max-lg:hidden">Z</Kbd></Button>
                   </>
                 ) : null}
-              </div>
+              <label className="ms-auto flex shrink-0 items-center gap-2">
+                Go to the next one
+                <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a decision" />
+              </label>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+        </div>
+      </ActionBar>
+    ) : null}
+    </>
   );
 }
 
 /** What a queue says when it holds nothing, and where to go from there. */
-function Empty({ open, queue, onQueue, onView, narrowed, onClear }: { open: Open; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; /** The list is empty because of what was searched or asked for, not because it holds nothing. */ narrowed: boolean; onClear: () => void }) {
+function Empty({ open, queue, onQueue, narrowed, onClear }: { open: Open; queue: Queue; onQueue: (queue: Queue) => void; /** The list is empty because of what was searched or asked for, not because it holds nothing. */ narrowed: boolean; onClear: () => void }) {
   if (narrowed) {
     return (
       <div className="col-span-2 flex flex-col items-center justify-center gap-2 p-10 text-center">
@@ -586,8 +618,8 @@ function Empty({ open, queue, onQueue, onView, narrowed, onClear }: { open: Open
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         {queue !== "conflicts" && open.conflicts.length ? <Button size="sm" variant={open.canResolve ? "default" : "outline"} onClick={() => onQueue("conflicts")}><GitCompare />{open.canResolve ? "Settle" : "See"} {open.conflicts.length} {open.conflicts.length === 1 ? "conflict" : "conflicts"}</Button> : null}
         {queue !== "todo" && open.toDo.length ? <Button size="sm" onClick={() => onQueue("todo")}>Screen {open.toDo.length} {open.toDo.length === 1 ? "paper" : "papers"}</Button> : null}
-        <Button size="sm" variant="outline" onClick={() => onView("papers")}>See all the papers</Button>
-        <Button size="sm" variant="outline" onClick={() => onView("overview")}>Back to the overview</Button>
+        <Button asChild size="sm" variant="outline"><NextLink href={papersHref(open.screening.id)}>See all the papers</NextLink></Button>
+        <Button asChild size="sm" variant="outline"><NextLink href={overviewHref(open.screening.id)}>Back to the overview</NextLink></Button>
       </div>
     </div>
   );

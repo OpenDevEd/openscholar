@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { ChevronLeft, ChevronRight, CircleHelp, Download, GitCompare, Quote, RefreshCw, Search, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, AnswerMark, Chip, ClippedChip, Stars } from "@/components/screening/parts";
@@ -22,28 +23,59 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, NOW, OTHER_REASONS, RESULTS, RESULT_LABEL, day, activeReviewers, ago, personOf, failedLabel, reasonOf, scoreOf, type Decision, type Paper, type Result } from "./data";
+import { DECISIONS, DECISION_LABEL, NOW, OTHER_REASONS, RESULTS, RESULT_LABEL, day, activeReviewers, ago, personOf, failedLabel, reasonOf, scoreOf, type Decision, type Paper } from "./data";
 import { RESULT_STYLE, ResultChip, ReviewerMark, ReviewerStack, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import type { Open } from "./store";
+import { useWorkspace } from "./workspace";
 
-export type PapersFilter = Result | "all";
-type Sort = "added" | "title" | "newest" | "split" | "points";
 const PAGE = 20;
 const ROW = 57;
 
-export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open; filter: PapersFilter; onFilter: (filter: PapersFilter) => void; /** Which arrival of papers is shown: all of them, the ones it started with ("start"), or the ones a check brought (its time). */ added: string; onAdded: (added: string) => void }) {
+/**
+ * Where the table is, kept in the address: the result tab, what narrows it, its order, its page and the
+ * paper open beside it. `added` is which arrival of papers is shown: all of them, the ones it started
+ * with ("start"), or the ones a look brought (its time). `voted` is your own vote, as a way to find
+ * papers: the result tabs count only what has settled.
+ */
+const PLACE = {
+  result: parseAsStringLiteral(["all", ...RESULTS] as const).withDefault("all"),
+  by: parseAsStringLiteral(["reviewers", "criteria"] as const).withDefault("reviewers"),
+  source: parseAsString.withDefault("all"),
+  voted: parseAsStringLiteral(["any", ...DECISIONS, "none"] as const).withDefault("any"),
+  added: parseAsString.withDefault("all"),
+  sort: parseAsStringLiteral(["added", "title", "newest", "split", "points"] as const).withDefault("added"),
+  q: parseAsString.withDefault(""),
+  page: parseAsInteger.withDefault(1),
+  paper: parseAsString,
+};
+
+/** The Papers table as a page of the open screening. */
+export function PapersPage() {
+  const { open } = useWorkspace();
+  return <Papers open={open} />;
+}
+
+function Papers({ open }: { open: Open }) {
   const { screening, papers, votes, settled, counts } = open;
   const reviewers = activeReviewers(screening);
   const criteria = screening.criteria;
-  const [query, setQuery] = useState("");
-  const [columns, setColumns] = useState<"reviewers" | "criteria">("reviewers");
-  const [sort, setSort] = useState<Sort>("added");
-  const [from, setFrom] = useState("all");
-  // Your own vote, as a way to find papers: the results above count only what has settled.
-  const [yours, setYours] = useState<"any" | Decision | "none">("any");
-  const [page, setPage] = useState(1);
-  const [opened, setOpened] = useState<string | null>(null);
+  // Another tab, filter, order or page is a step Back returns from. Typing in the search box changes the address in place.
+  const [{ result: filter, by: columns, source: from, voted: yours, added, sort, q: query, page, paper: opened }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  /** Narrows or reorders the table, which starts again from its first page. */
+  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace({ page: null, ...next });
+  // A paper opened from the table is a step Back closes: closing it steps back. One reached by its address closes in place.
+  const openedHere = useRef(false);
+  const show = (id: string) => {
+    if (opened) return void setPlace({ paper: id }, { history: "replace" });
+    openedHere.current = true;
+    void setPlace({ paper: id });
+  };
+  const close = () => {
+    if (!openedHere.current) return void setPlace({ paper: null }, { history: "replace" });
+    openedHere.current = false;
+    window.history.back();
+  };
   const [picked, setPicked] = useState<string[]>([]);
   // A paper opens beside the table where there is room for both, and over the page where there isn't.
   const beside = useMediaQuery("(min-width: 1280px)");
@@ -64,7 +96,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
   // When papers joined after the start: each check that brought some, and each source added later.
   const arrivals = [...new Set(papers.flatMap((paper) => paper.batch ?? []))].sort((a, b) => b - a);
   const newest = arrivals[0];
-  const pager = pagerOf(rows.length, PAGE, page, setPage);
+  const pager = pagerOf(rows.length, PAGE, page, (next) => void setPlace({ page: next }));
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   const paper = papers.find((one) => one.id === opened);
   if (paper && beside && !made) setMade(true);
@@ -75,7 +107,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
   // Escape closes the paper beside the table. The keyboard is the outside system.
   useEffect(() => {
     if (!opened) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !(event.target as HTMLElement | null)?.closest("[role=dialog], [role=menu], [role=listbox]") && setOpened(null);
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !(event.target as HTMLElement | null)?.closest("[role=dialog], [role=menu], [role=listbox]") && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [opened]);
@@ -109,7 +141,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
         <Segmented
           label="Where the papers stand"
           value={filter}
-          onChange={(next) => { setPage(1); onFilter(next); }}
+          onChange={(next) => go({ result: next })}
           fill="labels"
           className="@6xl/papers:w-auto"
           options={[
@@ -118,9 +150,9 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
           ]}
         />
         <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2 @max-2xl/papers:w-full">
-          <Segmented label="Columns" className="@max-2xl/papers:hidden" value={columns} onChange={setColumns} options={[{ id: "reviewers", label: "By reviewer" }, { id: "criteria", label: "By criterion" }]} />
+          <Segmented label="Columns" className="@max-2xl/papers:hidden" value={columns} onChange={(next) => void setPlace({ by: next })} options={[{ id: "reviewers", label: "By reviewer" }, { id: "criteria", label: "By criterion" }]} />
           {screening.sources.length > 1 ? (
-            <Select value={from} onValueChange={(next) => { setPage(1); setFrom(next); }}>
+            <Select value={from} onValueChange={(next) => go({ source: next })}>
               <SelectTrigger aria-label="Source" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Every source</SelectItem>
@@ -129,7 +161,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
             </Select>
           ) : null}
           {open.isReviewer ? (
-            <Select value={yours} onValueChange={(next) => { setPage(1); setYours(next as typeof yours); }}>
+            <Select value={yours} onValueChange={(next) => go({ voted: next as typeof yours })}>
               <SelectTrigger aria-label="Your vote" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="any">Whatever you voted</SelectItem>
@@ -141,7 +173,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
             </Select>
           ) : null}
           {arrivals.length ? (
-            <Select value={added} onValueChange={(next) => { setPage(1); onAdded(next); }}>
+            <Select value={added} onValueChange={(next) => go({ added: next })}>
               <SelectTrigger aria-label="When they were added" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Added at any time</SelectItem>
@@ -150,7 +182,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
               </SelectContent>
             </Select>
           ) : null}
-          <Select value={sort} onValueChange={(next) => { setPage(1); setSort(next as Sort); }}>
+          <Select value={sort} onValueChange={(next) => go({ sort: next as typeof sort })}>
             <SelectTrigger aria-label="Order" className="h-8 w-40 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="added">As they were added</SelectItem>
@@ -163,7 +195,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
           {query.trim() || from !== "all" ? <span className="text-xs tabular-nums text-muted-foreground">{rows.length.toLocaleString("en-GB")} of {(filter === "all" ? papers.length : counts[filter]).toLocaleString("en-GB")}</span> : null}
           <div className="relative w-52 @max-2xl/papers:w-full">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(event) => { setPage(1); setQuery(event.target.value); }} placeholder="Find a paper" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
+            <Input value={query} onChange={(event) => void setPlace({ q: event.target.value, page: null }, { history: "replace" })} placeholder="Find a paper" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
           </div>
           <Popover>
             <TooltipHint label="What the marks mean">
@@ -205,7 +237,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
           <span className="text-xs text-muted-foreground">{rows.length.toLocaleString("en-GB")} of {papers.length.toLocaleString("en-GB")} papers</span>
           {added !== "all" ? <Chip icon={RefreshCw}>{added === "start" ? "There from the start" : `Added ${Number(added) > NOW ? "just now" : day(Number(added))}`}</Chip> : null}
           {yours !== "any" ? <Chip>{yours === "none" ? "Waiting for your vote" : `You voted ${yours}`}</Chip> : null}
-          <Button variant="ghost" size="sm" className="ms-auto h-7 text-xs" onClick={() => { setYours("any"); onAdded("all"); }}>Show every paper</Button>
+          <Button variant="ghost" size="sm" className="ms-auto h-7 text-xs" onClick={() => go({ voted: null, added: null })}>Show every paper</Button>
         </div>
       ) : null}
       <div className={cn("grid", room && "grid-cols-[minmax(0,1fr)_30rem]")}>
@@ -219,7 +251,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
                     const visible = open.canSee(one);
                     return (
                       <li key={one.id}>
-                        <button type="button" aria-expanded={opened === one.id} onClick={() => setOpened(opened === one.id ? null : one.id)} className={cn("block w-full space-y-2 px-4 py-3 text-start transition-colors hover:bg-muted", opened === one.id && "bg-muted")}>
+                        <button type="button" aria-expanded={opened === one.id} onClick={() => (opened === one.id ? close() : show(one.id))} className={cn("block w-full space-y-2 px-4 py-3 text-start transition-colors hover:bg-muted", opened === one.id && "bg-muted")}>
                           <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
                           <span className="block truncate text-xs text-muted-foreground">{one.authors.join(", ")}, {one.year}</span>
                           <span className="flex items-center gap-1">
@@ -262,7 +294,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
                       const visible = open.canSee(one);
                       const cast = votes[one.id]!;
                       return (
-                        <TableRow key={one.id} data-state={opened === one.id ? "selected" : undefined} className="cursor-pointer" style={{ height: ROW }} onClick={() => setOpened(opened === one.id ? null : one.id)}>
+                        <TableRow key={one.id} data-state={opened === one.id ? "selected" : undefined} className="cursor-pointer" style={{ height: ROW }} onClick={() => (opened === one.id ? close() : show(one.id))}>
                           <TableCell className="ps-4 sm:ps-6" onClick={(event) => event.stopPropagation()}>
                             <Checkbox checked={chosen.includes(one.id)} onCheckedChange={() => setPicked(chosen.includes(one.id) ? chosen.filter((id) => id !== one.id) : [...chosen, one.id])} aria-label={`Choose ${one.title}`} />
                           </TableCell>
@@ -312,26 +344,26 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
                 <p className="text-sm text-muted-foreground">No paper here matches.</p>
-                <Button variant="outline" size="sm" onClick={() => { setQuery(""); setFrom("all"); setYours("any"); onFilter("all"); onAdded("all"); }}>Show every paper</Button>
+                <Button variant="outline" size="sm" onClick={() => go({ q: null, source: null, voted: null, result: null, added: null })}>Show every paper</Button>
               </div>
             )}
           </div>
-          {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={(next) => { setPage(next); top.current?.scrollIntoView({ block: "start" }); }} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="papers" /> : null}
+          {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={(next) => { pager.setPage(next); top.current?.scrollIntoView({ block: "start" }); }} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="papers" /> : null}
         </div>
 
         <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
           {paper && beside ? (
             <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
-              <PaperPanel key={paper.id} paper={paper} open={open} onClose={() => setOpened(null)} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) setOpened(next.id); }} />
+              <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) show(next.id); }} />
             </motion.aside>
           ) : null}
         </AnimatePresence>
       </div>
-      <Sheet open={Boolean(paper) && !beside} onOpenChange={(next) => !next && setOpened(null)}>
+      <Sheet open={Boolean(paper) && !beside} onOpenChange={(next) => !next && close()}>
         <SheetContent showCloseButton={false} className={`w-full gap-0 overflow-y-auto p-0 sm:max-w-lg ${AVATARS_FADE_IN}`}>
           <SheetTitle className="sr-only">{paper?.title ?? "Paper"}</SheetTitle>
           <SheetDescription className="sr-only">Its abstract, its votes and its result</SheetDescription>
-          {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={() => setOpened(null)} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) setOpened(next.id); }} /> : null}
+          {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) show(next.id); }} /> : null}
         </SheetContent>
       </Sheet>
     </div>

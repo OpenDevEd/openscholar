@@ -7,10 +7,10 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { preload } from "react-dom";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import { FadeImage } from "@/components/ui/fade-image";
+import { HELP_POPOVER, HelpButton, HelpFact } from "@/components/ui/help";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AiIcon, Check, CircleCheck, CircleHelp, ExternalLink, Globe, ListChecks, Lock, Minus, Pencil, Search, type AppIcon } from "@/components/icons";
+import { AiIcon, Check, CircleCheck, ExternalLink, Globe, ListChecks, Lock, Minus, Pencil, Search, type AppIcon } from "@/components/icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { OrcidIcon, RorIcon } from "@/components/icons/author-service-icons";
 import { LogoMark } from "@/components/logo";
@@ -110,15 +110,6 @@ const MARK: Record<Mark, ReactNode> = {
   web: <Globe className="size-4 text-muted-foreground" />,
 };
 
-function Fact({ icon: Icon, text }: { icon: AppIcon; text: string }) {
-  return (
-    <span className="inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs font-medium">
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      {text}
-    </span>
-  );
-}
-
 /** Who is sent this part or isn't, with what they do with a report in a few words: few authors know Crossref or Zenodo by name. */
 function Taker({ takes, name, does, href, children }: { takes: boolean; name: string; does: string; href?: string; children: ReactNode }) {
   const t = useTranslations("publishReports.help");
@@ -177,9 +168,7 @@ export function FieldHelp({
   preload("/brands/zenodo.svg", { as: "image" });
   const trigger = (
     <PopoverTrigger asChild>
-      <Button type="button" variant="ghost" size="icon-xs" aria-label={t("aboutLabel", { title })} className={cn("-my-1 size-5 shrink-0 rounded-full text-muted-foreground hover:text-foreground aria-expanded:text-primary", className)}>
-        <CircleHelp className="size-3.5" />
-      </Button>
+      <HelpButton aria-label={t("aboutLabel", { title })} className={className} />
     </PopoverTrigger>
   );
   return (
@@ -195,7 +184,7 @@ export function FieldHelp({
         trigger
       )}
       {/* On a phone it is never wider than the window: 20rem is, on a narrow one and at large text. */}
-      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={t("aboutLabel", { title })} className="w-80 p-0 font-normal text-foreground max-sm:max-w-(--radix-popover-content-available-width)">
+      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={t("aboutLabel", { title })} className={HELP_POPOVER}>
         <div className="space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-semibold">{title}</p>
@@ -203,8 +192,8 @@ export function FieldHelp({
           </div>
           {help.filled || help.entry ? (
             <div className="flex flex-wrap gap-1.5">
-              {help.filled ? <Fact icon={FILLED[help.filled]} text={t(`filled.${help.filled}`)} /> : null}
-              {help.entry ? <Fact icon={ENTRY[help.entry]} text={t(`entry.${help.entry}`)} /> : null}
+              {help.filled ? <HelpFact icon={FILLED[help.filled]}>{t(`filled.${help.filled}`)}</HelpFact> : null}
+              {help.entry ? <HelpFact icon={ENTRY[help.entry]}>{t(`entry.${help.entry}`)}</HelpFact> : null}
             </div>
           ) : null}
           {help.note ? <p className="text-xs/5 text-pretty text-muted-foreground">{t(`parts.${field}.note` as Parameters<typeof t>[0])}</p> : null}

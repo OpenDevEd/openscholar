@@ -23,6 +23,7 @@ export function LibraryPageShell({
   backHref,
   backLabel,
   onBackClick,
+  trail,
   titleAside,
   tabs,
   filters,
@@ -40,6 +41,8 @@ export function LibraryPageShell({
   backLabel?: string;
   /** Called with the back link's click before it navigates, for a page that can step back in history instead. */
   onBackClick?: MouseEventHandler<HTMLAnchorElement>;
+  /** The pages above this one, nearest last: a labelled trail before the title. */
+  trail?: Array<{ label: string; href: string }>;
   titleAside?: ReactNode;
   tabs?: ReactNode;
   filters?: ReactNode;
@@ -71,6 +74,7 @@ export function LibraryPageShell({
           backHref={backHref}
           backLabel={backLabel}
           onBackClick={onBackClick}
+          trail={trail}
           titleAside={titleAside}
           tabs={tabs}
           filters={filtersInBar}

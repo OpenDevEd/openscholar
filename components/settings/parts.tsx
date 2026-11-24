@@ -10,6 +10,7 @@ import { radioKeys, radioTabIndex } from "@/lib/radio-keys";
 import { cardEntrance, subtleSpring } from "@/lib/animation-config";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Spinner } from "@/components/ui/spinner";
+import Link from "@/components/workspace-link";
 
 export type Ico = ComponentType<{ className?: string }>;
 
@@ -67,9 +68,14 @@ export function Segmented<T extends string>({
   className,
 }: {
   value: T;
-  onChange: (v: T) => void;
-  /** `detail` sits after the label; `below` is a line under it, across the segment. */
-  options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode; below?: ReactNode }>;
+  /** Left out where every segment is a link. */
+  onChange?: (v: T) => void;
+  /**
+   * `detail` sits after the label; `below` is a line under it, across the segment. With `href` a
+   * segment is a link to a page of its own: the group is then the pages' navigation, the open page's
+   * segment is the current one, and the browser's Back returns to the page before.
+   */
+  options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode; below?: ReactNode; href?: string }>;
   label: string;
   size?: "sm" | "md" | "lg";
   /**
@@ -79,7 +85,9 @@ export function Segmented<T extends string>({
   fill?: boolean | "labels";
   className?: string;
 }) {
-  const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
+  const buttons = useRef<Partial<Record<string, HTMLElement | null>>>({});
+  const links = options.some((o) => o.href);
+  const Group = links ? "nav" : "div";
   // Segments with a line under the label are two-line cards rather than pills.
   const stacked = options.some((o) => o.below);
   const [box, setBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
@@ -99,10 +107,10 @@ export function Segmented<T extends string>({
     return () => observer.disconnect();
   }, [value]);
   return (
-    <div
-      role="radiogroup"
+    <Group
+      role={links ? undefined : "radiogroup"}
       aria-label={label}
-      onKeyDown={radioKeys}
+      onKeyDown={links ? undefined : radioKeys}
       className={cn(
         "relative bg-inset p-1",
         // A row that takes a second line where its labels don't fit on one keeps the same corners on both.
@@ -128,6 +136,34 @@ export function Segmented<T extends string>({
       ) : null}
       {options.map((o, index) => {
         const on = o.id === value;
+        const look = cn(
+          "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
+          stacked ? "rounded-2xl" : "rounded-full",
+          stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
+          fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
+          // Each segment starts from its label's width and they share what is left over. Where the row is too narrow for them all, the last ones go to a second line: no label is cut.
+          fill === "labels" && "flex-auto justify-center",
+          stacked && "flex-col items-stretch justify-center gap-2 @min-[40rem]/segments:justify-center",
+          on ? "text-primary" : "text-muted-foreground hover:text-foreground",
+        );
+        const content = (
+          <>
+            <span className="flex min-w-0 items-center gap-2">
+              {o.icon ? <o.icon className={size === "sm" ? "size-3.5" : "size-4"} /> : null}
+              <span className="truncate">{o.label}</span>
+            </span>
+            {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
+            {/* The line under a label wraps where the segment is narrow, rather than running into the next one. */}
+            {o.below ? <span className="flex whitespace-normal">{o.below}</span> : null}
+          </>
+        );
+        if (o.href) {
+          return (
+            <Link key={o.id} ref={(el) => { buttons.current[o.id] = el; }} href={o.href} aria-current={on ? "page" : undefined} className={cn(look, "outline-none focus-visible:ring-2 focus-visible:ring-ring/50")}>
+              {content}
+            </Link>
+          );
+        }
         return (
           <button
             key={o.id}
@@ -138,29 +174,14 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={on}
             tabIndex={radioTabIndex(on, index, options.some((option) => option.id === value))}
-            onClick={() => onChange(o.id)}
-            className={cn(
-              "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
-              stacked ? "rounded-2xl" : "rounded-full",
-              stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
-              fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
-              // Each segment starts from its label's width and they share what is left over. Where the row is too narrow for them all, the last ones go to a second line: no label is cut.
-              fill === "labels" && "flex-auto justify-center",
-              stacked && "flex-col items-stretch justify-center gap-2 @min-[40rem]/segments:justify-center",
-              on ? "text-primary" : "text-muted-foreground hover:text-foreground",
-            )}
+            onClick={() => onChange?.(o.id)}
+            className={look}
           >
-            <span className="flex min-w-0 items-center gap-2">
-              {o.icon ? <o.icon className={size === "sm" ? "size-3.5" : "size-4"} /> : null}
-              <span className="truncate">{o.label}</span>
-            </span>
-            {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
-            {/* The line under a label wraps where the segment is narrow, rather than running into the next one. */}
-            {o.below ? <span className="flex whitespace-normal">{o.below}</span> : null}
+            {content}
           </button>
         );
       })}
-    </div>
+    </Group>
   );
 }
 

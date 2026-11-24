@@ -1,25 +1,156 @@
 "use client";
 
-// Pieces the screening mock's pages share: a reviewer's face or model mark, a vote, a paper's
-// result, and the worked examples that show what a rule does.
+// Pieces the screening mock's pages share: the surfaces and chips that tell kinds of things apart, a
+// section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
+// examples that show what a rule does.
 
-import type { ReactNode } from "react";
-import { ArrowRight, Check, CircleHelp, GitCompare, Hourglass, Lock, Mail, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import NextLink from "next/link";
+import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
-import { RequiredMark } from "@/components/screening/parts";
+import { Chip, RequiredMark } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
+import { HELP_POPOVER, HelpButton } from "@/components/ui/help";
+import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { DECISION_LABEL, RESULTS, RESULT_LABEL, type Decision, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
-export const RESULT_STYLE: Record<Result, { bar: string; chip: string; icon: AppIcon }> = {
-  include: { bar: "bg-success", chip: "bg-success/12 ink-success", icon: Check },
-  maybe: { bar: "bg-warning", chip: "bg-warning/12 ink-warning", icon: CircleHelp },
-  exclude: { bar: "bg-muted-foreground/40", chip: "bg-muted text-muted-foreground", icon: X },
-  conflict: { bar: "bg-info", chip: "bg-info/12 text-info", icon: GitCompare },
-  waiting: { bar: "bg-foreground/10", chip: "bg-foreground/[0.06] text-muted-foreground", icon: Hourglass },
+/**
+ * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
+ * for it. The page itself explains nothing in a sentence. `facts` are HelpFact chips under the text.
+ * It opens beside its "?" on a wide screen and under it on a phone.
+ */
+export function Help({ title, children, facts, side, className }: { title: string; children: ReactNode; facts?: ReactNode; /** Where it opens, for a "?" whose usual side would cover what it explains. */ side?: "top" | "bottom" | "left"; className?: string }) {
+  const beside = !useIsMobile();
+  return (
+    <Popover>
+      <PopoverTrigger asChild><HelpButton aria-label={`About ${title}`} className={className} /></PopoverTrigger>
+      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={`About ${title}`} className={HELP_POPOVER}>
+        <div className="space-y-3 p-4">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">{title}</p>
+            <div className="space-y-2 text-sm/5 text-pretty text-muted-foreground">{children}</div>
+          </div>
+          {facts ? <div className="flex flex-wrap gap-1.5">{facts}</div> : null}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Where a page's content starts under the bars that stick to the top of the window: for an anchor another page links to. */
+export const BELOW_HEADER = "scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]";
+
+/**
+ * The colours that tell kinds of things apart, the same on every page. Neutral is a plain fact. Primary
+ * is something that waits for the person looking. Success is included, warning is maybe or a shortfall,
+ * info is a conflict, destructive is excluded or a failure. A colour is never used for anything else:
+ * "new" and "living" are not green, because green is Included.
+ */
+export type Tone = "neutral" | "primary" | "success" | "warning" | "info" | "destructive";
+export const TONE: Record<Tone, { chip: string; hover: string; panel: string; ink: string }> = {
+  neutral: { chip: "bg-foreground/[0.06] text-muted-foreground", hover: "hover:bg-foreground/10", panel: "bg-inset", ink: "text-muted-foreground" },
+  primary: { chip: "bg-primary/12 text-primary", hover: "hover:bg-primary/20", panel: "bg-primary/8", ink: "text-primary" },
+  success: { chip: "bg-success/12 ink-success", hover: "hover:bg-success/20", panel: "bg-success/10", ink: "ink-success" },
+  warning: { chip: "bg-warning/12 ink-warning", hover: "hover:bg-warning/20", panel: "bg-warning/10", ink: "ink-warning" },
+  info: { chip: "bg-info/12 text-info", hover: "hover:bg-info/20", panel: "bg-info/10", ink: "text-info" },
+  destructive: { chip: "bg-destructive/10 ink-destructive", hover: "hover:bg-destructive/15", panel: "bg-destructive/8", ink: "ink-destructive" },
 };
+
+/** Where a paper stands, and a vote: one colour and one sign each, on every bar, chip, mark, count and button. Maybe is a dashed circle, never a "?", which is help. */
+export const RESULT_STYLE: Record<Result, { bar: string; chip: string; icon: AppIcon; tone: Tone }> = {
+  include: { bar: "bg-success", chip: TONE.success.chip, icon: Check, tone: "success" },
+  maybe: { bar: "bg-warning", chip: TONE.warning.chip, icon: CircleDashed, tone: "warning" },
+  exclude: { bar: "bg-destructive/45", chip: TONE.destructive.chip, icon: X, tone: "destructive" },
+  conflict: { bar: "bg-info", chip: TONE.info.chip, icon: GitCompare, tone: "info" },
+  waiting: { bar: "bg-foreground/10", chip: TONE.neutral.chip, icon: Hourglass, tone: "neutral" },
+};
+
+/**
+ * A region's surface says what kind of region it is. A well (neutral) holds facts about the screening.
+ * A tinted panel is the one thing that needs someone now, in the colour of what it is about. Lists and
+ * tables are cards (LIST in settings/parts). Nothing sits in a box for decoration.
+ */
+export function Panel({ tone = "neutral", className, ...rest }: ComponentProps<"div"> & { tone?: Tone }) {
+  return <div {...rest} className={cn("rounded-2xl p-4", TONE[tone].panel, className)} />;
+}
+
+/** A chip tinted by what it says about a paper or a screening. A plain fact stays on the neutral Chip. */
+export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Chip> & { tone: Tone }) {
+  return <Chip {...chip} className={cn(TONE[tone].chip, "font-medium", className)} />;
+}
+
+/** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
+export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
+  return (
+    <NextLink {...link} href={href} className={cn("flex min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>
+      <Chip icon={icon} className={cn(TONE[tone].chip, TONE[tone].hover, "min-w-0 pe-1 font-medium transition-colors")}>
+        <span className="truncate">{children}</span>
+        <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
+      </Chip>
+    </NextLink>
+  );
+}
+
+/** A titled part of a page, with an anchor other pages link to. Its "?" (a Help) holds what would otherwise be a sentence under the title. */
+export function Section({ id, title, help, aside, className, children }: { id?: string; title: ReactNode; help?: ReactNode; aside?: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <section id={id} className={cn("space-y-3", BELOW_HEADER, className)}>
+      <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="flex shrink-0 items-center gap-1 text-sm font-semibold">{title}{help}</h2>
+        {/* The aside takes the room left and no more: on a narrow screen it wraps under the title. */}
+        {aside ? <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">{aside}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * A column beside the page's main content that stays in view without a height or a scrollbar of its
+ * own. It sticks under the header while it fits in the window. Where it is taller, it scrolls with the
+ * page until its foot is in view and sticks there, so all of it can be reached. `clear` is the room
+ * kept under it, for a page with an ActionBar at the window's foot. Its own height is the outside
+ * system it measures: a ResizeObserver writes it to a CSS variable, and the rest is CSS.
+ */
+export function StickyColumn({ clear = "1rem", className, children }: { clear?: string; className?: string; children: ReactNode }) {
+  const column = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = column.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => element.style.setProperty("--column-height", `${element.offsetHeight}px`));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={column} style={{ "--column-clear": clear } as React.CSSProperties} className={cn("sticky top-[min(calc(var(--app-navbar-height)+var(--page-header-height,4rem)),calc(100dvh-var(--column-height,0px)-var(--column-clear)))] self-start", className)}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The page's main action, at the foot of the window however long the page is: the vote on Screen,
+ * Start on a new screening, Save in the settings. It is the last thing in the page's card, and what is
+ * in it keeps clear of the assistant's button in the window's corner (pe-[4.5rem] on its last child).
+ */
+export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
+  return <div {...rest} className={cn("sticky bottom-0 z-20 border-t border-border-subtle bg-card shadow-[0_-10px_30px_-22px_rgb(0_0_0/0.3)]", className)} />;
+}
+
+/** A reviewer's name with what kind of reviewer it is: You after your own, AI after a model's. One marker, the same on every page. */
+export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name">; you?: boolean; className?: string }) {
+  return (
+    <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
+      <span className="truncate">{reviewer.name}</span>
+      {you ? <YouTag /> : reviewer.kind === "model" ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">AI</span> : null}
+    </span>
+  );
+}
 
 /** A person's photo, an envelope for someone invited who has no account yet, or a model's mark in its maker's colour. */
 export function ReviewerMark({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name" | "imageUrl" | "email" | "model">; /** Rings your own face, where faces stand without names. */ you?: boolean; className?: string }) {
@@ -62,17 +193,23 @@ export function VoteMark({ vote, hidden = false, failed = false, who, className 
   if (failed) {
     return (
       <TooltipHint label={`${who} couldn't read this paper, so it has no say in it`}>
-        <span role="img" tabIndex={0} aria-label={`${who}: couldn't read it`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive/10 text-destructive", className)}>
+        <span role="img" tabIndex={0} aria-label={`${who}: couldn't read it`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive text-white", className)}>
           <TriangleAlert aria-hidden className="size-3.5" />
         </span>
       </TooltipHint>
     );
   }
-  if (!vote) return <span role="img" aria-label={`${who}: no vote yet`} className={cn("inline-block size-6 shrink-0 rounded-md border border-dashed border-border", className)} />;
+  if (!vote) {
+    return (
+      <span role="img" aria-label={`${who}: no vote yet`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground", className)}>
+        <Hourglass aria-hidden className="size-3" />
+      </span>
+    );
+  }
   if (hidden) {
     return (
-      <span role="img" aria-label={`${who}: voted, hidden until you vote`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground/[0.06] text-muted-foreground", className)}>
-        <Lock aria-hidden className="size-3 opacity-70" />
+      <span role="img" aria-label={`${who}: voted, hidden until you vote`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
+        <Lock aria-hidden className="size-3" />
       </span>
     );
   }

@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { AiIcon, Ban, Check, ChevronDown, Clock, Coins, Copy, Eye, FileText, FileX, Folder, FolderPlus, Gauge, Globe, Hash, Link2, ListChecks, Lock, Mail, PenLine, Plus, RefreshCw, Search, Trash2, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
@@ -32,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, SCHEDULE, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, ago, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, taken, type Criterion, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
+import { SCREENINGS_CRUMB, overviewHref } from "./links";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { CriterionText, ReviewerMark, ReviewerStack, RuleExamples } from "./parts";
@@ -143,16 +143,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The last source or criterion removed, so it can be put back.
   const [removed, setRemoved] = useState<{ what: string; zone: "papers" | "criteria"; back: Screening } | null>(null);
 
-  if (id && (!saved || !accessOf(saved, store.viewer))) {
-    return (
-      <PageWrapper>
-        <LibraryPageShell icon={ListChecks} title="Screening" backHref="/screening/mock" backLabel="All screenings">
-          <ListEmpty icon={X}>This screening was deleted, or isn&apos;t shared with you</ListEmpty>
-        </LibraryPageShell>
-        <MockStates />
-      </PageWrapper>
-    );
-  }
+  // A screening that is gone, or not shared with the person, is said by the frame its settings open in.
+  if (id && (!saved || !accessOf(saved, store.viewer))) return null;
 
   const fresh = !saved;
   // Its workspace's members change it. Someone it is shared with from outside reads its settings.
@@ -269,7 +261,8 @@ export function ScreeningForm({ id }: { id?: string }) {
       changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${papers.toLocaleString("en-GB")} papers from ${draft.sources.length} ${draft.sources.length === 1 ? "source" : "sources"}, ${people.length} ${people.length === 1 ? "person" : "people"} and ${models.length} ${models.length === 1 ? "model" : "models"}` }],
     });
     store.draft(key, () => undefined);
-    router.push(`/screening/mock/${newId}`);
+    // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
+    router.replace(overviewHref(newId));
   };
   const save = () => {
     if (!saved || !id) return;
@@ -334,25 +327,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
   const doiCount = dois.split(/[\s,;]+/).filter((word) => /^10\.\d{4,}\//.test(word.replace(/^https?:\/\/(dx\.)?doi\.org\//, ""))).length;
 
-  return (
-    <MotionConfig reducedMotion="user">
-      <PageWrapper>
-        <div className={`contents ${AVATARS_FADE_IN}`}>
-          <LibraryPageShell
-            icon={ListChecks}
-            title={fresh ? "New screening" : saved.name}
-            titleAside={fresh ? null : <Chip>Settings</Chip>}
-            backHref={fresh ? "/screening/mock" : `/screening/mock/${id}`}
-            backLabel={fresh ? "All screenings" : "Back to the screening"}
-            intro={
-              locked ? (
-                <div className="flex items-center gap-3 px-4 py-2.5 text-sm sm:px-6">
-                  <Eye className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 text-muted-foreground">These are {workspace.name}&apos;s settings for this screening. You can read them, and its members change them.</span>
-                </div>
-              ) : undefined
-            }
-          >
+  const body = (
             <div className="grid @4xl:grid-cols-[minmax(0,1fr)_21rem] @4xl:divide-x @4xl:divide-border-subtle">
               <div className={cn("min-w-0 space-y-8 p-4 sm:p-6", locked && "[&_[data-adds]]:hidden [&_[role=radiogroup]]:opacity-60 [&_[role=switch]]:opacity-60")} inert={locked}>
                 <div className="flex flex-col gap-4">
@@ -797,7 +772,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="flex items-center gap-2.5 rounded-2xl bg-success/10 px-3 py-2.5 text-sm">
                       <RefreshCw className="size-4 shrink-0 ink-success" />
                       <span className="min-w-0 flex-1">{saved.updates.at(-1)!.added ? `The look added ${saved.updates.at(-1)!.added} new ${saved.updates.at(-1)!.added === 1 ? "paper" : "papers"}` : "The look found nothing new"}</span>
-                      <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs"><NextLink href={`/screening/mock/${id}`}>See</NextLink></Button>
+                      <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs"><NextLink href={overviewHref(id!)}>See</NextLink></Button>
                     </div>
                   ) : null}
                   {!fresh && !locked ? (
@@ -866,12 +841,21 @@ export function ScreeningForm({ id }: { id?: string }) {
                           <li key={i} className="text-xs"><span className="font-medium">{change.by === SCHEDULE ? "Scheduled check" : (personOf(change.by)?.name ?? change.by)}</span> <span className="text-muted-foreground">{ago(change.at)}</span><span className="block text-muted-foreground">{change.what}</span></li>
                         ))}
                       </ul>
-                      <Button asChild variant="ghost" size="sm" className="h-7 px-1.5 text-xs"><NextLink href={`/screening/mock/${id}`}>Back to the screening</NextLink></Button>
+                      <Button asChild variant="ghost" size="sm" className="h-7 px-1.5 text-xs"><NextLink href={overviewHref(id!)}>Back to the screening</NextLink></Button>
                     </div>
                   ) : null}
                 </div>
               </aside>
             </div>
+  );
+  // A screening's settings are a page of its frame, which has the header, the trail and the page tabs. A new screening has no frame yet.
+  if (!fresh) return body;
+  return (
+    <MotionConfig reducedMotion="user">
+      <PageWrapper>
+        <div className={`contents ${AVATARS_FADE_IN}`}>
+          <LibraryPageShell wide icon={ListChecks} title="New screening" trail={[SCREENINGS_CRUMB]}>
+            {body}
           </LibraryPageShell>
         </div>
         <MockStates />

@@ -19,14 +19,22 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, day, growing, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { DECISIONS, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, day, growing, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Reviewer, type Screening, lookOf } from "./data";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
+import { papersHref, screenHref, settingsHref } from "./links";
 import { RESULT_STYLE, ResultBar, ReviewerMark, Tally } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
+import { useWorkspace } from "./workspace";
 
-export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOpen: (view: "screen" | "papers", filter?: Result | "conflicts" | "todo") => void; onExport: (what: "flow") => void; /** Opens the papers one arrival brought. */ onAdded: (at: string) => void }) {
+/** The Overview as a page of the open screening. */
+export function OverviewPage() {
+  const { open, exportTo } = useWorkspace();
+  return <Overview open={open} onExport={exportTo} />;
+}
+
+function Overview({ open, onExport }: { open: Open; onExport: (what: "flow") => void }) {
   const { screening, papers, votes, settled, counts, toDo, conflicts } = open;
   const reviewers = activeReviewers(screening);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
@@ -80,7 +88,7 @@ export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOp
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
         <p className="text-sm font-medium">No papers yet</p>
         <p className="max-w-md text-sm text-muted-foreground">Add a source in the settings to give this screening its papers.</p>
-        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={`/screening/mock/${screening.id}/settings`}>Open the settings</NextLink></Button>
+        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(screening.id)}>Open the settings</NextLink></Button>
       </div>
     );
   }
@@ -92,10 +100,10 @@ export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOp
         aside={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {toDo.length ? (
-              <Button size="sm" variant={screening.finishedAt ? "outline" : "default"} onClick={() => onOpen("screen", "todo")}><ListChecks />Screen <AnimatedNumber value={toDo.length} /> {toDo.length === 1 ? "paper" : "papers"}</Button>
+              <Button asChild size="sm" variant={screening.finishedAt ? "outline" : "default"}><NextLink href={screenHref(screening.id)}><ListChecks />Screen <AnimatedNumber value={toDo.length} /> {toDo.length === 1 ? "paper" : "papers"}</NextLink></Button>
             ) : null}
             {conflicts.length ? (
-              <Button size="sm" variant={toDo.length || screening.finishedAt || !open.canResolve ? "outline" : "default"} onClick={() => onOpen("screen", "conflicts")}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</Button>
+              <Button asChild size="sm" variant={toDo.length || screening.finishedAt || !open.canResolve ? "outline" : "default"}><NextLink href={screenHref(screening.id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</NextLink></Button>
             ) : null}
             {settledAll ? (
               <>
@@ -120,11 +128,11 @@ export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOp
             const hint = result === "waiting" && open.waitingOn.length ? `Waiting on ${open.waitingOn.map((one) => `${one.reviewer.name} (${one.papers})`).join(", ")}` : result === "conflict" ? `Their reviewers voted differently. ${personOf(screening.rule.resolver)?.name ?? "A named person"} settles them.` : result === "maybe" ? "Left open: a must-have criterion couldn't be answered" : undefined;
             return (
               <TooltipHint key={result} label={hint}>
-                <button type="button" onClick={() => onOpen("papers", result)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
+                <NextLink href={papersHref(screening.id, { result })} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50">
                   <span className={cn("flex size-6 items-center justify-center rounded-md", RESULT_STYLE[result].chip)}><Icon className="size-3.5" /></span>
                   <span className="font-semibold tabular-nums"><AnimatedNumber value={counts[result]} /></span>
                   <span className="text-muted-foreground">{RESULT_LABEL[result]}</span>
-                </button>
+                </NextLink>
               </TooltipHint>
             );
           })}
@@ -132,7 +140,7 @@ export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOp
       </Zone>
 
       <Facts open={open} />
-      <NewPapers open={open} onAdded={onAdded} />
+      <NewPapers open={open} />
 
       <div className="grid grid-cols-1 gap-7 @5xl/overview:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Zone label="Reviewers">
@@ -220,7 +228,7 @@ export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOp
                           </DropdownMenuTrigger>
                         </TooltipHint>
                         <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem onSelect={() => onOpen("papers")}><ListChecks />See their votes in Papers</DropdownMenuItem>
+                          <DropdownMenuItem asChild><NextLink href={papersHref(screening.id)}><ListChecks />See their votes in Papers</NextLink></DropdownMenuItem>
                           {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
                           {reviewer.kind === "person" && reviewer.id !== open.me && done < assigned ? (
                             <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
@@ -317,7 +325,7 @@ const UPDATE_PAGE = 4;
  * New papers: whether the screening looks for them by itself, each time its sources were looked in
  * again and what that brought, and where those papers stand now. Looking again is one press.
  */
-function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => void }) {
+function NewPapers({ open }: { open: Open }) {
   const { screening, papers, settled } = open;
   const [page, setPage] = useState(1);
   const sources = growing(screening);
@@ -343,7 +351,7 @@ function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => voi
           )}
           {open.canChange ? (
             <>
-              {!screening.living ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={`/screening/mock/${screening.id}/settings#new-papers`}>Look on a schedule</NextLink></Button> : null}
+              {!screening.living ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={settingsHref(screening.id, "new-papers")}>Look on a schedule</NextLink></Button> : null}
               <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Look now</Button>
             </>
           ) : null}
@@ -386,7 +394,7 @@ function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => voi
                   {update.found - update.added ? <Chip>{update.found - update.added} already in it</Chip> : null}
                   <Chip className="bg-success/12 ink-success">{update.added} added</Chip>
                   <span className="w-28 max-sm:hidden"><ResultBar counts={counts} /></span>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" disabled={!batch.length} onClick={() => onAdded(String(update.at))}>See them</Button>
+                  {batch.length ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={papersHref(screening.id, { added: String(update.at) })}>See them</NextLink></Button> : <Button variant="ghost" size="sm" className="h-7 text-xs" disabled>See them</Button>}
                 </>
               ) : (
                 <Chip>Nothing new</Chip>
@@ -437,7 +445,7 @@ function Facts({ open }: { open: Open }) {
           {collection ? <Chip icon={CircleCheck}><AnimatedNumber value={counts.include} /> saved so far</Chip> : null}
           {collection ? <Chip>Saved as each is included</Chip> : <Chip>{counts.include} included, kept here</Chip>}
           {to.prune ? <Chip>Excluded ones leave their collection</Chip> : null}
-          {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-xs"><NextLink href={`/screening/mock/${screening.id}/settings#goes-to`}>{collection ? "Change" : "Choose a collection"}</NextLink></Button> : null}
+          {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-xs"><NextLink href={settingsHref(screening.id, "goes-to")}>{collection ? "Change" : "Choose a collection"}</NextLink></Button> : null}
         </div>
       </div>
       <div className={cell}>

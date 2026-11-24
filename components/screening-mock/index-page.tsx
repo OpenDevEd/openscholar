@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, GitCompare, ListChecks, MoreHorizontal, Move, Plus, RefreshCw, RotateCcw, Settings2, Trash2 } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
@@ -25,25 +26,31 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { HOME, accessOf, activeReviewers, ago, day, modelsOf, personOf, standing, workspaceOf, type Screening, lookOf } from "./data";
 import { MoveDialog } from "./dialogs";
 import { EffectList } from "./effects";
+import { newHref, overviewHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { ResultBar, ReviewerStack } from "./parts";
 import { isReading, paperCredits, useMock } from "./store";
 import { ConfirmChange } from "./team";
 
-type Sort = "recent" | "name";
-type Show = "all" | "you" | "open" | "finished";
 const PAGE = 6;
+/** Which screenings the list shows, kept in the address: Back from a screening returns to the list as it was left. */
+const PLACE = {
+  show: parseAsStringLiteral(["all", "you", "open", "finished"] as const).withDefault("all"),
+  sort: parseAsStringLiteral(["recent", "name"] as const).withDefault("recent"),
+  by: parseAsString.withDefault("anyone"),
+  q: parseAsString.withDefault(""),
+  page: parseAsInteger.withDefault(1),
+};
 const ROW = 77;
 
 export function ScreeningsIndex() {
   const store = useMock();
   const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<Sort>("recent");
-  const [show, setShow] = useState<Show>("all");
-  const [page, setPage] = useState(1);
+  // Another tab, order, starter or page is a step Back returns from. Typing in the search box changes the address in place.
+  const [{ show, sort, by, q: search, page }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  /** Narrows or reorders the list, which starts again from its first page. */
+  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace({ page: null, ...next });
   const [deleting, setDeleting] = useState<Screening | null>(null);
-  const [by, setBy] = useState("anyone");
   const [moving, setMoving] = useState<Screening | null>(null);
   const me = store.viewer;
 
@@ -73,7 +80,7 @@ export function ScreeningsIndex() {
     const rank = (row: (typeof all)[number]) => (row.forYou + row.conflicts ? 0 : row.screening.finishedAt ? 2 : 1);
     return [...found].sort((a, b) => (sort === "name" ? a.screening.name.localeCompare(b.screening.name) : rank(a) - rank(b) || b.screening.createdAt - a.screening.createdAt));
   }, [all, search, show, sort, by]);
-  const pager = pagerOf(rows.length, PAGE, page, setPage);
+  const pager = pagerOf(rows.length, PAGE, page, (next) => void setPlace({ page: next }));
   const tally = { all: all.length, you: all.filter((row) => row.forYou + row.conflicts > 0).length, open: all.filter((row) => !row.screening.finishedAt).length, finished: all.filter((row) => row.screening.finishedAt).length };
 
   return (
@@ -81,12 +88,13 @@ export function ScreeningsIndex() {
       <PageWrapper>
         <div className={`contents ${AVATARS_FADE_IN}`}>
           <LibraryPageShell
+            wide
             icon={ListChecks}
             title="Screening"
-            filters={all.length ? <CommandCenterFilters sortOptions={[{ value: "recent", label: "Needs you first" }, { value: "name", label: "Name" }]} currentSort={sort} onSortChange={setSort} searchFilter={search} onSearchChange={(next) => { setPage(1); setSearch(next); }} placeholder="Find a screening" /> : undefined}
+            filters={all.length ? <CommandCenterFilters sortOptions={[{ value: "recent", label: "Needs you first" }, { value: "name", label: "Name" }]} currentSort={sort} onSortChange={(next) => go({ sort: next })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, { history: "replace" })} placeholder="Find a screening" /> : undefined}
             actions={
               <Button asChild size="sm" className={BAR_ACTION}>
-                <NextLink href="/screening/mock/new"><Plus /><span className={BAR_LABEL}>New screening</span></NextLink>
+                <NextLink href={newHref()}><Plus /><span className={BAR_LABEL}>New screening</span></NextLink>
               </Button>
             }
           >
@@ -95,7 +103,7 @@ export function ScreeningsIndex() {
                 <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"><ListChecks className="size-6" /></span>
                 <h2 className="text-lg font-semibold tracking-tight">Decide which papers belong in your review</h2>
                 <p className="max-w-md text-sm text-muted-foreground">Bring papers from searches, collections or your own files, set your criteria, and screen them by hand, with your team, with AI models as extra reviewers, or all three.</p>
-                <Button asChild className="mt-2"><NextLink href="/screening/mock/new"><Plus />New screening</NextLink></Button>
+                <Button asChild className="mt-2"><NextLink href={newHref()}><Plus />New screening</NextLink></Button>
               </div>
             ) : (
               <>
@@ -103,7 +111,7 @@ export function ScreeningsIndex() {
                   <Segmented
                     label="Which screenings"
                     value={show}
-                    onChange={(next) => { setPage(1); setShow(next); }}
+                    onChange={(next) => go({ show: next })}
                     options={[
                       { id: "all", label: "All", detail: <span className="tabular-nums text-muted-foreground">{tally.all}</span> },
                       { id: "you", label: "Needs you", detail: <span className="tabular-nums text-muted-foreground">{tally.you}</span> },
@@ -112,7 +120,7 @@ export function ScreeningsIndex() {
                     ]}
                   />
                   {starters.length > 1 ? (
-                    <Select value={by} onValueChange={(next) => { setPage(1); setBy(next); }}>
+                    <Select value={by} onValueChange={(next) => go({ by: next })}>
                       <SelectTrigger aria-label="Started by" className="h-8 w-52 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="anyone">Started by anyone</SelectItem>
@@ -129,7 +137,7 @@ export function ScreeningsIndex() {
                     return (
                       <li key={screening.id} className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @3xl:grid-cols-[minmax(0,2.2fr)_8.5rem_minmax(7rem,1fr)_16rem_2rem]" style={{ minHeight: ROW }}>
                         {/* The whole row opens the screening; its menu sits above that link. */}
-                        <NextLink href={`/screening/mock/${screening.id}`} aria-label={`Open ${screening.name}`} className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50" />
+                        <NextLink href={overviewHref(screening.id)} aria-label={`Open ${screening.name}`} className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50" />
                         <span className="pointer-events-none min-w-0">
                           <span className="flex min-w-0 items-center gap-2">
                             <span className="truncate text-sm font-semibold">{screening.name}</span>
@@ -146,8 +154,8 @@ export function ScreeningsIndex() {
                         <span className="relative col-span-2 @3xl:col-span-1"><ResultBar counts={state.counts} /></span>
                         <span className="pointer-events-none col-span-2 flex flex-wrap items-center justify-end gap-1.5 @3xl:col-span-1">
                           {workspace !== HOME ? <span className="me-auto flex min-w-0 @3xl:hidden"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                          {forYou ? <NextLink href={`/screening/mock/${screening.id}?view=screen`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
-                          {conflicts ? <NextLink href={`/screening/mock/${screening.id}?view=screen&queue=conflicts`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={GitCompare} className="bg-info/12 text-info">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</Chip></NextLink> : null}
+                          {forYou ? <NextLink href={screenHref(screening.id)} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
+                          {conflicts ? <NextLink href={screenHref(screening.id, { queue: "conflicts" })} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={GitCompare} className="bg-info/12 text-info">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</Chip></NextLink> : null}
                           {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : screening.living ? `Up to date, looks again on ${day(screening.living.next)}` : "Every paper is settled"}</Chip>) : null}
                         </span>
                         {!access.member ? <span className="@max-3xl:hidden" /> : (
@@ -158,8 +166,8 @@ export function ScreeningsIndex() {
                             </DropdownMenuTrigger>
                           </TooltipHint>
                           <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuItem onSelect={() => router.push(`/screening/mock/${screening.id}/settings`)}><Settings2 />Settings</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => router.push(`/screening/mock/new?from=${screening.id}`)}><Copy />Run again with these settings</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => router.push(settingsHref(screening.id))}><Settings2 />Settings</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => router.push(newHref(screening.id))}><Copy />Run again with these settings</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => setMoving(screening)}><Move />Move to another workspace</DropdownMenuItem>
                             {screening.finishedAt ? (
                               <DropdownMenuItem onSelect={() => store.update(screening.id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
@@ -177,11 +185,11 @@ export function ScreeningsIndex() {
                   {!rows.length ? (
                     <li className="flex flex-col items-center gap-2 px-4 py-14 text-center">
                       <p className="text-sm text-muted-foreground">{search.trim() ? "No screening by that name." : show === "you" ? "Nothing waits for you." : "No screening here."}</p>
-                      <Button variant="outline" size="sm" onClick={() => { setSearch(""); setShow("all"); setBy("anyone"); }}>Show every screening</Button>
+                      <Button variant="outline" size="sm" onClick={() => go({ q: null, show: null, by: null })}>Show every screening</Button>
                     </li>
                   ) : null}
                 </ul>
-                {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="screenings" /> : null}
+                {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={pager.setPage} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="screenings" /> : null}
               </>
             )}
           </LibraryPageShell>
