@@ -56,7 +56,7 @@ function keptIdentifiers(asked: Identifiers, publication: PublicationSettings): 
   const ids = structuredClone(asked);
   for (const id of SERVICE_IDS) {
     const service = ids.services[id];
-    if (service.mode !== "off" && !connected[id]) throw createError("VALIDATION_ERROR", id === "docid" ? "Set DOCiD's account and its resource, file and funder types under Registration before reports use it." : `Set ${SERVICES[id].name}'s account under Registration before reports use it.`);
+    if (service.mode !== "off" && !connected[id]) throw createError("VALIDATION_ERROR", `Set ${SERVICES[id].name}'s account under Registration before reports use it.`);
     if (!Number.isInteger(service.price) || service.price < 0 || service.price > PRICE_MAX) throw createError("VALIDATION_ERROR", `What ${SERVICES[id].name} adds is a whole number of dollars, from 0 to ${PRICE_MAX}.`);
   }
   // The copy a Crossref DOI leads to (#1465).
