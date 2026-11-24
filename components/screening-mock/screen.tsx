@@ -26,9 +26,9 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, Tally, VoteMark } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, Tally, VoteMark } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -437,7 +437,7 @@ function Screen({ open }: { open: Open }) {
                             {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">Goes to {resolver}</span></> : null}
                             {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">from {waitsOn.slice(0, 2).join(" and ")}{waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}</span> : null}
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">Settled by {state.resolvedBy === open.me ? "you" : (personOf(state.resolvedBy)?.name ?? "a reviewer")}</span> : null}
-                            {!state.resolvedBy && state.result === "exclude" && cast.some((one) => one.vote?.reason) ? <Chip>{failedLabel(cast.find((one) => one.vote?.reason)!.vote!.reason!, criteria)}</Chip> : null}
+                            {!state.resolvedBy && state.result === "exclude" && cast.some((one) => one.vote?.reason) ? <ReasonChip reason={cast.find((one) => one.vote?.reason)!.vote!.reason!} criteria={criteria} /> : null}
                           </>
                         ) : null
                       }
@@ -717,6 +717,12 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
 }
 
 /** A sentence of the abstract, with the criteria's words marked, and the whole of it when a model quoted it. */
+/** Why a paper was excluded, as a chip that shows the criterion's question when pointed at. */
+function ReasonChip({ reason, criteria }: { reason: string; criteria: Criterion[] }) {
+  const label = failedLabel(reason, criteria);
+  return <QuestionName question={questionOf(reason, criteria)} label={label} className="inline-flex"><Chip>{label}</Chip></QuestionName>;
+}
+
 function Sentence({ text, quoted, terms }: { text: string; quoted: boolean; terms: string[] }) {
   const words = [...new Set(terms)].sort((a, b) => b.length - a.length);
   const parts = words.length ? text.split(new RegExp(`\\b(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "gi")) : [text];
@@ -754,7 +760,7 @@ function Face({ reviewer, vote, failed, you, kept, criteria }: { reviewer: Revie
           ) : (
             <Chip icon={Hourglass}>{reviewer.kind === "model" ? "Hasn't read it yet" : "Hasn't voted yet"}</Chip>
           )}
-          {!kept && vote?.reason ? <Chip>{failedLabel(vote.reason, criteria)}</Chip> : null}
+          {!kept && vote?.reason ? <ReasonChip reason={vote.reason} criteria={criteria} /> : null}
           {!kept && vote ? <Chip>{ago(vote.at)}</Chip> : null}
         </div>
         {!kept && vote?.note ? <p className="text-sm text-muted-foreground">{inQuotes(vote.note)}</p> : null}
@@ -789,9 +795,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
           <div key={criterion.key} className="contents">
             <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs">
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
-              <TooltipHint label={criterion.short} onlyWhenClipped>
-                <span className={cn("min-w-0 truncate", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></span>
-              </TooltipHint>
+              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {split ? <StateChip tone="info" className="h-5 px-1.5 text-2xs">Differ</StateChip> : null}
             </span>
             {cast.map(({ reviewer, vote }, i) => {

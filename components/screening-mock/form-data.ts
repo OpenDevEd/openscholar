@@ -90,8 +90,12 @@ export const COMMUNITY_COLLECTIONS = [
   { id: "e2", name: "EdTech Hub: Foundational learning", papers: 118 },
 ];
 
-/** Criteria a model writes from a research question. */
-export const WRITTEN = ["Is the study published in 2010 or later?", "Is the paper written in English or French?", "Does the study report a comparison group?"];
+/** Criteria a model writes from a research question, each with the short name it gives it. */
+export const WRITTEN = [
+  { text: "Is the study published in 2010 or later?", short: "Published since 2010" },
+  { text: "Is the paper written in English or French?", short: "English or French" },
+  { text: "Does the study report a comparison group?", short: "Comparison group" },
+];
 
 /** File endings the upload reads as references, and as papers. */
 export const REFERENCE_FILES = /\.(ris|bib|enw|nbib|xml|ciw|csv|txt)$/i;

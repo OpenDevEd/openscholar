@@ -4,7 +4,7 @@
 // section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
 // examples that show what a rule does.
 
-import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
 import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
@@ -238,6 +238,22 @@ export function ResultChip({ result, className }: { result: Result; className?: 
       <Icon aria-hidden className="size-3.5 shrink-0" />
       {RESULT_LABEL[result]}
     </span>
+  );
+}
+
+/**
+ * A criterion goes by its short name in tables, chips and reasons. Pointing at one shows the question
+ * it stands for, or the whole of a label that is cut off where the name is the question's own words.
+ */
+export function QuestionHint({ question, label, children }: { question?: string; label: string; children: ReactElement }) {
+  return <TooltipHint label={question ?? label} onlyWhenClipped={!question}>{children}</TooltipHint>;
+}
+/** A short name or a reason that isn't a link or a button, with its question: it takes the keyboard while it has one to show. */
+export function QuestionName({ question, label, className, children }: { question?: string; label: string; className?: string; /** What stands for the label, where that is more than its words. */ children?: ReactNode }) {
+  return (
+    <QuestionHint question={question} label={label}>
+      <span tabIndex={question ? 0 : undefined} className={cn(question && "rounded outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>{children ?? label}</span>
+    </QuestionHint>
   );
 }
 

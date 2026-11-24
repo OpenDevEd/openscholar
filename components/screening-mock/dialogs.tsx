@@ -19,10 +19,10 @@ import { HelpFact } from "@/components/ui/help";
 import { ROLE_ICONS } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Change, type Paper, type Result, type Reviewer, type Screening, lookOf, growing } from "./data";
+import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, reasonOf, taken, workspaceOf, type Change, type Paper, type Result, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
+import { Help, LinkChip, Panel, QuestionName, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
 
 const save = (name: string, type: string, text: string) => {
@@ -486,7 +486,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                           <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} onClick={onClose} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
                           <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} onClick={onClose} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
                           <td className="whitespace-nowrap px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{DECISION_LABEL[row.vote.decision]}</span></td>
-                          <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-40 truncate">{row.vote.reason ? failedLabel(row.vote.reason, screening.criteria) : "None"}</span></td>
+                          <td className="px-3 text-xs text-muted-foreground">
+                            {row.vote.reason ? <QuestionName question={questionOf(row.vote.reason, screening.criteria)} label={failedLabel(row.vote.reason, screening.criteria)} className="block max-w-40 truncate" /> : "None"}
+                          </td>
                           <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-28 truncate">{row.vote.note ?? "None"}</span></td>
                           <td className="px-3"><ResultChip result={row.result} /></td>
                           <td className="whitespace-nowrap px-3 text-xs text-muted-foreground">{ago(row.vote.at)}</td>

@@ -4,7 +4,7 @@
 // decided and where the included ones go. A new screening starts from it, and a running or finished
 // one is changed with the same form, which says what each change will do before it is saved.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, SCHEDULE, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
+import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
@@ -134,6 +134,10 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   if (oldCriteria.length) push(`Removed ${named(quoted(oldCriteria), "a criterion", "criteria")}`, "criteria");
   const reworded = after.criteria.filter((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && (was.must !== criterion.must || was.text !== criterion.text); });
   if (reworded.length) push(`Changed ${named(quoted(reworded), "a criterion", "criteria")}`, "criteria");
+  // A short name that only followed its reworded question is part of that change, not one of its own.
+  const own = (criterion: Criterion) => criterion.short === shortOf(criterion.text);
+  const renamed = after.criteria.flatMap((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && was.short !== criterion.short && !(own(was) && own(criterion)) ? [`“${was.short}” to “${criterion.short}”`] : []; });
+  if (renamed.length) push(`Renamed ${named(renamed, "a criterion", "criteria")}`, "criteria");
   if (scoringChanged(before, after)) push("Changed the scoring", "criteria");
   const [was, is] = [activeReviewers(before), activeReviewers(after)];
   if (gone(is, was).length) push(`Added ${named(gone(is, was).map((reviewer) => reviewer.name), "a reviewer", "reviewers")}`, "reviewers");
@@ -154,6 +158,36 @@ const inOrder = <T extends { id?: string; key?: string }>(list: T[], saved: T[])
   const idOf = (item: T) => item.id ?? item.key;
   return [...saved.flatMap((one) => list.find((item) => idOf(item) === idOf(one)) ?? []), ...list.filter((item) => !saved.some((one) => idOf(one) === idOf(item)))];
 };
+
+// A criterion is one row where the list is wide enough for its question, and wraps under the question where it isn't: the list's own width decides, since the form's column is narrow in a wide window too.
+/** The width the short names take in the criteria's rows, and their column's name above them. */
+const SHORT_NAME = "w-44 shrink-0 @max-3xl/criteria:ms-5 @max-3xl/criteria:w-auto @max-3xl/criteria:min-w-48 @max-3xl/criteria:flex-1";
+/** The room a row's last two controls take, must-have or nice to have and remove, so the column names line up with the fields under them. */
+const ROW_END = "flex w-58 shrink-0 items-center justify-end gap-x-3 @max-3xl/criteria:ms-5 @max-3xl/criteria:w-auto";
+
+/**
+ * A criterion's short name. What is typed stays here while the field has the keyboard, so an emptied
+ * field shows the name the criterion falls back to: its question's own words.
+ */
+function ShortName({ criterion, n, help, onChange }: { criterion: Criterion; n: number; /** The "?" beside the field's own name, which shows where the column names are hidden. */ help?: ReactNode; onChange: (short: string) => void }) {
+  const [typing, setTyping] = useState<string | null>(null);
+  const field = useId();
+  return (
+    <div className={cn(SHORT_NAME, "flex items-center gap-2")}>
+      <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground @3xl/criteria:hidden"><label htmlFor={field}>Short name</label>{/* The other rows keep the "?"'s room, so every field starts in line. */ help ?? <span aria-hidden className="size-5 shrink-0" />}</span>
+      <Input
+        id={field}
+        value={typing ?? criterion.short}
+        maxLength={SHORT_NAME_LENGTH}
+        placeholder={shortOf(criterion.text)}
+        aria-label={`Short name of criterion ${n}`}
+        onChange={(event) => { setTyping(event.target.value); onChange(event.target.value.trim() || shortOf(criterion.text)); }}
+        onBlur={() => setTyping(null)}
+        className="h-8 min-w-0 flex-1 px-2 text-sm"
+      />
+    </div>
+  );
+}
 
 export function ScreeningForm({ id }: { id?: string }) {
   const store = useMock();
@@ -253,8 +287,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const unsaved = `${edits.length} unsaved ${edits.length === 1 ? "change" : "changes"}`;
   // Beside a part's title while it holds an edit that isn't saved.
   const changed = (...sections: EffectSection[]) => (edits.some((edit) => sections.includes(edit.section)) ? <StateChip tone="warning" icon={PenLine} className="ms-1.5 h-5 px-1.5">Changed</StateChip> : null);
-  // What saving can't do yet, and the part of the form that fixes it.
-  const holdUp = !saved ? null : needsCriteria ? { text: "Add a criterion for the model", section: "criteria" as const } : cost > wallet ? { text: `${credits(cost - wallet)} credits short` } : null;
+  // A criterion whose question was deleted asks nothing, and leaves its short name no words to fall back to.
+  const unasked = draft.criteria.some((criterion) => !criterion.text.trim()) ? { text: "Write a question for the empty criterion", section: "criteria" as const, focus: "#criteria textarea[aria-invalid=true]" } : null;
+  // What saving can't do yet, and the control that fixes it.
+  const holdUp: { text: string; section?: "criteria"; focus?: string } | null = !saved ? null : (unasked ?? (needsCriteria ? { text: "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : cost > wallet ? { text: `${credits(cost - wallet)} credits short` } : null));
   // How many votes each reviewer has cast, and which papers each check added: what a row's chips open.
   const savedState = saved ? standing(saved) : null;
   const votesOf = (reviewer: Reviewer) => (savedState ? savedState.papers.reduce((sum, paper) => sum + (savedState.votes[paper.id]?.some((one) => one.reviewer.id === reviewer.id && one.vote) ? 1 : 0), 0) : 0);
@@ -267,11 +303,11 @@ export function ScreeningForm({ id }: { id?: string }) {
     ? { text: "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: "Add a reviewer to start", section: "reviewers", focus: "#add-person" }
-      : needsCriteria
+      : (unasked ?? (needsCriteria
         ? { text: "Add a criterion for the model", section: "criteria", focus: "#new-criterion" }
         : cost > wallet
           ? { text: `${credits(cost - wallet)} credits short` }
-          : null;
+          : null));
 
   const addSource = (kind: SourceKind, name: string, detail: string, total: number, facts?: string[]) =>
     setDraft((d) => {
@@ -306,12 +342,12 @@ export function ScreeningForm({ id }: { id?: string }) {
   };
 
   // A criterion decides unless it is marked as nice to have: an inclusion criterion that excludes nothing is a surprise.
-  const addCriterion = (words: string, must = true) =>
+  const addCriterion = (words: string, short?: string) =>
     setDraft((d) => {
       const clean = words.trim();
       if (!clean || d.criteria.some((criterion) => criterion.text.toLowerCase() === clean.toLowerCase())) return d;
       const key = `c${hashOf(clean)}`;
-      return withCriteria(d, [...d.criteria, { key, text: clean, short: shortOf(clean), must, terms: [], addedAt: Date.now() }], { ...d.scoring.points, [key]: [1, 0, 0] });
+      return withCriteria(d, [...d.criteria, { key, text: clean, short: short ?? shortOf(clean), must: true, terms: [], addedAt: Date.now() }], { ...d.scoring.points, [key]: [1, 0, 0] });
     });
   const patchCriterion = (key: string, patch: Partial<Criterion>) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === key ? { ...criterion, ...patch } : criterion)) }));
   const copyCriteria = (one: Screening) =>
@@ -319,13 +355,14 @@ export function ScreeningForm({ id }: { id?: string }) {
       const fresh = one.criteria.filter((criterion) => !d.criteria.some((mine) => mine.key === criterion.key || mine.text === criterion.text));
       return withCriteria(d, [...d.criteria, ...fresh.map((criterion) => ({ ...criterion, addedAt: Date.now() }))], { ...Object.fromEntries(fresh.map((criterion) => [criterion.key, one.scoring.points[criterion.key] ?? [1, 0, 0]])), ...d.scoring.points });
     });
+  const shortNameHelp = <Help title="Short name" facts={<HelpFact>Up to {SHORT_NAME_LENGTH} characters</HelpFact>}>The name a criterion goes by where its question doesn&apos;t fit: table columns, filters, and the reasons papers were excluded. It is the question&apos;s own words until you write one.</Help>;
   const copyable = store.screenings.filter((one) => one.id !== id && one.criteria.length).slice(0, 8);
-  const allWritten = WRITTEN.every((question) => draft.criteria.some((criterion) => criterion.text === question));
+  const allWritten = WRITTEN.every((written) => draft.criteria.some((criterion) => criterion.text === written.text));
   const cantWrite = !draft.question.trim() ? "Write a research question first" : allWritten ? "Already added" : null;
   const writeCriteria = () => {
     setWriting(true);
     setTimeout(() => {
-      WRITTEN.forEach((written) => addCriterion(written));
+      WRITTEN.forEach((written) => addCriterion(written.text, written.short));
       setWriting(false);
     }, 1200);
   };
@@ -874,25 +911,37 @@ export function ScreeningForm({ id }: { id?: string }) {
               </span>
             }
           >
-            <div className={cn(LIST, "bg-card")}>
+            <div className={cn(LIST, "@container/criteria bg-card")}>
+              {criterionRows.length ? (
+                <div className="flex items-center gap-x-3 px-4 py-1.5 text-xs text-muted-foreground @max-3xl/criteria:hidden">
+                  <span className="w-4 shrink-0" />
+                  <span className="min-w-0 flex-1 px-1">Question</span>
+                  <span className={cn(SHORT_NAME, "flex items-center gap-1")}>Short name{shortNameHelp}</span>
+                  <span aria-hidden className={ROW_END} />
+                </div>
+              ) : null}
               <AnimatePresence initial={false}>
                 {criterionRows.map(({ criterion, gone }, i) => (
                   <motion.div key={criterion.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
-                    <div className={cn("flex items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
+                    <div className={cn("flex items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors @max-3xl/criteria:flex-wrap", gone && TONE.warning.panel)}>
                       <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
                       {gone ? (
                         <>
-                          <p className="min-w-0 flex-1 px-1 py-1.5 text-sm text-muted-foreground line-through max-sm:basis-[calc(100%-1.75rem)]">{criterion.text}</p>
-                          <StateChip tone="warning" icon={Trash2} className="max-sm:ms-5">Removed when you save</StateChip>
+                          <p className="min-w-0 flex-1 px-1 py-1.5 text-sm text-muted-foreground line-through @max-3xl/criteria:basis-[calc(100%-1.75rem)]">{criterion.text}</p>
+                          <StateChip tone="warning" icon={Trash2} className="@max-3xl/criteria:ms-5">Removed when you save</StateChip>
                           <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => keepCriterion(criterion)}><Undo2 />Keep</Button>
                         </>
                       ) : (
                         <>
-                          <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.addedAt === 0 ? criterion.short : shortOf(event.target.value) })} aria-label={`Criterion ${i + 1}`} className="min-h-8 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle max-sm:basis-[calc(100%-1.75rem)]" />
-                          <Segmented label={`Criterion ${i + 1} is`} className="max-sm:ms-5" value={criterion.must ? "must" : "nice"} onChange={(next) => patchCriterion(criterion.key, { must: next === "must" })} options={[{ id: "must", label: "Must-have" }, { id: "nice", label: "Nice to have" }]} />
-                          <TooltipHint label={`Remove ${criterionName(criterion)}`}>
-                            <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Remove ${criterionName(criterion)}`} onClick={() => removeCriterion(criterion)}><Trash2 /></Button>
-                          </TooltipHint>
+                          {/* The short name follows the question's words until someone has written one. */}
+                          <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.short === shortOf(criterion.text) ? shortOf(event.target.value) : criterion.short })} aria-label={`Criterion ${i + 1}`} aria-invalid={!criterion.text.trim() || undefined} placeholder="Write a yes or no question" className="min-h-8 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle @max-3xl/criteria:basis-[calc(100%-1.75rem)]" />
+                          <ShortName criterion={criterion} n={i + 1} help={criterion.key === criterionRows.find((row) => !row.gone)?.criterion.key ? shortNameHelp : undefined} onChange={(short) => patchCriterion(criterion.key, { short })} />
+                          <span className={ROW_END}>
+                            <Segmented label={`Criterion ${i + 1} is`} value={criterion.must ? "must" : "nice"} onChange={(next) => patchCriterion(criterion.key, { must: next === "must" })} options={[{ id: "must", label: "Must-have" }, { id: "nice", label: "Nice to have" }]} />
+                            <TooltipHint label={`Remove ${criterionName(criterion)}`}>
+                              <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={`Remove ${criterionName(criterion)}`} onClick={() => removeCriterion(criterion)}><Trash2 /></Button>
+                            </TooltipHint>
+                          </span>
                         </>
                       )}
                     </div>
@@ -1212,7 +1261,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             </span>
             {holdUp ? (
               holdUp.section ? (
-                <JumpLink to={holdUp.section} find={() => document.getElementById("new-criterion")} block="center" className="flex items-center gap-1.5 rounded text-sm font-medium ink-warning outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"><TriangleAlert aria-hidden className="size-4 shrink-0" />{holdUp.text}</JumpLink>
+                <JumpLink to={holdUp.section} find={() => (holdUp.focus ? document.querySelector<HTMLElement>(holdUp.focus) : null)} block="center" className="flex items-center gap-1.5 rounded text-sm font-medium ink-warning outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"><TriangleAlert aria-hidden className="size-4 shrink-0" />{holdUp.text}</JumpLink>
               ) : (
                 <span className="flex items-center gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="size-4 shrink-0" />{holdUp.text}</span>
               )

@@ -84,10 +84,12 @@ export const SEED_MODELS: MapModel[] = [
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
 
 export type Criterion = { key: string; text: string; short: string; must: boolean; terms: string[]; addedAt: number };
-/** A short name for a criterion written by hand: its own words, cut where they run long. */
+/** How long a criterion's short name can be. */
+export const SHORT_NAME_LENGTH = 40;
+/** The short name a criterion has until someone writes one: its question's own words, cut where they run longer than a short name can be. */
 export const shortOf = (text: string) => {
   const words = text.replace(/[?.]$/, "").trim();
-  return words.length > 46 ? `${words.slice(0, 44).trimEnd()}…` : words;
+  return words.length > SHORT_NAME_LENGTH ? `${words.slice(0, SHORT_NAME_LENGTH - 1).trimEnd()}…` : words;
 };
 
 export type SourceKind = "search" | "collection" | "saved" | "screening" | "evidenceLibrary" | "zotero" | "upload" | "pdf" | "dois";
@@ -123,6 +125,11 @@ export const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "dup
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** A reason for excluding as a reader meets it: the criterion that wasn't met, named as such, or one of the other reasons. */
 export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `Not met: ${reasonLabel(key, criteria)}` : reasonLabel(key, criteria));
+/** The question a short name or a reason stands for, where the name isn't already the question's own words. */
+export const questionOf = (key: string, criteria: Criterion[]) => {
+  const criterion = criteria.find((one) => one.key === key);
+  return criterion && criterion.short !== criterion.text.replace(/[?.]$/, "").trim() ? criterion.text : undefined;
+};
 /** The one reason an excluded paper is counted under: the one most of its reviewers gave. */
 export function reasonOf(cast: Array<{ vote: Vote | undefined }>, settled?: Settled): string | undefined {
   if (settled?.reason) return settled.reason;

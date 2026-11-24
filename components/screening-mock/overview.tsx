@@ -4,7 +4,7 @@
 // to do next, who has voted how and how far they agree, the facts about it, and the counts a methods
 // section asks for.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -20,12 +20,12 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, peopleOf, personOf, reasonOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import { DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, peopleOf, personOf, questionOf, reasonOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
 import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, RESULT_STYLE, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
+import { Help, LinkChip, Panel, QuestionHint, RESULT_STYLE, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -740,7 +740,7 @@ function Checks({ open }: { open: Open }) {
 
 // ── Flow ─────────────────────────────────────────────────────────────────────────────────────────
 
-type FlowRow = { key: string; label: ReactNode; value: number; href?: string; fill: string; indent?: boolean };
+type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; indent?: boolean; /** The question a reason stands for. */ question?: string };
 
 /** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, the papers screened, and included. Every count above none opens its papers. */
 function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
@@ -767,7 +767,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       href: papersHref(id),
       rows: [
         { key: "exclude", label: RESULT_LABEL.exclude, value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar },
-        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, indent: true })),
+        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, indent: true })),
         { key: "maybe", label: RESULT_LABEL.maybe, value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar },
         { key: "conflict", label: RESULT_LABEL.conflict, value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar },
         { key: "waiting", label: RESULT_LABEL.waiting, value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: HATCH },
@@ -822,7 +822,9 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
                 );
                 return (
                   <li key={row.key}>
-                    {row.href && row.value ? <NextLink href={row.href} className={cn("block space-y-1 px-2 py-1.5", ROW_LINK)}>{inner}</NextLink> : <div className={cn("space-y-1 px-2 py-1.5", !row.value && "opacity-60")}>{inner}</div>}
+                    <QuestionHint question={row.question} label={row.label}>
+                      {row.href && row.value ? <NextLink href={row.href} className={cn("block space-y-1 px-2 py-1.5", ROW_LINK)}>{inner}</NextLink> : <div className={cn("space-y-1 px-2 py-1.5", !row.value && "opacity-60")}>{inner}</div>}
+                    </QuestionHint>
                   </li>
                 );
               })}

@@ -28,9 +28,9 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/compon
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
+import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, Help, Kbd, LinkChip, Panel, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
+import { AnswerMark, Help, Kbd, LinkChip, Panel, QuestionHint, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -550,9 +550,7 @@ function Papers({ open }: { open: Open }) {
                           ))
                         : criteria.map((criterion) => (
                             <TableHead key={criterion.key} className="h-auto px-0.5 pb-2 text-center align-bottom whitespace-normal">
-                              <TooltipHint label={criterion.short} onlyWhenClipped>
-                                <span className="line-clamp-2 text-2xs leading-4 font-medium">{criterion.short}</span>
-                              </TooltipHint>
+                              <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className="line-clamp-2 text-2xs leading-4 font-medium" />
                             </TableHead>
                           ))}
                     </TableRow>
@@ -723,9 +721,9 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `Unclear: ${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey}`;
     return (
-      <TooltipHint label={label} onlyWhenClipped>
+      <QuestionHint question={questionOf(reasonKey, open.screening.criteria)} label={label}>
         <NextLink href={papersHref(id, { result: state.result, reason: reasonKey })} className={cn("block truncate text-xs text-muted-foreground", ROW_LINK)}>{label}</NextLink>
-      </TooltipHint>
+      </QuestionHint>
     );
   }
   // An included paper carries the stars its answers earn, as it is saved with them.
