@@ -53,6 +53,8 @@ const iconOf = (kind: SourceKind): AppIcon => (kind === "upload" || kind === "pd
 const OFFER_PAGE = 5;
 const DEST_PAGE = 5;
 const hashOf = (text: string) => [...text].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
+const nextSlot = (sources: Source[]) => Math.max(-1, ...sources.map((source) => source.slot)) + 1;
+const sourceId = (sources: Source[], name: string) => `src-${nextSlot(sources)}-${hashOf(name) % 1000}`;
 
 /** A screening nobody has started: the person making it as its one reviewer, the usual rule, and nothing else yet. */
 function blank(me: string): Screening {
@@ -190,11 +192,13 @@ export function ScreeningForm({ id }: { id?: string }) {
     setDraft((d) => {
       if (d.sources.some((source) => source.kind === kind && source.name === name)) return d;
       const duplicates = d.sources.length && total > 3 ? Math.min(total - 1, Math.round(total * 0.07) + (hashOf(name) % 4)) : 0;
-      const slot = Math.max(-1, ...d.sources.map((source) => source.slot)) + 1;
-      return { ...d, sources: [...d.sources, { id: `src-${slot}-${hashOf(name) % 1000}`, slot, kind, name, detail, total, scope: "all", range: [1, Math.max(1, total)], duplicates, addedAt: Date.now(), ...(facts ? { facts } : {}) }] };
+      const slot = nextSlot(d.sources);
+      return { ...d, sources: [...d.sources, { id: sourceId(d.sources, name), slot, kind, name, detail, total, scope: "all", range: [1, Math.max(1, total)], duplicates, addedAt: Date.now(), ...(facts ? { facts } : {}) }] };
     });
-  const patchSource = (sourceId: string, patch: Partial<Source> | ((source: Source) => Partial<Source>)) =>
-    setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.id === sourceId ? { ...source, ...(typeof patch === "function" ? patch(source) : patch) } : source)) }));
+  // A source picked from a list opens to which of its papers are taken, as picking one does on the page this replaces.
+  const openAdded = (name: string, total: number) => { if (total > 1) setOpenSource(sourceId(draft.sources, name)); };
+  const patchSource = (id: string, patch: Partial<Source> | ((source: Source) => Partial<Source>)) =>
+    setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.id === id ? { ...source, ...(typeof patch === "function" ? patch(source) : patch) } : source)) }));
   // Files are read one at a time: a reference file becomes a source of its own, PDFs join one source between them.
   const take = (list: FileList | File[]) => {
     const all = [...list];
@@ -567,7 +571,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </>
                               }
                               added={draft.sources.some((source) => source.kind === "evidenceLibrary" && source.name === row.name)}
-                              onAdd={() => { addSource("evidenceLibrary", row.name, `In ${inCommunity.name}`, row.total); setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === "evidenceLibrary" && source.name === row.name ? { ...source, filters: [inCommunity.name, "As it stands when the screening starts"] } : source)) })); }}
+                              onAdd={() => { openAdded(row.name, row.total); addSource("evidenceLibrary", row.name,`In ${inCommunity.name}`, row.total); setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === "evidenceLibrary" && source.name === row.name ? { ...source, filters: [inCommunity.name, "As it stands when the screening starts"] } : source)) })); }}
                             />
                           ))}
                           {!communityRows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{find.trim() ? "Nothing by that name." : group === "yours" ? `You have no collections in ${inCommunity.name}.` : group === "shared" ? `Nobody has shared a collection in ${inCommunity.name} with you.` : `Nothing to read in ${inCommunity.name} yet.`}</p> : null}
@@ -583,7 +587,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           </div>
                         ) : null}
                         <div className={LIST} style={{ minHeight: offerPager.pages > 1 ? OFFER_PAGE * 57 : undefined }}>
-                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={iconOf(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { addSource(as, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
+                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={iconOf(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { openAdded(offer.name, offer.total); addSource(as, offer.name, offer.detail, offer.total);if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
                           {!offers.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">Nothing by that name.</p> : null}
                         </div>
                         {offerPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={offerPager.page} totalPages={offerPager.pages} onPageChange={setOfferPage} totalItems={offers.length} itemsPerPage={OFFER_PAGE} itemLabel="sources" /> : null}
