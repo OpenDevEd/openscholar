@@ -6585,7 +6585,75 @@
       "priceThreeHint": "Wat dit kos om 'n verslag onder 'n NC- of ND-lisensie, of die outeur se eie oop lisensie, te publiseer, in Amerikaanse dollar.",
       "prices": "Pryse",
       "priceClosed": "Eie lisensies wat nie oop is nie",
-      "priceClosedHint": "Wat dit kos om 'n verslag onder die outeur se eie lisensie wat niemand toelaat om dit te deel nie, te publiseer, in Amerikaanse dollar."
+      "priceClosedHint": "Wat dit kos om 'n verslag onder die outeur se eie lisensie wat niemand toelaat om dit te deel nie, te publiseer, in Amerikaanse dollar.",
+      "intake": {
+        "title": "Nuwe verslae",
+        "when": "Wanneer hulle oop is",
+        "hint": {
+          "off": "Niemand kan 'n verslag begin of aktiveer nie. Verslae wat reeds begin is, wag in Jou verslae.",
+          "on": "Enigiemand wat aangemeld is, kan verslae begin en aktiveer, binne die perke hieronder.",
+          "dates": "Oop tussen hierdie datums, binne die perke hieronder."
+        },
+        "mode": {
+          "off": "Af",
+          "on": "Aan",
+          "dates": "Tussen datums"
+        },
+        "timezone": "Tydsone",
+        "timezoneHint": "Die datums en kalendertydperke volg sy horlosie",
+        "opens": "Gaan oop",
+        "opensHint": "Laat leeg om hulle nou oop te maak",
+        "closes": "Sluit",
+        "closesHint": "Laat leeg om hulle oop te hou",
+        "closePast": "Kies 'n tyd wat nog moet kom.",
+        "closeBeforeOpen": "Kies 'n tyd nadat hulle oopgaan.",
+        "startsIn": "Gaan oop {time}",
+        "left": "Sluit {time}",
+        "over": "Verby",
+        "limits": "Perke",
+        "addLimit": "Voeg perk by",
+        "noLimits": "Geen perk nie. Elke verslag wat gereed is, kan geaktiveer word.",
+        "limitsHint": "Elke perk tel aktiverings. Sodra een bereik is, wag nuwe verslae en aktiverings vir sy volgende tydperk.",
+        "countLabel": "Toegelate aktiverings",
+        "countWrong": "Tik 'n heelgetal van 1 tot {max}.",
+        "activations": "{count, plural, one {aktivering} other {aktiverings}}",
+        "periodLabel": "Tydperk",
+        "period": {
+          "day": "per dag",
+          "week": "per week",
+          "month": "per maand",
+          "total": "altesaam",
+          "dates": "tussen die datums"
+        },
+        "resetLabel": "Hoe die tydperk loop",
+        "rolling": {
+          "day": "Laaste 24 uur",
+          "week": "Laaste 7 dae",
+          "month": "Laaste 30 dae"
+        },
+        "calendar": {
+          "day": "Middernag tot middernag",
+          "week": "Maandag tot Sondag",
+          "month": "Kalendermaand"
+        },
+        "remove": "Verwyder perk",
+        "usedLabel": "Aktiverings in hierdie tydperk",
+        "used": "{used} van {count}",
+        "full": "Vol",
+        "startsAgain": "Begin weer {date}",
+        "frees": "'n Plek kom vry {date}",
+        "untilClose": "Totdat hulle sluit",
+        "sinceOpen": "Sedert hulle oopgegaan het",
+        "state": {
+          "open": "Oop",
+          "openUntil": "Oop tot {date}",
+          "off": "Af",
+          "opens": "Gaan oop {date}",
+          "ended": "Geëindig {date}",
+          "full": "Vol",
+          "fullUntil": "Vol tot {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7070,7 +7138,36 @@
       "docidAgain": "Vra DOCiD weer",
       "reservedDocid": "Deur DOCiD toegeken",
       "copyDocid": "Kopieer die DOCiD",
-      "docidCopied": "DOCiD gekopieer"
+      "docidCopied": "DOCiD gekopieer",
+      "intake": {
+        "shut": {
+          "off": "Nuwe verslae is gesluit",
+          "notYet": "Nuwe verslae gaan oop {date}",
+          "next": "Die volgende tydperk begin {date}",
+          "over": "Hierdie tydperk is verby"
+        },
+        "off": {
+          "title": "Nuwe verslae is gesluit",
+          "body": "Verslae wat jy begin het, wag hier totdat hulle weer oopgaan."
+        },
+        "notYet": {
+          "title": "Nuwe verslae is nog nie oop nie",
+          "body": "Verslae wat jy begin het, wag tot dan hier."
+        },
+        "over": {
+          "title": "Hierdie tydperk is verby"
+        },
+        "ended": {
+          "body": "Nuwe verslae is gesluit. Verslae wat jy begin het, wag hier."
+        },
+        "full": {
+          "body": "Elke plek daarin is gevat. Verslae wat jy begin het, wag vir die volgende tydperk.",
+          "last": "Elke plek daarin is gevat. Verslae wat jy begin het, wag hier."
+        },
+        "opens": "Gaan oop {date}",
+        "closed": "Gesluit {date}",
+        "next": "Volgende tydperk {date}"
+      }
     },
     "meta": {
       "publish": "Publiseer | Openscholar",

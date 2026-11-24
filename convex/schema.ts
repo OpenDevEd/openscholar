@@ -643,7 +643,9 @@ export default defineSchema({
     refund: v.optional(v.object({ card: v.number(), credit: v.number(), at: v.number() })),
   })
     .index("by_workspaceId_and_state", ["workspaceId", "state"])
-    .index("by_reportId", ["reportId"]),
+    .index("by_reportId", ["reportId"])
+    // The latest that count against a limit on new reports (reports/intake.ts).
+    .index("by_state_and_at", ["state", "at"]),
 
   // The reports themselves. A row here is what a list reads; `reportDetails` holds what opening one reads.
   reports: defineTable(reportFields)

@@ -43,8 +43,8 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
-import { IntakeClosedPage, IntakeNotice, IntakeShut, useIntakeShut } from "@/components/reports/intake-notice";
-import { useIntakeState } from "@/lib/reports/intake";
+import { IntakeClosedPage, IntakeNotice, IntakeOpen, IntakeShut, useIntakeShut, useNow } from "@/components/reports/intake-notice";
+import { intakeAt, type IntakeState } from "@/lib/reports/intake";
 import { FieldMessage, StepNav, useStepForm } from "@/components/reports/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -447,6 +447,10 @@ export function PublishFlow() {
   /** The list is what shows: asked for, or still up while a report opens from it. */
   const listing = listed || opening;
 
+  // Whether new reports are open now (lib/reports/intake.ts): the series' settings and limits, against the clock.
+  const clock = useNow();
+  const intake: IntakeState = basics ? intakeAt(basics.intake, basics.nths, clock) : { open: true };
+  const intakeShut = useIntakeShut(intake);
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
@@ -455,9 +459,6 @@ export function PublishFlow() {
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
   // filters land where they belong at once (a new shell shows them in the card for a moment in Firefox).
-  // New reports closed for now (MOCK, lib/reports/intake.ts): read before the page can return early.
-  const intake = useIntakeState();
-  const intakeShut = useIntakeShut();
   if (!ready || !basics) {
     return (
       <LibraryPageShell icon={null} title="">
@@ -514,7 +515,6 @@ export function PublishFlow() {
     setFresh(null);
     go({ view: null, report: "new", correct: null, step: null });
   };
-  // New reports closed for now (MOCK, lib/reports/intake.ts): nothing new starts, and a draft waits for the next period.
   // A report not yet live, and never live before: the drafts that wait.
   const waits = !!report && report.mine && report.status !== "live" && report.activatedAt === undefined && !intake.open;
   const hasReports = (counts?.all ?? 0) > 0;
@@ -522,6 +522,7 @@ export function PublishFlow() {
   const closed = (!basics.open || !intake.open) && !listing && !report && !missing;
 
   return (
+    <IntakeOpen.Provider value={intake}>
     <LibraryPageShell
       icon={PublishIcon}
       title={listing || missing || closed ? t("publish") : report?.metadata?.title || report?.title || t("newReport")}
@@ -633,7 +634,7 @@ export function PublishFlow() {
               {t("offNotice")}
             </p>
           ) : null}
-          {/* New reports closed (MOCK): a draft says why its Next and Activate wait, and when the next period starts. */}
+          {/* New reports closed : a draft says why its Next and Activate wait, and when the next period starts. */}
           {basics.open && waits ? <IntakeNotice className="col-span-full" /> : null}
           {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
@@ -677,6 +678,7 @@ export function PublishFlow() {
         </div>
       )}
     </LibraryPageShell>
+    </IntakeOpen.Provider>
   );
 }
 
@@ -2067,7 +2069,7 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   };
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
-  // New reports closed (MOCK): Activate waits for the next period, and says so.
+  // New reports closed: Activate waits for the next period, and says so.
   const intakeShut = useIntakeShut();
   const shut = intakeShut ?? (terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null);
   // A code typed and not applied is the code field's to say: Activate takes the person there (`useStepForm`).

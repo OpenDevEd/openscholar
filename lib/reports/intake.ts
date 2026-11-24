@@ -1,36 +1,37 @@
-"use client";
+// Whether new reports are open (Settings > Admin > Publishing, "New reports"): off, on, or on between two dates, with
+// limits on how many reports are activated in a day, a week, a month or the whole time open. Convex refuses with it
+// (convex/reports/intake.ts) and the Publish page says with it why a new report or a draft waits. Nothing here reads
+// the clock: `now` is given, so a page works it out again as time passes and a query never goes stale.
 
-// MOCK (mock/new-report-limits): whether new reports are open, held in this browser so the admin page and the
-// Publish page agree without a server change. The real build keeps this on `reportSettings` and counts activations
-// from `reportActivations`; `stateOf` and the calendar sums are what it would keep.
-
-import { useSyncExternalStore } from "react";
-
+export const INTAKE_MODES = ["off", "on", "dates"] as const;
 /** How long a limit's count runs: a day, a week, a month, or the whole time new reports are open. */
-export type Period = "day" | "week" | "month" | "window";
-/** Rolling counts the last day, week or month up to now; calendar starts again at midnight, on Monday, or on the 1st. */
-export type Reset = "rolling" | "calendar";
-export type Limit = { id: string; count: number; period: Period; reset: Reset; /** MOCK: activations already counted in its period. */ used: number };
+export const PERIODS = ["day", "week", "month", "window"] as const;
+/** Rolling counts the last 24 hours, 7 days or 30 days; calendar starts again at midnight, on Monday, or on the 1st. */
+export const RESETS = ["rolling", "calendar"] as const;
+export type Period = (typeof PERIODS)[number];
+export type Reset = (typeof RESETS)[number];
+
+/** The most limits, and the most activations one counts: the latest that many are read each time one is checked. */
+export const LIMITS_MAX = 10;
+export const LIMIT_COUNT_MAX = 5000;
+
+export type Limit = { id: string; count: number; period: Period; reset: Reset };
 export type Intake = {
-  mode: "off" | "on" | "dates";
-  /** With `dates`: when new reports open (none is at once) and close (none is never). */
+  mode: (typeof INTAKE_MODES)[number];
+  /** With `dates`: when new reports open (none is from `openedAt`) and close (none is never). */
   opensAt: number | null;
   closesAt: number | null;
   /** Where the dates and calendar periods are read. */
   timezone: string;
   limits: Limit[];
+  /** When new reports were last switched on: where "in total" counts from when no opening date is set. */
+  openedAt: number | null;
 };
 
-export type LimitUse = Limit & { full: boolean; /** When its count starts again; null for the whole time open. */ resetsAt: number | null };
-export type IntakeState =
-  | { open: true; uses: LimitUse[] }
-  | { open: false; why: "off" }
-  | { open: false; why: "notYet"; at: number }
-  | { open: false; why: "ended"; at: number }
-  | { open: false; why: "full"; uses: LimitUse[]; /** When the next period starts; null when none will. */ reopensAt: number | null };
+export const INTAKE_OFF: Intake = { mode: "off", opensAt: null, closesAt: null, timezone: "UTC", limits: [], openedAt: null };
 
-const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
+const DAY = 24 * 3_600_000;
+const ROLLING: Record<Exclude<Period, "window">, number> = { day: DAY, week: 7 * DAY, month: 30 * DAY };
 
 /** The offset of a timezone from UTC at an instant, in milliseconds. */
 function offsetAt(at: number, timeZone: string) {
@@ -53,12 +54,22 @@ function wall(at: number, timeZone: string) {
   return { year: Number(parts.year), month: Number(parts.month), day: Number(parts.day), hour: Number(parts.hour), minute: Number(parts.minute), weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday) };
 }
 
-/** The next midnight, Monday or 1st of the month in a timezone. */
-export function nextCalendarStart(period: "day" | "week" | "month", now: number, timeZone: string) {
+/** Whether a timezone is one the clock knows. */
+export function isTimezone(timeZone: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The midnight, Monday or 1st of the month that starts the calendar period `now` is in, in a timezone; `ahead` 1 is the next one. */
+export function calendarStart(period: Exclude<Period, "window">, now: number, timeZone: string, ahead: 0 | 1 = 0) {
   const { year, month, day, weekday } = wall(now, timeZone);
-  if (period === "day") return zoned(year, month - 1, day + 1, 0, 0, timeZone);
-  if (period === "week") return zoned(year, month - 1, day + ((8 - weekday) % 7 || 7), 0, 0, timeZone);
-  return zoned(year, month, 1, 0, 0, timeZone);
+  if (period === "day") return zoned(year, month - 1, day + ahead, 0, 0, timeZone);
+  if (period === "week") return zoned(year, month - 1, day - ((weekday + 6) % 7) + 7 * ahead, 0, 0, timeZone);
+  return zoned(year, month - 1 + ahead, 1, 0, 0, timeZone);
 }
 
 /** A `datetime-local` box's value for an instant in a timezone, and back. */
@@ -72,94 +83,66 @@ export const fromLocalInput = (value: string, timeZone: string) => {
   return match ? zoned(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), timeZone) : null;
 };
 
-/** MOCK: activations a new limit starts with, so each period shows a believable count. */
-export const SEEDED: Record<Period, number> = { day: 37, week: 180, month: 640, window: 412 };
-/** MOCK: when a rolling count frees its first place: the oldest activation in it leaving the period. */
-const ROLLING_FREES: Record<Exclude<Period, "window">, number> = { day: 5 * HOUR, week: 2 * DAY + 3 * HOUR, month: 9 * DAY };
+/** Where "in total" counts from: the opening date, or when new reports were switched on. */
+const windowStart = (intake: Intake) => (intake.mode === "dates" && intake.opensAt !== null ? intake.opensAt : (intake.openedAt ?? 0));
 
-/** Each limit with how far through its period it is, and when its count starts again. */
-export function usesOf(intake: Intake, now: number): LimitUse[] {
-  const hour = Math.ceil(now / HOUR) * HOUR;
-  return intake.limits.map((limit): LimitUse => {
-    const resetsAt = limit.period === "window" ? null : limit.reset === "calendar" ? nextCalendarStart(limit.period, now, intake.timezone) : hour + ROLLING_FREES[limit.period];
-    return { ...limit, full: limit.used >= limit.count, resetsAt };
-  });
+/** Whether an activation made at `at` counts in a limit's period at `now`: a rolling period leaves out its first instant, which is exactly 24 hours, 7 days or 30 days ago. */
+function counts(limit: Limit, intake: Intake, at: number, now: number) {
+  if (limit.period === "window") return at >= windowStart(intake);
+  return limit.reset === "rolling" ? at > now - ROLLING[limit.period] : at >= calendarStart(limit.period, now, intake.timezone);
 }
 
-/** Whether a new report can start and a draft go on, at `now`, and why not. */
-export function stateOf(intake: Intake, now: number): IntakeState {
+/**
+ * Where a limit stands at `now`, from `nth`: when the activation that would fill it was made, counting back from the
+ * latest (the `count`-th latest), or null with fewer than that ever. It is full while that one is in its period, and a
+ * rolling one has a place again once that one leaves it.
+ */
+export function limitAt(limit: Limit, intake: Intake, nth: number | null, now: number) {
+  const full = nth !== null && counts(limit, intake, nth, now);
+  const startsAgain = limit.period === "window" ? null : limit.reset === "calendar" ? calendarStart(limit.period, now, intake.timezone, 1) : full ? nth! + ROLLING[limit.period] : null;
+  return { full, startsAgain };
+}
+
+export type IntakeState =
+  | { open: true }
+  | { open: false; why: "off" }
+  | { open: false; why: "notYet"; at: number }
+  | { open: false; why: "ended"; at: number }
+  | { open: false; why: "full"; /** When a place opens again; null when none will before new reports close, or ever. */ reopensAt: number | null };
+
+/** Whether a new report can start and a draft go on at `now`, and why not. `nths` is each limit's `nth`, by its id. */
+export function intakeAt(intake: Intake, nths: Record<string, number | null>, now: number): IntakeState {
   if (intake.mode === "off") return { open: false, why: "off" };
   if (intake.mode === "dates") {
     if (intake.opensAt !== null && now < intake.opensAt) return { open: false, why: "notYet", at: intake.opensAt };
     if (intake.closesAt !== null && now >= intake.closesAt) return { open: false, why: "ended", at: intake.closesAt };
   }
-  const uses = usesOf(intake, now);
-  const full = uses.filter((use) => use.full);
-  if (!full.length) return { open: true, uses };
-  // Every full limit has to start again before a report can go on: the latest of them, or never.
-  const reopensAt = full.some((use) => use.resetsAt === null) ? null : Math.max(...full.map((use) => use.resetsAt!));
-  // A period that would start again after new reports close doesn't.
+  const full = intake.limits.map((limit) => limitAt(limit, intake, nths[limit.id] ?? null, now)).filter((limit) => limit.full);
+  if (!full.length) return { open: true };
+  // Every full limit has to have a place again before a report can go on: the latest of them, or never.
+  const reopensAt = full.some((limit) => limit.startsAgain === null) ? null : Math.max(...full.map((limit) => limit.startsAgain!));
   const closes = intake.mode === "dates" ? intake.closesAt : null;
-  return { open: false, why: "full", uses, reopensAt: reopensAt !== null && closes !== null && reopensAt >= closes ? null : reopensAt };
+  return { open: false, why: "full", reopensAt: reopensAt !== null && closes !== null && reopensAt >= closes ? null : reopensAt };
 }
 
-// The mock's store: this browser's localStorage, read the same in every tab.
-const KEY = "mock:new-reports";
-const DEFAULT: Intake = { mode: "off", opensAt: null, closesAt: null, timezone: "UTC", limits: [] };
-let last: { raw: string | null; value: Intake } | null = null;
-const listeners = new Set<() => void>();
+/** Each limit's `nth` from the times of the latest activations, newest first. */
+export const nthsOf = (limits: Limit[], latest: number[]) => Object.fromEntries(limits.map((limit) => [limit.id, latest[limit.count - 1] ?? null]));
 
-function read(): Intake {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(KEY);
-  } catch {}
-  if (last && last.raw === raw) return last.value;
-  let value: Intake;
-  try {
-    value = raw ? { ...DEFAULT, ...(JSON.parse(raw) as Partial<Intake>) } : { ...DEFAULT, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
-  } catch {
-    value = DEFAULT;
-  }
-  last = { raw, value };
-  return value;
+/** How many activations a limit has counted in the period `now` is in, from the latest activations, newest first. */
+export function usedAt(limit: Limit, intake: Intake, latest: number[], now: number) {
+  let used = 0;
+  while (used < latest.length && counts(limit, intake, latest[used], now)) used++;
+  return used;
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  // Another tab's change: the admin page in one, the Publish page in another.
-  window.addEventListener("storage", listener);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-
-export function saveIntake(next: Intake) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(next));
-  } catch {}
-  for (const listener of listeners) listener();
-}
-
-export function useIntake(): Intake {
-  return useSyncExternalStore(subscribe, read, () => DEFAULT);
-}
-
-// The clock, read every 30 seconds: a period that ends while a page is open closes it there.
-const TICK = 30_000;
-function subscribeClock(listener: () => void) {
-  const timer = window.setInterval(listener, TICK);
-  return () => window.clearInterval(timer);
-}
-const tick = () => Math.floor(Date.now() / TICK) * TICK;
-
-/** Now, to the last 30 seconds. */
-export function useNow(): number {
-  return useSyncExternalStore(subscribeClock, tick, tick);
-}
-
-/** Whether new reports are open now, for the Publish page. */
-export function useIntakeState(): IntakeState {
-  return stateOf(useIntake(), useNow());
+/** What is wrong with intake settings an admin saves, in words for them; null when they can be kept. */
+export function intakeProblem(intake: Intake, now: number, saved: Intake): string | null {
+  if (!isTimezone(intake.timezone)) return "Pick a timezone from the list.";
+  if (intake.limits.length > LIMITS_MAX) return `Keep to ${LIMITS_MAX} limits.`;
+  if (intake.limits.some((limit) => !Number.isInteger(limit.count) || limit.count < 1 || limit.count > LIMIT_COUNT_MAX)) return `A limit is a whole number of activations, from 1 to ${LIMIT_COUNT_MAX.toLocaleString("en")}.`;
+  if (new Set(intake.limits.map((limit) => limit.id)).size !== intake.limits.length) return "Each limit needs its own id.";
+  if (intake.opensAt !== null && intake.closesAt !== null && intake.closesAt <= intake.opensAt) return "Pick a closing time after they open.";
+  // A closing time already past is kept as it was saved, but a new one has to be still to come.
+  if (intake.closesAt !== null && intake.closesAt !== saved.closesAt && intake.closesAt <= now) return "Pick a closing time still to come.";
+  return null;
 }

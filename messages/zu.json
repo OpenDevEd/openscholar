@@ -6584,7 +6584,75 @@
       "priceThreeHint": "Okubiza ukushicilela umbiko ngaphansi kwelayisensi ye-NC noma ye-ND, noma ilayisensi evulekile yombhali uqobo, ngamadola aseMelika.",
       "prices": "Amanani",
       "priceClosed": "Amalayisensi ombhali angavulekile",
-      "priceClosedHint": "Okubiza ukushicilela umbiko ngaphansi kwelayisensi yombhali uqobo engavumeli muntu ukwabelana ngawo, ngamadola aseMelika."
+      "priceClosedHint": "Okubiza ukushicilela umbiko ngaphansi kwelayisensi yombhali uqobo engavumeli muntu ukwabelana ngawo, ngamadola aseMelika.",
+      "intake": {
+        "title": "Imibiko emisha",
+        "when": "Lapho ivuliwe",
+        "hint": {
+          "off": "Akekho ongaqala noma enze kusebenze umbiko. Imibiko eseqaliwe ilinde Emibikweni yakho.",
+          "on": "Noma ubani ongene ngemvume angaqala futhi enze kusebenze imibiko, ngaphakathi kwemikhawulo engezansi.",
+          "dates": "Ivuliwe phakathi kwalezi zinsuku, ngaphakathi kwemikhawulo engezansi."
+        },
+        "mode": {
+          "off": "Valiwe",
+          "on": "Vuliwe",
+          "dates": "Phakathi kwezinsuku"
+        },
+        "timezone": "Izoni yesikhathi",
+        "timezoneHint": "Izinsuku nezikhathi zekhalenda zilandela iwashi layo",
+        "opens": "Iyavuleka",
+        "opensHint": "Shiya kungenalutho ukuze uyivule manje",
+        "closes": "Iyavalwa",
+        "closesHint": "Shiya kungenalutho ukuze ihlale ivuliwe",
+        "closePast": "Khetha isikhathi esisazofika.",
+        "closeBeforeOpen": "Khetha isikhathi ngemva kokuvulwa.",
+        "startsIn": "Iyavuleka {time}",
+        "left": "Iyavalwa {time}",
+        "over": "Kuphelile",
+        "limits": "Imikhawulo",
+        "addLimit": "Engeza umkhawulo",
+        "noLimits": "Awukho umkhawulo. Wonke umbiko olungile ungenziwa usebenze.",
+        "limitsHint": "Umkhawulo ngamunye ubala ukwenziwa kusebenze. Uma omunye ufinyelelwa, imibiko emisha nokwenziwa kusebenze kulinda isikhathi sawo esilandelayo.",
+        "countLabel": "Ukwenziwa kusebenze okuvunyelwe",
+        "countWrong": "Faka inombolo ephelele kusuka ku-1 kuya ku-{max}.",
+        "activations": "{count, plural, one {ukwenziwa kusebenze} other {ukwenziwa kusebenze}}",
+        "periodLabel": "Isikhathi",
+        "period": {
+          "day": "ngosuku",
+          "week": "ngeviki",
+          "month": "ngenyanga",
+          "total": "sekukonke",
+          "dates": "phakathi kwezinsuku"
+        },
+        "resetLabel": "Indlela isikhathi esibalwa ngayo",
+        "rolling": {
+          "day": "Amahora angu-24 adlule",
+          "week": "Izinsuku ezingu-7 ezedlule",
+          "month": "Izinsuku ezingu-30 ezedlule"
+        },
+        "calendar": {
+          "day": "Phakathi kwamabili kuya phakathi kwamabili",
+          "week": "UMsombuluko kuya ISonto",
+          "month": "Inyanga yekhalenda"
+        },
+        "remove": "Susa umkhawulo",
+        "usedLabel": "Ukwenziwa kusebenze kulesi sikhathi",
+        "used": "{used} kokungu-{count}",
+        "full": "Kugcwele",
+        "startsAgain": "Iqala kabusha {date}",
+        "frees": "Kukhululeka indawo {date}",
+        "untilClose": "Kuze kuvalwe",
+        "sinceOpen": "Selokhu kwavulwa",
+        "state": {
+          "open": "Kuvuliwe",
+          "openUntil": "Kuvuliwe kuze kube ngu-{date}",
+          "off": "Kuvaliwe",
+          "opens": "Kuvuleka {date}",
+          "ended": "Kuphele {date}",
+          "full": "Kugcwele",
+          "fullUntil": "Kugcwele kuze kube ngu-{date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7069,7 +7137,36 @@
       "docidAgain": "Cela i-DOCiD futhi",
       "reservedDocid": "Inikezwe yi-DOCiD",
       "copyDocid": "Kopisha i-DOCiD",
-      "docidCopied": "I-DOCiD ikopishiwe"
+      "docidCopied": "I-DOCiD ikopishiwe",
+      "intake": {
+        "shut": {
+          "off": "Imibiko emisha ivaliwe",
+          "notYet": "Imibiko emisha ivuleka {date}",
+          "next": "Isikhathi esilandelayo siqala {date}",
+          "over": "Lesi sikhathi siphelile"
+        },
+        "off": {
+          "title": "Imibiko emisha ivaliwe",
+          "body": "Imibiko oyiqalile ilinde lapha ize ivulwe futhi."
+        },
+        "notYet": {
+          "title": "Imibiko emisha ayikavulwa",
+          "body": "Imibiko oyiqalile ilinde lapha kuze kube yileso sikhathi."
+        },
+        "over": {
+          "title": "Lesi sikhathi siphelile"
+        },
+        "ended": {
+          "body": "Imibiko emisha ivaliwe. Imibiko oyiqalile ilinde lapha."
+        },
+        "full": {
+          "body": "Zonke izindawo kuso zithathiwe. Imibiko oyiqalile ilinde isikhathi esilandelayo.",
+          "last": "Zonke izindawo kuso zithathiwe. Imibiko oyiqalile ilinde lapha."
+        },
+        "opens": "Iyavuleka {date}",
+        "closed": "Ivaliwe {date}",
+        "next": "Isikhathi esilandelayo {date}"
+      }
     },
     "meta": {
       "publish": "Shicilela | Openscholar",

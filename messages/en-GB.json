@@ -6614,7 +6614,7 @@
         "noLimits": "No limit. Every report that's ready can be activated.",
         "limitsHint": "Each limit counts activations. Once one is reached, new reports and activations wait for its next period.",
         "countLabel": "Activations allowed",
-        "countWrong": "Enter a whole number, 1 or more.",
+        "countWrong": "Enter a whole number from 1 to {max}.",
         "activations": "{count, plural, one {activation} other {activations}}",
         "periodLabel": "Period",
         "period": {
@@ -6640,7 +6640,7 @@
         "used": "{used} of {count}",
         "full": "Full",
         "startsAgain": "Starts again {date}",
-        "frees": "Next place frees {date}",
+        "frees": "A place frees {date}",
         "untilClose": "Until they close",
         "sinceOpen": "Since they opened",
         "state": {

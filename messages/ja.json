@@ -6584,7 +6584,75 @@
       "priceThreeHint": "NC または ND ライセンス、または著者独自のオープンライセンスでレポートを公開する料金(米ドル)。",
       "prices": "料金",
       "priceClosed": "オープンでない独自ライセンス",
-      "priceClosedHint": "誰にも共有を認めない著者独自のライセンスでレポートを公開する料金(米ドル)。"
+      "priceClosedHint": "誰にも共有を認めない著者独自のライセンスでレポートを公開する料金(米ドル)。",
+      "intake": {
+        "title": "新しいレポート",
+        "when": "受付期間",
+        "hint": {
+          "off": "誰もレポートを開始・有効化できません。開始済みのレポートは「あなたのレポート」で待機します。",
+          "on": "サインインしている人は誰でも、下の上限の範囲でレポートを開始・有効化できます。",
+          "dates": "この期間中、下の上限の範囲で受け付けます。"
+        },
+        "mode": {
+          "off": "オフ",
+          "on": "オン",
+          "dates": "期間を指定"
+        },
+        "timezone": "タイムゾーン",
+        "timezoneHint": "日付とカレンダー期間はこの時刻に従います",
+        "opens": "開始",
+        "opensHint": "空欄にすると今すぐ受付を開始します",
+        "closes": "終了",
+        "closesHint": "空欄にすると受付を続けます",
+        "closePast": "これから先の日時を選んでください。",
+        "closeBeforeOpen": "開始より後の日時を選んでください。",
+        "startsIn": "{time}に開始",
+        "left": "{time}に終了",
+        "over": "終了",
+        "limits": "上限",
+        "addLimit": "上限を追加",
+        "noLimits": "上限はありません。準備ができたレポートはすべて有効化できます。",
+        "limitsHint": "各上限は有効化の数を数えます。いずれかに達すると、新しいレポートと有効化は次の期間まで待機します。",
+        "countLabel": "許可する有効化の数",
+        "countWrong": "1 から {max} までの整数を入力してください。",
+        "activations": "{count, plural, other {件の有効化}}",
+        "periodLabel": "期間",
+        "period": {
+          "day": "1日あたり",
+          "week": "1週間あたり",
+          "month": "1か月あたり",
+          "total": "合計",
+          "dates": "指定期間中"
+        },
+        "resetLabel": "期間の数え方",
+        "rolling": {
+          "day": "直近24時間",
+          "week": "直近7日間",
+          "month": "直近30日間"
+        },
+        "calendar": {
+          "day": "0時から0時まで",
+          "week": "月曜から日曜まで",
+          "month": "暦月"
+        },
+        "remove": "上限を削除",
+        "usedLabel": "この期間の有効化",
+        "used": "{used} / {count}",
+        "full": "満員",
+        "startsAgain": "{date}にリセット",
+        "frees": "{date}に枠が空きます",
+        "untilClose": "終了まで",
+        "sinceOpen": "開始から",
+        "state": {
+          "open": "受付中",
+          "openUntil": "{date}まで受付中",
+          "off": "オフ",
+          "opens": "{date}に開始",
+          "ended": "{date}に終了",
+          "full": "満員",
+          "fullUntil": "{date}まで満員"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7069,7 +7137,36 @@
       "docidAgain": "DOCiD にもう一度依頼",
       "reservedDocid": "DOCiD が発行",
       "copyDocid": "DOCiD をコピー",
-      "docidCopied": "DOCiD をコピーしました"
+      "docidCopied": "DOCiD をコピーしました",
+      "intake": {
+        "shut": {
+          "off": "新しいレポートの受付は停止中です",
+          "notYet": "新しいレポートの受付は{date}に始まります",
+          "next": "次の期間は{date}に始まります",
+          "over": "この期間は終了しました"
+        },
+        "off": {
+          "title": "新しいレポートの受付は停止中です",
+          "body": "開始したレポートは、受付が再開されるまでここで待機します。"
+        },
+        "notYet": {
+          "title": "新しいレポートの受付はまだ始まっていません",
+          "body": "それまで、開始したレポートはここで待機します。"
+        },
+        "over": {
+          "title": "この期間は終了しました"
+        },
+        "ended": {
+          "body": "新しいレポートの受付は終了しました。開始したレポートはここで待機します。"
+        },
+        "full": {
+          "body": "この期間の枠はすべて埋まりました。開始したレポートは次の期間まで待機します。",
+          "last": "この期間の枠はすべて埋まりました。開始したレポートはここで待機します。"
+        },
+        "opens": "{date}に開始",
+        "closed": "{date}に終了",
+        "next": "次の期間 {date}"
+      }
     },
     "meta": {
       "publish": "公開 | Openscholar",

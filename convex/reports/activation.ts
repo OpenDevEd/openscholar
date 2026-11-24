@@ -34,6 +34,7 @@ import { MOVED_ON, byKey, changing, mayChange, paymentOf, touch, voucherValidato
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
+import { refuseClosed } from "./intake";
 import { payWithValidator } from "./validators";
 
 
@@ -285,6 +286,8 @@ export const begin = internalMutation({
     // reached, are that report's: nothing else is spent from the balance until they are taken.
     if (await owed(ctx, actor.workspaceId)) throw createError("CONFLICT", "An earlier report's payment is still being finished. Try again in a few minutes.");
     if ((await priceFor(ctx, report)) !== price) throw createError("CONFLICT", "This report's price changed since this page read it. Check what is due, then activate again.", { reason: "changed" });
+    // New reports closed, or this period's places taken: it waits for the next. Read here, with the row that takes the place.
+    await refuseClosed(ctx, (await reportSettings(ctx)).intake);
     return await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, state: "charging", payWith, price, ...(code && { code }) });
   },
 });

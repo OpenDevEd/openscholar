@@ -19,7 +19,7 @@ import { StatusChip } from "@/components/evidence-libraries/configuration/status
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { IdentifierSettings } from "@/components/reports/identifier-settings";
-import { NewReportSettings } from "@/components/reports/new-report-settings";
+import { NewReportSettings, useIntakeAdmin } from "@/components/reports/new-report-settings";
 import { connectedOf } from "@/lib/reports/identifiers";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
@@ -84,15 +84,16 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
 export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
   const links = useQuery(api.admins.queries.links, {});
-  if (!settings || links === undefined) return <Enter ready={false}>{null}</Enter>;
+  const intake = useIntakeAdmin();
+  if (!settings || links === undefined || !intake.data) return <Enter ready={false}>{null}</Enter>;
   return (
     <Enter ready>
-      <SettingsView settings={settings} autumn={links.autumn ?? null} />
+      <SettingsView settings={settings} autumn={links.autumn ?? null} intake={{ ...intake, data: intake.data }} />
     </Enter>
   );
 }
 
-function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's dashboard. */ autumn: string | null }) {
+function SettingsView({ settings, autumn, intake }: { settings: Settings; /** Autumn's dashboard. */ autumn: string | null; /** New reports, read with the settings. */ intake: ComponentProps<typeof NewReportSettings> }) {
   const [nav, setNav] = useQueryStates(NAV);
   const t = useTranslations("publishReports.settings");
   const format = useFormatter();
@@ -165,7 +166,7 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
         </ul>
       </Zone>
 
-      <NewReportSettings />
+      <NewReportSettings {...intake} />
 
       <PriceSettings prices={settings.prices} autumn={autumn} />
 

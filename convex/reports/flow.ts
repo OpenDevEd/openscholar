@@ -21,6 +21,7 @@ import { choosesLicence } from "../../lib/reports/agreement";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, REPORT_TYPES, DETAIL_TEXT, EARLIEST_YEAR, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, CODE_MAX, DEFAULT_LICENCE, canDiscard, licenceOf, ownLicence, type Licence, fileAccessOf, fileHidden, fileOut, isCalendarDay, keptAccess, keptFileAddress, opensFurther, readersGetFile, utcDay, type FileAccess, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref, dateParts, isAuthor } from "../../lib/reports/report";
 import { isCoverShape } from "../../lib/papers/cover";
 import { countStart, startsLeft } from "./limits";
+import { intakeOf, refuseClosed } from "./intake";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
 import { notify } from "./mail";
@@ -234,6 +235,7 @@ export const sign = workspaceMutation({
     await refuseApps(ctx);
     const settings = await settingsRow(ctx);
     if (!settings.enabled || !canRegister(settings.publication, settings.identifiers)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
+    await refuseClosed(ctx, intakeOf(settings));
     if (version !== settings.agreement.version) throw createError("CONFLICT", "The agreement changed while you were reading it. Read the new one, then sign.");
     const signer = name.trim();
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
