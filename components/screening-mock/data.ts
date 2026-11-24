@@ -148,6 +148,8 @@ export type Screening = {
   createdBy: string;
   createdAt: number;
   finishedAt?: number;
+  /** When its made-up votes end: its finish as it was seeded. Reopening it or finishing it again doesn't move votes already cast. */
+  votedBy?: number;
   /** The models are held where they are until someone lets them go on. */
   paused?: boolean;
   /** What the review asks, which criteria are written from. */
@@ -662,7 +664,7 @@ export function voteOf(screening: Screening, paper: Paper, index: number, review
   if (reviewer.email || index >= (screening.reached[reviewer.id] ?? 0)) return undefined;
   // Once someone has left, their papers go to the others. Those come without a vote: a made-up vote stands only on a paper its person was dealt before anyone left.
   if (reviewer.kind === "person" && screening.reviewers.some((one) => one.left && one.kind === "person") && !deal(screening, paper, index, screening.reviewers.filter((one) => one.kind === "person" && !one.email)).some((one) => one.id === reviewer.id)) return undefined;
-  return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt, screening.finishedAt ?? NOW);
+  return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt, screening.votedBy ?? NOW);
 }
 
 /**
@@ -859,7 +861,7 @@ export function startingScreenings(): Screening[] {
     made("climate", "Climate adaptation in schools", "climate", 5, [source("c1", "collection", "Climate and schooling", "Collection", 188, 0)], ["amina", "jonas"], 0, { person: 1 }, { createdAt: NOW - 40 * DAY, finishedAt: NOW - 11 * DAY }),
     made("ecd", "Early childhood development and home visits", "ecd", 6, [source("e1", "search", "home visiting AND early childhood development", "Openscholar search", 380, 0), source("e2", "upload", "ecd-scopus.ris", "Reference file", 120, 44)], ["thandiwe", "amina"], 2, { person: 1, model: 1 }, { createdBy: "thandiwe", createdAt: NOW - 60 * DAY, finishedAt: NOW - 21 * DAY }),
     made("nutrition", "School nutrition and attendance", "meals", 7, [source("n1", "saved", "All saved papers", "This workspace's library", 187, 0)], ["jonas"], 1, { person: 1, model: 1 }, { createdBy: "jonas", createdAt: NOW - 70 * DAY, finishedAt: NOW - 26 * DAY, rule: { each: "1", settle: "one", resolver: "jonas", blind: "always" } }),
-  ].map((screening) => (screening.finishedAt ? finished(screening) : screening));
+  ].map((screening) => (screening.finishedAt ? finished({ ...screening, votedBy: screening.finishedAt }) : screening));
 }
 
 /** What the person who settles a conflict writes down, for the made-up ones. */

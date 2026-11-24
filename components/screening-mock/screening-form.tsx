@@ -39,7 +39,7 @@ import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { ActionBar, BELOW_HEADER, Help, LinkChip, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
-import { credits, isReading, paperCredits, useMock, useModelsReading } from "./store";
+import { credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
 // The whole library and its collections are one place to a person, so they share a tab.
@@ -158,8 +158,6 @@ const inOrder = <T extends { id?: string; key?: string }>(list: T[], saved: T[])
 export function ScreeningForm({ id }: { id?: string }) {
   const store = useMock();
   const router = useRouter();
-  // A screening goes on while its settings are open: its models read, and a check that saving started runs.
-  useModelsReading(id ?? "");
   const [from] = useQueryState("from");
   const saved = id ? store.screenings.find((one) => one.id === id) : undefined;
   const copied = !id && from ? store.screenings.find((one) => one.id === from) : undefined;
@@ -185,17 +183,9 @@ export function ScreeningForm({ id }: { id?: string }) {
   useEffect(() => {
     const target = () => (window.location.hash ? document.getElementById(decodeURIComponent(window.location.hash.slice(1))) : null);
     const tint = () => landOn(target());
-    // Arriving from another page, the router's own scroll to the part comes after this page has mounted, and before the
-    // frame's header above the form has folded away the rows the settings don't show, so it lands short of the title.
-    // The page's layout is the outside system: once it has settled, the part is brought into view from where it really is.
-    // ponytail: a fixed 150 ms wait, for a link from the Screen page, where the frame's notice row opens as the settings do. It goes if that row stops sliding open between pages.
-    const land = window.setTimeout(() => target()?.scrollIntoView({ block: "start" }), 150);
     tint();
     window.addEventListener("hashchange", tint);
-    return () => {
-      window.clearTimeout(land);
-      window.removeEventListener("hashchange", tint);
-    };
+    return () => window.removeEventListener("hashchange", tint);
   }, []);
   const [kind, setKind] = useState<Kind>("search");
   const [find, setFind] = useState("");

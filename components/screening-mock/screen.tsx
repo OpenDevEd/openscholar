@@ -99,8 +99,10 @@ function Screen({ open }: { open: Open }) {
   // After a reload it is built again once the saved votes are read back, so a reload shows the same queue as Back.
   const { ready } = useMock();
   const holding = `${ready}:${id}:${queue}:${order}:${open.me}:${find.trim().toLowerCase()}:${voted}`;
-  const [held, setHeld] = useState<{ of: string; ids: string[] }>(() => ({ of: holding, ids: listed(queue) }));
-  if (held.of !== holding) setHeld({ of: holding, ids: listed(queue) });
+  // The paper the address names is in the list it was opened in, even once your vote has taken it out of To do: after Back or a reload the page shows the paper its address says.
+  const opened = (ids: string[]) => (picked && !ids.includes(picked) && (queue === "todo" ? yours : papers).some((one) => one.id === picked) ? [picked, ...ids] : ids);
+  const [held, setHeld] = useState<{ of: string; ids: string[] }>(() => ({ of: holding, ids: opened(listed(queue)) }));
+  if (held.of !== holding) setHeld({ of: holding, ids: opened(listed(queue)) });
   else {
     // Papers that join while the queue is open, from a check for new papers, a conflict that just arose or a vote cast, are added at its end.
     const joined = listed(queue).filter((one) => !held.ids.includes(one));

@@ -126,7 +126,7 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
     const theirs = was.papers.flatMap((paper) => {
       const had = was.votes[paper.id] ?? [];
       const own = had.find((one) => one.reviewer.id === reviewer.id);
-      return own ? [{ voted: Boolean(own.vote), to: (now.votes[paper.id] ?? []).filter((one) => one.reviewer.kind === "person" && !had.some((old) => old.reviewer.id === one.reviewer.id)).map((one) => one.reviewer.name) }] : [];
+      return own ? [{ id: paper.id, voted: Boolean(own.vote), to: (now.votes[paper.id] ?? []).filter((one) => one.reviewer.kind === "person" && !had.some((old) => old.reviewer.id === one.reviewer.id)).map((one) => one.reviewer.name) }] : [];
     });
     const going = theirs.filter((one) => one.to.length);
     const first = reviewer.name.split(" ")[0];
@@ -135,8 +135,11 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
       const parts = [unvoted ? `${unvoted.toLocaleString("en-GB")} ${reviewer.name} had not voted on` : null, voted ? `${voted.toLocaleString("en-GB")} whose vote from ${first} stops counting` : null].filter(Boolean);
       lines.push({ text: `${n(going.length, "paper goes", "papers go")} to ${names([...new Set(going.flatMap((one) => one.to))])}: ${parts.join(", and ")}`, kind: "join", section: "reviewers" });
     }
-    const kept = theirs.filter((one) => !one.to.length && !one.voted).length;
-    if (kept) lines.push({ text: `${n(kept, "paper", "papers")} ${reviewer.name} had not voted on ${kept === 1 ? "is" : "are"} settled on the other votes`, section: "reviewers" });
+    // The ones nobody takes over: settled where the votes that remain meet the rule, and still waiting where they don't.
+    const kept = theirs.filter((one) => !one.to.length && !one.voted);
+    const settled = kept.filter((one) => now.settled[one.id]?.final).length;
+    if (settled) lines.push({ text: `${n(settled, "paper", "papers")} ${reviewer.name} had not voted on ${settled === 1 ? "is" : "are"} settled on the other votes`, section: "reviewers" });
+    if (kept.length - settled) lines.push({ text: `${n(kept.length - settled, "paper", "papers")} ${reviewer.name} had not voted on ${kept.length - settled === 1 ? "waits" : "wait"} for the others' votes`, section: "reviewers" });
   }
 
   if (before.rule.resolver !== after.rule.resolver && after.rule.settle !== "one") {
