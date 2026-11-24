@@ -9,7 +9,7 @@
  *
  * A copy bought from OpenAlex is kept under the paper's OpenAlex ID. One fetched by a link is kept under that link,
  * so it stands for what the link served and nothing more: nobody's file, and no wrong file a link led to, stands in
- * for a paper.
+ * for a paper. A paper with no link of its own, found by its DOI, is kept under the address its copy came from.
  * A file from a person's own Zotero library is theirs: it never goes into the store, and the store is never read for it.
  *
  * The assistant pays for a copy here (`charge: "self"`). Extraction adds what a copy costs to the paper's own charge
@@ -290,10 +290,10 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
   if (paper.url || paper.doi) {
     // A file from a person's Zotero library is theirs to read, and a miss on it says nothing about the paper.
     const memory = isZotero(paper) ? undefined : searchMemory(ctx, paper.url, options);
-    const { pdfBlob, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, openalexId: work ?? undefined, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, ...(memory ? { memory } : {}) });
+    const { pdfBlob, url: foundAt, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, openalexId: work ?? undefined, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, ...(memory ? { memory } : {}) });
     const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
     if (bytes && isPdf(bytes)) {
-      const key = isZotero(paper) ? null : await linkKey(paper.url);
+      const key = isZotero(paper) ? null : await linkKey(paper.url ?? foundAt);
       const kept = key !== null && (await keep(key, bytes));
       // A caller that sends the stored copy can't go on without one.
       if (!options.bytes && !kept) return { error: NOT_KEPT };

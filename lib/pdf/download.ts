@@ -33,6 +33,8 @@ export interface DownloadPdfOptions {
 export interface DownloadPdfResult {
   success: boolean;
   pdfBlob?: Blob;
+  /** The address the search found the copy at. */
+  url?: string;
   error?: string;
 }
 
@@ -65,7 +67,7 @@ export async function downloadPdf(
         httpsOnly: !options.allowHttp,
       },
     );
-    if (result.ok) return { success: true, pdfBlob: new Blob([result.bytes.slice().buffer], { type: "application/pdf" }) };
+    if (result.ok) return { success: true, pdfBlob: new Blob([result.bytes.slice().buffer], { type: "application/pdf" }), url: result.url };
     // A copy that exists and is too large is not a paper with no PDF.
     const tooLarge = result.attempts.some((attempt) => attempt.outcome === "too_large");
     return { success: false, error: tooLarge ? "This paper's PDF is too large to read here." : WHY[result.reason] };
