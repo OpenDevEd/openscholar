@@ -375,6 +375,8 @@
     "docidHint": "Africa PID Alliance 的标识符，即 20.500.14351 下的 Handle。",
     "enableDocid": "使用 DOCiD",
     "docidPermanent": "DOCiD 没有测试服务。它发放的每个 DOCiD 都是真实的 Handle，无法删除，只能撤回。",
+    "docidEmail": "账户邮箱",
+    "docidCredential": "密码",
     "docidNoResourceTypes": "DOCiD 尚未允许此账户将报告登记为 Manuscripts，因此无法提交。请请求 Africa PID Alliance 允许 Manuscripts，然后再次验证并保存。"
   },
   "auth": {

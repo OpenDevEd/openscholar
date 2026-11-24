@@ -375,6 +375,8 @@
     "docidHint": "The Africa PID Alliance's identifier, a Handle under 20.500.14351.",
     "enableDocid": "Use DOCiD",
     "docidPermanent": "DOCiD has no test service. Every DOCiD it mints is a real Handle that can't be deleted, only retired.",
+    "docidEmail": "Account email",
+    "docidCredential": "Password",
     "docidNoResourceTypes": "DOCiD doesn't let this account file reports as Manuscripts yet, so it can't deposit them. Ask the Africa PID Alliance to allow Manuscripts, then verify and save again."
   },
   "auth": {

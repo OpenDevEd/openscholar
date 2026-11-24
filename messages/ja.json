@@ -375,6 +375,8 @@
     "docidHint": "Africa PID Alliance の識別子で、20.500.14351 配下の Handle です。",
     "enableDocid": "DOCiD を使う",
     "docidPermanent": "DOCiD にはテスト環境がありません。発行される DOCiD はすべて本物の Handle で、削除はできず、取り下げのみできます。",
+    "docidEmail": "アカウントのメール",
+    "docidCredential": "パスワード",
     "docidNoResourceTypes": "DOCiD はこのアカウントにまだレポートを Manuscripts として登録することを許可していないため、登録できません。Africa PID Alliance に Manuscripts の許可を依頼し、もう一度確認して保存してください。"
   },
   "auth": {
