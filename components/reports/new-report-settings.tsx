@@ -52,10 +52,8 @@ export function NewReportSettings({ data: { intake, uses }, minute, now }: { dat
     const shown = store.getQuery(api.reports.intake.admin, { now: minute });
     if (shown) store.setQuery(api.reports.intake.admin, { now: minute }, { ...shown, intake: { ...shown.intake, ...asked } });
   });
-  const set = (patch: Partial<Intake>) => {
-    const { openedAt: _, ...next } = { ...intake, ...patch };
-    void save(next).catch(failed);
-  };
+  // Only what changed is sent: the server keeps the rest as saved.
+  const set = (patch: Partial<Omit<Intake, "openedAt">>) => void save(patch).catch(failed);
   const setLimit = (id: string, patch: Partial<Limit>) => set({ limits: intake.limits.map((limit) => (limit.id === id ? { ...limit, ...patch } : limit)) });
   const add = () => {
     // The first limit is the one most need: the whole time open between dates, or a week. Another is most often a day.

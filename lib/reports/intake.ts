@@ -12,7 +12,7 @@ export type Period = (typeof PERIODS)[number];
 export type Reset = (typeof RESETS)[number];
 
 /** The most limits, and the most activations one counts: the latest that many are read each time one is checked. */
-export const LIMITS_MAX = 10;
+export const LIMITS_MAX = 50;
 export const LIMIT_COUNT_MAX = 5000;
 
 export type Limit = { id: string; count: number; period: Period; reset: Reset };
@@ -40,10 +40,18 @@ function offsetAt(at: number, timeZone: string) {
   return match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) * 60_000 : 0;
 }
 
-/** A wall-clock time in a timezone as an instant. Month from 0; days past the month's end roll on. */
+/**
+ * A wall-clock time in a timezone as an instant. Month from 0; days past the month's end roll on. A time a clock
+ * change skips (Santiago's midnight on its first day of summer time) is the first instant after the gap.
+ */
 export function zoned(year: number, month: number, day: number, hour: number, minute: number, timeZone: string) {
   const guess = Date.UTC(year, month, day, hour, minute);
-  return guess - offsetAt(guess - offsetAt(guess, timeZone), timeZone);
+  // The instant under the offset before the change and under the one after: the wall clock reads `guess` at one of
+  // them, or, in a gap, at neither, and the later one is where the skipped time lands.
+  const first = guess - offsetAt(guess, timeZone);
+  const candidates = [first, guess - offsetAt(first, timeZone)];
+  const shows = candidates.filter((at) => at + offsetAt(at, timeZone) === guess);
+  return shows.length ? Math.min(...shows) : Math.max(...candidates);
 }
 
 /** An instant as the wall clock in a timezone: month from 1, weekday from 0 on Sunday. */

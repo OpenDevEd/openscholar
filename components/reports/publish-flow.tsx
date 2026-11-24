@@ -515,8 +515,8 @@ export function PublishFlow() {
     setFresh(null);
     go({ view: null, report: "new", correct: null, step: null });
   };
-  // A report not yet live, and never live before: the drafts that wait.
-  const waits = !!report && report.mine && report.status !== "live" && report.activatedAt === undefined && !intake.open;
+  // A report not yet live, and never live before: the drafts that wait, whoever opens them (an organisation's admin activates a member's).
+  const waits = !!report && report.status !== "live" && report.activatedAt === undefined && !intake.open;
   const hasReports = (counts?.all ?? 0) > 0;
   // Publishing switched off stops new reports. One already started keeps its address, and the list stays.
   const closed = (!basics.open || !intake.open) && !listing && !report && !missing;
@@ -556,12 +556,21 @@ export function PublishFlow() {
           )
         ) : undefined
       }
-      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} paying={!!terms?.paying && !chargeOver} onStep={toStep} /> : undefined}
+      intro={
+        !listing && !missing && !closed ? (
+          <>
+            <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} paying={!!terms?.paying && !chargeOver} onStep={toStep} />
+            {/* New reports closed: a draft says why its Next and Activate wait, and when the next period starts. Closing while
+                the page is open (the last place taken) opens it by height, so nothing below jumps. */}
+            <AutoHeight>{basics.open && waits ? <div className="px-4 pb-4 sm:px-6"><IntakeNotice /></div> : null}</AutoHeight>
+          </>
+        ) : undefined
+      }
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
           <WaitingElsewhere waiting={waiting?.first ?? null} className="px-4 pt-4 sm:px-6" />
-          {basics.open ? <IntakeNotice className="mx-4 mt-4 sm:mx-6" /> : null}
+          <AutoHeight>{basics.open && !intake.open ? <div className="px-4 pt-4 sm:px-6"><IntakeNotice /></div> : null}</AutoHeight>
           <Problem className="px-4 pt-4 sm:px-6">{trouble.problem}</Problem>
           <YourReports
             list={(list ?? lastList)!}
@@ -634,8 +643,6 @@ export function PublishFlow() {
               {t("offNotice")}
             </p>
           ) : null}
-          {/* New reports closed : a draft says why its Next and Activate wait, and when the next period starts. */}
-          {basics.open && waits ? <IntakeNotice className="col-span-full" /> : null}
           {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
           <IntakeShut.Provider value={waits ? intakeShut : null}>
@@ -2272,7 +2279,8 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in
         // between. With none saved, confirming goes on to Stripe's page, and the dialog says so.
         <UpgradeConfirmationDialog
-          open={paying}
+          // New reports closed while it was open (the last place taken): nothing is left to confirm.
+          open={paying && !intakeShut}
           onOpenChange={setPaying}
           title={t("activation.payTitle", { price: dollars(due), key: report.key })}
           // Who pays and where, in a few words: an organisation's card, or Stripe's page with no card saved.

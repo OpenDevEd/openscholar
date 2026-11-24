@@ -21,6 +21,11 @@ describe("calendarStart", () => {
     expect(calendarStart("day", now, "America/New_York", 1)).toBe(at("2026-03-09T04:00Z"));
   });
 
+  it("starts a day whose midnight a clock change skips at the first instant of it", () => {
+    // Santiago goes from UTC-4 to UTC-3 at midnight on 6 September 2026: the day starts at 01:00, 04:00 UTC.
+    expect(calendarStart("day", at("2026-09-06T12:00Z"), "America/Santiago")).toBe(at("2026-09-06T04:00Z"));
+  });
+
   it("starts the month on the 1st, and the next one across the year's end", () => {
     expect(calendarStart("month", at("2026-12-20T10:00Z"), "UTC")).toBe(at("2026-12-01T00:00Z"));
     expect(calendarStart("month", at("2026-12-20T10:00Z"), "UTC", 1)).toBe(at("2027-01-01T00:00Z"));

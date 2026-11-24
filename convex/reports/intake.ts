@@ -64,9 +64,18 @@ export const admin = query({
   },
 });
 
-/** Saves the whole of New reports at once: its parts depend on each other (`intakeProblem`). */
+/**
+ * Saves what changed of New reports, over what is saved: an admin changing one part never puts back another that a
+ * second admin changed meanwhile. The whole is checked once merged, as its parts depend on each other (`intakeProblem`).
+ */
 export const save = mutation({
-  args: { ...intakeFields },
+  args: {
+    mode: v.optional(intakeFields.mode),
+    opensAt: v.optional(intakeFields.opensAt),
+    closesAt: v.optional(intakeFields.closesAt),
+    timezone: v.optional(intakeFields.timezone),
+    limits: v.optional(intakeFields.limits),
+  },
   returns: v.null(),
   handler: async (ctx, asked) => {
     await refuseApps(ctx);
@@ -75,7 +84,8 @@ export const save = mutation({
     const saved = intakeOf(row);
     const now = Date.now();
     // Switched on, or from on to between dates and back, "in total" counts from now.
-    const intake: Intake = { ...asked, openedAt: asked.mode !== "off" && asked.mode !== saved.mode ? now : saved.openedAt };
+    const merged = { ...saved, ...asked };
+    const intake: Intake = { ...merged, openedAt: merged.mode !== "off" && merged.mode !== saved.mode ? now : saved.openedAt };
     const problem = intakeProblem(intake, now, saved);
     if (problem) throw createError("VALIDATION_ERROR", problem);
     await saveSettings(ctx, row._id, { intake });
