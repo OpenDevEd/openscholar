@@ -110,7 +110,7 @@ describe("the person's Zotero library, read for the assistant", () => {
     expect(await t.run((ctx) => ctx.db.get("assistantFiles", put.file))).toMatchObject({ threadId, userId, mediaType: "application/pdf", state: "sent", pages: 2, bytes: pdfBytes.length });
     await expect(t.action(internal.zotero.library.pdfForAssistant, { userId, workspaceId, key: "ITEM0002", fromStep: stepId })).rejects.toThrow(/no PDF attached/);
     // A file past the cap stops being read there, never held whole.
-    const capped = await downloadPdf("zotero://select/users/15294942/items/ITEM0001", { zoteroConnection: { apiKey: "zotero-key", userId: "15294942" }, maxRetries: 1, maxBytes: 10 });
+    const capped = await downloadPdf("zotero://select/users/15294942/items/ITEM0001", { zoteroConnection: { apiKey: "zotero-key", userId: "15294942" }, maxBytes: 10 });
     expect(capped).toMatchObject({ success: false, error: expect.stringMatching(/byte cap/) });
     // An item key in the wrong form is refused before Zotero is asked.
     requests = [];
