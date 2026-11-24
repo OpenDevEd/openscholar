@@ -1,50 +1,67 @@
 "use client";
 
-// The open screening's Papers view: every paper as a row, a narrow column per reviewer, and where
-// the paper stands. A row opens the paper beside the table, with who said what and when.
+// The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
+// the paper stands. A row opens the paper beside the table, with who voted what and when.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { ChevronLeft, ChevronRight, CircleHelp, Download, GitCompare, Quote, RefreshCw, Search, Undo2, X } from "@/components/icons";
+import { toast } from "sonner";
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ExternalLink, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { AnimatedNumber, AnswerMark, Chip, ClippedChip, Stars } from "@/components/screening/parts";
+import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented, pagerOf } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { HelpFact } from "@/components/ui/help";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/lib/hooks";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { useMediaQuery } from "@/lib/hooks";
+import { paperPath } from "@/lib/papers/page-address";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, NOW, OTHER_REASONS, RESULTS, RESULT_LABEL, day, activeReviewers, ago, personOf, failedLabel, reasonOf, scoreOf, type Decision, type Paper } from "./data";
-import { RESULT_STYLE, ResultChip, ReviewerMark, ReviewerStack, Tally, VoteMark } from "./parts";
+import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, personOf, reasonOf, scoreOf, type Decision, type Paper, type Reviewer } from "./data";
+import { papersHref, screenHref } from "./links";
+import { AnswerMark, Help, Kbd, LinkChip, Panel, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
-import type { Open } from "./store";
+import { credits, paperCredits, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
 const PAGE = 20;
 const ROW = 57;
+/** Under the page's header: where the table's head row and the paper's toolbar stick. */
+const UNDER_HEADER = "top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))]";
+
+const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
+type Sort = (typeof SORTS)[number];
+const SORT_LABEL: Record<Sort, string> = { added: "Order added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
+const VOTED = ["any", ...DECISIONS, "none", "settled"] as const;
+type Voted = (typeof VOTED)[number];
 
 /**
- * Where the table is, kept in the address: the result tab, what narrows it, its order, its page and the
- * paper open beside it. `added` is which arrival of papers is shown: all of them, the ones it started
- * with ("start"), or the ones a look brought (its time). `voted` is your own vote, as a way to find
- * papers: the result tabs count only what has settled.
+ * What the table shows, kept in the address (papersHref in links.ts says what each means). `reviewer`
+ * with `voted` narrows to one reviewer's votes, and `voted` alone to your own. `voted=settled` is the
+ * conflicts that reviewer settled. `reason` is why a paper was excluded, or the criterion a Maybe was
+ * unclear on.
  */
 const PLACE = {
   result: parseAsStringLiteral(["all", ...RESULTS] as const).withDefault("all"),
   by: parseAsStringLiteral(["reviewers", "criteria"] as const).withDefault("reviewers"),
   source: parseAsString.withDefault("all"),
-  voted: parseAsStringLiteral(["any", ...DECISIONS, "none"] as const).withDefault("any"),
+  reviewer: parseAsString,
+  voted: parseAsStringLiteral(VOTED).withDefault("any"),
+  with: parseAsString,
+  reason: parseAsString,
   added: parseAsString.withDefault("all"),
-  sort: parseAsStringLiteral(["added", "title", "newest", "split", "points"] as const).withDefault("added"),
+  sort: parseAsStringLiteral(SORTS).withDefault("added"),
   q: parseAsString.withDefault(""),
   page: parseAsInteger.withDefault(1),
   paper: parseAsString,
@@ -56,20 +73,29 @@ export function PapersPage() {
   return <Papers open={open} />;
 }
 
+/** The reasons a paper can be excluded for: each criterion not met, then the others. */
+const reasonsOf = (open: Open) => [...open.screening.criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS];
+
+/** A reviewer's name, or a person's who settles conflicts without voting. */
+const nameOf = (open: Open, id: string) => open.screening.reviewers.find((one) => one.id === id)?.name ?? personOf(id)?.name ?? "A reviewer";
+
 function Papers({ open }: { open: Open }) {
-  const { screening, papers, votes, settled, counts } = open;
+  const { screening, papers, votes, settled } = open;
+  const id = screening.id;
   const reviewers = activeReviewers(screening);
   const criteria = screening.criteria;
-  // Another tab, filter, order or page is a step Back returns from. Typing in the search box changes the address in place.
-  const [{ result: filter, by: columns, source: from, voted: yours, added, sort, q: query, page, paper: opened }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
+  const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  const { result: filter, by: columns, source: from, reviewer, voted, with: also, reason, added, sort, q: query, page, paper: opened } = place;
   /** Narrows or reorders the table, which starts again from its first page. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace({ page: null, ...next });
+  const clearFilters = () => go({ source: null, reviewer: null, voted: null, with: null, reason: null, added: null, q: null });
   // A paper opened from the table is a step Back closes: closing it steps back. One reached by its address closes in place.
   const openedHere = useRef(false);
-  const show = (id: string) => {
-    if (opened) return void setPlace({ paper: id }, { history: "replace" });
+  const show = (paperId: string) => {
+    if (opened) return void setPlace({ paper: paperId }, { history: "replace" });
     openedHere.current = true;
-    void setPlace({ paper: id });
+    void setPlace({ paper: paperId });
   };
   const close = () => {
     if (!openedHere.current) return void setPlace({ paper: null }, { history: "replace" });
@@ -77,22 +103,60 @@ function Papers({ open }: { open: Open }) {
     window.history.back();
   };
   const [picked, setPicked] = useState<string[]>([]);
+  const [filtering, setFiltering] = useState(false);
   // A paper opens beside the table where there is room for both, and over the page where there isn't.
   const beside = useMediaQuery("(min-width: 1280px)");
   const top = useRef<HTMLDivElement>(null);
   // The table keeps the room it gave the paper until the paper has finished leaving, so the two never change places.
   const [made, setMade] = useState(false);
 
-  const rows = useMemo(() => {
+  // Whose votes narrow the table: the reviewer named, or you when only a vote is.
+  const who = reviewer ?? (voted !== "any" ? open.me : null);
+  /** Why a paper stands where it does, as a reason to find it by: what excluded it, or the criterion a Maybe was unclear on. */
+  const reasonKey = useCallback(
+    (paper: Paper) => {
+      const state = settled[paper.id]!;
+      const entries = votes[paper.id]!;
+      if (state.result === "exclude") return reasonOf(entries, state);
+      if (state.result === "maybe") return criteria.find((criterion) => criterion.must && entries.some((one) => one.vote?.answers[criterion.key] === "unclear"))?.key;
+      return undefined;
+    },
+    [settled, votes, criteria],
+  );
+  // Every paper the filters and the search leave, whatever its result: the tabs count these.
+  const narrowed = useMemo(() => {
     const words = query.trim().toLowerCase();
-    const list = papers.filter((paper) => (filter === "all" || settled[paper.id]!.result === filter) && (from === "all" || paper.source === from) && (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) && (yours === "any" || (yours === "none" ? votes[paper.id]!.some((one) => one.reviewer.id === open.me && !one.vote) : open.myVote(paper)?.decision === yours)) && (!words || `${paper.title} ${paper.authors.join(" ")}`.toLowerCase().includes(words)));
+    const entry = (paper: Paper, reviewerId: string) => votes[paper.id]!.find((one) => one.reviewer.id === reviewerId);
+    const byWho = (paper: Paper) => {
+      if (!who) return true;
+      if (voted === "settled") return settled[paper.id]!.resolvedBy === who;
+      const theirs = entry(paper, who);
+      if (!theirs) return false;
+      if (voted === "none") return !theirs.vote && !theirs.failed && !settled[paper.id]!.final;
+      return voted === "any" ? Boolean(theirs.vote) : theirs.vote?.decision === voted;
+    };
+    return papers.filter(
+      (paper) =>
+        (from === "all" || paper.source === from) &&
+        (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) &&
+        byWho(paper) &&
+        (!also || Boolean(entry(paper, also)?.vote)) &&
+        (!reason || reasonKey(paper) === reason) &&
+        (!words || `${paper.title} ${paper.authors.join(" ")}`.toLowerCase().includes(words)),
+    );
+  }, [papers, votes, settled, from, added, who, voted, also, reason, reasonKey, query]);
+  const tabCounts = useMemo(() => Object.fromEntries(RESULTS.map((result) => [result, narrowed.filter((paper) => settled[paper.id]!.result === result).length])) as Record<(typeof RESULTS)[number], number>, [narrowed, settled]);
+  const rows = useMemo(() => {
+    const list = filter === "all" ? narrowed : narrowed.filter((paper) => settled[paper.id]!.result === filter);
     const split = (paper: Paper) => new Set(votes[paper.id]!.flatMap((one) => one.vote?.decision ?? [])).size;
     if (sort === "title") return [...list].sort((a, b) => a.title.localeCompare(b.title));
+    if (sort === "title-desc") return [...list].sort((a, b) => b.title.localeCompare(a.title));
+    if (sort === "result") return [...list].sort((a, b) => RESULTS.indexOf(settled[a.id]!.result) - RESULTS.indexOf(settled[b.id]!.result));
     if (sort === "newest") return [...list].sort((a, b) => b.year - a.year);
     if (sort === "split") return [...list].sort((a, b) => split(b) - split(a));
     if (sort === "points") return [...list].sort((a, b) => scoreOf(screening, votes[b.id]!).points - scoreOf(screening, votes[a.id]!).points);
     return list;
-  }, [papers, settled, votes, filter, from, added, yours, query, sort, screening, open]);
+  }, [narrowed, filter, settled, votes, sort, screening]);
   // When papers joined after the start: each check that brought some, and each source added later.
   const arrivals = [...new Set(papers.flatMap((paper) => paper.batch ?? []))].sort((a, b) => b - a);
   const newest = arrivals[0];
@@ -101,161 +165,265 @@ function Papers({ open }: { open: Open }) {
   const paper = papers.find((one) => one.id === opened);
   if (paper && beside && !made) setMade(true);
   const room = made && beside;
-  const chosen = picked.filter((id) => papers.some((one) => one.id === id));
+  const chosen = picked.filter((one) => papers.some((p) => p.id === one));
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
+  const everyRow = rows.length > shown.length && rows.every((one) => chosen.includes(one.id));
 
-  // Escape closes the paper beside the table. The keyboard is the outside system.
+  // Where the open paper is in the whole list, and the step to the one before or after it, onto its page.
+  const at = paper ? rows.indexOf(paper) : -1;
+  const step = (by: 1 | -1) => {
+    const next = rows[at + by];
+    if (next) void setPlace({ paper: next.id, page: Math.floor((at + by) / PAGE) + 1 }, { history: "replace" });
+  };
+
+  // The keyboard is the outside system: Escape closes the open paper, J and K or the arrows step through the list.
   useEffect(() => {
     if (!opened) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !(event.target as HTMLElement | null)?.closest("[role=dialog], [role=menu], [role=listbox]") && close();
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[role=dialog], [role=menu], [role=listbox]")) return;
+      if (event.key === "Escape") return close();
+      if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
+      if (event.key === "j" || event.key === "ArrowRight") step(1);
+      else if (event.key === "k" || event.key === "ArrowLeft") step(-1);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [opened]);
+  });
 
-  const settleAll = (decision: Decision) => {
-    for (const id of chosen) {
-      const one = papers.find((p) => p.id === id);
-      if (one && settled[id]!.result === "conflict") open.resolve(one, decision);
-    }
+  // On a phone the result tabs scroll sideways: the open one is brought into view. Its position on the page is the outside system.
+  const tabsRow = useCallback((element: HTMLDivElement | null) => {
+    element?.querySelector("[aria-checked=true]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps -- runs again when another tab opens
+
+  const conflictsPicked = chosen.filter((one) => settled[one]!.result === "conflict");
+  const settleAll = (decision: Decision, why?: { reason: string; note?: string }) => {
+    const settling = conflictsPicked.flatMap((one) => papers.find((p) => p.id === one) ?? []);
+    for (const one of settling) open.resolve(one, decision, why?.note, why?.reason);
     setPicked([]);
+    toast(`Settled ${settling.length} as ${RESULT_LABEL[decision]}`, { action: { label: "Undo", onClick: () => settling.forEach((one) => open.resolve(one, null)) } });
   };
   const exportPicked = (as: "csv" | "ris") => {
-    const picks = chosen.flatMap((id) => papers.find((p) => p.id === id) ?? []);
+    const picks = chosen.flatMap((one) => papers.find((p) => p.id === one) ?? []);
     const lines = [["paper", "year", "result", ...reviewers.map((r) => r.name)], ...picks.map((one) => [one.title, one.year, RESULT_LABEL[settled[one.id]!.result], ...reviewers.map((r) => { const vote = votes[one.id]!.find((v) => v.reviewer.id === r.id)?.vote; return vote ? DECISION_LABEL[vote.decision] : ""; })])];
     const text = as === "csv"
       ? lines.map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")
-      : picks.map((paper) => ["TY  - JOUR", `TI  - ${paper.title}`, ...paper.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${paper.year}`, `JO  - ${paper.venue}`, ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
+      : picks.map((one) => ["TY  - JOUR", `TI  - ${one.title}`, ...one.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${one.year}`, `JO  - ${one.venue}`, ...(one.sentences.length ? [`AB  - ${one.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([text], { type: as === "csv" ? "text/csv" : "application/x-research-info-systems" }));
     link.download = `selected-papers.${as}`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
-  const conflictsPicked = chosen.filter((id) => settled[id]!.result === "conflict").length;
+
+  // What narrows the table, each as a chip that takes it away.
+  const whoName = who && who !== open.me ? nameOf(open, who) : null;
+  const addedLabel = (at: string) => (at === "start" ? "At the start" : ago(Number(at)));
+  const active = [
+    from !== "all" ? { key: "source", label: `Source: ${screening.sources.find((one) => one.id === from)?.name ?? "removed"}`, clear: { source: null } } : null,
+    who
+      ? {
+          key: "reviewer",
+          label: voted === "any" ? (whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
+          clear: { reviewer: null, voted: null, with: null },
+        }
+      : null,
+    also ? { key: "with", label: `Also voted on by ${also === open.me ? "you" : nameOf(open, also)}`, clear: { with: null } } : null,
+    reason ? { key: "reason", label: filter === "maybe" ? `Unclear: ${criteria.find((c) => c.key === reason)?.short ?? reason}` : failedLabel(reason, criteria), clear: { reason: null } } : null,
+    added !== "all" ? { key: "added", label: `Added: ${addedLabel(added)}`, clear: { added: null } } : null,
+  ].filter((one) => one !== null);
+  const anyFilter = active.length > 0 || Boolean(query.trim());
 
   if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "This screening has no papers yet."}</p>;
 
+  const reviewerOptions = [...reviewers.filter((one) => one.id === open.me), ...reviewers.filter((one) => one.id !== open.me && one.kind === "person"), ...reviewers.filter((one) => one.kind === "model")];
+  const settles = (reviewerId: string) => reviewerId === screening.rule.resolver || reviewerId === screening.createdBy;
+  // The filters, in the row over the table and in a phone's sheet.
+  const filters = (trigger: string) => (
+    <>
+      {screening.sources.length > 1 ? (
+        <Select value={from} onValueChange={(next) => go({ source: next === "all" ? null : next })}>
+          <SelectTrigger aria-label="Source" className={trigger}><span className="text-muted-foreground">Source</span><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {screening.sources.map((source) => <SelectItem key={source.id} value={source.id}>{source.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ) : null}
+      <Select value={who ?? "anyone"} onValueChange={(next) => go({ reviewer: next === "anyone" ? null : next, voted: null, with: null })}>
+        <SelectTrigger aria-label="Reviewer" className={trigger}><span className="text-muted-foreground">Reviewer</span><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="anyone">Anyone</SelectItem>
+          {[["People", reviewerOptions.filter((one) => one.kind === "person")], ["Models", reviewerOptions.filter((one) => one.kind === "model")]].map(([label, list]) =>
+            (list as Reviewer[]).length ? (
+              <SelectGroup key={label as string}>
+                <SelectLabel>{label as string}</SelectLabel>
+                {(list as Reviewer[]).map((one) => <SelectItem key={one.id} value={one.id}><ReviewerMark reviewer={one} className="size-4" />{one.id === open.me ? "You" : one.name}</SelectItem>)}
+              </SelectGroup>
+            ) : null,
+          )}
+        </SelectContent>
+      </Select>
+      {who ? (
+        <Select value={voted} onValueChange={(next) => go({ reviewer: who, voted: next === "any" ? null : (next as Voted) })}>
+          <SelectTrigger aria-label="Their vote" className={trigger}><span className="text-muted-foreground">Vote</span><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any vote</SelectItem>
+            {DECISIONS.map((decision) => { const Icon = RESULT_STYLE[decision].icon; return <SelectItem key={decision} value={decision}><Icon className={cn("size-3.5", TONE[RESULT_STYLE[decision].tone].ink)} />{DECISION_LABEL[decision]}</SelectItem>; })}
+            <SelectItem value="none">Not voted yet</SelectItem>
+            {settles(who) ? <SelectItem value="settled">Settled a conflict</SelectItem> : null}
+          </SelectContent>
+        </Select>
+      ) : null}
+      {arrivals.length ? (
+        <Select value={added} onValueChange={(next) => go({ added: next === "all" ? null : next })}>
+          <SelectTrigger aria-label="Added" className={trigger}><span className="text-muted-foreground">Added</span><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any time</SelectItem>
+            {arrivals.map((time) => <SelectItem key={time} value={String(time)}>{ago(time)}</SelectItem>)}
+            <SelectItem value="start">At the start</SelectItem>
+          </SelectContent>
+        </Select>
+      ) : null}
+    </>
+  );
+  const sorter = (trigger: string) => (
+    <Select value={sort} onValueChange={(next) => go({ sort: next === "added" ? null : (next as Sort) })}>
+      <SelectTrigger aria-label="Sort" className={trigger}><ArrowUpDown className="size-3.5" /><span className="text-muted-foreground">Sort</span><SelectValue /></SelectTrigger>
+      <SelectContent align="end">
+        {SORTS.map((one) => <SelectItem key={one} value={one}>{SORT_LABEL[one]}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+  const trigger = "h-8 w-auto max-w-72 gap-1.5 text-xs [&>[data-slot=select-value]]:font-medium";
+
+  // A column head that orders the table: pressed again, the other way round.
+  const sortHead = (label: string, on: boolean, next: Sort | null, descending = false) => (
+    <button type="button" onClick={() => go({ sort: next })} className={cn("-mx-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50", on && "text-primary")}>
+      {label}
+      {on ? (descending ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />) : <ArrowUpDown className="size-3 opacity-40" />}
+    </button>
+  );
+  const showReason = columns === "reviewers";
+  // The Reason column shows wherever the table is wide enough for it, beside an open paper too.
+  const reasonHidden = showReason ? "@max-[60rem]/table:hidden" : "hidden";
+  const names = !room;
+  const lastCell = room ? "w-40 pe-4" : "w-48 pe-4 sm:pe-6 lg:w-60 lg:pe-[4.5rem]";
+
   return (
     <div ref={top} className="@container/papers scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-subtle p-4 sm:px-6">
-        <Segmented
-          label="Where the papers stand"
-          value={filter}
-          onChange={(next) => go({ result: next })}
-          fill="labels"
-          className="@6xl/papers:w-auto"
-          options={[
-            { id: "all" as const, label: "All", detail: <span className="tabular-nums text-muted-foreground">{papers.length}</span> },
-            ...RESULTS.map((result) => ({ id: result, label: RESULT_LABEL[result], icon: RESULT_STYLE[result].icon, detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={counts[result]} /></span> })),
-          ]}
-        />
-        <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2 @max-2xl/papers:w-full">
-          <Segmented label="Columns" className="@max-2xl/papers:hidden" value={columns} onChange={(next) => void setPlace({ by: next })} options={[{ id: "reviewers", label: "By reviewer" }, { id: "criteria", label: "By criterion" }]} />
-          {screening.sources.length > 1 ? (
-            <Select value={from} onValueChange={(next) => go({ source: next })}>
-              <SelectTrigger aria-label="Source" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Every source</SelectItem>
-                {screening.sources.map((source) => <SelectItem key={source.id} value={source.id}>{source.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          ) : null}
-          {open.isReviewer ? (
-            <Select value={yours} onValueChange={(next) => go({ voted: next as typeof yours })}>
-              <SelectTrigger aria-label="Your vote" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Whatever you voted</SelectItem>
-                <SelectItem value="include">You voted include</SelectItem>
-                <SelectItem value="maybe">You voted maybe</SelectItem>
-                <SelectItem value="exclude">You voted exclude</SelectItem>
-                <SelectItem value="none">Waiting for your vote</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : null}
-          {arrivals.length ? (
-            <Select value={added} onValueChange={(next) => go({ added: next })}>
-              <SelectTrigger aria-label="When they were added" className="h-8 w-44 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Added at any time</SelectItem>
-                {arrivals.map((at) => <SelectItem key={at} value={String(at)}>Added {at > NOW ? "just now" : day(at)}</SelectItem>)}
-                <SelectItem value="start">There from the start</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : null}
-          <Select value={sort} onValueChange={(next) => go({ sort: next as typeof sort })}>
-            <SelectTrigger aria-label="Order" className="h-8 w-40 text-xs @max-2xl/papers:hidden"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="added">As they were added</SelectItem>
-              <SelectItem value="split">Most divided first</SelectItem>
-              <SelectItem value="points">Most points first</SelectItem>
-              <SelectItem value="title">Title, A to Z</SelectItem>
-              <SelectItem value="newest">Newest first</SelectItem>
-            </SelectContent>
-          </Select>
-          {query.trim() || from !== "all" ? <span className="text-xs tabular-nums text-muted-foreground">{rows.length.toLocaleString("en-GB")} of {(filter === "all" ? papers.length : counts[filter]).toLocaleString("en-GB")}</span> : null}
-          <div className="relative w-52 @max-2xl/papers:w-full">
+      {/* Row one: where the papers stand, and the search. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 pt-4 sm:px-6">
+        <div ref={tabsRow} className="max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:snap-x max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none]">
+          <Segmented
+            label="Result"
+            value={filter}
+            onChange={(next) => go({ result: next === "all" ? null : next })}
+            options={[
+              { id: "all" as const, label: "All", detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={narrowed.length} /></span> },
+              ...RESULTS.map((result) => ({ id: result, label: RESULT_LABEL[result], icon: RESULT_STYLE[result].icon, detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={tabCounts[result]} /></span> })),
+            ]}
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 max-sm:w-full">
+          <div className="relative min-w-0 flex-1 @2xl/papers:max-w-md">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(event) => void setPlace({ q: event.target.value, page: null }, { history: "replace" })} placeholder="Find a paper" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
+            <Input value={query} onChange={(event) => void setPlace({ q: event.target.value || null, page: null }, { history: "replace" })} placeholder="Find a paper by title or author" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
           </div>
-          <Popover>
-            <TooltipHint label="What the marks mean">
-              <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="What the marks mean"><CircleHelp /></Button></PopoverTrigger>
-            </TooltipHint>
-            <PopoverContent align="end" className="w-72 space-y-2 p-3 text-sm">
-              {DECISIONS.map((decision) => <p key={decision} className="flex items-center gap-3"><VoteMark vote={{ decision }} who="A reviewer" />Voted {DECISION_LABEL[decision].toLowerCase()}</p>)}
-              <p className="flex items-center gap-3"><VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />Voted, hidden until you vote on it</p>
-              <p className="flex items-center gap-3"><VoteMark who="A reviewer" />Hasn&apos;t voted yet</p>
-              <p className="flex items-center gap-3"><span className="size-6 shrink-0" />Blank: the paper isn&apos;t theirs to vote on</p>
-            </PopoverContent>
-          </Popover>
+          <Button variant="outline" size="sm" className="h-8 @2xl/papers:hidden" onClick={() => setFiltering(true)}>
+            <SlidersHorizontal />Filters
+            {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
+          </Button>
         </div>
       </div>
 
-      {/* What can be done with the chosen papers. It floats over the foot of the page, so ticking a row moves no row. */}
+      {/* Row two: what the columns show, what narrows the list, and its order. */}
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-4 sm:px-6 @max-2xl/papers:hidden">
+        {criteria.length ? <Segmented label="Show columns" value={columns} onChange={(next) => void setPlace({ by: next === "reviewers" ? null : next })} options={[{ id: "reviewers", label: "Votes" }, { id: "criteria", label: "Answers" }]} /> : null}
+        {filters(trigger)}
+        {anyFilter ? <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}><X />Clear filters</Button> : null}
+        <div className="ms-auto">{sorter(trigger)}</div>
+      </div>
+
+      {/* What narrows the list, each a chip that takes it away. On a phone this is where the filters show. */}
+      {active.length ? (
+        <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">
+          {active.map((one) => (
+            <Button key={one.key} variant="secondary" size="xs" className="h-6 max-w-full gap-1 rounded-md bg-primary/10 pe-1 text-xs font-medium text-primary hover:bg-primary/15" aria-label={`Remove the filter ${one.label}`} onClick={() => go(one.clear)}>
+              <span className="truncate">{one.label}</span><X className="size-3.5 opacity-70" />
+            </Button>
+          ))}
+          <Button variant="ghost" size="xs" className="h-6 text-xs @2xl/papers:hidden" onClick={clearFilters}>Clear filters</Button>
+        </div>
+      ) : null}
+
+      <Sheet open={filtering} onOpenChange={setFiltering}>
+        <SheetContent side="bottom" className="gap-0 p-0 @2xl/papers:hidden">
+          <SheetHeader className="border-b border-border-subtle px-4 py-3"><SheetTitle>Filters</SheetTitle><SheetDescription className="sr-only">What narrows the list of papers, and its order</SheetDescription></SheetHeader>
+          <div className="grid gap-2 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] [&>[data-slot=select-trigger]]:w-full [&>[data-slot=select-trigger]]:max-w-none [&>[data-slot=select-trigger]]:justify-start [&>[data-slot=select-trigger]>svg:last-child]:ms-auto">
+            {filters("h-10 text-sm")}
+            {sorter("h-10 text-sm")}
+            <Button variant="outline" className="mt-2" onClick={() => setFiltering(false)}>Show {rows.length.toLocaleString("en-GB")} {rows.length === 1 ? "paper" : "papers"}</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* What can be done with the selected papers. It floats over the foot of the window, so selecting a row moves no row. */}
       <AnimatePresence>
         {chosen.length ? (
-          <motion.div key="chosen" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.2, ease: EASE }} className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-4 max-lg:bottom-24">
-            <div className="flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-border-subtle bg-card px-3 py-2 shadow-lg">
-              <span className="px-1 text-sm font-medium tabular-nums">{chosen.length} chosen</span>
-              {conflictsPicked && open.canResolve ? (
-                <>
-                  <span className="text-xs text-muted-foreground">Settle the {conflictsPicked} in conflict as</span>
-                  {[...DECISIONS].reverse().map((decision) => <Button key={decision} variant="outline" size="sm" className="h-7" onClick={() => settleAll(decision)}>{DECISION_LABEL[decision]}</Button>)}
-                </>
+          <motion.div key="chosen" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.2, ease: EASE }} className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4 max-lg:bottom-24">
+            <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-border-subtle bg-card px-3 py-2 shadow-lg">
+              <span className="px-1 text-sm font-medium tabular-nums">{everyRow ? `All ${chosen.length.toLocaleString("en-GB")} selected` : `${chosen.length.toLocaleString("en-GB")} selected`}</span>
+              {allShown && !everyRow && rows.length > shown.length ? <Button variant="link" size="sm" className="h-7 px-1" onClick={() => setPicked([...new Set([...chosen, ...rows.map((one) => one.id)])])}>Select all {rows.length.toLocaleString("en-GB")}</Button> : null}
+              {conflictsPicked.length && open.canResolve ? (
+                <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
+                  <span className="text-xs text-muted-foreground">Settle {conflictsPicked.length} in conflict as</span>
+                  {DECISIONS.map((decision) => {
+                    const Icon = RESULT_STYLE[decision].icon;
+                    const look = <><Icon className={TONE[RESULT_STYLE[decision].tone].ink} />{DECISION_LABEL[decision]}</>;
+                    return decision === "exclude" ? (
+                      <Popover key={decision}>
+                        <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-7">{look}</Button></PopoverTrigger>
+                        <PopoverContent side="top" align="end" className="w-80 p-3">
+                          <ReasonPicker reasons={reasonsOf(open)} onPick={(key, note) => settleAll("exclude", { reason: key, note })} />
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Button key={decision} variant="outline" size="sm" className="h-7" onClick={() => settleAll(decision)}>{look}</Button>
+                    );
+                  })}
+                </span>
               ) : null}
-              <Button variant="outline" size="sm" className="h-7" onClick={() => exportPicked("ris")}><Download />RIS, for a reference manager</Button>
-              <Button variant="outline" size="sm" className="h-7" onClick={() => exportPicked("csv")}><Download />CSV</Button>
-              <Button variant="ghost" size="sm" className="h-7" onClick={() => setPicked([])}>Clear</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-7"><Download />Export</Button></DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="end">
+                  <DropdownMenuItem onSelect={() => exportPicked("ris")}>RIS file, for a reference manager</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => exportPicked("csv")}>CSV file, with every vote</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="ghost" size="sm" className="h-7" onClick={() => setPicked([])}>Clear selection</Button>
             </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
-      {/* A phone has no room for the filters' menus: what narrows the list is said here, and can be dropped. */}
-      {added !== "all" || yours !== "any" ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2 @2xl/papers:hidden">
-          <span className="text-xs text-muted-foreground">{rows.length.toLocaleString("en-GB")} of {papers.length.toLocaleString("en-GB")} papers</span>
-          {added !== "all" ? <Chip icon={RefreshCw}>{added === "start" ? "There from the start" : `Added ${Number(added) > NOW ? "just now" : day(Number(added))}`}</Chip> : null}
-          {yours !== "any" ? <Chip>{yours === "none" ? "Waiting for your vote" : `You voted ${yours}`}</Chip> : null}
-          <Button variant="ghost" size="sm" className="ms-auto h-7 text-xs" onClick={() => go({ voted: null, added: null })}>Show every paper</Button>
-        </div>
-      ) : null}
-      <div className={cn("grid", room && "grid-cols-[minmax(0,1fr)_30rem]")}>
-        <div className="min-w-0">
-          {/* A full page's height while there are pages, so a short last page doesn't move the pager. */}
-          <div className="overflow-x-auto" style={{ minHeight: pager.pages > 1 ? (PAGE + 1) * ROW : undefined }}>
+      <div className={cn("grid border-t border-border-subtle", room && "grid-cols-[minmax(0,1fr)_30rem] min-[1800px]:grid-cols-[minmax(0,1fr)_36rem]")}>
+        <div className="@container/table min-w-0">
+          {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
+          <div className="@max-[48rem]/table:overflow-x-auto" style={{ minHeight: pager.pages > 1 ? (PAGE + 2) * ROW : undefined }}>
             {shown.length ? (
               <>
                 <ul className="divide-y divide-border-subtle @2xl/papers:hidden">
                   {shown.map((one) => {
                     const visible = open.canSee(one);
                     return (
-                      <li key={one.id}>
-                        <button type="button" aria-expanded={opened === one.id} onClick={() => (opened === one.id ? close() : show(one.id))} className={cn("block w-full space-y-2 px-4 py-3 text-start transition-colors hover:bg-muted", opened === one.id && "bg-muted")}>
+                      <li key={one.id} className={cn("flex gap-3 px-4 py-3 transition-colors", opened === one.id && "bg-muted")}>
+                        <Checkbox className="mt-0.5" checked={chosen.includes(one.id)} onCheckedChange={() => setPicked(chosen.includes(one.id) ? chosen.filter((p) => p !== one.id) : [...chosen, one.id])} aria-label={`Select ${one.title}`} />
+                        <button type="button" aria-expanded={opened === one.id} onClick={() => (opened === one.id ? close() : show(one.id))} className="block min-w-0 flex-1 space-y-2 text-start outline-none focus-visible:underline">
                           <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
                           <span className="block truncate text-xs text-muted-foreground">{one.authors.join(", ")}, {one.year}</span>
                           <span className="flex items-center gap-1">
-                            {votes[one.id]!.map(({ reviewer, vote }) => <VoteMark key={reviewer.id} vote={vote} hidden={!visible && reviewer.id !== open.me} who={reviewer.name} />)}
+                            {votes[one.id]!.map(({ reviewer: r, vote, failed }) => <VoteMark key={r.id} vote={vote} failed={failed} hidden={!visible && r.id !== open.me} who={r.name} />)}
                             <ResultChip result={settled[one.id]!.result} className="ms-auto" />
                           </span>
                         </button>
@@ -263,88 +431,156 @@ function Papers({ open }: { open: Open }) {
                     );
                   })}
                 </ul>
-                <Table className="table-fixed @max-2xl/papers:hidden" style={{ minWidth: columns === "criteria" ? `${(room ? 26 : 36) + criteria.length * 6}rem` : `${(room ? 28 : 40) + reviewers.length * 2.75}rem` }}>
-                  <TableHeader>
+                <table className="w-full table-fixed text-sm @max-2xl/papers:hidden" style={{ minWidth: `${15 + (room ? 10 : 12) + (columns === "criteria" ? criteria.length * 4.5 : reviewers.length * 3)}rem` }}>
+                  <TableHeader className={cn("sticky z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] @max-[48rem]/table:static [&_tr]:border-b-0", UNDER_HEADER)}>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-10 ps-4 sm:ps-6">
-                        <Checkbox checked={allShown} onCheckedChange={() => setPicked(allShown ? chosen.filter((id) => !shown.some((one) => one.id === id)) : [...new Set([...chosen, ...shown.map((one) => one.id)])])} aria-label="Choose every paper on this page" />
+                      <TableHead rowSpan={2} className="w-12 ps-4 sm:ps-6">
+                        <Checkbox checked={allShown} onCheckedChange={() => setPicked(allShown ? chosen.filter((p) => !shown.some((one) => one.id === p)) : [...new Set([...chosen, ...shown.map((one) => one.id)])])} aria-label="Select every paper on this page" />
                       </TableHead>
-                      <TableHead>Paper</TableHead>
+                      <TableHead rowSpan={2} aria-sort={sort === "title" ? "ascending" : sort === "title-desc" ? "descending" : "none"}>
+                        {sortHead("Paper", sort === "title" || sort === "title-desc", sort === "title" ? "title-desc" : "title", sort === "title-desc")}
+                      </TableHead>
+                      <TableHead colSpan={columns === "criteria" ? criteria.length : reviewers.length} className="h-8 px-1 pt-2 text-center" style={{ width: `${columns === "criteria" ? criteria.length * 4.5 : reviewers.length * 3}rem` }}>
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          {columns === "criteria" ? "Answers" : "Votes"}
+                          {columns === "criteria" ? (
+                            <Help title="Answers" side="bottom">
+                              <p>Each column is a criterion, and the mark is the answer its reviewers gave.</p>
+                              <Legend>
+                                <LegendRow mark={<AnswerMark answer="yes" label="Yes" />}>Yes, it meets it</LegendRow>
+                                <LegendRow mark={<AnswerMark answer="no" label="No" />}>No, it doesn&apos;t</LegendRow>
+                                <LegendRow mark={<AnswerMark answer="unclear" label="Unclear" />}>Unclear from the abstract</LegendRow>
+                                <LegendRow mark={<DifferMark />}>Reviewers answered it differently</LegendRow>
+                              </Legend>
+                            </Help>
+                          ) : (
+                            <Help title="Vote marks" side="bottom" facts={<HelpFact icon={Lock}>Blind until you vote</HelpFact>}>
+                              <p>Each column is a reviewer. Press a face for the papers they voted on.</p>
+                              <Legend>
+                                {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who="A reviewer" />}>Voted {DECISION_LABEL[decision]}</LegendRow>)}
+                                <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, hidden until you vote</LegendRow>
+                                <LegendRow mark={<VoteMark who="A reviewer" />}>Hasn&apos;t voted yet</LegendRow>
+                                <LegendRow mark={<VoteMark failed who="A model" />}>A model couldn&apos;t read it</LegendRow>
+                                <LegendRow mark={<span className="size-6" />}>Blank: not theirs to vote on</LegendRow>
+                              </Legend>
+                            </Help>
+                          )}
+                        </span>
+                      </TableHead>
+                      <TableHead rowSpan={2} className={cn("w-52 ps-6", reasonHidden)}>
+                        <span className="inline-flex items-center gap-1">
+                          Reason
+                          <Help title="Reason" side="bottom" facts={<><HelpFact>Included papers only</HelpFact><HelpFact>Majority answer counts</HelpFact></>}>
+                            <p>Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.</p>
+                            <p>An included paper shows its points and stars. Each criterion earns the points set in the screening&apos;s settings, from the answer most reviewers gave, and the stars follow the point thresholds set there.</p>
+                          </Help>
+                        </span>
+                      </TableHead>
+                      <TableHead rowSpan={2} aria-sort={sort === "result" ? "ascending" : "none"} className={cn("text-end", lastCell, "@max-[48rem]/table:sticky @max-[48rem]/table:end-0 @max-[48rem]/table:bg-card")}>
+                        {sortHead("Result", sort === "result", sort === "result" ? null : "result")}
+                      </TableHead>
+                    </TableRow>
+                    <TableRow className="border-b-0 hover:bg-transparent">
                       {columns === "reviewers"
-                        ? reviewers.map((reviewer) => (
-                            <TableHead key={reviewer.id} className="w-11 px-0 text-center">
-                              <TooltipHint label={reviewer.name}>
-                                <span tabIndex={0} className="inline-flex align-middle"><ReviewerMark reviewer={reviewer} /></span>
-                              </TooltipHint>
+                        ? reviewers.map((one) => (
+                            <TableHead key={one.id} className="h-auto px-0 pb-2 text-center align-top">
+                              <DropdownMenu>
+                                <TooltipHint label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`}>
+                                  <DropdownMenuTrigger asChild>
+                                    <button type="button" aria-label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
+                                      <ReviewerMark reviewer={one} you={one.id === open.me} />
+                                      {names ? <span className="max-w-full truncate px-0.5 text-2xs font-normal text-muted-foreground">{one.id === open.me ? "You" : one.name.split(" ")[0]}</span> : null}
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                </TooltipHint>
+                                <DropdownMenuContent align="center" className="w-60">
+                                  <DropdownMenuLabel><ReviewerName reviewer={one} you={one.id === open.me} /></DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  {DECISIONS.map((decision) => {
+                                    const Icon = RESULT_STYLE[decision].icon;
+                                    return (
+                                      <DropdownMenuItem key={decision} asChild>
+                                        <NextLink href={papersHref(id, { reviewer: one.id, voted: decision })}><Icon />Papers {one.id === open.me ? "you" : one.name.split(" ")[0]} voted {DECISION_LABEL[decision]}</NextLink>
+                                      </DropdownMenuItem>
+                                    );
+                                  })}
+                                  <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })}><ListChecks />Papers waiting for {one.id === open.me ? "your" : `${one.name.split(" ")[0]}'s`} vote</NextLink></DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableHead>
                           ))
                         : criteria.map((criterion) => (
-                            <TableHead key={criterion.key} className="h-auto w-24 px-1 py-2 text-center align-bottom whitespace-normal">
-                              <TooltipHint label={criterion.text}>
-                                <span tabIndex={0} className="line-clamp-2 text-xs leading-4">{criterion.short}</span>
+                            <TableHead key={criterion.key} className="h-auto px-0.5 pb-2 text-center align-bottom whitespace-normal">
+                              <TooltipHint label={criterion.short} onlyWhenClipped>
+                                <span className="line-clamp-2 text-2xs leading-4 font-medium">{criterion.short}</span>
                               </TooltipHint>
                             </TableHead>
                           ))}
-                      <TableHead className={cn("w-52 ps-6", room || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}>Why</TableHead>
-                      <TableHead className={cn("pe-4 text-end sm:pe-6", room ? "w-40" : "w-48")}>Result</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="border-t border-border-subtle">
                     {shown.map((one) => {
                       const visible = open.canSee(one);
                       const cast = votes[one.id]!;
+                      const state = settled[one.id]!;
+                      const waitsForMe = open.isReviewer && !state.final && cast.some((entry) => entry.reviewer.id === open.me && !entry.vote && !entry.failed);
                       return (
-                        <TableRow key={one.id} data-state={opened === one.id ? "selected" : undefined} className="cursor-pointer" style={{ height: ROW }} onClick={() => (opened === one.id ? close() : show(one.id))}>
+                        <TableRow key={one.id} data-state={opened === one.id ? "selected" : undefined} className="cursor-pointer border-border-subtle" style={{ height: ROW }} onClick={() => (opened === one.id ? close() : show(one.id))}>
                           <TableCell className="ps-4 sm:ps-6" onClick={(event) => event.stopPropagation()}>
-                            <Checkbox checked={chosen.includes(one.id)} onCheckedChange={() => setPicked(chosen.includes(one.id) ? chosen.filter((id) => id !== one.id) : [...chosen, one.id])} aria-label={`Choose ${one.title}`} />
+                            <Checkbox checked={chosen.includes(one.id)} onCheckedChange={() => setPicked(chosen.includes(one.id) ? chosen.filter((p) => p !== one.id) : [...chosen, one.id])} aria-label={`Select ${one.title}`} />
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="py-2 whitespace-normal">
                             <button type="button" aria-expanded={opened === one.id} className="block w-full min-w-0 text-start outline-none focus-visible:underline">
-                              <span className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-medium">{one.title}</span>{one.batch !== undefined && one.batch === newest ? <span className="shrink-0 rounded-full bg-success/12 px-1.5 text-2xs font-medium leading-5 ink-success">New</span> : null}</span>
+                              <span className="line-clamp-2 text-sm font-medium leading-5">
+                                {one.title}
+                                {one.batch !== undefined && one.batch === newest ? <StateChip tone="primary" className="ms-2 h-5 align-[1px] px-1.5 text-2xs">New</StateChip> : null}
+                              </span>
                               <span className="block truncate text-xs text-muted-foreground">{one.authors.join(", ")}, {one.year}, {one.venue}</span>
                             </button>
                           </TableCell>
                           {columns === "reviewers"
-                            ? reviewers.map((reviewer) => {
-                                const theirs = cast.find((entry) => entry.reviewer.id === reviewer.id);
-                                return <TableCell key={reviewer.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} hidden={!visible && reviewer.id !== open.me} who={reviewer.name} className="align-middle" /> : null}</TableCell>;
+                            ? reviewers.map((r) => {
+                                const theirs = cast.find((entry) => entry.reviewer.id === r.id);
+                                return <TableCell key={r.id} className="px-0 text-center">{theirs ? <VoteMark vote={theirs.vote} failed={theirs.failed} hidden={!visible && r.id !== open.me} who={r.name} className="align-middle" /> : null}</TableCell>;
                               })
                             : criteria.map((criterion) => {
                                 const given = visible ? [...new Set(cast.flatMap((entry) => entry.vote?.answers[criterion.key] ?? []))] : [];
                                 return (
                                   <TableCell key={criterion.key} className="px-1 text-center">
-                                    {given.length === 1 ? (
-                                      <span className="inline-flex align-middle"><AnswerMark answer={given[0]!} label={criterion.short} /></span>
-                                    ) : given.length > 1 ? (
-                                      <TooltipHint label="The reviewers answered this differently">
-                                        <span tabIndex={0} className="inline-flex size-6 items-center justify-center rounded-md bg-primary/12 align-middle text-primary"><GitCompare className="size-3.5" /></span>
-                                      </TooltipHint>
-                                    ) : null}
+                                    {given.length === 1 ? <span className="inline-flex align-middle"><AnswerMark answer={given[0]!} label={criterion.short} /></span> : given.length > 1 ? <DifferMark label={`Reviewers differ on ${criterion.short}`} /> : null}
                                   </TableCell>
                                 );
                               })}
-                          <TableCell className={cn("ps-6", room || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}><Why paper={one} open={open} visible={visible} /></TableCell>
-                          <TableCell className="pe-4 text-end sm:pe-6">
+                          <TableCell className={cn("ps-6", reasonHidden)} onClick={(event) => (event.target as HTMLElement).closest("a") && event.stopPropagation()}>
+                            <Why paper={one} open={open} visible={visible} reasonKey={reasonKey(one)} />
+                          </TableCell>
+                          <TableCell className={cn("text-end", lastCell, "@max-[48rem]/table:sticky @max-[48rem]/table:end-0 @max-[48rem]/table:bg-card")} onClick={(event) => (event.target as HTMLElement).closest("a") && event.stopPropagation()}>
                             <span className="inline-flex items-center gap-1.5">
-                              {/* A result a person settled, against the votes, carries their face. */}
-                              {settled[one.id]!.resolvedBy ? (
-                                <TooltipHint label={`Settled by ${personOf(settled[one.id]!.resolvedBy!)?.name ?? "a reviewer"} after a conflict`}>
-                                  <span tabIndex={0} className="flex rounded-full"><IdentityAvatar name={personOf(settled[one.id]!.resolvedBy!)?.name ?? ""} imageUrl={personOf(settled[one.id]!.resolvedBy!)?.imageUrl} className="size-5" /></span>
+                              {/* A result a person settled, against the votes, carries their face: it opens what they settled. */}
+                              {state.resolvedBy ? (
+                                <TooltipHint label={`Settled by ${nameOf(open, state.resolvedBy)}`}>
+                                  <NextLink href={papersHref(id, { reviewer: state.resolvedBy, voted: "settled" })} aria-label={`Settled by ${nameOf(open, state.resolvedBy)}`} className="flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                                    <IdentityAvatar name={nameOf(open, state.resolvedBy)} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
+                                  </NextLink>
                                 </TooltipHint>
                               ) : null}
-                              <ResultChip result={settled[one.id]!.result} />
+                              {waitsForMe ? (
+                                <Button asChild size="xs" className="h-6"><NextLink href={screenHref(id, { paper: one.id })}>Vote<ChevronRight /></NextLink></Button>
+                              ) : (
+                                <ResultChip result={state.result} />
+                              )}
                             </span>
                           </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
-                </Table>
+                </table>
               </>
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
                 <p className="text-sm text-muted-foreground">No paper here matches.</p>
-                <Button variant="outline" size="sm" onClick={() => go({ q: null, source: null, voted: null, result: null, added: null })}>Show every paper</Button>
+                <Button variant="outline" size="sm" onClick={() => go({ q: null, source: null, reviewer: null, voted: null, with: null, reason: null, result: null, added: null })}>Show every paper</Button>
               </div>
             )}
           </div>
@@ -354,7 +590,10 @@ function Papers({ open }: { open: Open }) {
         <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
           {paper && beside ? (
             <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
-              <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) show(next.id); }} />
+              {/* The assistant's button sits in the window's corner: the paper's foot stops above it. */}
+              <StickyColumn clear="5.5rem">
+                <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
+              </StickyColumn>
             </motion.aside>
           ) : null}
         </AnimatePresence>
@@ -363,44 +602,109 @@ function Papers({ open }: { open: Open }) {
         <SheetContent showCloseButton={false} className={`w-full gap-0 overflow-y-auto p-0 sm:max-w-lg ${AVATARS_FADE_IN}`}>
           <SheetTitle className="sr-only">{paper?.title ?? "Paper"}</SheetTitle>
           <SheetDescription className="sr-only">Its abstract, its votes and its result</SheetDescription>
-          {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at: shown.indexOf(paper), of: shown.length }} onStep={(by) => { const next = shown[shown.indexOf(paper) + by]; if (next) show(next.id); }} /> : null}
+          {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} inSheet /> : null}
         </SheetContent>
       </Sheet>
     </div>
   );
 }
 
-/** What put a paper where it stands: the criterion it failed, how its reviewers split, or whose vote it waits for. */
-function Why({ paper, open, visible }: { paper: Paper; open: Open; visible: boolean }) {
+/** The mark for a criterion its reviewers answered differently: the sign and colour of a conflict. */
+function DifferMark({ label = "Reviewers answered it differently" }: { label?: string }) {
+  return (
+    <span role="img" aria-label={label} className={cn("inline-flex size-6 items-center justify-center rounded-md align-middle", RESULT_STYLE.conflict.chip)}>
+      <GitCompare aria-hidden className="size-3.5" />
+    </span>
+  );
+}
+
+function Legend({ children }: { children: ReactNode }) {
+  return <div className="space-y-1.5 pt-1 text-foreground">{children}</div>;
+}
+function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode }) {
+  return <p className="flex items-center gap-2.5">{mark}{children}</p>;
+}
+
+/** A link inside a row, which opens what it names rather than the row's paper. */
+const ROW_LINK = "rounded-sm outline-none decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50";
+
+/** What put a paper where it stands: the criterion it failed, how its reviewers split, or whose vote it waits for. Each opens the papers it names. */
+function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; visible: boolean; reasonKey?: string }) {
+  const id = open.screening.id;
   const state = open.settled[paper.id]!;
   const entries = open.votes[paper.id]!;
   const cast = entries.flatMap((one) => one.vote ?? []);
   if (state.result === "waiting") {
-    const missing = entries.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer);
-    return missing.length ? <span className="flex items-center gap-2 text-xs text-muted-foreground">Waiting on<ReviewerStack reviewers={missing} max={5} /></span> : <span className="text-xs text-muted-foreground">Nobody reads it yet</span>;
+    const missing = entries.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer).sort((a, b) => Number(b.id === open.me) - Number(a.id === open.me));
+    if (!missing.length) return <span className="text-xs text-muted-foreground">Nobody reads it yet</span>;
+    const mine = missing[0]!.id === open.me;
+    return (
+      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className={cn("shrink-0", mine && "font-medium text-primary")}>{mine ? "Waiting on you" : "Waiting on"}</span>
+        <span className="flex items-center">
+          {missing.slice(0, 5).map((one, i) => (
+            <TooltipHint key={one.id} label={one.id === open.me ? "Papers waiting for your vote" : `Papers waiting for ${one.name}`}>
+              <NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })} aria-label={one.id === open.me ? "Papers waiting for your vote" : `Papers waiting for ${one.name}`} className={cn("flex outline-none ring-2 ring-card transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:ring-ring/50", one.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
+                <ReviewerMark reviewer={one} you={one.id === open.me} />
+              </NextLink>
+            </TooltipHint>
+          ))}
+          {missing.length > 5 ? <span className="ms-1.5 tabular-nums">+{missing.length - 5}</span> : null}
+        </span>
+      </span>
+    );
   }
   if (!visible) return null;
-  if (state.result === "conflict" || state.resolvedBy) {
-    return <Tally votes={cast} />;
+  if (state.result === "conflict" || state.resolvedBy) return <Tally votes={cast} />;
+  if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
+    const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `Unclear: ${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey}`;
+    return (
+      <TooltipHint label={label} onlyWhenClipped>
+        <NextLink href={papersHref(id, { result: state.result, reason: reasonKey })} className={cn("block truncate text-xs text-muted-foreground", ROW_LINK)}>{label}</NextLink>
+      </TooltipHint>
+    );
   }
-  if (state.result === "exclude") {
-    const reason = reasonOf(entries, state);
-    return reason ? <span className="block truncate text-xs text-muted-foreground">{failedLabel(reason, open.screening.criteria)}</span> : null;
-  }
-  const unclear = state.result === "maybe" ? open.screening.criteria.find((criterion) => criterion.must && cast.some((vote) => vote.answers[criterion.key] === "unclear")) : undefined;
-  if (unclear) return <span className="block truncate text-xs text-muted-foreground">Unclear: {unclear.short}</span>;
   // An included paper carries the stars its answers earn, as it is saved with them.
   const score = state.result === "include" && open.screening.criteria.length ? scoreOf(open.screening, entries) : null;
-  return score ? (
-    <TooltipHint label={`${score.points} of ${score.of} points from its reviewers' answers`}>
-      <span tabIndex={0} className="inline-flex items-center gap-1.5 rounded-md text-xs tabular-nums text-muted-foreground"><Stars count={score.stars} />{score.points} of {score.of} points</span>
-    </TooltipHint>
-  ) : null;
+  return score ? <span className="inline-flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground"><Stars count={score.stars} />{score.points} of {score.of} points</span> : null;
+}
+
+/** The reasons a paper is excluded for, with a note. "Another reason" needs the note written. */
+function ReasonPicker({ reasons, onPick, onBack }: { reasons: Array<{ key: string; label: string }>; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
+  const [note, setNote] = useState("");
+  const [missing, setMissing] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium">Why is it excluded?</p>
+      <Input ref={field} value={note} onChange={(event) => { setNote(event.target.value); setMissing(false); }} placeholder="Note (optional)" aria-label="Note" aria-invalid={missing || undefined} aria-describedby={missing ? "reason-note-error" : undefined} className="h-8 text-sm" />
+      {missing ? <p id="reason-note-error" className="text-xs ink-destructive">Write the reason in the note</p> : null}
+      {reasons.map((reason) => (
+        <button
+          key={reason.key}
+          type="button"
+          onClick={() => {
+            if (reason.key === "other" && !note.trim()) {
+              setMissing(true);
+              field.current?.focus();
+              return;
+            }
+            onPick(reason.key, note.trim() || undefined);
+          }}
+          className="flex min-h-9 w-full items-center rounded-lg border border-border-subtle bg-card px-2.5 py-1.5 text-start text-sm transition-colors hover:border-foreground/30"
+        >
+          <span className="line-clamp-2">{reason.label}</span>
+        </button>
+      ))}
+      {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>Back</Button> : null}
+    </div>
+  );
 }
 
 /** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
-function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; place: { at: number; of: number } }) {
+function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; place: { at: number; of: number }; inSheet?: boolean }) {
   const { screening, settled, votes } = open;
+  const id = screening.id;
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   // What is being decided in the panel: your own vote, or the paper's result. Excluding asks for the reason first.
   const [deciding, setDeciding] = useState<"vote" | "result" | null>(null);
@@ -414,55 +718,71 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const quoted = shown && visible ? screening.criteria.findIndex((c) => c.key === shown.criterion) : -1;
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
   const source = screening.sources.find((one) => one.id === paper.source);
-  const reasons = [...screening.criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS];
-  const settle = (kind: "vote" | "result", decision: Decision, reason?: string) => {
-    if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers, ...(reason && screening.criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note: note.trim() || undefined, at: Date.now() });
-    else open.resolve(paper, decision, note.trim() || undefined, reason);
+  const failed = cast.filter((one) => one.failed);
+  const score = state.result === "include" && visible && screening.criteria.length ? scoreOf(screening, cast) : null;
+  // The paper's own page in Openscholar, where its citations are listed.
+  const page = paperPath(paper.id, paper.title);
+  const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
+    const said = withNote ?? (note.trim() || undefined);
+    if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers, ...(reason && screening.criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note: said, at: Date.now() });
+    else open.resolve(paper, decision, said, reason);
     setDeciding(null);
     setReasonFor(null);
     setNote("");
   };
   const buttons = (kind: "vote" | "result") =>
     reasonFor === kind ? (
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground">Why is it excluded?</p>
-        {/* A reason no criterion covers is written in the note before it is saved. */}
-        <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="A note with it. Needed for “Another reason”" aria-label="Note" className="h-8 text-sm" />
-        {reasons.map((reason) => <button key={reason.key} type="button" disabled={reason.key === "other" && !note.trim()} onClick={() => settle(kind, "exclude", reason.key)} className="flex min-h-9 w-full items-center rounded-lg border border-border-subtle px-2.5 py-1.5 text-start text-sm transition-colors hover:border-foreground/30 disabled:opacity-50"><span className="line-clamp-2">{reason.label}</span></button>)}
-        <Button variant="ghost" size="sm" className="w-full" onClick={() => setReasonFor(null)}>Back</Button>
-      </div>
+      <ReasonPicker reasons={reasonsOf(open)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} />
     ) : (
       <div className="space-y-2">
-        <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={kind === "vote" ? "A note for the others (optional)" : "Why, for the record (optional)"} aria-label="Note" className="h-8 text-sm" />
+        <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={kind === "vote" ? "Note for the others (optional)" : "Note for the record (optional)"} aria-label="Note" className="h-8 bg-card text-sm" />
         <div className="grid grid-cols-3 gap-2">
-          {[...DECISIONS].reverse().map((decision) => {
+          {DECISIONS.map((decision) => {
             const Icon = RESULT_STYLE[decision].icon;
             const on = kind === "vote" && mine?.decision === decision;
             return (
-              <button key={decision} type="button" aria-pressed={on} onClick={() => (decision === "exclude" ? setReasonFor(kind) : settle(kind, decision))} className={cn("flex h-10 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? cn(RESULT_STYLE[decision].chip, "border-transparent ring-1 ring-current") : "border-border-subtle hover:bg-muted")}>
-                <Icon className={cn("size-4", !on && (decision === "include" ? "ink-success" : decision === "maybe" ? "ink-warning" : "text-muted-foreground"))} />{DECISION_LABEL[decision]}
+              <button key={decision} type="button" aria-pressed={on} onClick={() => (decision === "exclude" ? setReasonFor(kind) : settle(kind, decision))} className={cn("flex h-10 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? cn(RESULT_STYLE[decision].chip, "border-transparent ring-1 ring-current") : "border-border-subtle bg-card hover:bg-muted")}>
+                <Icon className={cn("size-4", !on && (decision === "include" ? "ink-success" : decision === "maybe" ? "ink-warning" : "ink-destructive"))} />{DECISION_LABEL[decision]}
               </button>
             );
           })}
         </div>
       </div>
     );
+  const votesHelp = !visible ? (
+    <Help title="Blind voting" side="left" facts={<HelpFact icon={Lock}>Blind until you vote</HelpFact>}>
+      <p>You see how the others voted on a paper only after you vote on it, so their votes don&apos;t sway yours. The organiser sets this in the screening&apos;s settings.</p>
+    </Help>
+  ) : failed.length ? (
+    <Help title="A model that couldn't read a paper" side="left" facts={<><HelpFact>No vote counted</HelpFact><HelpFact icon={RotateCcw}>Can be read again</HelpFact></>}>
+      <p>A model that can&apos;t open a paper&apos;s title and abstract casts no vote on it. The other reviewers&apos; votes settle the paper. Read it again to give the model another try.</p>
+    </Help>
+  ) : undefined;
+
   return (
-    <div className="space-y-5 p-4 sm:p-6 xl:sticky xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem))] xl:overflow-y-auto">
-      <div className="flex items-center gap-1">
-        <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at + 1} of {place.of} on this page</span>
-        <TooltipHint label="Previous paper"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
-        <TooltipHint label="Next paper"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" disabled={place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
-        <TooltipHint label="Close"><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label="Close" onClick={onClose}><X /></Button></TooltipHint>
+    <div className="space-y-5 px-4 pb-6 sm:px-6">
+      {/* Where it is in the list, and the way through it: it stays in view while the paper is read. */}
+      <div className={cn("sticky z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6", inSheet ? "top-0" : UNDER_HEADER)}>
+        <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at >= 0 ? `${(place.at + 1).toLocaleString("en-GB")} of ${place.of.toLocaleString("en-GB")}` : "Not in this list"}</span>
+        <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd>K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
+        <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd>J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={place.at < 0 || place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+        <TooltipHint label="Open paper"><Button asChild variant="ghost" size="icon" className="size-7 text-muted-foreground"><a href={page} target="_blank" rel="noopener noreferrer" aria-label="Open paper"><ExternalLink /></a></Button></TooltipHint>
+        <TooltipHint label={<span className="flex items-center gap-2">Close<Kbd>Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label="Close" aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
       </div>
-      <h2 className="text-base font-semibold leading-snug">{paper.title}</h2>
-      <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
+      <div className="space-y-2">
+        <h2 className="text-base font-semibold leading-snug">
+          <a href={page} target="_blank" rel="noopener noreferrer" className="rounded-sm outline-none underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
+            {paper.title}<ExternalLink aria-label="Opens in a new tab" className="ms-1.5 inline size-3.5 align-[-1px] text-muted-foreground" />
+          </a>
+        </h2>
+        <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
+      </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <ResultChip result={state.result} />
-        {state.result === "include" && visible && screening.criteria.length ? <Chip><Stars count={scoreOf(screening, cast).stars} />{scoreOf(screening, cast).points} of {scoreOf(screening, cast).of} points</Chip> : null}
-        <Chip icon={Quote}>{paper.cited} cited</Chip>
-        {paper.batch !== undefined ? <Chip icon={RefreshCw}>Added {paper.batch > NOW ? "just now" : day(paper.batch)}</Chip> : null}
-        {source ? <ClippedChip className="max-w-56">{source.name}</ClippedChip> : null}
+        {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
+        <LinkChip href={page} target="_blank" rel="noopener noreferrer" icon={Quote}>{paper.cited.toLocaleString("en-GB")} cited</LinkChip>
+        {paper.batch !== undefined ? <LinkChip href={papersHref(id, { added: String(paper.batch) })} icon={RefreshCw}>Added {ago(paper.batch)}</LinkChip> : null}
+        {source ? <LinkChip href={papersHref(id, { source: source.id })} className="max-w-full">Papers from {source.name}</LinkChip> : null}
       </div>
       {paper.sentences.length ? (
         <p className="text-sm leading-6">{paper.sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>
@@ -470,64 +790,91 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         <p className="rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">This paper came without an abstract.</p>
       )}
 
-      {/* Your own vote, where the paper is yours to vote on. */}
+      {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (
-        <section className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground">{mine ? "Your vote" : "This paper waits for your vote"}</h3>
-          {mine && deciding !== "vote" ? (
+        mine && deciding !== "vote" ? (
+          <section className="space-y-2">
+            <h3 className="text-sm font-medium">Your vote</h3>
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who="You" />
-              <span className="min-w-0 flex-1">{DECISION_LABEL[mine.decision]}{mine.reason ? `, ${failedLabel(mine.reason, screening.criteria)}` : ""}</span>
+              <span className="min-w-0 flex-1">You voted {DECISION_LABEL[mine.decision]}{mine.reason ? `, ${failedLabel(mine.reason, screening.criteria)}` : ""}</span>
               <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>Change it</Button>
             </div>
-          ) : (
-            buttons("vote")
-          )}
-        </section>
+          </section>
+        ) : (
+          <Panel tone="primary" className="space-y-2 p-3 ring-1 ring-primary/20">
+            <h3 className="text-sm font-medium">{mine ? "Change your vote" : "Waiting for your vote"}</h3>
+            {buttons("vote")}
+          </Panel>
+        )
       ) : null}
 
-      <section className="space-y-2">
-        <h3 className="text-xs font-medium text-muted-foreground">Votes</h3>
+      <Section title="Votes" help={votesHelp}>
         {visible ? (
           <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} /></div>
         ) : (
-          <p className="rounded-2xl border border-border-subtle bg-inset px-3 py-3 text-sm text-muted-foreground">The other votes show once you have cast yours, above.</p>
+          <p className="flex items-center gap-2 rounded-2xl bg-inset px-3 py-3 text-sm text-muted-foreground"><Lock className="size-4 shrink-0" />Hidden until you vote</p>
         )}
         {quoting?.vote && shown && visible ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : null}
         {visible ? (
-          <ul className="space-y-1.5 pt-1">
-            {cast.filter((one) => one.failed).map(({ reviewer }) => (
-              <li key={reviewer.id} className="flex items-start gap-2 text-xs">
-                <ReviewerMark reviewer={reviewer} className="size-5" />
-                <span className="min-w-0 flex-1"><span className="font-medium">{reviewer.name}</span> <span className="text-muted-foreground">couldn&apos;t read this paper, so it has no say in it. It can be sent back to it from the Overview.</span></span>
-              </li>
-            ))}
+          <ul className="space-y-2 pt-1">
+            {failed.map(({ reviewer }) => {
+              const unread = open.unread(reviewer).length;
+              const cost = unread * paperCredits(reviewer.model!);
+              return (
+                <li key={reviewer.id} className="flex items-center gap-2 text-xs">
+                  <ReviewerMark reviewer={reviewer} className="size-5" />
+                  <span className="flex min-w-0 flex-1 items-center gap-1"><ReviewerName reviewer={reviewer} className="font-medium" /><span className="shrink-0 text-muted-foreground">couldn&apos;t read it</span></span>
+                  {open.canChange ? <Button variant="outline" size="xs" onClick={() => open.retry(reviewer)}><RotateCcw />{unread > 1 ? `Read all ${unread} again` : "Read it again"}, {credits(cost)} credits</Button> : null}
+                </li>
+              );
+            })}
             {cast.filter((one) => one.vote).map(({ reviewer, vote }) => (
               <li key={reviewer.id} className="flex items-start gap-2 text-xs">
                 <ReviewerMark reviewer={reviewer} className="size-5" />
-                <span className="min-w-0 flex-1"><span className="font-medium">{reviewer.name}</span>{reviewer.kind === "model" ? <span className="text-muted-foreground"> (AI model)</span> : null} <span className="text-muted-foreground">{DECISION_LABEL[vote!.decision].toLowerCase()}{vote!.reason ? `, ${failedLabel(vote!.reason, screening.criteria)}` : ""}, {ago(vote!.at)}</span>{vote!.note ? <span className="block text-muted-foreground">“{vote!.note}”</span> : null}</span>
+                <span className="min-w-0 flex-1">
+                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="inline-flex max-w-full align-middle font-medium" /> <span className="text-muted-foreground">voted {DECISION_LABEL[vote!.decision]}{vote!.reason ? `, ${failedLabel(vote!.reason, screening.criteria)}` : ""}, {ago(vote!.at)}</span>
+                  {vote!.note ? <span className="block text-muted-foreground">&quot;{vote!.note}&quot;</span> : null}
+                </span>
               </li>
             ))}
           </ul>
         ) : null}
-      </section>
+      </Section>
 
       {/* The paper's result: settled by a person where its reviewers disagree, and open to change after that. */}
       {state.resolvedBy ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <IdentityAvatar name={personOf(state.resolvedBy)?.name ?? ""} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
-          <span className="min-w-0 flex-1">Settled by {personOf(state.resolvedBy)?.name ?? "a reviewer"}{state.reason ? `, ${failedLabel(state.reason, screening.criteria)}` : ""}{state.note ? `: “${state.note}”` : ""}</span>
+          <IdentityAvatar name={nameOf(open, state.resolvedBy)} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
+          <span className="min-w-0 flex-1">Settled by {state.resolvedBy === open.me ? "you" : nameOf(open, state.resolvedBy)}{state.reason ? `, ${failedLabel(state.reason, screening.criteria)}` : ""}{state.note ? `: "${state.note}"` : ""}</span>
           {open.canResolve ? <Button variant="ghost" size="xs" onClick={() => open.resolve(paper, null)}><Undo2 />Reopen</Button> : null}
         </div>
       ) : !open.canResolve ? (
-        state.result === "conflict" ? <p className="text-xs text-muted-foreground">{personOf(screening.rule.resolver)?.name ?? "The person named in the settings"} settles conflicts on this screening.</p> : null
-      ) : state.result === "conflict" || deciding === "result" ? (
-        <section className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground">{state.result === "conflict" ? "Final decision" : "Decide it yourself, whatever the votes say"}</h3>
+        state.result === "conflict" ? (
+          <Panel tone="info" className="flex flex-wrap items-center gap-2 p-3 text-sm">
+            <IdentityAvatar name={nameOf(open, screening.rule.resolver)} imageUrl={personOf(screening.rule.resolver)?.imageUrl} className="size-6" />
+            <span className="min-w-0 flex-1">Waiting for {nameOf(open, screening.rule.resolver)} to settle it</span>
+            <LinkChip href={papersHref(id, { result: "conflict" })} tone="info">Every conflict</LinkChip>
+          </Panel>
+        ) : null
+      ) : state.result === "conflict" ? (
+        <Panel tone="info" className="space-y-2 p-3 ring-1 ring-info/25">
+          <h3 className="text-sm font-medium">Final decision</h3>
           {buttons("result")}
+        </Panel>
+      ) : deciding === "result" ? (
+        <section className="space-y-2">
+          <h3 className="flex items-center gap-1 text-sm font-medium">
+            Override result
+            <Help title="Overriding a result" side="left" facts={<><HelpFact>Votes kept</HelpFact><HelpFact icon={Undo2}>Can be reopened</HelpFact></>}>
+              <p>Your decision replaces the result the votes gave. The votes stay on record. Reopen puts the paper back under the screening&apos;s rule.</p>
+            </Help>
+          </h3>
+          {buttons("result")}
+          <Button variant="ghost" size="sm" className="w-full" onClick={() => setDeciding(null)}>Cancel</Button>
         </section>
       ) : visible ? (
-        <Button variant="outline" size="sm" onClick={() => setDeciding("result")}>{state.result === "waiting" ? "Decide it without waiting" : "Change the result"}</Button>
+        <Button variant="outline" size="sm" onClick={() => setDeciding("result")}>Override result</Button>
       ) : null}
     </div>
   );

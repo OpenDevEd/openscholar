@@ -1,32 +1,45 @@
 "use client";
 
-// The open screening's Overview: what to do next, how far it has got, who has done what, how far
-// the reviewers agree, and the counts a methods section asks for.
+// The open screening's Overview, one column that scrolls with the window: how far it has got and what
+// to do next, who has voted how and how far they agree, the facts about it, and the counts a methods
+// section asks for.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
-import { AiIcon, ArrowRight, Ban, CircleCheck, CircleHelp, CirclePause, Clock, Coins, Download, Folder, RefreshCw, GitCompare, ListChecks, Mail, MoreHorizontal, RotateCcw, Trash2, TriangleAlert } from "@/components/icons";
+import { parseAsStringLiteral, useQueryStates } from "nuqs";
+import { AiIcon, ArrowDown, ArrowRight, Ban, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, ListChecks, Mail, MoreHorizontal, RefreshCw, RotateCcw, Trash2, TriangleAlert } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
-import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { EASE } from "@/components/settings/model-map";
-import { LIST, Zone, pagerOf } from "@/components/settings/parts";
+import { LIST } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { HelpFact } from "@/components/ui/help";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, day, growing, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Reviewer, type Screening, lookOf } from "./data";
+import { DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, peopleOf, personOf, reasonOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
-import { EffectList, effectLines, effectMoves, movesText } from "./effects";
+import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { RESULT_STYLE, ResultBar, ReviewerMark, Tally } from "./parts";
+import { Help, LinkChip, Panel, RESULT_STYLE, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
+
+/** What the Overview shows, kept in its address: the order of the reviewers, and every check for new papers or the last few. */
+const PLACE = {
+  sort: parseAsStringLiteral(["voted", "agrees"] as const),
+  checks: parseAsStringLiteral(["all"] as const),
+};
+
+/** Papers still to be voted on, hatched wherever a bar shows them, so they never read as excluded ones. */
+const HATCH = "bg-foreground/10 bg-[repeating-linear-gradient(-45deg,transparent_0_3px,color-mix(in_oklab,var(--foreground)_14%,transparent)_3px_5px)]";
+/** A row or a count that opens its papers. */
+const ROW_LINK = "rounded-lg outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /** The Overview as a page of the open screening. */
 export function OverviewPage() {
@@ -34,10 +47,181 @@ export function OverviewPage() {
   return <Overview open={open} onExport={exportTo} />;
 }
 
-function Overview({ open, onExport }: { open: Open; onExport: (what: "flow") => void }) {
-  const { screening, papers, votes, settled, counts, toDo, conflicts } = open;
-  const reviewers = activeReviewers(screening);
+function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
+  const { screening, papers } = open;
+
+  if (!papers.length && open.gathering) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
+        <p className="text-sm font-medium">Its papers are on their way</p>
+        <p className="max-w-md text-sm text-muted-foreground">They show here as they arrive from its sources. You can start screening as soon as the first are in.</p>
+      </div>
+    );
+  }
+  if (!papers.length) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
+        <p className="text-sm font-medium">No papers yet</p>
+        <p className="max-w-md text-sm text-muted-foreground">This screening has no source to take papers from.</p>
+        {open.canChange ? <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(screening.id, "papers")}>Add a source</NextLink></Button> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="@container/overview space-y-8 p-4 sm:p-6">
+      <Progress open={open} onExport={onExport} />
+      <div className="grid grid-cols-1 gap-8 @5xl/overview:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-8">
+          <Reviewers open={open} />
+          <Agreement open={open} />
+        </div>
+        {/* Clear of the assistant's button in the window's corner where it sticks at the foot. */}
+        <StickyColumn clear="5.5rem" className="min-w-0">
+          <Facts open={open} />
+        </StickyColumn>
+      </div>
+      <Flow open={open} onExport={onExport} />
+    </div>
+  );
+}
+
+// ── Progress ─────────────────────────────────────────────────────────────────────────────────────
+
+/** How far the screening has got, in the colour of what it needs: the person looking, nobody, or someone else. */
+function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
+  const { finish } = useWorkspace();
+  const { screening, papers, counts, toDo, conflicts } = open;
+  const settledAll = counts.conflict + counts.waiting === 0;
+  const settle = conflicts.length > 0 && open.canResolve;
+  const tone: Tone = toDo.length || settle ? "primary" : settledAll ? "success" : "neutral";
+  const finishable = settledAll && open.canChange && !open.screening.finishedAt;
+  const resolver = personOf(screening.rule.resolver)?.name ?? "the person who settles them";
+  const to = screening.destination;
+  const extract = `/extraction/new?${to.collection ? `collection=${to.collection}` : `screening=${screening.id}`}`;
+  const finished = Boolean(screening.finishedAt);
+
+  const screen = toDo.length ? (
+    <Button asChild size="sm" variant={finished ? "outline" : "default"}><NextLink href={screenHref(screening.id)}><ListChecks />Screen <AnimatedNumber value={toDo.length} /> {toDo.length === 1 ? "paper" : "papers"}</NextLink></Button>
+  ) : null;
+  const conflictsButton = conflicts.length ? (
+    <Button asChild size="sm" variant={toDo.length || finished || !open.canResolve ? "outline" : "default"}><NextLink href={screenHref(screening.id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</NextLink></Button>
+  ) : null;
+
+  return (
+    <Panel tone={tone} className="space-y-4 p-5">
+      <Section
+        title="Progress"
+        help={
+          <Help
+            title="Where a paper stands"
+            facts={RESULTS.map((result) => {
+              const Icon = RESULT_STYLE[result].icon;
+              const text = result === "maybe" ? "Maybe when a must-have can't be answered" : result === "conflict" ? `In conflict until ${resolver} settles it` : RESULT_LABEL[result];
+              return <HelpFact key={result} icon={Icon}>{text}</HelpFact>;
+            })}
+          >
+            <p>A paper settles once its votes meet the screening&apos;s rule. Maybe counts as settled: the reviewers agree the abstract can&apos;t decide it.</p>
+          </Help>
+        }
+        aside={
+          <>
+            {screen}
+            {conflictsButton}
+            {settledAll ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => onExport("papers")}><Download />Export included papers</Button>
+                {/* With every paper settled, finishing is the next step for a member. Once it is finished, extracting is. */}
+                <Button asChild size="sm" variant={finishable ? "outline" : "default"}><NextLink href={extract}><FileSearch />Extract from the included papers</NextLink></Button>
+                {finishable ? <Button size="sm" onClick={finish}><CircleCheck />Mark as finished</Button> : null}
+              </>
+            ) : null}
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
+            <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
+            {open.reading.length && !screening.paused && !open.outOfCredits && !finished ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />Models are reading</Chip> : null}
+          </p>
+          <ResultBar counts={counts} className="h-3" />
+          <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
+            {RESULTS.map((result) => {
+              const Icon = RESULT_STYLE[result].icon;
+              const inner = (
+                <>
+                  <span className={cn("flex size-6 items-center justify-center rounded-md", RESULT_STYLE[result].chip)}><Icon className="size-3.5" /></span>
+                  <span className="font-semibold tabular-nums"><AnimatedNumber value={counts[result]} /></span>
+                  <span className="text-muted-foreground">{RESULT_LABEL[result]}</span>
+                </>
+              );
+              // A count of none opens nothing, and keeps its place in the row.
+              return counts[result] ? (
+                <NextLink key={result} href={papersHref(screening.id, { result })} className={cn("flex items-center gap-2 px-2 py-1.5 text-sm", ROW_LINK, "hover:bg-foreground/[0.06]")}>{inner}</NextLink>
+              ) : (
+                <span key={result} className="flex items-center gap-2 px-2 py-1.5 text-sm opacity-60">{inner}</span>
+              );
+            })}
+          </div>
+          <Yours open={open} />
+        </div>
+      </Section>
+    </Panel>
+  );
+}
+
+/** Your own votes, each count opening those papers, and the papers of yours that still wait for someone else. */
+function Yours({ open }: { open: Open }) {
+  const { screening } = open;
+  const mine = open.yours.flatMap((paper) => open.myVote(paper) ?? []);
+  if (!mine.length) return null;
+  const waiting = open.yours.filter((paper) => open.myVote(paper) && open.settled[paper.id]!.result === "waiting");
+  const others = [...new Map(waiting.flatMap((paper) => open.votes[paper.id]!.filter((one) => !one.vote && !one.failed).map((one) => [one.reviewer.id, one.reviewer] as const))).values()];
+  const named = others.slice(0, 2);
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-card/70 px-3 py-2 text-sm">
+      <span className="font-medium">Your {mine.length.toLocaleString("en-GB")} {mine.length === 1 ? "vote" : "votes"}</span>
+      <span className="flex items-center gap-1">
+        {DECISIONS.map((decision) => {
+          const n = count(mine, (vote) => vote.decision === decision);
+          const Icon = RESULT_STYLE[decision].icon;
+          return n ? (
+            <NextLink key={decision} href={papersHref(screening.id, { voted: decision })} aria-label={`${n} you voted ${DECISION_LABEL[decision]}`} className={cn("flex items-center gap-1 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground", ROW_LINK)}>
+              <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
+              {n}
+            </NextLink>
+          ) : null;
+        })}
+      </span>
+      {waiting.length ? (
+        <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">
+          <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className="font-medium text-foreground underline-offset-2 hover:underline">{waiting.length.toLocaleString("en-GB")} of them {waiting.length === 1 ? "waits" : "wait"}</NextLink>
+          {" for "}
+          {named.map((reviewer, i) => (
+            <span key={reviewer.id}>
+              {i ? " and " : ""}
+              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none" })} className="text-foreground underline-offset-2 hover:underline">{reviewer.name}</NextLink>
+            </span>
+          ))}
+          {others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote.
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Reviewers ────────────────────────────────────────────────────────────────────────────────────
+
+
+/** The columns of the Reviewers table: on a phone a row is two lines, the name alone on the first. */
+const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(7rem,0.7fr)_repeat(3,3.25rem)_10.5rem_2rem]";
+
+function Reviewers({ open }: { open: Open }) {
+  const { screening, papers, votes, settled } = open;
+  const [{ sort }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
+  const reviewers = activeReviewers(screening);
   const rows = useMemo(
     () =>
       reviewers.map((reviewer) => {
@@ -69,348 +253,290 @@ function Overview({ open, onExport }: { open: Open; onExport: (what: "flow") => 
       }),
     [reviewers, papers, votes, settled],
   );
-  const matrix = useMemo(() => reviewers.map((a) => reviewers.map((b) => (a === b ? null : agreement(a.id, b.id, open)))), [reviewers, open]);
+  type Row = (typeof rows)[number];
+  const by = (row: Row) => (sort === "voted" ? row.done / Math.max(row.assigned, 1) : (row.agrees ?? -1));
+  const ordered = (list: Row[]) => (sort ? [...list].sort((a, b) => by(b) - by(a)) : list);
+  const groups = [
+    { label: "People", rows: ordered(rows.filter((row) => row.reviewer.kind === "person")) },
+    { label: "Models", rows: ordered(rows.filter((row) => row.reviewer.kind === "model")) },
+  ].filter((group) => group.rows.length);
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
-  const settledAll = papers.length > 0 && counts.conflict + counts.waiting === 0;
-  // People who read a share, beside models who read everything: the two counts in the table differ, and the page says why.
-  const peopleDealt = rows.some((row) => row.reviewer.kind === "person" && row.assigned < papers.length) && rows.some((row) => row.reviewer.kind === "model");
+  const people = peopleOf(screening).length;
+  const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
 
-  if (!papers.length && open.gathering) {
-    return (
-      <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
-        <p className="text-sm font-medium">Its papers are on their way</p>
-        <p className="max-w-md text-sm text-muted-foreground">They are being fetched from its sources and show here as they arrive. You can start screening as soon as the first are in.</p>
-      </div>
-    );
-  }
-  if (!papers.length) {
-    return (
-      <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
-        <p className="text-sm font-medium">No papers yet</p>
-        <p className="max-w-md text-sm text-muted-foreground">Add a source in the settings to give this screening its papers.</p>
-        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={settingsHref(screening.id)}>Open the settings</NextLink></Button>
-      </div>
-    );
-  }
+  // A column the table can be ordered by: highest first, and a second press puts the table back as it was.
+  const sortable = (id: "voted" | "agrees", label: string) => (
+    <button type="button" onClick={() => void setPlace({ sort: sort === id ? null : id })} className={cn("flex items-center gap-1 rounded-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50", sort === id && "font-medium text-foreground")}>
+      {label}
+      <ArrowDown aria-hidden className={cn("size-3.5 shrink-0", sort === id ? "opacity-100" : "opacity-0")} />
+    </button>
+  );
 
   return (
-    <div className="@container/overview space-y-7 p-4 sm:p-6">
-      <Zone
-        label="Progress"
-        aside={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {toDo.length ? (
-              <Button asChild size="sm" variant={screening.finishedAt ? "outline" : "default"}><NextLink href={screenHref(screening.id)}><ListChecks />Screen <AnimatedNumber value={toDo.length} /> {toDo.length === 1 ? "paper" : "papers"}</NextLink></Button>
-            ) : null}
-            {conflicts.length ? (
-              <Button asChild size="sm" variant={toDo.length || screening.finishedAt || !open.canResolve ? "outline" : "default"}><NextLink href={screenHref(screening.id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</NextLink></Button>
-            ) : null}
-            {settledAll ? (
-              <>
-                <Button asChild size="sm" variant="outline"><NextLink href="/extraction/new">Extract from the included papers</NextLink></Button>
-                <Chip icon={CircleCheck} className="h-8 bg-success/12 px-3 ink-success">Every paper is settled</Chip>
-              </>
-            ) : null}
-          </div>
-        }
-      >
-        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
-          <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
-          {open.reading.length && !screening.paused && !open.outOfCredits && !screening.finishedAt ? <Chip className="self-center"><AiIcon working className="size-3.5" />Models are reading, so these move</Chip> : null}
-        </p>
-        <ResultBar counts={counts} className="h-3" />
-        <Yours open={open} />
-        {/* Each count opens its papers. */}
-        <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1 pt-1">
-          {RESULTS.map((result) => {
-            const Icon = RESULT_STYLE[result].icon;
-            const hint = result === "waiting" && open.waitingOn.length ? `Waiting on ${open.waitingOn.map((one) => `${one.reviewer.name} (${one.papers})`).join(", ")}` : result === "conflict" ? `Their reviewers voted differently. ${personOf(screening.rule.resolver)?.name ?? "A named person"} settles them.` : result === "maybe" ? "Left open: a must-have criterion couldn't be answered" : undefined;
-            return (
-              <TooltipHint key={result} label={hint}>
-                <NextLink href={papersHref(screening.id, { result })} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50">
-                  <span className={cn("flex size-6 items-center justify-center rounded-md", RESULT_STYLE[result].chip)}><Icon className="size-3.5" /></span>
-                  <span className="font-semibold tabular-nums"><AnimatedNumber value={counts[result]} /></span>
-                  <span className="text-muted-foreground">{RESULT_LABEL[result]}</span>
-                </NextLink>
-              </TooltipHint>
-            );
-          })}
-        </div>
-      </Zone>
-
-      <Facts open={open} />
-      <NewPapers open={open} />
-
-      <div className="grid grid-cols-1 gap-7 @5xl/overview:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Zone label="Reviewers">
-          {rows.length ? (
-            <div className={LIST}>
-              <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_8.5rem_7.5rem_2rem] items-center gap-4 whitespace-nowrap px-4 py-2 text-xs text-muted-foreground @max-2xl/overview:hidden">
-                <span>Reviewer</span>
-                <span>Papers voted on</span>
-                <span>Their votes</span>
-                <Help label="Votes with the others">
-                  <p>On the papers every reviewer has voted on, how often this reviewer chose what most of the others chose.</p>
-                  <p>A low figure is a reviewer who reads the criteria differently from the rest, person or model.</p>
-                  <p>For a model, <span className="font-medium text-foreground">missed</span> counts the papers the screening included that it voted to exclude: the mistake that loses a study.</p>
-                </Help>
-                <span />
-              </div>
-              {rows.map(({ reviewer, assigned, done, split, agrees, compared, missed, included }) => {
-                const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
-                const unread = unreadPapers.length;
-                const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
-                const held = open.outOfCredits ? { icon: Coins, text: "Stopped, out of credits" } : screening.paused ? { icon: CirclePause, text: "Paused" } : open.waitingFor ? { icon: Clock, text: "Waiting its turn" } : null;
-                const person = personOf(reviewer.id);
-                return (
-                  <div key={reviewer.id} className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_8.5rem_7.5rem_2rem] items-center gap-4 px-4 py-3 @max-2xl/overview:grid-cols-[minmax(0,1fr)_5.5rem_2rem] @max-2xl/overview:gap-y-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <ReviewerMark reviewer={reviewer} className="size-8 self-start" />
-                      <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 text-sm font-medium"><span className="truncate">{reviewer.name}</span>{reviewer.id === open.me ? <YouTag /> : reviewer.kind === "model" ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">AI</span> : null}</p>
-                        {reviewer.kind === "model" ? (
-                          // One line whatever it holds, so a paper that fails while it reads doesn't make the row taller.
-                          <div className="flex h-5 min-w-0 items-center gap-2">
-                            <p className="flex min-w-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                              {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
-                              <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits`}</span>
-                            </p>
-                            {unread ? (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button type="button" aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`} className="flex shrink-0 rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={TriangleAlert} className="h-5 bg-destructive/10 px-1.5 text-destructive">{unread}</Chip></button>
-                                </PopoverTrigger>
-                                <PopoverContent align="start" className="w-72 space-y-2.5 p-3 text-sm">
-                                  <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}: the other reviewers settle {unread === 1 ? "it" : "them"}.</p>
-                                  <ul className="space-y-1">
-                                    {unreadPapers.slice(0, 4).map((paper) => <li key={paper.id} className="line-clamp-2 text-xs text-muted-foreground">{paper.title} ({paper.year})</li>)}
-                                    {unread > 4 ? <li className="text-xs text-muted-foreground">and {unread - 4} more</li> : null}
-                                  </ul>
-                                  {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!))} credits</Button> : null}
-                                </PopoverContent>
-                              </Popover>
-                            ) : null}
-                          </div>
-                        ) : (
-                          <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : (person?.seen ?? "")}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 @max-2xl/overview:col-span-3 @max-2xl/overview:row-start-2">
-                      <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-                      <span className="shrink-0 text-end text-xs tabular-nums text-muted-foreground @2xl/overview:w-20"><AnimatedNumber value={done} /> of {assigned}<span className="@2xl/overview:hidden"> voted on</span></span>
-                    </div>
-                    <div className="flex items-center gap-2.5 @max-2xl/overview:hidden">
-                      {DECISIONS.map((decision, i) => {
-                        const Icon = RESULT_STYLE[decision].icon;
-                        return (
-                          <span key={decision} role="img" aria-label={`${split[i]} ${decision}`} className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
-                            <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
-                            {split[i]}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    <div className="text-end @max-2xl/overview:col-start-2 @max-2xl/overview:row-start-1">
-                      <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : `${Math.round(agrees * 100)}%`}</p>
-                      {agrees !== null ? <p className="whitespace-nowrap text-xs text-muted-foreground @2xl/overview:hidden">with the others</p> : null}
-                      {agrees !== null && reviewer.kind === "person" ? <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/overview:hidden">of {compared} papers</p> : null}
-                      {reviewer.kind === "model" && included ? (
-                        <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">missed {missed} of {included} included</p>
-                      ) : null}
-                    </div>
-                    {open.canChange ? (
-                      <DropdownMenu>
-                        <TooltipHint label="More">
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8 text-muted-foreground @max-2xl/overview:col-start-3 @max-2xl/overview:row-start-1" aria-label={`More for ${reviewer.name}`}><MoreHorizontal /></Button>
-                          </DropdownMenuTrigger>
-                        </TooltipHint>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem asChild><NextLink href={papersHref(screening.id)}><ListChecks />See their votes in Papers</NextLink></DropdownMenuItem>
-                          {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
-                          {reviewer.kind === "person" && reviewer.id !== open.me && done < assigned ? (
-                            <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
-                          ) : null}
-                          <DropdownMenuItem variant="destructive" onSelect={() => setLeaving(reviewer)}><Trash2 />Take off this screening</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : <span />}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nobody reads these papers yet. Add a person or a model from the row above.</p>
-          )}
-          {rows.length > 1 ? <p className="px-1 text-xs text-muted-foreground">{peopleDealt ? "Each person is dealt a share of the papers, and a model reads them all. " : ""}Votes with the others: on the papers every reviewer has voted on, how often this one chose what most of the others chose.</p> : null}
-        </Zone>
-
-        <Zone
-          label="Agreement between reviewers"
-          aside={
-            <span className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Help label="Cohen's kappa">
-                <p>How far two reviewers agree beyond what chance alone would give.</p>
-                <p><span className="font-medium text-foreground">1.0</span> is the same vote on every paper, <span className="font-medium text-foreground">0</span> is no better than chance. From 0.6 up it is usually called substantial, and a methods section reports it.</p>
-                <p>Each square compares two reviewers on the papers both have voted on.</p>
+    <Section
+      id="reviewers"
+      title="Reviewers"
+      help={
+        <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of ${people} people a paper` : `Every person reads every paper`}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every paper</HelpFact> : null}</>}>
+          <p>Each person votes on a share of the papers. Each model votes on every paper.</p>
+        </Help>
+      }
+    >
+      {rows.length ? (
+        <div role="table" aria-label="Reviewers" className={cn(LIST, "@container/reviewers overflow-clip")}>
+          <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
+            <span role="columnheader">Reviewer</span>
+            <span role="columnheader" aria-sort={sort === "voted" ? "descending" : "none"}>{sortable("voted", "Papers voted on")}</span>
+            {DECISIONS.map((decision) => <span key={decision} role="columnheader" className="text-end">{DECISION_LABEL[decision]}</span>)}
+            <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
+              {sortable("agrees", "Agrees with majority")}
+              <Help title="Agrees with majority" side="bottom">
+                <p>On the papers every reviewer has voted on, how often this reviewer voted the way most of the others did. A low figure is a reviewer who reads the criteria differently from the rest.</p>
+                <p>Under a model, the papers the screening included that it voted to exclude.</p>
               </Help>
-              {[0.3, 0.6, 0.8, 1].map((k) => (
-                <span key={k} className="flex items-center gap-1 tabular-nums"><span className="size-3 rounded" style={{ backgroundColor: shade(k) }} />{k.toFixed(1)}</span>
-              ))}
             </span>
-          }
-        >
-          {rows.length > 1 && matrix.some((row) => row.some(Boolean)) ? (
-            <div className="overflow-x-auto rounded-2xl border border-border-subtle p-4">
-              <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(8rem, auto) repeat(${reviewers.length}, minmax(2.75rem, 1fr))` }}>
-                <span />
-                {reviewers.map((reviewer) => (
-                  <TooltipHint key={reviewer.id} label={reviewer.name}>
-                    <span tabIndex={0} className="flex justify-center pb-1"><ReviewerMark reviewer={reviewer} /></span>
-                  </TooltipHint>
-                ))}
-                {reviewers.map((a, row) => (
-                  <div key={a.id} className="contents">
-                    <span className="flex min-w-0 items-center gap-2 pe-3 text-xs"><ReviewerMark reviewer={a} className="size-5" /><span className="truncate">{a.name}</span></span>
-                    {reviewers.map((b, column) => {
-                      const pair = matrix[row]![column];
-                      // Each pair shows once, under the diagonal.
-                      if (column >= row) return <span key={b.id} className="h-11" />;
-                      if (!pair) {
-                        return (
-                          <TooltipHint key={b.id} label="They haven't voted on the same paper yet">
-                            <span tabIndex={0} className="h-11 rounded-lg border border-dashed border-border-subtle" />
-                          </TooltipHint>
-                        );
-                      }
-                      return (
-                        <TooltipHint key={b.id} label={`Same decision on ${Math.round(pair.same * 100)}% of the ${pair.papers} papers both voted on`}>
-                          <span tabIndex={0} className="flex h-11 items-center justify-center rounded-lg text-xs font-medium tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>
-                            {pair.kappa.toFixed(2)}
-                          </span>
-                        </TooltipHint>
-                      );
-                    })}
-                  </div>
-                ))}
+            <span role="columnheader"><span className="sr-only">Actions</span></span>
+          </div>
+          {groups.map((group) => (
+            <div key={group.label} role="rowgroup" className="divide-y divide-border-subtle border-t border-border-subtle first:border-t-0">
+              <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
+                <span role="cell">{group.label} <span className="font-normal tabular-nums text-muted-foreground">{group.rows.length}</span></span>
               </div>
+              {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} />)}
             </div>
-          ) : (
-            <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">How far the reviewers agree shows here once two of them have voted on the same papers.</p>
-          )}
-          {rows.length > 1 && matrix.some((row) => row.some(Boolean)) ? <p className="px-1 text-xs text-muted-foreground">Each square is two reviewers, on the papers both have voted on. 1.0 is the same vote every time, 0 is no better than chance.</p> : null}
-        </Zone>
-      </div>
-
-      <Flow open={open} onExport={onExport} />
-
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nobody votes on these papers yet. Add a person or a model from the row above.</p>
+      )}
       <ConfirmChange
         open={leaving !== null}
         title={leaving ? `Take ${leaving.name} off this screening?` : ""}
         confirm="Take off"
         onClose={() => setLeaving(null)}
-        onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectLines(screening, without(leaving)).slice(1), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
+        onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectItems(screening, without(leaving)).filter((line) => line.kind !== "leave").map(lineText), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
       >
         {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} /> : null}
       </ConfirmChange>
+    </Section>
+  );
+}
+
+type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number };
+
+/** One reviewer: the whole row opens the papers they voted on, and each count opens its own. */
+function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void }) {
+  const { screening } = open;
+  const { reviewer, assigned, done, split, agrees, compared, missed, included } = row;
+  const id = screening.id;
+  const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
+  const unread = unreadPapers.length;
+  const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
+  const held = open.outOfCredits ? { icon: Coins, text: "Stopped, out of credits" } : screening.paused ? { icon: CirclePause, text: "Paused" } : open.waitingFor ? { icon: Clock, text: "Waiting its turn" } : null;
+  const mine = reviewer.id === open.me;
+  // Above the row's own link, so a count or a menu opens itself and not the row.
+  const above = "relative z-[1]";
+  return (
+    <div role="row" className={cn(COLUMNS, "relative py-3 transition-colors hover:bg-muted/40")}>
+      <div role="cell" className="flex min-w-0 items-start gap-3 @max-2xl/reviewers:col-span-2">
+        <ReviewerMark reviewer={reviewer} className="size-8" />
+        <div className="min-w-0">
+          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className="flex min-w-0 text-sm font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:underline">
+            <ReviewerName reviewer={reviewer} you={mine} />
+          </NextLink>
+          {reviewer.kind === "model" ? (
+            <p className="flex min-w-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
+              {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
+              <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
+            </p>
+          ) : (
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : (personOf(reviewer.id)?.seen)}</p>
+          )}
+        </div>
+      </div>
+      <div role="cell" className="min-w-0 @max-2xl/reviewers:col-start-1 @max-2xl/reviewers:row-start-2">
+        <div className="flex items-center gap-3">
+          <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
+          <span className="shrink-0 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-16"><AnimatedNumber value={done} /> of {assigned}</span>
+        </div>
+        {/* The papers it got to and couldn't read, under how many it read: a second line no taller than the name and its credits, so a paper that fails while it reads moves nothing. */}
+        {unread ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className={cn(above, "mt-1 flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}><TriangleAlert className="size-3.5" />{unread} unread</Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 space-y-2.5 p-3 text-sm">
+              <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
+              <ul className="-mx-1 max-h-64 space-y-0.5 overflow-y-auto">
+                {unreadPapers.map((paper) => (
+                  <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title} ({paper.year})</span></NextLink></li>
+                ))}
+              </ul>
+              {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!))} credits</Button> : null}
+            </PopoverContent>
+          </Popover>
+        ) : null}
+      </div>
+      {DECISIONS.map((decision, i) => {
+        const Icon = RESULT_STYLE[decision].icon;
+        const inner = (
+          <>
+            <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
+            {split[i]}
+          </>
+        );
+        return (
+          <div key={decision} role="cell" className="flex justify-end @max-2xl/reviewers:hidden">
+            {split[i] ? (
+              <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: decision })} aria-label={`${split[i]} voted ${DECISION_LABEL[decision]}`} className={cn(above, "flex items-center gap-1 px-1.5 py-0.5 text-xs tabular-nums", ROW_LINK, "hover:bg-muted")}>{inner}</NextLink>
+            ) : (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground opacity-60">{inner}</span>
+            )}
+          </div>
+        );
+      })}
+      <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">None yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> agree</span></>}</p>
+        {reviewer.kind === "model" && included ? (
+          missed ? (
+            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>
+          ) : (
+            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of {included} included</p>
+          )
+        ) : agrees !== null ? (
+          <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">of {compared} papers</p>
+        ) : null}
+      </div>
+      <div role="cell" className="@max-2xl/reviewers:col-start-3 @max-2xl/reviewers:row-start-1">
+        {open.canChange ? (
+          <DropdownMenu>
+            <TooltipHint label="More">
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={cn(above, "size-8 text-muted-foreground")} aria-label={`More for ${reviewer.name}`}><MoreHorizontal /></Button>
+              </DropdownMenuTrigger>
+            </TooltipHint>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See their votes in Papers</NextLink></DropdownMenuItem>
+              {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
+              {reviewer.kind === "person" && !mine && done < assigned ? (
+                <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem variant="destructive" onSelect={() => onLeave(reviewer)}><Trash2 />Take off this screening</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-const UPDATE_PAGE = 4;
+// ── Agreement ────────────────────────────────────────────────────────────────────────────────────
 
-/**
- * New papers: whether the screening looks for them by itself, each time its sources were looked in
- * again and what that brought, and where those papers stand now. Looking again is one press.
- */
-function NewPapers({ open }: { open: Open }) {
-  const { screening, papers, settled } = open;
-  const [page, setPage] = useState(1);
-  const sources = growing(screening);
-  if (!sources.length) return null;
-  const updates = [...(screening.updates ?? [])].reverse();
-  const pager = pagerOf(updates.length + 1, UPDATE_PAGE, page, setPage);
-  const starter = personOf(screening.createdBy);
-  const fixed = screening.sources.length - sources.length;
-  // The row that says how it began closes the list, after every check.
-  const rows = [...updates.map((update) => ({ update })), { update: null }].slice((pager.page - 1) * UPDATE_PAGE, pager.page * UPDATE_PAGE);
+/** Cohen's kappa in four bands, from below chance-corrected fair agreement up to almost perfect. */
+const BANDS = [
+  { label: "Below 0.4", kappa: 0.2 },
+  { label: "0.4 to 0.6", kappa: 0.5 },
+  { label: "0.6 to 0.8", kappa: 0.7 },
+  { label: "0.8 and up", kappa: 0.9 },
+];
+const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
+
+function Agreement({ open }: { open: Open }) {
+  const { screening } = open;
+  const reviewers = activeReviewers(screening);
+  const pairs = useMemo(
+    () => reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: agreement(a.id, b.id, open) }))),
+    [reviewers, open],
+  );
+  if (reviewers.length < 2) return null;
+  const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
+  // Light's kappa: the mean of every pair's, the figure the squares add up to.
+  const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
+  const only = reviewers.length === 2 ? pairs[0]! : null;
+  const pairHref = (a: Reviewer, b: Reviewer) => papersHref(screening.id, { reviewer: a.id, with: b.id, sort: "split" });
+  const sameText = (pair: NonNullable<(typeof pairs)[number]["pair"]>) => `${Math.round(pair.same * 100)}% same`;
+
   return (
-    <Zone
-      label="New papers"
+    <Section
+      id="agreement"
+      title="Agreement between reviewers"
+      help={
+        <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>0.6 and up substantial</HelpFact></>}>
+          <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
+        </Help>
+      }
       aside={
-        <span className="flex flex-wrap items-center justify-end gap-2">
-          {screening.living ? (
-            <>
-              <Chip icon={RefreshCw} className="bg-success/12 ink-success">Living: looks {EVERY_LABEL[screening.living.every].toLowerCase()}</Chip>
-              <Chip>Next on {day(screening.living.next)}</Chip>
-            </>
-          ) : (
-            <Chip>Looks only when asked</Chip>
-          )}
-          {open.canChange ? (
-            <>
-              {!screening.living ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={settingsHref(screening.id, "new-papers")}>Look on a schedule</NextLink></Button> : null}
-              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Look now</Button>
-            </>
-          ) : null}
+        <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {BANDS.map((band) => (
+            <span key={band.label} className="flex items-center gap-1.5 whitespace-nowrap tabular-nums"><span className="size-3 rounded ring-1 ring-border-subtle ring-inset" style={{ backgroundColor: shade(band.kappa) }} />{band.label}</span>
+          ))}
         </span>
       }
     >
-      <div className="overflow-hidden rounded-2xl border border-border-subtle" style={{ minHeight: pager.pages > 1 ? UPDATE_PAGE * 57 : undefined }}>
-        <AnimatePresence initial={false}>
-        {rows.map(({ update }) => {
-          if (!update) {
-            return (
-              <div key="start" className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border-subtle px-4 py-2.5 first:border-t-0">
-                <ReviewerMark reviewer={{ kind: "person", name: starter?.name ?? "", imageUrl: starter?.imageUrl }} className="size-7 self-start" />
-                <div className="min-w-0 flex-1 basis-40">
-                  <p className="truncate text-sm font-medium">Started by {starter?.name ?? "someone"}</p>
-                  <p className="text-xs text-muted-foreground">{day(screening.createdAt)}</p>
+      {overall === null ? (
+        <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">How far the reviewers agree shows here once two of them have voted on the same papers.</p>
+      ) : (
+        <div className="space-y-3">
+          <NextLink href={only ? pairHref(only.a, only.b) : papersHref(screening.id, { sort: "split" })} className={cn("-mx-2 inline-flex items-center gap-3 px-2 py-1", ROW_LINK)}>
+            <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
+            <span className="text-sm">
+              <span className="font-medium">{only ? `${only.a.name} and ${only.b.name}` : "Overall agreement"}</span>
+              <span className="block text-xs text-muted-foreground">{only?.pair ? `${sameText(only.pair)} on ${only.pair.papers} papers` : `Across ${known.length} pairs of reviewers`}</span>
+            </span>
+            <ArrowRight aria-hidden className="size-4 text-muted-foreground" />
+          </NextLink>
+          {only ? null : (
+            <>
+              {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
+              <div className={cn(LIST, "overflow-x-auto p-4 @max-2xl/overview:hidden")}>
+                <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>
+                  <span />
+                  {reviewers.slice(0, -1).map((reviewer) => (
+                    <TooltipHint key={reviewer.id} label={reviewer.name}>
+                      <span tabIndex={0} aria-label={reviewer.name} className="flex justify-center rounded-md pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"><ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} /></span>
+                    </TooltipHint>
+                  ))}
+                  {reviewers.slice(1).map((a, i) => (
+                    <div key={a.id} className="contents">
+                      <NextLink href={papersHref(screening.id, { reviewer: a.id })} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></NextLink>
+                      {reviewers.slice(0, -1).map((b, column) => {
+                        if (column > i) return <span key={b.id} className="h-12" />;
+                        const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
+                        if (!pair) return <span key={b.id} className="flex h-12 items-center justify-center rounded-lg border border-dashed border-border-subtle text-2xs text-muted-foreground">None yet</span>;
+                        return (
+                          <NextLink key={b.id} href={pairHref(a, b)} aria-label={`${a.name} and ${b.name}: kappa ${pair.kappa.toFixed(2)}, same vote on ${Math.round(pair.same * 100)}% of ${pair.papers} papers`} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
+                            <span className="text-xs font-semibold tabular-nums">{pair.kappa.toFixed(2)}</span>
+                            <span className="text-2xs tabular-nums text-foreground/70">{sameText(pair)}</span>
+                          </NextLink>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
-                <Chip>{papers.filter((paper) => paper.batch === undefined).length.toLocaleString("en-GB")} papers from {screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</Chip>
-                {fixed ? <Chip>{fixed} {fixed === 1 ? "is an uploaded file or a pasted list, which gets" : "are uploaded files or pasted lists, which get"} no new papers</Chip> : null}
               </div>
-            );
-          }
-          const batch = papers.filter((paper) => paper.batch === update.at);
-          const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
-          for (const paper of batch) counts[settled[paper.id]!.result]++;
-          const who = update.by === SCHEDULE ? null : personOf(update.by);
-          return (
-            <motion.div key={update.at} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden border-t border-border-subtle first:border-t-0">
-            <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
-              {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7 self-start" /> : <span className="flex size-7 shrink-0 items-center justify-center self-start rounded-full bg-muted text-muted-foreground"><Clock className="size-3.5" /></span>}
-              <div className="min-w-0 flex-1 basis-40">
-                <p className="truncate text-sm font-medium">{who ? `${update.by === open.me ? "You" : who.name} looked` : "Scheduled check"}</p>
-                <p className="text-xs text-muted-foreground">{update.at > NOW ? "Just now" : day(update.at)}</p>
-                {/* Where the papers were found: each source that gained some, with how many. */}
-                {screening.sources.flatMap((source) => { const found = source.updates?.find((one) => one.at === update.at); return found ? [<p key={source.id} className="truncate text-xs text-muted-foreground">{found.added} in {source.name}</p>] : []; })}
-              </div>
-              {update.found ? (
-                <>
-                  <Chip>{update.found} found</Chip>
-                  {update.found - update.added ? <Chip>{update.found - update.added} already in it</Chip> : null}
-                  <Chip className="bg-success/12 ink-success">{update.added} added</Chip>
-                  <span className="w-28 max-sm:hidden"><ResultBar counts={counts} /></span>
-                  {batch.length ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={papersHref(screening.id, { added: String(update.at) })}>See them</NextLink></Button> : <Button variant="ghost" size="sm" className="h-7 text-xs" disabled>See them</Button>}
-                </>
-              ) : (
-                <Chip>Nothing new</Chip>
-              )}
-            </div>
-            </motion.div>
-          );
-        })}
-        </AnimatePresence>
-      </div>
-      {pager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={pager.page} totalPages={pager.pages} onPageChange={setPage} totalItems={pager.total} itemsPerPage={UPDATE_PAGE} itemLabel="looks" /> : null}
-    </Zone>
+              {/* On a phone, the same pairs as a list. */}
+              <ul className={cn(LIST, "@2xl/overview:hidden")}>
+                {pairs.map(({ a, b, pair }) => (
+                  <li key={`${a.id}:${b.id}`}>
+                    <NextLink href={pairHref(a, b)} className="flex items-center gap-3 px-4 py-2.5 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
+                      <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-6" /><ReviewerMark reviewer={a} className="-ms-1.5 size-6 ring-2 ring-card" /></span>
+                      <span className="min-w-0 flex-1 line-clamp-2">{b.name} and {a.name}</span>
+                      {pair ? <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{pair.kappa.toFixed(2)}</span> : <span className="shrink-0 text-xs text-muted-foreground">None yet</span>}
+                    </NextLink>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+    </Section>
   );
 }
 
-/** Who started it and where it lives, where its included papers go, and what its models have cost: what a person asks of a screening before its numbers. */
+// ── Facts ────────────────────────────────────────────────────────────────────────────────────────
+
+/** The facts about the screening, as wells beside the reviewers: who started it, where its included papers go, what its models cost, and its checks for new papers. */
 function Facts({ open }: { open: Open }) {
   const { screening, counts } = open;
   const store = useMock();
@@ -419,126 +545,268 @@ function Facts({ open }: { open: Open }) {
   const models = modelsOf(screening);
   const spent = models.reduce((sum, model) => sum + open.spent(model), 0);
   const most = models.reduce((sum, model) => sum + open.most(model), 0);
+  const left = workspace === HOME ? store.wallet : workspace.credits;
   const to = screening.destination;
   const collection = to.kind === "none" ? null : to.kind === "new" ? to.name || `Included in ${screening.name}` : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? "A collection");
-  const cell = "min-w-0 space-y-2 p-4";
+  // A collection of yours opens in the Library; one in a community opens in the communities.
+  const collectionHref = to.kind === "community" ? "/evidence-communities" : to.collection ? `/library?col=${to.collection}` : "/library";
   return (
-    <div className="grid grid-cols-1 divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle @3xl/overview:grid-cols-3 @3xl/overview:divide-x @3xl/overview:divide-y-0">
-      <div className={cell}>
-        <p className="text-xs text-muted-foreground">Started by</p>
-        <div className="flex items-center gap-2.5">
-          <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-8 self-start" />
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-sm font-medium"><span className="truncate">{starter?.name ?? "Someone"}</span>{screening.createdBy === open.me ? <YouTag /> : null}</p>
-            <p className="text-xs text-muted-foreground">{new Date(screening.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</p>
+    <div className="space-y-6">
+      <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
+        <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-6" />
+        <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={{ kind: "person", name: starter?.name ?? "Someone" }} you={screening.createdBy === open.me} className="font-medium" /></span>
+        <span className="text-muted-foreground">started it {ago(screening.createdAt)}</span>
+        <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} />
+      </Panel>
+
+      <Section
+        title="Included papers go to"
+        help={
+          <Help title="Where included papers go" facts={<><HelpFact>Saved as each is included</HelpFact>{to.prune ? <HelpFact>Excluded papers are taken out</HelpFact> : null}</>}>
+            <p>Each paper is saved to this collection when it is included.</p>
+          </Help>
+        }
+        aside={open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={settingsHref(screening.id, "goes-to")}>{collection ? "Change" : "Choose a collection"}</NextLink></Button> : null}
+      >
+        <Panel className="space-y-2.5">
+          {collection ? (
+            <NextLink href={collectionHref} className="flex items-start gap-2 text-sm font-medium underline-offset-2 outline-none hover:underline focus-visible:underline">
+              <Folder className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <span className="line-clamp-2">{collection}</span>
+            </NextLink>
+          ) : (
+            <p className="flex items-center gap-2 text-sm font-medium"><Ban className="size-4 shrink-0 text-muted-foreground" />Nowhere yet</p>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {collection ? (
+              <LinkChip href={collectionHref} tone="success" icon={RESULT_STYLE.include.icon}><AnimatedNumber value={counts.include} /> saved so far</LinkChip>
+            ) : (
+              <LinkChip href={papersHref(screening.id, { result: "include" })} tone="success" icon={RESULT_STYLE.include.icon}>{counts.include.toLocaleString("en-GB")} included, kept here</LinkChip>
+            )}
+          </div>
+        </Panel>
+      </Section>
+
+      <Section
+        title="Credits"
+        help={
+          <Help title="What a screening costs" facts={models.length ? models.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {credits(paperCredits(model.model!))} a paper</HelpFact>) : <HelpFact>People only</HelpFact>}>
+            <p>People screen for free. A model is paid for each paper it reads, from this workspace&apos;s credits.</p>
+          </Help>
+        }
+      >
+        <Panel className="space-y-2.5">
+          {models.length ? (
+            <>
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
+                  <AnimatedNumber value={Math.ceil(spent)} /> spent
+                  {open.reading.length && !screening.paused && !open.outOfCredits ? <AiIcon working className="size-3.5" /> : null}
+                </p>
+                <p className="text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `${credits(most)} once every paper is read` : "Every paper is read"}</p>
+              </div>
+              <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
+              <div className="flex flex-wrap gap-1.5">
+                <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip>
+                <Chip>{models.length} {models.length === 1 ? "model" : "models"}</Chip>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium">Nothing to pay</p>
+              <Chip>People only</Chip>
+            </div>
+          )}
+        </Panel>
+      </Section>
+
+      <Checks open={open} />
+    </div>
+  );
+}
+
+const RECENT_CHECKS = 3;
+
+/** Whether the screening checks its sources for new papers by itself, each check and what it brought, and the papers it started with. */
+function Checks({ open }: { open: Open }) {
+  const { screening, papers, settled } = open;
+  const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  const sources = growing(screening);
+  if (!sources.length) return null;
+  const all = [...(screening.updates ?? [])].reverse();
+  const shown = checks === "all" ? all : all.slice(0, RECENT_CHECKS);
+  const fixed = screening.sources.length - sources.length;
+  const atStart = papers.filter((paper) => paper.batch === undefined).length;
+  return (
+    <Section
+      id="new-papers"
+      title="Checks for new papers"
+      help={
+        <Help title="Checking for new papers" facts={<>{screening.living ? <><HelpFact icon={RefreshCw}>{EVERY_LABEL[screening.living.every]}</HelpFact><HelpFact>Next on {day(screening.living.next)}</HelpFact></> : <HelpFact>Only when asked</HelpFact>}{fixed ? <HelpFact>Skips {fixed} fixed {fixed === 1 ? "source" : "sources"}</HelpFact> : null}</>}>
+          <p>A check runs each source&apos;s search again and adds the papers this screening doesn&apos;t have yet. Uploaded files and pasted lists never change, so checks skip them.</p>
+        </Help>
+      }
+      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check now</Button> : null}
+    >
+      <Panel className="space-y-1 p-0">
+        <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
+          {screening.living ? (
+            <Chip icon={RefreshCw}>Checks {EVERY_LABEL[screening.living.every].toLowerCase()}, next {day(screening.living.next)}</Chip>
+          ) : (
+            <>
+              <Chip>Checks only when asked</Chip>
+              {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-xs"><NextLink href={settingsHref(screening.id, "new-papers")}>Check on a schedule</NextLink></Button> : null}
+            </>
+          )}
+        </div>
+        <div className="divide-y divide-border-subtle">
+          <AnimatePresence initial={false}>
+            {shown.map((update) => {
+              const batch = papers.filter((paper) => paper.batch === update.at);
+              const counts = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
+              for (const paper of batch) counts[settled[paper.id]!.result]++;
+              const who = update.by === SCHEDULE ? null : personOf(update.by);
+              const added = String(update.at);
+              return (
+                <motion.div key={update.at} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    {who ? <ReviewerMark reviewer={{ kind: "person", name: who.name, imageUrl: who.imageUrl }} className="size-7" /> : <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Clock className="size-3.5" /></span>}
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">{who ? `${update.by === open.me ? "You" : who.name} checked` : "Scheduled check"}</span><span className="text-xs text-muted-foreground">{ago(update.at)}</span></p>
+                      {update.found ? (
+                        <>
+                          {/* Each source that gained papers, with how many were new to the screening. */}
+                          {screening.sources.flatMap((source) => {
+                            const found = source.updates?.find((one) => one.at === update.at);
+                            const fresh = found ? found.added - found.duplicates : 0;
+                            return fresh ? [<NextLink key={source.id} href={papersHref(screening.id, { added, source: source.id })} className="block text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"><span className="line-clamp-2">{fresh} new from {source.name}</span></NextLink>] : [];
+                          })}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Chip>{update.found} found</Chip>
+                            {update.found - update.added ? <Chip>{update.found - update.added} already in it</Chip> : null}
+                            {update.added ? <LinkChip href={papersHref(screening.id, { added })} tone="primary">{update.added} added</LinkChip> : null}
+                          </div>
+                          {batch.length ? <ResultBar counts={counts} className="h-1.5" /> : null}
+                        </>
+                      ) : (
+                        <Chip>Nothing new</Chip>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+          {all.length > RECENT_CHECKS ? (
+            <div className="px-4 py-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => void setPlace({ checks: checks === "all" ? null : "all" })}>{checks === "all" ? "Show the last 3" : `See every check, ${all.length} in all`}</Button>
+            </div>
+          ) : null}
+          <div className="flex items-start gap-3 px-4 py-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">At the start</span><span className="text-xs text-muted-foreground">{ago(screening.createdAt)}</span></p>
+              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{atStart.toLocaleString("en-GB")} papers from {screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</LinkChip>
+            </div>
           </div>
         </div>
-        <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} />
-      </div>
-      <div className={cell}>
-        <p className="text-xs text-muted-foreground">Included papers go to</p>
-        <p className="flex items-center gap-2 text-sm font-medium">
-          {collection ? <Folder className="size-4 shrink-0 text-muted-foreground" /> : <Ban className="size-4 shrink-0 text-muted-foreground" />}
-          <span className="truncate">{collection ?? "Nowhere yet"}</span>
-        </p>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {collection ? <Chip icon={CircleCheck}><AnimatedNumber value={counts.include} /> saved so far</Chip> : null}
-          {collection ? <Chip>Saved as each is included</Chip> : <Chip>{counts.include} included, kept here</Chip>}
-          {to.prune ? <Chip>Excluded ones leave their collection</Chip> : null}
-          {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-xs"><NextLink href={settingsHref(screening.id, "goes-to")}>{collection ? "Change" : "Choose a collection"}</NextLink></Button> : null}
-        </div>
-      </div>
-      <div className={cell}>
-        <p className="text-xs text-muted-foreground">Credits</p>
-        {models.length ? (
-          <>
-            <div>
-              <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
-                <AnimatedNumber value={Math.ceil(spent)} /> spent
-                {open.reading.length && !screening.paused && !open.outOfCredits ? <AiIcon working className="size-3.5" /> : null}
-              </p>
-              <p className="truncate text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `${credits(most)} once every paper is read` : "Every paper is read"}</p>
-            </div>
-            <Meter value={spent} max={Math.max(most, 1)} />
-            <div className="flex flex-wrap gap-1.5">
-              <Chip icon={Coins}>{credits(workspace === HOME ? store.wallet : workspace.credits)} left in {workspace.name}</Chip>
-              <Chip>{models.length} {models.length === 1 ? "model" : "models"}</Chip>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-medium">Nothing to pay</p>
-            <div className="flex flex-wrap gap-1.5"><Chip>People only</Chip><Chip>A model costs credits for each paper it reads</Chip></div>
-          </>
-        )}
-      </div>
-    </div>
+      </Panel>
+    </Section>
   );
 }
 
-/** From 0.6, where agreement is called substantial, up to 1. */
-const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(8 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 52)}%, transparent)`);
+// ── Flow ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** A word that needs explaining, with the explanation one press away: a hint that only opens on hover is no use on a phone. */
-function Help({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="flex items-center justify-end gap-1 rounded-md text-end outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">{label}<CircleHelp className="size-3.5 shrink-0" /></button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-2 p-3 text-sm text-muted-foreground">{children}</PopoverContent>
-    </Popover>
-  );
-}
+type FlowRow = { key: string; label: ReactNode; value: number; href?: string; fill: string; indent?: boolean };
 
-/** Your own votes so far, where the page's totals don't show them yet: a paper settles once its other reviewers have voted too. */
-function Yours({ open }: { open: Open }) {
-  const mine = open.yours.flatMap((paper) => open.myVote(paper) ?? []);
-  const waiting = open.yours.filter((paper) => open.myVote(paper) && open.settled[paper.id]!.result === "waiting");
-  if (!mine.length || !waiting.length) return null;
-  const others = [...new Set(waiting.flatMap((paper) => open.votes[paper.id]!.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer.name)))];
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-inset px-3 py-2 text-sm">
-      <span className="font-medium">Your {mine.length.toLocaleString("en-GB")} {mine.length === 1 ? "vote" : "votes"}</span>
-      <Tally votes={mine} />
-      <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">{waiting.length.toLocaleString("en-GB")} of them {waiting.length === 1 ? "waits" : "wait"} for {others.slice(0, 2).join(" and ")}{others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote before {waiting.length === 1 ? "it settles" : "they settle"}.</span>
-    </div>
-  );
-}
-
-/** The counts from sources to included papers, left to right: what a flow diagram is drawn from. */
-function Flow({ open, onExport }: { open: Open; onExport: (what: "flow") => void }) {
+/** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, to screen, and included. Every count opens its papers. */
+function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, papers, votes, settled, counts } = open;
+  const id = screening.id;
   const found = screening.sources.reduce((sum, source) => sum + taken(source), 0);
   const kept = screening.sources.reduce((sum, source) => sum + keptOf(source), 0);
-  // Papers still on their way from its sources are counted as waiting, so the last column adds up to the one before it.
+  const arriving = open.gathering ? kept - papers.length : 0;
   const tally = new Map<string, number>();
   for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
-  const reasons = [...tally].sort((a, b) => b[1] - a[1]).map(([key, value]) => ({ label: `Excluded, ${failedLabel(key, screening.criteria).replace(/^Not met/, "not met")}`, value }));
-  const shown = [
-    { title: "Found", total: found, rows: screening.sources.map((source) => ({ label: source.name, value: taken(source) })) },
-    { title: "To screen", total: kept, note: "after duplicates", rows: [{ label: "Duplicates merged", value: found - kept }] },
-    { title: "Title and abstract", total: counts.include, note: "included", rows: [...reasons, { label: "Left as maybe", value: counts.maybe }, { label: "In conflict or waiting", value: counts.conflict + counts.waiting + (kept - papers.length) }] },
+  const reasons = [...tally].sort((a, b) => b[1] - a[1]);
+  const neutral = "bg-foreground/25";
+  const steps: Array<{ title: string; total: number; href?: string; rows: FlowRow[] }> = [
+    { title: "Found", total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
+    {
+      title: "Duplicates merged",
+      total: found - kept,
+      href: settingsHref(id, "papers"),
+      rows: screening.sources.flatMap((source) => (taken(source) - keptOf(source) ? [{ key: source.id, label: source.name, value: taken(source) - keptOf(source), href: settingsHref(id, "papers"), fill: neutral }] : [])),
+    },
+    {
+      title: "To screen",
+      total: kept,
+      href: papersHref(id),
+      rows: [
+        { key: "exclude", label: RESULT_LABEL.exclude, value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar },
+        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, indent: true })),
+        { key: "maybe", label: RESULT_LABEL.maybe, value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar },
+        { key: "conflict", label: RESULT_LABEL.conflict, value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar },
+        { key: "waiting", label: RESULT_LABEL.waiting, value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: HATCH },
+        // Papers still on their way from its sources have nowhere to open yet.
+        ...(open.gathering ? [{ key: "arriving", label: "Still arriving", value: arriving, fill: HATCH }] : []),
+      ],
+    },
+    {
+      title: "Included",
+      total: counts.include,
+      href: papersHref(id, { result: "include" }),
+      rows: screening.sources.flatMap((source) => {
+        const value = count(papers, (paper) => paper.source === source.id && settled[paper.id]!.result === "include");
+        return value ? [{ key: source.id, label: source.name, value, href: papersHref(id, { result: "include", source: source.id }), fill: RESULT_STYLE.include.bar }] : [];
+      }),
+    },
   ];
   return (
-    <Zone label="Flow" aside={<Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onExport("flow")}><Download />Get it as a flow diagram</Button>}>
-      <div className="grid grid-cols-1 divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle @3xl/overview:grid-cols-3 @3xl/overview:divide-x @3xl/overview:divide-y-0">
-        {shown.map((step, i) => (
-          <div key={step.title} className="relative space-y-3 p-4">
-            <p className="text-xs text-muted-foreground">{step.title}</p>
-            <p className="flex items-baseline gap-2"><span className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></span>{step.note ? <span className="text-xs text-muted-foreground">{step.note}</span> : null}</p>
-            <ul className="space-y-2">
-              {step.rows.map((row) => (
-                <li key={row.label} className="space-y-1">
-                  <p className="flex items-baseline justify-between gap-3 text-xs"><span className="truncate text-muted-foreground">{row.label}</span><span className="shrink-0 font-medium tabular-nums">{row.value}</span></p>
-                  <Meter value={row.value} max={Math.max(found, 1)} fill="bg-foreground/25" className="h-1" />
-                </li>
-              ))}
+    <Section
+      id="flow"
+      title="PRISMA flow"
+      help={
+        <Help title="PRISMA flow" facts={<><HelpFact>Title and abstract</HelpFact><HelpFact>{screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</HelpFact></>}>
+          <p>The counts a review&apos;s PRISMA diagram is drawn from, from the papers its sources found to the ones it included.</p>
+        </Help>
+      }
+      aside={<Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onExport("flow")}><Download />Download diagram</Button>}
+    >
+      <div className="grid grid-cols-1 divide-y divide-border-subtle rounded-2xl border border-border-subtle @3xl/overview:grid-cols-4 @3xl/overview:divide-x @3xl/overview:divide-y-0">
+        {steps.map((step, i) => (
+          <div key={step.title} className="relative min-w-0 space-y-3 p-4">
+            {step.href ? (
+              <NextLink href={step.href} className={cn("-mx-2 -my-1 block px-2 py-1", ROW_LINK)}>
+                <p className="text-xs text-muted-foreground">{step.title}</p>
+                <p className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></p>
+              </NextLink>
+            ) : (
+              <div>
+                <p className="text-xs text-muted-foreground">{step.title}</p>
+                <p className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></p>
+              </div>
+            )}
+            {step.rows.length ? null : <p className="text-xs text-muted-foreground">None</p>}
+            <ul className="-mx-2 space-y-0.5">
+              {step.rows.map((row) => {
+                const inner = (
+                  <>
+                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 text-muted-foreground", row.indent && "ps-3")}>{row.label}</span><span className="shrink-0 font-medium tabular-nums">{row.value.toLocaleString("en-GB")}</span></span>
+                    <Meter value={row.value} max={Math.max(found, 1)} fill={row.fill} className={cn("h-1", row.indent && "ms-3 w-[calc(100%-0.75rem)]")} />
+                  </>
+                );
+                return (
+                  <li key={row.key}>
+                    {row.href ? <NextLink href={row.href} className={cn("block space-y-1 px-2 py-1.5", ROW_LINK)}>{inner}</NextLink> : <div className="space-y-1 px-2 py-1.5">{inner}</div>}
+                  </li>
+                );
+              })}
             </ul>
-            {i < shown.length - 1 ? <ArrowRight aria-hidden className="absolute -end-2 top-4 z-10 hidden size-4 rounded-full bg-card text-muted-foreground @3xl/overview:block" /> : null}
+            {i < steps.length - 1 ? <ArrowRight aria-hidden className="absolute -end-2 top-5 z-10 hidden size-4 rounded-full bg-card text-muted-foreground @3xl/overview:block" /> : null}
           </div>
         ))}
       </div>
-    </Zone>
+    </Section>
   );
 }

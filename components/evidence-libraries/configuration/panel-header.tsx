@@ -82,7 +82,7 @@ export function PanelHeader({
             />
           ) : icon}
           {trail?.length ? (
-            <nav aria-label="Breadcrumb" className="hidden min-w-0 shrink items-center @3xl:flex">
+            <nav aria-label="Breadcrumb" className="hidden shrink-0 items-center @3xl:flex">
               <ol className="flex min-w-0 items-center gap-2">
                 {trail.map((crumb) => (
                   <li key={crumb.href} className="flex min-w-0 items-center gap-2">

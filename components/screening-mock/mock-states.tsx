@@ -9,6 +9,7 @@ import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { PEOPLE } from "./data";
 import { KEPT, credits, seeded, useMock } from "./store";
@@ -33,13 +34,15 @@ export function MockStates() {
   );
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="fixed end-3 top-0.5 z-50 h-7 rounded-full border-dashed bg-card text-xs">
-          <FlaskConical />
-          Mock states
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent side="bottom" align="end" className={`w-80 space-y-3 p-3 ${AVATARS_FADE_IN}`}>
+      {/* Bottom left, clear of the assistant's button: on a wide screen in the sidebar's empty foot, above the account. */}
+      <TooltipHint label="Mock states">
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" aria-label="Mock states" className="fixed bottom-3 start-3 z-50 size-8 rounded-full border-dashed bg-card lg:bottom-[4.75rem] lg:start-6">
+            <FlaskConical />
+          </Button>
+        </PopoverTrigger>
+      </TooltipHint>
+      <PopoverContent side="top" align="start" className={`w-80 space-y-3 p-3 ${AVATARS_FADE_IN}`}>
         <p className="px-1 text-xs text-muted-foreground">Only in this mock: switch what real data would decide.</p>
         <div role="radiogroup" aria-label="See it as" className="space-y-0.5">
           <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">See it as</p>

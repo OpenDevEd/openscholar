@@ -9,26 +9,26 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evi
   search: [
     { name: "structured pedagogy AND early grade reading", detail: "Searched yesterday", total: 318, filters: ["2010 to 2026", "Articles", "Open access"], questions: ["Does the study report reading outcomes?", "Was the programme delivered by government teachers?"] },
     { name: "teaching at the right level", detail: "Searched 3 days ago", total: 96, filters: ["2015 to 2026"] },
-    { name: "school feeding AND learning outcomes", detail: "Searched last week", total: 207, filters: ["Articles and reviews", "English"] },
-    { name: "tablet OR software AND literacy AND primary school", detail: "Searched last week", total: 75, questions: ["Is the intervention delivered with digital technology?"] },
-    { name: "EdTech numeracy sub-Saharan Africa", detail: "Searched 2 weeks ago", total: 38 },
-    { name: "mother tongue instruction AND reading fluency", detail: "Searched 2 weeks ago", total: 164 },
-    { name: "teacher coaching AND classroom practice", detail: "Searched 3 weeks ago", total: 251, filters: ["2018 to 2026", "Open access"] },
-    { name: "cash transfer AND girls AND secondary school", detail: "Searched last month", total: 240 },
-    { name: "home visiting AND early childhood development", detail: "Searched last month", total: 380 },
-    { name: "radio instruction AND primary education", detail: "Searched last month", total: 52 },
-    { name: "TVET AND youth employment AND Africa", detail: "Searched 2 months ago", total: 412 },
-    { name: "remedial education AND randomised", detail: "Searched 2 months ago", total: 133 },
+    { name: "school feeding AND learning outcomes", detail: "Searched 16 Nov", total: 207, filters: ["Articles and reviews", "English"] },
+    { name: "tablet OR software AND literacy AND primary school", detail: "Searched 16 Nov", total: 75, questions: ["Is the intervention delivered with digital technology?"] },
+    { name: "EdTech numeracy sub-Saharan Africa", detail: "Searched 9 Nov", total: 38 },
+    { name: "mother tongue instruction AND reading fluency", detail: "Searched 9 Nov", total: 164 },
+    { name: "teacher coaching AND classroom practice", detail: "Searched 2 Nov", total: 251, filters: ["2018 to 2026", "Open access"] },
+    { name: "cash transfer AND girls AND secondary school", detail: "Searched 20 Oct", total: 240 },
+    { name: "home visiting AND early childhood development", detail: "Searched 20 Oct", total: 380 },
+    { name: "radio instruction AND primary education", detail: "Searched 20 Oct", total: 52 },
+    { name: "TVET AND youth employment AND Africa", detail: "Searched 22 Sep", total: 412 },
+    { name: "remedial education AND randomised", detail: "Searched 22 Sep", total: 133 },
   ],
   collection: [
     { name: "All saved papers", detail: "This workspace's library", total: 412, kind: "saved" },
-    { name: "Foundational learning, core set", detail: "64 papers", total: 64 },
-    { name: "To read: numeracy", detail: "23 papers", total: 23 },
-    { name: "Skills and work, shared reading", detail: "148 papers", total: 148 },
-    { name: "Climate and schooling", detail: "188 papers", total: 188 },
-    { name: "Girls' education, 2020 onwards", detail: "71 papers", total: 71 },
-    { name: "Methods: cluster trials", detail: "12 papers", total: 12 },
-    { name: "Empty for now", detail: "No papers yet", total: 0 },
+    { name: "Foundational learning, core set", detail: "Yours, updated 2 days ago", total: 64 },
+    { name: "To read: numeracy", detail: "Yours, updated yesterday", total: 23 },
+    { name: "Skills and work, shared reading", detail: "Shared by Jonas Becker", total: 148 },
+    { name: "Climate and schooling", detail: "Shared by Thandiwe Nkosi", total: 188 },
+    { name: "Girls' education, 2020 onwards", detail: "Yours, updated 12 Nov", total: 71 },
+    { name: "Methods: cluster trials", detail: "Shared by Kwame Mensah", total: 12 },
+    { name: "Empty for now", detail: "Yours, made 3 Nov", total: 0 },
   ],
   screening: [
     { name: "Included in TVET and youth employment", detail: "Finished screening", total: 61 },
@@ -44,11 +44,12 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evi
 
 /** What a community offers to screen: all of it, its own collections, yours in it, and the ones shared with you. */
 export type CommunityRow = { name: string; total: number; group: "yours" | "shared" | "library"; access?: "editor" | "viewer"; private?: boolean; parent?: string; pasted?: boolean };
-export const COMMUNITIES: Array<{ id: string; name: string; role: string; records: number; rows: CommunityRow[] }> = [
+export const COMMUNITIES: Array<{ id: string; name: string; role: string; records: number; /** Where the community lives: its collections open under it. */ address: string; rows: CommunityRow[] }> = [
   {
     id: "hub",
     name: "EdTech Hub Evidence Community",
     role: "Editor",
+    address: "https://edtechhub.openscholar.ai",
     records: 1280,
     rows: [
       { name: "Every record in EdTech Hub Evidence Community", total: 1280, group: "library" },
@@ -65,6 +66,7 @@ export const COMMUNITIES: Array<{ id: string; name: string; role: string; record
     id: "aerd",
     name: "African Education Research Database",
     role: "Viewer",
+    address: "https://aerd.openscholar.ai",
     records: 2140,
     rows: [
       { name: "Every record in African Education Research Database", total: 2140, group: "library" },

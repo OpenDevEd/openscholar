@@ -3,56 +3,59 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, use, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useParams, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
+import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
-import { EASE, NodeCard } from "@/components/settings/model-map";
+import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
-import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
-import { EffectList, effectLines, effectMoves, movesText } from "./effects";
+import { cn } from "@/lib/utils";
+import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
+import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
-import { ReviewerStack } from "./parts";
+import { useScreeningOverlays } from "./overlays";
+import { Help, ReviewerMark, TONE, type Tone } from "./parts";
 import { credits, paperCredits, useMock, useModelsReading, useOpenScreening, type Open } from "./store";
-import { AddModel, AddPerson, ConfirmChange } from "./team";
+import { AddModel, AddPerson } from "./team";
 
 type View = "overview" | "screen" | "papers" | "settings";
 
-/** What the frame gives the page inside it: the screening as the person sees it, and the way to open its export. */
-const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void } | null>(null);
+/** What the frame gives the page inside it: the screening as the person sees it, and the ways to open what opens over it. */
+const Workspace = createContext<{ open: Open; exportTo: (tab: ExportTab) => void; finish: () => void; openActivity: () => void } | null>(null);
 export function useWorkspace() {
   const workspace = use(Workspace);
   if (!workspace) throw new Error("A screening's page is shown inside its frame");
   return workspace;
 }
 
-/** How a paper is decided here, as the three facts the row under the bar shows. */
+/** A name or a count inside a sentence that opens what it stands for. */
+const INLINE_LINK = "rounded-sm font-medium text-foreground underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
+
+/** How a paper is decided here, in the words the settings use. */
 function ruleFacts(screening: Screening) {
   const [people, models] = [peopleOf(screening).length, modelsOf(screening).length];
   const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
-  const readers = [models ? (models === 1 ? "The model" : `All ${models} models`) : null, each ? `${each} ${each === 1 ? "person" : "people"}` : null].filter(Boolean).join(" and ");
+  const readers = [each ? (each < people ? `${each} of ${people} people` : `${people} ${people === 1 ? "person" : "people"}`) : null, models ? `${models} ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(", ");
   return {
-    who: [each ? (each < people ? `${each} of ${people} people a paper` : `${people} ${people === 1 ? "person" : "people"}`) : null, models ? `${models} ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(", ") || "No reviewer",
-    whoMeans: readers ? `${readers} read each paper` : "Nobody reads the papers yet",
-    when: screening.rule.settle === "all" ? "All agree" : screening.rule.settle === "most" ? "Most agree" : "One vote",
-    whenMeans: screening.rule.settle === "all" ? "A paper is settled when all its reviewers agree. Any disagreement is a conflict." : screening.rule.settle === "most" ? "A paper is settled by more than half of its reviewers. An even split is a conflict." : "The first vote on a paper settles it.",
-    see: screening.rule.blind === "after" ? "Blind" : "Open",
-    seeMeans: screening.rule.blind === "after" ? "People see a paper's other votes only once they have cast their own." : "People see every vote as it is cast.",
+    who: readers || "No reviewer yet",
+    whoIcon: each ? Users : AiIcon,
+    when: screening.rule.settle === "all" ? "All agree" : screening.rule.settle === "most" ? "Most agree" : "One has voted",
+    see: screening.rule.blind === "after" ? "Votes hidden until you vote" : "Votes visible to all",
+    seeIcon: screening.rule.blind === "after" ? Lock : Eye,
   };
 }
 
@@ -65,15 +68,13 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const view: View = segment === "screen" || segment === "papers" || segment === "settings" ? segment : "overview";
   const open = useOpenScreening(id);
   useModelsReading(id);
-  const [over, setOver] = useState<"activity" | "export" | "share" | "move" | "finish" | "delete" | null>(null);
-  const [adding, setAdding] = useState<Reviewer | null>(null);
-  // A reviewer being made a viewer from Share: they stop voting, and keep seeing it.
-  const [demoting, setDemoting] = useState<Reviewer | null>(null);
+  // A deleted screening's page is left for good: Back does not return to it.
+  const overlays = useScreeningOverlays(open, { onDeleted: () => router.replace(SCREENINGS) });
 
   if (!open) {
     return (
       <PageWrapper>
-        <LibraryPageShell icon={ListChecks} title="Not found" trail={[SCREENINGS_CRUMB]}>
+        <LibraryPageShell wide icon={ListChecks} title="Not found" trail={[SCREENINGS_CRUMB]}>
           <ListEmpty icon={Unlink}>This screening was deleted, or isn&apos;t shared with you</ListEmpty>
           <MockStates />
         </LibraryPageShell>
@@ -85,71 +86,82 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const facts = ruleFacts(screening);
   const reviewers = activeReviewers(screening);
   const total = open.papers.length;
-  const unsettled = open.counts.conflict + open.counts.waiting;
   const workspace = workspaceOf(screening);
-  // On Screen and in the settings a row that came and went would move what is being read or changed.
-  const banner = bannerKind(open, view === "screen" || view === "settings");
+  const resolver = personOf(screening.rule.resolver);
+  // On Screen a row that came and went would move the paper being read.
+  const banner = bannerKind(open, view === "screen");
   const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).length;
   // Changes to its settings that were started and not saved.
   const unsaved = Boolean(store.drafts[id]);
-  const [exportTab, setExportTab] = useState<ExportTab>("papers");
-  const withAdded = (reviewer: Reviewer): Screening => ({
-    ...screening,
-    reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer],
-    viewers: screening.viewers?.filter((one) => one.id !== reviewer.id),
-    reached: { ...screening.reached, [reviewer.id]: 0 },
-  });
-  // A person joins at once when nothing they do can move a result; a model always says what it costs first.
-  const add = (reviewer: Reviewer) => setAdding(reviewer);
-  // On a phone the bar keeps the title and one menu, which holds what the bar's buttons do.
-  const phoneItems = (
-    <>
-      <DropdownMenuItem className="sm:hidden" onSelect={() => setOver("activity")}><History />Activity</DropdownMenuItem>
-      <DropdownMenuItem className="sm:hidden" onSelect={() => setOver("export")}><Download />Export</DropdownMenuItem>
-      <DropdownMenuItem className="sm:hidden" onSelect={() => setOver("share")}><Share2 />Share</DropdownMenuItem>
-      <DropdownMenuSeparator className="sm:hidden" />
-    </>
-  );
-  const demoted = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)), viewers: [...(screening.viewers ?? []), { ...reviewer, left: undefined }] });
+  // A member who isn't one of its reviewers can join it.
+  const canJoin = !open.isReviewer && open.canChange && !screening.finishedAt;
+  const resume = () => store.update(id, (s) => ({ ...s, paused: false }), { what: "Resumed the models" });
+  const reopen = () => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" });
 
-  // The screening's menu: in the bar, and on a phone at the end of the row under it, where the bar keeps to the title.
-  const more = (className: string) => (
+  const pages = (fill: boolean) => (
+    <Segmented
+      label="Pages of this screening"
+      value={view}
+      fill={fill ? "labels" : false}
+      options={[
+        { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
+        { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
+        { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{total}</span> },
+        { id: "settings", label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <span className="rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : undefined },
+      ]}
+    />
+  );
+
+  // The screening's menu. On a phone the bar keeps the title and this menu, which then also holds what the bar's buttons do.
+  const more = (
     <DropdownMenu>
       <TooltipHint label="More">
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className={`size-8 text-muted-foreground ${className}`} aria-label="More"><MoreHorizontal /></Button>
+          <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label="More"><MoreHorizontal /></Button>
         </DropdownMenuTrigger>
       </TooltipHint>
-      {/* Someone it is shared with from outside can start their own from it, and nothing else here. */}
-      {!open.canChange ? (
-        <DropdownMenuContent align="end" className="w-64">
-          {phoneItems}
-          <DropdownMenuItem onSelect={() => router.push(newHref(id))}><Copy />Start your own with these settings</DropdownMenuItem>
-        </DropdownMenuContent>
-      ) : (
-      <DropdownMenuContent align="end" className="w-56">
-        {phoneItems}
-        {screening.finishedAt ? (
-          <DropdownMenuItem onSelect={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onSelect={() => setOver("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
-        )}
-        {modelsOf(screening).length && !screening.finishedAt ? (
-          screening.paused ? (
-            <DropdownMenuItem onSelect={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })}><Play />Let the models read on</DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onSelect={() => store.update(id, (s) => ({ ...s, paused: true }), { what: "Paused the models", effect: "They spend nothing until they are let on" })}><CirclePause />Pause the models</DropdownMenuItem>
-          )
+      <DropdownMenuContent align="end" className="w-72 [&_[role=menuitem]]:whitespace-nowrap">
+        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("activity")}><History />Activity</DropdownMenuItem>
+        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("export")}><Download />Export</DropdownMenuItem>
+        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("share")}><Share2 />Share</DropdownMenuItem>
+        <DropdownMenuSeparator className="sm:hidden" />
+        {canJoin ? <DropdownMenuItem onSelect={open.join}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
+        {/* Someone it is shared with from outside can start their own from it, and nothing else here. */}
+        {open.canChange ? (
+          <>
+            {screening.finishedAt ? (
+              <DropdownMenuItem onSelect={reopen}><RotateCcw />Reopen</DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => overlays.show("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
+            )}
+            {modelsOf(screening).length && !screening.finishedAt ? (
+              screening.paused ? (
+                <DropdownMenuItem onSelect={resume}><Play />Resume models</DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => store.update(id, (s) => ({ ...s, paused: true }), { what: "Paused the models" })}><CirclePause />Pause models</DropdownMenuItem>
+              )
+            ) : null}
+            {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
+          </>
         ) : null}
-        <DropdownMenuItem onSelect={() => router.push(newHref(id))}><Copy />Run again with these settings</DropdownMenuItem>
-        {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Look for new papers now</DropdownMenuItem> : null}
-        <DropdownMenuItem onSelect={() => setOver("move")}><Move />Move to another workspace</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => setOver("delete")}><Trash2 />Delete</DropdownMenuItem>
+        <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />New screening with these settings</NextLink></DropdownMenuItem>
+        {open.canChange ? (
+          <>
+            <DropdownMenuItem onSelect={() => overlays.show("move")}><Move />Move to another workspace</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => overlays.show("delete")}><Trash2 />Delete</DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
-      )}
     </DropdownMenu>
   );
+
+  // Who the person looking is to it, where that is less than a reviewer who can change it.
+  const role = !open.isReviewer
+    ? { label: "Viewer", icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so no paper is dealt to you." : `${workspace.name} shared it with you. You see every paper and every vote, and no paper is dealt to you.` }
+    : !open.canChange
+      ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers dealt to you. Only ${workspace.name}'s members change its settings.` }
+      : null;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -162,183 +174,156 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             title={screening.name}
             trail={[SCREENINGS_CRUMB]}
             titleAside={
-              screening.finishedAt || workspace !== HOME ? (
-                <>
-                  {screening.finishedAt ? <Chip icon={CircleCheck} className="bg-success/12 ink-success">Finished</Chip> : null}
-                  {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
-                </>
-              ) : null
-            }
-            tabs={
-              <Segmented
-                label="Pages of this screening"
-                value={view}
-                options={[
-                  { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
-                  { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
-                  { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{total}</span> },
-                  { id: "settings", label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <span className="rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : undefined },
-                ]}
-              />
+              <>
+                {role ? (
+                  <span className="flex items-center gap-0.5">
+                    <Chip icon={role.icon}>{role.label}</Chip>
+                    <Help title={role.label}>{role.text}</Help>
+                  </span>
+                ) : null}
+                {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
+                {/* The pages, in the bar from a tablet up. The view takes the card's white, as the bar's other wells do. */}
+                <div className="ms-2 hidden border-s border-border-subtle ps-4 not-dark:[--inset:var(--card)] @3xl:block">{pages(false)}</div>
+                {/* On a phone the menu ends the title's row, as an app bar's does. */}
+                <span className="flex sm:hidden">{more}</span>
+              </>
             }
             actions={
               <>
-                <TooltipHint label="Activity">
-                  <Button variant="ghost" size="icon" className="size-8 text-muted-foreground max-sm:hidden" aria-label="Activity" onClick={() => setOver("activity")}><History /></Button>
-                </TooltipHint>
-                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} onClick={() => setOver("export")}><Download /><span className={BAR_LABEL}>Export</span></Button>
-                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} aria-label="Share this screening" onClick={() => setOver("share")}>
+                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} onClick={() => overlays.show("activity")}><History /><span className={BAR_LABEL}>Activity</span></Button>
+                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} onClick={() => overlays.show("export")}><Download /><span className={BAR_LABEL}>Export</span></Button>
+                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} aria-label={`Share, ${shared} ${shared === 1 ? "person" : "people"}`} onClick={() => overlays.show("share")}>
                   <Share2 /><span className={BAR_LABEL}>Share</span>
                   {shared ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{shared}</span> : null}
                 </Button>
-                {more("max-sm:hidden")}
+                <span className="flex max-sm:hidden">{more}</span>
               </>
             }
             intro={
               <>
-                {/* In the settings the same facts are the form itself: the row keeps only a phone's menu. */}
-                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6 ${view === "settings" ? "sm:hidden [&>:not([data-more])]:hidden" : ""}`}>
-                  {/* How a paper is decided here, in three facts. They open the place where each is set. */}
-                  <NextLink href={settingsHref(id, "decided")} className="flex min-w-0 items-center gap-1.5 rounded-lg outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
-                    <TooltipHint label={facts.whoMeans}><span className="flex rounded-md"><Chip icon={Users}>{facts.who}</Chip></span></TooltipHint>
-                    <TooltipHint label={facts.whenMeans}><span className="flex rounded-md"><Chip icon={Check}>{facts.when}</Chip></span></TooltipHint>
-                    <TooltipHint label={facts.seeMeans}><span className="flex rounded-md"><Chip icon={Eye}>{facts.see}</Chip></span></TooltipHint>
-                  </NextLink>
-                  {/* A living screening says so, and when it next looks for papers. */}
-                  {screening.living ? (
-                    <NextLink href={settingsHref(id, "new-papers")} className="flex rounded-md outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
-                      <TooltipHint label={`A living screening: it looks in its sources again ${EVERY_LABEL[screening.living.every].toLowerCase()}, and screens what is new. Next on ${day(screening.living.next)}.`}>
-                        <span className="flex rounded-md"><Chip icon={RefreshCw} className="bg-success/12 ink-success">Living, next {day(screening.living.next)}</Chip></span>
-                      </TooltipHint>
-                    </NextLink>
-                  ) : null}
-                  <span data-more className="ms-auto flex sm:hidden">{more("")}</span>
-                  <div className={`flex items-center gap-2 max-sm:w-full sm:ms-auto ${view === "screen" ? "max-lg:hidden" : ""}`}>
-                    <ReviewerStack reviewers={reviewers} />
-                    {open.canChange ? (
-                      <>
-                        <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
-                          <Button variant="ghost" size="sm" className="h-8 text-xs"><UserPlus />Person</Button>
-                        </AddPerson>
-                        <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => add(modelReviewer(model, Date.now()))}>
-                          <Button variant="ghost" size="sm" className="h-8 text-xs"><Plus />Model</Button>
-                        </AddModel>
-                      </>
-                    ) : null}
+                {/* On a phone or a small tablet the pages sit right under the title, above everything they hold. */}
+                <div className="border-b border-border-subtle px-4 py-3 @3xl:hidden">{pages(true)}</div>
+                {/* How a paper is decided, and who decides it. In the settings the form itself says the same. */}
+                {view === "settings" ? null : (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 sm:px-6">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="me-1 flex items-center gap-1 text-sm font-medium">
+                        How a paper is decided
+                        <Help
+                          title="How a paper is decided"
+                          facts={
+                            <>
+                              {screening.rule.settle !== "one" && resolver ? <HelpFact icon={Users}>Conflicts go to {resolver.name}</HelpFact> : null}
+                              {screening.living ? <HelpFact icon={RefreshCw}>Checks for new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</HelpFact> : null}
+                            </>
+                          }
+                        >
+                          <p>Each paper gets the votes named in these chips, and the rule settles it once they are in.</p>
+                          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>When its reviewers split, the paper is in conflict until {resolver?.name ?? "a person"} settles it.</p>}
+                          {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
+                        </Help>
+                      </span>
+                      <Chip icon={facts.whoIcon}>{facts.who}</Chip>
+                      <Chip icon={Check}>{facts.when}</Chip>
+                      <Chip icon={facts.seeIcon}>{facts.see}</Chip>
+                      {screening.living ? <Chip icon={RefreshCw}>Living, next check {day(screening.living.next)}</Chip> : null}
+                      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
+                    </div>
+                    <div className={cn("flex flex-wrap items-center gap-2 max-sm:w-full sm:ms-auto", view === "screen" && "max-lg:hidden")}>
+                      <Faces id={id} reviewers={reviewers} me={open.me} />
+                      {canJoin ? <Button variant="outline" size="sm" className="h-8 text-xs max-sm:ms-auto" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
+                      {open.canChange ? (
+                        <>
+                          <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
+                            <Button variant="outline" size="sm" className={cn("h-8 text-xs", !canJoin && "max-sm:ms-auto")}><UserPlus />Add person</Button>
+                          </AddPerson>
+                          <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => overlays.add(modelReviewer(model, Date.now()))}>
+                            <Button variant="outline" size="sm" className="h-8 text-xs"><AiIcon />Add model</Button>
+                          </AddModel>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                )}
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => router.push(screenHref(id, { order: "fresh" }))} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={reopen} onResume={resume} />
                 </AutoHeight>
               </>
             }
           >
             {/* Each page rises in as it opens. */}
             <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
-              <Workspace value={{ open, exportTo: (tab) => { setExportTab(tab); setOver("export"); } }}>{children}</Workspace>
+              <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity") }}>{children}</Workspace>
             </motion.div>
           </LibraryPageShell>
         </div>
 
-        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} state={open} onPaper={(paper) => router.push(screenHref(id, { queue: "done", paper }))} />
-        <ExportDialog open={over === "export"} onClose={() => setOver(null)} state={open} tab={exportTab} onTab={setExportTab} />
-        <ShareDialog open={over === "share"} onClose={() => setOver(null)} state={open} onPromote={(viewer) => { setOver(null); setAdding({ ...viewer, addedAt: Date.now() }); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
-        <MoveDialog open={over === "move"} onClose={() => setOver(null)} screening={screening} me={open.me} onMove={(to, what) => open.update((s) => ({ ...s, workspace: to }), { what })} />
-        <ConfirmChange
-          open={demoting !== null}
-          title={demoting ? `Stop ${demoting.name} voting?` : ""}
-          confirm="Make them a viewer"
-          onClose={() => setDemoting(null)}
-          onConfirm={() => demoting && store.update(id, () => demoted(demoting), { what: `Made ${demoting.name} a viewer`, effect: [...effectLines(screening, demoted(demoting)), movesText(effectMoves(screening, demoted(demoting)))].filter(Boolean).join(". ") || undefined })}
-        >
-          {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting)), "They go on seeing every paper and every vote"]} moves={effectMoves(screening, demoted(demoting))} /> : null}
-        </ConfirmChange>
-        <ConfirmChange
-          open={over === "finish"}
-          title="Mark this screening as finished?"
-          confirm="Mark as finished"
-          onClose={() => setOver(null)}
-          onConfirm={() => store.update(id, (s) => ({ ...s, finishedAt: Date.now(), living: undefined }), { what: "Marked the screening as finished", effect: [unsettled ? `${unsettled} papers were not settled` : "", screening.living ? "It stopped looking for new papers" : ""].filter(Boolean).join(". ") || undefined })}
-        >
-          <EffectList
-            lines={[
-              ...(unsettled ? [`${unsettled} ${unsettled === 1 ? "paper is" : "papers are"} not settled, and ${unsettled === 1 ? "stays" : "stay"} as ${unsettled === 1 ? "it is" : "they are"}`] : []),
-              ...(open.reading.length ? ["The models stop reading"] : []),
-              ...(screening.living ? ["It stops looking for new papers"] : []),
-              "It moves to Finished in the list, and can be reopened or changed at any time",
-            ]}
-          />
-        </ConfirmChange>
-        <ConfirmChange open={over === "delete"} title={`Delete “${screening.name}”?`} confirm="Delete" onClose={() => setOver(null)} onConfirm={() => { store.remove(id); router.replace(SCREENINGS); }}>
-          <EffectList lines={["Its votes and its settings go with it", "Papers it saved to a collection stay there"]} />
-        </ConfirmChange>
-        <ConfirmChange
-          open={adding !== null}
-          title={adding ? `Add ${adding.name} as a reviewer?` : ""}
-          confirm="Add"
-          disabled={Boolean(adding?.model && !screening.criteria.length)}
-          onClose={() => setAdding(null)}
-          onConfirm={() => {
-            if (!adding) return;
-            const after = withAdded(adding);
-            store.update(id, () => after, { what: `Added ${adding.name} as a reviewer`, effect: effectLines(screening, after)[0] });
-          }}
-        >
-          {adding ? (
-            <>
-              {adding.model ? (
-                <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(adding.model))} credits a paper</span>} />
-              ) : (
-                <div className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-inset p-3">
-                  <IdentityAvatar name={adding.name} imageUrl={adding.imageUrl} className="size-9" />
-                  <p className="min-w-0 truncate text-sm font-medium">{adding.name}</p>
-                </div>
-              )}
-              {adding.model && !screening.criteria.length ? (
-                <p className="rounded-xl bg-warning/10 px-3 py-2.5 text-sm ink-warning">A model answers criteria, and this screening has none: it would include every paper it reads. Add criteria in the settings first.</p>
-              ) : (
-                <EffectList lines={effectLines(screening, withAdded(adding))} moves={effectMoves(screening, withAdded(adding))} />
-              )}
-              {adding.model ? <p className="text-xs tabular-nums text-muted-foreground">{credits(store.wallet)} credits in the workspace now</p> : null}
-            </>
-          ) : null}
-        </ConfirmChange>
+        {overlays.overlays}
         <MockStates />
       </PageWrapper>
     </MotionConfig>
   );
 }
 
-/** What a person needs to know before anything else: the models are out of credits, still reading, or the screening is finished, or it isn't theirs to vote on. */
-type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "waiting" | "reading" | "viewer" | "guest" | "arrived" | "nothing";
-/** Which one thing the row under the bar says. `quiet` leaves the models' progress out: screening paper after paper, that is the Overview's to show, and a row that came and went would move the paper being read. */
-function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quiet: boolean): BannerKind | null {
+/** The reviewers' faces, people first. Each opens the papers that reviewer voted on; past the seventh, the count opens the Overview's list of them all. */
+function Faces({ id, reviewers, me, max = 7 }: { id: string; reviewers: Reviewer[]; me: string; max?: number }) {
+  return (
+    <span className="flex shrink-0 items-center">
+      {reviewers.slice(0, max).map((reviewer, i) => (
+        <TooltipHint key={reviewer.id} label={`${reviewer.name}'s votes`}>
+          <NextLink
+            href={papersHref(id, { reviewer: reviewer.id })}
+            aria-label={`${reviewer.name}'s votes`}
+            className={cn("relative flex ring-2 ring-card outline-none transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}
+          >
+            <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
+          </NextLink>
+        </TooltipHint>
+      ))}
+      {reviewers.length > max ? (
+        <NextLink href={overviewHref(id, "reviewers")} className={cn("ms-1.5 text-xs tabular-nums text-muted-foreground", INLINE_LINK)}>+{reviewers.length - max}</NextLink>
+      ) : null}
+    </span>
+  );
+}
+
+/** What the screening is doing now, which a person may need to act on. Who the person is to it is a chip beside its title, not one of these. */
+type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "arrived" | "waiting" | "reading" | "nothing";
+/** Which one thing the row under the bar says. `quiet` leaves out what comes and goes as models read and papers arrive: on Screen and in the settings that row would move what is being read or changed. */
+function bannerKind(open: Open, quiet: boolean): BannerKind | null {
   const { screening, reading } = open;
   if (open.gathering) return "gathering";
   if (screening.checking) return "checking";
   if (open.outOfCredits) return "credits";
   if (screening.finishedAt) return "finished";
-  // Who you are to the screening comes before what its models are doing: a notice that arrives later moves what is being pressed.
-  if (!open.isReviewer) return "viewer";
-  if (!open.canChange) return "guest";
-  // New papers that wait for you come before how far the models are.
-  if (!quiet && open.latest?.mine) return "arrived";
-  if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor ? "waiting" : "reading";
-  // A look that found nothing says so, where nothing else has to be said.
-  if (!quiet && screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
+  if (screening.paused && modelsOf(screening).length) return "paused";
+  if (quiet) return null;
+  if (open.latest?.mine) return "arrived";
+  if (reading.length) return open.waitingFor ? "waiting" : "reading";
+  // A check that found nothing says so, where nothing else has to be said.
+  if (screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
   return null;
 }
 
-function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScreen }: { kind: BannerKind | null; open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void; onScreen: () => void }) {
+/** Each kind of notice in the colour of what it is about: what waits for you is primary, a stop is warning, the rest are facts. */
+const BANNER_TONE: Record<BannerKind, Tone> = { gathering: "neutral", checking: "neutral", credits: "warning", finished: "neutral", paused: "warning", arrived: "primary", waiting: "neutral", reading: "neutral", nothing: "neutral" };
+
+function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { kind: BannerKind | null; open: Open; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void }) {
   const { screening, reading, papers } = open;
+  const id = screening.id;
+  if (!kind) return null;
+  const tone = TONE[BANNER_TONE[kind]];
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
-  const row = "flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6";
+  const row = cn("flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6", tone.panel);
+  const icon = cn("size-4 shrink-0", tone.ink);
+  const modelLink = (model: Reviewer) => <NextLink key={model.id} href={papersHref(id, { reviewer: model.id })} className={INLINE_LINK}>{model.name}</NextLink>;
+  const models = (list: Reviewer[]) => list.map((model, i) => <span key={model.id}>{i ? (i === list.length - 1 ? " and " : ", ") : null}{modelLink(model)}</span>);
   if (kind === "checking" && screening.checking) {
     return (
       <div className={row}>
-        <RefreshCw className="size-4 shrink-0 text-muted-foreground" />
-        <span className="font-medium">Looking for new papers</span>
+        <RefreshCw className={icon} />
+        <span className="font-medium">Checking for new papers</span>
         <Meter value={screening.checking.done} max={screening.checking.of} className="w-40" />
         <span className="text-xs tabular-nums text-muted-foreground">{screening.checking.done} of {screening.checking.of} {screening.checking.of === 1 ? "source" : "sources"} checked</span>
       </div>
@@ -346,11 +331,10 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScr
   }
   if (kind === "arrived" && open.latest) {
     return (
-      <div className={`${row} bg-success/10`}>
-        <RefreshCw className="size-4 shrink-0 ink-success" />
-        <span className="font-medium">{open.latest.papers} new {open.latest.papers === 1 ? "paper" : "papers"} came in {ago(open.latest.at)}</span>
-        <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">{open.latest.mine} of them {open.latest.mine === 1 ? "waits" : "wait"} for you. The rest of the screening stands as it was.</span>
-        <Button size="sm" onClick={onScreen}><ListChecks />Screen {open.latest.mine === 1 ? "it" : "them"}</Button>
+      <div className={row}>
+        <RefreshCw className={icon} />
+        <span><NextLink href={papersHref(id, { added: String(open.latest.at) })} className={INLINE_LINK}>{open.latest.papers} new {open.latest.papers === 1 ? "paper" : "papers"}</NextLink> came in {ago(open.latest.at)}</span>
+        <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />Screen your {open.latest.mine}</NextLink></Button>
       </div>
     );
   }
@@ -358,61 +342,78 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScr
     const before = screening.updates?.at(-2)?.at ?? screening.createdAt;
     return (
       <div className={row}>
-        <RefreshCw className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1"><span className="font-medium">Nothing new.</span> <span className="text-muted-foreground">No paper has joined its sources since {day(before)}.</span></span>
+        <RefreshCw className={icon} />
+        <span className="font-medium">No new papers since {ago(before) === day(before) ? day(before) : ago(before)}</span>
       </div>
     );
   }
   if (kind === "gathering" && open.gathering) {
     return (
       <div className={row}>
-        <Search className="size-4 shrink-0 text-muted-foreground" />
+        <Search className={icon} />
         <span className="font-medium">Getting its papers</span>
         <Meter value={open.gathering.done} max={open.gathering.of} className="w-40" />
         <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {open.gathering.of.toLocaleString("en-GB")}</span>
-        <span className="min-w-0 flex-1 text-muted-foreground">You can start screening the ones that are in.</span>
+        {open.isReviewer ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
       </div>
     );
   }
   if (kind === "credits") {
     return (
-      <div className={`${row} bg-warning/10`}>
-        <Coins className="size-4 shrink-0 ink-warning" />
-        <span className="font-medium">Out of credits</span>
-        <span className="min-w-0 flex-1 text-muted-foreground">{reading.map((model) => model.name).join(" and ")} stopped at {Math.max(...reading.map((model) => screening.reached[model.id] ?? 0))} of {papers.length} papers. What they read is kept.</span>
-        <Button size="sm" onClick={onAddCredits}>Add 20,000 credits</Button>
+      <div className={row}>
+        <Coins className={icon} />
+        <span className="flex items-center gap-1 font-medium">
+          Out of credits
+          <Help title="Out of credits" facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {credits(paperCredits(model.model!))} credits a paper</HelpFact>)}>
+            A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once credits are added.
+          </Help>
+        </span>
+        <span className="text-muted-foreground">{models(reading)} stopped at {Math.max(...reading.map((model) => screening.reached[model.id] ?? 0))} of {papers.length} papers</span>
+        {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
+        {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button> : null}
       </div>
     );
   }
-  if (kind === "finished") {
+  if (kind === "finished" && screening.finishedAt) {
+    const at = screening.finishedAt;
     return (
       <div className={row}>
-        <CircleCheck className="size-4 shrink-0 ink-success" />
-        <span className="min-w-0 flex-1"><span className="font-medium">Finished.</span> <span className="text-muted-foreground">Everything in it can still be read, exported and changed.</span></span>
-        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={open.check}><RefreshCw />Look for new papers</Button> : null}
+        <CircleCheck className={icon} />
+        <span className="flex items-center gap-1 font-medium">
+          Finished {ago(at) === day(at) ? `on ${day(at)}` : ago(at)}
+          <Help title="Finished screening">Its models stop reading and it stops checking for new papers. You can still read, export and change it, or reopen it.</Help>
+        </span>
+        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={open.check}><RefreshCw />Check for new papers</Button> : null}
         {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />Reopen</Button> : null}
       </div>
     );
   }
   if (kind === "paused") {
+    const done = Math.min(...modelsOf(screening).map((model) => screening.reached[model.id] ?? 0));
     return (
       <div className={row}>
-        <CirclePause className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1"><span className="font-medium">The models are paused.</span> <span className="text-muted-foreground">They spend nothing, and people can go on voting.</span></span>
-        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Let them read on</Button> : null}
+        <CirclePause className={icon} />
+        <span className="flex items-center gap-1 font-medium">
+          Models paused
+          <Help title="Paused models">Paused models read nothing and spend no credits. People keep voting, and papers settle on the votes they have.</Help>
+        </span>
+        <span className="text-xs tabular-nums text-muted-foreground">{done} of {papers.length} papers read</span>
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
       </div>
     );
   }
   if (kind === "waiting" && open.waitingFor) {
     return (
       <div className={row}>
-        <Clock className="size-4 shrink-0 text-muted-foreground" />
-        <span className="font-medium">{reading.length === 1 ? "Its model starts" : "Its models start"} after {open.waitingFor.screening.name}</span>
+        <Clock className={icon} />
+        <span className="flex items-center gap-1">
+          <span className="font-medium">{reading.length === 1 ? "Its model starts" : "Its models start"} after <NextLink href={overviewHref(open.waitingFor.screening.id)} className={INLINE_LINK}>{open.waitingFor.screening.name}</NextLink></span>
+          <Help title="Models take turns" facts={<HelpFact icon={ListChecks}>40 papers at a time</HelpFact>}>
+            {workspace}&apos;s models read 40 papers at a time, so a screening started while another is reading waits for it. People can vote in the meantime.
+          </Help>
+        </span>
         <Meter value={open.waitingFor.done} max={open.waitingFor.of} className="w-40" />
         <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.waitingFor.done} /> of {open.waitingFor.of.toLocaleString("en-GB")}</span>
-        <TooltipHint label={`${workspace}'s models read 40 papers at once, so a screening started behind another waits its turn. People can vote in the meantime.`}>
-          <span tabIndex={0} className="flex rounded-md"><Chip>40 papers at once</Chip></span>
-        </TooltipHint>
       </div>
     );
   }
@@ -421,26 +422,9 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScr
     return (
       <div className={row}>
         <AiIcon working className="size-4 shrink-0" />
-        <span className="font-medium">{reading.length === 1 ? reading[0]!.name : `${reading.length} models`} reading</span>
+        <span className="font-medium">{reading.length === 1 ? modelLink(reading[0]!) : `${reading.length} models`} reading</span>
         <Meter value={done} max={papers.length} className="w-40" />
         <span className="text-xs tabular-nums text-muted-foreground">{done} of {papers.length}</span>
-      </div>
-    );
-  }
-  if (kind === "viewer") {
-    return (
-      <div className={row}>
-        <Eye className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 text-muted-foreground">You can see this screening and every vote in it. You are not one of its reviewers, so no paper waits for you.</span>
-        {open.canChange && !screening.finishedAt ? <Button variant="outline" size="sm" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
-      </div>
-    );
-  }
-  if (kind === "guest") {
-    return (
-      <div className={row}>
-        <Users className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 text-muted-foreground">Shared with you by {workspace}. You vote on the papers dealt to you, and its settings are changed by {workspace}&apos;s members.</span>
       </div>
     );
   }

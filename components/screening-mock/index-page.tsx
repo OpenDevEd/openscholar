@@ -1,14 +1,13 @@
 "use client";
 
-// The list of a workspace's screenings: the ones waiting on you first. It takes the place of the
-// rail the screening page has today.
+// The list of a workspace's screenings, as a table: the ones waiting on you first. It takes the place
+// of the rail the screening page has today.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, GitCompare, ListChecks, MoreHorizontal, Move, Plus, RefreshCw, RotateCcw, Settings2, Trash2 } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Trash2 } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -23,36 +22,63 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { HOME, accessOf, activeReviewers, ago, day, modelsOf, personOf, standing, workspaceOf, type Screening, lookOf } from "./data";
-import { MoveDialog } from "./dialogs";
-import { EffectList } from "./effects";
-import { newHref, overviewHref, screenHref, settingsHref } from "./links";
+import { cn } from "@/lib/utils";
+import { HOME, RESULTS, RESULT_LABEL, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
-import { ResultBar, ReviewerStack } from "./parts";
-import { isReading, paperCredits, useMock } from "./store";
-import { ConfirmChange } from "./team";
+import { useScreeningOverlays } from "./overlays";
+import { Help, LinkChip, RESULT_STYLE, ResultChip, ReviewerMark } from "./parts";
+import { isReading, paperCredits, useMock, useOpenScreening } from "./store";
 
-const PAGE = 6;
+const PAGE = 25;
+const SORTS = [
+  { value: "you", label: "Needs you first" },
+  { value: "active", label: "Recently active" },
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "name", label: "Name" },
+] as const;
+type Sort = (typeof SORTS)[number]["value"];
 /** Which screenings the list shows, kept in the address: Back from a screening returns to the list as it was left. */
 const PLACE = {
   show: parseAsStringLiteral(["all", "you", "open", "finished"] as const).withDefault("all"),
-  sort: parseAsStringLiteral(["recent", "name"] as const).withDefault("recent"),
+  sort: parseAsStringLiteral(SORTS.map((one) => one.value)).withDefault("you"),
   by: parseAsString.withDefault("anyone"),
   q: parseAsString.withDefault(""),
   page: parseAsInteger.withDefault(1),
 };
-const ROW = 77;
+const GROUPS = ["Needs you", "In progress", "Finished"] as const;
+
+/**
+ * The table's columns, from a laptop's width up: Screening, Reviewers, Papers, Status, Last activity
+ * and the menu. Narrower, each row is a card: the title and its menu, the facts under it, the faces
+ * and when it last moved, the bar, then the status.
+ */
+const COLUMNS = "@5xl:grid-cols-[minmax(14rem,1.8fr)_9rem_minmax(10rem,1.2fr)_minmax(16rem,1.4fr)_6rem_2rem]";
+const CARD = "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'title_menu'_'meta_meta'_'faces_when'_'papers_papers'_'status_status'] @5xl:[grid-template-areas:'title_faces_papers_status_when_menu'_'meta_faces_papers_status_when_menu']";
+/** A link inside a row sits above the link the whole row is, and shows that it is one. */
+const ABOVE = "relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+
+type What = "export" | "share" | "finish" | "move" | "delete";
 
 export function ScreeningsIndex() {
   const store = useMock();
-  const router = useRouter();
   // Another tab, order, starter or page is a step Back returns from. Typing in the search box changes the address in place.
   const [{ show, sort, by, q: search, page }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   /** Narrows or reorders the list, which starts again from its first page. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace({ page: null, ...next });
-  const [deleting, setDeleting] = useState<Screening | null>(null);
-  const [moving, setMoving] = useState<Screening | null>(null);
+  const [over, setOver] = useState<{ id: string; what: What } | null>(null);
   const me = store.viewer;
+  const guest = Boolean(personOf(me)?.guest);
+
+  // A check for new papers started from the list goes on while the list is up: the timer is the outside system.
+  const checking = store.screenings.filter((one) => one.checking).map((one) => one.id).join(" ");
+  const { tick } = store;
+  useEffect(() => {
+    if (!checking) return;
+    const timer = setInterval(() => checking.split(" ").forEach(tick), 1000);
+    return () => clearInterval(timer);
+  }, [checking, tick]);
 
   const all = useMemo(
     () =>
@@ -63,25 +89,46 @@ export function ScreeningsIndex() {
         const state = standing(screening);
         const forYou = state.papers.filter((paper) => !state.settled[paper.id]!.final && state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
         const conflicts = screening.rule.resolver === me || screening.createdBy === me ? state.counts.conflict : 0;
-        const reading = !screening.finishedAt && modelsOf(screening).some((model) => (screening.reached[model.id] ?? 0) < state.papers.length);
-        const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
         const models = modelsOf(screening);
+        const reading = !screening.finishedAt && models.some((model) => (screening.reached[model.id] ?? 0) < state.papers.length);
+        const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
         // What its models are doing, where they still have papers to read.
-        const held = !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!) > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : null;
-        return [{ screening, state, included: state.counts.include, access, forYou: screening.finishedAt ? 0 : forYou, conflicts: screening.finishedAt ? 0 : conflicts, reading, held, ahead }];
+        const held = screening.checking ? ("checking" as const) : !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!) > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : ("reading" as const);
+        // The last time anything happened in it: a vote, a change, a check, or its start.
+        const votes = Object.values(state.votes).flatMap((cast) => cast.flatMap((one) => one.vote?.at ?? []));
+        const active = Math.max(screening.createdAt, screening.finishedAt ?? 0, ...screening.changes.map((change) => change.at), ...(screening.updates ?? []).map((update) => update.at), ...votes);
+        const open = screening.finishedAt ? { forYou: 0, conflicts: 0 } : { forYou, conflicts };
+        const group = open.forYou + open.conflicts ? 0 : screening.finishedAt ? 2 : 1;
+        return [{ screening, state, access, ...open, models: held, ahead, active, group }];
       }),
     [store.screenings, store.wallet, me],
   );
+  type Row = (typeof all)[number];
   const starters = [...new Set(all.map((row) => row.screening.createdBy))];
   const rows = useMemo(() => {
     const words = search.trim().toLowerCase();
-    const found = all.filter((row) => (!words || row.screening.name.toLowerCase().includes(words)) && (by === "anyone" || row.screening.createdBy === by) && (show === "all" || (show === "finished" ? Boolean(row.screening.finishedAt) : show === "you" ? row.forYou + row.conflicts > 0 : !row.screening.finishedAt)));
-    // What waits on you first, then what is running, then what is finished, newest first within each.
-    const rank = (row: (typeof all)[number]) => (row.forYou + row.conflicts ? 0 : row.screening.finishedAt ? 2 : 1);
-    return [...found].sort((a, b) => (sort === "name" ? a.screening.name.localeCompare(b.screening.name) : rank(a) - rank(b) || b.screening.createdAt - a.screening.createdAt));
+    const found = all.filter((row) => (!words || row.screening.name.toLowerCase().includes(words)) && (by === "anyone" || row.screening.createdBy === by) && (show === "all" || (show === "finished" ? Boolean(row.screening.finishedAt) : show === "you" ? row.group === 0 : !row.screening.finishedAt)));
+    const order: Record<Sort, (a: Row, b: Row) => number> = {
+      // What waits on you first, then what is running, then what is finished, newest first within each.
+      you: (a, b) => a.group - b.group || b.screening.createdAt - a.screening.createdAt,
+      active: (a, b) => b.active - a.active,
+      newest: (a, b) => b.screening.createdAt - a.screening.createdAt,
+      oldest: (a, b) => a.screening.createdAt - b.screening.createdAt,
+      name: (a, b) => a.screening.name.localeCompare(b.screening.name),
+    };
+    return [...found].sort(order[sort]);
   }, [all, search, show, sort, by]);
   const pager = pagerOf(rows.length, PAGE, page, (next) => void setPlace({ page: next }));
-  const tally = { all: all.length, you: all.filter((row) => row.forYou + row.conflicts > 0).length, open: all.filter((row) => !row.screening.finishedAt).length, finished: all.filter((row) => row.screening.finishedAt).length };
+  const tally = { all: all.length, you: all.filter((row) => row.group === 0).length, open: all.filter((row) => !row.screening.finishedAt).length, finished: all.filter((row) => row.screening.finishedAt).length };
+  const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
+  // Under the default order the rows sit in their groups, where there is more than one.
+  const grouped = sort === "you" && new Set(rows.map((row) => row.group)).size > 1;
+  const first = (name: string | undefined) => name?.split(" ")[0];
+  const byName = by === "anyone" ? null : by === me ? "you" : personOf(by)?.name;
+  const words = search.trim();
+  const none = show === "you"
+    ? `Nothing${byName ? ` started by ${byName}` : ""}${words ? ` called “${words}”` : ""} needs you.`
+    : `No ${show === "finished" ? "finished screenings" : show === "open" ? "screenings in progress" : "screenings"}${byName ? ` started by ${byName}` : ""}${words ? ` called “${words}”` : ""}.`;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -91,7 +138,7 @@ export function ScreeningsIndex() {
             wide
             icon={ListChecks}
             title="Screening"
-            filters={all.length ? <CommandCenterFilters sortOptions={[{ value: "recent", label: "Needs you first" }, { value: "name", label: "Name" }]} currentSort={sort} onSortChange={(next) => go({ sort: next })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, { history: "replace" })} placeholder="Find a screening" /> : undefined}
+            filters={all.length ? <CommandCenterFilters sortOptions={[...SORTS]} currentSort={sort} onSortChange={(next) => go({ sort: next })} searchFilter={search} onSearchChange={(next) => void setPlace({ q: next, page: null }, { history: "replace" })} placeholder="Find a screening" /> : undefined}
             actions={
               <Button asChild size="sm" className={BAR_ACTION}>
                 <NextLink href={newHref()}><Plus /><span className={BAR_LABEL}>New screening</span></NextLink>
@@ -107,84 +154,113 @@ export function ScreeningsIndex() {
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border-subtle p-4 sm:px-6">
-                  <Segmented
-                    label="Which screenings"
-                    value={show}
-                    onChange={(next) => go({ show: next })}
-                    options={[
-                      { id: "all", label: "All", detail: <span className="tabular-nums text-muted-foreground">{tally.all}</span> },
-                      { id: "you", label: "Needs you", detail: <span className="tabular-nums text-muted-foreground">{tally.you}</span> },
-                      { id: "open", label: "In progress", detail: <span className="tabular-nums text-muted-foreground">{tally.open}</span> },
-                      { id: "finished", label: "Finished", detail: <span className="tabular-nums text-muted-foreground">{tally.finished}</span> },
-                    ]}
-                  />
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 border-b border-border-subtle p-4 sm:px-6">
+                  {/* On a phone the tabs scroll sideways under the card's edge, so the cut one shows there is more. */}
+                  <div className="max-w-full max-lg:-mx-4 max-lg:overflow-x-auto max-lg:px-4 max-sm:w-[calc(100%+2rem)]">
+                    <Segmented
+                      label="Which screenings"
+                      value={show}
+                      onChange={(next) => go({ show: next })}
+                      options={[
+                        { id: "all", label: "All", detail: <span className="tabular-nums text-muted-foreground">{tally.all}</span> },
+                        { id: "you", label: "Needs you", detail: <span className="tabular-nums text-muted-foreground">{tally.you}</span> },
+                        { id: "open", label: "In progress", detail: <span className="tabular-nums text-muted-foreground">{tally.open}</span> },
+                        { id: "finished", label: "Finished", detail: <span className="tabular-nums text-muted-foreground">{tally.finished}</span> },
+                      ]}
+                    />
+                  </div>
                   {starters.length > 1 ? (
                     <Select value={by} onValueChange={(next) => go({ by: next })}>
-                      <SelectTrigger aria-label="Started by" className="h-8 w-52 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Started by" className="h-8 w-64 text-xs max-sm:w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="anyone">Started by anyone</SelectItem>
-                        {starters.map((id) => <SelectItem key={id} value={id}><span className="flex items-center gap-2"><IdentityAvatar name={personOf(id)?.name ?? ""} imageUrl={personOf(id)?.imageUrl} className="size-4" />{id === me ? "Started by you" : personOf(id)?.name}</span></SelectItem>)}
+                        {starters.map((id) => <SelectItem key={id} value={id}><span className="flex items-center gap-2"><IdentityAvatar name={personOf(id)?.name ?? ""} imageUrl={personOf(id)?.imageUrl} className="size-4" />{id === me ? "Started by you" : `Started by ${personOf(id)?.name}`}</span></SelectItem>)}
                       </SelectContent>
                     </Select>
                   ) : null}
                 </div>
-                {/* A full page's height while there are pages, so a short last page doesn't move the pager. */}
-                <ul className="divide-y divide-border-subtle" style={{ minHeight: pager.pages > 1 ? PAGE * ROW : undefined }}>
-                  {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map(({ screening, state, included, access, forYou, conflicts, reading, held, ahead }) => {
+                {/* The column names stay under the page's bar while the list scrolls. */}
+                <div className={cn("sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] z-10 hidden items-center gap-x-5 border-b border-border-subtle bg-inset px-6 py-2 text-xs font-medium text-muted-foreground @5xl:grid", COLUMNS)}>
+                  <span>Screening</span>
+                  <span>Reviewers</span>
+                  <span className="flex items-center gap-1">
+                    Papers
+                    <Help title="Where the papers stand" facts={RESULTS.map((result) => <ResultChip key={result} result={result} />)}>
+                      <p>Each bar splits a screening&apos;s papers by where they stand now. Press a part of the bar to see those papers.</p>
+                    </Help>
+                  </span>
+                  <span>Status</span>
+                  <span>Last activity</span>
+                  <span />
+                </div>
+                <ul className="divide-y divide-border-subtle">
+                  {shown.map((row, i) => {
+                    const { screening, state, access, forYou, conflicts, models, ahead, active, group } = row;
+                    const id = screening.id;
                     const starter = personOf(screening.createdBy);
                     const workspace = workspaceOf(screening);
+                    // The workspace is named wherever it isn't the one the person looking works in.
+                    const elsewhere = guest ? !(workspace.id === "theirs" && screening.createdBy === me) : workspace !== HOME;
+                    const reviewers = activeReviewers(screening);
+                    const total = state.papers.length;
+                    const settled = total - state.counts.conflict - state.counts.waiting;
+                    const resolver = screening.rule.resolver === me ? "you" : (first(personOf(screening.rule.resolver)?.name) ?? "its starter");
                     return (
-                      <li key={screening.id} className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @3xl:grid-cols-[minmax(0,2.2fr)_8.5rem_minmax(7rem,1fr)_16rem_2rem]" style={{ minHeight: ROW }}>
-                        {/* The whole row opens the screening; its menu sits above that link. */}
-                        <NextLink href={overviewHref(screening.id)} aria-label={`Open ${screening.name}`} className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50" />
-                        <span className="pointer-events-none min-w-0">
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className="truncate text-sm font-semibold">{screening.name}</span>
-                            {workspace !== HOME ? <span className="flex min-w-0 @max-3xl:hidden"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                          </span>
-                          <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                            <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-4" />
-                            <span className="truncate">{screening.createdBy === me ? "You" : (starter?.name ?? "Someone")}, {ago(screening.createdAt)}</span>
-                            <Chip className="h-5 px-1.5">{state.papers.length.toLocaleString("en-GB")} papers</Chip>
-                            {screening.living ? <Chip icon={RefreshCw} className="h-5 bg-success/12 px-1.5 ink-success">Living</Chip> : null}
-                          </span>
-                        </span>
-                        <span className="pointer-events-none flex justify-end @3xl:justify-start"><ReviewerStack reviewers={activeReviewers(screening)} max={6} /></span>
-                        <span className="relative col-span-2 @3xl:col-span-1"><ResultBar counts={state.counts} /></span>
-                        <span className="pointer-events-none col-span-2 flex flex-wrap items-center justify-end gap-1.5 @3xl:col-span-1">
-                          {workspace !== HOME ? <span className="me-auto flex min-w-0 @3xl:hidden"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                          {forYou ? <NextLink href={screenHref(screening.id)} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
-                          {conflicts ? <NextLink href={screenHref(screening.id, { queue: "conflicts" })} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={GitCompare} className="bg-info/12 text-info">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</Chip></NextLink> : null}
-                          {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : screening.living ? `Up to date, looks again on ${day(screening.living.next)}` : "Every paper is settled"}</Chip>) : null}
-                        </span>
-                        {!access.member ? <span className="@max-3xl:hidden" /> : (
-                        <DropdownMenu>
-                          <TooltipHint label="More">
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="relative size-8 text-muted-foreground @max-3xl:hidden" aria-label={`More for ${screening.name}`}><MoreHorizontal /></Button>
-                            </DropdownMenuTrigger>
+                      <Group key={id} label={grouped && (i === 0 || shown[i - 1]!.group !== group) ? GROUPS[group] : null} count={rows.filter((one) => one.group === group).length}>
+                        <li className={cn("relative grid items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @5xl:gap-y-0.5", CARD, COLUMNS)}>
+                          {/* The whole row opens the screening. Its title is the link a keyboard reaches; what is pressable inside the row sits above this one. */}
+                          <NextLink href={overviewHref(id)} tabIndex={-1} aria-hidden className="absolute inset-0" />
+                          <TooltipHint label={screening.name} onlyWhenClipped>
+                            <NextLink href={overviewHref(id)} className={cn(ABOVE, "min-w-0 self-end text-sm font-semibold [grid-area:title] hover:underline @max-5xl:line-clamp-2 @5xl:truncate")}>{screening.name}</NextLink>
                           </TooltipHint>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuItem onSelect={() => router.push(settingsHref(screening.id))}><Settings2 />Settings</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => router.push(newHref(screening.id))}><Copy />Run again with these settings</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setMoving(screening)}><Move />Move to another workspace</DropdownMenuItem>
-                            {screening.finishedAt ? (
-                              <DropdownMenuItem onSelect={() => store.update(screening.id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem onSelect={() => store.update(screening.id, (s) => ({ ...s, finishedAt: Date.now() }), { what: "Marked the screening as finished" })}><CircleCheck />Mark as finished</DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(screening)}><Trash2 />Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        )}
-                      </li>
+                          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 self-start text-xs text-muted-foreground [grid-area:meta]">
+                            <button type="button" onClick={() => go({ by: screening.createdBy })} aria-label={`Show the screenings ${screening.createdBy === me ? "you" : starter?.name} started`} className={cn(ABOVE, "flex min-w-0 items-center gap-1.5 hover:text-foreground hover:underline")}>
+                              <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-4" />
+                              <span className="truncate">{screening.createdBy === me ? "You" : (starter?.name ?? "Someone")}</span>
+                            </button>
+                            <span className="whitespace-nowrap">started it {ago(screening.createdAt)}</span>
+                            {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
+                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living</Chip> : null}
+                            {!access.reviewer && !access.member ? <Chip icon={Eye} className="h-5 px-1.5">View only</Chip> : null}
+                          </span>
+                          <Faces id={id} reviewers={reviewers} me={me} />
+                          <span className="min-w-0 space-y-1.5 [grid-area:papers]">
+                            <Bar id={id} counts={state.counts} />
+                            <NextLink href={screening.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>
+                              {screening.finishedAt ? `${state.counts.include.toLocaleString("en-GB")} included of ${total.toLocaleString("en-GB")}` : `${settled.toLocaleString("en-GB")} of ${total.toLocaleString("en-GB")} settled`}
+                            </NextLink>
+                          </span>
+                          <span className="flex min-w-0 flex-wrap items-center gap-1.5 [grid-area:status] @5xl:row-span-2">
+                            {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{forYou.toLocaleString("en-GB")} for you to screen</LinkChip> : null}
+                            {conflicts ? <LinkChip href={screenHref(id, { queue: "conflicts" })} tone="info" icon={GitCompare} className="relative shrink-0">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</LinkChip> : null}
+                            {/* What its models are doing shows beside your work. */}
+                            {models === "checking" ? <LinkChip href={overviewHref(id)} icon={RefreshCw} className="relative shrink-0">Checking for new papers</LinkChip>
+                              : models === "gathering" ? <LinkChip href={overviewHref(id)} icon={Search} className="relative shrink-0">Getting its papers</LinkChip>
+                              : models === "paused" ? <LinkChip href={overviewHref(id)} tone="warning" icon={CirclePause} className="relative shrink-0">Models paused</LinkChip>
+                              : models === "credits" ? <LinkChip href={overviewHref(id)} tone="warning" icon={Coins} className="relative shrink-0">Out of credits</LinkChip>
+                              : models === "waiting" && ahead ? <LinkChip href={overviewHref(ahead.id)} icon={Clock} className="relative shrink-0">Models start after {ahead.name}</LinkChip>
+                              : models === "reading" ? <LinkChip href={overviewHref(id)} className="relative shrink-0"><span className="flex items-center gap-1.5"><AiIcon working className="size-3.5" />Models reading</span></LinkChip>
+                              : null}
+                            {/* Where its papers stand shows where nothing waits for you. */}
+                            {forYou || conflicts ? null
+                              : screening.finishedAt ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{state.counts.include.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</LinkChip>
+                              : models ? null
+                              : state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} className="relative shrink-0">{state.counts.waiting.toLocaleString("en-GB")} waiting for votes</LinkChip>
+                              : state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} className="relative shrink-0">{state.counts.conflict.toLocaleString("en-GB")} in conflict, for {resolver} to settle</LinkChip>
+                              : screening.living ? <LinkChip href={settingsHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">Up to date, next check {day(screening.living.next)}</LinkChip>
+                              : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">Every paper is settled</LinkChip>}
+                          </span>
+                          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground [grid-area:when] max-@5xl:justify-self-end @5xl:row-span-2"><span className="@5xl:hidden">Last activity </span>{ago(active)}</span>
+                          <span className="flex justify-end [grid-area:menu] @5xl:row-span-2">
+                            <RowMenu screening={screening} member={access.member} onOpen={(what) => setOver({ id, what })} />
+                          </span>
+                        </li>
+                      </Group>
                     );
                   })}
                   {!rows.length ? (
                     <li className="flex flex-col items-center gap-2 px-4 py-14 text-center">
-                      <p className="text-sm text-muted-foreground">{search.trim() ? "No screening by that name." : show === "you" ? "Nothing waits for you." : "No screening here."}</p>
+                      <p className="text-sm text-muted-foreground">{none}</p>
                       <Button variant="outline" size="sm" onClick={() => go({ q: null, show: null, by: null })}>Show every screening</Button>
                     </li>
                   ) : null}
@@ -193,13 +269,132 @@ export function ScreeningsIndex() {
               </>
             )}
           </LibraryPageShell>
+          {/* On a phone the last row can scroll clear of the assistant's button in the corner. */}
+          <div aria-hidden className="h-6 lg:hidden" />
         </div>
-        <ConfirmChange open={deleting !== null} title={deleting ? `Delete “${deleting.name}”?` : ""} confirm="Delete" onClose={() => setDeleting(null)} onConfirm={() => deleting && store.remove(deleting.id)}>
-          <EffectList lines={["Its votes and its settings go with it", "Papers it saved to a collection stay there"]} />
-        </ConfirmChange>
-        {moving ? <MoveDialog open onClose={() => setMoving(null)} screening={moving} me={me} onMove={(to, what) => store.update(moving.id, (s) => ({ ...s, workspace: to }), { what })} /> : null}
+        {over ? <RowDialogs key={`${over.id}:${over.what}`} id={over.id} start={over.what} onDone={() => setOver(null)} /> : null}
         <MockStates />
       </PageWrapper>
     </MotionConfig>
   );
+}
+
+/** A group's labelled row before its first screening on the page, under the default order. */
+function Group({ label, count, children }: { label: string | null; count: number; children: ReactNode }) {
+  return (
+    <>
+      {label ? (
+        <li className="flex items-center gap-2 bg-inset px-4 py-2 text-xs font-medium sm:px-6">
+          {label}
+          <span className="tabular-nums text-muted-foreground">{count}</span>
+        </li>
+      ) : null}
+      {children}
+    </>
+  );
+}
+
+/** Its reviewers' faces and marks, each opening the papers that reviewer voted on. */
+function Faces({ id, reviewers, me, max = 6 }: { id: string; reviewers: Reviewer[]; me: string; max?: number }) {
+  const more = reviewers.length - max;
+  return (
+    <span className="flex items-center [grid-area:faces] @5xl:row-span-2">
+      {reviewers.slice(0, max).map((reviewer, i) => {
+        const name = reviewer.id === me ? "Your votes" : `${reviewer.name}'s votes`;
+        return (
+          <TooltipHint key={reviewer.id} label={name}>
+            <NextLink href={papersHref(id, { reviewer: reviewer.id })} aria-label={name} className={cn("relative flex ring-2 ring-card outline-none transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/50", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
+              <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
+            </NextLink>
+          </TooltipHint>
+        );
+      })}
+      {more > 0 ? (
+        <TooltipHint label={`${more} more reviewers`}>
+          <NextLink href={overviewHref(id, "reviewers")} aria-label={`${more} more reviewers`} className={cn(ABOVE, "ms-1.5 px-0.5 text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>+{more}</NextLink>
+        </TooltipHint>
+      ) : null}
+    </span>
+  );
+}
+
+/** A screening's papers as one bar, split by where they stand: each part opens those papers. */
+function Bar({ id, counts }: { id: string; counts: Record<Result, number> }) {
+  const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
+  return (
+    <span className="flex h-2.5 w-full gap-px rounded-full">
+      {total === 0 ? <span className="h-full flex-1 rounded-full bg-foreground/10" /> : null}
+      {RESULTS.map((result) => {
+        if (!counts[result]) return null;
+        const label = `${counts[result].toLocaleString("en-GB")} ${RESULT_LABEL[result].toLowerCase()}`;
+        return (
+          <TooltipHint key={result} label={label}>
+            <NextLink
+              href={papersHref(id, { result })}
+              aria-label={label}
+              // The part's hit area runs above and below the thin bar.
+              className={cn("relative h-full min-w-1.5 basis-0 outline-none transition-[flex-grow,filter] duration-500 ease-out first:rounded-s-full last:rounded-e-full after:absolute after:inset-x-0 after:-inset-y-2 hover:brightness-90 focus-visible:ring-2 focus-visible:ring-ring/50 motion-reduce:transition-none", RESULT_STYLE[result].bar)}
+              // Waiting is hatched, so papers still to be voted on never read as excluded ones.
+              style={{ flexGrow: counts[result], ...(result === "waiting" ? { backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 3px, color-mix(in oklab, var(--foreground) 14%, transparent) 3px 5px)" } : {}) }}
+            />
+          </TooltipHint>
+        );
+      })}
+    </span>
+  );
+}
+
+/** The row's menu: what the open screening's menu offers, in the same order. Someone from outside can start their own from it, and export it. */
+function RowMenu({ screening, member, onOpen }: { screening: Screening; member: boolean; onOpen: (what: What) => void }) {
+  const store = useMock();
+  const id = screening.id;
+  const item = "whitespace-nowrap";
+  return (
+    <DropdownMenu>
+      <TooltipHint label="More">
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative size-8 text-muted-foreground" aria-label={`More for ${screening.name}`}><MoreHorizontal /></Button>
+        </DropdownMenuTrigger>
+      </TooltipHint>
+      {!member ? (
+        <DropdownMenuContent align="end" className="w-auto min-w-56">
+          <DropdownMenuItem className={item} onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
+          <DropdownMenuItem className={item} asChild><NextLink href={newHref(id)}><Copy />Start your own with these settings</NextLink></DropdownMenuItem>
+        </DropdownMenuContent>
+      ) : (
+        <DropdownMenuContent align="end" className="w-auto min-w-56">
+          <DropdownMenuItem className={item} asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem>
+          <DropdownMenuItem className={item} onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
+          <DropdownMenuItem className={item} onSelect={() => onOpen("share")}><Share2 />Share</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {modelsOf(screening).length && !screening.finishedAt ? (
+            screening.paused ? (
+              <DropdownMenuItem className={item} onSelect={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })}><Play />Let the models read on</DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem className={item} onSelect={() => store.update(id, (s) => ({ ...s, paused: true }), { what: "Paused the models" })}><CirclePause />Pause the models</DropdownMenuItem>
+            )
+          ) : null}
+          {growing(screening).length ? <DropdownMenuItem className={item} disabled={Boolean(screening.checking)} onSelect={() => store.update(id, (s) => (s.checking ? s : { ...s, checking: { done: 0, of: growing(s).length, by: store.viewer } }))}><RefreshCw />Check for new papers now</DropdownMenuItem> : null}
+          <DropdownMenuItem className={item} asChild><NextLink href={newHref(id)}><Copy />Run again with these settings</NextLink></DropdownMenuItem>
+          <DropdownMenuItem className={item} onSelect={() => onOpen("move")}><Move />Move to another workspace</DropdownMenuItem>
+          {screening.finishedAt ? (
+            <DropdownMenuItem className={item} onSelect={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem className={item} onSelect={() => onOpen("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className={item} variant="destructive" onSelect={() => onOpen("delete")}><Trash2 />Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      )}
+    </DropdownMenu>
+  );
+}
+
+/**
+ * What the row's menu opens, for one screening: the same dialogs and confirms the open screening has.
+ * Sharing can lead on to making someone a reviewer or a viewer, each asked first.
+ */
+function RowDialogs({ id, start, onDone }: { id: string; start: What; onDone: () => void }) {
+  // The same overlays the screening's own pages open, started on the one its row's menu asked for.
+  return useScreeningOverlays(useOpenScreening(id), { start, onClosed: onDone }).overlays;
 }

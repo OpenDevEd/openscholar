@@ -6,9 +6,9 @@
 
 import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
-import { Chip, RequiredMark } from "@/components/screening/parts";
+import { ANSWER, Chip, RequiredMark } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
 import { HELP_POPOVER, HelpButton } from "@/components/ui/help";
 import { YouTag } from "@/components/ui/identity";
@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import type { Answer } from "@/lib/screening/setup";
 import { DECISION_LABEL, RESULTS, RESULT_LABEL, type Decision, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
 /**
@@ -88,7 +89,7 @@ export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Ch
 export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
   return (
     <NextLink {...link} href={href} className={cn("flex min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>
-      <Chip icon={icon} className={cn(TONE[tone].chip, TONE[tone].hover, "min-w-0 pe-1 font-medium transition-colors")}>
+      <Chip icon={icon} className={cn(TONE[tone].chip, TONE[tone].hover, "min-w-0 shrink pe-1 font-medium transition-colors")}>
         <span className="truncate">{children}</span>
         <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
       </Chip>
@@ -317,5 +318,18 @@ export function RuleExamples({ rule, people, models }: { rule: Rule; people: num
         </div>
       ))}
     </div>
+  );
+}
+
+/** An answer to a criterion, with its sign and its name. Unclear is a dash, never a "?", which is help. */
+export const ANSWER_SIGN: Record<Answer, { icon: AppIcon; label: string }> = { yes: { icon: Check, label: "Yes" }, no: { icon: X, label: "No" }, unclear: { icon: Minus, label: "Unclear" } };
+
+/** One answer as a small square with its sign. `label` names whose answer it is, or to which criterion. */
+export function AnswerMark({ answer, label }: { answer: Answer; label: string }) {
+  const { icon: Icon, label: said } = ANSWER_SIGN[answer];
+  return (
+    <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", answer === "no" ? "bg-foreground/[0.08] text-muted-foreground" : ANSWER[answer].className)}>
+      <Icon aria-hidden className="size-3.5" />
+    </span>
   );
 }

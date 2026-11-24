@@ -20,17 +20,17 @@ export type Person = { id: string; name: string; imageUrl: string; guest?: boole
 const face = (id: string) => `/mock/people/${id}.jpg`;
 /** The workspace's members, then people from outside it. The first is who the mock starts as. */
 export const PEOPLE: Person[] = [
-  { id: "amina", name: "Amina Otieno", imageUrl: face("amina"), here: true, seen: "Here now" },
-  { id: "jonas", name: "Jonas Becker", imageUrl: face("jonas"), here: true, seen: "Here now" },
-  { id: "thandiwe", name: "Thandiwe Nkosi", imageUrl: face("thandiwe"), seen: "Here yesterday" },
-  { id: "kwame", name: "Kwame Mensah", imageUrl: face("kwame"), seen: "Here 3 days ago" },
-  { id: "leila", name: "Leila Haddad", imageUrl: face("leila"), seen: "Here last week" },
-  { id: "daniel", name: "Daniel Okoro", imageUrl: face("daniel"), seen: "Here 2 weeks ago" },
-  { id: "grace", name: "Grace Wanjiru", imageUrl: face("grace"), seen: "Not here yet" },
-  { id: "rahul", name: "Rahul Mehta", imageUrl: face("rahul"), guest: true, seen: "Here on Monday" },
-  { id: "sofia", name: "Sofia Marques", imageUrl: face("sofia"), guest: true, seen: "Here last week" },
-  { id: "mei", name: "Mei Tanaka", imageUrl: face("mei"), guest: true, seen: "Not here yet" },
-  { id: "tomas", name: "Tomás Rivera", imageUrl: face("tomas"), guest: true, seen: "Not here yet" },
+  { id: "amina", name: "Amina Otieno", imageUrl: face("amina"), here: true, seen: "Active now" },
+  { id: "jonas", name: "Jonas Becker", imageUrl: face("jonas"), here: true, seen: "Active now" },
+  { id: "thandiwe", name: "Thandiwe Nkosi", imageUrl: face("thandiwe"), seen: "Last active yesterday" },
+  { id: "kwame", name: "Kwame Mensah", imageUrl: face("kwame"), seen: "Last active 3 days ago" },
+  { id: "leila", name: "Leila Haddad", imageUrl: face("leila"), seen: "Last active last week" },
+  { id: "daniel", name: "Daniel Okoro", imageUrl: face("daniel"), seen: "Last active 2 weeks ago" },
+  { id: "grace", name: "Grace Wanjiru", imageUrl: face("grace"), seen: "Not active yet" },
+  { id: "rahul", name: "Rahul Mehta", imageUrl: face("rahul"), guest: true, seen: "Last active on Monday" },
+  { id: "sofia", name: "Sofia Marques", imageUrl: face("sofia"), guest: true, seen: "Last active last week" },
+  { id: "mei", name: "Mei Tanaka", imageUrl: face("mei"), guest: true, seen: "Not active yet" },
+  { id: "tomas", name: "Tomás Rivera", imageUrl: face("tomas"), guest: true, seen: "Not active yet" },
 ];
 export const personOf = (id: string) => PEOPLE.find((person) => person.id === id);
 
@@ -833,7 +833,7 @@ export function startingScreenings(): Screening[] {
   edtech.changes = [
     { at: NOW - 6 * DAY, by: "amina", what: "Started the screening", effect: "132 papers from 4 sources, 3 people and 2 models" },
     { at: NOW - 4 * DAY, by: "jonas", what: "Changed “Is the intervention delivered with digital technology?” from must-have to nice to have", effect: "3 excluded papers became included" },
-    { at: NOW - 2 * DAY, by: "amina", what: "Added a third model as a reviewer", effect: "It reads all 132 papers" },
+    { at: NOW - 2 * DAY, by: "amina", what: "Added Gemma 3 4B as a reviewer", effect: "It reads all 132 papers" },
     { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
   ];
   // Half of the splits found so far were settled before the mock opens.
@@ -849,7 +849,7 @@ export function startingScreenings(): Screening[] {
   return [
     edtech,
     made("tvet", "TVET and youth employment", "tvet", 2, [source("t1", "search", "TVET AND youth employment AND Africa", "Openscholar search", 412, 0), source("t2", "collection", "Skills and work, shared reading", "Collection", 148, 31)], ["thandiwe", "amina", "kwame"], 2, { person: 0.55, model: 1 }, { createdAt: NOW - 12 * DAY }),
-    made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group collection", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: "They spend nothing until they are let on" }] }),
+    made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group collection", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: undefined }] }),
     // In another workspace, shared with the person the mock starts as: they vote, and its settings are that workspace's.
     made("remedial", "Remedial education, rapid review", "remedial", 8, [source("r1", "search", "remedial education AND randomised", "Openscholar search", 133, 0)], ["sofia", "amina"], 1, { sofia: 0.8, amina: 0.3, model: 1 }, { createdBy: "sofia", createdAt: NOW - 5 * DAY, workspace: "lab" }),
     made("teachers", "Teacher professional development", "teachers", 4, [source("d1", "search", "teacher professional development AND learning outcomes", "Openscholar search", 640, 0)], [], 3, { model: 1 }, { createdBy: "kwame", createdAt: NOW - 15 * DAY, rule: { each: "1", settle: "all", resolver: "kwame", blind: "after" } }),
@@ -926,7 +926,8 @@ export const withUpdates = (draft: Screening, live: Screening): Screening => ({
 });
 
 /** A day as the mock writes it: 23 Nov. */
-export const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+/** A date as "17 Nov", with its year only when that isn't this year. */
+export const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC", ...(new Date(at).getUTCFullYear() === new Date(NOW).getUTCFullYear() ? {} : { year: "numeric" }) });
 
 /** A date as the mock shows it: how long ago for the last week, the day before that. */
 export function ago(at: number) {

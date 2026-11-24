@@ -45,13 +45,14 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children ?? <Button variant="outline" size="sm"><UserPlus />Add a person</Button>}</PopoverTrigger>
-      <PopoverContent align="start" className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
+      <PopoverContent align="start" aria-label="Add a person" className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
+        <p className="px-3 pt-3 text-sm font-semibold">Add a person</p>
         <Command>
           <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
           <CommandList className="max-h-72">
             <CommandEmpty>{email ? null : "Nobody by that name. Type an email address to invite someone."}</CommandEmpty>
             {group("In this workspace", left.filter((person) => !person.guest))}
-            {group("Outside it", left.filter((person) => person.guest))}
+            {group("Outside this workspace", left.filter((person) => person.guest))}
             {email ? (
               <CommandGroup heading="Invite">
                 <CommandItem value={email} onSelect={() => pick({ email })} className="gap-3">
@@ -84,19 +85,19 @@ export function AddModel({ exclude, onPick, children }: { exclude: string[]; onP
   );
 }
 
-/** Asks before a change to a running screening, saying first what it will do. */
-export function ConfirmChange({ open, title, confirm, disabled = false, onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
+/** Asks before a change to a running screening, saying first what it will do. A change that can't be taken back, such as a deletion, is `destructive`: its button is red. */
+export function ConfirmChange({ open, title, confirm, cancel = "Cancel", disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". */ cancel?: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={`max-w-md ${AVATARS_FADE_IN}`}>
+      <DialogContent role={variant === "destructive" ? "alertdialog" : "dialog"} className={`max-w-md ${AVATARS_FADE_IN}`}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="sr-only">What this change does to the screening</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">{children}</div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button disabled={disabled} onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>
+          <Button variant="ghost" onClick={onClose}>{cancel}</Button>
+          <Button variant={variant} disabled={disabled} onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
