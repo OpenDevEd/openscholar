@@ -187,9 +187,13 @@ function Screen({ open }: { open: Open }) {
   };
   const answerIt = (criterion: string, answer: Answer) => {
     if (!paper) return;
-    setAnswers((all) => ({ ...all, [paper.id]: { ...all[paper.id], [criterion]: answer } }));
+    // A second press on the chosen answer takes it back. What is shown is what was set here and, under it, what the vote holds, so both are counted.
+    const given = { ...(resolving ? undefined : mine?.answers), ...answers[paper.id] };
+    if (given[criterion] === answer) delete given[criterion];
+    else given[criterion] = answer;
+    setAnswers((all) => ({ ...all, [paper.id]: given }));
     // On a paper you have voted on, the answer joins the vote at once.
-    if (mine && !resolving) open.vote(paper, { ...mine, answers: { ...mine.answers, ...answers[paper.id], [criterion]: answer } });
+    if (mine && !resolving) open.vote(paper, { ...mine, answers: given });
   };
   const press = (decision: Decision) => {
     if (!paper || !mayDecide) return;

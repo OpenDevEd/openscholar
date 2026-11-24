@@ -6,7 +6,7 @@
 import { createContext, use, useLayoutEffect, type ComponentProps, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
-import { useParams, useRouter, useSelectedLayoutSegment } from "next/navigation";
+import { useParams, useRouter, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -99,6 +99,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const store = useMock();
   // Which of its pages is open: each has its own address, so Back returns to the one before.
   const segment = useSelectedLayoutSegment();
+  const search = useSearchParams();
   const view: View = segment === "screen" || segment === "papers" || segment === "settings" ? segment : "overview";
   const open = useOpenScreening(id);
   useModelsReading(id);
@@ -200,11 +201,22 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     </DropdownMenu>
   );
 
+  // On Papers a face narrows the table to that reviewer's votes and shows that it does, and a second press takes that away. From another page it opens Papers narrowed to them.
+  // A vote named without a reviewer is your own, as the table reads it.
+  const narrowedTo = view === "papers" ? (search.get("reviewer") ?? ((search.get("voted") ?? "any") !== "any" ? open.me : null)) : null;
+  const faceHref = (reviewer: Reviewer) => {
+    if (view !== "papers") return papersHref(id, { reviewer: reviewer.id });
+    const next = new URLSearchParams(search);
+    for (const key of ["reviewer", "voted", "with", "page"]) next.delete(key);
+    if (narrowedTo !== reviewer.id) next.set("reviewer", reviewer.id);
+    return `${papersHref(id)}${next.size ? `?${next}` : ""}`;
+  };
+
   // Who reviews it and the ways to add to them, in the bar beside Share. On a phone the bar keeps the name and the menu, so they sit under the rule.
   const team = (
     <>
       {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
-      <Faces id={id} reviewers={reviewers} me={open.me} />
+      <Faces reviewers={reviewers} me={open.me} more={overviewHref(id, "reviewers")} shown={narrowedTo} hrefOf={faceHref} />
       {/* In the bar only in a window wide enough to keep a long name whole beside it: the menu has it at every width. */}
       {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
       {open.canChange ? (
@@ -338,23 +350,37 @@ function PickerButton({ hint, className, ...button }: ComponentProps<typeof Butt
   );
 }
 
-/** The reviewers' faces, people first. Each opens the papers that reviewer voted on; past the seventh, the count opens the Overview's list of them all. */
-function Faces({ id, reviewers, me, max = 7 }: { id: string; reviewers: Reviewer[]; me: string; max?: number }) {
+/**
+ * The reviewers' faces, people first. Each opens the papers that reviewer voted on; past the seventh, the count opens the
+ * Overview's list of them all. `shown` is the reviewer the Papers table is narrowed to: that face stands out, the others
+ * fade, and pressing it again shows everyone's.
+ */
+function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Reviewer[]; me: string; more: string; shown: string | null; hrefOf: (reviewer: Reviewer) => string; max?: number }) {
   return (
     <span className="flex shrink-0 items-center">
-      {reviewers.slice(0, max).map((reviewer, i) => (
-        <TooltipHint key={reviewer.id} label={`${reviewer.name}'s votes`}>
-          <NextLink
-            href={papersHref(id, { reviewer: reviewer.id })}
-            aria-label={`${reviewer.name}'s votes`}
-            className={cn("relative flex ring-2 ring-card outline-none transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}
-          >
-            <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
-          </NextLink>
-        </TooltipHint>
-      ))}
+      {reviewers.slice(0, max).map((reviewer, i) => {
+        const on = shown === reviewer.id;
+        const says = on ? `Stop showing only ${reviewer.name}'s votes` : `${reviewer.name}'s votes`;
+        return (
+          <TooltipHint key={reviewer.id} label={says}>
+            <NextLink
+              href={hrefOf(reviewer)}
+              aria-label={says}
+              aria-current={on ? "true" : undefined}
+              className={cn(
+                "relative flex ring-2 ring-card outline-none transition-[transform,opacity] hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none",
+                reviewer.kind === "model" ? "rounded-md" : "rounded-full",
+                i > 0 && "-ms-1.5",
+                shown && (on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"),
+              )}
+            >
+              <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
+            </NextLink>
+          </TooltipHint>
+        );
+      })}
       {reviewers.length > max ? (
-        <NextLink href={overviewHref(id, "reviewers")} className={cn("ms-1.5 text-xs tabular-nums text-muted-foreground", INLINE_LINK)}>+{reviewers.length - max}</NextLink>
+        <NextLink href={more} className={cn("ms-1.5 text-xs tabular-nums text-muted-foreground", INLINE_LINK)}>+{reviewers.length - max}</NextLink>
       ) : null}
     </span>
   );

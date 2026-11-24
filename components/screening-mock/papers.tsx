@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
-import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { createSerializer, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
 import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -70,6 +70,26 @@ const PLACE = {
   paper: parseAsString,
 };
 
+const addressOf = createSerializer(PLACE);
+type Narrow = Partial<Record<"result" | "source" | "added" | "reviewer" | "voted" | "with" | "reason", string>>;
+/**
+ * A link on this page that narrows the table to something. Where the table is already narrowed to exactly that, the
+ * same link takes it away again, so a second press undoes the first. `undo` names what the second press clears, where
+ * that is less than what the first set. `aria-current` marks the link while it is what narrows the table. The first
+ * press adds to what the table already shows and the second takes just that away, so the two leave the table as it was.
+ * A paper that is open stays open through both, so a chip in its panel is still there to press again. Each kind of
+ * filter holds one value, as the selects above the table do: a link to another reviewer replaces the one shown.
+ */
+function useNarrow(id: string, me: string) {
+  const [place] = useQueryStates(PLACE);
+  // A vote named without a reviewer is your own, as the table reads it.
+  const shown = { ...place, reviewer: place.reviewer ?? (place.voted !== "any" ? me : null) };
+  return (to: Narrow, undo = Object.keys(to) as Array<keyof Narrow>) => {
+    const on = Object.entries(to).every(([key, value]) => shown[key as keyof Narrow] === value);
+    return { on, href: on ? addressOf(papersHref(id), { ...place, ...Object.fromEntries(undo.map((key) => [key, null])), page: null }) : addressOf(papersHref(id), { ...place, ...(to as Partial<typeof place>), page: null }), "aria-current": on ? ("true" as const) : undefined };
+  };
+}
+
 /** The Papers table as a page of the open screening. */
 export function PapersPage() {
   const { open } = useWorkspace();
@@ -89,6 +109,7 @@ function Papers({ open }: { open: Open }) {
   const criteria = screening.criteria;
   // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
+  const narrow = useNarrow(id, open.me);
   const { result: filter, by: columns, source: from, reviewer, voted, with: also, reason, added, sort, q: query, page, paper: opened } = place;
   /** Narrows or reorders the table, which starts again from its first page. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace({ page: null, ...next });
@@ -614,7 +635,7 @@ function Papers({ open }: { open: Open }) {
                               {/* A result a person settled, against the votes, carries their face: it opens what they settled. */}
                               {state.resolvedBy ? (
                                 <TooltipHint label={`Settled by ${nameOf(open, state.resolvedBy)}`}>
-                                  <NextLink href={papersHref(id, { reviewer: state.resolvedBy, voted: "settled" })} aria-label={`Settled by ${nameOf(open, state.resolvedBy)}`} className="flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                                  <NextLink href={narrow({ reviewer: state.resolvedBy, voted: "settled" }).href} aria-current={narrow({ reviewer: state.resolvedBy, voted: "settled" })["aria-current"]} aria-label={`Settled by ${nameOf(open, state.resolvedBy)}`} className="flex rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                                     <IdentityAvatar name={nameOf(open, state.resolvedBy)} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
                                   </NextLink>
                                 </TooltipHint>
@@ -711,6 +732,7 @@ const ROW_LINK = "rounded-sm outline-none decoration-muted-foreground/50 underli
 /** What put a paper where it stands: the criterion it failed, how its reviewers split, or whose vote it waits for. Each opens the papers it names. */
 function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; visible: boolean; reasonKey?: string }) {
   const id = open.screening.id;
+  const narrow = useNarrow(id, open.me);
   const state = open.settled[paper.id]!;
   const entries = open.votes[paper.id]!;
   const cast = entries.flatMap((one) => one.vote ?? []);
@@ -722,13 +744,17 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
       <span className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className={cn("shrink-0", mine && "font-medium text-primary")}>{mine ? "Waiting on you" : "Waiting on"}</span>
         <span className="flex items-center">
-          {missing.slice(0, 5).map((one, i) => (
-            <TooltipHint key={one.id} label={one.id === open.me ? "Papers waiting for your vote" : `Papers waiting for ${one.name}`}>
-              <NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })} aria-label={one.id === open.me ? "Papers waiting for your vote" : `Papers waiting for ${one.name}`} className={cn("flex outline-none ring-2 ring-card transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:ring-ring/50", one.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
+          {missing.slice(0, 5).map((one, i) => {
+            const link = narrow({ reviewer: one.id, voted: "none" });
+            const says = `${link.on ? "Stop showing only the papers" : "Papers"} waiting for ${one.id === open.me ? "your vote" : one.name}`;
+            return (
+            <TooltipHint key={one.id} label={says}>
+              <NextLink href={link.href} aria-current={link["aria-current"]} aria-label={says} className={cn("flex outline-none ring-2 ring-card transition-transform hover:z-10 hover:-translate-y-0.5 focus-visible:ring-ring/50", link.on && "z-10 ring-foreground", one.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")}>
                 <ReviewerMark reviewer={one} you={one.id === open.me} />
               </NextLink>
             </TooltipHint>
-          ))}
+            );
+          })}
           {missing.length > 5 ? <span className="ms-1.5 tabular-nums">+{missing.length - 5}</span> : null}
         </span>
       </span>
@@ -738,9 +764,11 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
   if (state.result === "conflict" || state.resolvedBy) return <Tally votes={cast} />;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `Unclear: ${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey}`;
+    // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
+    const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     return (
       <QuestionHint question={questionOf(reasonKey, open.screening.criteria)} label={label}>
-        <NextLink href={papersHref(id, { result: state.result, reason: reasonKey })} className={cn("block truncate text-xs text-muted-foreground", ROW_LINK)}>{label}</NextLink>
+        <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}>{label}</NextLink>
       </QuestionHint>
     );
   }
@@ -785,6 +813,7 @@ function ReasonPicker({ reasons, onPick, onBack }: { reasons: Array<{ key: strin
 function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; place: { at: number; of: number }; inSheet?: boolean }) {
   const { screening, settled, votes } = open;
   const id = screening.id;
+  const narrow = useNarrow(id, open.me);
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   // What is being decided in the panel: your own vote, or the paper's result. Excluding asks for the reason first.
   const [deciding, setDeciding] = useState<"vote" | "result" | null>(null);
@@ -798,6 +827,9 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
   const quoted = shown && visible ? screening.criteria.findIndex((c) => c.key === shown.criterion) : -1;
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
   const source = screening.sources.find((one) => one.id === paper.source);
+  // The paper's two chips that narrow the table: each shows when it does, and takes it away on a second press.
+  const added = paper.batch !== undefined ? narrow({ added: String(paper.batch) }) : null;
+  const from = source ? narrow({ source: source.id }) : null;
   const failed = cast.filter((one) => one.failed);
   const score = state.result === "include" && visible && screening.criteria.length ? scoreOf(screening, cast) : null;
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
@@ -854,8 +886,8 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
         <ResultChip result={state.result} />
         {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
         <Chip icon={Quote}>{paper.cited.toLocaleString("en-GB")} cited</Chip>
-        {paper.batch !== undefined ? <LinkChip href={papersHref(id, { added: String(paper.batch) })} icon={RefreshCw}>Added {ago(paper.batch)}</LinkChip> : null}
-        {source ? <LinkChip href={papersHref(id, { source: source.id })} className="max-w-full">Papers from {source.name}</LinkChip> : null}
+        {added ? <LinkChip href={added.href} aria-current={added["aria-current"]} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(paper.batch!)}</LinkChip> : null}
+        {from ? <LinkChip href={from.href} aria-current={from["aria-current"]} tone={from.on ? "primary" : "neutral"} className="max-w-full">Papers from {source!.name}</LinkChip> : null}
       </div>
       {paper.sentences.length ? (
         <p className="text-sm leading-6">{paper.sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>
