@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { fakeStore, storeAnswer, storedAddress, stubPaperStore } from "../lib/paperPdfs.test-support";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
@@ -91,4 +92,35 @@ it("finds papers by a title on the index the site searches, for a community's si
   expect((await ask("The power of feedback", "els_" + "f".repeat(43))).status).toBe(401);
   // Too short to be a title.
   expect((await ask("ab")).status).toBe(400);
+});
+
+it("gives a community a link to Openscholar's stored copy of a paper's PDF, for nothing, and no one else", async () => {
+  const { t, created, clerkUserId } = await createReadySetupFixture("paper_links_stored");
+  const libraryId = created.libraryId;
+  const token = "els_" + "e".repeat(43);
+  await t.run(async (ctx) => {
+    // The community's machine credential, as its setup stored one: its digest is this token's.
+    const credential = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId_and_credentialKey", (q) => q.eq("libraryId", libraryId).eq("credentialKey", "library-service")).unique();
+    const digest = createHash("sha256").update(token).digest("hex");
+    if (credential) await ctx.db.patch("evidenceLibraryCredentials", credential._id, { credentialDigest: digest });
+    else await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: digest, validationState: "valid", createdByClerkUserId: clerkUserId, updatedByClerkUserId: clerkUserId, createdAt: 1, updatedAt: 1 });
+  });
+  stubPaperStore();
+  fakeStore.reset();
+  fakeStore.objects.set("openalex/W7.pdf", new TextEncoder().encode("%PDF-1.7"));
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => (await storeAnswer(input, init)) ?? new Response("Not found", { status: 404 }));
+  const ask = (paper: Record<string, string>, credential = token) =>
+    t.fetch("/api/v1/evidence-libraries/papers/stored-pdf", { method: "POST", headers: { Authorization: `Bearer ${credential}`, "Content-Type": "application/json" }, body: JSON.stringify({ contractVersion: 1, libraryId, ...paper }) });
+
+  // A copy the store holds comes back as a signed link to it.
+  const held = await ask({ openalexId: "https://openalex.org/W7", url: "https://example.org/w7.pdf" });
+  expect(held.status).toBe(200);
+  expect(((await held.json()) as { link: string }).link).toContain(`${storedAddress("openalex/W7.pdf")}?`);
+  // A paper it has no copy of names none, and nothing is bought or fetched for it.
+  expect(await (await ask({ openalexId: "W8" })).json()).toEqual({ link: null });
+  // Nobody's charged for a community's read.
+  expect(await t.run(async (ctx) => (await ctx.db.query("paperPdfReads").take(1)).length)).toBe(0);
+
+  expect((await ask({ openalexId: "W7" }, "els_" + "f".repeat(43))).status).toBe(401);
+  expect((await ask({})).status).toBe(400);
 });

@@ -7,6 +7,7 @@ import { requireAppUrl } from "../lib/env";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { readConvexErrorData } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { storedCopyLink } from "../lib/paperPdfs";
 import { PAGE_ORDERED_SORT, readSearchPage, readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
@@ -15,6 +16,7 @@ import { paperLinkOf } from "../../lib/papers/paper-links";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 import { REPORTS_ASKED_MAX, REPORTS_PER_READ } from "../../lib/reports/report";
+import { MAX_PDF_URL_LENGTH } from "../../lib/pdf/url-allowlist";
 
 /** A paper as a community takes it: its OpenAlex work, its DOI, or both. */
 export type PaperIds = { openalexId: string | null; doi: string | null };
@@ -106,6 +108,31 @@ export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ct
   // A reader's lookups count against their own allowance. The team's, from the admin, aren't counted: at most ADDED_PAPERS_MAX a request, from a signed community.
   const spend = clerkUserId ? spender(ctx, clerkUserId) : async () => true;
   return answerPapers(libraryId, async () => await Promise.all(links.map((link) => paperOfLink(ctx, link, spend, { withDoi: true }))));
+});
+
+const storedPdfSchema = z
+  .object({
+    contractVersion: z.literal(1),
+    libraryId: z.string().min(1).max(128),
+    openalexId: z.string().min(1).max(64).optional(),
+    url: z.string().min(1).max(MAX_PDF_URL_LENGTH).optional(),
+  })
+  .strict();
+
+/**
+ * `POST /api/v1/evidence-libraries/papers/stored-pdf`, for a community's import: a link to Openscholar's stored copy
+ * of a paper's PDF, good for an hour, by the paper's OpenAlex work or by the address a copy was fetched from. `link`
+ * is null when the store has none. A community reads a stored copy for nothing and never buys one: only a read inside
+ * Openscholar is charged. With the community's machine credential.
+ */
+export const storedPdf: ReturnType<typeof httpAction> = httpAction(async (ctx, request) => {
+  const credential = readBearerCredential(request);
+  if (!credential) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
+  const parsed = storedPdfSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success || (!parsed.data.openalexId && !parsed.data.url)) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
+  const { libraryId, openalexId, url } = parsed.data;
+  if (!(await isCommunity(ctx, libraryId, credential))) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
+  return jsonResponse(200, { link: await storedCopyLink({ ...(openalexId ? { openalexId } : {}), ...(url ? { url } : {}) }) });
 });
 
 const reportsSchema = z

@@ -1,5 +1,5 @@
 import { paperSubmissionStatus } from "./evidenceLibraries/submissionsHttp";
-import { reportRecords, resolvePapers, searchPapersByTitle } from "./evidenceLibraries/paperLinks";
+import { reportRecords, resolvePapers, searchPapersByTitle, storedPdf } from "./evidenceLibraries/paperLinks";
 import { zenodoToken } from "./evidenceLibraries/zenodoToken";
 import { reports as searchIndexReports } from "./reports/searchIndex";
 import { catalog as topicCatalog, detail as topicDetail, associations as topicAssociations, associationBatch as topicAssociationBatch } from "./topics/serviceHttp";
@@ -52,6 +52,8 @@ http.route({path: "/api/v1/evidence-libraries/author-associations", method: "POS
 http.route({path: "/api/v1/evidence-libraries/paper-submissions", method: "POST", handler: paperSubmissionStatus});
 http.route({path: "/api/v1/evidence-libraries/papers/resolve", method: "POST", handler: resolvePapers});
 http.route({path: "/api/v1/evidence-libraries/reports/records", method: "POST", handler: reportRecords});
+// A community's import reads Openscholar's stored copy of a paper's PDF, for nothing.
+http.route({path: "/api/v1/evidence-libraries/papers/stored-pdf", method: "POST", handler: storedPdf});
 // A community archiving in its owner's own Zenodo account asks for the account's current token (#1237).
 http.route({path: "/api/v1/evidence-libraries/zenodo-token", method: "POST", handler: zenodoToken});
 // A community's reader looks for a paper to suggest by its title, on the index the site searches.
