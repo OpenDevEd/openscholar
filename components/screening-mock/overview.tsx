@@ -503,13 +503,14 @@ function Flow({ open, onExport }: { open: Open; onExport: (what: "flow") => void
   const { screening, papers, votes, settled, counts } = open;
   const found = screening.sources.reduce((sum, source) => sum + taken(source), 0);
   const kept = screening.sources.reduce((sum, source) => sum + keptOf(source), 0);
+  // Papers still on their way from its sources are counted as waiting, so the last column adds up to the one before it.
   const tally = new Map<string, number>();
   for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
   const reasons = [...tally].sort((a, b) => b[1] - a[1]).map(([key, value]) => ({ label: `Excluded, ${failedLabel(key, screening.criteria).replace(/^Not met/, "not met")}`, value }));
   const shown = [
     { title: "Found", total: found, rows: screening.sources.map((source) => ({ label: source.name, value: taken(source) })) },
     { title: "To screen", total: kept, note: "after duplicates", rows: [{ label: "Duplicates merged", value: found - kept }] },
-    { title: "Title and abstract", total: counts.include, note: "included", rows: [...reasons, { label: "Left as maybe", value: counts.maybe }, { label: "In conflict or waiting", value: counts.conflict + counts.waiting }] },
+    { title: "Title and abstract", total: counts.include, note: "included", rows: [...reasons, { label: "Left as maybe", value: counts.maybe }, { label: "In conflict or waiting", value: counts.conflict + counts.waiting + (kept - papers.length) }] },
   ];
   return (
     <Zone label="Flow" aside={<Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onExport("flow")}><Download />Get it as a flow diagram</Button>}>

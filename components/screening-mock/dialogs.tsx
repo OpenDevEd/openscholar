@@ -248,7 +248,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const included = which === "mine" ? mine : settledIn;
   const ris = () => included.map((paper) => ["TY  - JOUR", `TI  - ${paper.title}`, ...paper.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${paper.year}`, `JO  - ${paper.venue}`, ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
   const bib = () => included.map((paper, i) => `@article{${paper.authors[0]!.split(" ").pop()!.toLowerCase()}${paper.year}${String.fromCharCode(97 + (i % 26))},\n  title = {${paper.title}},\n  author = {${paper.authors.filter((a) => a !== "and others").join(" and ")}},\n  year = {${paper.year}},\n  journal = {${paper.venue}}\n}`).join("\n\n");
-  const openNow = counts.conflict + counts.waiting;
+  // Papers still on their way from its sources wait for votes like the rest, so the counts add up while they arrive.
+  const openNow = counts.conflict + counts.waiting + (kept - papers.length);
   const boxes: Array<{ title: string; n: number; side?: Array<{ label: string; n: number }> }> = [
     { title: "Records identified", n: found, side: later ? [{ label: "When screening began", n: found - later }, { label: `By ${looks.length} later ${looks.length === 1 ? "search" : "searches"}, the last on ${day(looks.at(-1)!.at)}`, n: later }, ...screening.sources.map((source) => ({ label: source.name, n: taken(source) }))] : screening.sources.map((source) => ({ label: source.name, n: taken(source) })) },
     { title: "Records screened on title and abstract", n: kept, side: [{ label: "Duplicates removed before screening", n: found - kept }] },
@@ -263,7 +264,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       const arrow = i < boxes.length - 1 ? `<path d="M190 ${y + bh} v${gap - 6}" stroke="#666" fill="none" marker-end="url(#a)"/>` : "";
       return `<rect x="20" y="${y}" width="340" height="${bh}" rx="8" fill="#fff" stroke="#999"/><text x="36" y="${y + 26}" font-size="13" font-weight="600" fill="#111">${esc(box.title)}</text><text x="36" y="${y + 46}" font-size="12" fill="#333">n = ${box.n}</text>${box.side?.length ? `<path d="M360 ${y + bh / 2} h34" stroke="#666" marker-end="url(#a)"/>` : ""}${side}${arrow}`;
     }).join("");
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${40 + boxes.length * (bh + gap)}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${body}</svg>`;
+    // A box with many reasons beside it runs below its own row: the drawing is as tall as the lowest line.
+    const lowest = Math.max(...boxes.map((box, i) => 20 + i * (bh + gap) + 18 + (box.side?.length ?? 0) * 15));
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${Math.max(40 + boxes.length * (bh + gap), lowest + 10)}" font-family="sans-serif"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#666"/></marker></defs>${body}</svg>`;
   };
 
   // The same diagram as a picture, drawn from the drawing: what a word processor takes.
@@ -294,7 +297,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => agreement(a.id, b.id, state)?.kappa ?? [])).sort((a, b) => a - b);
   const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
   const methods = [
-    openNow ? `Screening was still in progress when this was written: ${(papers.length - openNow).toLocaleString("en-GB")} of ${papers.length.toLocaleString("en-GB")} records had been settled.` : "",
+    openNow ? `Screening was still in progress when this was written: ${(kept - openNow).toLocaleString("en-GB")} of ${kept.toLocaleString("en-GB")} records had been settled.` : "",
     `Records from ${screening.sources.length} ${screening.sources.length === 1 ? "source" : "sources"} (n = ${found}) were brought into Openscholar. After ${found - kept} duplicates were merged, ${kept} were screened.`,
     looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     screening.criteria.length ? `Each record was assessed on its title and abstract against ${screening.criteria.length} ${screening.criteria.length === 1 ? "criterion" : "criteria"}, ${screening.criteria.filter((c) => c.must).length} of which a record had to meet to be included.` : "Each record was assessed on its title and abstract.",
