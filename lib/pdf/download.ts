@@ -20,7 +20,7 @@ export interface DownloadPdfOptions {
     userId: string;
   };
   doi?: string;
-  /** OpenAlex's ID for the paper, which says its link is OpenAlex's. */
+  /** OpenAlex's ID for the paper, by which its other copies are looked up when it has no DOI. */
   openalexId?: string;
   /** Fetches plain-HTTP addresses too, still behind the private-address guard. */
   allowHttp?: boolean;
@@ -53,18 +53,22 @@ export async function downloadPdf(
       return await downloadZoteroPdf(url, options.zoteroConnection, ZOTERO_TIMEOUT_MS, options.maxBytes ?? MAX_PDF_BYTES);
     }
     const contactEmail = process.env.OPENALEX_CONTACT_EMAIL;
+    const openAlexKey = process.env.OPENALEX_API_KEY;
     const result = await findPdf(
       { doi: options.doi, openalexId: options.openalexId, urls: /^https?:\/\//i.test(url) ? [url] : [] },
       {
         userAgent: "Openscholar (https://openscholar.ai)",
         ...(contactEmail ? { contactEmail } : {}),
+        ...(openAlexKey ? { openAlexKey } : {}),
         ...(options.memory ? { memory: options.memory } : {}),
         maxBytes: options.maxBytes ?? MAX_PDF_BYTES,
         httpsOnly: !options.allowHttp,
       },
     );
     if (result.ok) return { success: true, pdfBlob: new Blob([result.bytes.slice().buffer], { type: "application/pdf" }) };
-    return { success: false, error: WHY[result.reason] };
+    // A copy that exists and is too large is not a paper with no PDF.
+    const tooLarge = result.attempts.some((attempt) => attempt.outcome === "too_large");
+    return { success: false, error: tooLarge ? "This paper's PDF is too large to read here." : WHY[result.reason] };
   } catch (e: unknown) {
     const error = e instanceof Error ? e.message : String(e);
     return { success: false, error };

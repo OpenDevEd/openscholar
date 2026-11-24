@@ -208,11 +208,13 @@ export const remember = internalMutation({
 
 /**
  * Where the search for a free copy remembers a paper it found none of. The miss stands for the link it was searched
- * with, so a paper whose link changed is searched afresh. What the search learns about hosts is not kept: an action
- * doesn't live long enough to use it.
+ * with and for how it was searched: a paper whose link changed is searched afresh, and a miss under one size limit or
+ * with plain HTTP refused says nothing to a read that allows more. What the search learns about hosts is not kept: an
+ * action doesn't live long enough to use it.
  */
-const searchMemory = (ctx: ActionCtx, link: string | undefined): Memory => {
-  const row = (key: string) => (key.startsWith("paper:") ? `${key} ${link ?? ""}` : null);
+const searchMemory = (ctx: ActionCtx, link: string | undefined, options: PdfOptions): Memory => {
+  const how = `${link ?? ""} ${options.allowHttp ? "http" : "https"} ${options.maxBytes}`;
+  const row = (key: string) => (key.startsWith("paper:") ? `${key} ${how}` : null);
   return {
     get: (key) => (row(key) ? ctx.runQuery(internal.lib.paperPdfs.miss, { key: row(key)! }) : undefined),
     set: (key, value) => {
@@ -287,7 +289,7 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
   let failed = "This paper has no PDF address.";
   if (paper.url || paper.doi) {
     // A file from a person's Zotero library is theirs to read, and a miss on it says nothing about the paper.
-    const memory = isZotero(paper) ? undefined : searchMemory(ctx, paper.url);
+    const memory = isZotero(paper) ? undefined : searchMemory(ctx, paper.url, options);
     const { pdfBlob, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, openalexId: work ?? undefined, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, ...(memory ? { memory } : {}) });
     const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
     if (bytes && isPdf(bytes)) {

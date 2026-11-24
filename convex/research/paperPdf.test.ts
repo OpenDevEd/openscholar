@@ -159,6 +159,14 @@ describe("extraction's PDFs from the store", () => {
     expect(publisher).toEqual([landing, PDF]);
   });
 
+  it("says a PDF is too large, and not that the paper has none, when its copy is over the limit", async () => {
+    const t = convexTest(schema);
+
+    const read = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W11", url: PDF, hasCopy: false }, { ...EXTRACTION, maxBytes: 20 });
+
+    expect(read).toMatchObject({ error: expect.stringMatching(/too large/) });
+  });
+
   it("remembers a paper with no free copy, and asks no site about it again until its time", async () => {
     const t = convexTest(schema);
     const gone = { openalexId: "W10", doi: "10.1/gone", url: "https://example.org/gone.pdf", hasCopy: false };
