@@ -491,7 +491,7 @@ const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
   ["Goals", (m) => m.sdgs.join(", ")],
   ["Study designs", (m) => m.studyDesigns.join(", ")],
   ["Places", (m) => m.countries.join(", ")],
-  ["Funding", (m) => m.funding.map((f) => [f.funder.name, ...f.awards].join(", ")).join("\n")],
+  ["Funding", (m) => m.funding.map((f) => [f.funder.name, f.type && f.type !== "grantor" ? f.type : "", ...f.awards].filter(Boolean).join(", ")).join("\n")],
   ["References", (m) => (m.citations ?? m.references.map((doi) => ({ text: "", doi }))).map((c) => [c.text, c.doi].filter(Boolean).join(", ")).join("\n")],
   ["Links", (m) => m.relations.map((r) => `${r.kind}: ${r.target}`).join("\n")],
 ];
