@@ -59,7 +59,7 @@
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react": "^1.1.10",
     "@opendeved/doi-sync-core": "github:OpenDevEd/doi-sync-core#df6f013294973922cbfa3e51168b328426093ceb",
-    "@opendeved/paper-pdf": "github:OpenDevEd/paper-pdf#e04f9cb5db106fcb7502ab79b199e8b46021432e",
+    "@opendeved/paper-pdf": "github:OpenDevEd/paper-pdf#7f8313c47a28c786e71828ea9669d5f5e35611ad",
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "@posthog/nextjs-config": "^1.12.1",
     "@sickrin/openalex-sdk": "^1.1.0",
