@@ -38,11 +38,11 @@ import { CriterionText, ReviewerMark, ReviewerStack, RuleExamples } from "./part
 import { credits, isReading, paperCredits, useMock, useModelsReading } from "./store";
 import { AddModel, AddPerson } from "./team";
 
-type Kind = Exclude<SourceKind, "pdf">;
-const KINDS: Array<{ id: Kind; label: string; icon: AppIcon }> = [
+// The whole library and its collections are one place to a person, so they share a tab.
+type Kind = Exclude<SourceKind, "pdf" | "saved">;
+const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = [
   { id: "search", label: "Search", icon: SOURCE_ICON.search },
-  { id: "collection", label: "Collection", icon: SOURCE_ICON.collection },
-  { id: "saved", label: "Saved", icon: SOURCE_ICON.saved },
+  { id: "collection", label: "Library", icon: SOURCE_ICON.saved, find: "Find a collection" },
   { id: "screening", label: "Screening", icon: SOURCE_ICON.screening },
   { id: "evidenceLibrary", label: "Community", icon: SOURCE_ICON.evidenceLibrary },
   { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero },
@@ -498,11 +498,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                   ) : null}
 
                   <div data-adds className="@container space-y-3 pt-2">
-                    {/* Eight kinds share one row where the column holds them, and even rows of four or two where it doesn't: none is cut off or scrolled to. */}
+                    {/* The kinds share one row where the column holds them, four then three where it doesn't, and pairs on a phone: none is cut off or scrolled to. */}
                     <Segmented
                       label="Add papers from"
                       fill="labels"
-                      className="@max-[44rem]:grid @max-[44rem]:grid-cols-4 @max-[28rem]:grid-cols-2 [&>button]:px-2.5 [&>button>span]:gap-1.5"
+                      className="[&>button]:px-2.5 [&>button>span]:gap-1.5 @max-[39rem]:[&>button]:min-w-[22%] @max-[26rem]:grid @max-[26rem]:grid-cols-2 @max-[26rem]:[&>button:last-child]:col-span-2"
                       value={kind}
                       onChange={(next) => { setKind(next); setFind(""); setOfferPage(1); }}
                       options={KINDS}
@@ -579,11 +579,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                         {OFFERS[kind].length > OFFER_PAGE ? (
                           <div className="relative">
                             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                            <Input value={find} onChange={(event) => { setFind(event.target.value); setOfferPage(1); }} placeholder={`Find a ${KINDS.find((one) => one.id === kind)!.label.toLowerCase()}`} aria-label="Find a source" className="h-8 rounded-full ps-8 text-sm" />
+                            <Input value={find} onChange={(event) => { setFind(event.target.value); setOfferPage(1); }} placeholder={KINDS.find((one) => one.id === kind)!.find ?? `Find a ${KINDS.find((one) => one.id === kind)!.label.toLowerCase()}`} aria-label="Find a source" className="h-8 rounded-full ps-8 text-sm" />
                           </div>
                         ) : null}
                         <div className={LIST} style={{ minHeight: offerPager.pages > 1 ? OFFER_PAGE * 57 : undefined }}>
-                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => <OfferRow key={offer.name} offer={offer} icon={iconOf(kind)} added={draft.sources.some((source) => source.kind === kind && source.name === offer.name)} onAdd={() => { addSource(kind, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === kind && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />)}
+                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={iconOf(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { addSource(as, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
                           {!offers.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">Nothing by that name.</p> : null}
                         </div>
                         {offerPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={offerPager.page} totalPages={offerPager.pages} onPageChange={setOfferPage} totalItems={offers.length} itemsPerPage={OFFER_PAGE} itemLabel="sources" /> : null}

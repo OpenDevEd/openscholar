@@ -3,9 +3,9 @@
 
 import type { SourceKind } from "./data";
 
-export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[] };
+export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[]; /** The kind it is added as, where that is not its tab's: the whole library sits above its collections. */ kind?: SourceKind };
 
-export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evidenceLibrary">, Offer[]> = {
+export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evidenceLibrary" | "saved">, Offer[]> = {
   search: [
     { name: "structured pedagogy AND early grade reading", detail: "Searched yesterday", total: 318, filters: ["2010 to 2026", "Articles", "Open access"], questions: ["Does the study report reading outcomes?", "Was the programme delivered by government teachers?"] },
     { name: "teaching at the right level", detail: "Searched 3 days ago", total: 96, filters: ["2015 to 2026"] },
@@ -21,6 +21,7 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evi
     { name: "remedial education AND randomised", detail: "Searched 2 months ago", total: 133 },
   ],
   collection: [
+    { name: "All saved papers", detail: "This workspace's library", total: 412, kind: "saved" },
     { name: "Foundational learning, core set", detail: "64 papers", total: 64 },
     { name: "To read: numeracy", detail: "23 papers", total: 23 },
     { name: "Skills and work, shared reading", detail: "148 papers", total: 148 },
@@ -29,7 +30,6 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evi
     { name: "Methods: cluster trials", detail: "12 papers", total: 12 },
     { name: "Empty for now", detail: "No papers yet", total: 0 },
   ],
-  saved: [{ name: "All saved papers", detail: "This workspace's library", total: 412 }],
   screening: [
     { name: "Included in TVET and youth employment", detail: "Finished screening", total: 61 },
     { name: "Included in Climate adaptation in schools", detail: "Finished screening", total: 29 },
