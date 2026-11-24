@@ -6584,7 +6584,75 @@
       "priceThreeHint": "Ce que coûte la publication d’un rapport sous une licence NC ou ND, ou sous la licence ouverte propre à son auteur, en dollars américains.",
       "prices": "Prix",
       "priceClosed": "Licences propres non ouvertes",
-      "priceClosedHint": "Ce que coûte la publication d’un rapport sous la licence propre à son auteur qui ne permet à personne de le partager, en dollars américains."
+      "priceClosedHint": "Ce que coûte la publication d’un rapport sous la licence propre à son auteur qui ne permet à personne de le partager, en dollars américains.",
+      "intake": {
+        "title": "Nouveaux rapports",
+        "when": "Quand ils sont ouverts",
+        "hint": {
+          "off": "Personne ne peut commencer ni activer de rapport. Les rapports déjà commencés attendent dans Vos rapports.",
+          "on": "Toute personne connectée peut commencer et activer des rapports, dans les limites ci-dessous.",
+          "dates": "Ouverts entre ces dates, dans les limites ci-dessous."
+        },
+        "mode": {
+          "off": "Désactivé",
+          "on": "Activé",
+          "dates": "Entre deux dates"
+        },
+        "timezone": "Fuseau horaire",
+        "timezoneHint": "Les dates et les périodes calendaires suivent son heure",
+        "opens": "Ouverture",
+        "opensHint": "Laissez vide pour les ouvrir maintenant",
+        "closes": "Fermeture",
+        "closesHint": "Laissez vide pour les garder ouverts",
+        "closePast": "Choisissez un moment à venir.",
+        "closeBeforeOpen": "Choisissez un moment après l'ouverture.",
+        "startsIn": "Ouvre {time}",
+        "left": "Ferme {time}",
+        "over": "Terminé",
+        "limits": "Limites",
+        "addLimit": "Ajouter une limite",
+        "noLimits": "Aucune limite. Tout rapport prêt peut être activé.",
+        "limitsHint": "Chaque limite compte les activations. Une fois une limite atteinte, les nouveaux rapports et les activations attendent sa prochaine période.",
+        "countLabel": "Activations autorisées",
+        "countWrong": "Saisissez un nombre entier de 1 à {max}.",
+        "activations": "{count, plural, one {activation} other {activations}}",
+        "periodLabel": "Période",
+        "period": {
+          "day": "par jour",
+          "week": "par semaine",
+          "month": "par mois",
+          "total": "au total",
+          "dates": "entre les dates"
+        },
+        "resetLabel": "Comment la période est comptée",
+        "rolling": {
+          "day": "24 dernières heures",
+          "week": "7 derniers jours",
+          "month": "30 derniers jours"
+        },
+        "calendar": {
+          "day": "De minuit à minuit",
+          "week": "Du lundi au dimanche",
+          "month": "Mois civil"
+        },
+        "remove": "Supprimer la limite",
+        "usedLabel": "Activations sur cette période",
+        "used": "{used} sur {count}",
+        "full": "Complet",
+        "startsAgain": "Repart à zéro {date}",
+        "frees": "Une place se libère {date}",
+        "untilClose": "Jusqu'à la fermeture",
+        "sinceOpen": "Depuis l'ouverture",
+        "state": {
+          "open": "Ouvert",
+          "openUntil": "Ouvert jusqu'au {date}",
+          "off": "Désactivé",
+          "opens": "Ouvre le {date}",
+          "ended": "Terminé le {date}",
+          "full": "Complet",
+          "fullUntil": "Complet jusqu'au {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7069,7 +7137,36 @@
       "docidAgain": "Redemander à DOCiD",
       "reservedDocid": "Attribué par DOCiD",
       "copyDocid": "Copier le DOCiD",
-      "docidCopied": "DOCiD copié"
+      "docidCopied": "DOCiD copié",
+      "intake": {
+        "shut": {
+          "off": "Les nouveaux rapports sont fermés",
+          "notYet": "Les nouveaux rapports ouvrent le {date}",
+          "next": "La prochaine période commence le {date}",
+          "over": "Cette période est terminée"
+        },
+        "off": {
+          "title": "Les nouveaux rapports sont fermés",
+          "body": "Les rapports que vous avez commencés attendent ici jusqu'à leur réouverture."
+        },
+        "notYet": {
+          "title": "Les nouveaux rapports ne sont pas encore ouverts",
+          "body": "Les rapports que vous avez commencés attendent ici d'ici là."
+        },
+        "over": {
+          "title": "Cette période est terminée"
+        },
+        "ended": {
+          "body": "Les nouveaux rapports sont fermés. Les rapports que vous avez commencés attendent ici."
+        },
+        "full": {
+          "body": "Toutes les places sont prises. Les rapports que vous avez commencés attendent la prochaine période.",
+          "last": "Toutes les places sont prises. Les rapports que vous avez commencés attendent ici."
+        },
+        "opens": "Ouvre le {date}",
+        "closed": "Fermé le {date}",
+        "next": "Prochaine période le {date}"
+      }
     },
     "meta": {
       "publish": "Publier | Openscholar",

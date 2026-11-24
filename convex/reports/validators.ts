@@ -5,6 +5,7 @@ import { FUNDER_TYPES } from "@opendeved/doi-sync-core/docid";
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
+import { INTAKE_MODES, LIMITS_MAX, PERIODS, RESETS } from "../../lib/reports/intake";
 import { CHANGE_STAGES, DETAIL_CAPS, LICENCE_NAMES, PERSON_KINDS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS, PAY_WITH } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
@@ -44,6 +45,20 @@ export const identifiersValidator = v.object({
 });
 
 export const pricesValidator = v.object({ standard: v.number(), other: v.number(), closed: v.optional(v.number()) });
+/** Whether new reports are open, as an admin saves it (lib/reports/intake.ts says what each part means). */
+export const intakeFields = {
+  mode: v.union(...INTAKE_MODES.map((mode) => v.literal(mode))),
+  opensAt: v.union(v.number(), v.null()),
+  closesAt: v.union(v.number(), v.null()),
+  timezone: v.string(),
+  limits: capped(v.array(v.object({ id: v.string(), count: v.number(), period: v.union(...PERIODS.map((period) => v.literal(period))), reset: v.union(...RESETS.map((reset) => v.literal(reset))) })), LIMITS_MAX),
+};
+export const intakeValidator = v.object({ ...intakeFields, openedAt: v.union(v.number(), v.null()) });
+/** Each limit's `nth` by its id (lib/reports/intake.ts `nthsOf`): what the Publish page works out whether a limit is full from. */
+export const nthsValidator = capped(v.record(v.string(), v.union(v.number(), v.null())), LIMITS_MAX);
+/** Each limit as the admin's meter shows it: the activations counted in its period now, and its `nth`. */
+export const limitUsesValidator = capped(v.array(v.object({ id: v.string(), used: v.number(), nth: v.union(v.number(), v.null()) })), LIMITS_MAX);
+
 /** The one settings row, once an admin changes something. Until then the series runs on `REPORT_DEFAULTS`. */
 export const reportSettingsFields = {
   enabled: v.boolean(),
@@ -61,6 +76,8 @@ export const reportSettingsFields = {
   prices: v.optional(pricesValidator),
   /** Which identifier services each report gets; none saved is DEFAULT_IDENTIFIERS (lib/reports/identifiers.ts). */
   identifiers: v.optional(identifiersValidator),
+  /** Whether new reports are open; none saved is off (`REPORT_DEFAULTS`). */
+  intake: v.optional(intakeValidator),
   // Free activations a day, from before a workspace had a balance in Autumn: cleared by migrations/publicationBalance, then dropped.
   perDay: v.optional(v.number()),
   orgPerDay: v.optional(v.number()),

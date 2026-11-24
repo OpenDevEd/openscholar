@@ -33,6 +33,8 @@ export async function setup({ humanReview = false } = {}) {
       ...REPORT_DEFAULTS,
       enabled: true,
       humanReview,
+      // New reports open with no limit, as most tests need; a test of the limits sets its own.
+      intake: { ...REPORT_DEFAULTS.intake, mode: "on", openedAt: 0 },
       publication: { zenodo: { mode: "off", license: "cc-by-4.0", defaultIdentifierPolicy: "mint-zenodo" }, crossref: { mode: "sandbox", prefix: "10.53832", suffixNamespace: "openscholar-r", depositorName: "d", email: "d@test.local", registrant: "r" } },
       updatedAt: 1,
     });

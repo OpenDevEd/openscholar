@@ -129,7 +129,7 @@ function listTimezones() {
   return timezones;
 }
 
-function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: boolean; value: string; onChange: (timezone: string) => void}) {
+export function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: boolean; value: string; onChange: (timezone: string) => void}) {
   const t = useTranslations("libraryNotificationSettings");
   const [open, setOpen] = useState(false);
   const current = currentNames[value] ?? value;

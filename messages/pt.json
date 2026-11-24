@@ -6585,7 +6585,75 @@
       "priceThreeHint": "Quanto custa publicar um relatório sob uma licença NC ou ND, ou sob a licença aberta do próprio autor, em dólares americanos.",
       "prices": "Preços",
       "priceClosed": "Licenças próprias que não são abertas",
-      "priceClosedHint": "Quanto custa publicar um relatório sob a licença do próprio autor que não permite que ninguém o compartilhe, em dólares americanos."
+      "priceClosedHint": "Quanto custa publicar um relatório sob a licença do próprio autor que não permite que ninguém o compartilhe, em dólares americanos.",
+      "intake": {
+        "title": "Novos relatórios",
+        "when": "Quando estão abertos",
+        "hint": {
+          "off": "Ninguém pode começar nem ativar um relatório. Os relatórios já começados aguardam em Seus relatórios.",
+          "on": "Qualquer pessoa com sessão iniciada pode começar e ativar relatórios, dentro dos limites abaixo.",
+          "dates": "Abertos entre estas datas, dentro dos limites abaixo."
+        },
+        "mode": {
+          "off": "Desligado",
+          "on": "Ligado",
+          "dates": "Entre datas"
+        },
+        "timezone": "Fuso horário",
+        "timezoneHint": "As datas e os períodos de calendário seguem o seu relógio",
+        "opens": "Abertura",
+        "opensHint": "Deixe vazio para abri-los agora",
+        "closes": "Encerramento",
+        "closesHint": "Deixe vazio para mantê-los abertos",
+        "closePast": "Escolha um momento futuro.",
+        "closeBeforeOpen": "Escolha um momento depois da abertura.",
+        "startsIn": "Abre {time}",
+        "left": "Fecha {time}",
+        "over": "Encerrado",
+        "limits": "Limites",
+        "addLimit": "Adicionar limite",
+        "noLimits": "Sem limite. Qualquer relatório pronto pode ser ativado.",
+        "limitsHint": "Cada limite conta ativações. Quando um é atingido, novos relatórios e ativações aguardam o próximo período.",
+        "countLabel": "Ativações permitidas",
+        "countWrong": "Digite um número inteiro de 1 a {max}.",
+        "activations": "{count, plural, one {ativação} other {ativações}}",
+        "periodLabel": "Período",
+        "period": {
+          "day": "por dia",
+          "week": "por semana",
+          "month": "por mês",
+          "total": "no total",
+          "dates": "entre as datas"
+        },
+        "resetLabel": "Como o período é contado",
+        "rolling": {
+          "day": "Últimas 24 horas",
+          "week": "Últimos 7 dias",
+          "month": "Últimos 30 dias"
+        },
+        "calendar": {
+          "day": "De meia-noite a meia-noite",
+          "week": "De segunda a domingo",
+          "month": "Mês do calendário"
+        },
+        "remove": "Remover limite",
+        "usedLabel": "Ativações neste período",
+        "used": "{used} de {count}",
+        "full": "Cheio",
+        "startsAgain": "Recomeça {date}",
+        "frees": "Uma vaga se libera {date}",
+        "untilClose": "Até o encerramento",
+        "sinceOpen": "Desde a abertura",
+        "state": {
+          "open": "Aberto",
+          "openUntil": "Aberto até {date}",
+          "off": "Desligado",
+          "opens": "Abre {date}",
+          "ended": "Encerrado em {date}",
+          "full": "Cheio",
+          "fullUntil": "Cheio até {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7070,7 +7138,36 @@
       "docidAgain": "Pedir de novo ao DOCiD",
       "reservedDocid": "Atribuído pelo DOCiD",
       "copyDocid": "Copiar o DOCiD",
-      "docidCopied": "DOCiD copiado"
+      "docidCopied": "DOCiD copiado",
+      "intake": {
+        "shut": {
+          "off": "Novos relatórios estão fechados",
+          "notYet": "Novos relatórios abrem {date}",
+          "next": "O próximo período começa {date}",
+          "over": "Este período terminou"
+        },
+        "off": {
+          "title": "Novos relatórios estão fechados",
+          "body": "Os relatórios que você começou aguardam aqui até reabrirem."
+        },
+        "notYet": {
+          "title": "Novos relatórios ainda não estão abertos",
+          "body": "Os relatórios que você começou aguardam aqui até lá."
+        },
+        "over": {
+          "title": "Este período terminou"
+        },
+        "ended": {
+          "body": "Novos relatórios estão fechados. Os relatórios que você começou aguardam aqui."
+        },
+        "full": {
+          "body": "Todas as vagas foram ocupadas. Os relatórios que você começou aguardam o próximo período.",
+          "last": "Todas as vagas foram ocupadas. Os relatórios que você começou aguardam aqui."
+        },
+        "opens": "Abre {date}",
+        "closed": "Fechou {date}",
+        "next": "Próximo período {date}"
+      }
     },
     "meta": {
       "publish": "Publicar | Openscholar",

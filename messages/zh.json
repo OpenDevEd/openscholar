@@ -6584,7 +6584,75 @@
       "priceThreeHint": "以 NC 或 ND 许可证,或作者自有的开放许可证发布报告的费用,以美元计。",
       "prices": "价格",
       "priceClosed": "不开放的自有许可证",
-      "priceClosedHint": "以作者自有、不允许任何人分享的许可证发布报告的费用,以美元计。"
+      "priceClosedHint": "以作者自有、不允许任何人分享的许可证发布报告的费用,以美元计。",
+      "intake": {
+        "title": "新报告",
+        "when": "开放时间",
+        "hint": {
+          "off": "任何人都不能开始或激活报告。已开始的报告在“你的报告”中等待。",
+          "on": "任何已登录的人都可以开始和激活报告，但不超过下方的限额。",
+          "dates": "在这些日期之间开放，不超过下方的限额。"
+        },
+        "mode": {
+          "off": "关闭",
+          "on": "开启",
+          "dates": "在日期之间"
+        },
+        "timezone": "时区",
+        "timezoneHint": "日期和日历周期按此时区计算",
+        "opens": "开放",
+        "opensHint": "留空则立即开放",
+        "closes": "关闭",
+        "closesHint": "留空则保持开放",
+        "closePast": "请选择一个尚未到来的时间。",
+        "closeBeforeOpen": "请选择开放之后的时间。",
+        "startsIn": "{time}开放",
+        "left": "{time}关闭",
+        "over": "已结束",
+        "limits": "限额",
+        "addLimit": "添加限额",
+        "noLimits": "没有限额。每份准备好的报告都可以激活。",
+        "limitsHint": "每个限额统计激活次数。达到任一限额后，新报告和激活会等待下一个周期。",
+        "countLabel": "允许的激活次数",
+        "countWrong": "请输入 1 到 {max} 之间的整数。",
+        "activations": "{count, plural, other {次激活}}",
+        "periodLabel": "周期",
+        "period": {
+          "day": "每天",
+          "week": "每周",
+          "month": "每月",
+          "total": "总计",
+          "dates": "在日期之间"
+        },
+        "resetLabel": "周期的计算方式",
+        "rolling": {
+          "day": "过去 24 小时",
+          "week": "过去 7 天",
+          "month": "过去 30 天"
+        },
+        "calendar": {
+          "day": "午夜到午夜",
+          "week": "周一到周日",
+          "month": "日历月"
+        },
+        "remove": "删除限额",
+        "usedLabel": "本周期的激活次数",
+        "used": "{used} / {count}",
+        "full": "已满",
+        "startsAgain": "{date}重新开始",
+        "frees": "{date}空出一个名额",
+        "untilClose": "直到关闭",
+        "sinceOpen": "自开放以来",
+        "state": {
+          "open": "开放中",
+          "openUntil": "开放至 {date}",
+          "off": "已关闭",
+          "opens": "{date}开放",
+          "ended": "已于 {date}结束",
+          "full": "已满",
+          "fullUntil": "已满，至 {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7069,7 +7137,36 @@
       "docidAgain": "再次请求 DOCiD",
       "reservedDocid": "由 DOCiD 发放",
       "copyDocid": "复制 DOCiD",
-      "docidCopied": "已复制 DOCiD"
+      "docidCopied": "已复制 DOCiD",
+      "intake": {
+        "shut": {
+          "off": "新报告已关闭",
+          "notYet": "新报告于 {date}开放",
+          "next": "下一个周期于 {date}开始",
+          "over": "本周期已结束"
+        },
+        "off": {
+          "title": "新报告已关闭",
+          "body": "你已开始的报告会在这里等待，直到重新开放。"
+        },
+        "notYet": {
+          "title": "新报告尚未开放",
+          "body": "在此之前，你已开始的报告会在这里等待。"
+        },
+        "over": {
+          "title": "本周期已结束"
+        },
+        "ended": {
+          "body": "新报告已关闭。你已开始的报告在这里等待。"
+        },
+        "full": {
+          "body": "本周期的名额已全部用完。你已开始的报告会等待下一个周期。",
+          "last": "本周期的名额已全部用完。你已开始的报告在这里等待。"
+        },
+        "opens": "{date}开放",
+        "closed": "已于 {date}关闭",
+        "next": "下一个周期 {date}"
+      }
     },
     "meta": {
       "publish": "发布 | Openscholar",

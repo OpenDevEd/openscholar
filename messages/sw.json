@@ -6585,7 +6585,75 @@
       "priceThreeHint": "Gharama ya kuchapisha ripoti chini ya leseni ya NC au ND, au leseni wazi ya mwandishi mwenyewe, kwa dola za Marekani.",
       "prices": "Bei",
       "priceClosed": "Leseni za mwandishi zisizo wazi",
-      "priceClosedHint": "Gharama ya kuchapisha ripoti chini ya leseni ya mwandishi mwenyewe isiyoruhusu mtu yeyote kuishiriki, kwa dola za Marekani."
+      "priceClosedHint": "Gharama ya kuchapisha ripoti chini ya leseni ya mwandishi mwenyewe isiyoruhusu mtu yeyote kuishiriki, kwa dola za Marekani.",
+      "intake": {
+        "title": "Ripoti mpya",
+        "when": "Zinapokuwa wazi",
+        "hint": {
+          "off": "Hakuna anayeweza kuanzisha wala kuwasha ripoti. Ripoti zilizoanzishwa zinasubiri katika Ripoti zako.",
+          "on": "Yeyote aliyeingia anaweza kuanzisha na kuwasha ripoti, ndani ya mipaka iliyo hapa chini.",
+          "dates": "Wazi kati ya tarehe hizi, ndani ya mipaka iliyo hapa chini."
+        },
+        "mode": {
+          "off": "Zima",
+          "on": "Washa",
+          "dates": "Kati ya tarehe"
+        },
+        "timezone": "Saa za eneo",
+        "timezoneHint": "Tarehe na vipindi vya kalenda hufuata saa yake",
+        "opens": "Inafunguliwa",
+        "opensHint": "Acha tupu kuzifungua sasa",
+        "closes": "Inafungwa",
+        "closesHint": "Acha tupu kuziacha wazi",
+        "closePast": "Chagua wakati ujao.",
+        "closeBeforeOpen": "Chagua wakati baada ya kufunguliwa.",
+        "startsIn": "Inafunguliwa {time}",
+        "left": "Inafungwa {time}",
+        "over": "Imekwisha",
+        "limits": "Mipaka",
+        "addLimit": "Ongeza kikomo",
+        "noLimits": "Hakuna kikomo. Kila ripoti iliyo tayari inaweza kuwashwa.",
+        "limitsHint": "Kila kikomo huhesabu uwashaji. Kimoja kikifikiwa, ripoti mpya na uwashaji husubiri kipindi chake kijacho.",
+        "countLabel": "Uwashaji unaoruhusiwa",
+        "countWrong": "Andika namba kamili kutoka 1 hadi {max}.",
+        "activations": "{count, plural, one {uwashaji} other {uwashaji}}",
+        "periodLabel": "Kipindi",
+        "period": {
+          "day": "kwa siku",
+          "week": "kwa wiki",
+          "month": "kwa mwezi",
+          "total": "jumla",
+          "dates": "kati ya tarehe"
+        },
+        "resetLabel": "Jinsi kipindi kinavyohesabiwa",
+        "rolling": {
+          "day": "Saa 24 zilizopita",
+          "week": "Siku 7 zilizopita",
+          "month": "Siku 30 zilizopita"
+        },
+        "calendar": {
+          "day": "Usiku wa manane hadi usiku wa manane",
+          "week": "Jumatatu hadi Jumapili",
+          "month": "Mwezi wa kalenda"
+        },
+        "remove": "Ondoa kikomo",
+        "usedLabel": "Uwashaji katika kipindi hiki",
+        "used": "{used} kati ya {count}",
+        "full": "Imejaa",
+        "startsAgain": "Inaanza upya {date}",
+        "frees": "Nafasi inapatikana {date}",
+        "untilClose": "Hadi zitakapofungwa",
+        "sinceOpen": "Tangu zilipofunguliwa",
+        "state": {
+          "open": "Wazi",
+          "openUntil": "Wazi hadi {date}",
+          "off": "Imezimwa",
+          "opens": "Inafunguliwa {date}",
+          "ended": "Iliisha {date}",
+          "full": "Imejaa",
+          "fullUntil": "Imejaa hadi {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7070,7 +7138,36 @@
       "docidAgain": "Iombe DOCiD tena",
       "reservedDocid": "Imetolewa na DOCiD",
       "copyDocid": "Nakili DOCiD",
-      "docidCopied": "DOCiD imenakiliwa"
+      "docidCopied": "DOCiD imenakiliwa",
+      "intake": {
+        "shut": {
+          "off": "Ripoti mpya zimefungwa",
+          "notYet": "Ripoti mpya zitafunguliwa {date}",
+          "next": "Kipindi kijacho kinaanza {date}",
+          "over": "Kipindi hiki kimekwisha"
+        },
+        "off": {
+          "title": "Ripoti mpya zimefungwa",
+          "body": "Ripoti ulizoanzisha zinasubiri hapa hadi zifunguliwe tena."
+        },
+        "notYet": {
+          "title": "Ripoti mpya bado hazijafunguliwa",
+          "body": "Ripoti ulizoanzisha zinasubiri hapa hadi wakati huo."
+        },
+        "over": {
+          "title": "Kipindi hiki kimekwisha"
+        },
+        "ended": {
+          "body": "Ripoti mpya zimefungwa. Ripoti ulizoanzisha zinasubiri hapa."
+        },
+        "full": {
+          "body": "Nafasi zote zimechukuliwa. Ripoti ulizoanzisha zinasubiri kipindi kijacho.",
+          "last": "Nafasi zote zimechukuliwa. Ripoti ulizoanzisha zinasubiri hapa."
+        },
+        "opens": "Inafunguliwa {date}",
+        "closed": "Ilifungwa {date}",
+        "next": "Kipindi kijacho {date}"
+      }
     },
     "meta": {
       "publish": "Chapisha | Openscholar",

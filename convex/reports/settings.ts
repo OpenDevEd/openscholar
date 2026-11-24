@@ -16,7 +16,9 @@ import { keptCustomOf, keptCustomValidator, publicationSettingsValidator } from 
 import type { Effort } from "../../lib/ai/core/call-options";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, isIssn, type Check } from "../../lib/reports/settings";
 import { DEFAULT_PRICES, PRICE_MAX, isPrice } from "../../lib/reports/report";
-import { checkNamesValidator, checkSummariesValidator, identifiersValidator, pricesValidator, seriesValidator } from "./validators";
+import { checkNamesValidator, checkSummariesValidator, identifiersValidator, intakeValidator, nthsValidator, pricesValidator, seriesValidator } from "./validators";
+import { latestActivations } from "./intake";
+import { nthsOf } from "../../lib/reports/intake";
 
 /** What a check runs as: a decision model answers it, or an LLM that returns a structured answer. */
 const CHECK_TASK = "screening";
@@ -43,7 +45,7 @@ export async function settingsRow(ctx: MutationCtx) {
   return (await ctx.db.get("reportSettings", id))!;
 }
 
-const save = (ctx: MutationCtx, id: Awaited<ReturnType<typeof settingsRow>>["_id"], fields: Partial<Omit<Awaited<ReturnType<typeof settingsRow>>, "_id" | "_creationTime">>) =>
+export const saveSettings = (ctx: MutationCtx, id: Awaited<ReturnType<typeof settingsRow>>["_id"], fields: Partial<Omit<Awaited<ReturnType<typeof settingsRow>>, "_id" | "_creationTime">>) =>
   ctx.db.patch("reportSettings", id, { ...fields, updatedAt: Date.now() });
 
 /**
@@ -170,6 +172,9 @@ export const forAuthors = query({
     identifiers: identifiersValidator,
     agreement: v.object({ version: v.number(), text: v.string() }),
     checks: checkNamesValidator,
+    /** Whether new reports are open, and for each limit when the activation that fills it was made (lib/reports/intake.ts `nthsOf`): the page works out from these and its clock whether a new report or a draft waits. */
+    intake: intakeValidator,
+    nths: nthsValidator,
   }),
   handler: async (ctx) => {
     const settings = await reportSettings(ctx);
@@ -181,6 +186,8 @@ export const forAuthors = query({
       identifiers: withAccounts(settings.identifiers, settings.publication),
       agreement: { version: settings.agreement.version, text: settings.agreement.text },
       checks: settings.checks.filter((check) => check.enabled).map(({ id, name, blocking }) => ({ id, name, blocking })),
+      intake: settings.intake,
+      nths: nthsOf(settings.intake.limits, await latestActivations(ctx, settings.intake)),
     };
   },
 });
@@ -218,7 +225,7 @@ export const update = mutation({
     // Every report's saved copies name the series and its ISSN (./saved.ts).
     if (named && (named.name !== row.series.name || named.issn !== row.series.issn)) await ctx.scheduler.runAfter(0, internal.reports.saved.followAll, {});
     const kept = identifiers && keptIdentifiers(identifiers, row.publication);
-    await save(ctx, row._id, {
+    await saveSettings(ctx, row._id, {
       ...(kept && { identifiers: kept }),
       ...(prices && { prices: { ...(row.prices ?? DEFAULT_PRICES), ...prices } }),
       ...(enabled !== undefined && { enabled }),
@@ -240,7 +247,7 @@ export const setMetadataModel = mutation({
     requireEffort(model, effort);
     requireTaskModel(model, READING_TASK);
     const row = await settingsRow(ctx);
-    await save(ctx, row._id, { metadataModelId: model.modelId, metadataEffort: effort });
+    await saveSettings(ctx, row._id, { metadataModelId: model.modelId, metadataEffort: effort });
     return null;
   },
 });
@@ -249,7 +256,7 @@ export const setMetadataModel = mutation({
 async function saveChecks(ctx: MutationCtx, row: Awaited<ReturnType<typeof settingsRow>>, checks: Check[]) {
   const checksVersion = row.checksVersion + 1;
   await ctx.db.insert("reportCheckVersions", { version: checksVersion, checks });
-  await save(ctx, row._id, { checks, checksVersion });
+  await saveSettings(ctx, row._id, { checks, checksVersion });
 }
 
 /** Adds a check, or changes the one with `id`. A new one goes last. */
@@ -340,7 +347,7 @@ export const setAgreement = mutation({
     if (agreed === row.agreement.text) return null;
     const version = row.agreement.version + 1;
     await ctx.db.insert("reportAgreementVersions", { version, text: agreed });
-    await save(ctx, row._id, { agreement: { version, text: agreed, updatedAt: Date.now() } });
+    await saveSettings(ctx, row._id, { agreement: { version, text: agreed, updatedAt: Date.now() } });
     return null;
   },
 });

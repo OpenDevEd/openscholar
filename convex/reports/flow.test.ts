@@ -34,6 +34,19 @@ describe("starting a report", () => {
     expect(await world.t.run((ctx) => startsLeft(ctx, world.own, Date.now()))).toMatchObject({ left: 1 });
   });
 
+  it("is refused while new reports are closed, though publishing is on, and starts once they open", async () => {
+    const world = await setup();
+    const intake = (patch: Partial<Parameters<typeof world.reviewer.mutation<typeof api.reports.intake.save>>[1]>) => world.reviewer.mutation(api.reports.intake.save, { mode: "on", opensAt: null, closesAt: null, timezone: "UTC", limits: [], ...patch });
+    const closed = { data: expect.objectContaining({ code: "FEATURE_DISABLED", reason: "intake" }) };
+    await intake({ mode: "off" });
+    await expect(sign(world.author, world.own)).rejects.toMatchObject(closed);
+    await intake({ mode: "dates", opensAt: Date.now() + 3_600_000 });
+    await expect(sign(world.author, world.own)).rejects.toMatchObject(closed);
+    expect(await world.t.run((ctx) => ctx.db.query("reports").take(5))).toHaveLength(0);
+    await intake({ mode: "dates", opensAt: Date.now() - 1, closesAt: Date.now() + 3_600_000 });
+    expect(await sign(world.author, world.own)).toBe("R100001");
+  });
+
   it("keeps a discarded report's start used", async () => {
     const world = await setup();
     const key = await sign(world.author, world.own);

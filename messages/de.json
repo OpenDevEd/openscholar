@@ -6585,7 +6585,75 @@
       "priceThreeHint": "Was die Veröffentlichung eines Berichts unter einer NC- oder ND-Lizenz oder unter der eigenen offenen Lizenz der Autorin oder des Autors kostet, in US-Dollar.",
       "prices": "Preise",
       "priceClosed": "Eigene Lizenzen, die nicht offen sind",
-      "priceClosedHint": "Was die Veröffentlichung eines Berichts unter der eigenen Lizenz der Autorin oder des Autors kostet, die niemandem erlaubt, ihn zu teilen, in US-Dollar."
+      "priceClosedHint": "Was die Veröffentlichung eines Berichts unter der eigenen Lizenz der Autorin oder des Autors kostet, die niemandem erlaubt, ihn zu teilen, in US-Dollar.",
+      "intake": {
+        "title": "Neue Berichte",
+        "when": "Wann sie offen sind",
+        "hint": {
+          "off": "Niemand kann einen Bericht beginnen oder aktivieren. Begonnene Berichte warten unter Ihre Berichte.",
+          "on": "Alle Angemeldeten können Berichte beginnen und aktivieren, innerhalb der Grenzen unten.",
+          "dates": "Offen zwischen diesen Daten, innerhalb der Grenzen unten."
+        },
+        "mode": {
+          "off": "Aus",
+          "on": "An",
+          "dates": "Zwischen Daten"
+        },
+        "timezone": "Zeitzone",
+        "timezoneHint": "Die Daten und Kalenderzeiträume richten sich nach ihrer Uhr",
+        "opens": "Öffnet",
+        "opensHint": "Leer lassen, um sie jetzt zu öffnen",
+        "closes": "Schließt",
+        "closesHint": "Leer lassen, um sie offen zu halten",
+        "closePast": "Wählen Sie einen Zeitpunkt in der Zukunft.",
+        "closeBeforeOpen": "Wählen Sie einen Zeitpunkt nach der Öffnung.",
+        "startsIn": "Öffnet {time}",
+        "left": "Schließt {time}",
+        "over": "Vorbei",
+        "limits": "Grenzen",
+        "addLimit": "Grenze hinzufügen",
+        "noLimits": "Keine Grenze. Jeder fertige Bericht kann aktiviert werden.",
+        "limitsHint": "Jede Grenze zählt Aktivierungen. Ist eine erreicht, warten neue Berichte und Aktivierungen auf ihren nächsten Zeitraum.",
+        "countLabel": "Erlaubte Aktivierungen",
+        "countWrong": "Geben Sie eine ganze Zahl von 1 bis {max} ein.",
+        "activations": "{count, plural, one {Aktivierung} other {Aktivierungen}}",
+        "periodLabel": "Zeitraum",
+        "period": {
+          "day": "pro Tag",
+          "week": "pro Woche",
+          "month": "pro Monat",
+          "total": "insgesamt",
+          "dates": "zwischen den Daten"
+        },
+        "resetLabel": "Wie der Zeitraum gezählt wird",
+        "rolling": {
+          "day": "Letzte 24 Stunden",
+          "week": "Letzte 7 Tage",
+          "month": "Letzte 30 Tage"
+        },
+        "calendar": {
+          "day": "Mitternacht bis Mitternacht",
+          "week": "Montag bis Sonntag",
+          "month": "Kalendermonat"
+        },
+        "remove": "Grenze entfernen",
+        "usedLabel": "Aktivierungen in diesem Zeitraum",
+        "used": "{used} von {count}",
+        "full": "Voll",
+        "startsAgain": "Beginnt neu {date}",
+        "frees": "Ein Platz wird frei {date}",
+        "untilClose": "Bis sie schließen",
+        "sinceOpen": "Seit sie geöffnet sind",
+        "state": {
+          "open": "Offen",
+          "openUntil": "Offen bis {date}",
+          "off": "Aus",
+          "opens": "Öffnet {date}",
+          "ended": "Beendet {date}",
+          "full": "Voll",
+          "fullUntil": "Voll bis {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7070,7 +7138,36 @@
       "docidAgain": "DOCiD erneut fragen",
       "reservedDocid": "Von DOCiD vergeben",
       "copyDocid": "DOCiD kopieren",
-      "docidCopied": "DOCiD kopiert"
+      "docidCopied": "DOCiD kopiert",
+      "intake": {
+        "shut": {
+          "off": "Neue Berichte sind geschlossen",
+          "notYet": "Neue Berichte öffnen {date}",
+          "next": "Der nächste Zeitraum beginnt {date}",
+          "over": "Dieser Zeitraum ist vorbei"
+        },
+        "off": {
+          "title": "Neue Berichte sind geschlossen",
+          "body": "Ihre begonnenen Berichte warten hier, bis sie wieder öffnen."
+        },
+        "notYet": {
+          "title": "Neue Berichte sind noch nicht offen",
+          "body": "Ihre begonnenen Berichte warten bis dahin hier."
+        },
+        "over": {
+          "title": "Dieser Zeitraum ist vorbei"
+        },
+        "ended": {
+          "body": "Neue Berichte sind geschlossen. Ihre begonnenen Berichte warten hier."
+        },
+        "full": {
+          "body": "Alle Plätze sind vergeben. Ihre begonnenen Berichte warten auf den nächsten Zeitraum.",
+          "last": "Alle Plätze sind vergeben. Ihre begonnenen Berichte warten hier."
+        },
+        "opens": "Öffnet {date}",
+        "closed": "Geschlossen {date}",
+        "next": "Nächster Zeitraum {date}"
+      }
     },
     "meta": {
       "publish": "Veröffentlichen | Openscholar",

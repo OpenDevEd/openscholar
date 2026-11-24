@@ -459,6 +459,20 @@ describe("activating a report", () => {
     expect(await activations(world)).toEqual([]);
   });
 
+  it("waits for the next period once a limit's places are taken, counting only activations under way, waiting or live", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    await world.reviewer.mutation(api.reports.intake.save, { mode: "on", opensAt: null, closesAt: null, timezone: "UTC", limits: [{ id: "day", count: 1, period: "day", reset: "rolling" }] });
+    // Today's one place, taken by another workspace's report.
+    const taken = await world.t.run(async (ctx) => ctx.db.insert("reportActivations", { workspaceId: world.lab, reportId: (await ctx.db.query("reports").first())!._id, at: Date.now(), by: world.authorId, state: "live" }));
+    const begin = async () => world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key, payWith: "balance", price: 10 });
+    await expect(begin()).rejects.toMatchObject({ data: expect.objectContaining({ code: "FEATURE_DISABLED", reason: "intake" }) });
+    expect(await activations(world)).toHaveLength(1);
+    // One the bank refused never took its place.
+    await world.t.run((ctx) => ctx.db.patch("reportActivations", taken, { state: "refused" }));
+    expect(await begin()).toBeTruthy();
+  });
+
   it("takes a card's price from the balance once Autumn has given what it bought, never part of it, and never twice", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

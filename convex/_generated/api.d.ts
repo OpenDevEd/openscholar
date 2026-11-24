@@ -364,6 +364,7 @@ import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibrar
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_publicationBalance from "../migrations/publicationBalance.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
+import type * as migrations_reportIntake from "../migrations/reportIntake.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_rotateKeptFiles from "../migrations/rotateKeptFiles.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
@@ -401,6 +402,7 @@ import type * as reports_corrections from "../reports/corrections.js";
 import type * as reports_fileAccess from "../reports/fileAccess.js";
 import type * as reports_files from "../reports/files.js";
 import type * as reports_flow from "../reports/flow.js";
+import type * as reports_intake from "../reports/intake.js";
 import type * as reports_limits from "../reports/limits.js";
 import type * as reports_mail from "../reports/mail.js";
 import type * as reports_mailer from "../reports/mailer.js";
@@ -888,6 +890,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/publicationBalance": typeof migrations_publicationBalance;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
+  "migrations/reportIntake": typeof migrations_reportIntake;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/rotateKeptFiles": typeof migrations_rotateKeptFiles;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
@@ -925,6 +928,7 @@ declare const fullApi: ApiFromModules<{
   "reports/fileAccess": typeof reports_fileAccess;
   "reports/files": typeof reports_files;
   "reports/flow": typeof reports_flow;
+  "reports/intake": typeof reports_intake;
   "reports/limits": typeof reports_limits;
   "reports/mail": typeof reports_mail;
   "reports/mailer": typeof reports_mailer;

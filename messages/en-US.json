@@ -6584,7 +6584,75 @@
       "priceThreeHint": "What publishing a report under an NC or ND license, or the author's own open one, costs, in US dollars.",
       "prices": "Prices",
       "priceClosed": "Own licenses that aren't open",
-      "priceClosedHint": "What publishing a report under the author's own license that doesn't let anyone share it costs, in US dollars."
+      "priceClosedHint": "What publishing a report under the author's own license that doesn't let anyone share it costs, in US dollars.",
+      "intake": {
+        "title": "New reports",
+        "when": "When they open",
+        "hint": {
+          "off": "Nobody can start or activate a report. Reports already started wait in Your reports.",
+          "on": "Anyone signed in can start and activate reports, within the limits below.",
+          "dates": "Open between these dates, within the limits below."
+        },
+        "mode": {
+          "off": "Off",
+          "on": "On",
+          "dates": "Between dates"
+        },
+        "timezone": "Timezone",
+        "timezoneHint": "The dates and calendar periods follow its clock",
+        "opens": "Opens",
+        "opensHint": "Leave empty to open them now",
+        "closes": "Closes",
+        "closesHint": "Leave empty to keep them open",
+        "closePast": "Pick a time still to come.",
+        "closeBeforeOpen": "Pick a time after they open.",
+        "startsIn": "Opens {time}",
+        "left": "Closes {time}",
+        "over": "Over",
+        "limits": "Limits",
+        "addLimit": "Add limit",
+        "noLimits": "No limit. Every report that's ready can be activated.",
+        "limitsHint": "Each limit counts activations. Once one is reached, new reports and activations wait for its next period.",
+        "countLabel": "Activations allowed",
+        "countWrong": "Enter a whole number from 1 to {max}.",
+        "activations": "{count, plural, one {activation} other {activations}}",
+        "periodLabel": "Period",
+        "period": {
+          "day": "a day",
+          "week": "a week",
+          "month": "a month",
+          "total": "in total",
+          "dates": "between the dates"
+        },
+        "resetLabel": "How the period runs",
+        "rolling": {
+          "day": "Last 24 hours",
+          "week": "Last 7 days",
+          "month": "Last 30 days"
+        },
+        "calendar": {
+          "day": "Midnight to midnight",
+          "week": "Monday to Sunday",
+          "month": "Calendar month"
+        },
+        "remove": "Remove limit",
+        "usedLabel": "Activations in this period",
+        "used": "{used} of {count}",
+        "full": "Full",
+        "startsAgain": "Starts again {date}",
+        "frees": "A place frees {date}",
+        "untilClose": "Until they close",
+        "sinceOpen": "Since they opened",
+        "state": {
+          "open": "Open",
+          "openUntil": "Open until {date}",
+          "off": "Off",
+          "opens": "Opens {date}",
+          "ended": "Ended {date}",
+          "full": "Full",
+          "fullUntil": "Full until {date}"
+        }
+      }
     },
     "flow": {
       "steps": {
@@ -7069,7 +7137,36 @@
       "docidAgain": "Ask DOCiD again",
       "reservedDocid": "Minted by DOCiD",
       "copyDocid": "Copy the DOCiD",
-      "docidCopied": "DOCiD copied"
+      "docidCopied": "DOCiD copied",
+      "intake": {
+        "shut": {
+          "off": "New reports are closed",
+          "notYet": "New reports open {date}",
+          "next": "The next period starts {date}",
+          "over": "This period is over"
+        },
+        "off": {
+          "title": "New reports are closed",
+          "body": "Reports you've started wait here until they open again."
+        },
+        "notYet": {
+          "title": "New reports aren't open yet",
+          "body": "Reports you've started wait here until then."
+        },
+        "over": {
+          "title": "This period is over"
+        },
+        "ended": {
+          "body": "New reports are closed. Reports you've started wait here."
+        },
+        "full": {
+          "body": "Every place in it is taken. Reports you've started wait for the next one.",
+          "last": "Every place in it is taken. Reports you've started wait here."
+        },
+        "opens": "Opens {date}",
+        "closed": "Closed {date}",
+        "next": "Next period {date}"
+      }
     },
     "meta": {
       "publish": "Publish | Openscholar",
