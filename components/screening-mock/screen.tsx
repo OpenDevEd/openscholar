@@ -363,7 +363,7 @@ function Screen({ open }: { open: Open }) {
             {findField("max-lg:hidden")}
             {queue === "done" ? (
               <Select value={voted} onValueChange={(next) => void setPlace({ voted: next as typeof voted, paper: null, page: null })}>
-                <SelectTrigger aria-label="Your vote" className="h-8 w-full text-xs max-lg:hidden"><span className="text-muted-foreground">Your vote</span><span className="me-auto"><SelectValue /></span></SelectTrigger>
+                <SelectTrigger aria-label="Your vote" className="h-8 w-full rounded-full px-3.5 text-xs max-lg:hidden"><span className="text-muted-foreground">Your vote</span><span className="me-auto"><SelectValue /></span></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="any">Any</SelectItem>
                   {DECISIONS.map((decision) => <SelectItem key={decision} value={decision}>{DECISION_LABEL[decision]}</SelectItem>)}
@@ -372,7 +372,7 @@ function Screen({ open }: { open: Open }) {
             ) : null}
             {queue === "todo" && toDo.length > 1 ? (
               <Select value={order} onValueChange={(next) => void setPlace({ order: next as typeof order, paper: null, page: null })}>
-                <SelectTrigger aria-label="Order" className="h-8 w-full text-xs max-lg:hidden"><span className="text-muted-foreground">Order</span><span className="me-auto"><SelectValue /></span></SelectTrigger>
+                <SelectTrigger aria-label="Order" className="h-8 w-full rounded-full px-3.5 text-xs max-lg:hidden"><span className="text-muted-foreground">Order</span><span className="me-auto"><SelectValue /></span></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="dealt">As added</SelectItem>
                   {toDo.some((one) => one.batch !== undefined) ? <SelectItem value="fresh">New papers first</SelectItem> : null}

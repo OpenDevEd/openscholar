@@ -6,9 +6,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
-import { createSerializer, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { createSerializer, parseAsArrayOf, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, X } from "@/components/icons";
+import { ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -22,7 +22,7 @@ import { HelpFact } from "@/components/ui/help";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SELECT_TRIGGER, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -61,7 +61,7 @@ const PLACE = {
   source: parseAsString.withDefault("all"),
   reviewer: parseAsString,
   voted: parseAsStringLiteral(VOTED).withDefault("any"),
-  with: parseAsString,
+  with: parseAsArrayOf(parseAsString).withDefault([]),
   reason: parseAsString,
   added: parseAsString.withDefault("all"),
   sort: parseAsStringLiteral(SORTS).withDefault("added"),
@@ -71,7 +71,7 @@ const PLACE = {
 };
 
 const addressOf = createSerializer(PLACE);
-type Narrow = Partial<Record<"result" | "source" | "added" | "reviewer" | "voted" | "with" | "reason", string>>;
+type Narrow = Partial<Record<"result" | "source" | "added" | "reviewer" | "voted" | "reason", string>>;
 /**
  * A link on this page that narrows the table to something. Where the table is already narrowed to exactly that, the
  * same link takes it away again, so a second press undoes the first. `undo` names what the second press clears, where
@@ -83,12 +83,15 @@ type Narrow = Partial<Record<"result" | "source" | "added" | "reviewer" | "voted
 function useNarrow(id: string, me: string) {
   const [place] = useQueryStates(PLACE);
   // A vote named without a reviewer is your own, as the table reads it.
-  const shown = { ...place, reviewer: place.reviewer ?? (place.voted !== "any" ? me : null) };
+  const shown = { ...place, reviewer: place.reviewer ?? (place.voted !== "any" ? me : (place.with[0] ?? null)) };
   return (to: Narrow, undo = Object.keys(to) as Array<keyof Narrow>) => {
     const on = Object.entries(to).every(([key, value]) => shown[key as keyof Narrow] === value);
     return { on, href: on ? addressOf(papersHref(id), { ...place, ...Object.fromEntries(undo.map((key) => [key, null])), page: null }) : addressOf(papersHref(id), { ...place, ...(to as Partial<typeof place>), page: null }), "aria-current": on ? ("true" as const) : undefined };
   };
 }
+
+/** Names as a phrase: "A", "A and B", "A, B and C". */
+const listed = (names: string[]) => (names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
 /** The Papers table as a page of the open screening. */
 export function PapersPage() {
@@ -119,7 +122,9 @@ function Papers({ open }: { open: Open }) {
   // Closing it leaves the table on the page it was showing, which the address then has to name.
   const close = () => void setPlace({ paper: null, page: pager.page > 1 ? pager.page : null });
   // A selection belongs to the list it was made in: another tab, filter, search or order starts with none selected.
-  const scope = [filter, from, reviewer, voted, also, reason, added, sort, query].join("|");
+  // The other reviewers as one word: the list itself is a new one on every draw.
+  const alsoKey = also.join(",");
+  const scope = [filter, from, reviewer, voted, alsoKey, reason, added, sort, query].join("|");
   const [selection, setSelection] = useState({ scope, ids: [] as string[] });
   const picked = selection.scope === scope ? selection.ids : [];
   const setPicked = (ids: string[]) => setSelection({ scope, ids });
@@ -130,8 +135,16 @@ function Papers({ open }: { open: Open }) {
   // The table keeps the room it gave the paper until the paper has finished leaving, so the two never change places.
   const [made, setMade] = useState(false);
 
-  // Whose votes narrow the table: the reviewer named, or you when only a vote is.
-  const who = reviewer ?? (voted !== "any" ? open.me : null);
+  // Whose votes narrow the table: the reviewer named, or you when only a vote is, or the first of the others where an address names only those. With others beside them, the table shows the papers all of them voted on.
+  const who = reviewer ?? (voted !== "any" ? open.me : (also[0] ?? null));
+  // The one named in the Reviewer control, where they are still one of its reviewers.
+  const whoMark = reviewers.find((one) => one.id === who);
+  const everyone = who ? [who, ...also.filter((one) => one !== who)] : [];
+  /** Takes a reviewer into the ones the table is narrowed to, or out of them. With more than one, it is everyone's votes on a paper that count, so a single reviewer's kind of vote no longer applies. */
+  const pick = (one: string) => {
+    const next = everyone.includes(one) ? everyone.filter((id) => id !== one) : [...everyone, one];
+    go({ reviewer: next[0] ?? null, with: next.length > 1 ? next.slice(1) : null, voted: next.length === 1 && next[0] === who ? (voted === "any" ? null : voted) : null });
+  };
   /** Why a paper stands where it does, as a reason to find it by: what excluded it, or the criterion a Maybe was unclear on. */
   const reasonKey = useCallback(
     (paper: Paper) => {
@@ -161,11 +174,11 @@ function Papers({ open }: { open: Open }) {
         (from === "all" || paper.source === from) &&
         (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) &&
         byWho(paper) &&
-        (!also || Boolean(entry(paper, also)?.vote)) &&
+        also.every((one) => Boolean(entry(paper, one)?.vote)) &&
         (!reason || reasonKey(paper) === reason) &&
         (!words || `${paper.title} ${paper.authors.join(" ")}`.toLowerCase().includes(words)),
     );
-  }, [papers, votes, settled, from, added, who, voted, also, reason, reasonKey, query]);
+  }, [papers, votes, settled, from, added, who, voted, alsoKey, reason, reasonKey, query]); // eslint-disable-line react-hooks/exhaustive-deps -- the others by their ids, since the list is a new one on every draw
   const tabCounts = useMemo(() => Object.fromEntries(RESULTS.map((result) => [result, narrowed.filter((paper) => settled[paper.id]!.result === result).length])) as Record<(typeof RESULTS)[number], number>, [narrowed, settled]);
   const rows = useMemo(() => {
     const list = filter === "all" ? narrowed : narrowed.filter((paper) => settled[paper.id]!.result === filter);
@@ -209,7 +222,7 @@ function Papers({ open }: { open: Open }) {
     const covered = (row.closest("table")?.querySelector("thead") ?? document.querySelector("[data-sticky-page-header]"))?.getBoundingClientRect().bottom ?? 0;
     if (box.top < covered || box.bottom > window.innerHeight) row.scrollIntoView({ block: "center" });
     // Again when the table is put in another order or narrowed, which can move the row. Not on a search being typed or on papers arriving: the page would move under the person.
-  }, [opened, inView, pager.page, filter, from, reviewer, voted, also, reason, added, sort]);
+  }, [opened, inView, pager.page, filter, from, reviewer, voted, alsoKey, reason, added, sort]);
 
   // The keyboard is the outside system: Escape closes the open paper, J and K or the arrows step through the list.
   useEffect(() => {
@@ -307,11 +320,12 @@ function Papers({ open }: { open: Open }) {
     who
       ? {
           key: "reviewer",
-          label: voted === "any" ? (whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : voted === "failed" ? `${whoName ?? "You"} couldn't read` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
+          label: voted === "any" ? (everyone.length > 1 ? `Voted on by ${listed(everyone.map((one) => (one === open.me ? "you" : nameOf(open, one))))}` : whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : voted === "failed" ? `${whoName ?? "You"} couldn't read` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
           clear: { reviewer: null, voted: null, with: null },
         }
       : null,
-    also ? { key: "with", label: `Also voted on by ${also === open.me ? "you" : nameOf(open, also)}`, clear: { with: null } } : null,
+    // Beside a reviewer's own kind of vote, the others are named apart.
+    also.length && voted !== "any" ? { key: "with", label: `Also voted on by ${listed(also.map((one) => (one === open.me ? "you" : nameOf(open, one))))}`, clear: { with: null } } : null,
     reason ? { key: "reason", label: filter === "maybe" ? `Unclear: ${criteria.find((c) => c.key === reason)?.short ?? reason}` : failedLabel(reason, criteria), clear: { reason: null } } : null,
     added !== "all" ? { key: "added", label: `Added: ${addedLabel(added)}`, clear: { added: null } } : null,
   ].filter((one) => one !== null);
@@ -333,21 +347,37 @@ function Papers({ open }: { open: Open }) {
           </SelectContent>
         </Select>
       ) : null}
-      <Select value={who ?? "anyone"} onValueChange={(next) => go({ reviewer: next === "anyone" ? null : next, voted: null, with: null })}>
-        <SelectTrigger aria-label="Reviewer" className={trigger}><span className="text-muted-foreground">Reviewer</span><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="anyone">Anyone</SelectItem>
+      {/* Any number of reviewers: with several, the table shows the papers all of them voted on. The menu stays open while they are picked. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" data-slot="select-trigger" data-size="sm" aria-label={`Reviewers: ${everyone.length ? listed(everyone.map((one) => (one === open.me ? "you" : nameOf(open, one)))) : "anyone"}`} className={cn(SELECT_TRIGGER, trigger)}>
+            <span className="text-muted-foreground">{everyone.length > 1 ? "Reviewers" : "Reviewer"}</span>
+            {everyone.length > 1 ? (
+              <span className="flex items-center">{everyone.map((one, i) => { const mark = reviewerOptions.find((option) => option.id === one); return mark ? <span key={one} className={cn("flex rounded-full ring-2 ring-card", i > 0 && "-ms-1")}><ReviewerMark reviewer={mark} className="size-4" /></span> : null; })}</span>
+            ) : (
+              <span className="flex min-w-0 items-center gap-1.5 font-medium">{who ? <>{whoMark ? <ReviewerMark reviewer={whoMark} className="size-4" /> : null}<span className="truncate">{who === open.me ? "You" : nameOf(open, who)}</span></> : "Anyone"}</span>
+            )}
+            <ChevronDown className="size-4 opacity-50" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuItem onSelect={() => go({ reviewer: null, voted: null, with: null })}><span className="flex-1">Anyone</span>{everyone.length ? null : <Check className="size-4" />}</DropdownMenuItem>
           {[["People", reviewerOptions.filter((one) => one.kind === "person")], ["Models", reviewerOptions.filter((one) => one.kind === "model")]].map(([label, list]) =>
             (list as Reviewer[]).length ? (
-              <SelectGroup key={label as string}>
-                <SelectLabel>{label as string}</SelectLabel>
-                {(list as Reviewer[]).map((one) => <SelectItem key={one.id} value={one.id}><ReviewerMark reviewer={one} className="size-4" />{one.id === open.me ? "You" : one.name}</SelectItem>)}
-              </SelectGroup>
+              <div key={label as string} role="group" aria-label={label as string}>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{label as string}</DropdownMenuLabel>
+                {(list as Reviewer[]).map((one) => (
+                  <DropdownMenuItem key={one.id} role="menuitemcheckbox" aria-checked={everyone.includes(one.id)} onSelect={(event) => { event.preventDefault(); pick(one.id); }}>
+                    <ReviewerMark reviewer={one} className="size-4" /><span className="min-w-0 flex-1 truncate">{one.id === open.me ? "You" : one.name}</span>{everyone.includes(one.id) ? <Check className="size-4" /> : null}
+                  </DropdownMenuItem>
+                ))}
+              </div>
             ) : null,
           )}
-        </SelectContent>
-      </Select>
-      {who ? (
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {who && everyone.length === 1 ? (
         <Select value={voted} onValueChange={(next) => go({ reviewer: who, voted: next === "any" ? null : (next as Voted) })}>
           <SelectTrigger aria-label="Their vote" className={trigger}><span className="text-muted-foreground">Vote</span><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -379,7 +409,8 @@ function Papers({ open }: { open: Open }) {
       </SelectContent>
     </Select>
   );
-  const trigger = "h-8 w-auto max-w-72 gap-1.5 text-xs [&>[data-slot=select-value]]:font-medium";
+  // Pills, as the tabs and the search box in the same bar are.
+  const trigger = "h-8 w-auto max-w-72 gap-1.5 rounded-full px-3.5 text-xs [&>[data-slot=select-value]]:font-medium";
 
   // A column head that orders the table: pressed again, the other way round.
   const sortHead = (label: string, on: boolean, next: Sort | null, descending = false) => (

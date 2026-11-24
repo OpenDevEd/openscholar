@@ -180,7 +180,7 @@ export function ScreeningsIndex() {
                   </div>
                   {starters.length > 1 ? (
                     <Select value={by} onValueChange={(next) => go({ by: next })}>
-                      <SelectTrigger aria-label="Started by" className="h-8 w-64 text-xs max-sm:w-full"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Started by" className="h-8 w-64 rounded-full px-3.5 text-xs max-sm:w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="anyone">Started by anyone</SelectItem>
                         {starters.map((id) => <SelectItem key={id} value={id}><span className="flex items-center gap-2"><IdentityAvatar name={personOf(id)?.name ?? ""} imageUrl={personOf(id)?.imageUrl} className="size-4" />{id === me ? "Started by you" : `Started by ${personOf(id)?.name}`}</span></SelectItem>)}

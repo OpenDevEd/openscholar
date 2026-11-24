@@ -201,14 +201,19 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     </DropdownMenu>
   );
 
-  // On Papers a face narrows the table to that reviewer's votes and shows that it does, and a second press takes that away. From another page it opens Papers narrowed to them.
-  // A vote named without a reviewer is your own, as the table reads it.
-  const narrowedTo = view === "papers" ? (search.get("reviewer") ?? ((search.get("voted") ?? "any") !== "any" ? open.me : null)) : null;
+  // On Papers each face is a switch of its own: it takes that reviewer into the ones the table is narrowed to and shows that it has, and a second press takes them out. With several on, the table shows the papers all of them voted on. From another page a face opens Papers narrowed to that reviewer.
+  // A vote named without a reviewer is your own, as the table reads it. The others are in `with`, as the table's address keeps them.
+  const others = search.get("with")?.split(",").filter(Boolean) ?? [];
+  const first = view === "papers" ? (search.get("reviewer") ?? ((search.get("voted") ?? "any") !== "any" ? open.me : (others[0] ?? null))) : null;
+  const narrowedTo = first ? [first, ...others.filter((one) => one !== first)] : [];
   const faceHref = (reviewer: Reviewer) => {
     if (view !== "papers") return papersHref(id, { reviewer: reviewer.id });
+    const now = narrowedTo.includes(reviewer.id) ? narrowedTo.filter((one) => one !== reviewer.id) : [...narrowedTo, reviewer.id];
     const next = new URLSearchParams(search);
-    for (const key of ["reviewer", "voted", "with", "page"]) next.delete(key);
-    if (narrowedTo !== reviewer.id) next.set("reviewer", reviewer.id);
+    // One reviewer's kind of vote stays only while they are still the only one.
+    for (const key of ["reviewer", "with", "page", ...(now.length === 1 && now[0] === first ? [] : ["voted"])]) next.delete(key);
+    if (now[0]) next.set("reviewer", now[0]);
+    if (now.length > 1) next.set("with", now.slice(1).join(","));
     return `${papersHref(id)}${next.size ? `?${next}` : ""}`;
   };
 
@@ -352,15 +357,15 @@ function PickerButton({ hint, className, ...button }: ComponentProps<typeof Butt
 
 /**
  * The reviewers' faces, people first. Each opens the papers that reviewer voted on; past the seventh, the count opens the
- * Overview's list of them all. `shown` is the reviewer the Papers table is narrowed to: that face stands out, the others
- * fade, and pressing it again shows everyone's.
+ * Overview's list of them all. `shown` are the reviewers the Papers table is narrowed to: their faces stand out, the
+ * others fade, and pressing one again takes that reviewer out.
  */
-function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Reviewer[]; me: string; more: string; shown: string | null; hrefOf: (reviewer: Reviewer) => string; max?: number }) {
+function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Reviewer[]; me: string; more: string; shown: string[]; hrefOf: (reviewer: Reviewer) => string; max?: number }) {
   return (
     <span className="flex shrink-0 items-center">
       {reviewers.slice(0, max).map((reviewer, i) => {
-        const on = shown === reviewer.id;
-        const says = on ? `Stop showing only ${reviewer.name}'s votes` : `${reviewer.name}'s votes`;
+        const on = shown.includes(reviewer.id);
+        const says = on ? `Take ${reviewer.name} out of the filter` : shown.length ? `Add ${reviewer.name} to the filter` : `${reviewer.name}'s votes`;
         return (
           <TooltipHint key={reviewer.id} label={says}>
             <NextLink
@@ -371,7 +376,7 @@ function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Rev
                 "relative flex ring-2 ring-card outline-none transition-[transform,opacity] hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 focus-visible:ring-ring/60 motion-reduce:transition-none",
                 reviewer.kind === "model" ? "rounded-md" : "rounded-full",
                 i > 0 && "-ms-1.5",
-                shown && (on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"),
+                shown.length > 0 && (on ? "z-10 -translate-y-0.5 ring-foreground" : "opacity-40 hover:opacity-100 focus-visible:opacity-100"),
               )}
             >
               <ReviewerMark reviewer={reviewer} you={reviewer.id === me} />
