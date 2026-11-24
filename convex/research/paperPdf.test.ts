@@ -94,6 +94,15 @@ const pdfCharges = (t: Test) => t.run(async (ctx) => (await ctx.db.query("billin
 const keep = (key: string) => fakeStore.objects.set(key, new TextEncoder().encode(PDF_BYTES));
 /** The key a copy fetched by a link is kept under. */
 const byLink = async (url: string) => (await paperKeys({ url }))[0];
+/** Crossref holds a link to PDF for `doi`; every other request is answered as before. */
+function crossrefHolds(doi: string) {
+  const answer = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    if (url.hostname !== "api.crossref.org") return answer(input, init);
+    return new Response(JSON.stringify({ message: { DOI: doi, link: [{ URL: PDF, "content-type": "application/pdf" }] } }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+}
 
 /** A chat on a model that reads PDFs, with reading files allowed in it, so a read runs without asking. */
 async function chat(t: Test, free = 100_000, inputs = ["text", "image", "file"]) {
@@ -145,12 +154,7 @@ describe("extraction's PDFs from the store", () => {
 
   it("finds a copy Crossref holds when the paper's own link gives none", async () => {
     const t = convexTest(schema);
-    const answer = fetchMock.getMockImplementation()!;
-    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.hostname !== "api.crossref.org") return answer(input, init);
-      return new Response(JSON.stringify({ message: { DOI: "10.1/held", link: [{ URL: PDF, "content-type": "application/pdf" }] } }), { status: 200, headers: { "content-type": "application/json" } });
-    });
+    crossrefHolds("10.1/held");
     const landing = "https://example.org/articles/held";
 
     const found = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W9", doi: "10.1/held", url: landing }, EXTRACTION);
@@ -169,12 +173,7 @@ describe("extraction's PDFs from the store", () => {
 
   it("keeps a copy found by DOI for a paper with no link, under the address the copy came from", async () => {
     const t = convexTest(schema);
-    const answer = fetchMock.getMockImplementation()!;
-    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.hostname !== "api.crossref.org") return answer(input, init);
-      return new Response(JSON.stringify({ message: { DOI: "10.1/nolink", link: [{ URL: PDF, "content-type": "application/pdf" }] } }), { status: 200, headers: { "content-type": "application/json" } });
-    });
+    crossrefHolds("10.1/nolink");
 
     // As the assistant reads: it is sent the stored copy, so a copy that can't be kept is no use to it.
     const found = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W12", doi: "10.1/nolink" }, { ...EXTRACTION, bytes: false });
@@ -242,6 +241,15 @@ describe("reading a paper's PDF", () => {
     await expect(asAda.action(api.research.papers.readPdf, { id: "W2" })).rejects.toThrow(/attach its PDF/);
     // OpenAlex said it has no copy, so none was bought.
     expect(content).toEqual([]);
+  });
+
+  it("cites a paper with no link of its own at the address its copy was found at, so a page citation opens the PDF", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await chat(t);
+    WORKS.W12 = { id: "https://openalex.org/W12", display_name: "No link", doi: "https://doi.org/10.1/nolink" };
+    crossrefHolds("10.1/nolink");
+
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W12" })).toMatchObject({ paperPdf: PDF, stored: await byLink(PDF) });
   });
 
   it("buys OpenAlex's copy when the paper's own link fails, charging what OpenAlex reports, and serves it from the store after", async () => {

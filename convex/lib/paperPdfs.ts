@@ -49,7 +49,7 @@ export type PdfOptions = { maxBytes: number; bytes: boolean; charge: "self" | "r
  * The PDF and where it came from, with the credits it cost the scope (charged already, or for the caller to charge),
  * or why there's none: `credits` when the person can't pay for it.
  */
-export type PaperPdf = { bytes: Uint8Array | null; key: string | null; from: "stored" | "link" | "openalex"; credits: number } | { error: string; credits?: true };
+export type PaperPdf = { bytes: Uint8Array | null; key: string | null; from: "stored" | "link" | "openalex"; credits: number; /** Where a copy fetched by a link came from. */ url?: string } | { error: string; credits?: true };
 
 function store() {
   const { PAPER_PDFS_ENDPOINT: endpoint, PAPER_PDFS_BUCKET: bucket, PAPER_PDFS_ACCESS_KEY_ID: accessKeyId, PAPER_PDFS_SECRET_ACCESS_KEY: secretAccessKey } = process.env;
@@ -310,7 +310,7 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
       if (!options.bytes && !kept) return { error: NOT_KEPT };
       // The scope fetched it for nothing, so a later read in it from the store is free too.
       if (kept) await note(ctx, payer, key);
-      return { bytes, key: kept ? key : null, from: "link", credits: 0 };
+      return { bytes, key: kept ? key : null, from: "link", url: foundAt, credits: 0 };
     }
     failed = bytes ? "The paper's PDF address served something that isn't a PDF." : (error ?? "The paper's PDF couldn't be downloaded.");
   }
