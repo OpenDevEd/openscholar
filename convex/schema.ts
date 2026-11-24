@@ -1655,4 +1655,7 @@ export default defineSchema({
 
   // The papers whose PDF each chat or extraction (`scope`) has had (`had`), or is paying for since `at`, so it pays once for each (convex/lib/paperPdfs.ts).
   paperPdfReads: defineTable({ scope: v.string(), key: v.string(), had: v.boolean(), at: v.number() }).index("by_scope_and_key", ["scope", "key"]),
+
+  // A paper no free copy of whose PDF was found, by its DOI or OpenAlex ID and the link it was searched with (`key`): it isn't searched again until `retryAt`, which each further miss (`tries`) moves further off (convex/lib/paperPdfs.ts).
+  paperPdfMisses: defineTable({ key: v.string(), reason: v.string(), retryAt: v.number(), tries: v.number() }).index("by_key", ["key"]),
 });
