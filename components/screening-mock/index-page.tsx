@@ -27,7 +27,7 @@ import { HOME, RESULTS, RESULT_LABEL, accessOf, activeReviewers, ago, day, growi
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { Help, LinkChip, RESULT_STYLE, ResultChip, ReviewerMark } from "./parts";
+import { Help, LinkChip, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted } from "./parts";
 import { isReading, paperCredits, useMock, useOpenScreening } from "./store";
 
 const PAGE = 25;
@@ -56,6 +56,8 @@ const PLACE = {
  * and the menu. Narrower, each row is a card: the title and its menu, the facts under it, the faces
  * and when it last moved on one line, the bar, then the status.
  */
+/** Each tab in the colour its rows' status chips have: what waits for you is primary, a finished screening is green. */
+const SHOW_ICON = { you: tinted(ListChecks, "primary"), open: tinted(Hourglass, "neutral"), finished: tinted(CircleCheck, "success") };
 const COLUMNS = "@5xl:grid-cols-[minmax(14rem,1.75fr)_9rem_minmax(8rem,1fr)_minmax(15rem,2fr)_6rem_2rem]";
 const CARD = "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'title_menu'_'meta_meta'_'faces_faces'_'papers_papers'_'status_status'] @5xl:[grid-template-areas:'title_faces_papers_status_when_menu'_'meta_faces_papers_status_when_menu']";
 /** A link inside a row sits above the link the whole row is, and shows that it is one. */
@@ -170,9 +172,9 @@ export function ScreeningsIndex() {
                       onChange={(next) => go({ show: next })}
                       options={[
                         { id: "all", label: "All", detail: <span className="tabular-nums text-muted-foreground">{tally.all}</span> },
-                        { id: "you", label: "Needs you", detail: <span className="tabular-nums text-muted-foreground">{tally.you}</span> },
-                        { id: "open", label: "In progress", detail: <span className="tabular-nums text-muted-foreground">{tally.open}</span> },
-                        { id: "finished", label: "Finished", detail: <span className="tabular-nums text-muted-foreground">{tally.finished}</span> },
+                        { id: "you", label: "Needs you", icon: SHOW_ICON.you, detail: <TabCount value={tally.you} tone="primary" /> },
+                        { id: "open", label: "In progress", icon: SHOW_ICON.open, detail: <TabCount value={tally.open} /> },
+                        { id: "finished", label: "Finished", icon: SHOW_ICON.finished, detail: <TabCount value={tally.finished} tone="success" /> },
                       ]}
                     />
                   </div>

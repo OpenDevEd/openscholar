@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, Undo2, X } from "@/components/icons";
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -30,7 +30,7 @@ import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, Help, Kbd, LinkChip, Panel, QuestionHint, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
+import { AnswerMark, Help, Kbd, LinkChip, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -45,14 +45,15 @@ type Sort = (typeof SORTS)[number];
 const SORT_LABEL: Record<Sort, string> = { added: "Order added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
 /** A result tab with nothing in it, while no filter or search narrows it. */
 const EMPTY_TAB: Record<Result | "all", string> = { all: "No papers yet", include: "Nothing included yet", maybe: "Nothing marked Maybe yet", exclude: "Nothing excluded yet", conflict: "No papers in conflict", waiting: "No papers waiting for a vote" };
-const VOTED = ["any", ...DECISIONS, "none", "settled"] as const;
+const VOTED = ["any", ...DECISIONS, "none", "settled", "failed"] as const;
 type Voted = (typeof VOTED)[number];
 
 /**
  * What the table shows, kept in the address (papersHref in links.ts says what each means). `reviewer`
  * with `voted` narrows to one reviewer's votes, and `voted` alone to your own. `voted=settled` is the
- * conflicts that reviewer settled. `reason` is why a paper was excluded, or the criterion a Maybe was
- * unclear on.
+ * conflicts that reviewer settled, and `voted=failed` the papers a model couldn't read. `reason` is why
+ * a paper was excluded, or the criterion a Maybe was unclear on. `page` is left out by a link that
+ * opens a `paper`: the table then shows the page that holds it.
  */
 const PLACE = {
   result: parseAsStringLiteral(["all", ...RESULTS] as const).withDefault("all"),
@@ -65,7 +66,7 @@ const PLACE = {
   added: parseAsString.withDefault("all"),
   sort: parseAsStringLiteral(SORTS).withDefault("added"),
   q: parseAsString.withDefault(""),
-  page: parseAsInteger.withDefault(1),
+  page: parseAsInteger,
   paper: parseAsString,
 };
 
@@ -94,7 +95,8 @@ function Papers({ open }: { open: Open }) {
   const clearFilters = () => go({ source: null, reviewer: null, voted: null, with: null, reason: null, added: null, q: null });
   // Opening a paper and closing it are steps Back returns from. Going from one open paper to another changes the address in place.
   const show = (paperId: string) => void setPlace({ paper: paperId }, opened ? { history: "replace" } : undefined);
-  const close = () => void setPlace({ paper: null });
+  // Closing it leaves the table on the page it was showing, which the address then has to name.
+  const close = () => void setPlace({ paper: null, page: pager.page > 1 ? pager.page : null });
   // A selection belongs to the list it was made in: another tab, filter, search or order starts with none selected.
   const scope = [filter, from, reviewer, voted, also, reason, added, sort, query].join("|");
   const [selection, setSelection] = useState({ scope, ids: [] as string[] });
@@ -129,6 +131,7 @@ function Papers({ open }: { open: Open }) {
       if (voted === "settled") return settled[paper.id]!.resolvedBy === who;
       const theirs = entry(paper, who);
       if (!theirs) return false;
+      if (voted === "failed") return Boolean(theirs.failed);
       if (voted === "none") return !theirs.vote && !theirs.failed && !settled[paper.id]!.final;
       return voted === "any" ? Boolean(theirs.vote) : theirs.vote?.decision === voted;
     };
@@ -157,21 +160,35 @@ function Papers({ open }: { open: Open }) {
   // When papers joined after the start: each check that brought some, and each source added later.
   const arrivals = [...new Set(papers.flatMap((paper) => paper.batch ?? []))].sort((a, b) => b - a);
   const newest = arrivals[0];
-  const pager = pagerOf(rows.length, PAGE, page, (next) => void setPlace({ page: next }));
-  const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   const paper = papers.find((one) => one.id === opened);
+  // Where the open paper is in the whole list. A link that opens a paper names it and no page: the table shows the page that holds it, so the paper is there in the list and not only beside it.
+  const at = paper ? rows.indexOf(paper) : -1;
+  const pager = pagerOf(rows.length, PAGE, page ?? (at >= 0 ? Math.floor(at / PAGE) + 1 : 1), (next) => void setPlace({ page: next }));
+  const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
+  const inView = at >= 0 && Math.floor(at / PAGE) + 1 === pager.page;
   if (paper && beside && !made) setMade(true);
   const room = made && beside;
   const chosen = picked.filter((one) => papers.some((p) => p.id === one));
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
   const everyRow = rows.length > shown.length && rows.every((one) => chosen.includes(one.id));
 
-  // Where the open paper is in the whole list, and the step to the one before or after it, onto its page.
-  const at = paper ? rows.indexOf(paper) : -1;
+  // The step to the paper before or after the open one, onto its page.
   const step = (by: 1 | -1) => {
     const next = rows[at + by];
     if (next) void setPlace({ paper: next.id, page: Math.floor((at + by) / PAGE) + 1 }, { history: "replace" });
   };
+
+  // The open paper's row is brought to the middle of the window where it is off the screen: after a link that opened it, or a step onto another page. A row already in view stays where it is. The window's scroll is the outside system.
+  useEffect(() => {
+    if (!opened || !inView) return;
+    // The table and the phone's list both carry the paper: the one that is drawn is its row.
+    const row = [...document.querySelectorAll<HTMLElement>(`[data-paper="${CSS.escape(opened)}"]`)].find((one) => one.getClientRects().length);
+    if (!row) return;
+    const box = row.getBoundingClientRect();
+    const covered = (row.closest("table")?.querySelector("thead") ?? document.querySelector("[data-sticky-page-header]"))?.getBoundingClientRect().bottom ?? 0;
+    if (box.top < covered || box.bottom > window.innerHeight) row.scrollIntoView({ block: "center" });
+    // Again when the table is put in another order or narrowed, which can move the row. Not on a search being typed or on papers arriving: the page would move under the person.
+  }, [opened, inView, pager.page, filter, from, reviewer, voted, also, reason, added, sort]);
 
   // The keyboard is the outside system: Escape closes the open paper, J and K or the arrows step through the list.
   useEffect(() => {
@@ -269,7 +286,7 @@ function Papers({ open }: { open: Open }) {
     who
       ? {
           key: "reviewer",
-          label: voted === "any" ? (whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
+          label: voted === "any" ? (whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : voted === "failed" ? `${whoName ?? "You"} couldn't read` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
           clear: { reviewer: null, voted: null, with: null },
         }
       : null,
@@ -316,6 +333,7 @@ function Papers({ open }: { open: Open }) {
             <SelectItem value="any">Any vote</SelectItem>
             {DECISIONS.map((decision) => { const Icon = RESULT_STYLE[decision].icon; return <SelectItem key={decision} value={decision}><Icon className={cn("size-3.5", TONE[RESULT_STYLE[decision].tone].ink)} />{DECISION_LABEL[decision]}</SelectItem>; })}
             <SelectItem value="none">Not voted yet</SelectItem>
+            {papers.some((one) => votes[one.id]!.some((entry) => entry.reviewer.id === who && entry.failed)) ? <SelectItem value="failed"><TriangleAlert className="size-3.5 ink-destructive" />Couldn&apos;t read it</SelectItem> : null}
             {settles(who) ? <SelectItem value="settled">Settled a conflict</SelectItem> : null}
           </SelectContent>
         </Select>
@@ -365,7 +383,7 @@ function Papers({ open }: { open: Open }) {
             onChange={(next) => go({ result: next === "all" ? null : next })}
             options={[
               { id: "all" as const, label: "All", detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={narrowed.length} /></span> },
-              ...RESULTS.map((result) => ({ id: result, label: RESULT_LABEL[result], icon: RESULT_STYLE[result].icon, detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={tabCounts[result]} /></span> })),
+              ...RESULTS.map((result) => ({ id: result, label: RESULT_LABEL[result], icon: RESULT_ICON[result], detail: <span className={cn("tabular-nums", tabCounts[result] ? TONE[RESULT_STYLE[result].tone].ink : "text-muted-foreground")}><AnimatedNumber value={tabCounts[result]} /></span> })),
             ]}
           />
         </div>

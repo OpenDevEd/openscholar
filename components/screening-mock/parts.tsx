@@ -4,11 +4,11 @@
 // section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
 // examples that show what a rule does.
 
-import { useEffect, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
 import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
-import { ANSWER, Chip, RequiredMark } from "@/components/screening/parts";
+import { Chip, RequiredMark } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
 import { HELP_POPOVER, HelpButton } from "@/components/ui/help";
 import { YouTag } from "@/components/ui/identity";
@@ -70,6 +70,15 @@ export const RESULT_STYLE: Record<Result, { bar: string; chip: string; icon: App
   conflict: { bar: "bg-info", chip: TONE.info.chip, icon: GitCompare, tone: "info" },
   waiting: { bar: "bg-foreground/10", chip: TONE.neutral.chip, icon: Hourglass, tone: "neutral" },
 };
+
+/** An icon in one colour, for a control that takes an icon and would draw it in its text's colour: a tab, a menu item. Made once, outside any component, so the control keeps the same icon from one draw to the next. */
+export const tinted = (Icon: AppIcon, tone: Tone): ComponentType<{ className?: string }> => function Tinted({ className }) { return <Icon className={cn(TONE[tone].ink, className)} />; };
+/** Each result's icon in its own colour. */
+export const RESULT_ICON = Object.fromEntries(RESULTS.map((result) => [result, tinted(RESULT_STYLE[result].icon, RESULT_STYLE[result].tone)])) as Record<Result, ComponentType<{ className?: string }>>;
+/** A count in a tab, in the colour of what it counts while there is any: what waits for you is primary, a conflict is blue. */
+export function TabCount({ value, tone = "neutral" }: { value: number; tone?: Tone }) {
+  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{value.toLocaleString("en-GB")}</span>;
+}
 
 /**
  * A region's surface says what kind of region it is. A well (neutral) holds facts about the screening.
@@ -346,13 +355,13 @@ export function RuleExamples({ rule, people, models }: { rule: Rule; people: num
 }
 
 /** An answer to a criterion, with its sign and its name. Unclear is a dash, never a "?", which is help. */
-export const ANSWER_SIGN: Record<Answer, { icon: AppIcon; label: string }> = { yes: { icon: Check, label: "Yes" }, no: { icon: X, label: "No" }, unclear: { icon: Minus, label: "Unclear" } };
+export const ANSWER_SIGN: Record<Answer, { icon: AppIcon; label: string; tone: Tone }> = { yes: { icon: Check, label: "Yes", tone: "success" }, no: { icon: X, label: "No", tone: "destructive" }, unclear: { icon: Minus, label: "Unclear", tone: "warning" } };
 
 /** One answer as a small square with its sign. `label` names whose answer it is, or to which criterion. */
 export function AnswerMark({ answer, label }: { answer: Answer; label: string }) {
-  const { icon: Icon, label: said } = ANSWER_SIGN[answer];
+  const { icon: Icon, label: said, tone } = ANSWER_SIGN[answer];
   return (
-    <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", answer === "no" ? "bg-foreground/[0.08] text-muted-foreground" : ANSWER[answer].className)}>
+    <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", TONE[tone].chip)}>
       <Icon aria-hidden className="size-3.5" />
     </span>
   );

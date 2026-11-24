@@ -3,7 +3,7 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
-import { createContext, use, useEffect, type ComponentProps, type ReactNode } from "react";
+import { createContext, use, useLayoutEffect, type ComponentProps, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useParams, useRouter, useSelectedLayoutSegment } from "next/navigation";
@@ -29,7 +29,7 @@ import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { Help, LinkChip, ReviewerMark, TONE, type Tone } from "./parts";
+import { Help, LinkChip, ReviewerMark, TONE, TabCount, type Tone } from "./parts";
 import { credits, paperCredits, useMock, useModelsReading, useOpenScreening, type Open } from "./store";
 import { AddModel, AddPerson } from "./team";
 
@@ -105,7 +105,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // A deleted screening's page is left for good: Back does not return to it.
   const overlays = useScreeningOverlays(open, { onDeleted: () => router.replace(SCREENINGS) });
   // A page opened by a link starts at its top; Back and Forward, and a link to a section, keep their place. The window's scroll is the outside system.
-  useEffect(() => {
+  // Before the page's own effects, so a page that then brings the item its link named into view has the last word.
+  useLayoutEffect(() => {
     if (!returning && !window.location.hash) window.scrollTo(0, 0);
   }, [view, id]);
 
@@ -146,7 +147,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       className={fill ? "@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden" : undefined}
       options={[
         { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
-        { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
+        { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <TabCount value={open.toDo.length} tone="primary" /> : undefined },
         { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{total}</span> },
         // Only someone who may change it has its settings.
         ...(open.canChange ? [{ id: "settings" as const, label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <span className="rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : undefined }] : []),

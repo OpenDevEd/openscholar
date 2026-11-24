@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { Asterisk, ChevronLeft, ChevronRight, CircleCheck, Eye, GitCompare, Hourglass, ListChecks, Lock, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
-import { ANSWER, Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
+import { Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
@@ -28,13 +28,15 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, Tally, VoteMark } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, TabCount, Tally, VoteMark, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
 type Queue = "todo" | "done" | "conflicts";
 const QUEUE_PAGE = 12;
 const QUEUE_LABEL: Record<Queue, string> = { todo: "To do", done: "Done", conflicts: "Conflicts" };
+/** Each queue's count in the colour of what it holds: what waits for you is primary, a conflict is blue, what is done is neither. The tabs carry no icons, which would not fit the three on one line of the queue's column. */
+const QUEUE_TONE: Record<Queue, Tone> = { todo: "primary", done: "neutral", conflicts: "info" };
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
 const SHORTCUTS: Array<[string[], string, "vote"?]> = [[["I"], "Include", "vote"], [["M"], "Maybe", "vote"], [["E"], "Exclude, then the reason's key", "vote"], [["S"], "Skip to the next paper"], [["J", "→"], "Next paper"], [["K", "←"], "Previous paper"], [["Z"], "Undo the last vote", "vote"], [["?"], "Show these shortcuts"]];
 const OTHER = "other";
@@ -260,7 +262,7 @@ function Screen({ open }: { open: Open }) {
         id: which,
         label: QUEUE_LABEL[which],
         href: screenHref(id, which === "todo" ? undefined : { queue: which }),
-        detail: <span className="tabular-nums text-muted-foreground">{which === "todo" ? toDo.length : which === "done" ? yours.length - toDo.length : conflicts.length}</span>,
+        detail: <TabCount value={which === "todo" ? toDo.length : which === "done" ? yours.length - toDo.length : conflicts.length} tone={QUEUE_TONE[which]} />,
       }))}
     />
   );
@@ -484,11 +486,11 @@ function Screen({ open }: { open: Open }) {
                             {answering ? (
                               <div role="radiogroup" aria-label={`Your answer to criterion ${i + 1}`} className="flex flex-wrap gap-1.5 ps-6.5">
                                 {ANSWERS.map((answer) => {
-                                  const { icon: Icon, label } = ANSWER_SIGN[answer];
+                                  const { icon: Icon, label, tone } = ANSWER_SIGN[answer];
                                   const on = answered === answer;
                                   return (
-                                    <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", answer === "no" ? "bg-foreground/12 text-foreground" : ANSWER[answer].className) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                                      <Icon className="size-3.5" />
+                                    <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", TONE[tone].chip) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                                      <Icon className={cn("size-3.5", !on && TONE[tone].ink)} />
                                       {label}
                                     </button>
                                   );

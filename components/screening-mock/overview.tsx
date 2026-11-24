@@ -25,7 +25,7 @@ import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, QuestionHint, RESULT_STYLE, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
+import { Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -303,7 +303,7 @@ function Reviewers({ open }: { open: Open }) {
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
             <span role="columnheader">Reviewer</span>
             <span role="columnheader" aria-sort={sort === "voted" ? "descending" : "none"}>{sortable("voted", "Papers voted on")}</span>
-            {DECISIONS.map((decision) => <span key={decision} role="columnheader" className="text-end">{DECISION_LABEL[decision]}</span>)}
+            {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex items-center justify-end gap-1"><Icon className="size-3.5 shrink-0" />{DECISION_LABEL[decision]}</span>; })}
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
               {sortable("agrees", "Agrees with majority")}
               <Help title="Agrees with majority" side="bottom">
@@ -707,7 +707,12 @@ function Checks({ open }: { open: Open }) {
                           {batch.length ? (
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                               <ResultBar counts={counts} className="h-1.5 min-w-24 flex-1" />
-                              <span className="text-xs tabular-nums text-muted-foreground">{RESULTS.filter((result) => counts[result]).map((result) => `${counts[result]} ${RESULT_LABEL[result].toLowerCase()}`).join(", ")}</span>
+                              <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                                {RESULTS.filter((result) => counts[result]).map((result) => {
+                                  const Icon = RESULT_ICON[result];
+                                  return <span key={result} role="img" aria-label={`${counts[result]} ${RESULT_LABEL[result].toLowerCase()}`} className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground"><Icon className="size-3.5" />{counts[result]}</span>;
+                                })}
+                              </span>
                             </div>
                           ) : null}
                         </>

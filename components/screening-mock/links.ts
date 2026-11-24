@@ -29,7 +29,7 @@ export const screenHref = (id: string, query?: { queue?: "done" | "conflicts"; p
  * `result`: include, maybe, exclude, conflict or waiting. `source`: a source's id. `added`: "start" or
  * the time of a check for new papers. `reviewer`: a reviewer's id, for the papers they voted on, and
  * with `voted` (include, maybe, exclude, or none for the ones that wait for their vote) the papers they
- * voted that way; `voted` without `reviewer` is your own vote. `with`: a second reviewer's id, for the
+ * voted that way, or with `voted=failed` the ones a model couldn't read; `voted` without `reviewer` is your own vote. `with`: a second reviewer's id, for the
  * papers both voted on. `reason`: why a paper was excluded, a criterion's key or another reason's.
  * `sort`: added, title, newest, split or points. `paper`: the paper open beside the table.
  */

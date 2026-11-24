@@ -1032,7 +1032,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 {due(reviewer) ? (
                                   <Chip icon={Coins}>{credits(due(reviewer))} credits for {plural(left, "paper", "papers")}</Chip>
                                 ) : saved && unreadBy(reviewer).length ? (
-                                  <LinkChip href={papersHref(saved.id, { paper: unreadBy(reviewer)[0]!.id })} tone="warning" icon={TriangleAlert}>{unreadText(unreadBy(reviewer).length)}</LinkChip>
+                                  <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id, voted: "failed", ...(unreadBy(reviewer).length === 1 ? { paper: unreadBy(reviewer)[0]!.id } : {}) })} tone="warning" icon={TriangleAlert}>{unreadText(unreadBy(reviewer).length)}</LinkChip>
                                 ) : !fresh && papers ? <Chip icon={Check}>All read</Chip> : null}
                               </>
                             ) : null}
