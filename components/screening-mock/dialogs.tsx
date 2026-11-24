@@ -16,7 +16,7 @@ import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, STAGE_LABEL, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Paper, type Result, type Reviewer, type Screening, lookOf, growing } from "./data";
+import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, reasonOf, taken, workspaceOf, type Paper, type Result, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { ReviewerMark, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
@@ -36,13 +36,13 @@ const DECISIONS_PAGE = 8;
  * What has happened in the screening, newest first: every change to it, with who made it and what
  * it did, and your own decisions, each of which opens its paper.
  */
-export function ActivitySheet({ open, onClose, state, onPaper }: { open: boolean; onClose: () => void; state: Open; onPaper: (paper: string, stage: "abstract" | "fullText") => void }) {
+export function ActivitySheet({ open, onClose, state, onPaper }: { open: boolean; onClose: () => void; state: Open; onPaper: (paper: string) => void }) {
   const { screening } = state;
   const [tab, setTab] = useState<"changes" | "mine">("changes");
   const [page, setPage] = useState(1);
   const changes = [...screening.changes].reverse();
-  const mine = ([["abstract", state.first], ["fullText", state.second]] as const)
-    .flatMap(([stage, standing]) => standing.papers.flatMap((paper) => { const vote = standing.votes[paper.id]!.find((one) => one.reviewer.id === state.me)?.vote; return vote ? [{ stage, paper, vote }] : []; }))
+  const mine = state.papers
+    .flatMap((paper) => { const vote = state.votes[paper.id]!.find((one) => one.reviewer.id === state.me)?.vote; return vote ? [{ paper, vote }] : []; })
     .sort((a, b) => b.vote.at - a.vote.at);
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
@@ -55,14 +55,14 @@ export function ActivitySheet({ open, onClose, state, onPaper }: { open: boolean
         {tab === "mine" ? (
           <>
             <ol className="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto">
-              {mine.slice((page - 1) * DECISIONS_PAGE, page * DECISIONS_PAGE).map(({ stage, paper, vote }) => (
-                <li key={`${stage}:${paper.id}`}>
-                  <button type="button" onClick={() => { onPaper(paper.id, stage); onClose(); }} className="flex w-full items-start gap-3 px-5 py-3 text-start transition-colors hover:bg-muted">
+              {mine.slice((page - 1) * DECISIONS_PAGE, page * DECISIONS_PAGE).map(({ paper, vote }) => (
+                <li key={paper.id}>
+                  <button type="button" onClick={() => { onPaper(paper.id); onClose(); }} className="flex w-full items-start gap-3 px-5 py-3 text-start transition-colors hover:bg-muted">
                     <VoteMark vote={vote} who="You" />
                     <span className="min-w-0 flex-1 space-y-0.5">
                       <span className="line-clamp-2 text-sm font-medium">{paper.title}</span>
                       <span className="block text-xs text-muted-foreground">{DECISION_LABEL[vote.decision]}{vote.reason ? `, ${failedLabel(vote.reason, screening.criteria)}` : ""}</span>
-                      <span className="flex flex-wrap gap-1.5 pt-0.5"><Chip className="h-5 px-1.5">{ago(vote.at)}</Chip><Chip className="h-5 px-1.5">{STAGE_LABEL[stage]}</Chip></span>
+                      <span className="flex flex-wrap gap-1.5 pt-0.5"><Chip className="h-5 px-1.5">{ago(vote.at)}</Chip></span>
                     </span>
                   </button>
                 </li>
@@ -218,22 +218,16 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const setTab = (next: ExportTab) => { setDone(null); onTab(next); };
   // Which included papers: the screening's, or your own. Unset, it is whichever has some.
   const [picked, setPicked] = useState<"settled" | "mine" | null>(null);
-  const { screening, first, second } = state;
+  const { screening, papers, votes, settled, counts } = state;
   const reviewers = activeReviewers(screening);
 
-  // One row per reviewer per paper, at both stages: the complete record.
-  const rows = [first, second].flatMap((stage, s) =>
-    stage.papers.flatMap((paper) =>
-      stage.votes[paper.id]!.flatMap(({ reviewer, vote }) =>
-        vote ? [{ stage: s === 0 ? "abstract" : "fullText", paper, reviewer, vote, result: stage.settled[paper.id]!.result }] : [],
-      ),
-    ),
-  );
+  // One row per reviewer per paper: the complete record.
+  const rows = papers.flatMap((paper) => votes[paper.id]!.flatMap(({ reviewer, vote }) => (vote ? [{ paper, reviewer, vote, result: settled[paper.id]!.result }] : [])));
   const csv = () =>
     [
-      ["stage", "paper", "year", "reviewer", "reviewer_kind", "decision", "reason", ...screening.criteria.map((c) => c.short), "note", "paper_result", "voted_at"],
+      ["paper", "year", "reviewer", "reviewer_kind", "decision", "reason", ...screening.criteria.map((c) => c.short), "note", "paper_result", "voted_at"],
       ...rows.map((row) => [
-        STAGE_LABEL[row.stage as "abstract" | "fullText"], row.paper.title, row.paper.year, row.reviewer.name, row.reviewer.kind, DECISION_LABEL[row.vote.decision],
+        row.paper.title, row.paper.year, row.reviewer.name, row.reviewer.kind, DECISION_LABEL[row.vote.decision],
         row.vote.reason ? failedLabel(row.vote.reason, screening.criteria) : "", ...screening.criteria.map((c) => row.vote.answers[c.key] ?? ""), row.vote.note ?? "", RESULT_LABEL[row.result], new Date(row.vote.at).toISOString(),
       ]),
     ].map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -243,34 +237,22 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // The times its sources were looked in again, and what those looks found.
   const looks = screening.updates ?? [];
   const later = looks.reduce((sum, look) => sum + look.found, 0);
-  const reasons = (state: typeof first) => {
-    const tally = new Map<string, number>();
-    for (const paper of state.papers) if (state.settled[paper.id]!.final === "exclude") { const key = reasonOf(state.votes[paper.id]!, state.settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
-    return [...tally].sort((a, b) => b[1] - a[1]).map(([key, n]) => ({ label: `Excluded, ${failedLabel(key, screening.criteria).replace(/^Not met/, "not met")}`, n }));
-  };
-  // What a researcher takes away: the papers kept at the last stage the screening has.
-  const last = screening.fullText ? second : first;
-  const settledIn: Paper[] = last.papers.filter((paper) => last.settled[paper.id]!.final === "include");
-  // Your own includes, at the furthest stage you have voted on each paper: there before the others have voted too.
-  const myVoteAt = (stage: typeof first, paper: Paper) => stage.votes[paper.id]?.find((one) => one.reviewer.id === state.me)?.vote;
-  const mine: Paper[] = first.papers.filter((paper) => (myVoteAt(second, paper) ?? myVoteAt(first, paper))?.decision === "include");
+  const tally = new Map<string, number>();
+  for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
+  const reasons = [...tally].sort((a, b) => b[1] - a[1]).map(([key, n]) => ({ label: `Excluded, ${failedLabel(key, screening.criteria).replace(/^Not met/, "not met")}`, n }));
+  // What a researcher takes away: the papers settled as included.
+  const settledIn: Paper[] = papers.filter((paper) => settled[paper.id]!.final === "include");
+  // Your own includes: there before the others have voted too.
+  const mine: Paper[] = papers.filter((paper) => state.myVote(paper)?.decision === "include");
   const which = picked ?? (settledIn.length || !mine.length ? "settled" : "mine");
   const included = which === "mine" ? mine : settledIn;
   const ris = () => included.map((paper) => ["TY  - JOUR", `TI  - ${paper.title}`, ...paper.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${paper.year}`, `JO  - ${paper.venue}`, ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
   const bib = () => included.map((paper, i) => `@article{${paper.authors[0]!.split(" ").pop()!.toLowerCase()}${paper.year}${String.fromCharCode(97 + (i % 26))},\n  title = {${paper.title}},\n  author = {${paper.authors.filter((a) => a !== "and others").join(" and ")}},\n  year = {${paper.year}},\n  journal = {${paper.venue}}\n}`).join("\n\n");
-  const noText = count(second.papers, (paper) => !state.hasFullText(paper));
-  // Assessed and not yet decided: a paper with no full text is counted with the ones not retrieved, not here.
-  const openAtFullText = count(second.papers, (paper) => state.hasFullText(paper) && !["include", "exclude"].includes(second.settled[paper.id]!.result));
+  const openNow = counts.conflict + counts.waiting;
   const boxes: Array<{ title: string; n: number; side?: Array<{ label: string; n: number }> }> = [
     { title: "Records identified", n: found, side: later ? [{ label: "When screening began", n: found - later }, { label: `By ${looks.length} later ${looks.length === 1 ? "search" : "searches"}, the last on ${day(looks.at(-1)!.at)}`, n: later }, ...screening.sources.map((source) => ({ label: source.name, n: taken(source) }))] : screening.sources.map((source) => ({ label: source.name, n: taken(source) })) },
     { title: "Records screened on title and abstract", n: kept, side: [{ label: "Duplicates removed before screening", n: found - kept }] },
-    { title: screening.fullText ? "Reports sought for full text" : "Studies included", n: screening.fullText ? second.papers.length : first.counts.include, side: [...reasons(first), ...(first.counts.conflict + first.counts.waiting ? [{ label: "Still open: in conflict or waiting for votes", n: first.counts.conflict + first.counts.waiting }] : [])] },
-    ...(screening.fullText
-      ? [
-          { title: "Reports assessed at full text", n: second.papers.length - noText, side: [{ label: "Reports not retrieved", n: noText }] },
-          { title: "Studies included", n: second.counts.include, side: [...reasons(second).filter((one) => !/not retrieved/i.test(one.label)), ...(openAtFullText ? [{ label: "Still open: maybe, in conflict or waiting for votes", n: openAtFullText }] : [])] },
-        ]
-      : []),
+    { title: "Studies included", n: counts.include, side: [...reasons, ...(counts.maybe ? [{ label: "Left as maybe", n: counts.maybe }] : []), ...(openNow ? [{ label: "Still open: in conflict or waiting for votes", n: openNow }] : [])] },
   ];
   const svg = () => {
     const [w, bh, gap] = [760, 64, 34];
@@ -302,31 +284,27 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   };
   const people = peopleOf(screening);
   const models = modelsOf(screening);
-  const pair = people.length > 1 ? agreement(people[0]!.id, people[1]!.id, first) : null;
+  const pair = people.length > 1 ? agreement(people[0]!.id, people[1]!.id, state) : null;
   // Who read each record, said the way a methods section says it.
   const each = screening.rule.each === "all" ? people.length : Math.min(Number(screening.rule.each), people.length);
   const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${people[0]!.name})` : people.length === 2 ? `Both human reviewers (${people.map((p) => p.name).join(" and ")})` : `All ${people.length} human reviewers (${people.map((p) => p.name).join(", ")})`) : `${each === 1 ? "One" : "Two"} of the ${people.length} human reviewers (${people.map((p) => p.name).join(", ")})`;
-  const unread = count(first.papers, (paper) => first.votes[paper.id]!.some((one) => one.failed));
-  const openNow = first.counts.conflict + first.counts.waiting + (screening.fullText ? openAtFullText : 0);
-  const fullPair = people.length > 1 && screening.fullText ? agreement(people[0]!.id, people[1]!.id, second) : null;
-  const excludedAtFullText = count(second.papers, (paper) => second.settled[paper.id]!.final === "exclude" && state.hasFullText(paper));
+  const unread = count(papers, (paper) => votes[paper.id]!.some((one) => one.failed));
   const n = (count: number, one: string, many: string) => `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
   // How far every pair of reviewers agreed, people and models: the lowest and the highest kappa.
-  const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => agreement(a.id, b.id, first)?.kappa ?? [])).sort((a, b) => a - b);
+  const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => agreement(a.id, b.id, state)?.kappa ?? [])).sort((a, b) => a - b);
   const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
   const methods = [
-    openNow ? `Screening was still in progress when this was written: ${(first.papers.length - first.counts.conflict - first.counts.waiting).toLocaleString("en-GB")} of ${first.papers.length.toLocaleString("en-GB")} records had been settled on title and abstract.` : "",
+    openNow ? `Screening was still in progress when this was written: ${(papers.length - openNow).toLocaleString("en-GB")} of ${papers.length.toLocaleString("en-GB")} records had been settled.` : "",
     `Records from ${screening.sources.length} ${screening.sources.length === 1 ? "source" : "sources"} (n = ${found}) were brought into Openscholar. After ${found - kept} duplicates were merged, ${kept} were screened.`,
     looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     screening.criteria.length ? `Each record was assessed on its title and abstract against ${screening.criteria.length} ${screening.criteria.length === 1 ? "criterion" : "criteria"}, ${screening.criteria.filter((c) => c.must).length} of which a record had to meet to be included.` : "Each record was assessed on its title and abstract.",
     readers ? `${readers} voted on each record${screening.rule.blind === "after" ? " without seeing the other votes" : ""}.` : "No human reviewer voted on the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) voted on the records as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}, giving an answer and a quoted passage for every criterion${unread ? `; ${unread} ${unread === 1 ? "record" : "records"} could not be read by a model and ${unread === 1 ? "was" : "were"} decided by the other reviewers` : ""}.` : "No AI model took part.",
-    screening.rule.settle === "all" ? `A record was settled when all of its reviewers agreed, and disagreements went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}${first.counts.conflict ? `; ${first.counts.conflict} ${first.counts.conflict === 1 ? "was" : "were"} still open` : ""}.` : screening.rule.settle === "most" ? `A record was settled by the majority of its reviewers, and ties went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}.` : "The first vote on a record settled it.",
+    screening.rule.settle === "all" ? `A record was settled when all of its reviewers agreed, and disagreements went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}${counts.conflict ? `; ${counts.conflict} ${counts.conflict === 1 ? "was" : "were"} still open` : ""}.` : screening.rule.settle === "most" ? `A record was settled by the majority of its reviewers, and ties went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}.` : "The first vote on a record settled it.",
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: the votes people had cast were kept, the models answered ${lateCriteria.length === 1 ? "it" : "them"} on every record, and records where that changed the outcome went to ${personOf(screening.rule.resolver)?.name ?? "the named reviewer"}.` : "",
     pair ? `Agreement between ${people[0]!.name} and ${people[1]!.name} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (Cohen's kappa ${pair.kappa.toFixed(2)}).` : "",
     kappas.length > 1 ? `Across all ${reviewers.length} reviewers, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}.` : "",
-    screening.fullText ? `${n(second.papers.length, "record", "records")} went on to full text${noText ? `, of which ${noText} could not be retrieved` : ""}. Of the ${second.papers.length - noText} assessed, ${n(excludedAtFullText, "was", "were")} excluded and ${n(second.counts.include, "study was", "studies were")} included${openAtFullText ? `, with ${openAtFullText} still to be decided` : ""}.` : `${n(first.counts.include, "study was", "studies were")} included.`,
-    fullPair ? `At full text, agreement between ${people[0]!.name} and ${people[1]!.name} was ${Math.round(fullPair.same * 100)}% (Cohen's kappa ${fullPair.kappa.toFixed(2)}).` : "",
+    `${n(counts.include, "study was", "studies were")} included.`,
   ].filter(Boolean).join(" ");
 
   const shown = rows.slice((page - 1) * VOTES_PAGE, page * VOTES_PAGE);
@@ -343,13 +321,12 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
           {openNow && !screening.finishedAt ? (
             <p className="flex items-start gap-2.5 rounded-2xl bg-warning/10 px-3.5 py-2.5 text-sm ink-warning">
               <Info className="mt-0.5 size-4 shrink-0" />
-              <span>This screening isn&apos;t finished: {(first.counts.conflict + first.counts.waiting).toLocaleString("en-GB")} on title and abstract{screening.fullText && openAtFullText ? ` and ${openAtFullText.toLocaleString("en-GB")} at full text` : ""} {openNow === 1 ? "is" : "are"} still waiting for votes or in conflict, so what you export now is part of the result.</span>
+              <span>This screening isn&apos;t finished: {openNow.toLocaleString("en-GB")} {openNow === 1 ? "paper is" : "papers are"} still waiting for votes or in conflict, so what you export now is part of the result.</span>
             </p>
           ) : null}
           {tab === "papers" && mine.length ? (
             <Segmented label="Which papers" value={which} onChange={(next) => { setDone(null); setPicked(next); }} options={[{ id: "settled" as const, label: "Settled as included", detail: <span className="tabular-nums text-muted-foreground">{settledIn.length}</span> }, { id: "mine" as const, label: "You voted to include", detail: <span className="tabular-nums text-muted-foreground">{mine.length}</span> }]} />
           ) : null}
-          {tab === "papers" && mine.length && which === "mine" ? <p className="px-1 text-xs text-muted-foreground">The papers you voted to include, at the furthest stage you have voted on each: a maybe you later included at full text counts.</p> : null}
           {tab === "papers" ? (
             included.length ? (
               <ul className={LIST}>
@@ -368,11 +345,10 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
             <div className="space-y-3">
               <div className={LIST} style={{ minHeight: VOTES_PAGE * 49 }}>
                 {shown.map((row, i) => (
-                  <div key={i} className="grid h-12 grid-cols-[minmax(0,1fr)_9rem_1.5rem_7rem] items-center gap-3 px-4 text-sm">
+                  <div key={i} className="grid h-12 grid-cols-[minmax(0,1fr)_9rem_1.5rem] items-center gap-3 px-4 text-sm">
                     <span className="min-w-0"><span className="block truncate">{row.paper.title}</span>{row.vote.note ? <span className="block truncate text-xs text-muted-foreground">“{row.vote.note}”</span> : null}</span>
                     <span className="flex min-w-0 items-center gap-2"><ReviewerMark reviewer={row.reviewer} className="size-5" /><span className="truncate text-xs">{row.reviewer.name}</span></span>
                     <VoteMark vote={row.vote} who={row.reviewer.name} />
-                    <span className="truncate text-xs text-muted-foreground">{STAGE_LABEL[row.stage as "abstract" | "fullText"]}</span>
                   </div>
                 ))}
               </div>
@@ -387,7 +363,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle p-4">
           <p className="text-xs text-muted-foreground">
-            {tab === "papers" ? `${included.length.toLocaleString("en-GB")} ${included.length === 1 ? "paper" : "papers"} included at ${screening.fullText ? "full text" : "title and abstract"}, for a reference manager` : tab === "votes" ? `${rows.length.toLocaleString("en-GB")} ${rows.length === 1 ? "vote" : "votes"} by ${new Set(rows.map((row) => row.reviewer.id)).size} of ${reviewers.length} reviewers, one row each` : tab === "flow" ? "The counts a PRISMA 2020 flow diagram is drawn from" : "Written from this screening's own record"}
+            {tab === "papers" ? `${included.length.toLocaleString("en-GB")} ${included.length === 1 ? "paper" : "papers"} included, for a reference manager` : tab === "votes" ? `${rows.length.toLocaleString("en-GB")} ${rows.length === 1 ? "vote" : "votes"} by ${new Set(rows.map((row) => row.reviewer.id)).size} of ${reviewers.length} reviewers, one row each` : tab === "flow" ? "The counts a PRISMA 2020 flow diagram is drawn from" : "Written from this screening's own record"}
           </p>
           <div className="flex gap-2">
             {(tab === "papers"
@@ -397,7 +373,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                 ]
               : tab === "votes"
                 ? [
-                    { key: "json", label: "JSON", run: () => save(`${slug(screening.name)}-votes.json`, "application/json", JSON.stringify(rows.map((row) => ({ stage: row.stage, paper: row.paper.title, reviewer: row.reviewer.name, kind: row.reviewer.kind, ...row.vote, result: row.result })), null, 2)), off: !rows.length },
+                    { key: "json", label: "JSON", run: () => save(`${slug(screening.name)}-votes.json`, "application/json", JSON.stringify(rows.map((row) => ({ paper: row.paper.title, reviewer: row.reviewer.name, kind: row.reviewer.kind, ...row.vote, result: row.result })), null, 2)), off: !rows.length },
                     { key: "csv", label: "CSV, for a spreadsheet", run: () => save(`${slug(screening.name)}-votes.csv`, "text/csv", csv()), off: !rows.length },
                   ]
                 : tab === "flow"

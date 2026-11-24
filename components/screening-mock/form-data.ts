@@ -88,8 +88,8 @@ export const COMMUNITY_COLLECTIONS = [
 ];
 
 /** Criteria a model writes from a research question. */
-export const WRITTEN = ["Is the study published in 2010 or later?", "Is the full text available in English or French?", "Does the study report a comparison group?"];
+export const WRITTEN = ["Is the study published in 2010 or later?", "Is the paper written in English or French?", "Does the study report a comparison group?"];
 
-/** File endings the upload reads as references, and as full texts. */
+/** File endings the upload reads as references, and as papers. */
 export const REFERENCE_FILES = /\.(ris|bib|enw|nbib|xml|ciw|csv|txt)$/i;
 export const PDF_FILES = /\.pdf$/i;

@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronLeft, ChevronRight, CircleHelp, Download, FileText, GitCompare, Quote, RefreshCw, Search, Undo2, Upload, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, CircleHelp, Download, GitCompare, Quote, RefreshCw, Search, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, AnswerMark, Chip, ClippedChip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -101,7 +101,7 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
   };
   const conflictsPicked = chosen.filter((id) => settled[id]!.result === "conflict").length;
 
-  if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "No paper has reached this stage yet."}</p>;
+  if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "This screening has no papers yet."}</p>;
 
   return (
     <div ref={top} className="@container/papers scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]">
@@ -253,7 +253,6 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
                               </TooltipHint>
                             </TableHead>
                           ))}
-                      {open.stage === "fullText" ? <TableHead className="w-20 px-1 text-center">Full text</TableHead> : null}
                       <TableHead className={cn("w-52 ps-6", room || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}>Why</TableHead>
                       <TableHead className={cn("pe-4 text-end sm:pe-6", room ? "w-40" : "w-48")}>Result</TableHead>
                     </TableRow>
@@ -292,11 +291,6 @@ export function Papers({ open, filter, onFilter, added, onAdded }: { open: Open;
                                   </TableCell>
                                 );
                               })}
-                          {open.stage === "fullText" ? (
-                            <TableCell className="px-1 text-center">
-                              {open.hasFullText(one) ? <FileText role="img" aria-label="Full text to hand" className="inline size-4 ink-success" /> : <span className="text-xs text-muted-foreground">{screening.fullTexts[one.id] === "missing" ? "Not got" : "Missing"}</span>}
-                            </TableCell>
-                          ) : null}
                           <TableCell className={cn("ps-6", room || columns === "criteria" ? "hidden" : "@max-5xl/papers:hidden")}><Why paper={one} open={open} visible={visible} /></TableCell>
                           <TableCell className="pe-4 text-end sm:pe-6">
                             <span className="inline-flex items-center gap-1.5">
@@ -374,13 +368,12 @@ function Why({ paper, open, visible }: { paper: Paper; open: Open; visible: bool
 
 /** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
 function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; place: { at: number; of: number } }) {
-  const { screening, settled, votes, stage } = open;
+  const { screening, settled, votes } = open;
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   // What is being decided in the panel: your own vote, or the paper's result. Excluding asks for the reason first.
   const [deciding, setDeciding] = useState<"vote" | "result" | null>(null);
   const [reasonFor, setReasonFor] = useState<"vote" | "result" | null>(null);
   const [note, setNote] = useState("");
-  const file = useRef<HTMLInputElement>(null);
   const state = settled[paper.id]!;
   const visible = open.canSee(paper);
   const cast = votes[paper.id]!;
@@ -389,7 +382,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const quoted = shown && visible ? screening.criteria.findIndex((c) => c.key === shown.criterion) : -1;
   const quoting = shown ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
   const source = screening.sources.find((one) => one.id === paper.source);
-  const reasons = [...screening.criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS[stage]];
+  const reasons = [...screening.criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS];
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string) => {
     if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers, ...(reason && screening.criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note: note.trim() || undefined, at: Date.now() });
     else open.resolve(paper, decision, note.trim() || undefined, reason);
@@ -444,19 +437,6 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       ) : (
         <p className="rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">This paper came without an abstract.</p>
       )}
-
-      {stage === "fullText" ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-border-subtle px-3 py-2.5">
-          <FileText className={cn("size-4 shrink-0", open.hasFullText(paper) ? "ink-success" : "text-muted-foreground")} />
-          <p className="min-w-0 flex-1 text-sm">{open.hasFullText(paper) ? (screening.fullTexts[paper.id] === "added" ? `Full text added by hand${screening.fullTextFiles?.[paper.id] ? `: ${screening.fullTextFiles[paper.id]}` : ""}` : "Open-access full text found") : screening.fullTexts[paper.id] === "missing" ? "Marked as not retrieved" : "No full text yet"}</p>
-          {!open.hasFullText(paper) ? (
-            <>
-              <input ref={file} type="file" accept="application/pdf" className="sr-only" aria-label="PDF of this paper" onChange={(event) => event.target.files?.[0] && open.setFullText(paper, "added", event.target.files[0].name)} />
-              <Button variant="outline" size="sm" onClick={() => file.current?.click()}><Upload />Upload its PDF</Button>
-            </>
-          ) : null}
-        </div>
-      ) : null}
 
       {/* Your own vote, where the paper is yours to vote on. */}
       {isMine && open.isReviewer ? (

@@ -65,7 +65,6 @@ function blank(me: string): Screening {
     createdBy: me,
     createdAt: NOW,
     question: "",
-    fullText: true,
     sources: [],
     criteria: [],
     reviewers: [personReviewer(person, NOW)],
@@ -73,10 +72,9 @@ function blank(me: string): Screening {
     scoring: defaultScoring([]),
     destination: { kind: "new", name: "", prune: false },
     seed: 20,
-    reached: { abstract: {}, fullText: {} },
-    cast: { abstract: {}, fullText: {} },
-    resolved: { abstract: {}, fullText: {} },
-    fullTexts: {},
+    reached: {},
+    cast: {},
+    resolved: {},
     changes: [],
   };
 }
@@ -99,7 +97,6 @@ function describe(before: Screening, after: Screening) {
   if (JSON.stringify(before.rule) !== JSON.stringify(after.rule)) parts.push("Changed how a paper is decided");
   if (Boolean(before.living) !== Boolean(after.living)) parts.push(after.living ? "Made it a living screening" : "Stopped it looking for new papers");
   else if (before.living?.every !== after.living?.every) parts.push("Changed how often it looks for new papers");
-  if (before.fullText !== after.fullText) parts.push(after.fullText ? "Added the full-text stage" : "Took off the full-text stage");
   if (before.question !== after.question) parts.push("Changed the research question");
   // Points that come and go with a criterion are that criterion's change, not a change to the scoring.
   if (JSON.stringify(before.scoring.stars) !== JSON.stringify(after.scoring.stars) || before.criteria.some((criterion) => after.criteria.some((one) => one.key === criterion.key) && JSON.stringify(before.scoring.points[criterion.key]) !== JSON.stringify(after.scoring.points[criterion.key]))) parts.push("Changed the scoring");
@@ -116,7 +113,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const saved = id ? store.screenings.find((one) => one.id === id) : undefined;
   const copied = !id && from ? store.screenings.find((one) => one.id === from) : undefined;
   // What the form starts from: the saved screening, a copy of another to run again, or nothing yet.
-  const [made] = useState<Screening>(() => (copied ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, fullText: copied.fullText, sources: copied.sources, criteria: copied.criteria, theme: copied.theme, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } } : blank(store.viewer)));
+  const [made] = useState<Screening>(() => (copied ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, sources: copied.sources, criteria: copied.criteria, theme: copied.theme, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } } : blank(store.viewer)));
   const origin = saved ?? made;
   // What isn't saved yet is kept by the mock's store, so leaving the page and coming back loses nothing.
   const key = id ?? `new:${from ?? ""}`;
@@ -175,10 +172,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const found = draft.sources.reduce((sum, source) => sum + taken(source), 0);
   const papers = paperTotal(draft.sources);
   const each = draft.rule.each === "all" ? joined.length : Math.min(Number(draft.rule.each), joined.length);
-  // What each model has still to read on the title and abstract: all of it for a new screening, what is left for a running one.
-  const due = (model: Reviewer) => paperCredits(model.model!, "abstract") * Math.max(0, papers - (saved && saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached.abstract[model.id] ?? 0, papers) : 0));
+  // What each model has still to read: all of it for a new screening, what is left for a running one.
+  const due = (model: Reviewer) => paperCredits(model.model!) * Math.max(0, papers - (saved && saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached[model.id] ?? 0, papers) : 0));
   // A criterion added to a running screening is answered on the papers already read, which is paid for again.
-  const reread = saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)) ? models.reduce((sum, model) => sum + (saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached.abstract[model.id] ?? 0, papers) * paperCredits(model.model!, "abstract") : 0), 0) : 0;
+  const reread = saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)) ? models.reduce((sum, model) => sum + (saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached[model.id] ?? 0, papers) * paperCredits(model.model!) : 0), 0) : 0;
   const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
   const lines = saved ? effectLines(saved, draft) : [];
   const moves = saved ? effectMoves(saved, draft) : [];
@@ -215,7 +212,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         const matched = total - 2 - (hashOf(file.name) % 5);
         addSource("upload", file.name, "Reference file", total, [`${matched} matched to Openscholar's index`, `${total - matched} not in the index, kept as they came`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
       }
-      if (pdfs.length) addSource("pdf", `${pdfs.length} ${pdfs.length === 1 ? "PDF" : "PDFs"}: ${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, "Read from the files", pdfs.length, ["Titles and abstracts read from the files", "Kept as each paper's full text"]);
+      if (pdfs.length) addSource("pdf", `${pdfs.length} ${pdfs.length === 1 ? "PDF" : "PDFs"}: ${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, "Read from the files", pdfs.length, ["Titles and abstracts read from the files"]);
       setReading((now) => now.filter((name) => !names.includes(name)));
     }, 1100);
   };
@@ -238,7 +235,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       return {
         ...d,
         reviewers,
-        reached: { abstract: { [reviewer.id]: 0, ...d.reached.abstract }, fullText: { [reviewer.id]: 0, ...d.reached.fullText } },
+        reached: { [reviewer.id]: 0, ...d.reached },
         // Two people on every paper is how a review is usually screened: a new screening takes that up when its second person is added.
         ...(fresh && reviewer.kind === "person" && !reviewer.email && here === 2 && d.rule.each === "1" ? { rule: { ...d.rule, each: "2" as const } } : {}),
       };
@@ -264,7 +261,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       ...(outsider ? { workspace: "theirs" } : {}),
       theme: draft.theme ?? themeFor(`${name} ${draft.question} ${draft.sources.map((source) => source.name).join(" ")}`),
       reviewers: draft.reviewers.map((reviewer) => ({ ...reviewer, addedAt: at })),
-      reached: { abstract: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])), fullText: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])) },
+      reached: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])),
       // Papers from a search, a community or a reference manager are fetched once it starts; the rest are to hand.
       ...(draft.sources.some((source) => ["search", "evidenceLibrary", "zotero", "dois"].includes(source.kind)) ? { gathered: 0 } : {}),
       ...(busy && models.length ? { after: busy.id } : {}),
@@ -278,17 +275,15 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!saved || !id) return;
     // Models answer a new criterion on the papers they have read, and that reading is paid for.
     const had = new Set(saved.criteria.map((criterion) => criterion.key));
-    const again = draft.criteria.some((criterion) => !had.has(criterion.key)) ? models.filter((model) => saved.reviewers.some((one) => one.id === model.id && !one.left)).map((model) => ({ id: model.id, cost: Math.min(saved.reached.abstract[model.id] ?? 0, papers) * paperCredits(model.model!, "abstract") })) : [];
+    const again = draft.criteria.some((criterion) => !had.has(criterion.key)) ? models.filter((model) => saved.reviewers.some((one) => one.id === model.id && !one.left)).map((model) => ({ id: model.id, cost: Math.min(saved.reached[model.id] ?? 0, papers) * paperCredits(model.model!) })) : [];
     const reopens = moves.some((move) => move.to === "conflict" || move.to === "waiting") || lines.some((line) => line.includes("join"));
     store.update(
       id,
       (now) => ({
         ...draft,
-        reached: { abstract: { ...draft.reached.abstract, ...now.reached.abstract }, fullText: { ...draft.reached.fullText, ...now.reached.fullText } },
+        reached: { ...draft.reached, ...now.reached },
         cast: now.cast,
         resolved: now.resolved,
-        fullTexts: now.fullTexts,
-        fullTextFiles: now.fullTextFiles,
         changes: now.changes,
         spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
         updates: now.updates,
@@ -479,7 +474,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           <Chip icon={RefreshCw}>{growing(draft).length} of {draft.sources.length} {draft.sources.length === 1 ? "source is" : "sources are"} looked in again</Chip>
                           {growing(draft).length < draft.sources.length ? <Chip>A file or a pasted list holds what it held</Chip> : null}
                           <Chip>{saved?.living ? `Next on ${day(draft.living.next)}` : fresh ? `Its sources are read as they stand when it starts, then again ${draft.living.every === "day" ? "a day" : draft.living.every === "week" ? "a week" : "a month"} later` : "First look as soon as this is saved"}</Chip>
-                          {models.length ? <Chip icon={Coins}>{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))} credits for each new paper</Chip> : <Chip>New papers cost nothing: people only</Chip>}
+                          {models.length ? <Chip icon={Coins}>{credits(models.reduce((sum, model) => sum + paperCredits(model.model!), 0))} credits for each new paper</Chip> : <Chip>New papers cost nothing: people only</Chip>}
                           <Chip icon={Mail}>Reviewers are told by email</Chip>
                         </div>
                       ) : (
@@ -496,7 +491,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {rejected.length ? (
                     <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
                       <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
-                      <p className="min-w-0 flex-1">Not read: {rejected.join(", ")}. Reference files are RIS, BibTeX, EndNote, PubMed, Web of Science or CSV, and full texts are PDF.</p>
+                      <p className="min-w-0 flex-1">Not read: {rejected.join(", ")}. It reads RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF files.</p>
                       <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRejected([])}><X /></Button></TooltipHint>
                     </div>
                   ) : null}
@@ -714,9 +709,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                         {models.map((model) => (
                           <motion.div key={model.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
                             <div className="space-y-2 p-2.5">
-                              <NodeCard model={model.model!} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(model.model!, "abstract"))} credits a paper</span>} />
+                              <NodeCard model={model.model!} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(model.model!))} credits a paper</span>} />
                               <div className="flex items-center gap-2 ps-1.5">
-                                <span className="min-w-0 flex-1 text-xs tabular-nums text-muted-foreground">{credits(paperCredits(model.model!, "abstract") * papers)} credits for these {papers.toLocaleString("en-GB")} papers</span>
+                                <span className="min-w-0 flex-1 text-xs tabular-nums text-muted-foreground">{credits(paperCredits(model.model!) * papers)} credits for these {papers.toLocaleString("en-GB")} papers</span>
                                 <TooltipHint label="Take this model off"><Button data-adds variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={`Take ${model.name} off`} onClick={() => removeReviewer(model)}><Trash2 /></Button></TooltipHint>
                               </div>
                             </div>
@@ -769,30 +764,6 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </div>
                   </div>
                   {draft.rule.settle === "one" && models.length ? <p className="rounded-2xl bg-warning/10 px-4 py-2.5 text-sm ink-warning">A model reads faster than any person, so its vote alone will settle most papers.</p> : null}
-                </Zone>
-
-                {/* Stages */}
-                <Zone label="Stages">
-                  <div className={LIST}>
-                    <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-                      <div className="min-w-0 flex-1 space-y-1.5">
-                        <p className="text-sm font-medium">Title and abstract</p>
-                        <div className="flex flex-wrap gap-1.5"><Chip>Every paper</Chip><Chip>Every reviewer</Chip></div>
-                      </div>
-                      <Chip icon={Check}>Always</Chip>
-                    </div>
-                    <label className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2.5">
-                      <div className="min-w-0 flex-1 space-y-1.5">
-                        <p className="text-sm font-medium">Full text</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          <Chip>Papers included or left as maybe</Chip>
-                          <Chip>Open-access copies are fetched, the rest you add</Chip>
-                          {models.length ? <Chip icon={Coins}>About {credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "fullText"), 0))} credits a paper</Chip> : null}
-                        </div>
-                      </div>
-                      <Switch checked={draft.fullText} onCheckedChange={(fullText) => set({ fullText })} aria-label="Screen the kept papers again on their full text" />
-                    </label>
-                  </div>
                 </Zone>
 
                 {/* Where included papers go */}
@@ -849,7 +820,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     {activeReviewers(draft).length ? <ReviewerStack reviewers={activeReviewers(draft)} max={9} /> : <p className="text-sm text-muted-foreground">Nobody yet</p>}
                   </div>
                   <div className="space-y-2.5">
-                    <p className="text-xs font-medium text-muted-foreground">{fresh ? "Cost on title and abstract" : "Still to pay on title and abstract"}</p>
+                    <p className="text-xs font-medium text-muted-foreground">Cost</p>
                     <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1 truncate">People</span><span className="text-muted-foreground">Free</span></div>
                     {models.map((model) => (
                       <div key={model.id} className="flex items-center gap-2 text-sm">
@@ -869,20 +840,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                     {models.length && draft.living ? (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="min-w-0 flex-1 text-muted-foreground">Then, for each new paper it finds</span>
-                        <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))}</span>
+                        <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!), 0))}</span>
                       </div>
                     ) : null}
                     {/* What a look comes to can't be known ahead. What the last one came to is the nearest thing. */}
                     {models.length && draft.living && lastLook ? (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="min-w-0 flex-1 text-muted-foreground">The last look added {lastLook.added}, which came to</span>
-                        <span className="shrink-0 tabular-nums">{credits(lastLook.added * models.reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0))}</span>
-                      </div>
-                    ) : null}
-                    {models.length && draft.fullText ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="min-w-0 flex-1 text-muted-foreground">{draft.living ? "And" : "Then,"} for each paper that reaches full text</span>
-                        <span className="shrink-0 tabular-nums">{credits(models.reduce((sum, model) => sum + paperCredits(model.model!, "fullText"), 0))}</span>
+                        <span className="shrink-0 tabular-nums">{credits(lastLook.added * models.reduce((sum, model) => sum + paperCredits(model.model!), 0))}</span>
                       </div>
                     ) : null}
                   </div>

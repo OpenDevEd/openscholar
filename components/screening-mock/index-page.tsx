@@ -53,20 +53,15 @@ export function ScreeningsIndex() {
         // Someone from outside the workspace sees the ones shared with them.
         const access = accessOf(screening, me);
         if (!access) return [];
-        const state = standing(screening, "abstract");
-        const mine = (at: typeof state) => at.papers.filter((paper) => !at.settled[paper.id]!.final && at.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
-        const later = screening.fullText ? standing(screening, "fullText") : null;
-        const [onAbstract, onFullText] = [mine(state), later ? mine(later) : 0];
-        const forYou = onAbstract + onFullText;
+        const state = standing(screening);
+        const forYou = state.papers.filter((paper) => !state.settled[paper.id]!.final && state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
         const conflicts = screening.rule.resolver === me || screening.createdBy === me ? state.counts.conflict : 0;
-        const reading = !screening.finishedAt && modelsOf(screening).some((model) => (screening.reached.abstract[model.id] ?? 0) < state.papers.length);
+        const reading = !screening.finishedAt && modelsOf(screening).some((model) => (screening.reached[model.id] ?? 0) < state.papers.length);
         const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
         const models = modelsOf(screening);
         // What its models are doing, where they still have papers to read.
-        const held = !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!, "abstract") > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : null;
-        // What it has included: at full text where it has that stage.
-        const included = later ? later.counts.include : state.counts.include;
-        return [{ screening, state, included, access, firstStage: onAbstract || !onFullText ? "" : "&stage=fullText", forYou: screening.finishedAt ? 0 : forYou, conflicts: screening.finishedAt ? 0 : conflicts, reading, held, ahead }];
+        const held = !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!) > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : null;
+        return [{ screening, state, included: state.counts.include, access, forYou: screening.finishedAt ? 0 : forYou, conflicts: screening.finishedAt ? 0 : conflicts, reading, held, ahead }];
       }),
     [store.screenings, store.wallet, me],
   );
@@ -128,10 +123,9 @@ export function ScreeningsIndex() {
                 </div>
                 {/* A full page's height while there are pages, so a short last page doesn't move the pager. */}
                 <ul className="divide-y divide-border-subtle" style={{ minHeight: pager.pages > 1 ? PAGE * ROW : undefined }}>
-                  {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map(({ screening, state, included, access, firstStage, forYou, conflicts, reading, held, ahead }) => {
+                  {rows.slice((pager.page - 1) * PAGE, pager.page * PAGE).map(({ screening, state, included, access, forYou, conflicts, reading, held, ahead }) => {
                     const starter = personOf(screening.createdBy);
                     const workspace = workspaceOf(screening);
-                    const atFullText = screening.fullText ? state.counts.include + state.counts.maybe : 0;
                     return (
                       <li key={screening.id} className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @3xl:grid-cols-[minmax(0,2.2fr)_8.5rem_minmax(7rem,1fr)_16rem_2rem]" style={{ minHeight: ROW }}>
                         {/* The whole row opens the screening; its menu sits above that link. */}
@@ -145,7 +139,6 @@ export function ScreeningsIndex() {
                             <IdentityAvatar name={starter?.name ?? ""} imageUrl={starter?.imageUrl} className="size-4" />
                             <span className="truncate">{screening.createdBy === me ? "You" : (starter?.name ?? "Someone")}, {ago(screening.createdAt)}</span>
                             <Chip className="h-5 px-1.5">{state.papers.length.toLocaleString("en-GB")} papers</Chip>
-                            {atFullText ? <Chip className="h-5 px-1.5 @max-3xl:hidden">{atFullText} at full text</Chip> : null}
                             {screening.living ? <Chip icon={RefreshCw} className="h-5 bg-success/12 px-1.5 ink-success">Living</Chip> : null}
                           </span>
                         </span>
@@ -153,9 +146,9 @@ export function ScreeningsIndex() {
                         <span className="relative col-span-2 @3xl:col-span-1"><ResultBar counts={state.counts} /></span>
                         <span className="pointer-events-none col-span-2 flex flex-wrap items-center justify-end gap-1.5 @3xl:col-span-1">
                           {workspace !== HOME ? <span className="me-auto flex min-w-0 @3xl:hidden"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                          {forYou ? <NextLink href={`/screening/mock/${screening.id}?view=screen${firstStage}`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
+                          {forYou ? <NextLink href={`/screening/mock/${screening.id}?view=screen`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={ListChecks} className="bg-primary/12 text-primary">{forYou} for you to screen</Chip></NextLink> : null}
                           {conflicts ? <NextLink href={`/screening/mock/${screening.id}?view=screen&queue=conflicts`} className="pointer-events-auto relative rounded-md outline-none transition-opacity hover:opacity-75 focus-visible:ring-2 focus-visible:ring-ring/50"><Chip icon={GitCompare} className="bg-info/12 text-info">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</Chip></NextLink> : null}
-                          {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included{screening.fullText ? " at full text" : ""}, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : screening.living ? `Up to date, looks again on ${day(screening.living.next)}` : "Every paper is settled"}</Chip>) : null}
+                          {screening.finishedAt ? <Chip icon={CircleCheck}>{included.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</Chip> : held === "gathering" ? <Chip>Getting its papers</Chip> : held === "paused" ? <Chip icon={CirclePause}>Models paused</Chip> : held === "credits" ? <Chip icon={Coins} className="bg-warning/12 ink-warning">Out of credits</Chip> : held === "waiting" ? <Chip icon={Clock}>Models start after {ahead?.name}</Chip> : !forYou && !conflicts ? (reading ? <Chip><AiIcon working className="size-3.5" />Models reading</Chip> : <Chip>{state.counts.waiting ? `${state.counts.waiting.toLocaleString("en-GB")} waiting for votes` : state.counts.conflict ? `${state.counts.conflict.toLocaleString("en-GB")} in conflict, for ${personOf(screening.rule.resolver)?.name.split(" ")[0] ?? "its starter"} to settle` : screening.living ? `Up to date, looks again on ${day(screening.living.next)}` : "Every paper is settled"}</Chip>) : null}
                         </span>
                         {!access.member ? <span className="@max-3xl:hidden" /> : (
                         <DropdownMenu>

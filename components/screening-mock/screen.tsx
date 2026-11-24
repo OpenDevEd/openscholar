@@ -4,9 +4,8 @@
 // One paper at a time, decided with a key. Splits are settled in the same place.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronLeft, ChevronRight, CircleHelp, Eye, FileText, GitCompare, ListChecks, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, Undo2, Upload, X } from "@/components/icons";
+import { Check, ChevronLeft, ChevronRight, CircleHelp, Eye, GitCompare, ListChecks, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, Undo2, X } from "@/components/icons";
 import { ANSWER, AnswerMark, Chip, ClippedChip, Meter, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
@@ -30,7 +29,6 @@ import type { Open } from "./store";
 export type Queue = "todo" | "done" | "conflicts";
 const QUEUE_PAGE = 9;
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
-const NOT_RETRIEVED = "not-retrieved";
 const SHORTCUTS: Array<[string, string]> = [["I", "Include"], ["M", "Maybe"], ["E", "Exclude, then a number for the reason"], ["S", "Leave it for later"], ["Z", "Undo, one decision at a time"], ["← →", "Previous and next paper"], ["Esc", "Back from the reason"]];
 const OTHER = "other";
 const HELP: Array<[string, string]> = [["Asterisk", "A must-have criterion: a paper that fails it is excluded"], ["Marked words", "Words from your criteria, found in the text"], ["Faces and model marks", "The reviewers of this paper, each with their answer. Press them to see who is who"], ["A lock", "A vote that is cast, and hidden until you have cast yours"], ["A dashed square", "No vote yet"], ["Your answers", "Optional. One decision is enough, and Exclude asks for the reason"]];
@@ -40,11 +38,9 @@ const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "co
 export type Place = { picked: string | null; page: number; find: string; voted: "any" | Decision; /** The order of what is still to do: as added, the newest arrivals first, or the ones the models would include first. */ order: "dealt" | "fresh" | "lean" };
 export const NO_PLACE: Place = { picked: null, page: 1, find: "", voted: "any", order: "dealt" };
 // The files added by hand in this sitting, by screening and paper: the real viewer shows them. They last as long as the page does.
-const uploads = new Map<string, string>();
-const PdfViewer = dynamic(() => import("@/components/extraction/pdf-viewer").then((mod) => mod.PdfViewer), { ssr: false });
 
-export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }: { open: Open; /** Whether a row sits under the stage switch, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; place: Place; onPlace: (change: (place: Place) => Place) => void }) {
-  const { screening, stage, papers, votes, settled, yours, toDo, conflicts } = open;
+export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }: { open: Open; /** Whether a row sits under the bar, which the columns' height leaves room for. */ banner: boolean; queue: Queue; onQueue: (queue: Queue) => void; onView: (view: "overview" | "papers") => void; place: Place; onPlace: (change: (place: Place) => Place) => void }) {
+  const { screening, papers, votes, settled, yours, toDo, conflicts } = open;
   const criteria = screening.criteria;
   const { picked, page, find, voted, order } = place;
   const setFind = (next: string) => onPlace((now) => ({ ...now, find: next }));
@@ -65,7 +61,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
     [toDo, conflicts, yours, order, votes, find, voted],
   );
   // The queue as it was when it was opened: a paper you decide stays in its place, with your vote on it, until you change lists.
-  const holding = `${screening.id}:${stage}:${queue}:${order}:${open.me}:${find.trim().toLowerCase()}:${voted}`;
+  const holding = `${screening.id}:${queue}:${order}:${open.me}:${find.trim().toLowerCase()}:${voted}`;
   const [held, setHeld] = useState<{ of: string; ids: string[] }>(() => ({ of: holding, ids: listed(queue) }));
   if (held.of !== holding) setHeld({ of: holding, ids: listed(queue) });
   else if (queue !== "done") {
@@ -109,7 +105,6 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
   const last = history.findLast((one) => one.queue === queue) ?? null;
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   const [translated, setTranslated] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
 
   const resolving = queue === "conflicts";
   const mine = paper ? open.myVote(paper) : undefined;
@@ -193,7 +188,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
   const source = paper ? screening.sources.find((one) => one.id === paper.source) : undefined;
   const differ = last && !last.resolved && open.canSee(last.paper) ? votes[last.paper.id]!.filter((one) => one.reviewer.id !== open.me && one.vote && one.vote.decision !== last.decision).length : 0;
   // What a paper can be excluded for: the criteria first, then what no criterion covers.
-  const reasons = [...criteria.filter((criterion) => criterion.must).map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS[stage]];
+  const reasons = [...criteria.filter((criterion) => criterion.must).map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS];
   // Everything in this queue is decided: say so, where the buttons are.
   const through = queue !== "done" && items.length > 0 && items.every((one) => (resolving ? settled[one.id]!.result !== "conflict" : Boolean(open.myVote(one))));
   const state = paper ? settled[paper.id]! : undefined;
@@ -294,7 +289,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
           {/* The paper */}
           <div ref={article} className="min-h-0 scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] overflow-y-auto">
             <AnimatePresence mode="wait" initial={false}>
-              <motion.article key={`${stage}:${paper.id}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="mx-auto max-w-3xl space-y-4 p-5 sm:p-8">
+              <motion.article key={paper.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="mx-auto max-w-3xl space-y-4 p-5 sm:p-8">
                 <h2 className="text-xl font-semibold leading-snug tracking-tight">{paper.title}</h2>
                 <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -310,25 +305,9 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                   ) : null}
                   <Chip icon={Quote}>{paper.cited} cited</Chip>
                   {paper.batch !== undefined ? <Chip icon={RefreshCw} className="bg-success/12 ink-success">Added {paper.batch > NOW ? "just now" : day(paper.batch)}</Chip> : null}
-                  {stage === "fullText" && open.hasFullText(paper) ? <Chip icon={FileText}>{screening.fullTexts[paper.id] === "added" ? "PDF added by hand" : "Open-access PDF"}</Chip> : null}
                 </div>
-                {stage === "fullText" ? <input ref={file} type="file" accept="application/pdf" className="sr-only" aria-label="PDF of this paper" onChange={(event) => { const picked = event.target.files?.[0]; if (picked) { uploads.set(`${screening.id}:${paper.id}`, URL.createObjectURL(picked)); open.setFullText(paper, "added", picked.name); } event.target.value = ""; }} /> : null}
-                {stage === "fullText" ? (
-                  open.hasFullText(paper) ? (
-                    <FullText paper={paper} quoted={quoted} file={screening.fullTextFiles?.[paper.id]} url={uploads.get(`${screening.id}:${paper.id}`)} onReplace={open.isReviewer && screening.fullTexts[paper.id] === "added" ? () => file.current?.click() : undefined} onRemove={open.isReviewer && screening.fullTexts[paper.id] === "added" ? () => { uploads.delete(`${screening.id}:${paper.id}`); open.clearFullText(paper); } : undefined} />
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border px-6 py-12 text-center">
-                      <FileText className="size-6 text-muted-foreground" />
-                      <p className="text-sm font-medium">{screening.fullTexts[paper.id] === "missing" ? "Marked as not retrieved" : "No full text yet"}</p>
-                      <p className="max-w-sm text-xs text-muted-foreground">No open-access copy was found. Add the PDF to screen this paper on its full text, or record that it couldn&apos;t be got.</p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        <Button size="sm" onClick={() => file.current?.click()}><Upload />Upload its PDF</Button>
-                        {screening.fullTexts[paper.id] !== "missing" && open.isReviewer ? <Button size="sm" variant="outline" onClick={() => { open.setFullText(paper, "missing"); decideOn("exclude", NOT_RETRIEVED); }}>Couldn&apos;t get it</Button> : null}
-                      </div>
-                    </div>
-                  )
-                ) : !paper.sentences.length ? (
-                  <div className="rounded-2xl border border-dashed border-border px-5 py-6 text-sm text-muted-foreground">This paper came without an abstract. Decide on its title, or vote Maybe so it is looked at again on its full text.</div>
+                {!paper.sentences.length ? (
+                  <div className="rounded-2xl border border-dashed border-border px-5 py-6 text-sm text-muted-foreground">This paper came without an abstract. Decide on its title, or vote Maybe to leave it open.</div>
                 ) : paper.original && !translated ? (
                   <div className="space-y-3">
                     <p lang="fr" className="text-[0.95rem] leading-7">{paper.original.text}</p>
@@ -400,7 +379,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                   {visible && state ? (
                     <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <ResultChip result={state.result} />
-                      {state.result === "waiting" ? `from ${waitsOn.slice(0, 2).join(" and ")}${waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}` : state.result === "conflict" ? `goes to ${personOf(screening.rule.resolver)?.name ?? "the person who settles them"}` : state.resolvedBy ? `settled by ${personOf(state.resolvedBy)?.name ?? "a reviewer"}${state.note ? `: “${state.note}”` : ""}` : state.result === "exclude" && cast.some((one) => one.vote?.reason) ? failedLabel(cast.find((one) => one.vote?.reason)!.vote!.reason!, criteria) : stage === "abstract" && screening.fullText && state.result !== "exclude" ? "goes on to full text" : null}
+                      {state.result === "waiting" ? `from ${waitsOn.slice(0, 2).join(" and ")}${waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}` : state.result === "conflict" ? `goes to ${personOf(screening.rule.resolver)?.name ?? "the person who settles them"}` : state.resolvedBy ? `settled by ${personOf(state.resolvedBy)?.name ?? "a reviewer"}${state.note ? `: “${state.note}”` : ""}` : state.result === "exclude" && cast.some((one) => one.vote?.reason) ? failedLabel(cast.find((one) => one.vote?.reason)!.vote!.reason!, criteria) : null}
                     </p>
                   ) : null}
                 </li>
@@ -450,7 +429,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                       <AnimatePresence initial={false}>
                         {quoting ? (
                           <motion.div key="evidence" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden ps-7">
-                            <Evidence paper={paper} reviewer={quoting} criterion={criterion} criteria={criteria} answer={cast.find((one) => one.reviewer === quoting)?.vote?.answers[criterion.key]} page={stage === "fullText" && paper.sentences.length ? (i < 3 ? 3 : 4) : undefined} />
+                            <Evidence paper={paper} reviewer={quoting} criterion={criterion} criteria={criteria} answer={cast.find((one) => one.reviewer === quoting)?.vote?.answers[criterion.key]} />
                           </motion.div>
                         ) : null}
                       </AnimatePresence>
@@ -534,7 +513,7 @@ export function Screen({ open, banner, queue, onQueue, onView, place, onPlace }:
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {resolving ? <p className="text-xs text-muted-foreground">Your decision is the paper&apos;s result. {stage === "abstract" && screening.fullText ? "Maybe sends it on to full text." : "Maybe leaves it open."}{mine ? ` Your own vote here was ${DECISION_LABEL[mine.decision]}.` : ""}</p> : null}
+                  {resolving ? <p className="text-xs text-muted-foreground">Your decision is the paper&apos;s result. Maybe leaves it open.{mine ? ` Your own vote here was ${DECISION_LABEL[mine.decision]}.` : ""}</p> : null}
                   {against && mine ? (
                     <p className="rounded-lg bg-warning/10 px-2.5 py-1.5 text-xs ink-warning">Your decision is {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{failing ? `: you answered ${given[failing.key] === "no" ? "no" : "unclear"} to criterion ${criteria.indexOf(failing) + 1}, a must-have` : ""}.</p>
                   ) : !mine && pointsTo && failing ? (
@@ -595,7 +574,7 @@ function Empty({ open, queue, onQueue, onView, narrowed, onClear }: { open: Open
   const text = !open.isReviewer && queue !== "conflicts"
     ? ["No paper waits for you", "You are not one of this screening's reviewers. You can read every paper and how it was voted on in Papers."]
     : queue === "todo"
-      ? open.gathering ? ["Its papers are on their way", `${open.gathering.done.toLocaleString("en-GB")} of ${open.gathering.of.toLocaleString("en-GB")} are in. Yours show here as they arrive.`] : open.yours.length ? ["You have voted on all your papers", `That was ${open.yours.length} of them. A paper comes back here only if someone changes the screening.`] : ["No paper has been dealt to you", "Papers are dealt as they arrive at this stage."]
+      ? open.gathering ? ["Its papers are on their way", `${open.gathering.done.toLocaleString("en-GB")} of ${open.gathering.of.toLocaleString("en-GB")} are in. Yours show here as they arrive.`] : open.yours.length ? ["You have voted on all your papers", `That was ${open.yours.length} of them. A paper comes back here only if someone changes the screening.`] : ["No paper has been dealt to you", "Papers are dealt as they arrive."]
       : queue === "conflicts"
         ? ["No conflict to settle", "A paper comes here when its reviewers vote differently."]
         : ["You haven't voted on a paper yet", "The papers you decide show here, where you can change your mind."];
@@ -622,64 +601,6 @@ function Sentence({ text, quoted, terms }: { text: string; quoted: boolean; term
     <span className={cn("rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
       {parts.map((part, i) => (i % 2 ? <mark key={i} className="rounded-sm bg-primary/15 text-foreground">{part}</mark> : part))}{" "}
     </span>
-  );
-}
-
-/** Stands in for the PDF viewer the extraction pages use: the paper's pages under a bar that steps through them, with the quoted passage marked on the page it is on. */
-function FullText({ paper, quoted, file, url, onReplace, onRemove }: { paper: Paper; quoted: number; /** The name of the file it was added from, when a person added it. */ file?: string; /** That file itself, while the page that took it is open. */ url?: string; onReplace?: () => void; onRemove?: () => void }) {
-  const body = paper.sentences.length ? paper.sentences : [`${paper.title}.`];
-  const pages = [
-    { heading: "Abstract", text: body.map((_, i) => i), more: "" },
-    { heading: "1. Introduction", text: [], more: `Interest in this kind of programme has grown faster than the evidence for it. ${paper.authors[0]} and colleagues set out what earlier studies found, where they disagree, and what this study adds.` },
-    { heading: "2. Methods", text: [0, 1, 2].filter((i) => i < body.length), more: "Schools were assigned before the first term. Assessors did not know which schools took part, and the same instrument was used at baseline and at the end." },
-    { heading: "3. Results", text: [3, 4].filter((i) => i < body.length), more: "Effects were larger for learners who started behind, and did not differ between girls and boys. Attrition was similar across groups." },
-  ];
-  const [at, setAt] = useState(0);
-  const pageOf = quoted >= 0 ? pages.findIndex((page, n) => n > 0 && page.text.includes(quoted)) : -1;
-  // A passage a model quoted opens on the page it is on.
-  const [seen, setSeen] = useState(quoted);
-  if (quoted !== seen) {
-    setSeen(quoted);
-    if (pageOf >= 0) setAt(pageOf);
-  }
-  const page = pages[at]!;
-  // A file a person added is that file: the app's own viewer shows it, so it can be checked against the paper.
-  if (file) {
-    return (
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-subtle bg-inset px-3 py-1.5">
-          <FileText className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate text-xs font-medium">{file}</span>
-          <Chip>Added by hand</Chip>
-          {onReplace ? <Button variant="ghost" size="xs" className="shrink-0" onClick={onReplace}>Replace it</Button> : null}
-          {onRemove ? <Button variant="ghost" size="xs" className="shrink-0" onClick={onRemove}>Take it off</Button> : null}
-        </div>
-        {url ? (
-          <div className="h-[40rem]"><PdfViewer key={url} pdfUrl={url} initialPageNumber={1} /></div>
-        ) : (
-          <p className="rounded-xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">This mock holds an added file only while its page stays open. Replace it to read it here again.</p>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div className="overflow-hidden rounded-xl border border-border-subtle">
-      <div className="flex items-center gap-2 border-b border-border-subtle bg-inset px-3 py-1.5">
-        <FileText className="size-4 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{file ?? `${paper.authors[0]!.split(" ").pop()} ${paper.year}.pdf`}</span>
-        <PageStepper page={at + 1} pageCount={pages.length} canPrevious={at > 0} canNext={at < pages.length - 1} onPrevious={() => setAt(at - 1)} onNext={() => setAt(at + 1)} />
-      </div>
-      <div className="bg-muted p-4 sm:p-6">
-        <div className="mx-auto min-h-[26rem] max-w-xl space-y-3 bg-white p-8 text-neutral-900 shadow-surface">
-          <p className="text-2xs text-neutral-500">{paper.venue}, {paper.year}</p>
-          <h3 className="text-sm font-semibold">{page.heading}</h3>
-          <p className="text-sm leading-6">
-            {page.text.map((i) => <span key={i} className={cn("rounded-sm box-decoration-clone", quoted === i && at > 0 && "bg-amber-200")}>{body[i]} </span>)}
-            {page.more}
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -723,7 +644,7 @@ export function Matrix({ criteria, cast, me, shown, onShow }: { criteria: Criter
 }
 
 /** The passage a model read for one answer, and what it made of it. */
-export function Evidence({ paper, reviewer, criterion, criteria, answer, page }: { paper: Paper; reviewer: Reviewer; criterion: Criterion; criteria: Criterion[]; answer?: Answer; page?: number }) {
+export function Evidence({ paper, reviewer, criterion, criteria, answer }: { paper: Paper; reviewer: Reviewer; criterion: Criterion; criteria: Criterion[]; answer?: Answer }) {
   if (!answer) return null;
   const { quote, why } = evidence(paper, criterion, criteria, answer);
   const sure = Math.round(confidenceOf(paper, reviewer, criterion, answer) * 100);
@@ -742,7 +663,7 @@ export function Evidence({ paper, reviewer, criterion, criteria, answer, page }:
         <AnswerMark answer={answer} label={criterion.short} />
       </div>
       <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p>
-      <p className="text-xs text-muted-foreground">{page ? `Page ${page}. ` : ""}{why}</p>
+      <p className="text-xs text-muted-foreground">{why}</p>
     </div>
   );
 }

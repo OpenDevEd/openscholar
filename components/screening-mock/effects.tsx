@@ -13,16 +13,16 @@ import { credits, paperCredits } from "./store";
 /** Each thing a change does besides moving results: who reads what, what it costs, and which papers join or leave. */
 export function effectLines(before: Screening, after: Screening): string[] {
   const lines: string[] = [];
-  const now = standing(after, "abstract");
+  const now = standing(after);
   const total = now.papers.length;
   const was = new Set(activeReviewers(before).map((reviewer) => reviewer.id));
   const is = new Set(activeReviewers(after).map((reviewer) => reviewer.id));
   const joining = activeReviewers(after).filter((reviewer) => !was.has(reviewer.id));
   for (const reviewer of joining) {
-    if (reviewer.kind === "model") lines.push(`${reviewer.name} reads all ${total.toLocaleString("en-GB")} papers, for up to ${credits(total * paperCredits(reviewer.model!, "abstract"))} credits, and starts as soon as this is saved`);
+    if (reviewer.kind === "model") lines.push(`${reviewer.name} reads all ${total.toLocaleString("en-GB")} papers, for up to ${credits(total * paperCredits(reviewer.model!))} credits, and starts as soon as this is saved`);
     else if (reviewer.email) lines.push(`${reviewer.name} gets an invitation by email, and papers once they join`);
     else {
-      const dealt = now.papers.filter((paper, index) => dealtTo(after, "abstract", paper, index).some((one) => one.id === reviewer.id)).length;
+      const dealt = now.papers.filter((paper, index) => dealtTo(after, paper, index).some((one) => one.id === reviewer.id)).length;
       lines.push(dealt ? `${reviewer.name} is dealt ${dealt.toLocaleString("en-GB")} papers nobody has voted on yet, and is told by email` : `${reviewer.name} joins with no paper left to deal, and is told by email`);
     }
   }
@@ -43,7 +43,7 @@ export function effectLines(before: Screening, after: Screening): string[] {
   if (after.living && !before.living) {
     const sources = growing(after).length;
     lines.push(sources ? `It looks in ${sources === 1 ? "its source" : `${sources} of its sources`} for new papers as soon as this is saved, then ${EVERY_LABEL[after.living.every].toLowerCase()}` : "It has no source that gains papers, so there is nothing for it to look in yet");
-    const each = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!, "abstract"), 0);
+    const each = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!), 0);
     lines.push(each ? `Each new paper costs up to ${credits(each)} credits for the models to read, and is dealt to its reviewers` : "Each new paper is dealt to its reviewers, who are told by email");
     if (before.finishedAt) lines.push("It is open again, and stays open to new papers");
   } else if (before.living && !after.living) lines.push("It stops looking for new papers. The ones it has stay");
@@ -57,11 +57,11 @@ export function effectLines(before: Screening, after: Screening): string[] {
 
 /** What it costs for the models to answer new criteria on the papers they have already read. */
 export const rereadCost = (screening: Screening) => {
-  const total = standing(screening, "abstract").papers.length;
-  return modelsOf(screening).reduce((sum, model) => sum + Math.min(screening.reached.abstract[model.id] ?? 0, total) * paperCredits(model.model!, "abstract"), 0);
+  const total = standing(screening).papers.length;
+  return modelsOf(screening).reduce((sum, model) => sum + Math.min(screening.reached[model.id] ?? 0, total) * paperCredits(model.model!), 0);
 };
 
-/** The results a change moves, on the title and abstract: so many papers from one result to another. */
+/** The results a change moves: so many papers from one result to another. */
 export const effectMoves = (before: Screening, after: Screening) => effectOf(before, after).moves;
 /** The same, in words, for the screening's activity. */
 export const movesText = (moves: Move[]) => moves.map((move) => `${move.papers.length} ${RESULT_LABEL[move.from].toLowerCase()} to ${RESULT_LABEL[move.to].toLowerCase()}`).join(", ");

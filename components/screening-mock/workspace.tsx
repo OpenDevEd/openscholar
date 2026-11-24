@@ -1,7 +1,7 @@
 "use client";
 
-// An open screening, across the whole window: Overview, Screen and Papers over the same votes, at
-// either stage. Its reviewers, its settings and its state can change at any time from here.
+// An open screening, across the whole window: Overview, Screen and Papers over the same votes.
+// Its reviewers, its settings and its state can change at any time from here.
 
 import { useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
@@ -23,7 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, STAGES, STAGE_LABEL, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, type Stage, lookOf, ago } from "./data";
+import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { MockStates } from "./mock-states";
@@ -57,12 +57,8 @@ export function ScreeningWorkspace() {
   const router = useRouter();
   const store = useMock();
   const [viewParam, setView] = useQueryState("view");
-  const [stageParam, setStage] = useQueryState("stage");
   const view: View = VIEWS.includes(viewParam as View) ? (viewParam as View) : "overview";
-  const wanted: Stage = stageParam === "fullText" ? "fullText" : "abstract";
-  const open = useOpenScreening(id, wanted);
-  // A screening that stops at the abstract has no second stage to open.
-  const stage: Stage = open?.screening.fullText ? wanted : "abstract";
+  const open = useOpenScreening(id);
   useModelsReading(id);
   const [queueParam, setQueueParam] = useQueryState("queue");
   const queue: Queue = queueParam === "done" || queueParam === "conflicts" ? queueParam : "todo";
@@ -102,7 +98,7 @@ export function ScreeningWorkspace() {
     ...screening,
     reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer],
     viewers: screening.viewers?.filter((one) => one.id !== reviewer.id),
-    reached: { abstract: { ...screening.reached.abstract, [reviewer.id]: 0 }, fullText: { ...screening.reached.fullText, [reviewer.id]: 0 } },
+    reached: { ...screening.reached, [reviewer.id]: 0 },
   });
   // A person joins at once when nothing they do can move a result; a model always says what it costs first.
   const add = (reviewer: Reviewer) => setAdding(reviewer);
@@ -118,7 +114,7 @@ export function ScreeningWorkspace() {
   );
   const demoted = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)), viewers: [...(screening.viewers ?? []), { ...reviewer, left: undefined }] });
 
-  // The screening's menu: in the bar, and on a phone at the end of the stage row, where the bar keeps to the title.
+  // The screening's menu: in the bar, and on a phone at the end of the row under it, where the bar keeps to the title.
   const more = (className: string) => (
     <DropdownMenu>
       <TooltipHint label="More">
@@ -207,26 +203,6 @@ export function ScreeningWorkspace() {
             intro={
               <>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-                  {screening.fullText ? (
-                    <Segmented
-                      label="Stage"
-                      value={stage}
-                      onChange={(next) => void setStage(next === "abstract" ? null : next)}
-                      options={STAGES.map((one) => ({
-                        id: one,
-                        label: STAGE_LABEL[one],
-                        detail: (
-                          <span className="flex items-center gap-1.5">
-                            {/* A phone has room for one number, and it always means the same: what waits for you. */}
-                            <span className="tabular-nums text-muted-foreground max-sm:hidden">{(one === "abstract" ? open.first : open.second).papers.length}</span>
-                            {open.todoAt[one] ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs font-medium tabular-nums text-primary">{open.todoAt[one]}<span className="max-sm:sr-only"> for you</span></span> : null}
-                          </span>
-                        ),
-                      }))}
-                    />
-                  ) : (
-                    <Chip className="h-8 px-3">{STAGE_LABEL.abstract} only</Chip>
-                  )}
                   {/* How a paper is decided here, in three facts. They open the place where each is set. */}
                   <NextLink href={`/screening/mock/${id}/settings#decided`} className="flex min-w-0 items-center gap-1.5 rounded-lg outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden">
                     <TooltipHint label={facts.whoMeans}><span className="flex rounded-md"><Chip icon={Users}>{facts.who}</Chip></span></TooltipHint>
@@ -258,13 +234,13 @@ export function ScreeningWorkspace() {
                 </div>
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => { void setStage(null); void setQueueParam(null); setPlace({ ...NO_PLACE, order: "fresh" }); void setView("screen"); window.scrollTo({ top: 0 }); }} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onScreen={() => { void setQueueParam(null); setPlace({ ...NO_PLACE, order: "fresh" }); void setView("screen"); window.scrollTo({ top: 0 }); }} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })} onResume={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })} />
                 </AutoHeight>
               </>
             }
           >
             <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={`${view}:${stage}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }}>
+              <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }}>
                 {view === "overview" ? (
                   <Overview
                     open={open}
@@ -274,9 +250,8 @@ export function ScreeningWorkspace() {
                       void setView(next);
                       window.scrollTo({ top: 0 });
                     }}
-                    onStage={(next) => void setStage(next === "abstract" ? null : next)}
                     onExport={(what) => { setExportTab(what); setOver("export"); }}
-                    onAdded={(at) => { setFilter("all"); setAdded(at); void setStage(null); void setView("papers"); window.scrollTo({ top: 0 }); }}
+                    onAdded={(at) => { setFilter("all"); setAdded(at); void setView("papers"); window.scrollTo({ top: 0 }); }}
                   />
                 ) : view === "screen" ? (
                   <Screen open={open} banner={banner !== null} queue={queue} onQueue={setQueue} place={place} onPlace={setPlace} onView={(next) => void setView(next === "overview" ? null : next)} />
@@ -288,7 +263,7 @@ export function ScreeningWorkspace() {
           </LibraryPageShell>
         </div>
 
-        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} state={open} onPaper={(paper, at) => { void setStage(at === "abstract" ? null : at); void setQueueParam("done"); setPlace({ ...NO_PLACE, picked: paper, page: 0 }); void setView("screen"); window.scrollTo({ top: 0 }); }} />
+        <ActivitySheet open={over === "activity"} onClose={() => setOver(null)} state={open} onPaper={(paper) => { void setQueueParam("done"); setPlace({ ...NO_PLACE, picked: paper, page: 0 }); void setView("screen"); window.scrollTo({ top: 0 }); }} />
         <ExportDialog open={over === "export"} onClose={() => setOver(null)} state={open} tab={exportTab} onTab={setExportTab} />
         <ShareDialog open={over === "share"} onClose={() => setOver(null)} state={open} onPromote={(viewer) => { setOver(null); setAdding({ ...viewer, addedAt: Date.now() }); }} onDemote={(reviewer) => { setOver(null); setDemoting(reviewer); }} />
         <MoveDialog open={over === "move"} onClose={() => setOver(null)} screening={screening} me={open.me} onMove={(to, what) => open.update((s) => ({ ...s, workspace: to }), { what })} />
@@ -335,7 +310,7 @@ export function ScreeningWorkspace() {
           {adding ? (
             <>
               {adding.model ? (
-                <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(adding.model, "abstract"))} credits a paper</span>} />
+                <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(adding.model))} credits a paper</span>} />
               ) : (
                 <div className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-inset p-3">
                   <IdentityAvatar name={adding.name} imageUrl={adding.imageUrl} className="size-9" />
@@ -359,9 +334,9 @@ export function ScreeningWorkspace() {
 
 /** What a person needs to know before anything else: the models are out of credits, still reading, or the screening is finished, or it isn't theirs to vote on. */
 type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "waiting" | "reading" | "viewer" | "guest" | "arrived" | "nothing";
-/** Which one thing the row under the stage says. `quiet` leaves the models' progress out: screening paper after paper, that is the Overview's to show, and a row that came and went would move the paper being read. */
+/** Which one thing the row under the bar says. `quiet` leaves the models' progress out: screening paper after paper, that is the Overview's to show, and a row that came and went would move the paper being read. */
 function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quiet: boolean): BannerKind | null {
-  const { screening, reading, stage } = open;
+  const { screening, reading } = open;
   if (open.gathering) return "gathering";
   if (screening.checking) return "checking";
   if (open.outOfCredits) return "credits";
@@ -371,14 +346,14 @@ function bannerKind(open: NonNullable<ReturnType<typeof useOpenScreening>>, quie
   if (!open.canChange) return "guest";
   // New papers that wait for you come before how far the models are.
   if (!quiet && open.latest?.mine) return "arrived";
-  if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor && stage === "abstract" ? "waiting" : "reading";
+  if (!quiet && reading.length) return screening.paused ? "paused" : open.waitingFor ? "waiting" : "reading";
   // A look that found nothing says so, where nothing else has to be said.
   if (!quiet && screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
   return null;
 }
 
 function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScreen }: { kind: BannerKind | null; open: NonNullable<ReturnType<typeof useOpenScreening>>; workspace: string; onAddCredits: () => void; onReopen: () => void; onResume: () => void; onScreen: () => void }) {
-  const { screening, reading, papers, stage } = open;
+  const { screening, reading, papers } = open;
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
   const row = "flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6";
   if (kind === "checking" && screening.checking) {
@@ -426,7 +401,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScr
       <div className={`${row} bg-warning/10`}>
         <Coins className="size-4 shrink-0 ink-warning" />
         <span className="font-medium">Out of credits</span>
-        <span className="min-w-0 flex-1 text-muted-foreground">{reading.map((model) => model.name).join(" and ")} stopped at {Math.max(...reading.map((model) => screening.reached[stage][model.id] ?? 0))} of {papers.length} papers. What they read is kept.</span>
+        <span className="min-w-0 flex-1 text-muted-foreground">{reading.map((model) => model.name).join(" and ")} stopped at {Math.max(...reading.map((model) => screening.reached[model.id] ?? 0))} of {papers.length} papers. What they read is kept.</span>
         <Button size="sm" onClick={onAddCredits}>Add 20,000 credits</Button>
       </div>
     );
@@ -464,7 +439,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume, onScr
     );
   }
   if (kind === "reading") {
-    const done = Math.min(...reading.map((model) => screening.reached[stage][model.id] ?? 0));
+    const done = Math.min(...reading.map((model) => screening.reached[model.id] ?? 0));
     return (
       <div className={row}>
         <AiIcon working className="size-4 shrink-0" />

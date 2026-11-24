@@ -7,13 +7,10 @@ import type { MapModel } from "@/components/settings/model-map";
 import type { Answer } from "@/lib/screening/setup";
 
 export type Decision = "include" | "maybe" | "exclude";
-export type Stage = "abstract" | "fullText";
 /** Where a paper stands: settled one way, split between its reviewers, or still short of votes. */
 export type Result = Decision | "conflict" | "waiting";
 export const DECISIONS: Decision[] = ["include", "maybe", "exclude"];
 export const RESULTS: Result[] = ["include", "maybe", "exclude", "conflict", "waiting"];
-export const STAGES: Stage[] = ["abstract", "fullText"];
-export const STAGE_LABEL: Record<Stage, string> = { abstract: "Title and abstract", fullText: "Full text" };
 export const DECISION_LABEL: Record<Decision, string> = { include: "Include", maybe: "Maybe", exclude: "Exclude" };
 export const RESULT_LABEL: Record<Result, string> = { include: "Included", maybe: "Maybe", exclude: "Excluded", conflict: "In conflict", waiting: "Waiting for votes" };
 
@@ -121,12 +118,9 @@ export type Scoring = { points: Record<string, [number, number, number]>; minimu
 export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean };
 
 /** Why a paper is excluded when it isn't one of the criteria: shown after them in the list of reasons. */
-export const OTHER_REASONS: Record<Stage, Array<{ key: string; label: string }>> = {
-  abstract: [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason, in the note" }],
-  fullText: [{ key: "not-retrieved", label: "Full text not retrieved" }, { key: "type", label: "Not a full study (a protocol, an abstract, a comment)" }, { key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason, in the note" }],
-};
+export const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason, in the note" }];
 /** A reason in words: the criterion's short name, or one of the others. */
-export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? [...OTHER_REASONS.abstract, ...OTHER_REASONS.fullText].find((one) => one.key === key)?.label ?? key;
+export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** A reason for excluding as a reader meets it: the criterion that wasn't met, named as such, or one of the other reasons. */
 export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `Not met: ${reasonLabel(key, criteria)}` : reasonLabel(key, criteria));
 /** The one reason an excluded paper is counted under: the one most of its reviewers gave. */
@@ -158,8 +152,6 @@ export type Screening = {
   paused?: boolean;
   /** What the review asks, which criteria are written from. */
   question: string;
-  /** Whether papers kept on their abstract are screened again on their full text. */
-  fullText: boolean;
   sources: Source[];
   criteria: Criterion[];
   reviewers: Reviewer[];
@@ -168,21 +160,17 @@ export type Screening = {
   destination: Destination;
   /** Which made-up papers it gets. */
   seed: number;
-  /** How many of its papers each reviewer has got through, at each stage. */
-  reached: Record<Stage, Record<string, number>>;
+  /** How many of its papers each reviewer has got through. */
+  reached: Record<string, number>;
   /** The votes cast in the mock, by whoever the mock is seen as, over the made-up ones. Null takes a vote back. */
-  cast: Record<Stage, Record<string, Record<string, Vote | null>>>;
+  cast: Record<string, Record<string, Vote | null>>;
   /** Splits settled by a person. Null reopens one. */
-  resolved: Record<Stage, Record<string, { decision: Decision; by: string; note?: string; reason?: string } | null>>;
-  /** Full texts added by hand, and papers marked as not retrieved, by paper. */
-  fullTexts: Record<string, "added" | "missing">;
+  resolved: Record<string, { decision: Decision; by: string; note?: string; reason?: string } | null>;
   changes: Change[];
   /** What its made-up papers are about. */
   theme?: ThemeId;
   /** What each model has cost so far. It only ever goes up. */
   spent?: Record<string, number>;
-  /** The name of the file a full text was added from, by paper. */
-  fullTextFiles?: Record<string, string>;
   /** People it is shared with who see everything and don't vote. */
   viewers?: Reviewer[];
   /** The workspace it is in, where that isn't the one the mock is in. */
@@ -242,7 +230,6 @@ export type Paper = {
   /** The abstract in its own language, for a paper not written in English. */
   original?: { language: string; text: string };
   source: string;
-  hasPdf: boolean;
   truth: Record<string, Answer>;
   /** When it joined, for a paper that came after the screening started: from a later source or a check. */
   batch?: number;
@@ -549,7 +536,6 @@ function paperAt(seed: number, slot: number, i: number, themeId: ThemeId): Omit<
     cited: Math.floor(rand() * rand() * 400),
     sentences: bare ? [] : sentences,
     ...(french ? { original: { language: "French", text: `Nous présentons ${design.name === "a systematic review" ? "une revue systématique" : "une évaluation"} menée sur ${sites} sites (${place}). L'étude a suivi les participants pendant deux ans et en mesure les résultats.` } } : {}),
-    hasPdf: rand() > 0.14,
     truth: { design: design.answer, age: who.answer, place: african ? "yes" : "no", outcome: tested, digital: topic.flag ? "yes" : "no" },
   };
 }
@@ -616,24 +602,18 @@ const OTHER: Record<Answer, Answer[]> = { yes: ["unclear", "no"], no: ["unclear"
 /** How often a reviewer misreads a paper: people rarely, each model at its own rate. */
 const noiseOf = (reviewer: Reviewer) => (reviewer.kind === "person" ? 0.03 + (hash(reviewer.id) % 3) / 100 : 0.05 + (hash(reviewer.id) % 9) / 100);
 
-function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], stage: Stage, since: number): Vote {
+function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], since: number): Vote {
   // A person voted on the criteria there were: one added later is the models' to answer, and their vote stands.
   const criteria = reviewer.kind === "person" ? every.filter((criterion) => criterion.addedAt <= since) : every;
   const answers = Object.fromEntries(criteria.map((criterion) => [criterion.key, truthOf(paper, criterion)]));
-  // The full text settles what the abstract left open, and shows some papers kept on their abstract not to belong after all.
-  if (stage === "fullText") {
-    const musts = criteria.filter((criterion) => criterion.must);
-    for (const criterion of musts) if (answers[criterion.key] === "unclear") answers[criterion.key] = hash(paper.id + criterion.key) % 2 ? "yes" : "no";
-    if (musts.length && hash(paper.id) % 10 < 3) answers[musts[hash(paper.id) % musts.length]!.key] = "no";
-  }
   // With no abstract there is little to go on: a model can't tell, and says so.
-  if (!paper.sentences.length && stage === "abstract" && reviewer.kind === "model") for (const criterion of criteria.slice(0, 2)) answers[criterion.key] = "unclear";
+  if (!paper.sentences.length && reviewer.kind === "model") for (const criterion of criteria.slice(0, 2)) answers[criterion.key] = "unclear";
   else {
-    // A reviewer misreads a criterion now and then, less often at full text where there is more to go on. Each criterion is
-    // misread or not by itself, so one added later changes no earlier answer, and a fact on the record, like the year, is never misread.
-    const rate = (noiseOf(reviewer) * (stage === "fullText" ? 0.5 : 1)) / 3;
+    // A reviewer misreads a criterion now and then. Each criterion is misread or not by itself, so one added later changes
+    // no earlier answer, and a fact on the record, like the year, is never misread.
+    const rate = noiseOf(reviewer) / 3;
     for (const criterion of criteria) {
-      const roll = hash(`${paper.id}${reviewer.id}${criterion.key}${stage}`);
+      const roll = hash(`${paper.id}${reviewer.id}${criterion.key}`);
       if (byYear(paper, criterion) === undefined && (roll % 1000) / 1000 < rate) answers[criterion.key] = OTHER[answers[criterion.key]!][(roll >> 10) % 2]!;
     }
   }
@@ -641,24 +621,21 @@ function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], stage:
   return { ...decide(answers, criteria), answers, at: NOW - (45 + (hash(`${paper.id}${reviewer.id}`) % 5600)) * 60_000 };
 }
 
-/** Whether a paper's full text is to hand: found with it, added by hand, or marked as not retrieved. */
-export const hasFullText = (screening: Pick<Screening, "fullTexts">, paper: Paper) => (screening.fullTexts[paper.id] ? screening.fullTexts[paper.id] === "added" : paper.hasPdf);
-
 export const activeReviewers = (screening: Screening) => screening.reviewers.filter((reviewer) => !reviewer.left);
 export const peopleOf = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person");
 export const modelsOf = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "model");
 
 /** Whether a person has voted on a paper: in the mock, or in the made-up votes they came with. */
-const hasVoted = (screening: Screening, stage: Stage, paper: Paper, index: number, person: Reviewer) => {
-  const cast = screening.cast[stage][paper.id]?.[person.id];
-  return cast !== undefined ? cast !== null : !person.email && index < (screening.reached[stage][person.id] ?? 0);
+const hasVoted = (screening: Screening, paper: Paper, index: number, person: Reviewer) => {
+  const cast = screening.cast[paper.id]?.[person.id];
+  return cast !== undefined ? cast !== null : !person.email && index < (screening.reached[person.id] ?? 0);
 };
 /**
  * The people a paper is dealt to: as many as the rule asks for, taken in turn so the work is shared
  * evenly. Someone added after the start takes a share of the papers nobody has got to yet, and never
  * a paper someone has already voted on.
  */
-export function dealtTo(screening: Screening, stage: Stage, paper: Paper, index: number): Reviewer[] {
+export function dealtTo(screening: Screening, paper: Paper, index: number): Reviewer[] {
   // Someone invited by email is dealt papers once they have joined.
   const people = peopleOf(screening).filter((person) => !person.email);
   if (screening.rule.each === "all") return people;
@@ -667,7 +644,7 @@ export function dealtTo(screening: Screening, stage: Stage, paper: Paper, index:
   const late = base === people ? [] : people.filter((person) => !base.includes(person));
   const each = Math.min(Number(screening.rule.each), people.length);
   const dealt = Array.from({ length: Math.min(each, base.length) }, (_, k) => base[(index + k) % base.length]!).map((person, k) => {
-    if (!late.length || hasVoted(screening, stage, paper, index, person)) return person;
+    if (!late.length || hasVoted(screening, paper, index, person)) return person;
     return [person, ...late][(index + k) % (late.length + 1)]!;
   });
   // Fewer founders than the rule asks for: the later people make up the number.
@@ -675,24 +652,22 @@ export function dealtTo(screening: Screening, stage: Stage, paper: Paper, index:
   return [...new Set(dealt)];
 }
 /** Who votes on a paper: every model, and the people it is dealt to. */
-export const votersOf = (screening: Screening, stage: Stage, paper: Paper, index: number) => [...dealtTo(screening, stage, paper, index), ...modelsOf(screening)];
+export const votersOf = (screening: Screening, paper: Paper, index: number) => [...dealtTo(screening, paper, index), ...modelsOf(screening)];
 
 /** One reviewer's vote on a paper, if they have got to it: the one cast in the mock, or a made-up one. */
-export function voteOf(screening: Screening, stage: Stage, paper: Paper, index: number, reviewer: Reviewer): Vote | undefined {
-  const cast = screening.cast[stage][paper.id]?.[reviewer.id];
+export function voteOf(screening: Screening, paper: Paper, index: number, reviewer: Reviewer): Vote | undefined {
+  const cast = screening.cast[paper.id]?.[reviewer.id];
   if (cast !== undefined) return cast ?? undefined;
-  if (reviewer.email || index >= (screening.reached[stage][reviewer.id] ?? 0)) return undefined;
-  // Nobody can have read a full text that isn't there.
-  if (stage === "fullText" && !hasFullText(screening, paper)) return undefined;
-  return madeUpVote(paper, reviewer, screening.criteria, stage, screening.createdAt);
+  if (reviewer.email || index >= (screening.reached[reviewer.id] ?? 0)) return undefined;
+  return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt);
 }
 
 /**
  * A paper a model got to and couldn't read: its provider gave an error, or sent back nothing usable.
  * It counts as no vote from that model, and the paper is settled by its other reviewers.
  */
-export const failedRead = (screening: Screening, stage: Stage, paper: Paper, index: number, reviewer: Reviewer) =>
-  reviewer.kind === "model" && !screening.retried?.includes(reviewer.id) && index < (screening.reached[stage][reviewer.id] ?? 0) && screening.cast[stage][paper.id]?.[reviewer.id] === undefined && hash(`${paper.id}${reviewer.id}${stage}`) % 113 === 0;
+export const failedRead = (screening: Screening, paper: Paper, index: number, reviewer: Reviewer) =>
+  reviewer.kind === "model" && !screening.retried?.includes(reviewer.id) && index < (screening.reached[reviewer.id] ?? 0) && screening.cast[paper.id]?.[reviewer.id] === undefined && hash(`${paper.id}${reviewer.id}`) % 113 === 0;
 
 /** How sure a model is of one answer, from 0 to 1: less with no abstract to read, and where it couldn't tell. */
 export const confidenceOf = (paper: Paper, reviewer: Reviewer, criterion: Criterion, answer: Answer) => {
@@ -721,20 +696,18 @@ export type Standing = {
   counts: Record<Result, number>;
 };
 
-/** The papers of a stage: all of them on their abstract, and at full text the ones included there. */
-export function standing(screening: Screening, stage: Stage): Standing {
-  const all = arrived(screening);
-  const first = stage === "abstract" ? null : standing(screening, "abstract");
-  const papers = first ? (screening.fullText ? all.filter((paper) => first.settled[paper.id]?.final === "include" || first.settled[paper.id]?.final === "maybe") : []) : all;
+/** Where each of a screening's papers stands. */
+export function standing(screening: Screening): Standing {
+  const papers = arrived(screening);
   const votes: Standing["votes"] = {};
   const settled: Standing["settled"] = {};
   const counts: Record<Result, number> = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
   papers.forEach((paper, index) => {
-    const everyone = votersOf(screening, stage, paper, index).map((reviewer) => (failedRead(screening, stage, paper, index, reviewer) ? { reviewer, vote: undefined, failed: true } : { reviewer, vote: voteOf(screening, stage, paper, index, reviewer) }));
+    const everyone = votersOf(screening, paper, index).map((reviewer) => (failedRead(screening, paper, index, reviewer) ? { reviewer, vote: undefined, failed: true } : { reviewer, vote: voteOf(screening, paper, index, reviewer) }));
     votes[paper.id] = everyone;
     // A model that couldn't read the paper has no say in it.
     const cast = everyone.filter((one) => !("failed" in one));
-    const resolved = screening.resolved[stage][paper.id];
+    const resolved = screening.resolved[paper.id];
     const given = cast.flatMap((one) => one.vote ?? []);
     const tally = DECISIONS.map((decision) => given.filter((vote) => vote.decision === decision).length);
     const top = Math.max(...tally);
@@ -772,12 +745,12 @@ export function agreement(a: string, b: string, state: Standing) {
 }
 
 /**
- * What changing a screening does to its papers on their abstract: how many join or leave, how many
+ * What changing a screening does to its papers: how many join or leave, how many
  * settled ones open again or end up somewhere else, and how many become settled. Shown before a
  * change is made, so nothing about it is a surprise.
  */
 export function effectOf(before: Screening, after: Screening) {
-  const [was, now] = [standing(before, "abstract"), standing(after, "abstract")];
+  const [was, now] = [standing(before), standing(after)];
   const moves = new Map<string, { from: Result; to: Result; papers: Paper[] }>();
   let added = 0;
   for (const paper of now.papers) {
@@ -803,7 +776,7 @@ export const NOW = Date.UTC(2026, 10, 23, 13, 0);
 const THIS_MORNING = NOW - 7 * 60 * 60_000;
 let slots = 0;
 const source = (id: string, kind: SourceKind, name: string, detail: string, total: number, duplicates: number, facts?: string[]): Source => ({ id, slot: slots++ % 12, kind, name, detail, total, scope: "all", range: [1, total], duplicates, addedAt: 0, ...(facts ? { facts } : {}) });
-const blank = () => ({ cast: { abstract: {}, fullText: {} }, resolved: { abstract: {}, fullText: {} }, fullTexts: {} });
+const blank = () => ({ cast: {}, resolved: {} });
 export const DEFAULT_RULE: Rule = { each: "2", settle: "all", resolver: "amina", blind: "after" };
 export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), minimum: criteria.filter((c) => c.must).length, stars: [1, 2, 3, 4, 5].map((k) => Math.max(1, Math.ceil((k / 5) * criteria.length))) });
 
@@ -818,7 +791,6 @@ function made(id: string, name: string, theme: ThemeId, seed: number, sources: S
     createdBy: people[0] ?? "amina",
     createdAt: NOW - 6 * DAY,
     question: "",
-    fullText: true,
     sources,
     criteria,
     theme,
@@ -827,7 +799,7 @@ function made(id: string, name: string, theme: ThemeId, seed: number, sources: S
     scoring: defaultScoring(criteria),
     destination: { kind: "new", name: `Included in ${name}`, prune: false },
     seed,
-    reached: { abstract: reached, fullText: Object.fromEntries(reviewers.map((reviewer) => [reviewer.id, 0])) },
+    reached,
     ...blank(),
     ...more,
     changes: more.changes ?? [{ at: more.createdAt ?? NOW - 6 * DAY, by: more.createdBy ?? people[0] ?? "amina", what: "Started the screening" }],
@@ -856,74 +828,57 @@ export function startingScreenings(): Screening[] {
   edtech.living = { every: "week", next: THIS_MORNING + 7 * DAY };
   edtech.updates = [{ at: THIS_MORNING, found: 9, added: 7, by: SCHEDULE }];
   // The people had read what they had read before the new papers came: none of them has got to those yet.
-  for (const person of edtech.reviewers) if (person.kind === "person") edtech.reached.abstract[person.id] = Math.min(edtech.reached.abstract[person.id] ?? 0, 132);
+  for (const person of edtech.reviewers) if (person.kind === "person") edtech.reached[person.id] = Math.min(edtech.reached[person.id] ?? 0, 132);
   edtech.question = "Do digital tools improve foundational literacy and numeracy for primary-school children in sub-Saharan Africa?";
-  // Full text has begun: the models are through, the people have started.
-  edtech.reached.fullText = Object.fromEntries(edtech.reviewers.map((reviewer) => [reviewer.id, reviewer.kind === "model" ? 999 : reviewer.id === "jonas" ? 12 : reviewer.id === "amina" ? 6 : 0]));
   edtech.changes = [
     { at: NOW - 6 * DAY, by: "amina", what: "Started the screening", effect: "132 papers from 4 sources, 3 people and 2 models" },
     { at: NOW - 4 * DAY, by: "jonas", what: "Changed “Is the intervention delivered with digital technology?” from must-have to nice to have", effect: "3 excluded papers became included" },
     { at: NOW - 2 * DAY, by: "amina", what: "Added a third model as a reviewer", effect: "It reads all 132 papers" },
-    { at: NOW - DAY, by: "amina", what: "Moved the included papers on to full text" },
     { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
   ];
   // Half of the splits found so far were settled before the mock opens.
-  const state = standing(edtech, "abstract");
+  const state = standing(edtech);
   let n = 0;
   for (const paper of state.papers) {
     if (state.settled[paper.id]!.result !== "conflict" || n++ % 2) continue;
     const given = state.votes[paper.id]!.flatMap((one) => one.vote ?? []);
     const tally = DECISIONS.map((decision) => given.filter((vote) => vote.decision === decision).length);
     const decision = DECISIONS[tally.indexOf(Math.max(...tally))]!;
-    edtech.resolved.abstract[paper.id] = { decision, by: "amina", note: SECOND_READ[decision] };
+    edtech.resolved[paper.id] = { decision, by: "amina", note: SECOND_READ[decision] };
   }
   return [
     edtech,
     made("tvet", "TVET and youth employment", "tvet", 2, [source("t1", "search", "TVET AND youth employment AND Africa", "Openscholar search", 412, 0), source("t2", "collection", "Skills and work, shared reading", "Collection", 148, 31)], ["thandiwe", "amina", "kwame"], 2, { person: 0.55, model: 1 }, { createdAt: NOW - 12 * DAY }),
     made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group collection", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: "They spend nothing until they are let on" }] }),
     // In another workspace, shared with the person the mock starts as: they vote, and its settings are that workspace's.
-    made("remedial", "Remedial education, rapid review", "remedial", 8, [source("r1", "search", "remedial education AND randomised", "Openscholar search", 133, 0)], ["sofia", "amina"], 1, { sofia: 0.8, amina: 0.3, model: 1 }, { createdBy: "sofia", createdAt: NOW - 5 * DAY, workspace: "lab", fullText: false }),
+    made("remedial", "Remedial education, rapid review", "remedial", 8, [source("r1", "search", "remedial education AND randomised", "Openscholar search", 133, 0)], ["sofia", "amina"], 1, { sofia: 0.8, amina: 0.3, model: 1 }, { createdBy: "sofia", createdAt: NOW - 5 * DAY, workspace: "lab" }),
     made("teachers", "Teacher professional development", "teachers", 4, [source("d1", "search", "teacher professional development AND learning outcomes", "Openscholar search", 640, 0)], [], 3, { model: 1 }, { createdBy: "kwame", createdAt: NOW - 15 * DAY, rule: { each: "1", settle: "all", resolver: "kwame", blind: "after" } }),
-    made("climate", "Climate adaptation in schools", "climate", 5, [source("c1", "collection", "Climate and schooling", "Collection", 188, 0)], ["amina", "jonas"], 0, { person: 1 }, { createdAt: NOW - 40 * DAY, finishedAt: NOW - 11 * DAY, fullText: false }),
+    made("climate", "Climate adaptation in schools", "climate", 5, [source("c1", "collection", "Climate and schooling", "Collection", 188, 0)], ["amina", "jonas"], 0, { person: 1 }, { createdAt: NOW - 40 * DAY, finishedAt: NOW - 11 * DAY }),
     made("ecd", "Early childhood development and home visits", "ecd", 6, [source("e1", "search", "home visiting AND early childhood development", "Openscholar search", 380, 0), source("e2", "upload", "ecd-scopus.ris", "Reference file", 120, 44)], ["thandiwe", "amina"], 2, { person: 1, model: 1 }, { createdBy: "thandiwe", createdAt: NOW - 60 * DAY, finishedAt: NOW - 21 * DAY }),
-    made("nutrition", "School nutrition and attendance", "meals", 7, [source("n1", "saved", "All saved papers", "This workspace's library", 187, 0)], ["jonas"], 1, { person: 1, model: 1 }, { createdBy: "jonas", createdAt: NOW - 70 * DAY, finishedAt: NOW - 26 * DAY, fullText: false, rule: { each: "1", settle: "one", resolver: "jonas", blind: "always" } }),
+    made("nutrition", "School nutrition and attendance", "meals", 7, [source("n1", "saved", "All saved papers", "This workspace's library", 187, 0)], ["jonas"], 1, { person: 1, model: 1 }, { createdBy: "jonas", createdAt: NOW - 70 * DAY, finishedAt: NOW - 26 * DAY, rule: { each: "1", settle: "one", resolver: "jonas", blind: "always" } }),
   ].map((screening) => (screening.finishedAt ? finished(screening) : screening));
 }
 
 /** What the person who settles a conflict writes down, for the made-up ones. */
 const SECOND_READ: Record<Decision, string> = {
   include: "Meets every must-have on a second read.",
-  maybe: "The abstract doesn't settle it. Check the full text.",
+  maybe: "The abstract doesn't settle it.",
   exclude: "Fails a must-have on a second read.",
 };
 
-/**
- * A finished screening as its team left it: read through at every stage, each conflict settled by
- * the person named for that, and a full text that couldn't be got recorded as such.
- */
-function finished(start: Screening): Screening {
-  let screening: Screening = { ...start, reached: { ...start.reached, fullText: Object.fromEntries(start.reviewers.map((reviewer) => [reviewer.id, 9999])) } };
-  for (const stage of STAGES) {
-    const state = standing(screening, stage);
-    const resolved = { ...screening.resolved[stage] };
-    const fullTexts = { ...screening.fullTexts };
-    for (const paper of state.papers) {
-      const result = state.settled[paper.id]!.result;
-      if (stage === "fullText" && !hasFullText(screening, paper)) {
-        fullTexts[paper.id] = "missing";
-        resolved[paper.id] = { decision: "exclude", by: screening.rule.resolver, reason: "not-retrieved" };
-      } else if (result === "conflict" || (stage === "fullText" && result === "maybe")) {
-        // The full text leaves nothing open: a maybe there is decided one way or the other.
-        const given = state.votes[paper.id]!.flatMap((one) => one.vote ?? []);
-        const tally = DECISIONS.map((decision) => (stage === "fullText" && decision === "maybe" ? -1 : given.filter((vote) => vote.decision === decision).length));
-        const decision = Math.max(...tally) > 0 ? DECISIONS[tally.indexOf(Math.max(...tally))]! : hash(paper.id) % 2 ? "include" : "exclude";
-        const failed = decision === "exclude" ? given.find((vote) => vote.reason)?.reason ?? screening.criteria.find((criterion) => criterion.must)?.key : undefined;
-        resolved[paper.id] = { decision, by: screening.rule.resolver, note: SECOND_READ[decision], ...(failed ? { reason: failed } : {}) };
-      }
-    }
-    screening = { ...screening, resolved: { ...screening.resolved, [stage]: resolved }, fullTexts };
+/** A finished screening as its team left it: each conflict settled by the person named for that. */
+function finished(screening: Screening): Screening {
+  const state = standing(screening);
+  const resolved = { ...screening.resolved };
+  for (const paper of state.papers) {
+    if (state.settled[paper.id]!.result !== "conflict") continue;
+    const given = state.votes[paper.id]!.flatMap((one) => one.vote ?? []);
+    const tally = DECISIONS.map((decision) => given.filter((vote) => vote.decision === decision).length);
+    const decision = DECISIONS[tally.indexOf(Math.max(...tally))]!;
+    const failed = decision === "exclude" ? given.find((vote) => vote.reason)?.reason ?? screening.criteria.find((criterion) => criterion.must)?.key : undefined;
+    resolved[paper.id] = { decision, by: screening.rule.resolver, note: SECOND_READ[decision], ...(failed ? { reason: failed } : {}) };
   }
-  return screening;
+  return { ...screening, resolved };
 }
 
 export const PERIOD: Record<Every, number> = { day: DAY, week: 7 * DAY, month: 30 * DAY };

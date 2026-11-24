@@ -19,15 +19,15 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, STAGE_LABEL, day, growing, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Result, type Reviewer, type Screening, type Stage, lookOf } from "./data";
+import { DECISIONS, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, day, growing, activeReviewers, agreement, ago, count, keptOf, HOME, modelsOf, personOf, failedLabel, reasonOf, taken, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectLines, effectMoves, movesText } from "./effects";
 import { RESULT_STYLE, ResultBar, ReviewerMark, Tally } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 
-export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: Open; onOpen: (view: "screen" | "papers", filter?: Result | "conflicts" | "todo") => void; onStage: (stage: Stage) => void; onExport: (what: "flow") => void; /** Opens the papers one arrival brought. */ onAdded: (at: string) => void }) {
-  const { screening, stage, papers, votes, settled, counts, toDo, conflicts } = open;
+export function Overview({ open, onOpen, onExport, onAdded }: { open: Open; onOpen: (view: "screen" | "papers", filter?: Result | "conflicts" | "todo") => void; onExport: (what: "flow") => void; /** Opens the papers one arrival brought. */ onAdded: (at: string) => void }) {
+  const { screening, papers, votes, settled, counts, toDo, conflicts } = open;
   const reviewers = activeReviewers(screening);
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
   const rows = useMemo(
@@ -78,9 +78,9 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
   if (!papers.length) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
-        <p className="text-sm font-medium">No paper has reached {STAGE_LABEL[stage].toLowerCase()} yet</p>
-        <p className="max-w-md text-sm text-muted-foreground">{stage === "fullText" ? "A paper comes here once it is included on its title and abstract. Nothing else needs doing: it happens as papers settle." : "Add a source in the settings to give this screening its papers."}</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => onStage("abstract")}>{stage === "fullText" ? "Go to title and abstract" : "Open the settings"}</Button>
+        <p className="text-sm font-medium">No papers yet</p>
+        <p className="max-w-md text-sm text-muted-foreground">Add a source in the settings to give this screening its papers.</p>
+        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href={`/screening/mock/${screening.id}/settings`}>Open the settings</NextLink></Button>
       </div>
     );
   }
@@ -97,8 +97,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
             {conflicts.length ? (
               <Button size="sm" variant={toDo.length || screening.finishedAt || !open.canResolve ? "outline" : "default"} onClick={() => onOpen("screen", "conflicts")}><GitCompare />{open.canResolve ? "Settle" : "See"} <AnimatedNumber value={conflicts.length} /> {conflicts.length === 1 ? "conflict" : "conflicts"}</Button>
             ) : null}
-            {settledAll && stage === "abstract" && screening.fullText ? <Button size="sm" variant={screening.finishedAt ? "outline" : "default"} onClick={() => onStage("fullText")}>{screening.finishedAt ? "See the full-text stage" : "Go on to full text"}<ArrowRight /></Button> : null}
-            {settledAll && stage === "fullText" ? (
+            {settledAll ? (
               <>
                 <Button asChild size="sm" variant="outline"><NextLink href="/extraction/new">Extract from the included papers</NextLink></Button>
                 <Chip icon={CircleCheck} className="h-8 bg-success/12 px-3 ink-success">Every paper is settled</Chip>
@@ -111,7 +110,6 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
           <span className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
           <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
           {open.reading.length && !screening.paused && !open.outOfCredits && !screening.finishedAt ? <Chip className="self-center"><AiIcon working className="size-3.5" />Models are reading, so these move</Chip> : null}
-          {stage === "fullText" && !screening.finishedAt ? <span className="text-sm text-muted-foreground">Papers arrive here one by one, as they are included or left as maybe on their abstract.</span> : null}
         </p>
         <ResultBar counts={counts} className="h-3" />
         <Yours open={open} />
@@ -119,7 +117,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
         <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1 pt-1">
           {RESULTS.map((result) => {
             const Icon = RESULT_STYLE[result].icon;
-            const hint = result === "waiting" && open.waitingOn.length ? `Waiting on ${open.waitingOn.map((one) => `${one.reviewer.name} (${one.papers})`).join(", ")}` : result === "conflict" ? `Their reviewers voted differently. ${personOf(screening.rule.resolver)?.name ?? "A named person"} settles them.` : result === "maybe" ? (stage === "abstract" && screening.fullText ? "Left open on the abstract: they go on to full text" : "Left open: a must-have criterion couldn't be answered") : undefined;
+            const hint = result === "waiting" && open.waitingOn.length ? `Waiting on ${open.waitingOn.map((one) => `${one.reviewer.name} (${one.papers})`).join(", ")}` : result === "conflict" ? `Their reviewers voted differently. ${personOf(screening.rule.resolver)?.name ?? "A named person"} settles them.` : result === "maybe" ? "Left open: a must-have criterion couldn't be answered" : undefined;
             return (
               <TooltipHint key={result} label={hint}>
                 <button type="button" onClick={() => onOpen("papers", result)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted">
@@ -134,10 +132,10 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
       </Zone>
 
       <Facts open={open} />
-      {stage === "abstract" ? <NewPapers open={open} onAdded={onAdded} /> : null}
+      <NewPapers open={open} onAdded={onAdded} />
 
       <div className="grid grid-cols-1 gap-7 @5xl/overview:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Zone label="Reviewers" aside={<Chip>{STAGE_LABEL[stage]}</Chip>}>
+        <Zone label="Reviewers">
           {rows.length ? (
             <div className={LIST}>
               <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_8.5rem_7.5rem_2rem] items-center gap-4 whitespace-nowrap px-4 py-2 text-xs text-muted-foreground @max-2xl/overview:hidden">
@@ -155,7 +153,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
                 const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
                 const unread = unreadPapers.length;
                 const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
-                const held = open.outOfCredits ? { icon: Coins, text: "Stopped, out of credits" } : screening.paused ? { icon: CirclePause, text: "Paused" } : open.waitingFor && stage === "abstract" ? { icon: Clock, text: "Waiting its turn" } : null;
+                const held = open.outOfCredits ? { icon: Coins, text: "Stopped, out of credits" } : screening.paused ? { icon: CirclePause, text: "Paused" } : open.waitingFor ? { icon: Clock, text: "Waiting its turn" } : null;
                 const person = personOf(reviewer.id);
                 return (
                   <div key={reviewer.id} className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_8.5rem_7.5rem_2rem] items-center gap-4 px-4 py-3 @max-2xl/overview:grid-cols-[minmax(0,1fr)_5.5rem_2rem] @max-2xl/overview:gap-y-2">
@@ -181,7 +179,7 @@ export function Overview({ open, onOpen, onStage, onExport, onAdded }: { open: O
                                     {unreadPapers.slice(0, 4).map((paper) => <li key={paper.id} className="line-clamp-2 text-xs text-muted-foreground">{paper.title} ({paper.year})</li>)}
                                     {unread > 4 ? <li className="text-xs text-muted-foreground">and {unread - 4} more</li> : null}
                                   </ul>
-                                  {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!, stage))} credits</Button> : null}
+                                  {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!))} credits</Button> : null}
                                 </PopoverContent>
                               </Popover>
                             ) : null}
@@ -406,12 +404,11 @@ function NewPapers({ open, onAdded }: { open: Open; onAdded: (at: string) => voi
 
 /** Who started it and where it lives, where its included papers go, and what its models have cost: what a person asks of a screening before its numbers. */
 function Facts({ open }: { open: Open }) {
-  const { screening, first, second } = open;
+  const { screening, counts } = open;
   const store = useMock();
   const starter = personOf(screening.createdBy);
   const workspace = workspaceOf(screening);
   const models = modelsOf(screening);
-  const last = screening.fullText ? second : first;
   const spent = models.reduce((sum, model) => sum + open.spent(model), 0);
   const most = models.reduce((sum, model) => sum + open.most(model), 0);
   const to = screening.destination;
@@ -437,8 +434,8 @@ function Facts({ open }: { open: Open }) {
           <span className="truncate">{collection ?? "Nowhere yet"}</span>
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
-          {collection ? <Chip icon={CircleCheck}><AnimatedNumber value={last.counts.include} /> saved so far</Chip> : null}
-          {collection ? <Chip>{screening.fullText ? "Saved when included at full text" : "Saved as each is included"}</Chip> : <Chip>{last.counts.include} included, kept here</Chip>}
+          {collection ? <Chip icon={CircleCheck}><AnimatedNumber value={counts.include} /> saved so far</Chip> : null}
+          {collection ? <Chip>Saved as each is included</Chip> : <Chip>{counts.include} included, kept here</Chip>}
           {to.prune ? <Chip>Excluded ones leave their collection</Chip> : null}
           {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-xs"><NextLink href={`/screening/mock/${screening.id}/settings#goes-to`}>{collection ? "Change" : "Choose a collection"}</NextLink></Button> : null}
         </div>
@@ -503,35 +500,20 @@ function Yours({ open }: { open: Open }) {
 
 /** The counts from sources to included papers, left to right: what a flow diagram is drawn from. */
 function Flow({ open, onExport }: { open: Open; onExport: (what: "flow") => void }) {
-  const { screening, first, second } = open;
+  const { screening, papers, votes, settled, counts } = open;
   const found = screening.sources.reduce((sum, source) => sum + taken(source), 0);
   const kept = screening.sources.reduce((sum, source) => sum + keptOf(source), 0);
-  const reasons = (state: typeof first) => {
-    const tally = new Map<string, number>();
-    for (const paper of state.papers) if (state.settled[paper.id]!.final === "exclude") { const key = reasonOf(state.votes[paper.id]!, state.settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
-    return [...tally].sort((a, b) => b[1] - a[1]).map(([key, value]) => ({ label: `Excluded, ${failedLabel(key, screening.criteria).replace(/^Not met/, "not met")}`, value }));
-  };
-  const noText = count(second.papers, (paper) => !open.hasFullText(paper));
-  const steps = [
+  const tally = new Map<string, number>();
+  for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
+  const reasons = [...tally].sort((a, b) => b[1] - a[1]).map(([key, value]) => ({ label: `Excluded, ${failedLabel(key, screening.criteria).replace(/^Not met/, "not met")}`, value }));
+  const shown = [
     { title: "Found", total: found, rows: screening.sources.map((source) => ({ label: source.name, value: taken(source) })) },
     { title: "To screen", total: kept, note: "after duplicates", rows: [{ label: "Duplicates merged", value: found - kept }] },
-    {
-      title: "Title and abstract",
-      total: screening.fullText ? second.papers.length : first.counts.include,
-      note: screening.fullText ? "go on to full text" : "included",
-      rows: [...reasons(first), { label: "In conflict or waiting", value: first.counts.conflict + first.counts.waiting }],
-    },
-    {
-      title: "Full text",
-      total: second.counts.include,
-      note: "included",
-      rows: [...reasons(second), { label: "Maybe, in conflict or waiting", value: second.counts.conflict + second.counts.waiting + second.counts.maybe }, { label: "Of those, no full text yet", value: noText }],
-    },
+    { title: "Title and abstract", total: counts.include, note: "included", rows: [...reasons, { label: "Left as maybe", value: counts.maybe }, { label: "In conflict or waiting", value: counts.conflict + counts.waiting }] },
   ];
-  const shown = screening.fullText ? steps : steps.slice(0, 3);
   return (
     <Zone label="Flow" aside={<Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onExport("flow")}><Download />Get it as a flow diagram</Button>}>
-      <div className={cn("grid grid-cols-1 divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle @3xl/overview:divide-x @3xl/overview:divide-y-0", screening.fullText ? "@3xl/overview:grid-cols-4" : "@3xl/overview:grid-cols-3")}>
+      <div className="grid grid-cols-1 divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle @3xl/overview:grid-cols-3 @3xl/overview:divide-x @3xl/overview:divide-y-0">
         {shown.map((step, i) => (
           <div key={step.title} className="relative space-y-3 p-4">
             <p className="text-xs text-muted-foreground">{step.title}</p>
