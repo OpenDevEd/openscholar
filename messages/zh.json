@@ -338,6 +338,7 @@
     "login": "Crossref 登录名",
     "loginHint": "个人账户请使用电子邮箱/角色。",
     "password": "Crossref 密码",
+    "docidPassword": "DOCiD 密码",
     "prefix": "DOI 前缀",
     "registrant": "注册机构",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

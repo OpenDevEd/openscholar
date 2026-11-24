@@ -338,6 +338,7 @@
     "login": "Kuingia kwa Crossref",
     "loginHint": "Kwa kuingia binafsi, tumia barua pepe/jukumu.",
     "password": "Nenosiri la Crossref",
+    "docidPassword": "Nenosiri la DOCiD",
     "prefix": "Kiambishi awali cha DOI",
     "registrant": "Msajili",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

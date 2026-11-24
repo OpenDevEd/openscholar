@@ -338,6 +338,7 @@
     "login": "Identifiant Crossref",
     "loginHint": "Pour un compte personnel, utilisez e-mail/rôle.",
     "password": "Mot de passe Crossref",
+    "docidPassword": "Mot de passe DOCiD",
     "prefix": "Préfixe DOI",
     "registrant": "Organisme déposant",
     "registrantHint": "Crossref le renseigne à partir du préfixe lors de l’enregistrement.",

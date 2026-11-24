@@ -37,7 +37,7 @@ export function DocidAccount({ docid = NO_DOCID, onChange, password, onPassword,
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("email")}>{(id) => <Input id={id} type="email" autoComplete="off" value={docid.email} placeholder="name@example.org" onChange={(e) => update({ email: e.target.value })} />}</Field>
-            <Field label={t("password")}>{(id) => <Input id={id} type="password" autoComplete="new-password" value={password} placeholder={stored ? t("storedHint") : undefined} onChange={(e) => onPassword(e.target.value)} />}</Field>
+            <Field label={t("docidPassword")}>{(id) => <Input id={id} type="password" autoComplete="new-password" value={password} placeholder={stored ? t("storedHint") : undefined} onChange={(e) => onPassword(e.target.value)} />}</Field>
           </div>
           {cantFile ? (
             <p role="status" className="flex items-start gap-2 rounded-xl bg-inset px-3 py-2.5 text-xs text-pretty ink-warning">

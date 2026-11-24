@@ -338,6 +338,7 @@
     "login": "Ukungena kwe-Crossref",
     "loginHint": "Ukuze ungene njengomuntu siqu, sebenzisa imeyili/indima.",
     "password": "Iphasiwedi ye-Crossref",
+    "docidPassword": "Iphasiwedi ye-DOCiD",
     "prefix": "Isiqalo se-DOI",
     "registrant": "Umbhalisi",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

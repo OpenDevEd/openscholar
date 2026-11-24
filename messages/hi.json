@@ -338,6 +338,7 @@
     "login": "Crossref लॉगिन",
     "loginHint": "व्यक्तिगत लॉगिन के लिए ईमेल/भूमिका इस्तेमाल करें।",
     "password": "Crossref पासवर्ड",
+    "docidPassword": "DOCiD पासवर्ड",
     "prefix": "DOI उपसर्ग",
     "registrant": "पंजीयक",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

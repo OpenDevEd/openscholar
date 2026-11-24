@@ -338,6 +338,7 @@
     "login": "Crossref-aanmelding",
     "loginHint": "Vir ’n persoonlike aanmelding, gebruik e-pos/rol.",
     "password": "Crossref-wagwoord",
+    "docidPassword": "DOCiD-wagwoord",
     "prefix": "DOI-voorvoegsel",
     "registrant": "Registreerder",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

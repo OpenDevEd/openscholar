@@ -338,6 +338,7 @@
     "login": "Usuario de Crossref",
     "loginHint": "Para un inicio de sesión personal, use correo/rol.",
     "password": "Contraseña de Crossref",
+    "docidPassword": "Contraseña de DOCiD",
     "prefix": "Prefijo DOI",
     "registrant": "Registrante",
     "registrantHint": "Crossref lo completa a partir del prefijo al guardar.",

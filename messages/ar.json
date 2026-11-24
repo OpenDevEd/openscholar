@@ -338,6 +338,7 @@
     "login": "تسجيل الدخول إلى Crossref",
     "loginHint": "لتسجيل دخول شخصي، استخدم البريد الإلكتروني والدور.",
     "password": "كلمة مرور Crossref",
+    "docidPassword": "كلمة مرور DOCiD",
     "prefix": "بادئة DOI",
     "registrant": "المسجِّل",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

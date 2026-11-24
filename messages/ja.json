@@ -338,6 +338,7 @@
     "login": "Crossref ログイン",
     "loginHint": "個人アカウントはメールアドレス/ロールを入力します。",
     "password": "Crossref パスワード",
+    "docidPassword": "DOCiD パスワード",
     "prefix": "DOI プレフィックス",
     "registrant": "登録機関",
     "registrantHint": "Crossref fills this in from the prefix when you save.",

@@ -338,6 +338,7 @@
     "login": "Início de sessão no Crossref",
     "loginHint": "Para um início de sessão pessoal, use o email e a função.",
     "password": "Palavra-passe do Crossref",
+    "docidPassword": "Palavra-passe do DOCiD",
     "prefix": "Prefixo DOI",
     "registrant": "Registante",
     "registrantHint": "A Crossref preenche isto a partir do prefixo ao guardar.",

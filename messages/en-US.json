@@ -338,6 +338,7 @@
     "login": "Crossref login",
     "loginHint": "For a personal login, use email/role.",
     "password": "Crossref password",
+    "docidPassword": "DOCiD password",
     "prefix": "DOI prefix",
     "registrant": "Registrant",
     "registrantHint": "Crossref fills this in from the prefix when you save.",
