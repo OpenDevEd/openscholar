@@ -114,6 +114,17 @@ async function keep(key: string, bytes: Uint8Array) {
   }
 }
 
+/**
+ * A link to the stored copy of a paper, for an hour, or null when the store has none. Nothing is charged: this is for
+ * a community's import, which reads a stored copy for nothing. A read inside Openscholar goes through `paperPdf`.
+ */
+export async function storedCopyLink(paper: Pick<PaperRef, "openalexId" | "url">): Promise<string | null> {
+  for (const key of await paperKeys(paper)) {
+    if ((await storedSize(key)) !== null) return storedLink(key);
+  }
+  return null;
+}
+
 const NOT_KEPT = "This paper's PDF couldn't be kept to send. Try again in a moment.";
 
 /** A link a model's provider can fetch the stored copy from, for an hour. */
