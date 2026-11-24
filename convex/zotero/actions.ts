@@ -421,7 +421,7 @@ export const pdfToChat = internalAction({
     checkZoteroIds({ groupId, itemKey });
     const { apiKey, connection, prefix } = await zoteroAccess(ctx, userId, groupId);
     const at = groupId ? `zotero://select/groups/${groupId}/items/${itemKey}` : `zotero://select/users/${connection!.zoteroUserId}/items/${itemKey}`;
-    const got = await downloadPdf(at, { zoteroConnection: { apiKey, userId: connection!.zoteroUserId }, maxRetries: 1, maxBytes: MAX_PDF_BYTES });
+    const got = await downloadPdf(at, { zoteroConnection: { apiKey, userId: connection!.zoteroUserId }, maxBytes: MAX_PDF_BYTES });
     if (!got.success || !got.pdfBlob) {
       if (got.error?.includes("byte cap")) throw createError("VALIDATION_ERROR", `This item's PDF is larger than the ${MAX_PDF_MB} MB a chat file can be.`);
       throw createError("NOT_FOUND", got.error === "No PDF attachment found in Zotero" ? "This Zotero item has no PDF attached." : `Zotero didn't give this item's PDF (${got.error ?? "no file"}). Try again in a moment.`);

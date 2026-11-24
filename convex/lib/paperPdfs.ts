@@ -3,7 +3,8 @@
  * never deleted, and read from there first. `paperPdf` gets one, in this order:
  *
  *   1. the copy in R2: PAPER_PDF_CREDITS, once per chat or per extraction (`PdfPayer.scope`)
- *   2. the paper's own link, and the free copies its DOI leads to (lib/pdf/download.ts): free, and kept in R2
+ *   2. the paper's own link, and the free copies its DOI leads to (lib/pdf/download.ts): free, and kept in R2.
+ *      A paper with no free copy is remembered (`paperPdfMisses`) and not searched again until its retry time
  *   3. OpenAlex's cached copy (content.openalex.org): what OpenAlex charged, and kept in R2
  *
  * A copy bought from OpenAlex is kept under the paper's OpenAlex ID. One fetched by a link is kept under that link,
@@ -18,10 +19,11 @@ import { AwsClient } from "aws4fetch";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { ActionCtx, MutationCtx } from "../_generated/server";
+import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 import { releaseCredits, reserveCredits, settleCredits } from "../billing/charge";
 import type { UsageKind } from "../billing/validators";
-import { internalMutation } from "./functions";
+import type { Memory } from "@opendeved/paper-pdf";
+import { internalMutation, internalQuery } from "./functions";
 import { downloadPdf, type DownloadPdfOptions } from "../../lib/pdf/download";
 import { safeFetchPdf } from "../../lib/pdf/url-allowlist";
 import { convertUsdToCredits, PAPER_PDF_CREDITS, PAPER_PDF_USD } from "../../lib/pricing";
@@ -178,6 +180,50 @@ export const unclaim = internalMutation({
   },
 });
 
+const missOf = (ctx: Pick<QueryCtx, "db">, key: string) => ctx.db.query("paperPdfMisses").withIndex("by_key", (q) => q.eq("key", key)).unique();
+const missFields = { reason: v.string(), retryAt: v.number(), tries: v.number() };
+
+/** What the search remembers of a paper it found no free copy of, if anything. */
+export const miss = internalQuery({
+  args: { key: v.string() },
+  returns: v.union(v.object(missFields), v.null()),
+  handler: async (ctx, { key }) => {
+    const row = await missOf(ctx, key);
+    return row ? { reason: row.reason, retryAt: row.retryAt, tries: row.tries } : null;
+  },
+});
+
+/** Remembers a paper's miss, or forgets it once a copy is found. */
+export const remember = internalMutation({
+  args: { key: v.string(), miss: v.union(v.object(missFields), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { key, miss }) => {
+    const row = await missOf(ctx, key);
+    if (row && miss) await ctx.db.patch("paperPdfMisses", row._id, miss);
+    else if (row) await ctx.db.delete("paperPdfMisses", row._id);
+    else if (miss) await ctx.db.insert("paperPdfMisses", { key, ...miss });
+    return null;
+  },
+});
+
+/**
+ * Where the search for a free copy remembers a paper it found none of. The miss stands for the link it was searched
+ * with, so a paper whose link changed is searched afresh. What the search learns about hosts is not kept: an action
+ * doesn't live long enough to use it.
+ */
+const searchMemory = (ctx: ActionCtx, link: string | undefined): Memory => {
+  const row = (key: string) => (key.startsWith("paper:") ? `${key} ${link ?? ""}` : null);
+  return {
+    get: (key) => (row(key) ? ctx.runQuery(internal.lib.paperPdfs.miss, { key: row(key)! }) : undefined),
+    set: (key, value) => {
+      if (!row(key)) return undefined;
+      const { reason, retryAt, tries } = (value ?? {}) as { reason?: string; retryAt?: number; tries?: number };
+      const miss = reason !== undefined && retryAt !== undefined && tries !== undefined ? { reason, retryAt, tries } : null;
+      return ctx.runMutation(internal.lib.paperPdfs.remember, { key: row(key)!, miss });
+    },
+  };
+};
+
 /** Records per scope one cleanup pass deletes. */
 const FORGET_BATCH = 200;
 
@@ -240,7 +286,9 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
   const workKey = work && !isZotero(paper) ? `openalex/${work}.pdf` : null;
   let failed = "This paper has no PDF address.";
   if (paper.url || paper.doi) {
-    const { pdfBlob, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, maxRetries: 1 });
+    // A file from a person's Zotero library is theirs to read, and a miss on it says nothing about the paper.
+    const memory = isZotero(paper) ? undefined : searchMemory(ctx, paper.url);
+    const { pdfBlob, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, openalexId: work ?? undefined, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, ...(memory ? { memory } : {}) });
     const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
     if (bytes && isPdf(bytes)) {
       const key = isZotero(paper) ? null : await linkKey(paper.url);

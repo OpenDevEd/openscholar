@@ -26,7 +26,9 @@ vi.mock("../ai/provider", async () => {
 });
 
 const PDF = "https://example.org/loot-boxes.pdf";
-const PDF_BYTES = "%PDF-1.7\n%âãÏÓ\n1 0 obj";
+const PDF_HEAD = "%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n";
+// The smallest file the search takes for a whole PDF: a first line, a table of objects and an ending that names where the table starts.
+const PDF_BYTES = `${PDF_HEAD}xref\n0 1\n0000000000 65535 f \ntrailer\n<<>>\nstartxref\n${new TextEncoder().encode(PDF_HEAD).length}\n%%EOF\n`;
 /** OpenAlex's works: one with an open-access PDF, one with none and no copy, one whose link serves a page but that OpenAlex has a copy of. */
 const WORKS: Record<string, object> = {
   W1: { id: "https://openalex.org/W1", display_name: "Loot boxes and problem gambling", best_oa_location: { pdf_url: PDF }, has_content: { pdf: true } },
@@ -36,8 +38,12 @@ const WORKS: Record<string, object> = {
 };
 /** Extraction's way of getting a PDF: the file, charged with the paper (convex/extraction/workpoolActions.ts). */
 const EXTRACTION: PdfOptions = { maxBytes: MAX_PDF_BYTES, bytes: true, charge: "report", allowHttp: false };
-/** In report mode the store only runs its own mutations, which the test backend runs for it. */
-const actionsOf = (t: ReturnType<typeof convexTest>) => ({ runMutation: (fn: Parameters<typeof t.mutation>[0], args: Record<string, unknown>) => t.mutation(fn, args as never) }) as unknown as ActionCtx;
+/** In report mode the store only runs its own mutations and reads what it remembers, which the test backend does for it. */
+const actionsOf = (t: ReturnType<typeof convexTest>) =>
+  ({
+    runMutation: (fn: Parameters<typeof t.mutation>[0], args: Record<string, unknown>) => t.mutation(fn, args as never),
+    runQuery: (fn: Parameters<typeof t.query>[0], args: Record<string, unknown>) => t.query(fn, args as never),
+  }) as unknown as ActionCtx;
 /** Requests to the publisher's host and to OpenAlex's content API. */
 let publisher: string[] = [];
 let content: string[] = [];
@@ -135,6 +141,39 @@ describe("extraction's PDFs from the store", () => {
     expect(unlisted).toMatchObject({ from: "link" });
     expect("key" in unlisted && unlisted.key).toMatch(/^url\//);
     expect(fakeStore.kept.some((key) => key.startsWith("openalex/"))).toBe(false);
+  });
+
+  it("finds a copy Crossref holds when the paper's own link gives none", async () => {
+    const t = convexTest(schema);
+    const answer = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.hostname !== "api.crossref.org") return answer(input, init);
+      return new Response(JSON.stringify({ message: { DOI: "10.1/held", link: [{ URL: PDF, "content-type": "application/pdf" }] } }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    const landing = "https://example.org/articles/held";
+
+    const found = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W9", doi: "10.1/held", url: landing }, EXTRACTION);
+
+    expect(found).toMatchObject({ key: await byLink(landing), from: "link", credits: 0 });
+    expect(publisher).toEqual([landing, PDF]);
+  });
+
+  it("remembers a paper with no free copy, and asks no site about it again until its time", async () => {
+    const t = convexTest(schema);
+    const gone = { openalexId: "W10", doi: "10.1/gone", url: "https://example.org/gone.pdf", hasCopy: false };
+    const outside = () => fetchMock.mock.calls.filter(([input]) => !String(input instanceof Request ? input.url : input).startsWith("https://r2.test/")).length;
+
+    const first = await paperPdf(actionsOf(t), payer("j1"), gone, EXTRACTION);
+    const asked = outside();
+    const again = await paperPdf(actionsOf(t), payer("j2"), gone, EXTRACTION);
+
+    expect("error" in first && "error" in again).toBe(true);
+    expect(asked).toBeGreaterThan(0);
+    expect(outside()).toBe(asked);
+    // A paper whose link changed is searched afresh.
+    await paperPdf(actionsOf(t), payer("j3"), { ...gone, url: "https://example.org/moved.pdf" }, EXTRACTION);
+    expect(outside()).toBeGreaterThan(asked);
   });
 
   it("charges an extraction once for a stored copy, with the paper's own charge", async () => {
@@ -252,7 +291,7 @@ describe("reading a paper's PDF", () => {
       fetched.push(url);
       if (url === "https://example.org/moved.pdf") return new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data/" } });
       if (url === "https://example.org/chunked.pdf") {
-        const parts = ["%P", "DF-1.7\n", "1 0 obj"].map((part) => new TextEncoder().encode(part));
+        const parts = [PDF_BYTES.slice(0, 2), PDF_BYTES.slice(2, 9), PDF_BYTES.slice(9)].map((part) => new TextEncoder().encode(part));
         return new Response(new ReadableStream({ pull: (controller) => (parts.length ? controller.enqueue(parts.shift()!) : controller.close()) }), { status: 200, headers: { "content-type": "application/pdf" } });
       }
       return answer(input, init);

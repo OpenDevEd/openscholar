@@ -39,7 +39,7 @@ export interface SafeFetchPdfOptions {
   firstBytes?: number;
 }
 
-export interface SafeFetchPdfResult {
+interface SafeFetchPdfResult {
   response: Response;
   body: Blob;
   finalUrl: string;
