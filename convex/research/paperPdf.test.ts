@@ -167,6 +167,21 @@ describe("extraction's PDFs from the store", () => {
     expect(read).toMatchObject({ error: expect.stringMatching(/too large/) });
   });
 
+  it("keeps a copy found by DOI for a paper with no link, under the address the copy came from", async () => {
+    const t = convexTest(schema);
+    const answer = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.hostname !== "api.crossref.org") return answer(input, init);
+      return new Response(JSON.stringify({ message: { DOI: "10.1/nolink", link: [{ URL: PDF, "content-type": "application/pdf" }] } }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+
+    // As the assistant reads: it is sent the stored copy, so a copy that can't be kept is no use to it.
+    const found = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W12", doi: "10.1/nolink" }, { ...EXTRACTION, bytes: false });
+
+    expect(found).toMatchObject({ key: await byLink(PDF), from: "link", credits: 0 });
+  });
+
   it("remembers a paper with no free copy, and asks no site about it again until its time", async () => {
     const t = convexTest(schema);
     const gone = { openalexId: "W10", doi: "10.1/gone", url: "https://example.org/gone.pdf", hasCopy: false };
