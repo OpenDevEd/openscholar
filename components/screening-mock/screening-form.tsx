@@ -497,10 +497,16 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </div>
                   ) : null}
 
-                  <div data-adds className="space-y-3 pt-2">
-                    <div className="-mx-1 overflow-x-auto px-1 py-0.5">
-                      <Segmented label="Add papers from" value={kind} onChange={(next) => { setKind(next); setFind(""); setOfferPage(1); }} options={KINDS} />
-                    </div>
+                  <div data-adds className="@container space-y-3 pt-2">
+                    {/* Eight kinds share one row where the column holds them, and even rows of four or two where it doesn't: none is cut off or scrolled to. */}
+                    <Segmented
+                      label="Add papers from"
+                      fill="labels"
+                      className="@max-[44rem]:grid @max-[44rem]:grid-cols-4 @max-[28rem]:grid-cols-2 [&>button]:px-2.5 [&>button>span]:gap-1.5"
+                      value={kind}
+                      onChange={(next) => { setKind(next); setFind(""); setOfferPage(1); }}
+                      options={KINDS}
+                    />
                     {kind === "upload" ? (
                       <div
                         onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
