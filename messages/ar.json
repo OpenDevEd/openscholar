@@ -338,7 +338,6 @@
     "login": "تسجيل الدخول إلى Crossref",
     "loginHint": "لتسجيل دخول شخصي، استخدم البريد الإلكتروني والدور.",
     "password": "كلمة مرور Crossref",
-    "docidPassword": "كلمة مرور DOCiD",
     "prefix": "بادئة DOI",
     "registrant": "المسجِّل",
     "registrantHint": "Crossref fills this in from the prefix when you save.",
@@ -376,6 +375,8 @@
     "docidHint": "معرّف تحالف Africa PID Alliance، وهو Handle تحت 20.500.14351.",
     "enableDocid": "استخدام DOCiD",
     "docidPermanent": "لا توجد لدى DOCiD خدمة تجريبية. كل DOCiD هو Handle حقيقي لا يمكن حذفه، بل سحبه فقط.",
+    "docidEmail": "بريد الحساب",
+    "docidCredential": "كلمة المرور",
     "docidNoResourceTypes": "لا يسمح DOCiD لهذا الحساب بعد بتسجيل التقارير بنوع Manuscripts، لذا لا يمكنه إيداعها. اطلب من Africa PID Alliance السماح بـ Manuscripts، ثم تحقّق واحفظ مرة أخرى."
   },
   "auth": {

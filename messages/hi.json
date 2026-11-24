@@ -338,7 +338,6 @@
     "login": "Crossref लॉगिन",
     "loginHint": "व्यक्तिगत लॉगिन के लिए ईमेल/भूमिका इस्तेमाल करें।",
     "password": "Crossref पासवर्ड",
-    "docidPassword": "DOCiD पासवर्ड",
     "prefix": "DOI उपसर्ग",
     "registrant": "पंजीयक",
     "registrantHint": "Crossref fills this in from the prefix when you save.",
@@ -376,6 +375,8 @@
     "docidHint": "Africa PID Alliance का पहचानकर्ता, 20.500.14351 के अंतर्गत एक Handle।",
     "enableDocid": "DOCiD का उपयोग करें",
     "docidPermanent": "DOCiD की कोई परीक्षण सेवा नहीं है। हर DOCiD एक असली Handle है जिसे हटाया नहीं जा सकता, केवल वापस लिया जा सकता है।",
+    "docidEmail": "खाते का ईमेल",
+    "docidCredential": "पासवर्ड",
     "docidNoResourceTypes": "DOCiD ने अभी इस खाते को रिपोर्टें Manuscripts के रूप में दर्ज करने की अनुमति नहीं दी है, इसलिए यह उन्हें जमा नहीं कर सकता। Africa PID Alliance से Manuscripts की अनुमति देने को कहें, फिर दोबारा सत्यापित करें और सहेजें।"
   },
   "auth": {
