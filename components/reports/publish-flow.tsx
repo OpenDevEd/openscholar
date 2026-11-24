@@ -43,6 +43,8 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
+import { IntakeClosedPage, IntakeNotice, IntakeShut, useIntakeShut } from "@/components/reports/intake-notice";
+import { useIntakeState } from "@/lib/reports/intake";
 import { FieldMessage, StepNav, useStepForm } from "@/components/reports/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -453,6 +455,9 @@ export function PublishFlow() {
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
   // filters land where they belong at once (a new shell shows them in the card for a moment in Firefox).
+  // New reports closed for now (MOCK, lib/reports/intake.ts): read before the page can return early.
+  const intake = useIntakeState();
+  const intakeShut = useIntakeShut();
   if (!ready || !basics) {
     return (
       <LibraryPageShell icon={null} title="">
@@ -509,9 +514,12 @@ export function PublishFlow() {
     setFresh(null);
     go({ view: null, report: "new", correct: null, step: null });
   };
+  // New reports closed for now (MOCK, lib/reports/intake.ts): nothing new starts, and a draft waits for the next period.
+  // A report not yet live, and never live before: the drafts that wait.
+  const waits = !!report && report.mine && report.status !== "live" && report.activatedAt === undefined && !intake.open;
   const hasReports = (counts?.all ?? 0) > 0;
   // Publishing switched off stops new reports. One already started keeps its address, and the list stays.
-  const closed = !basics.open && !listing && !report && !missing;
+  const closed = (!basics.open || !intake.open) && !listing && !report && !missing;
 
   return (
     <LibraryPageShell
@@ -530,10 +538,21 @@ export function PublishFlow() {
       // Several reports can be under way at once: a new one starts here, and each counts against the day's limit.
       actions={
         listing && basics.open ? (
-          <Button size="sm" className={BAR_ACTION} onClick={another}>
+          intakeShut ? (
+            <TooltipHint label={intakeShut}>
+              <span tabIndex={0}>
+                <Button size="sm" className={BAR_ACTION} disabled>
+                  <Plus aria-hidden />
+                  <span className={BAR_LABEL}>{t("newReport")}</span>
+                </Button>
+              </span>
+            </TooltipHint>
+          ) : (
+            <Button size="sm" className={BAR_ACTION} onClick={another}>
             <Plus aria-hidden />
             <span className={BAR_LABEL}>{t("newReport")}</span>
           </Button>
+          )
         ) : undefined
       }
       intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} paying={!!terms?.paying && !chargeOver} onStep={toStep} /> : undefined}
@@ -541,6 +560,7 @@ export function PublishFlow() {
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
           <WaitingElsewhere waiting={waiting?.first ?? null} className="px-4 pt-4 sm:px-6" />
+          {basics.open ? <IntakeNotice className="mx-4 mt-4 sm:mx-6" /> : null}
           <Problem className="px-4 pt-4 sm:px-6">{trouble.problem}</Problem>
           <YourReports
             list={(list ?? lastList)!}
@@ -553,10 +573,13 @@ export function PublishFlow() {
             // Changes already waiting open where they stand; otherwise the details open to be corrected.
             onCorrect={(key) => go({ view: null, report: key, correct: (list ?? lastList)?.rows.find((row) => row.key === key)?.changes ? null : true })}
             onDiscard={(key) => (trouble.say(null), discard({ workspaceId: workspaceId!, key }).then(() => void toast.success(t("discarded")), trouble.failed(t("discardFailed"))))}
-            onNew={basics?.open ? another : undefined}
+            onNew={basics?.open && intake.open ? another : undefined}
           />
         </div>
       ) : closed ? (
+        basics.open ? (
+          <IntakeClosedPage hasReports={hasReports} onReports={() => go({ view: "reports", report: null, correct: null })} />
+        ) : (
         <ListEmpty
           icon={PublishIcon}
           description={t(hasReports ? "closedWithReports" : "closedNoReports")}
@@ -570,6 +593,7 @@ export function PublishFlow() {
         >
           {t("closedTitle")}
         </ListEmpty>
+        )
       ) : missing ? (
         <ListEmpty
           icon={FileText}
@@ -589,7 +613,7 @@ export function PublishFlow() {
                   <FileText /> {t("yourReports")}
                 </Button>
               ) : null}
-              {elsewhere || !basics.open ? null : (
+              {elsewhere || !basics.open || !intake.open ? null : (
                 <Button size="sm" onClick={another}>
                   <Plus /> {t("newReport")}
                 </Button>
@@ -609,8 +633,11 @@ export function PublishFlow() {
               {t("offNotice")}
             </p>
           ) : null}
+          {/* New reports closed (MOCK): a draft says why its Next and Activate wait, and when the next period starts. */}
+          {basics.open && waits ? <IntakeNotice className="col-span-full" /> : null}
           {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
+          <IntakeShut.Provider value={waits ? intakeShut : null}>
           <Screens
             preparing={preparing}
             onPrepared={() => go({ step: "agreement" })}
@@ -643,6 +670,7 @@ export function PublishFlow() {
             }}
             onCorrected={() => up("correct")}
           />
+          </IntakeShut.Provider>
           <ReportCover basics={basics} report={report} slot={setBeside} />
           {/* The report's bill stays under its cover from signing until it is live. */}
           {report && terms && beside ? <KeptBill report={report} terms={terms} humanReview={basics.humanReview} beside={beside} /> : null}
@@ -2039,7 +2067,9 @@ function Checks({ beside = null, rows, report, humanReview, terms, onActivate, o
   };
   const [cancelling, cancel] = useTransition();
   /** Why the report can't be paid for now, said on its button; null when it can. */
-  const shut = terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null;
+  // New reports closed (MOCK): Activate waits for the next period, and says so.
+  const intakeShut = useIntakeShut();
+  const shut = intakeShut ?? (terms?.paused ? t("activation.paused") : due > 0 && !terms?.sells ? t("activation.notForSale") : sum.bought > 0 && terms?.currency ? t("payment.currency", { currency: terms.currency }) : null);
   // A code typed and not applied is the code field's to say: Activate takes the person there (`useStepForm`).
   const codeField = useId();
   const { tried, go } = useStepForm();

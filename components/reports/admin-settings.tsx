@@ -19,6 +19,7 @@ import { StatusChip } from "@/components/evidence-libraries/configuration/status
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { IdentifierSettings } from "@/components/reports/identifier-settings";
+import { NewReportSettings } from "@/components/reports/new-report-settings";
 import { connectedOf } from "@/lib/reports/identifiers";
 import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
@@ -163,6 +164,8 @@ function SettingsView({ settings, autumn }: { settings: Settings; /** Autumn's d
           </li>
         </ul>
       </Zone>
+
+      <NewReportSettings />
 
       <PriceSettings prices={settings.prices} autumn={autumn} />
 
