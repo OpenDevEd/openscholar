@@ -376,7 +376,7 @@
     "enableDocid": "Sebenzisa i-DOCiD",
     "docidPermanent": "I-DOCiD ayinayo insizakalo yokuhlola. I-DOCiD ngayinye iyi-Handle yangempela engeke isuswe, ihoxiswe kuphela.",
     "docidEmail": "I-imeyili ye-akhawunti",
-    "docidPassword": "Iphasiwedi",
+    "docidCredential": "Iphasiwedi",
     "docidNoResourceTypes": "I-DOCiD ayikayivumeli le akhawunti ukufaka imibiko njenge-Manuscripts, ngakho ayikwazi ukuyifaka. Cela i-Africa PID Alliance ivumele i-Manuscripts, bese uqinisekisa futhi ulondoloza futhi."
   },
   "auth": {

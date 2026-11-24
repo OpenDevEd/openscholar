@@ -376,7 +376,7 @@
     "enableDocid": "DOCiD का उपयोग करें",
     "docidPermanent": "DOCiD की कोई परीक्षण सेवा नहीं है। हर DOCiD एक असली Handle है जिसे हटाया नहीं जा सकता, केवल वापस लिया जा सकता है।",
     "docidEmail": "खाते का ईमेल",
-    "docidPassword": "पासवर्ड",
+    "docidCredential": "पासवर्ड",
     "docidNoResourceTypes": "DOCiD ने अभी इस खाते को रिपोर्टें Manuscripts के रूप में दर्ज करने की अनुमति नहीं दी है, इसलिए यह उन्हें जमा नहीं कर सकता। Africa PID Alliance से Manuscripts की अनुमति देने को कहें, फिर दोबारा सत्यापित करें और सहेजें।"
   },
   "auth": {

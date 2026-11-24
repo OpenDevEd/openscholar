@@ -376,7 +376,7 @@
     "enableDocid": "DOCiD verwenden",
     "docidPermanent": "DOCiD hat keinen Testdienst. Jede DOCiD ist ein echter Handle, der nicht gelöscht, nur stillgelegt werden kann.",
     "docidEmail": "E-Mail des Kontos",
-    "docidPassword": "Passwort",
+    "docidCredential": "Passwort",
     "docidNoResourceTypes": "DOCiD erlaubt diesem Konto noch nicht, Berichte als Manuscripts abzulegen, deshalb kann es sie nicht hinterlegen. Bitten Sie die Africa PID Alliance, Manuscripts freizugeben, und prüfen und speichern Sie dann erneut."
   },
   "auth": {
