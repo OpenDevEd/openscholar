@@ -94,10 +94,21 @@ export const fromLocalInput = (value: string, timeZone: string) => {
 /** Where "in total" counts from: the opening date, or when new reports were switched on. */
 const windowStart = (intake: Intake) => (intake.mode === "dates" && intake.opensAt !== null ? intake.opensAt : (intake.openedAt ?? 0));
 
-/** Whether an activation made at `at` counts in a limit's period at `now`: a rolling period leaves out its first instant, which is exactly 24 hours, 7 days or 30 days ago. */
-function counts(limit: Limit, intake: Intake, at: number, now: number) {
-  if (limit.period === "window") return at >= windowStart(intake);
-  return limit.reset === "rolling" ? at > now - ROLLING[limit.period] : at >= calendarStart(limit.period, now, intake.timezone);
+/**
+ * Whether an activation counts in a limit's period at `now`, worked out once for the period: a rolling period leaves
+ * out its first instant, which is exactly 24 hours, 7 days or 30 days ago.
+ */
+function countsFrom(limit: Limit, intake: Intake, now: number): (at: number) => boolean {
+  if (limit.period === "window") {
+    const start = windowStart(intake);
+    return (at) => at >= start;
+  }
+  if (limit.reset === "rolling") {
+    const after = now - ROLLING[limit.period];
+    return (at) => at > after;
+  }
+  const start = calendarStart(limit.period, now, intake.timezone);
+  return (at) => at >= start;
 }
 
 /**
@@ -106,7 +117,7 @@ function counts(limit: Limit, intake: Intake, at: number, now: number) {
  * rolling one has a place again once that one leaves it.
  */
 export function limitAt(limit: Limit, intake: Intake, nth: number | null, now: number) {
-  const full = nth !== null && counts(limit, intake, nth, now);
+  const full = nth !== null && countsFrom(limit, intake, now)(nth);
   const startsAgain = limit.period === "window" ? null : limit.reset === "calendar" ? calendarStart(limit.period, now, intake.timezone, 1) : full ? nth! + ROLLING[limit.period] : null;
   return { full, startsAgain };
 }
@@ -138,8 +149,9 @@ export const nthsOf = (limits: Limit[], latest: number[]) => Object.fromEntries(
 
 /** How many activations a limit has counted in the period `now` is in, from the latest activations, newest first. */
 export function usedAt(limit: Limit, intake: Intake, latest: number[], now: number) {
+  const counts = countsFrom(limit, intake, now);
   let used = 0;
-  while (used < latest.length && counts(limit, intake, latest[used], now)) used++;
+  while (used < latest.length && counts(latest[used])) used++;
   return used;
 }
 
