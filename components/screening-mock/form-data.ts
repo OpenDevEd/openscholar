@@ -10,8 +10,9 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evi
     { name: "structured pedagogy AND early grade reading", detail: "Searched yesterday", total: 318, filters: ["2010 to 2026", "Articles", "Open access"], questions: ["Does the study report reading outcomes?", "Was the programme delivered by government teachers?"] },
     { name: "teaching at the right level", detail: "Searched 3 days ago", total: 96, filters: ["2015 to 2026"] },
     { name: "school feeding AND learning outcomes", detail: "Searched 16 Nov", total: 207, filters: ["Articles and reviews", "English"] },
-    { name: "tablet OR software AND literacy AND primary school", detail: "Searched 16 Nov", total: 75, questions: ["Is the intervention delivered with digital technology?"] },
-    { name: "EdTech numeracy sub-Saharan Africa", detail: "Searched 9 Nov", total: 38 },
+    // This search and the next are EdTech's: their totals are what they hold now, after this morning's check found more.
+    { name: "tablet OR software AND literacy AND primary school", detail: "Searched 16 Nov", total: 81, questions: ["Is the intervention delivered with digital technology?"] },
+    { name: "EdTech numeracy sub-Saharan Africa", detail: "Searched 9 Nov", total: 41 },
     { name: "mother tongue instruction AND reading fluency", detail: "Searched 9 Nov", total: 164 },
     { name: "teacher coaching AND classroom practice", detail: "Searched 2 Nov", total: 251, filters: ["2018 to 2026", "Open access"] },
     { name: "cash transfer AND girls AND secondary school", detail: "Searched 20 Oct", total: 240 },

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Trash2 } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -39,23 +39,25 @@ const SORTS = [
   { value: "name", label: "Name" },
 ] as const;
 type Sort = (typeof SORTS)[number]["value"];
+/** The groups the rows fall in, and past All a tab for each, under the same name: the tabs' counts add up to All's. */
+const GROUPS = ["Needs you", "In progress", "Finished"] as const;
+const SHOWS = ["you", "open", "finished"] as const;
 /** Which screenings the list shows, kept in the address: Back from a screening returns to the list as it was left. */
 const PLACE = {
-  show: parseAsStringLiteral(["all", "you", "open", "finished"] as const).withDefault("all"),
+  show: parseAsStringLiteral(["all", ...SHOWS] as const).withDefault("all"),
   sort: parseAsStringLiteral(SORTS.map((one) => one.value)).withDefault("you"),
   by: parseAsString.withDefault("anyone"),
   q: parseAsString.withDefault(""),
   page: parseAsInteger.withDefault(1),
 };
-const GROUPS = ["Needs you", "In progress", "Finished"] as const;
 
 /**
  * The table's columns, from a laptop's width up: Screening, Reviewers, Papers, Status, Last activity
  * and the menu. Narrower, each row is a card: the title and its menu, the facts under it, the faces
- * and when it last moved, the bar, then the status.
+ * and when it last moved on one line, the bar, then the status.
  */
-const COLUMNS = "@5xl:grid-cols-[minmax(14rem,1.8fr)_9rem_minmax(10rem,1.2fr)_minmax(16rem,1.4fr)_6rem_2rem]";
-const CARD = "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'title_menu'_'meta_meta'_'faces_when'_'papers_papers'_'status_status'] @5xl:[grid-template-areas:'title_faces_papers_status_when_menu'_'meta_faces_papers_status_when_menu']";
+const COLUMNS = "@5xl:grid-cols-[minmax(14rem,1.75fr)_9rem_minmax(8rem,1fr)_minmax(15rem,2fr)_6rem_2rem]";
+const CARD = "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'title_menu'_'meta_meta'_'faces_faces'_'papers_papers'_'status_status'] @5xl:[grid-template-areas:'title_faces_papers_status_when_menu'_'meta_faces_papers_status_when_menu']";
 /** A link inside a row sits above the link the whole row is, and shows that it is one. */
 const ABOVE = "relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
@@ -105,9 +107,13 @@ export function ScreeningsIndex() {
   );
   type Row = (typeof all)[number];
   const starters = [...new Set(all.map((row) => row.screening.createdBy))];
-  const rows = useMemo(() => {
+  // What the search and the starter leave: the tabs count these, and show one group of them.
+  const narrowed = useMemo(() => {
     const words = search.trim().toLowerCase();
-    const found = all.filter((row) => (!words || row.screening.name.toLowerCase().includes(words)) && (by === "anyone" || row.screening.createdBy === by) && (show === "all" || (show === "finished" ? Boolean(row.screening.finishedAt) : show === "you" ? row.group === 0 : !row.screening.finishedAt)));
+    return all.filter((row) => (!words || row.screening.name.toLowerCase().includes(words)) && (by === "anyone" || row.screening.createdBy === by));
+  }, [all, search, by]);
+  const rows = useMemo(() => {
+    const found = show === "all" ? narrowed : narrowed.filter((row) => row.group === SHOWS.indexOf(show));
     const order: Record<Sort, (a: Row, b: Row) => number> = {
       // What waits on you first, then what is running, then what is finished, newest first within each.
       you: (a, b) => a.group - b.group || b.screening.createdAt - a.screening.createdAt,
@@ -117,9 +123,10 @@ export function ScreeningsIndex() {
       name: (a, b) => a.screening.name.localeCompare(b.screening.name),
     };
     return [...found].sort(order[sort]);
-  }, [all, search, show, sort, by]);
+  }, [narrowed, show, sort]);
   const pager = pagerOf(rows.length, PAGE, page, (next) => void setPlace({ page: next }));
-  const tally = { all: all.length, you: all.filter((row) => row.group === 0).length, open: all.filter((row) => !row.screening.finishedAt).length, finished: all.filter((row) => row.screening.finishedAt).length };
+  const inGroup = (show: (typeof SHOWS)[number]) => narrowed.filter((row) => row.group === SHOWS.indexOf(show)).length;
+  const tally = { all: narrowed.length, you: inGroup("you"), open: inGroup("open"), finished: inGroup("finished") };
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((row) => row.group)).size > 1;
@@ -221,9 +228,13 @@ export function ScreeningsIndex() {
                             <span className="whitespace-nowrap">started it {ago(screening.createdAt)}</span>
                             {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
                             {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living</Chip> : null}
-                            {!access.reviewer && !access.member ? <Chip icon={Eye} className="h-5 px-1.5">View only</Chip> : null}
+                            {!access.reviewer ? <Chip icon={Eye} className="h-5 px-1.5">Viewer</Chip> : null}
                           </span>
-                          <Faces id={id} reviewers={reviewers} me={me} />
+                          {/* On a card the faces and when it last moved share a line under the title; in the table each has its column. */}
+                          <span className="flex min-w-0 items-center justify-between gap-3 [grid-area:faces] @5xl:contents">
+                            <Faces id={id} reviewers={reviewers} me={me} />
+                            <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @5xl:row-span-2 @5xl:[grid-area:when]"><span className="@5xl:hidden">Last activity </span>{ago(active)}</span>
+                          </span>
                           <span className="min-w-0 space-y-1.5 [grid-area:papers]">
                             <Bar id={id} counts={state.counts} />
                             <NextLink href={screening.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>
@@ -250,9 +261,8 @@ export function ScreeningsIndex() {
                               : screening.living ? <LinkChip href={settingsHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">Up to date, next check {day(screening.living.next)}</LinkChip>
                               : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">Every paper is settled</LinkChip>}
                           </span>
-                          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground [grid-area:when] max-@5xl:justify-self-end @5xl:row-span-2"><span className="@5xl:hidden">Last activity </span>{ago(active)}</span>
                           <span className="flex justify-end [grid-area:menu] @5xl:row-span-2">
-                            <RowMenu screening={screening} member={access.member} onOpen={(what) => setOver({ id, what })} />
+                            <RowMenu screening={screening} onOpen={(what) => setOver({ id, what })} />
                           </span>
                         </li>
                       </Group>
@@ -344,11 +354,8 @@ function Bar({ id, counts }: { id: string; counts: Record<Result, number> }) {
   );
 }
 
-/** The row's menu: what the open screening's menu offers, in the same order. Someone from outside can start their own from it, and export it. */
-function RowMenu({ screening, member, onOpen }: { screening: Screening; member: boolean; onOpen: (what: What) => void }) {
-  const store = useMock();
-  const id = screening.id;
-  const item = "whitespace-nowrap";
+/** The row's menu: what the open screening's menu offers, under the same names and in the same order, after Settings, Export and Share. */
+function RowMenu({ screening, onOpen }: { screening: Screening; onOpen: (what: What) => void }) {
   return (
     <DropdownMenu>
       <TooltipHint label="More">
@@ -356,37 +363,51 @@ function RowMenu({ screening, member, onOpen }: { screening: Screening; member: 
           <Button variant="ghost" size="icon" className="relative size-8 text-muted-foreground" aria-label={`More for ${screening.name}`}><MoreHorizontal /></Button>
         </DropdownMenuTrigger>
       </TooltipHint>
-      {!member ? (
-        <DropdownMenuContent align="end" className="w-auto min-w-56">
-          <DropdownMenuItem className={item} onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
-          <DropdownMenuItem className={item} asChild><NextLink href={newHref(id)}><Copy />Start your own with these settings</NextLink></DropdownMenuItem>
-        </DropdownMenuContent>
-      ) : (
-        <DropdownMenuContent align="end" className="w-auto min-w-56">
-          <DropdownMenuItem className={item} asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem>
-          <DropdownMenuItem className={item} onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
-          <DropdownMenuItem className={item} onSelect={() => onOpen("share")}><Share2 />Share</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {modelsOf(screening).length && !screening.finishedAt ? (
-            screening.paused ? (
-              <DropdownMenuItem className={item} onSelect={() => store.update(id, (s) => ({ ...s, paused: false }), { what: "Let the models read on" })}><Play />Let the models read on</DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem className={item} onSelect={() => store.update(id, (s) => ({ ...s, paused: true }), { what: "Paused the models" })}><CirclePause />Pause the models</DropdownMenuItem>
-            )
-          ) : null}
-          {growing(screening).length ? <DropdownMenuItem className={item} disabled={Boolean(screening.checking)} onSelect={() => store.update(id, (s) => (s.checking ? s : { ...s, checking: { done: 0, of: growing(s).length, by: store.viewer } }))}><RefreshCw />Check for new papers now</DropdownMenuItem> : null}
-          <DropdownMenuItem className={item} asChild><NextLink href={newHref(id)}><Copy />Run again with these settings</NextLink></DropdownMenuItem>
-          <DropdownMenuItem className={item} onSelect={() => onOpen("move")}><Move />Move to another workspace</DropdownMenuItem>
-          {screening.finishedAt ? (
-            <DropdownMenuItem className={item} onSelect={() => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem className={item} onSelect={() => onOpen("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className={item} variant="destructive" onSelect={() => onOpen("delete")}><Trash2 />Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      )}
+      <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
+        <RowMenuItems id={screening.id} onOpen={onOpen} />
+      </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** The menu's items, worked out from the screening as the person sees it once the menu opens. */
+function RowMenuItems({ id, onOpen }: { id: string; onOpen: (what: What) => void }) {
+  const open = useOpenScreening(id);
+  if (!open) return null;
+  const { screening } = open;
+  // Someone it is shared with from outside can start their own from it, and change nothing.
+  const member = open.canChange;
+  return (
+    <>
+      <DropdownMenuItem asChild><NextLink href={settingsHref(id)}><Settings2 />Settings</NextLink></DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => onOpen("export")}><Download />Export</DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => onOpen("share")}><Share2 />Share</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      {member ? (
+        screening.finishedAt ? (
+          <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" })}><RotateCcw />Reopen</DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onSelect={() => onOpen("finish")}><CircleCheck />Mark as finished</DropdownMenuItem>
+        )
+      ) : null}
+      {member && modelsOf(screening).length && !screening.finishedAt ? (
+        screening.paused ? (
+          <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, paused: false }), { what: "Resumed the models" })}><Play />Resume models</DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, paused: true }), { what: "Paused the models" })}><CirclePause />Pause models</DropdownMenuItem>
+        )
+      ) : null}
+      {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
+      <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />New screening with these settings</NextLink></DropdownMenuItem>
+      {member ? <DropdownMenuItem onSelect={() => onOpen("move")}><Move />Move to another workspace</DropdownMenuItem> : null}
+      {member && !open.isReviewer && !screening.finishedAt ? <DropdownMenuItem onSelect={open.join}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
+      {member ? (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => onOpen("delete")}><Trash2 />Delete</DropdownMenuItem>
+        </>
+      ) : null}
+    </>
   );
 }
 

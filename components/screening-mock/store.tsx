@@ -26,6 +26,8 @@ type State = {
 
 type Store = State & {
   me: Person;
+  /** What was done in the mock before a reload has been read back. Until then a page shows the mock as it starts: anything it holds on to (a queue, as it was when opened) waits for this. */
+  ready: boolean;
   update: (id: string, change: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) => void;
   add: (screening: Screening) => void;
   remove: (id: string) => void;
@@ -170,8 +172,8 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
     [],
   );
   const store = useMemo<Store>(
-    () => ({ ...state, screenings, me: PEOPLE.find((person) => person.id === state.viewer) ?? PEOPLE[0]!, ...actions }),
-    [state, screenings, actions],
+    () => ({ ...state, screenings, me: PEOPLE.find((person) => person.id === state.viewer) ?? PEOPLE[0]!, ready: restored, ...actions }),
+    [state, screenings, actions, restored],
   );
 
   return <Context value={store}>{children}</Context>;

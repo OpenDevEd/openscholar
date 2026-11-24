@@ -4,13 +4,13 @@
 // it costs, one line each with an icon for its kind, then which results move, as counts that open
 // the papers behind them.
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import NextLink from "next/link";
 import { ArrowRight, ChevronDown, Coins, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "@/components/screening/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, standing, type Move, type Screening } from "./data";
+import { EVERY_LABEL, NOW, RESULT_LABEL, activeReviewers, day, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, standing, type Criterion, type Move, type Screening } from "./data";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { papersHref } from "./links";
 import { ResultChip } from "./parts";
@@ -29,12 +29,57 @@ const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coin
 const n = (count: number, one: string, many: string) => `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
 const names = (list: string[]) => (list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`);
 
+/** A criterion in quotes, in its own words as the list shows them, cut at a word near 60 letters where it runs longer. */
+export const criterionName = (criterion: Pick<Criterion, "text">) => {
+  const text = criterion.text.trim();
+  return `“${text.length > 60 ? `${text.slice(0, 60).replace(/\s+\S*$/, "")}…` : text}”`;
+};
+
+/** The settings' own collection on a running screening is kind "new" with no `collection`; a second one started from the settings carries this mark until it is saved. */
+export const ANOTHER_COLLECTION = "another";
+
 /** Where a screening's included papers are saved, by name, or null where they stay in it. */
 export function collectionName(screening: Screening) {
   const to = screening.destination;
   if (to.kind === "none") return null;
-  if (to.kind === "new") return to.name || `Included in ${screening.name}`;
+  if (to.kind === "new") return to.name || `Included in ${screening.name}${to.collection === ANOTHER_COLLECTION ? `, from ${day(NOW)}` : ""}`;
   return [...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? null;
+}
+
+/** A part of a page a link landed on: a tint that fades into its own surface over a second. Nothing under reduced motion. */
+export function landOn(target: HTMLElement | null) {
+  if (!target?.matches("section") || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colour = `color-mix(in oklab, ${getComputedStyle(document.documentElement).getPropertyValue("--primary")} 10%, transparent)`;
+  // One keyframe: it fades to the section's own colours.
+  target.animate([{ backgroundColor: colour, boxShadow: `0 0 0 0.75rem ${colour}`, borderRadius: "0.75rem" }], { duration: 1200, delay: 300, easing: "ease-out", fill: "backwards" });
+}
+
+/**
+ * A link to a part of the same page. It scrolls there and writes the part into the address in place,
+ * so it adds no step to the history: Back still goes to the page before. `find` is what to bring
+ * into view instead of the part itself, such as the control inside it to put the cursor on, which
+ * goes to the middle of the window (`block`).
+ */
+export function JumpLink({ to, find, block = "start", onClick, ...link }: Omit<ComponentProps<"a">, "href"> & { to: string; find?: () => HTMLElement | null; block?: ScrollLogicalPosition }) {
+  return (
+    <a
+      {...link}
+      href={`#${to}`}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const part = document.getElementById(to);
+        const target = find?.() ?? part;
+        if (!target) return;
+        event.preventDefault();
+        target.scrollIntoView({ block, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+        if (target !== part) target.focus({ preventScroll: true });
+        // The browser's history is the outside system: the address names the part, and the entry stays the one the page has.
+        window.history.replaceState(window.history.state, "", `#${to}`);
+        landOn(part);
+      }}
+    />
+  );
 }
 
 /**
@@ -77,11 +122,21 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
     if (isIds.has(reviewer.id)) continue;
     lines.push({ text: `${reviewer.name}'s votes stay on record and stop counting`, kind: "leave", section: "reviewers" });
     if (reviewer.kind !== "person") continue;
-    // The papers dealt to them that they hadn't got to, and who has them now.
-    const left = was.papers.filter((paper) => was.votes[paper.id]?.some((one) => one.reviewer.id === reviewer.id && !one.vote));
-    if (!left.length) continue;
-    const taking = [...new Set(left.flatMap((paper) => (now.votes[paper.id] ?? []).filter((one) => one.reviewer.kind === "person" && !was.votes[paper.id]?.some((had) => had.reviewer.id === one.reviewer.id)).map((one) => one.reviewer.name)))];
-    lines.push({ text: taking.length ? `${n(left.length, "paper", "papers")} ${reviewer.name} had not voted on ${left.length === 1 ? "goes" : "go"} to ${names(taking)}` : `${n(left.length, "paper", "papers")} ${reviewer.name} had not voted on ${left.length === 1 ? "is" : "are"} settled on the other votes`, section: "reviewers" });
+    // Every paper dealt to them, and who is dealt it now in their place. Whoever takes one starts without a vote on it, whether or not they had voted.
+    const theirs = was.papers.flatMap((paper) => {
+      const had = was.votes[paper.id] ?? [];
+      const own = had.find((one) => one.reviewer.id === reviewer.id);
+      return own ? [{ voted: Boolean(own.vote), to: (now.votes[paper.id] ?? []).filter((one) => one.reviewer.kind === "person" && !had.some((old) => old.reviewer.id === one.reviewer.id)).map((one) => one.reviewer.name) }] : [];
+    });
+    const going = theirs.filter((one) => one.to.length);
+    const first = reviewer.name.split(" ")[0];
+    if (going.length) {
+      const [unvoted, voted] = [going.filter((one) => !one.voted).length, going.filter((one) => one.voted).length];
+      const parts = [unvoted ? `${unvoted.toLocaleString("en-GB")} ${reviewer.name} had not voted on` : null, voted ? `${voted.toLocaleString("en-GB")} whose vote from ${first} stops counting` : null].filter(Boolean);
+      lines.push({ text: `${n(going.length, "paper goes", "papers go")} to ${names([...new Set(going.flatMap((one) => one.to))])}: ${parts.join(", and ")}`, kind: "join", section: "reviewers" });
+    }
+    const kept = theirs.filter((one) => !one.to.length && !one.voted).length;
+    if (kept) lines.push({ text: `${n(kept, "paper", "papers")} ${reviewer.name} had not voted on ${kept === 1 ? "is" : "are"} settled on the other votes`, section: "reviewers" });
   }
 
   if (before.rule.resolver !== after.rule.resolver && after.rule.settle !== "one") {
@@ -107,9 +162,9 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
   }
   for (const criterion of before.criteria) {
     const now = after.criteria.find((one) => one.key === criterion.key);
-    if (!now) lines.push({ text: `Answers to “${criterion.short}” stop counting`, kind: "leave", section: "criteria" });
-    else if (now.must !== criterion.must) lines.push({ text: now.must ? `“${now.short}” becomes must-have: a no on it excludes a paper` : `“${now.short}” becomes nice to have and stops excluding papers`, section: "criteria" });
-    else if (now.text !== criterion.text) lines.push({ text: `The models answer the reworded “${now.short}” on papers they read from now on`, section: "criteria" });
+    if (!now) lines.push({ text: `Answers to ${criterionName(criterion)} stop counting`, kind: "leave", section: "criteria" });
+    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: a no on it excludes a paper` : `${criterionName(now)} becomes nice to have and stops excluding papers`, section: "criteria" });
+    else if (now.text !== criterion.text) lines.push({ text: `The models answer the reworded ${criterionName(now)} on papers they read from now on`, section: "criteria" });
   }
   if (scoringChanged(before, after)) lines.push({ text: "Included papers' points and stars are worked out again", section: "criteria" });
 
@@ -126,7 +181,10 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
   if (effect.removed) lines.push({ text: `${n(effect.removed, "paper leaves", "papers leave")}, with ${effect.removed === 1 ? "its" : "their"} votes kept on record`, kind: "leave", section: "papers" });
 
   const [from, to] = [collectionName(before), collectionName(after)];
-  if (from !== to) {
+  // The screening's own collection given a new name keeps its papers: only a different collection is added to.
+  const renamed = before.destination.kind === "new" && after.destination.kind === "new" && !after.destination.collection;
+  if (from !== to && renamed) lines.push({ text: `Its collection is renamed “${to}”, with the papers in it`, section: "goes-to" });
+  else if (from !== to) {
     const included = was.counts.include;
     lines.push({ text: !to ? `Included papers stop being saved to a collection${from && included ? `. The ${n(included, "one", "ones")} in ${from} stay there` : ""}` : `The ${n(included, "paper", "papers")} included so far ${included === 1 ? "is" : "are"} added to ${to}${from ? `. They stay in ${from}` : ""}`, section: "goes-to" });
   }
@@ -154,10 +212,10 @@ const PAPERS_PAGE = 8;
 
 /**
  * The lines of a change's effect, each on its own row, then each move of results with the papers it
- * covers. With `screening`, each paper opens on the Papers page. With `toSection`, a line opens the
- * part of the settings it is about.
+ * covers. With `screening`, each paper opens on the Papers page. With `jump`, on the settings, a
+ * line goes to the part of them it is about.
  */
-export function EffectList({ lines, moves = [], none = "No paper's result changes", screening, toSection }: { lines: Array<string | EffectLine>; moves?: Move[]; none?: string; screening?: string; toSection?: (section: EffectSection) => string }) {
+export function EffectList({ lines, moves = [], none = "No paper's result changes", screening, jump = false }: { lines: Array<string | EffectLine>; moves?: Move[]; none?: string; screening?: string; jump?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const items = (lines.length ? lines : moves.length ? [] : [none]).map((line) => (typeof line === "string" ? { text: line } : line));
@@ -176,8 +234,8 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
             );
             return (
               <li key={line.text}>
-                {line.section && toSection ? (
-                  <a href={toSection(line.section)} className="-mx-1.5 flex items-start gap-2 rounded-md px-1.5 py-0.5 text-sm outline-none transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring/50">{body}</a>
+                {line.section && jump ? (
+                  <JumpLink to={line.section} className="-mx-1.5 flex items-start gap-2 rounded-md px-1.5 py-0.5 text-sm outline-none transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring/50">{body}</JumpLink>
                 ) : (
                   <span className="flex items-start gap-2 text-sm">{body}</span>
                 )}

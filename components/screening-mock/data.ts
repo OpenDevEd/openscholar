@@ -602,7 +602,7 @@ const OTHER: Record<Answer, Answer[]> = { yes: ["unclear", "no"], no: ["unclear"
 /** How often a reviewer misreads a paper: people rarely, each model at its own rate. */
 const noiseOf = (reviewer: Reviewer) => (reviewer.kind === "person" ? 0.03 + (hash(reviewer.id) % 3) / 100 : 0.05 + (hash(reviewer.id) % 9) / 100);
 
-function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], since: number): Vote {
+function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], since: number, until: number): Vote {
   // A person voted on the criteria there were: one added later is the models' to answer, and their vote stands.
   const criteria = reviewer.kind === "person" ? every.filter((criterion) => criterion.addedAt <= since) : every;
   const answers = Object.fromEntries(criteria.map((criterion) => [criterion.key, truthOf(paper, criterion)]));
@@ -617,8 +617,9 @@ function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], since:
       if (byYear(paper, criterion) === undefined && (roll % 1000) / 1000 < rate) answers[criterion.key] = OTHER[answers[criterion.key]!][(roll >> 10) % 2]!;
     }
   }
-  // Cast some time in the four days before the mock opens, never after.
-  return { ...decide(answers, criteria), answers, at: NOW - (45 + (hash(`${paper.id}${reviewer.id}`) % 5600)) * 60_000 };
+  // Cast some time between the screening's start and its end (now, while it runs), never after: a finished screening's last vote is not from this morning.
+  const span = Math.max(until - since - 45 * 60_000, 60_000);
+  return { ...decide(answers, criteria), answers, at: since + Math.floor(((hash(`${paper.id}${reviewer.id}`) % 5600) / 5600) * span) };
 }
 
 export const activeReviewers = (screening: Screening) => screening.reviewers.filter((reviewer) => !reviewer.left);
@@ -635,9 +636,9 @@ const hasVoted = (screening: Screening, paper: Paper, index: number, person: Rev
  * evenly. Someone added after the start takes a share of the papers nobody has got to yet, and never
  * a paper someone has already voted on.
  */
-export function dealtTo(screening: Screening, paper: Paper, index: number): Reviewer[] {
-  // Someone invited by email is dealt papers once they have joined.
-  const people = peopleOf(screening).filter((person) => !person.email);
+export const dealtTo = (screening: Screening, paper: Paper, index: number) => deal(screening, paper, index, peopleOf(screening).filter((person) => !person.email));
+/** The deal among `people`. Someone invited by email is dealt papers once they have joined, so they are never among them. */
+function deal(screening: Screening, paper: Paper, index: number, people: Reviewer[]): Reviewer[] {
   if (screening.rule.each === "all") return people;
   const founders = people.filter((person) => person.addedAt <= screening.createdAt);
   const base = founders.length ? founders : people;
@@ -659,7 +660,9 @@ export function voteOf(screening: Screening, paper: Paper, index: number, review
   const cast = screening.cast[paper.id]?.[reviewer.id];
   if (cast !== undefined) return cast ?? undefined;
   if (reviewer.email || index >= (screening.reached[reviewer.id] ?? 0)) return undefined;
-  return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt);
+  // Once someone has left, their papers go to the others. Those come without a vote: a made-up vote stands only on a paper its person was dealt before anyone left.
+  if (reviewer.kind === "person" && screening.reviewers.some((one) => one.left && one.kind === "person") && !deal(screening, paper, index, screening.reviewers.filter((one) => one.kind === "person" && !one.email)).some((one) => one.id === reviewer.id)) return undefined;
+  return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt, screening.finishedAt ?? NOW);
 }
 
 /**
@@ -834,7 +837,7 @@ export function startingScreenings(): Screening[] {
     { at: NOW - 6 * DAY, by: "amina", what: "Started the screening", effect: "132 papers from 4 sources, 3 people and 2 models" },
     { at: NOW - 4 * DAY, by: "jonas", what: "Changed “Is the intervention delivered with digital technology?” from must-have to nice to have", effect: "3 excluded papers became included" },
     { at: NOW - 2 * DAY, by: "amina", what: "Added Gemma 3 4B as a reviewer", effect: "It reads all 132 papers" },
-    { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
+    { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9, 7 of them new", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
   ];
   // Half of the splits found so far were settled before the mock opens.
   const state = standing(edtech);
@@ -911,7 +914,7 @@ export function checked(screening: Screening, at: number, by: string): Screening
     // A look by hand leaves the schedule where it was.
     living: screening.living && by === SCHEDULE ? { ...screening.living, next: at + PERIOD[screening.living.every] } : screening.living,
     finishedAt: added ? undefined : screening.finishedAt,
-    changes: [...screening.changes, { at, by, what: found ? `${by === SCHEDULE ? `${EVERY_LABEL[screening.living?.every ?? "week"].replace("Every", "The")}'s check` : "Looked for new papers and"} found ${found}` : by === SCHEDULE ? "The scheduled check found nothing new" : "Looked for new papers and found none", effect: found ? `${found - added ? `${found - added} ${found - added === 1 ? "was" : "were"} in it already. ` : ""}${added} joined the queue, and the reviewers they were dealt to were told by email` : undefined }],
+    changes: [...screening.changes, { at, by, what: found ? `${by === SCHEDULE ? `${EVERY_LABEL[screening.living?.every ?? "week"].replace("Every", "The")}'s check` : "Checked for new papers and"} found ${found}${added !== found ? `, ${added} of them new` : ""}` : by === SCHEDULE ? "The scheduled check found nothing new" : "Checked for new papers and found none", effect: found ? `${found - added ? `${found - added} ${found - added === 1 ? "was" : "were"} in it already. ` : ""}${added} joined the queue, and the reviewers they were dealt to were told by email` : undefined }],
   };
 }
 
@@ -926,8 +929,12 @@ export const withUpdates = (draft: Screening, live: Screening): Screening => ({
 });
 
 /** A day as the mock writes it: 23 Nov. */
-/** A date as "17 Nov", with its year only when that isn't this year. */
-export const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC", ...(new Date(at).getUTCFullYear() === new Date(NOW).getUTCFullYear() ? {} : { year: "numeric" }) });
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** A date as "17 Nov", every month in three letters, with its year only when that isn't this year. */
+export const day = (at: number) => {
+  const date = new Date(at);
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}${date.getUTCFullYear() === new Date(NOW).getUTCFullYear() ? "" : ` ${date.getUTCFullYear()}`}`;
+};
 
 /** A date as the mock shows it: how long ago for the last week, the day before that. */
 export function ago(at: number) {
@@ -939,5 +946,5 @@ export function ago(at: number) {
   if (days <= 0) return `${Math.round(minutes / 60)} h ago`;
   if (days === 1) return "yesterday";
   if (days < 7) return `${days} days ago`;
-  return new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  return day(at);
 }

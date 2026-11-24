@@ -113,12 +113,14 @@ export function Section({ id, title, help, aside, className, children }: { id?: 
 
 /**
  * A column beside the page's main content that stays in view without a height or a scrollbar of its
- * own. It sticks under the header while it fits in the window. Where it is taller, it scrolls with the
- * page until its foot is in view and sticks there, so all of it can be reached. `clear` is the room
- * kept under it, for a page with an ActionBar at the window's foot. Its own height is the outside
+ * own. It sticks under the header while it fits in the window. Where it is taller than the window,
+ * `tall` says what it does: "foot" (the default) scrolls it with the page until its foot is in view and
+ * sticks there, for a column read from top to bottom such as an open paper; "flow" leaves it in the
+ * page's flow, for a column whose first lines matter most, such as a form's summary. `clear` is the
+ * room kept under it, for a page with an ActionBar at the window's foot. Its own height is the outside
  * system it measures: a ResizeObserver writes it to a CSS variable, and the rest is CSS.
  */
-export function StickyColumn({ clear = "1rem", className, children }: { clear?: string; className?: string; children: ReactNode }) {
+export function StickyColumn({ clear = "1rem", tall = "foot", className, children }: { clear?: string; tall?: "foot" | "flow"; className?: string; children: ReactNode }) {
   const column = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const element = column.current;
@@ -127,8 +129,13 @@ export function StickyColumn({ clear = "1rem", className, children }: { clear?: 
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+  const under = "(var(--app-navbar-height) + var(--page-header-height, 4rem))";
+  // The room left over once the column is in the window: none, and it doesn't fit.
+  const room = `(100dvh - ${under} - var(--column-height, 0px) - ${clear})`;
+  // "flow": 1px of room or more keeps it under the header; with none, its place to stick is far above the window, so it never sticks.
+  const top = tall === "foot" ? `min(${under}, 100dvh - var(--column-height, 0px) - ${clear})` : `calc(${under} - (1px - clamp(0px, ${room} * 9999, 1px)) * 99999)`;
   return (
-    <div ref={column} style={{ "--column-clear": clear } as React.CSSProperties} className={cn("sticky top-[min(calc(var(--app-navbar-height)+var(--page-header-height,4rem)),calc(100dvh-var(--column-height,0px)-var(--column-clear)))] self-start", className)}>
+    <div ref={column} style={{ top }} className={cn("sticky self-start", className)}>
       {children}
     </div>
   );
@@ -136,8 +143,9 @@ export function StickyColumn({ clear = "1rem", className, children }: { clear?: 
 
 /**
  * The page's main action, at the foot of the window however long the page is: the vote on Screen,
- * Start on a new screening, Save in the settings. It is the last thing in the page's card, and what is
- * in it keeps clear of the assistant's button in the window's corner (pe-[4.5rem] on its last child).
+ * Start on a new screening, Save in the settings. It is the last thing in the page's card. Below lg,
+ * where the page reaches the window's edge, what is in it keeps clear of the assistant's button in the
+ * corner (max-lg:pe-[5.5rem]). From lg up the wide page itself stops short of that button.
  */
 export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
   return <div {...rest} className={cn("sticky bottom-0 z-20 border-t border-border-subtle bg-card shadow-[0_-10px_30px_-22px_rgb(0_0_0/0.3)]", className)} />;
@@ -193,7 +201,7 @@ export function ReviewerStack({ reviewers, max = 7, className }: { reviewers: Re
 export function VoteMark({ vote, hidden = false, failed = false, who, className }: { vote?: Pick<Vote, "decision">; hidden?: boolean; failed?: boolean; who: string; className?: string }) {
   if (failed) {
     return (
-      <TooltipHint label={`${who} couldn't read this paper, so it has no say in it`}>
+      <TooltipHint label={`${who} couldn't read it`}>
         <span role="img" tabIndex={0} aria-label={`${who}: couldn't read it`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive text-white", className)}>
           <TriangleAlert aria-hidden className="size-3.5" />
         </span>

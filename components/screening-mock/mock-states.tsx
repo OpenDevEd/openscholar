@@ -34,10 +34,10 @@ export function MockStates() {
   );
   return (
     <Popover>
-      {/* Bottom left, clear of the assistant's button: on a wide screen in the sidebar's empty foot, above the account. */}
+      {/* Bottom left, clear of the assistant's button: wherever there is a sidebar, in its empty foot above the account. */}
       <TooltipHint label="Mock states">
         <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="Mock states" className="fixed bottom-3 start-3 z-50 size-8 rounded-full border-dashed bg-card lg:bottom-[4.75rem] lg:start-6">
+          <Button variant="outline" size="icon" aria-label="Mock states" className="fixed bottom-3 start-3 z-50 size-8 rounded-full border-dashed bg-card sm:bottom-[4.75rem] sm:start-6">
             <FlaskConical />
           </Button>
         </PopoverTrigger>

@@ -475,19 +475,19 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
               <div className="space-y-3">
                 {/* The file's columns over its first rows: a table may scroll sideways only where it can't fit. */}
                 <div className="overflow-x-auto rounded-2xl border border-border-subtle">
-                  <table className="w-full min-w-[60rem] table-fixed text-sm">
-                    <colgroup><col /><col className="w-40" /><col className="w-26" /><col className="w-40" /><col className="w-28" /><col className="w-36" /><col className="w-26" /></colgroup>
+                  {/* The paper takes what the other columns leave, and only it and the free text are ever cut. */}
+                  <table className="w-full min-w-[60rem] text-sm">
                     <thead className="bg-inset text-xs text-muted-foreground">
-                      <tr>{VOTE_COLUMNS.map((column) => <th key={column} scope="col" className="px-3 py-2 text-start font-medium">{column}</th>)}</tr>
+                      <tr>{VOTE_COLUMNS.map((column) => <th key={column} scope="col" className="whitespace-nowrap px-3 py-2 text-start font-medium">{column}</th>)}</tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
                       {sample.map((row) => (
                         <tr key={`${row.paper.id}:${row.reviewer.id}`}>
-                          <td className="px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} onClick={onClose} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
-                          <td className="px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} onClick={onClose} className="flex min-w-0 items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
-                          <td className="px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{DECISION_LABEL[row.vote.decision]}</span></td>
-                          <td className="truncate px-3 text-xs text-muted-foreground">{row.vote.reason ? failedLabel(row.vote.reason, screening.criteria) : "None"}</td>
-                          <td className="truncate px-3 text-xs text-muted-foreground">{row.vote.note ?? "None"}</td>
+                          <td className="w-full max-w-0 px-3 py-2.5"><NextLink href={papersHref(id, { paper: row.paper.id })} onClick={onClose} className="block truncate font-medium hover:underline">{row.paper.title}</NextLink></td>
+                          <td className="whitespace-nowrap px-3 text-xs"><NextLink href={papersHref(id, { reviewer: row.reviewer.id })} onClick={onClose} className="flex items-center gap-2 hover:underline"><ReviewerMark reviewer={row.reviewer} className="size-5" /><ReviewerName reviewer={row.reviewer} you={row.reviewer.id === state.me} /></NextLink></td>
+                          <td className="whitespace-nowrap px-3"><span className="flex items-center gap-1.5 text-xs"><VoteMark vote={row.vote} who={row.reviewer.name} className="size-5" />{DECISION_LABEL[row.vote.decision]}</span></td>
+                          <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-40 truncate">{row.vote.reason ? failedLabel(row.vote.reason, screening.criteria) : "None"}</span></td>
+                          <td className="px-3 text-xs text-muted-foreground"><span className="block max-w-28 truncate">{row.vote.note ?? "None"}</span></td>
                           <td className="px-3"><ResultChip result={row.result} /></td>
                           <td className="whitespace-nowrap px-3 text-xs text-muted-foreground">{ago(row.vote.at)}</td>
                         </tr>

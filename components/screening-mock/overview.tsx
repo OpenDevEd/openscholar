@@ -8,7 +8,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, ArrowDown, ArrowRight, Ban, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, ListChecks, Mail, MoreHorizontal, RefreshCw, RotateCcw, Trash2, TriangleAlert } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowRight, Ban, ChevronDown, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, ListChecks, Mail, MoreHorizontal, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -76,8 +76,7 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
           <Reviewers open={open} />
           <Agreement open={open} />
         </div>
-        {/* Clear of the assistant's button in the window's corner where it sticks at the foot. */}
-        <StickyColumn clear="5.5rem" className="min-w-0">
+        <StickyColumn className="min-w-0">
           <Facts open={open} />
         </StickyColumn>
       </div>
@@ -201,7 +200,8 @@ function Yours({ open }: { open: Open }) {
           {named.map((reviewer, i) => (
             <span key={reviewer.id}>
               {i ? " and " : ""}
-              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none" })} className="text-foreground underline-offset-2 hover:underline">{reviewer.name}</NextLink>
+              {/* Your papers that still wait for this reviewer's vote. */}
+              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none", with: open.me })} className="text-foreground underline-offset-2 hover:underline">{reviewer.name}</NextLink>
             </span>
           ))}
           {others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote.
@@ -215,7 +215,7 @@ function Yours({ open }: { open: Open }) {
 
 
 /** The columns of the Reviewers table: on a phone a row is two lines, the name alone on the first. */
-const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(7rem,0.7fr)_repeat(3,3.25rem)_10.5rem_2rem]";
+const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,3.25rem)_10.5rem_2rem]";
 
 function Reviewers({ open }: { open: Open }) {
   const { screening, papers, votes, settled } = open;
@@ -231,7 +231,7 @@ function Reviewers({ open }: { open: Open }) {
           const [vote, final] = [votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote, settled[paper.id]!.final];
           return vote && final ? [{ vote: vote.decision, final }] : [];
         });
-        // On papers every reviewer has voted on: did this one choose what most of the others chose?
+        // On papers where everyone given the paper has voted: did this one choose what most of the others chose?
         const compared = theirs.flatMap((paper) => {
           const cast = votes[paper.id]!.filter((one) => !one.failed);
           const mine = cast.find((one) => one.reviewer.id === reviewer.id)?.vote;
@@ -263,6 +263,10 @@ function Reviewers({ open }: { open: Open }) {
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
   const people = peopleOf(screening).length;
   const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
+  // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
+  const [a, b] = reviewers;
+  const pair = reviewers.length === 2 ? agreement(b!.id, a!.id, open) : null;
+  const leavingMe = leaving?.id === open.me;
 
   // A column the table can be ordered by: highest first, and a second press puts the table back as it was.
   const sortable = (id: "voted" | "agrees", label: string) => (
@@ -281,6 +285,18 @@ function Reviewers({ open }: { open: Open }) {
           <p>Each person votes on a share of the papers. Each model votes on every paper.</p>
         </Help>
       }
+      aside={
+        pair ? (
+          <span className="flex items-center gap-1">
+            <NextLink href={pairHref(screening.id, b!, a!)} className={cn("flex items-center gap-2 px-2 py-1 text-sm", ROW_LINK)}>
+              <span className="text-muted-foreground">Agreement</span>
+              <span className="rounded-md px-2 py-0.5 font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{pair.kappa.toFixed(2)}</span>
+              <span className="tabular-nums text-muted-foreground">{sameText(pair)}</span>
+            </NextLink>
+            {KAPPA_HELP}
+          </span>
+        ) : null
+      }
     >
       {rows.length ? (
         <div role="table" aria-label="Reviewers" className={cn(LIST, "@container/reviewers overflow-clip")}>
@@ -291,7 +307,7 @@ function Reviewers({ open }: { open: Open }) {
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
               {sortable("agrees", "Agrees with majority")}
               <Help title="Agrees with majority" side="bottom">
-                <p>On the papers every reviewer has voted on, how often this reviewer voted the way most of the others did. A low figure is a reviewer who reads the criteria differently from the rest.</p>
+                <p>On papers where everyone given the paper has voted, how often this reviewer voted the way most of them did. A low figure is a reviewer who reads the criteria differently from the rest.</p>
                 <p>Under a model, the papers the screening included that it voted to exclude.</p>
               </Help>
             </span>
@@ -311,8 +327,8 @@ function Reviewers({ open }: { open: Open }) {
       )}
       <ConfirmChange
         open={leaving !== null}
-        title={leaving ? `Take ${leaving.name} off this screening?` : ""}
-        confirm="Take off"
+        title={leavingMe ? "Leave this screening?" : leaving ? `Take ${leaving.name} off this screening?` : ""}
+        confirm={leavingMe ? "Leave" : "Take off"}
         onClose={() => setLeaving(null)}
         onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectItems(screening, without(leaving)).filter((line) => line.kind !== "leave").map(lineText), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
       >
@@ -357,13 +373,13 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
       <div role="cell" className="min-w-0 @max-2xl/reviewers:col-start-1 @max-2xl/reviewers:row-start-2">
         <div className="flex items-center gap-3">
           <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-          <span className="shrink-0 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-16"><AnimatedNumber value={done} /> of {assigned}</span>
+          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><AnimatedNumber value={done} /> of {assigned}</NextLink>
         </div>
         {/* The papers it got to and couldn't read, under how many it read: a second line no taller than the name and its credits, so a paper that fails while it reads moves nothing. */}
         {unread ? (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className={cn(above, "mt-1 flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}><TriangleAlert className="size-3.5" />{unread} unread</Button>
+              <Button variant="ghost" size="sm" className={cn(above, "mt-1 flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-80 space-y-2.5 p-3 text-sm">
               <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
@@ -396,7 +412,7 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">None yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> agree</span></>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">None yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> with the majority</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>
@@ -416,12 +432,12 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
               </DropdownMenuTrigger>
             </TooltipHint>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See their votes in Papers</NextLink></DropdownMenuItem>
+              <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See {mine ? "your" : "their"} votes in Papers</NextLink></DropdownMenuItem>
               {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && done < assigned ? (
                 <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
               ) : null}
-              <DropdownMenuItem variant="destructive" onSelect={() => onLeave(reviewer)}><Trash2 />Take off this screening</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => onLeave(reviewer)}><Trash2 />{mine ? "Leave this screening" : "Take off this screening"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
@@ -440,7 +456,16 @@ const BANDS = [
   { label: "0.8 and up", kappa: 0.9 },
 ];
 const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destructive) 16%, transparent)" : kappa < 0.6 ? "color-mix(in oklab, var(--warning) 22%, transparent)" : `color-mix(in oklab, var(--success) ${Math.round(18 + Math.max(0, Math.min(1, (kappa - 0.6) / 0.4)) * 42)}%, transparent)`);
+/** The papers two reviewers both voted on, the ones they split on first. */
+const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
+const sameText = (pair: { same: number }) => `${Math.round(pair.same * 100)}% same`;
+const KAPPA_HELP = (
+  <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>0.6 and up substantial</HelpFact></>}>
+    <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
+  </Help>
+);
 
+/** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
 function Agreement({ open }: { open: Open }) {
   const { screening } = open;
   const reviewers = activeReviewers(screening);
@@ -448,23 +473,17 @@ function Agreement({ open }: { open: Open }) {
     () => reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: agreement(a.id, b.id, open) }))),
     [reviewers, open],
   );
-  if (reviewers.length < 2) return null;
+  if (reviewers.length < 3) return null;
   const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
-  const only = reviewers.length === 2 ? pairs[0]! : null;
-  const pairHref = (a: Reviewer, b: Reviewer) => papersHref(screening.id, { reviewer: a.id, with: b.id, sort: "split" });
-  const sameText = (pair: NonNullable<(typeof pairs)[number]["pair"]>) => `${Math.round(pair.same * 100)}% same`;
+  const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : reviewer.name.split(" ")[0]);
 
   return (
     <Section
       id="agreement"
       title="Agreement between reviewers"
-      help={
-        <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>0.6 and up substantial</HelpFact></>}>
-          <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
-        </Help>
-      }
+      help={KAPPA_HELP}
       aside={
         <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {BANDS.map((band) => (
@@ -477,57 +496,61 @@ function Agreement({ open }: { open: Open }) {
         <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">How far the reviewers agree shows here once two of them have voted on the same papers.</p>
       ) : (
         <div className="space-y-3">
-          <NextLink href={only ? pairHref(only.a, only.b) : papersHref(screening.id, { sort: "split" })} className={cn("-mx-2 inline-flex items-center gap-3 px-2 py-1", ROW_LINK)}>
+          <NextLink href={papersHref(screening.id, { sort: "split" })} className={cn("-mx-2 inline-flex items-center gap-3 px-2 py-1", ROW_LINK)}>
             <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
             <span className="text-sm">
-              <span className="font-medium">{only ? `${only.a.name} and ${only.b.name}` : "Overall agreement"}</span>
-              <span className="block text-xs text-muted-foreground">{only?.pair ? `${sameText(only.pair)} on ${only.pair.papers} papers` : `Across ${known.length} pairs of reviewers`}</span>
+              <span className="font-medium">Overall agreement</span>
+              <span className="block text-xs text-muted-foreground">Across {known.length} pairs of reviewers</span>
             </span>
             <ArrowRight aria-hidden className="size-4 text-muted-foreground" />
           </NextLink>
-          {only ? null : (
-            <>
-              {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
-              <div className={cn(LIST, "overflow-x-auto p-4 @max-2xl/overview:hidden")}>
-                <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>
-                  <span />
-                  {reviewers.slice(0, -1).map((reviewer) => (
-                    <TooltipHint key={reviewer.id} label={reviewer.name}>
-                      <span tabIndex={0} aria-label={reviewer.name} className="flex justify-center rounded-md pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"><ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} /></span>
-                    </TooltipHint>
-                  ))}
-                  {reviewers.slice(1).map((a, i) => (
-                    <div key={a.id} className="contents">
-                      <NextLink href={papersHref(screening.id, { reviewer: a.id })} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></NextLink>
-                      {reviewers.slice(0, -1).map((b, column) => {
-                        if (column > i) return <span key={b.id} className="h-12" />;
-                        const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
-                        if (!pair) return <span key={b.id} className="flex h-12 items-center justify-center rounded-lg border border-dashed border-border-subtle text-2xs text-muted-foreground">None yet</span>;
-                        return (
-                          <NextLink key={b.id} href={pairHref(a, b)} aria-label={`${a.name} and ${b.name}: kappa ${pair.kappa.toFixed(2)}, same vote on ${Math.round(pair.same * 100)}% of ${pair.papers} papers`} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
-                            <span className="text-xs font-semibold tabular-nums">{pair.kappa.toFixed(2)}</span>
-                            <span className="text-2xs tabular-nums text-foreground/70">{sameText(pair)}</span>
-                          </NextLink>
-                        );
-                      })}
-                    </div>
-                  ))}
+          {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
+          <div className={cn(LIST, "overflow-x-auto p-4 @max-2xl/overview:hidden")}>
+            <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>
+              <span />
+              {reviewers.slice(0, -1).map((reviewer) => (
+                <NextLink key={reviewer.id} href={papersHref(screening.id, { reviewer: reviewer.id })} aria-label={reviewer.id === open.me ? "Your votes" : `Votes by ${reviewer.name}`} className={cn("flex min-w-0 flex-col items-center gap-1 px-1 py-1", ROW_LINK)}>
+                  <ReviewerMark reviewer={reviewer} you={reviewer.id === open.me} />
+                  <span className="max-w-full truncate text-2xs text-muted-foreground">{short(reviewer)}</span>
+                </NextLink>
+              ))}
+              {reviewers.slice(1).map((a, i) => (
+                <div key={a.id} className="contents">
+                  <NextLink href={papersHref(screening.id, { reviewer: a.id })} className={cn("flex min-w-0 items-center gap-2 px-1.5 py-1 pe-3 text-xs", ROW_LINK)}><ReviewerMark reviewer={a} className="size-5" /><ReviewerName reviewer={a} you={a.id === open.me} /></NextLink>
+                  {reviewers.slice(0, -1).map((b, column) => {
+                    if (column > i) return <span key={b.id} className="h-12" />;
+                    const pair = pairs.find((one) => one.a.id === a.id && one.b.id === b.id)?.pair;
+                    if (!pair) return <span key={b.id} className="flex h-12 items-center justify-center rounded-lg border border-dashed border-border-subtle text-2xs text-muted-foreground">None yet</span>;
+                    return (
+                      <NextLink key={b.id} href={pairHref(screening.id, a, b)} aria-label={`${a.name} and ${b.name}: kappa ${pair.kappa.toFixed(2)}, same vote on ${Math.round(pair.same * 100)}% of ${pair.papers} papers`} className="flex h-12 flex-col items-center justify-center rounded-lg outline-none ring-foreground/20 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-ring/50" style={{ backgroundColor: shade(pair.kappa) }}>
+                        <span className="text-xs font-semibold tabular-nums">{pair.kappa.toFixed(2)}</span>
+                        <span className="text-2xs tabular-nums text-foreground/70">{sameText(pair)}</span>
+                      </NextLink>
+                    );
+                  })}
                 </div>
-              </div>
-              {/* On a phone, the same pairs as a list. */}
-              <ul className={cn(LIST, "@2xl/overview:hidden")}>
-                {pairs.map(({ a, b, pair }) => (
-                  <li key={`${a.id}:${b.id}`}>
-                    <NextLink href={pairHref(a, b)} className="flex items-center gap-3 px-4 py-2.5 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
-                      <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-6" /><ReviewerMark reviewer={a} className="-ms-1.5 size-6 ring-2 ring-card" /></span>
-                      <span className="min-w-0 flex-1 line-clamp-2">{b.name} and {a.name}</span>
-                      {pair ? <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{pair.kappa.toFixed(2)}</span> : <span className="shrink-0 text-xs text-muted-foreground">None yet</span>}
-                    </NextLink>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+              ))}
+            </div>
+          </div>
+          {/* On a phone, the same pairs as a list. */}
+          <ul className={cn(LIST, "@2xl/overview:hidden")}>
+            {pairs.map(({ a, b, pair }) => (
+              <li key={`${a.id}:${b.id}`}>
+                <NextLink href={pairHref(screening.id, a, b)} className="flex items-center gap-3 px-4 py-2.5 text-sm outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40">
+                  <span className="flex shrink-0 items-center"><ReviewerMark reviewer={b} className="size-6" /><ReviewerMark reviewer={a} className="-ms-1.5 size-6 ring-2 ring-card" /></span>
+                  <span className="min-w-0 flex-1 line-clamp-2">{b.name} and {a.name}</span>
+                  {pair ? (
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs tabular-nums text-muted-foreground">{sameText(pair)}</span>
+                      <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ backgroundColor: shade(pair.kappa) }}>{pair.kappa.toFixed(2)}</span>
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-xs text-muted-foreground">None yet</span>
+                  )}
+                </NextLink>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </Section>
@@ -548,8 +571,6 @@ function Facts({ open }: { open: Open }) {
   const left = workspace === HOME ? store.wallet : workspace.credits;
   const to = screening.destination;
   const collection = to.kind === "none" ? null : to.kind === "new" ? to.name || `Included in ${screening.name}` : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? "A collection");
-  // A collection of yours opens in the Library; one in a community opens in the communities.
-  const collectionHref = to.kind === "community" ? "/evidence-communities" : to.collection ? `/library?col=${to.collection}` : "/library";
   return (
     <div className="space-y-6">
       <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
@@ -570,20 +591,16 @@ function Facts({ open }: { open: Open }) {
       >
         <Panel className="space-y-2.5">
           {collection ? (
-            <NextLink href={collectionHref} className="flex items-start gap-2 text-sm font-medium underline-offset-2 outline-none hover:underline focus-visible:underline">
+            <p className="flex items-start gap-2 text-sm font-medium">
               <Folder className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <span className="line-clamp-2">{collection}</span>
-            </NextLink>
+            </p>
           ) : (
             <p className="flex items-center gap-2 text-sm font-medium"><Ban className="size-4 shrink-0 text-muted-foreground" />Nowhere yet</p>
           )}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {collection ? (
-              <LinkChip href={collectionHref} tone="success" icon={RESULT_STYLE.include.icon}><AnimatedNumber value={counts.include} /> saved so far</LinkChip>
-            ) : (
-              <LinkChip href={papersHref(screening.id, { result: "include" })} tone="success" icon={RESULT_STYLE.include.icon}>{counts.include.toLocaleString("en-GB")} included, kept here</LinkChip>
-            )}
-          </div>
+          <LinkChip href={papersHref(screening.id, { result: "include" })} tone="success" icon={RESULT_STYLE.include.icon} className="w-fit">
+            <AnimatedNumber value={counts.include} /> {collection ? "saved so far" : "included, kept here"}
+          </LinkChip>
         </Panel>
       </Section>
 
@@ -646,7 +663,7 @@ function Checks({ open }: { open: Open }) {
           <p>A check runs each source&apos;s search again and adds the papers this screening doesn&apos;t have yet. Uploaded files and pasted lists never change, so checks skip them.</p>
         </Help>
       }
-      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check now</Button> : null}
+      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check for new papers</Button> : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
@@ -686,7 +703,13 @@ function Checks({ open }: { open: Open }) {
                             {update.found - update.added ? <Chip>{update.found - update.added} already in it</Chip> : null}
                             {update.added ? <LinkChip href={papersHref(screening.id, { added })} tone="primary">{update.added} added</LinkChip> : null}
                           </div>
-                          {batch.length ? <ResultBar counts={counts} className="h-1.5" /> : null}
+                          {/* Where the papers it added stand now. */}
+                          {batch.length ? (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <ResultBar counts={counts} className="h-1.5 min-w-24 flex-1" />
+                              <span className="text-xs tabular-nums text-muted-foreground">{RESULTS.filter((result) => counts[result]).map((result) => `${counts[result]} ${RESULT_LABEL[result].toLowerCase()}`).join(", ")}</span>
+                            </div>
+                          ) : null}
                         </>
                       ) : (
                         <Chip>Nothing new</Chip>
@@ -719,7 +742,7 @@ function Checks({ open }: { open: Open }) {
 
 type FlowRow = { key: string; label: ReactNode; value: number; href?: string; fill: string; indent?: boolean };
 
-/** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, to screen, and included. Every count opens its papers. */
+/** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, the papers screened, and included. Every count above none opens its papers. */
 function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, papers, votes, settled, counts } = open;
   const id = screening.id;
@@ -739,7 +762,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       rows: screening.sources.flatMap((source) => (taken(source) - keptOf(source) ? [{ key: source.id, label: source.name, value: taken(source) - keptOf(source), href: settingsHref(id, "papers"), fill: neutral }] : [])),
     },
     {
-      title: "To screen",
+      title: "Papers",
       total: kept,
       href: papersHref(id),
       rows: [
@@ -776,13 +799,14 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       <div className="grid grid-cols-1 divide-y divide-border-subtle rounded-2xl border border-border-subtle @3xl/overview:grid-cols-4 @3xl/overview:divide-x @3xl/overview:divide-y-0">
         {steps.map((step, i) => (
           <div key={step.title} className="relative min-w-0 space-y-3 p-4">
-            {step.href ? (
+            {/* A count of none opens nothing, as in Progress. */}
+            {step.href && step.total ? (
               <NextLink href={step.href} className={cn("-mx-2 -my-1 block px-2 py-1", ROW_LINK)}>
                 <p className="text-xs text-muted-foreground">{step.title}</p>
                 <p className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></p>
               </NextLink>
             ) : (
-              <div>
+              <div className={cn(!step.total && "opacity-60")}>
                 <p className="text-xs text-muted-foreground">{step.title}</p>
                 <p className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></p>
               </div>
@@ -798,7 +822,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
                 );
                 return (
                   <li key={row.key}>
-                    {row.href ? <NextLink href={row.href} className={cn("block space-y-1 px-2 py-1.5", ROW_LINK)}>{inner}</NextLink> : <div className="space-y-1 px-2 py-1.5">{inner}</div>}
+                    {row.href && row.value ? <NextLink href={row.href} className={cn("block space-y-1 px-2 py-1.5", ROW_LINK)}>{inner}</NextLink> : <div className={cn("space-y-1 px-2 py-1.5", !row.value && "opacity-60")}>{inner}</div>}
                   </li>
                 );
               })}

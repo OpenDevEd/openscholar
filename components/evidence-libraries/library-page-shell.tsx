@@ -83,7 +83,8 @@ export function LibraryPageShell({
         </PanelHeader>
       </StickyPageHeader>
 
-      <div className={wide ? "p-4 sm:p-6" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
+      {/* A wide page stops short of the assistant's button in the window's corner, so nothing in its card is ever under it. */}
+      <div className={wide ? "p-4 sm:p-6 lg:pe-[5.5rem]" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
         {/* Its pages come from the server (papers, topics, authors): the card rises in CSS from the first paint, not once the code loads. */}
         <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn>
           {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}

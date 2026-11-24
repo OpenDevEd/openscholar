@@ -6,8 +6,8 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { GitCompare, Hourglass } from "@/components/icons";
-import { NodeCard } from "@/components/settings/model-map";
+import { Coins, GitCompare, Hourglass } from "@/components/icons";
+import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import type { Reviewer, Screening } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
@@ -80,7 +80,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         ) : null}
       </ConfirmChange>
       <ConfirmChange open={over === "delete"} variant="destructive" title={`Delete “${screening.name}”?`} confirm="Delete" onClose={close} onConfirm={() => { store.remove(id); onDeleted?.(); }}>
-        <EffectList lines={["Its votes and its settings go with it", ...(collection && state.counts.include ? [`The ${state.counts.include} ${state.counts.include === 1 ? "paper" : "papers"} saved to ${collection} stay there`] : []), "This can't be undone"]} />
+        <EffectList lines={["Its votes and its settings go with it", ...(collection && state.counts.include ? [`The ${state.counts.include} ${state.counts.include === 1 ? "paper" : "papers"} saved to “${collection}” stay there`] : []), "This can't be undone"]} />
       </ConfirmChange>
       <ConfirmChange
         open={adding !== null}
@@ -110,9 +110,10 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
                 <Button asChild variant="outline" size="sm"><NextLink href={settingsHref(id, "criteria")} onClick={close}>Add criteria</NextLink></Button>
               </Panel>
             ) : (
-              <EffectList lines={effectLines(screening, withAdded(adding))} moves={effectMoves(screening, withAdded(adding))} />
+              // Here nothing is saved apart from the adding itself.
+              <EffectList lines={effectLines(screening, withAdded(adding)).map((line) => line.replace("as soon as this is saved", "as soon as it is added"))} moves={effectMoves(screening, withAdded(adding))} />
             )}
-            {adding.model ? <p className="text-xs tabular-nums text-muted-foreground">{credits(store.wallet)} credits in the workspace now</p> : null}
+            {adding.model ? <Credits model={adding.model} papers={state.papers.length} wallet={store.wallet} onAddCredits={() => { store.set({ wallet: store.wallet + 20_000 }); close(); }} /> : null}
           </>
         ) : null}
       </ConfirmChange>
@@ -128,4 +129,19 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
     </>
   );
   return { ...controls, overlays };
+}
+
+/** What the workspace has to pay a model with: where that runs out before the model has read every paper, how far it gets. */
+function Credits({ model, papers, wallet, onAddCredits }: { model: MapModel; papers: number; wallet: number; onAddCredits: () => void }) {
+  const each = paperCredits(model);
+  if (each * papers <= wallet) return <p className="text-xs tabular-nums text-muted-foreground">{credits(wallet)} credits in the workspace now</p>;
+  const paid = Math.floor(wallet / each);
+  return (
+    <Panel tone="warning" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl p-3">
+      <Coins className="mt-0.5 size-4 shrink-0 self-start ink-warning" />
+      <p className="min-w-0 flex-1 text-sm tabular-nums ink-warning">{credits(wallet)} credits pay for {paid ? `about ${paid.toLocaleString("en-GB")}` : "none"} of its {papers.toLocaleString("en-GB")} papers. It stops there until credits are added.</p>
+      {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
+      <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button>
+    </Panel>
+  );
 }

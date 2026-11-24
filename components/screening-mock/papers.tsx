@@ -3,12 +3,12 @@
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
 // the paper stands. A row opens the paper beside the table, with who voted what and when.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ExternalLink, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, Undo2, X } from "@/components/icons";
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, Undo2, X } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -16,6 +16,7 @@ import { Segmented, pagerOf } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { focusContent } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -26,9 +27,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/lib/hooks";
-import { paperPath } from "@/lib/papers/page-address";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, personOf, reasonOf, scoreOf, type Decision, type Paper, type Reviewer } from "./data";
+import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
 import { AnswerMark, Help, Kbd, LinkChip, Panel, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
@@ -43,6 +43,8 @@ const UNDER_HEADER = "top-[calc(var(--app-navbar-height)+var(--page-header-heigh
 const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
 type Sort = (typeof SORTS)[number];
 const SORT_LABEL: Record<Sort, string> = { added: "Order added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
+/** A result tab with nothing in it, while no filter or search narrows it. */
+const EMPTY_TAB: Record<Result | "all", string> = { all: "No papers yet", include: "Nothing included yet", maybe: "Nothing marked Maybe yet", exclude: "Nothing excluded yet", conflict: "No papers in conflict", waiting: "No papers waiting for a vote" };
 const VOTED = ["any", ...DECISIONS, "none", "settled"] as const;
 type Voted = (typeof VOTED)[number];
 
@@ -90,19 +92,14 @@ function Papers({ open }: { open: Open }) {
   /** Narrows or reorders the table, which starts again from its first page. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace({ page: null, ...next });
   const clearFilters = () => go({ source: null, reviewer: null, voted: null, with: null, reason: null, added: null, q: null });
-  // A paper opened from the table is a step Back closes: closing it steps back. One reached by its address closes in place.
-  const openedHere = useRef(false);
-  const show = (paperId: string) => {
-    if (opened) return void setPlace({ paper: paperId }, { history: "replace" });
-    openedHere.current = true;
-    void setPlace({ paper: paperId });
-  };
-  const close = () => {
-    if (!openedHere.current) return void setPlace({ paper: null }, { history: "replace" });
-    openedHere.current = false;
-    window.history.back();
-  };
-  const [picked, setPicked] = useState<string[]>([]);
+  // Opening a paper and closing it are steps Back returns from. Going from one open paper to another changes the address in place.
+  const show = (paperId: string) => void setPlace({ paper: paperId }, opened ? { history: "replace" } : undefined);
+  const close = () => void setPlace({ paper: null });
+  // A selection belongs to the list it was made in: another tab, filter, search or order starts with none selected.
+  const scope = [filter, from, reviewer, voted, also, reason, added, sort, query].join("|");
+  const [selection, setSelection] = useState({ scope, ids: [] as string[] });
+  const picked = selection.scope === scope ? selection.ids : [];
+  const setPicked = (ids: string[]) => setSelection({ scope, ids });
   const [filtering, setFiltering] = useState(false);
   // A paper opens beside the table where there is room for both, and over the page where there isn't.
   const beside = useMediaQuery("(min-width: 1280px)");
@@ -191,6 +188,51 @@ function Papers({ open }: { open: Open }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // The window's scroll is the outside system. The line under the page's header, in pixels: `top`'s scroll margin is that line and 1rem.
+  const underHeader = () => parseFloat(getComputedStyle(top.current!).scrollMarginTop) - parseFloat(getComputedStyle(document.documentElement).fontSize);
+  // The paper opened or stepped to has its row in view, under the table's head, also after a step onto another page.
+  useLayoutEffect(() => {
+    if (!opened || !top.current) return;
+    const row = [...top.current.querySelectorAll<HTMLElement>(`[data-paper="${opened}"]`)].find((one) => one.getClientRects().length);
+    if (!row) return;
+    const head = top.current.querySelector("thead");
+    const line = underHeader() + (head?.getClientRects().length ? head.offsetHeight : 0);
+    const box = row.getBoundingClientRect();
+    if (box.top < line) window.scrollBy(0, box.top - line);
+    else if (box.bottom > window.innerHeight) window.scrollBy(0, box.bottom - window.innerHeight);
+  }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when another paper opens
+  // A paper taller than the window sticks by its foot, so one opened while the page is scrolled would start above the window.
+  // The room over it then grows until its toolbar and title sit under the header, beside the row that opened it.
+  const lead = useRef<HTMLDivElement>(null);
+  const reading = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!lead.current || !reading.current || !list.current) return;
+    const line = underHeader();
+    const start = lead.current.getBoundingClientRect().top;
+    const height = reading.current.offsetHeight;
+    // Where StickyColumn would hold it with no room over it (1rem kept under its foot), and no lower than the table's end.
+    const held = Math.min(Math.max(start, Math.min(line, window.innerHeight - height - 16)), start + list.current.offsetHeight - height);
+    lead.current.style.height = held < line ? `${line - start}px` : "0px";
+  }, [opened, beside, pager.page, rows.length]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when the paper or the list under it changes
+
+  // Reviewers' names show over their columns while no paper is open beside the table, and a column fits a first name.
+  const names = !room;
+  const reviewerWidth = names ? 3.5 : 3;
+  // The narrowest the table can be, in rem. Where its column is narrower, it scrolls sideways and its head row stops sticking.
+  const tableWidth = 15 + (room ? 10 : 12) + (columns === "criteria" ? criteria.length * 4.5 : reviewers.length * reviewerWidth);
+  const [fits, setFits] = useState(true);
+  // The column's width is the outside system: measured before the first paint, then whenever it changes.
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (!element) return;
+    const measure = () => setFits(element.clientWidth >= tableWidth * parseFloat(getComputedStyle(document.documentElement).fontSize));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [tableWidth, papers.length > 0]);
+
   // On a phone the result tabs scroll sideways: the open one is brought into view. Its position on the page is the outside system.
   const tabsRow = useCallback((element: HTMLDivElement | null) => {
     element?.querySelector("[aria-checked=true]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -219,8 +261,11 @@ function Papers({ open }: { open: Open }) {
   // What narrows the table, each as a chip that takes it away.
   const whoName = who && who !== open.me ? nameOf(open, who) : null;
   const addedLabel = (at: string) => (at === "start" ? "At the start" : ago(Number(at)));
+  // The source narrowed to: the Overview counts what it brought, this list the papers kept once duplicates were merged.
+  const narrowedSource = screening.sources.find((one) => one.id === from);
+  const merged = narrowedSource ? taken(narrowedSource) - keptOf(narrowedSource) : 0;
   const active = [
-    from !== "all" ? { key: "source", label: `Source: ${screening.sources.find((one) => one.id === from)?.name ?? "removed"}`, clear: { source: null } } : null,
+    from !== "all" ? { key: "source", label: `Source: ${narrowedSource?.name ?? "removed"}`, clear: { source: null }, fact: merged && narrowedSource ? `${keptOf(narrowedSource).toLocaleString("en-GB")} papers, ${merged.toLocaleString("en-GB")} ${merged === 1 ? "duplicate" : "duplicates"} merged` : undefined } : null,
     who
       ? {
           key: "reviewer",
@@ -307,8 +352,7 @@ function Papers({ open }: { open: Open }) {
   const showReason = columns === "reviewers";
   // The Reason column shows wherever the table is wide enough for it, beside an open paper too.
   const reasonHidden = showReason ? "@max-[60rem]/table:hidden" : "hidden";
-  const names = !room;
-  const lastCell = room ? "w-40 pe-4" : "w-48 pe-4 sm:pe-6 lg:w-60 lg:pe-[4.5rem]";
+  const lastCell = room ? "w-40 pe-4" : "w-48 pe-4 sm:pe-6 lg:w-60";
 
   return (
     <div ref={top} className="@container/papers scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]">
@@ -328,12 +372,13 @@ function Papers({ open }: { open: Open }) {
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 max-sm:w-full">
           <div className="relative min-w-0 flex-1 @2xl/papers:max-w-md">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(event) => void setPlace({ q: event.target.value || null, page: null }, { history: "replace" })} placeholder="Find a paper by title or author" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
+            <Input value={query} onChange={(event) => void setPlace({ q: event.target.value || null, page: null }, { history: "replace" })} placeholder="Title or author" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
           </div>
           <Button variant="outline" size="sm" className="h-8 @2xl/papers:hidden" onClick={() => setFiltering(true)}>
             <SlidersHorizontal />Filters
             {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
           </Button>
+          <VoteMarksHelp className="@2xl/papers:hidden">Each paper shows one mark for each reviewer it was given to, in the order of the reviewers.</VoteMarksHelp>
         </div>
       </div>
 
@@ -349,9 +394,12 @@ function Papers({ open }: { open: Open }) {
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">
           {active.map((one) => (
-            <Button key={one.key} variant="secondary" size="xs" className="h-6 max-w-full gap-1 rounded-md bg-primary/10 pe-1 text-xs font-medium text-primary hover:bg-primary/15" aria-label={`Remove the filter ${one.label}`} onClick={() => go(one.clear)}>
-              <span className="truncate">{one.label}</span><X className="size-3.5 opacity-70" />
-            </Button>
+            <span key={one.key} className="contents">
+              <Button variant="secondary" size="xs" className="h-6 max-w-full gap-1 rounded-md bg-primary/10 pe-1 text-xs font-medium text-primary hover:bg-primary/15" aria-label={`Remove the filter ${one.label}`} onClick={() => go(one.clear)}>
+                <span className="truncate">{one.label}</span><X className="size-3.5 opacity-70" />
+              </Button>
+              {"fact" in one && one.fact ? <Chip>{one.fact}</Chip> : null}
+            </span>
           ))}
           <Button variant="ghost" size="xs" className="h-6 text-xs @2xl/papers:hidden" onClick={clearFilters}>Clear filters</Button>
         </div>
@@ -408,16 +456,16 @@ function Papers({ open }: { open: Open }) {
       </AnimatePresence>
 
       <div className={cn("grid border-t border-border-subtle", room && "grid-cols-[minmax(0,1fr)_30rem] min-[1800px]:grid-cols-[minmax(0,1fr)_36rem]")}>
-        <div className="@container/table min-w-0">
+        <div ref={list} className="@container/table min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
-          <div className="@max-[48rem]/table:overflow-x-auto" style={{ minHeight: pager.pages > 1 ? (PAGE + 2) * ROW : undefined }}>
+          <div className={cn(!fits && "overflow-x-auto")} style={{ minHeight: pager.pages > 1 ? (PAGE + 2) * ROW : undefined }}>
             {shown.length ? (
               <>
                 <ul className="divide-y divide-border-subtle @2xl/papers:hidden">
                   {shown.map((one) => {
                     const visible = open.canSee(one);
                     return (
-                      <li key={one.id} className={cn("flex gap-3 px-4 py-3 transition-colors", opened === one.id && "bg-muted")}>
+                      <li key={one.id} data-paper={one.id} className={cn("flex gap-3 px-4 py-3 transition-colors", opened === one.id && "bg-muted")}>
                         <Checkbox className="mt-0.5" checked={chosen.includes(one.id)} onCheckedChange={() => setPicked(chosen.includes(one.id) ? chosen.filter((p) => p !== one.id) : [...chosen, one.id])} aria-label={`Select ${one.title}`} />
                         <button type="button" aria-expanded={opened === one.id} onClick={() => (opened === one.id ? close() : show(one.id))} className="block min-w-0 flex-1 space-y-2 text-start outline-none focus-visible:underline">
                           <span className="line-clamp-2 text-sm font-medium">{one.title}</span>
@@ -431,8 +479,8 @@ function Papers({ open }: { open: Open }) {
                     );
                   })}
                 </ul>
-                <table className="w-full table-fixed text-sm @max-2xl/papers:hidden" style={{ minWidth: `${15 + (room ? 10 : 12) + (columns === "criteria" ? criteria.length * 4.5 : reviewers.length * 3)}rem` }}>
-                  <TableHeader className={cn("sticky z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] @max-[48rem]/table:static [&_tr]:border-b-0", UNDER_HEADER)}>
+                <table className="w-full table-fixed text-sm @max-2xl/papers:hidden" style={{ minWidth: `${tableWidth}rem` }}>
+                  <TableHeader className={cn("z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] [&_tr]:border-b-0", fits && cn("sticky", UNDER_HEADER))}>
                     <TableRow className="hover:bg-transparent">
                       <TableHead rowSpan={2} className="w-12 ps-4 sm:ps-6">
                         <Checkbox checked={allShown} onCheckedChange={() => setPicked(allShown ? chosen.filter((p) => !shown.some((one) => one.id === p)) : [...new Set([...chosen, ...shown.map((one) => one.id)])])} aria-label="Select every paper on this page" />
@@ -440,7 +488,7 @@ function Papers({ open }: { open: Open }) {
                       <TableHead rowSpan={2} aria-sort={sort === "title" ? "ascending" : sort === "title-desc" ? "descending" : "none"}>
                         {sortHead("Paper", sort === "title" || sort === "title-desc", sort === "title" ? "title-desc" : "title", sort === "title-desc")}
                       </TableHead>
-                      <TableHead colSpan={columns === "criteria" ? criteria.length : reviewers.length} className="h-8 px-1 pt-2 text-center" style={{ width: `${columns === "criteria" ? criteria.length * 4.5 : reviewers.length * 3}rem` }}>
+                      <TableHead colSpan={columns === "criteria" ? criteria.length : reviewers.length} className="h-8 px-1 pt-2 text-center" style={{ width: `${columns === "criteria" ? criteria.length * 4.5 : reviewers.length * reviewerWidth}rem` }}>
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           {columns === "criteria" ? "Answers" : "Votes"}
                           {columns === "criteria" ? (
@@ -454,29 +502,20 @@ function Papers({ open }: { open: Open }) {
                               </Legend>
                             </Help>
                           ) : (
-                            <Help title="Vote marks" side="bottom" facts={<HelpFact icon={Lock}>Blind until you vote</HelpFact>}>
-                              <p>Each column is a reviewer. Press a face for the papers they voted on.</p>
-                              <Legend>
-                                {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who="A reviewer" />}>Voted {DECISION_LABEL[decision]}</LegendRow>)}
-                                <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, hidden until you vote</LegendRow>
-                                <LegendRow mark={<VoteMark who="A reviewer" />}>Hasn&apos;t voted yet</LegendRow>
-                                <LegendRow mark={<VoteMark failed who="A model" />}>A model couldn&apos;t read it</LegendRow>
-                                <LegendRow mark={<span className="size-6" />}>Blank: not theirs to vote on</LegendRow>
-                              </Legend>
-                            </Help>
+                            <VoteMarksHelp>Each column is a reviewer. Press a face for the papers they voted on.</VoteMarksHelp>
                           )}
                         </span>
                       </TableHead>
                       <TableHead rowSpan={2} className={cn("w-52 ps-6", reasonHidden)}>
                         <span className="inline-flex items-center gap-1">
                           Reason
-                          <Help title="Reason" side="bottom" facts={<><HelpFact>Included papers only</HelpFact><HelpFact>Majority answer counts</HelpFact></>}>
+                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points: included papers only</HelpFact><HelpFact>Points: majority answer</HelpFact></>}>
                             <p>Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.</p>
                             <p>An included paper shows its points and stars. Each criterion earns the points set in the screening&apos;s settings, from the answer most reviewers gave, and the stars follow the point thresholds set there.</p>
                           </Help>
                         </span>
                       </TableHead>
-                      <TableHead rowSpan={2} aria-sort={sort === "result" ? "ascending" : "none"} className={cn("text-end", lastCell, "@max-[48rem]/table:sticky @max-[48rem]/table:end-0 @max-[48rem]/table:bg-card")}>
+                      <TableHead rowSpan={2} aria-sort={sort === "result" ? "ascending" : "none"} className={cn("text-end", lastCell, !fits && "sticky end-0 bg-card")}>
                         {sortHead("Result", sort === "result", sort === "result" ? null : "result")}
                       </TableHead>
                     </TableRow>
@@ -525,7 +564,7 @@ function Papers({ open }: { open: Open }) {
                       const state = settled[one.id]!;
                       const waitsForMe = open.isReviewer && !state.final && cast.some((entry) => entry.reviewer.id === open.me && !entry.vote && !entry.failed);
                       return (
-                        <TableRow key={one.id} data-state={opened === one.id ? "selected" : undefined} className="cursor-pointer border-border-subtle" style={{ height: ROW }} onClick={() => (opened === one.id ? close() : show(one.id))}>
+                        <TableRow key={one.id} data-paper={one.id} data-state={opened === one.id ? "selected" : undefined} className="cursor-pointer border-border-subtle" style={{ height: ROW }} onClick={() => (opened === one.id ? close() : show(one.id))}>
                           <TableCell className="ps-4 sm:ps-6" onClick={(event) => event.stopPropagation()}>
                             <Checkbox checked={chosen.includes(one.id)} onCheckedChange={() => setPicked(chosen.includes(one.id) ? chosen.filter((p) => p !== one.id) : [...chosen, one.id])} aria-label={`Select ${one.title}`} />
                           </TableCell>
@@ -554,7 +593,7 @@ function Papers({ open }: { open: Open }) {
                           <TableCell className={cn("ps-6", reasonHidden)} onClick={(event) => (event.target as HTMLElement).closest("a") && event.stopPropagation()}>
                             <Why paper={one} open={open} visible={visible} reasonKey={reasonKey(one)} />
                           </TableCell>
-                          <TableCell className={cn("text-end", lastCell, "@max-[48rem]/table:sticky @max-[48rem]/table:end-0 @max-[48rem]/table:bg-card")} onClick={(event) => (event.target as HTMLElement).closest("a") && event.stopPropagation()}>
+                          <TableCell className={cn("text-end", lastCell, !fits && "sticky end-0 bg-card")} onClick={(event) => (event.target as HTMLElement).closest("a") && event.stopPropagation()}>
                             <span className="inline-flex items-center gap-1.5">
                               {/* A result a person settled, against the votes, carries their face: it opens what they settled. */}
                               {state.resolvedBy ? (
@@ -579,8 +618,14 @@ function Papers({ open }: { open: Open }) {
               </>
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
-                <p className="text-sm text-muted-foreground">No paper here matches.</p>
-                <Button variant="outline" size="sm" onClick={() => go({ q: null, source: null, reviewer: null, voted: null, with: null, reason: null, result: null, added: null })}>Show every paper</Button>
+                {anyFilter ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">No paper here matches.</p>
+                    <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{EMPTY_TAB[filter]}</p>
+                )}
               </div>
             )}
           </div>
@@ -590,16 +635,19 @@ function Papers({ open }: { open: Open }) {
         <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
           {paper && beside ? (
             <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
-              {/* The assistant's button sits in the window's corner: the paper's foot stops above it. */}
-              <StickyColumn clear="5.5rem">
-                <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
+              <div ref={lead} />
+              <StickyColumn>
+                <div ref={reading}>
+                  <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
+                </div>
               </StickyColumn>
             </motion.aside>
           ) : null}
         </AnimatePresence>
       </div>
       <Sheet open={Boolean(paper) && !beside} onOpenChange={(next) => !next && close()}>
-        <SheetContent showCloseButton={false} className={`w-full gap-0 overflow-y-auto p-0 sm:max-w-lg ${AVATARS_FADE_IN}`}>
+        {/* It opens with the focus on itself, so no button's tooltip covers the paper's title. */}
+        <SheetContent showCloseButton={false} onOpenAutoFocus={focusContent} className={`w-full gap-0 overflow-y-auto p-0 outline-none sm:max-w-lg ${AVATARS_FADE_IN}`}>
           <SheetTitle className="sr-only">{paper?.title ?? "Paper"}</SheetTitle>
           <SheetDescription className="sr-only">Its abstract, its votes and its result</SheetDescription>
           {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} inSheet /> : null}
@@ -623,6 +671,22 @@ function Legend({ children }: { children: ReactNode }) {
 }
 function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode }) {
   return <p className="flex items-center gap-2.5">{mark}{children}</p>;
+}
+
+/** What each vote mark means, over the table's columns and beside a phone's search. `children` says where the marks are. */
+function VoteMarksHelp({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Help title="Vote marks" side="bottom" className={className} facts={<HelpFact icon={Lock}>Blind until you vote</HelpFact>}>
+      <p>{children}</p>
+      <Legend>
+        {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who="A reviewer" />}>Voted {DECISION_LABEL[decision]}</LegendRow>)}
+        <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, hidden until you vote</LegendRow>
+        <LegendRow mark={<VoteMark who="A reviewer" />}>Hasn&apos;t voted yet</LegendRow>
+        <LegendRow mark={<VoteMark failed who="A model" />}>A model couldn&apos;t read it</LegendRow>
+        <LegendRow mark={<span className="size-6" />}>Blank: not theirs to vote on</LegendRow>
+      </Legend>
+    </Help>
+  );
 }
 
 /** A link inside a row, which opens what it names rather than the row's paper. */
@@ -720,8 +784,6 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
   const source = screening.sources.find((one) => one.id === paper.source);
   const failed = cast.filter((one) => one.failed);
   const score = state.result === "include" && visible && screening.criteria.length ? scoreOf(screening, cast) : null;
-  // The paper's own page in Openscholar, where its citations are listed.
-  const page = paperPath(paper.id, paper.title);
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
     const said = withNote ?? (note.trim() || undefined);
     if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers, ...(reason && screening.criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note: said, at: Date.now() });
@@ -764,23 +826,18 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
       {/* Where it is in the list, and the way through it: it stays in view while the paper is read. */}
       <div className={cn("sticky z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6", inSheet ? "top-0" : UNDER_HEADER)}>
         <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at >= 0 ? `${(place.at + 1).toLocaleString("en-GB")} of ${place.of.toLocaleString("en-GB")}` : "Not in this list"}</span>
-        <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd>K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
-        <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd>J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={place.at < 0 || place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
-        <TooltipHint label="Open paper"><Button asChild variant="ghost" size="icon" className="size-7 text-muted-foreground"><a href={page} target="_blank" rel="noopener noreferrer" aria-label="Open paper"><ExternalLink /></a></Button></TooltipHint>
-        <TooltipHint label={<span className="flex items-center gap-2">Close<Kbd>Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label="Close" aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
+        <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
+        <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={place.at < 0 || place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+        <TooltipHint label={<span className="flex items-center gap-2">Close<Kbd className="pointer-coarse:hidden">Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label="Close" aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
       </div>
       <div className="space-y-2">
-        <h2 className="text-base font-semibold leading-snug">
-          <a href={page} target="_blank" rel="noopener noreferrer" className="rounded-sm outline-none underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
-            {paper.title}<ExternalLink aria-label="Opens in a new tab" className="ms-1.5 inline size-3.5 align-[-1px] text-muted-foreground" />
-          </a>
-        </h2>
+        <h2 className="text-base font-semibold leading-snug">{paper.title}</h2>
         <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <ResultChip result={state.result} />
         {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
-        <LinkChip href={page} target="_blank" rel="noopener noreferrer" icon={Quote}>{paper.cited.toLocaleString("en-GB")} cited</LinkChip>
+        <Chip icon={Quote}>{paper.cited.toLocaleString("en-GB")} cited</Chip>
         {paper.batch !== undefined ? <LinkChip href={papersHref(id, { added: String(paper.batch) })} icon={RefreshCw}>Added {ago(paper.batch)}</LinkChip> : null}
         {source ? <LinkChip href={papersHref(id, { source: source.id })} className="max-w-full">Papers from {source.name}</LinkChip> : null}
       </div>
@@ -822,10 +879,11 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
               const unread = open.unread(reviewer).length;
               const cost = unread * paperCredits(reviewer.model!);
               return (
-                <li key={reviewer.id} className="flex items-center gap-2 text-xs">
+                // On a phone the button goes under the name, so the name is never cut short.
+                <li key={reviewer.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <ReviewerMark reviewer={reviewer} className="size-5" />
-                  <span className="flex min-w-0 flex-1 items-center gap-1"><ReviewerName reviewer={reviewer} className="font-medium" /><span className="shrink-0 text-muted-foreground">couldn&apos;t read it</span></span>
-                  {open.canChange ? <Button variant="outline" size="xs" onClick={() => open.retry(reviewer)}><RotateCcw />{unread > 1 ? `Read all ${unread} again` : "Read it again"}, {credits(cost)} credits</Button> : null}
+                  <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={reviewer} className="font-medium" /><span className="shrink-0 text-muted-foreground">couldn&apos;t read it</span></span>
+                  {open.canChange ? <Button variant="outline" size="xs" className="justify-self-start max-sm:col-start-2" onClick={() => open.retry(reviewer)}><RotateCcw />{unread > 1 ? `Read all ${unread} again` : "Read it again"}, {credits(cost)} credits</Button> : null}
                 </li>
               );
             })}
