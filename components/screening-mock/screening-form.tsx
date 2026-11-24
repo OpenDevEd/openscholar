@@ -557,7 +557,8 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={overviewHref(copied.id)}>Open it<ChevronRight /></NextLink></Button>
         </div>
       ) : null}
-      <div className="grid @4xl:grid-cols-[minmax(0,1fr)_24rem] @7xl:grid-cols-[minmax(0,1fr)_26rem]">
+      {/* The summary sits beside the form only where that leaves the form's rows room to stay on one line each; below that it follows the form. */}
+      <div className="grid @6xl:grid-cols-[minmax(0,1fr)_24rem] @7xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="min-w-0 space-y-10 p-4 sm:p-6">
           <section id="name" className={cn("grid gap-4 @3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]", BELOW_HEADER)}>
             <div className="flex flex-col gap-1.5">
@@ -856,11 +857,12 @@ export function ScreeningForm({ id }: { id?: string }) {
 
           <Section
             id="criteria"
+            className="@container/criteria"
             title="Criteria"
             help={<><Help title="Must-have and nice to have" facts={<><HelpFact>People vote directly</HelpFact><HelpFact>Answers decide models&apos; votes</HelpFact></>}>Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have criterion makes its vote exclude, and an unclear makes it maybe. A nice-to-have criterion never excludes a paper.</Help>{changed("criteria")}</>}
             aside={
               <span className="flex items-center gap-1">
-                <span className="flex flex-wrap items-center justify-end gap-1 @max-md:hidden">
+                <span className="flex flex-wrap items-center justify-end gap-1 @max-[40rem]/criteria:hidden">
                   {importable.length ? (
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => importable.forEach(({ question }) => addCriterion(question))}>
                       <ListChecks />Add {importable.length} {importable.length === 1 ? "question" : "questions"} from your {importSearches === 1 ? "search" : "searches"}
@@ -886,10 +888,10 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </span>
                   </TooltipHint>
                 </span>
-                {/* On a phone the three are one menu, so none wraps or hides under the assistant's button. */}
+                {/* Where the section's line is too short for them beside its title, the three are one menu: none wraps onto a line of its own. */}
                 <DropdownMenu>
                   <TooltipHint label="More">
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground @md:hidden" aria-label="Criteria actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground @[40rem]/criteria:hidden" aria-label="Criteria actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                   </TooltipHint>
                   <DropdownMenuContent align="end" className="w-72">
                     {importable.length ? <DropdownMenuItem onSelect={() => importable.forEach(({ question }) => addCriterion(question))}><ListChecks />Add {importable.length} {importable.length === 1 ? "question" : "questions"} from your {importSearches === 1 ? "search" : "searches"}</DropdownMenuItem> : null}
@@ -911,7 +913,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               </span>
             }
           >
-            <div className={cn(LIST, "@container/criteria bg-card")}>
+            <div className={cn(LIST, "bg-card")}>
               {criterionRows.length ? (
                 <div className="flex items-center gap-x-3 px-4 py-1.5 text-xs text-muted-foreground @max-3xl/criteria:hidden">
                   <span className="w-4 shrink-0" />
@@ -1116,8 +1118,8 @@ export function ScreeningForm({ id }: { id?: string }) {
         </div>
 
         {/* What it comes to: a well beside the form, in view while the form scrolls. */}
-        <aside id="summary" aria-label="Summary" className={cn("min-w-0 border-border-subtle bg-inset/60 p-4 max-@4xl:border-t sm:p-6 @4xl:border-s @4xl:py-0", BELOW_HEADER)}>
-          <StickyColumn tall="flow" clear={fresh || dirty ? "5rem" : "1rem"} className="space-y-6 @4xl:py-6">
+        <aside id="summary" aria-label="Summary" className={cn("min-w-0 border-border-subtle bg-inset/60 p-4 @max-6xl:border-t sm:p-6 @6xl:border-s @6xl:py-0", BELOW_HEADER)}>
+          <StickyColumn tall="flow" clear={fresh || dirty ? "5rem" : "1rem"} className="space-y-6 @6xl:py-6">
             {/* What saving will do, before it is done, and after it what the save did, until the next edit. Each line opens the part of the form it is about. */}
             {!fresh ? (
               <Section

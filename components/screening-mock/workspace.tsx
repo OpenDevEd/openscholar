@@ -3,13 +3,13 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
-import { createContext, use, useEffect, type ReactNode } from "react";
+import { createContext, use, useEffect, type ComponentProps, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useParams, useRouter, useSelectedLayoutSegment } from "next/navigation";
 import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
-import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
+import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
@@ -18,6 +18,7 @@ import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { FadeRow } from "@/components/ui/fade-row";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -135,13 +136,14 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const resume = () => store.update(id, (s) => ({ ...s, paused: false }), { what: "Resumed the models" });
   const reopen = () => store.update(id, (s) => ({ ...s, finishedAt: undefined }), { what: "Reopened the screening" });
 
+  // The pages. Beside the rule they are a compact group; where the card is too narrow for both they take a line of their own, each as wide as its share.
   const pages = (fill: boolean) => (
     <Segmented
       label="Pages of this screening"
       value={view}
       fill={fill ? "labels" : false}
-      // On a phone the row is a grid whatever the counts say: two by two, or three across without the settings.
-      className={fill ? cn("@max-[30rem]:grid", open.canChange ? "@max-[30rem]:grid-cols-2" : "@max-[30rem]:grid-cols-3 @max-[30rem]:*:px-2") : undefined}
+      // On a phone the labels go without their icons and the four stay on one line. Where large counts or an unsaved mark make that line longer than the screen, it scrolls sideways.
+      className={fill ? "@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden" : undefined}
       options={[
         { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
         { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <span className="tabular-nums text-muted-foreground">{open.toDo.length}</span> : undefined },
@@ -152,7 +154,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     />
   );
 
-  // The screening's menu. On a phone the bar keeps the title and this menu, which then also holds what the bar's buttons do.
+  // The screening's menu. It also holds what the bar has no room for: the activity and the export below a wide window, and sharing on a phone, where the bar keeps the title and this menu.
   const more = (
     <DropdownMenu>
       <TooltipHint label="More">
@@ -161,10 +163,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         </DropdownMenuTrigger>
       </TooltipHint>
       <DropdownMenuContent align="end" className="w-72 [&_[role=menuitem]]:whitespace-nowrap">
-        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("activity")}><History />Activity</DropdownMenuItem>
-        <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("export")}><Download />Export</DropdownMenuItem>
+        <DropdownMenuItem className="xl:hidden" onSelect={() => overlays.show("activity")}><History />Activity</DropdownMenuItem>
+        <DropdownMenuItem className="xl:hidden" onSelect={() => overlays.show("export")}><Download />Export</DropdownMenuItem>
         <DropdownMenuItem className="sm:hidden" onSelect={() => overlays.show("share")}><Share2 />Share</DropdownMenuItem>
-        <DropdownMenuSeparator className="sm:hidden" />
+        <DropdownMenuSeparator className="xl:hidden" />
         {/* Someone it is shared with from outside can start their own from it, and nothing else here. */}
         {open.canChange ? (
           <>
@@ -187,13 +189,65 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         {open.canChange ? (
           <>
             <DropdownMenuItem onSelect={() => overlays.show("move")}><Move />Move to another workspace</DropdownMenuItem>
-            {canJoin ? <DropdownMenuItem onSelect={open.join}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
+            {/* In the widest windows the bar has this as a button. */}
+            {canJoin ? <DropdownMenuItem className="2xl:hidden" onSelect={open.join}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={() => overlays.show("delete")}><Trash2 />Delete</DropdownMenuItem>
           </>
         ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+
+  // Who reviews it and the ways to add to them, in the bar beside Share. On a phone the bar keeps the name and the menu, so they sit under the rule.
+  const team = (
+    <>
+      {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
+      <Faces id={id} reviewers={reviewers} me={open.me} />
+      {/* In the bar only in a window wide enough to keep a long name whole beside it: the menu has it at every width. */}
+      {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
+      {open.canChange ? (
+        <>
+          <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
+            <PickerButton hint="Add person"><UserPlus /></PickerButton>
+          </AddPerson>
+          <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => overlays.add(modelReviewer(model, Date.now()))}>
+            <PickerButton hint="Add model"><AiIcon /></PickerButton>
+          </AddModel>
+        </>
+      ) : null}
+    </>
+  );
+
+  // How a paper is decided, in one line at every width: the chips scroll sideways where the line is too short for them. In the settings the form itself says the same.
+  const rule = (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
+        {/* Its name shows where the line has room for it: on a line of its own from a tablet up, and beside the pages in a wide window. */}
+        <span className="sr-only @[48rem]/strip:not-sr-only @[66rem]/strip:sr-only @[77rem]/strip:not-sr-only">How a paper is decided</span>
+        <Help
+          title="How a paper is decided"
+          facts={
+            <>
+              {screening.rule.settle !== "one" && resolver ? <HelpFact icon={Users}>Conflicts go to {resolver.name}</HelpFact> : null}
+              {screening.living ? <HelpFact icon={RefreshCw}>Checks for new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</HelpFact> : null}
+            </>
+          }
+        >
+          <p>Each paper gets the votes named in these chips, and the rule settles it once they are in.</p>
+          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>When its reviewers split, the paper is in conflict until {resolver?.name ?? "a person"} settles it.</p>}
+          {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
+        </Help>
+      </span>
+      <FadeRow scrolls scrollbar="none" className="flex items-center gap-2">
+        <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
+        <Chip icon={Check}>{facts.when}</Chip>
+        <Chip icon={facts.seeIcon}>{facts.see}</Chip>
+        {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
+        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">Living</LinkChip> : null}
+      </FadeRow>
+      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
+    </div>
   );
 
   // Who the person looking is to it, where that is less than a reviewer who can change it.
@@ -223,16 +277,19 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                     <Help title={role.label}>{role.text}</Help>
                   </span>
                 ) : null}
-                {/* The pages, in the bar only where the trail, the name and the actions leave them room. The view takes the card's white, as the bar's other wells do. */}
-                <div className="ms-2 hidden border-s border-border-subtle ps-4 not-dark:[--inset:var(--card)] @7xl:block">{pages(false)}</div>
+                {/* A living screening says so beside its name, as its row in the list does, and opens its checks. Below a laptop's width the chip is with the rule's. */}
+                {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">Living</LinkChip> : null}
                 {/* On a phone the menu ends the title's row, as an app bar's does. */}
                 <span className="flex sm:hidden">{more}</span>
               </>
             }
             actions={
               <>
-                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} onClick={() => overlays.show("activity")}><History /><span className={BAR_LABEL}>Activity</span></Button>
-                <Button variant="outline" size="sm" className={`${BAR_ACTION} max-sm:hidden`} onClick={() => overlays.show("export")}><Download /><span className={BAR_LABEL}>Export</span></Button>
+                {/* On Screen a narrow window keeps the bar for the name: the paper is what is being read. */}
+                <div className={cn("flex items-center gap-2 border-e border-border-subtle pe-3 max-sm:hidden", view === "screen" && "max-lg:hidden")}>{team}</div>
+                {/* Below a wide window these two are in the menu, so the name keeps its room. */}
+                <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("activity")}><History />Activity</Button>
+                <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("export")}><Download />Export</Button>
                 {/* Icon-only, it keeps its count, so it is as wide as both. */}
                 <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={`Share, ${shared} ${shared === 1 ? "person" : "people"}`} onClick={() => overlays.show("share")}>
                   <Share2 /><span className={BAR_LABEL}>Share</span>
@@ -242,62 +299,19 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
               </>
             }
             intro={
-              <>
-                {/* Below the bar's widest, the pages sit right under it, above everything they hold: two by two on a phone. */}
-                <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @7xl:hidden">{pages(true)}</div>
-                {/* How a paper is decided, and who decides it. In the settings the form itself says the same. */}
-                {view === "settings" ? null : (
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 sm:px-6">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="me-1 flex items-center gap-1 text-sm font-medium">
-                        How a paper is decided
-                        <Help
-                          title="How a paper is decided"
-                          facts={
-                            <>
-                              {screening.rule.settle !== "one" && resolver ? <HelpFact icon={Users}>Conflicts go to {resolver.name}</HelpFact> : null}
-                              {screening.living ? <HelpFact icon={RefreshCw}>Checks for new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</HelpFact> : null}
-                            </>
-                          }
-                        >
-                          <p>Each paper gets the votes named in these chips, and the rule settles it once they are in.</p>
-                          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>When its reviewers split, the paper is in conflict until {resolver?.name ?? "a person"} settles it.</p>}
-                          {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
-                        </Help>
-                      </span>
-                      <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon}>{facts.who}</LinkChip>
-                      <Chip icon={Check}>{facts.when}</Chip>
-                      <Chip icon={facts.seeIcon}>{facts.see}</Chip>
-                      {screening.living ? (
-                        open.canChange ? <LinkChip href={settingsHref(id, "new-papers")} icon={RefreshCw}>Living, next check {day(screening.living.next)}</LinkChip> : <Chip icon={RefreshCw}>Living, next check {day(screening.living.next)}</Chip>
-                      ) : null}
-                      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
-                    </div>
-                    {/* Whose it is and who reviews it. On a phone the faces take a line, and the buttons go two to a row under them. */}
-                    <div className={cn("flex flex-wrap items-center gap-2 max-sm:grid max-sm:w-full max-sm:grid-cols-2 sm:ms-auto", view === "screen" && "max-lg:hidden")}>
-                      <span className="flex min-w-0 items-center gap-2 max-sm:col-span-2">
-                        {workspace !== HOME ? <WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /> : null}
-                        <Faces id={id} reviewers={reviewers} me={open.me} />
-                      </span>
-                      {canJoin ? <Button variant="outline" size="sm" className="h-8 text-xs max-sm:col-span-2" onClick={open.join}><UserPlus />Join as a reviewer</Button> : null}
-                      {open.canChange ? (
-                        <>
-                          <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
-                            <Button variant="outline" size="sm" className="h-8 text-xs"><UserPlus />Add person</Button>
-                          </AddPerson>
-                          <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => overlays.add(modelReviewer(model, Date.now()))}>
-                            <Button variant="outline" size="sm" className="h-8 text-xs"><AiIcon />Add model</Button>
-                          </AddModel>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                )}
+              <div className="@container/strip">
+                {/* One strip under the bar: the pages, then how a paper is decided. Where the card is too narrow for both on a line, the pages take the first and the rule the second. */}
+                <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @[66rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]">{pages(true)}</FadeRow></div>
+                <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[66rem]/strip:hidden")}>
+                  <div className="shrink-0 @max-[66rem]/strip:hidden">{pages(false)}</div>
+                  {view === "settings" ? null : <div className="min-w-0 @[66rem]/strip:ms-auto">{rule}</div>}
+                </div>
+                {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
                   <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={reopen} onResume={resume} />
                 </AutoHeight>
-              </>
+              </div>
             }
           >
             {/* Each page rises in as it opens. */}
@@ -311,6 +325,15 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         <MockStates />
       </PageWrapper>
     </MotionConfig>
+  );
+}
+
+/** An icon-only button that opens a picker. The picker hands it the trigger's own props, and the hint names it. */
+function PickerButton({ hint, className, ...button }: ComponentProps<typeof Button> & { hint: string }) {
+  return (
+    <TooltipHint label={hint}>
+      <Button variant="outline" size="icon" aria-label={hint} {...button} className={cn("size-8 shrink-0", className)} />
+    </TooltipHint>
   );
 }
 

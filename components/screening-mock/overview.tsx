@@ -663,7 +663,7 @@ function Checks({ open }: { open: Open }) {
           <p>A check runs each source&apos;s search again and adds the papers this screening doesn&apos;t have yet. Uploaded files and pasted lists never change, so checks skip them.</p>
         </Help>
       }
-      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check for new papers</Button> : null}
+      aside={open.canChange ? <Button variant="outline" size="sm" className="h-7 text-xs" disabled={Boolean(screening.checking)} onClick={open.check}><RefreshCw className={screening.checking ? "animate-spin motion-reduce:animate-none" : undefined} />Check now</Button> : null}
     >
       <Panel className="space-y-1 p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 pt-3.5 pb-1">
