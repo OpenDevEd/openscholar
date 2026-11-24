@@ -30,7 +30,7 @@ import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, Help, Kbd, LinkChip, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
+import { AnswerMark, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -100,7 +100,7 @@ export function PapersPage() {
 }
 
 /** The reasons a paper can be excluded for: each criterion not met, then the others. */
-const reasonsOf = (open: Open) => [...open.screening.criteria.map((criterion) => ({ key: criterion.key, label: `Not met: ${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short}` })), ...OTHER_REASONS];
+const reasonsOf = (open: Open) => [...open.screening.criteria.map((criterion) => ({ key: criterion.key, label: `${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short} not met` })), ...OTHER_REASONS];
 
 /** A reviewer's name, or a person's who settles conflicts without voting. */
 const nameOf = (open: Open, id: string) => open.screening.reviewers.find((one) => one.id === id)?.name ?? personOf(id)?.name ?? "A reviewer";
@@ -316,7 +316,7 @@ function Papers({ open }: { open: Open }) {
   const narrowedSource = screening.sources.find((one) => one.id === from);
   const merged = narrowedSource ? taken(narrowedSource) - keptOf(narrowedSource) : 0;
   const active = [
-    from !== "all" ? { key: "source", label: `Source: ${narrowedSource?.name ?? "removed"}`, clear: { source: null }, fact: merged && narrowedSource ? `${keptOf(narrowedSource).toLocaleString("en-GB")} papers, ${merged.toLocaleString("en-GB")} ${merged === 1 ? "duplicate" : "duplicates"} merged` : undefined } : null,
+    from !== "all" ? { key: "source", label: `Source ${narrowedSource?.name ?? "removed"}`, shown: <Named name="Source">{narrowedSource?.name ?? "removed"}</Named>, clear: { source: null }, fact: merged && narrowedSource ? `${keptOf(narrowedSource).toLocaleString("en-GB")} papers, ${merged.toLocaleString("en-GB")} ${merged === 1 ? "duplicate" : "duplicates"} merged` : undefined } : null,
     who
       ? {
           key: "reviewer",
@@ -326,8 +326,8 @@ function Papers({ open }: { open: Open }) {
       : null,
     // Beside a reviewer's own kind of vote, the others are named apart.
     also.length && voted !== "any" ? { key: "with", label: `Also voted on by ${listed(also.map((one) => (one === open.me ? "you" : nameOf(open, one))))}`, clear: { with: null } } : null,
-    reason ? { key: "reason", label: filter === "maybe" ? `Unclear: ${criteria.find((c) => c.key === reason)?.short ?? reason}` : failedLabel(reason, criteria), clear: { reason: null } } : null,
-    added !== "all" ? { key: "added", label: `Added: ${addedLabel(added)}`, clear: { added: null } } : null,
+    reason ? { key: "reason", label: filter === "maybe" ? `${criteria.find((c) => c.key === reason)?.short ?? reason} unclear` : failedLabel(reason, criteria), shown: <Reason reason={reason} criteria={criteria} unclear={filter === "maybe"} />, clear: { reason: null } } : null,
+    added !== "all" ? { key: "added", label: `Added ${addedLabel(added)}`, shown: <Named name="Added">{addedLabel(added)}</Named>, clear: { added: null } } : null,
   ].filter((one) => one !== null);
   const anyFilter = active.length > 0 || Boolean(query.trim());
 
@@ -466,7 +466,7 @@ function Papers({ open }: { open: Open }) {
           {active.map((one) => (
             <span key={one.key} className="contents">
               <Button variant="secondary" size="xs" className="h-6 max-w-full gap-1 rounded-md bg-primary/10 pe-1 text-xs font-medium text-primary hover:bg-primary/15" aria-label={`Remove the filter ${one.label}`} onClick={() => go(one.clear)}>
-                <span className="truncate">{one.label}</span><X className="size-3.5 opacity-70" />
+                <span className="flex min-w-0 items-center gap-1 truncate [&_.text-muted-foreground]:text-current [&_.text-muted-foreground]:opacity-70">{"shown" in one && one.shown ? one.shown : one.label}</span><X className="size-3.5 opacity-70" />
               </Button>
               {"fact" in one && one.fact ? <Chip>{one.fact}</Chip> : null}
             </span>
@@ -579,7 +579,7 @@ function Papers({ open }: { open: Open }) {
                       <TableHead rowSpan={2} className={cn("w-52 ps-6", reasonHidden)}>
                         <span className="inline-flex items-center gap-1">
                           Reason
-                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points: included papers only</HelpFact><HelpFact>Points: majority answer</HelpFact></>}>
+                          <Help title="Reason" side="bottom" facts={<><HelpFact>Points on included papers only</HelpFact><HelpFact>Points from the majority answer</HelpFact></>}>
                             <p>Why a paper stands where it does: the criterion that excluded it, the one a Maybe is unclear on, how a conflict split, or whose vote it waits for.</p>
                             <p>An included paper shows its points and stars. Each criterion earns the points set in the screening&apos;s settings, from the answer most reviewers gave, and the stars follow the point thresholds set there.</p>
                           </Help>
@@ -598,7 +598,8 @@ function Papers({ open }: { open: Open }) {
                                   <DropdownMenuTrigger asChild>
                                     <button type="button" aria-label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
                                       <ReviewerMark reviewer={one} you={one.id === open.me} />
-                                      {names ? <span className="max-w-full truncate px-0.5 text-2xs font-normal text-muted-foreground">{one.id === open.me ? "You" : one.name.split(" ")[0]}</span> : null}
+                                      {/* Each head opens a menu of that reviewer's votes, and says so with the arrow a menu has. */}
+                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground">{names ? <span className="truncate">{one.id === open.me ? "You" : one.name.split(" ")[0]}</span> : null}<ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
                                     </button>
                                   </DropdownMenuTrigger>
                                 </TooltipHint>
@@ -751,7 +752,7 @@ function VoteMarksHelp({ children, className }: { children: ReactNode; className
         <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, hidden until you vote</LegendRow>
         <LegendRow mark={<VoteMark who="A reviewer" />}>Hasn&apos;t voted yet</LegendRow>
         <LegendRow mark={<VoteMark failed who="A model" />}>A model couldn&apos;t read it</LegendRow>
-        <LegendRow mark={<span className="size-6" />}>Blank: not theirs to vote on</LegendRow>
+        <LegendRow mark={<span className="size-6" />}>An empty cell is a paper that isn&apos;t theirs to vote on</LegendRow>
       </Legend>
     </Help>
   );
@@ -794,12 +795,12 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
   if (!visible) return null;
   if (state.result === "conflict" || state.resolvedBy) return <Tally votes={cast} />;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
-    const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `Unclear: ${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey}`;
+    const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey} unclear`;
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     return (
       <QuestionHint question={questionOf(reasonKey, open.screening.criteria)} label={label}>
-        <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}>{label}</NextLink>
+        <NextLink href={link.href} aria-current={link["aria-current"]} className={cn("block truncate text-xs", link.on ? "font-medium text-foreground" : "text-muted-foreground", ROW_LINK)}><Reason reason={reasonKey} criteria={open.screening.criteria} unclear={state.result === "maybe"} /></NextLink>
       </QuestionHint>
     );
   }
@@ -933,7 +934,7 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
             <h3 className="text-sm font-medium">Your vote</h3>
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who="You" />
-              <span className="min-w-0 flex-1">You voted {DECISION_LABEL[mine.decision]}{mine.reason ? `, ${failedLabel(mine.reason, screening.criteria)}` : ""}</span>
+              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">You voted {DECISION_LABEL[mine.decision]}{mine.reason ? <Chip className="min-w-0 shrink"><Reason reason={mine.reason} criteria={screening.criteria} /></Chip> : null}</span>
               <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>Change it</Button>
             </div>
           </section>
@@ -970,7 +971,7 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
               <li key={reviewer.id} className="flex items-start gap-2 text-xs">
                 <ReviewerMark reviewer={reviewer} className="size-5" />
                 <span className="min-w-0 flex-1">
-                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="inline-flex max-w-full align-middle font-medium" /> <span className="text-muted-foreground">voted {DECISION_LABEL[vote!.decision]}{vote!.reason ? `, ${failedLabel(vote!.reason, screening.criteria)}` : ""}, {ago(vote!.at)}</span>
+                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="inline-flex max-w-full align-middle font-medium" /> <span className="text-muted-foreground">voted {DECISION_LABEL[vote!.decision]} {ago(vote!.at)}</span>{vote!.reason ? <> <Chip className="inline-flex h-5 max-w-full min-w-0 shrink align-middle"><Reason reason={vote!.reason} criteria={screening.criteria} /></Chip></> : null}
                   {vote!.note ? <span className="block text-muted-foreground">&quot;{vote!.note}&quot;</span> : null}
                 </span>
               </li>
@@ -983,7 +984,7 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
       {state.resolvedBy ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <IdentityAvatar name={nameOf(open, state.resolvedBy)} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
-          <span className="min-w-0 flex-1">Settled by {state.resolvedBy === open.me ? "you" : nameOf(open, state.resolvedBy)}{state.reason ? `, ${failedLabel(state.reason, screening.criteria)}` : ""}{state.note ? `: "${state.note}"` : ""}</span>
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">Settled by {state.resolvedBy === open.me ? "you" : nameOf(open, state.resolvedBy)}{state.reason ? <Chip className="min-w-0 shrink"><Reason reason={state.reason} criteria={screening.criteria} /></Chip> : null}{state.note ? <span className="text-muted-foreground">“{state.note}”</span> : null}</span>
           {open.canResolve ? <Button variant="ghost" size="xs" onClick={() => open.resolve(paper, null)}><Undo2 />Reopen</Button> : null}
         </div>
       ) : !open.canResolve ? (

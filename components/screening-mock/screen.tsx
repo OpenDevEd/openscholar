@@ -28,7 +28,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, TabCount, Tally, VoteMark, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -162,7 +162,7 @@ function Screen({ open }: { open: Open }) {
 
   // What a paper can be excluded for, each with its key: a must-have by its own number, the others by their first letter.
   const reasons = [
-    ...criteria.flatMap((criterion, i) => (criterion.must && i < 9 ? [{ key: criterion.key, label: failedLabel(criterion.key, criteria), hotkey: String(i + 1) }] : [])),
+    ...criteria.flatMap((criterion, i) => (criterion.must && i < 9 ? [{ key: criterion.key, label: <Reason reason={criterion.key} criteria={criteria} /> as ReactNode, hotkey: String(i + 1) }] : [])),
     ...OTHER_REASONS.map((reason) => ({ ...reason, label: reason.key === OTHER ? "Another reason…" : reason.label, hotkey: reason.key[0]!.toUpperCase() })),
   ];
 
@@ -430,7 +430,7 @@ function Screen({ open }: { open: Open }) {
                     <Section
                       title="Everyone's votes"
                       help={
-                        <Help title="Reading the votes" facts={<><HelpFact icon={Lock}>Hidden until you vote</HelpFact><HelpFact icon={Hourglass}>No vote yet</HelpFact><HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact><HelpFact icon={GitCompare}>Differ: reviewers answered this criterion differently</HelpFact></>}>
+                        <Help title="Reading the votes" facts={<><HelpFact icon={Lock}>Hidden until you vote</HelpFact><HelpFact icon={Hourglass}>No vote yet</HelpFact><HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact><HelpFact><StateChip tone="info" className="-ms-1 h-4 px-1 text-2xs">Differ</StateChip>Reviewers answered it differently</HelpFact><HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="A model's answer" pressable /></span>Opens the passage a model read</HelpFact></>}>
                           Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note, and a model&apos;s answer for the passage it read. A model that couldn&apos;t read a paper has no say in it.
                         </Help>
                       }
@@ -472,7 +472,7 @@ function Screen({ open }: { open: Open }) {
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
                   help={
-                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact>Highlighted: words from the criteria</HelpFact></>}>
+                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Highlighted</mark>Words from the criteria</HelpFact></>}>
                       {answering ? "Answering is optional: one vote is enough. A paper that fails a must-have is excluded, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper. A paper that fails a must-have is excluded."}
                     </Help>
                   }
@@ -603,7 +603,7 @@ function Screen({ open }: { open: Open }) {
                       {resolving ? (
                         <span className="flex shrink-0 items-center gap-1 text-xs font-medium">
                           Settle this conflict
-                          <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_STYLE[mine.decision].icon}>Your own vote: {DECISION_LABEL[mine.decision]}</HelpFact> : null}<HelpFact>Rule: {RULE_LABEL[screening.rule.settle]}</HelpFact></>}>
+                          <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name="Your own vote">{DECISION_LABEL[mine.decision]}</Named></HelpFact> : null}<HelpFact><Named name="Rule">{RULE_LABEL[screening.rule.settle]}</Named></HelpFact></>}>
                             The reviewers split on this paper. Your vote becomes its result, whatever they voted. Maybe keeps it open.
                           </Help>
                         </span>
@@ -725,8 +725,7 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
 /** A sentence of the abstract, with the criteria's words marked, and the whole of it when a model quoted it. */
 /** Why a paper was excluded, as a chip that shows the criterion's question when pointed at. */
 function ReasonChip({ reason, criteria }: { reason: string; criteria: Criterion[] }) {
-  const label = failedLabel(reason, criteria);
-  return <QuestionName question={questionOf(reason, criteria)} label={label} className="inline-flex"><Chip>{label}</Chip></QuestionName>;
+  return <QuestionName question={questionOf(reason, criteria)} label={failedLabel(reason, criteria)} className="inline-flex"><Chip><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
 
 function Sentence({ text, quoted, terms }: { text: string; quoted: boolean; terms: string[] }) {
@@ -812,8 +811,8 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
               if (!answer) return <span key={reviewer.id} className="mx-auto size-6 rounded-md border border-dashed border-border" />;
               const on = shown?.reviewer === reviewer.id && shown.criterion === criterion.key;
               return reviewer.kind === "model" ? (
-                <button key={reviewer.id} type="button" aria-pressed={on} aria-label={`${reviewer.name}, ${criterion.short}: show the passage`} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
-                  <AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} />
+                <button key={reviewer.id} type="button" aria-pressed={on} aria-label={`${reviewer.name}, ${criterion.short}: show the passage`} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex cursor-pointer rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
+                  <AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} pressable={!on} />
                 </button>
               ) : (
                 <span key={reviewer.id} className="mx-auto flex"><AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} /></span>

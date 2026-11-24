@@ -25,7 +25,7 @@ import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
+import { Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -745,7 +745,7 @@ function Checks({ open }: { open: Open }) {
 
 // ── Flow ─────────────────────────────────────────────────────────────────────────────────────────
 
-type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; indent?: boolean; /** The question a reason stands for. */ question?: string };
+type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; indent?: boolean; /** The question a reason stands for. */ question?: string; /** A reason for excluding, which is drawn where the label would be. */ reason?: string };
 
 /** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, the papers screened, and included. Every count above none opens its papers. */
 function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
@@ -772,7 +772,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       href: papersHref(id),
       rows: [
         { key: "exclude", label: RESULT_LABEL.exclude, value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar },
-        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, indent: true })),
+        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, indent: true })),
         { key: "maybe", label: RESULT_LABEL.maybe, value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar },
         { key: "conflict", label: RESULT_LABEL.conflict, value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar },
         { key: "waiting", label: RESULT_LABEL.waiting, value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: HATCH },
@@ -821,7 +821,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
               {step.rows.map((row) => {
                 const inner = (
                   <>
-                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 text-muted-foreground", row.indent && "ps-3")}>{row.label}</span><span className="shrink-0 font-medium tabular-nums">{row.value.toLocaleString("en-GB")}</span></span>
+                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 min-w-0 text-muted-foreground", row.indent && "ps-3")}>{row.reason ? <Reason reason={row.reason} criteria={screening.criteria} /> : row.label}</span><span className="shrink-0 font-medium tabular-nums">{row.value.toLocaleString("en-GB")}</span></span>
                     <Meter value={row.value} max={Math.max(found, 1)} fill={row.fill} className={cn("h-1", row.indent && "ms-3 w-[calc(100%-0.75rem)]")} />
                   </>
                 );

@@ -18,7 +18,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type { Answer } from "@/lib/screening/setup";
-import { DECISION_LABEL, RESULTS, RESULT_LABEL, type Decision, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { DECISION_LABEL, RESULTS, RESULT_LABEL, reasonLabel, type Criterion, type Decision, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
 /**
  * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
@@ -266,6 +266,28 @@ export function QuestionName({ question, label, className, children }: { questio
   );
 }
 
+/** A fact with its name: the name quiet, the fact in the text's own weight. What "Name: fact" would say, drawn with weight in place of a colon. */
+export function Named({ name, children }: { name: string; children: ReactNode }) {
+  return <><span className="shrink-0 font-normal text-muted-foreground">{name}</span><span className="min-w-0 truncate">{children}</span></>;
+}
+
+/**
+ * Why a paper was excluded, or what a Maybe is unclear on, drawn in place of "Not met: name": the criterion's short name
+ * behind the sign its answer has, a red cross for one not met and an amber dash for one left unclear. A reason that is
+ * not a criterion is its own words.
+ */
+export function Reason({ reason, criteria, unclear = false, className }: { reason: string; criteria: Criterion[]; unclear?: boolean; className?: string }) {
+  const criterion = criteria.find((one) => one.key === reason);
+  if (!criterion) return <span className={cn("truncate", className)}>{reasonLabel(reason, criteria)}</span>;
+  const { icon: Icon, tone } = ANSWER_SIGN[unclear ? "unclear" : "no"];
+  return (
+    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1", className)}>
+      <Icon role="img" aria-label={unclear ? "Unclear on" : "Not met,"} className={cn("size-3.5 shrink-0", TONE[tone].ink)} />
+      <span className="truncate">{criterion.short}</span>
+    </span>
+  );
+}
+
 /** A screening's papers as one bar, split by where they stand. */
 export function ResultBar({ counts, className }: { counts: Record<Result, number>; className?: string }) {
   const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
@@ -358,10 +380,10 @@ export function RuleExamples({ rule, people, models }: { rule: Rule; people: num
 export const ANSWER_SIGN: Record<Answer, { icon: AppIcon; label: string; tone: Tone }> = { yes: { icon: Check, label: "Yes", tone: "success" }, no: { icon: X, label: "No", tone: "destructive" }, unclear: { icon: Minus, label: "Unclear", tone: "warning" } };
 
 /** One answer as a small square with its sign. `label` names whose answer it is, or to which criterion. */
-export function AnswerMark({ answer, label }: { answer: Answer; label: string }) {
+export function AnswerMark({ answer, label, pressable = false }: { answer: Answer; label: string; /** Drawn as a button, outlined on the card's white: for an answer that opens something. One that opens nothing is a flat tint. */ pressable?: boolean }) {
   const { icon: Icon, label: said, tone } = ANSWER_SIGN[answer];
   return (
-    <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", TONE[tone].chip)}>
+    <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", pressable ? cn("border border-current/45 bg-card shadow-xs", TONE[tone].ink) : TONE[tone].chip)}>
       <Icon aria-hidden className="size-3.5" />
     </span>
   );

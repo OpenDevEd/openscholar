@@ -10,7 +10,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
-import { AiIcon, Ban, Check, ChevronDown, ChevronRight, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -38,7 +38,7 @@ import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
-import { ActionBar, BELOW_HEADER, Help, LinkChip, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
+import { ActionBar, BELOW_HEADER, Help, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
 import { credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
@@ -336,7 +336,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         const matched = total - 2 - (hashOf(file.name) % 5);
         addSource("upload", file.name, "Reference file", total, [`${matched} matched to Openscholar's index`, `${total - matched} not in the index, screened as uploaded`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
       }
-      if (pdfs.length) addSource("pdf", `${pdfs.length} ${pdfs.length === 1 ? "PDF" : "PDFs"}: ${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, "Read from the files", pdfs.length, ["Titles and abstracts read from the files"]);
+      if (pdfs.length) addSource("pdf", `${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, pdfs.length === 1 ? "A PDF, read from the file" : "PDFs, read from the files", pdfs.length, ["Titles and abstracts read from the files"]);
       setReading((now) => now.filter((name) => !names.includes(name)));
     }, 1100);
   };
@@ -519,7 +519,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     ...collections.map((collection) => (
       <Destination key={collection.id} on={draft.destination.collection === collection.id} onPick={() => set({ destination: { ...draft.destination, kind: where === "community" ? "community" : "collection", collection: collection.id } })} icon={Folder} name={`Add to ${collection.name}`} facts={<Chip>{plural(collection.papers, "paper", "papers")}</Chip>} />
     )),
-    <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere: keep them in the screening" />,
+    <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere" facts={<Chip>Kept in the screening</Chip>} />,
   ];
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
   const doiCount = dois.split(/[\s,;]+/).filter((word) => /^10\.\d{4,}\//.test(word.replace(/^https?:\/\/(dx\.)?doi\.org\//, ""))).length;
@@ -617,7 +617,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {gone ? (
                                     <p className="truncate text-sm font-medium text-muted-foreground line-through max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
                                   ) : own ? (
-                                    <NextLink href={papersHref(own, { source: source.id })} className="truncate rounded text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50 max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</NextLink>
+                                    <NextLink href={papersHref(own, { source: source.id })} className="truncate rounded text-sm font-medium underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50 max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</NextLink>
                                   ) : link ? (
                                     <a href={link.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 rounded text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
                                       <span className="truncate max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</span>
@@ -717,7 +717,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {rejected.length ? (
                   <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
                     <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
-                    <p className="min-w-0 flex-1">Not read: {rejected.join(", ")}. It reads RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF files.</p>
+                    <p className="min-w-0 flex-1">Couldn&apos;t read {rejected.length < 2 ? rejected[0] : `${rejected.slice(0, -1).join(", ")} and ${rejected.at(-1)}`}. It reads RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF files.</p>
                     <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRejected([])}><X /></Button></TooltipHint>
                   </div>
                 ) : null}
@@ -1061,7 +1061,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="decided"
             title="How a paper is decided"
-            help={<><Help title="How a paper is decided" facts={<><HelpFact icon={Check}>Votes agree: settled</HelpFact><HelpFact>Votes split: conflict</HelpFact></>}>Every vote on a paper goes into this rule. When the votes agree as the rule asks, the paper is settled. When they split, it is in conflict, and one person settles it.</Help>{changed("decided")}</>}
+            help={<><Help title="How a paper is decided" facts={<><HelpFact icon={Check}><Named name="Votes agree">Settled</Named></HelpFact><HelpFact icon={GitCompare}><Named name="Votes split">In conflict</Named></HelpFact></>}>Every vote on a paper goes into this rule. When the votes agree as the rule asks, the paper is settled. When they split, it is in conflict, and one person settles it.</Help>{changed("decided")}</>}
           >
             <div className={cn(LIST, "bg-card")}>
               <RuleRow name="People on each paper" help={<Help title="People on each paper" facts={<HelpFact>Models read every paper</HelpFact>}>Every model reads every paper. This sets how many people vote on each one. The papers are shared out so each person reads about the same number.</Help>} detail={joined.length ? `About ${Math.ceil((papers * each) / joined.length).toLocaleString("en-GB")} papers for each person` : undefined}>
@@ -1159,7 +1159,8 @@ export function ScreeningForm({ id }: { id?: string }) {
             {saved?.checking ? (
               <div className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2.5 text-sm">
                 <RefreshCw className="size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
-                <span className="min-w-0 flex-1">Checking for new papers: {saved.checking.done} of {saved.checking.of} {saved.checking.of === 1 ? "source" : "sources"} checked</span>
+                <span className="min-w-0 flex-1">Checking for new papers</span>
+                <Chip className="tabular-nums">{saved.checking.done} of {saved.checking.of} {saved.checking.of === 1 ? "source" : "sources"} checked</Chip>
               </div>
             ) : saved?.updates?.length && saved.updates.at(-1)!.at > NOW ? (
               <div className="flex items-center gap-2.5 rounded-2xl bg-primary/8 px-3 py-2.5 text-sm">

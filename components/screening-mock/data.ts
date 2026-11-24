@@ -123,8 +123,8 @@ export type Destination = { kind: "none" | "new" | "collection" | "community"; n
 export const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason, in the note" }];
 /** A reason in words: the criterion's short name, or one of the others. */
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
-/** A reason for excluding as a reader meets it: the criterion that wasn't met, named as such, or one of the other reasons. */
-export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `Not met: ${reasonLabel(key, criteria)}` : reasonLabel(key, criteria));
+/** A reason for excluding in words, for a file, a tooltip or a screen reader: the criterion that wasn't met, named as such, or one of the other reasons. On a page it is drawn, by `Reason`. */
+export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `${reasonLabel(key, criteria)} not met` : reasonLabel(key, criteria));
 /** The question a short name or a reason stands for, where the name isn't already the question's own words. */
 export const questionOf = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
