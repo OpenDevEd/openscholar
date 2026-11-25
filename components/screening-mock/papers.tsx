@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { createSerializer, parseAsArrayOf, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Lock, Play, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -30,11 +30,11 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
-import { Discussion, discussed } from "./discussion";
+import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { useWorkspace } from "./workspace";
 
 const PAGE = 20;
@@ -734,11 +734,11 @@ function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode })
 /** What each vote mark means, over the table's columns and beside a phone's search. `children` says where the marks are. */
 function VoteMarksHelp({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <Help title="Vote marks" side="bottom" className={className} facts={<HelpFact icon={Lock}>Blind until you vote</HelpFact>}>
+    <Help title="Vote marks" side="bottom" className={className} facts={<HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact>}>
       <p>{children}</p>
       <Legend>
         {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who="A reviewer" />}>Voted {DECISION_LABEL[decision]}</LegendRow>)}
-        <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, hidden until you vote</LegendRow>
+        <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, {SHUT.vote.says.toLowerCase()}</LegendRow>
         <LegendRow mark={<VoteMark who="A reviewer" />}>Hasn&apos;t voted yet</LegendRow>
         <LegendRow mark={<VoteMark failed who="A model" />}>A model couldn&apos;t read it</LegendRow>
         <LegendRow mark={<span className="size-6" />}>An empty cell is a paper that isn&apos;t theirs to vote on</LegendRow>
@@ -844,7 +844,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const [note, setNote] = useState("");
   const state = settled[paper.id]!;
   const visible = open.canSee(paper);
-  const cast = votes[paper.id]!;
+  const cast = youFirst(votes[paper.id]!, open.me);
   const mine = open.myVote(paper);
   const isMine = cast.some((one) => one.reviewer.id === open.me);
   const quoted = shown && visible ? screening.criteria.findIndex((c) => c.key === shown.criterion) : -1;
@@ -883,7 +883,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       </div>
     );
   const votesHelp = !visible ? (
-    <Help title="Blind voting" side="left" facts={<HelpFact icon={Lock}>Blind until you vote</HelpFact>}>
+    <Help title="Blind voting" side="left" facts={<HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact>}>
       <p>You see how the others voted on a paper only after you vote on it, so their votes don&apos;t sway yours. The organiser sets this in the screening&apos;s settings.</p>
     </Help>
   ) : failed.length ? (
@@ -937,12 +937,10 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         )
       ) : null}
 
-      <Section title="Votes" help={votesHelp}>
-        {visible ? (
-          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div>
-        ) : (
-          <p className="flex items-center gap-2 rounded-2xl bg-inset px-3 py-3 text-sm text-muted-foreground"><Lock className="size-4 shrink-0" />Hidden until you vote</p>
-        )}
+      {/* While the rule hides the others' votes, the table is the one Screen draws: a lock where a vote is cast, the rule's chip beside the title and its reason under the table. */}
+      <Section title="Votes" help={votesHelp} aside={visible ? undefined : <ShutChip by="vote" />}>
+          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={!visible} shown={shown} onShow={setShown} passage={visible && quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div>
+        {visible ? null : <ShutNote by="vote">{VOTES_SHUT}</ShutNote>}
         {visible ? (
           <ul className="space-y-2 pt-1">
             {failed.map(({ reviewer }) => {
@@ -970,8 +968,8 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         ) : null}
       </Section>
 
-      {/* What its reviewers said to each other, where its votes show and there is something to talk over. */}
-      {visible && discussed(open, paper) ? <Discussion open={open} paper={paper} /> : null}
+      {/* What its reviewers said to each other, where its votes show and there is something to talk over. Where a rule keeps it shut for someone who could write in it, the rule stands in its place. */}
+      {visible && discussed(open, paper) ? <Discussion open={open} paper={paper} /> : open.isReviewer || open.canResolve ? <DiscussionShut open={open} by={visible ? "conflict" : "vote"} /> : null}
 
       {/* The paper's result: settled by a person where its reviewers disagree, and open to change after that. */}
       {state.resolvedBy ? (
@@ -1006,7 +1004,13 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         </section>
       ) : visible ? (
         <Button variant="outline" size="sm" onClick={() => setDeciding("result")}>Override result</Button>
-      ) : null}
+      ) : (
+        // The result is hidden with the votes until the person looking has voted, so it can't be overridden yet. The button stays, shut, with what opens it.
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" disabled>Override result</Button>
+          <ShutChip by="vote">After you vote</ShutChip>
+        </div>
+      )}
     </div>
   );
 }

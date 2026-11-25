@@ -107,6 +107,43 @@ export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Ch
   return <Chip {...chip} className={cn(TONE[tone].chip, "font-medium", className)} />;
 }
 
+/**
+ * The rules that keep a part of a paper from the person looking, each with its sign and the words for what opens it.
+ * A part a rule shuts is never left out, and is drawn one way wherever it is: the rule's chip beside the part's title,
+ * and one line in the part's place that says what is there and why it is shut. The words are here, so the chip, the
+ * "?" and a vote's mark all say the rule the same way.
+ */
+export const SHUT = {
+  vote: { icon: Lock, says: "Hidden until you vote" },
+  conflict: { icon: GitCompare, says: "Opens on a conflict" },
+} as const;
+export type Shut = keyof typeof SHUT;
+
+/** Beside the title of a part a rule shuts, or beside a control it shuts: what opens it. A control is not hidden, so it says when it opens in its own words. */
+export function ShutChip({ by, children }: { by: Shut; children?: ReactNode }) {
+  return <Chip icon={SHUT[by].icon}>{children ?? SHUT[by].says}</Chip>;
+}
+
+/** In the place of a part a rule shuts: what is there and why it is shut, in a line that never repeats the chip. */
+export function ShutNote({ by, children }: { by: Shut; children: ReactNode }) {
+  const Icon = SHUT[by].icon;
+  return (
+    <p className="flex items-start gap-2 rounded-2xl bg-inset px-3 py-3 text-sm text-muted-foreground">
+      <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+/** A paper's reviewers in the order every table of its votes shows them: the person looking, then the other people, then the models. */
+export const youFirst = <T extends { reviewer: Pick<Reviewer, "id" | "kind"> }>(cast: T[], me: string) => {
+  const rank = (one: T) => (one.reviewer.id === me ? 0 : one.reviewer.kind === "person" ? 1 : 2);
+  return [...cast].sort((a, b) => rank(a) - rank(b));
+};
+
+/** The line under the others' votes while the rule hides them, on Screen and in the Papers drawer. */
+export const VOTES_SHUT = "The other votes stay out of sight so they can't sway yours.";
+
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
   return (
@@ -292,7 +329,7 @@ export function VoteMark({ vote, hidden = false, failed = false, who, className 
   }
   if (hidden) {
     return (
-      <span role="img" aria-label={`${who}: voted, hidden until you vote`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
+      <span role="img" aria-label={`${who}: voted, ${SHUT.vote.says.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
         <Lock aria-hidden className="size-3" />
       </span>
     );

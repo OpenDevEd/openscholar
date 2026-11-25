@@ -8,12 +8,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { Hourglass, MessagesSquare, Send } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
+import { HelpFact } from "@/components/ui/help";
 import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ago, personOf, waitingQuestions, type Paper } from "./data";
-import { Help, Section, StateChip } from "./parts";
+import { Help, SHUT, Section, ShutChip, ShutNote, StateChip, type Shut } from "./parts";
 import type { Open } from "./store";
 
 const firstName = (name: string) => name.split(" ")[0]!;
@@ -24,6 +25,26 @@ const TO_OFF = "border-border-subtle text-muted-foreground hover:bg-muted hover:
 
 /** Whether a paper has a discussion to show: one was started, or it is or was in conflict, which is what there is to talk over. */
 export const discussed = (open: Open, paper: Paper) => open.thread(paper).length > 0 || open.settled[paper.id]!.result === "conflict" || Boolean(open.settled[paper.id]!.resolvedBy);
+
+/** What the discussion is and when it is there, behind its "?": the same wherever its title shows, open or shut. The rule that hides it until you vote is named only on a screening that has that rule. */
+const about = (open: Open) => (
+  <Help title="Discussion" facts={<>{(open.screening.rule.blind === "after" ? (["conflict", "vote"] as const) : (["conflict"] as const)).map((by) => { const Icon = SHUT[by].icon; return <HelpFact key={by} icon={Icon}>{SHUT[by].says}</HelpFact>; })}</>}>
+    Write to everyone on this paper, or to one reviewer. A line to one reviewer is a question: it shows on their Screening list and on Screen, as a question for them, until they answer it. Models don&apos;t answer: press one of their answers in the table for the passage they read.
+  </Help>
+);
+
+/**
+ * The discussion where a rule keeps it shut, for someone who could write in it.
+ * `vote`: the others' votes are still hidden from the person looking, and so is what they wrote. `conflict`: the votes show, and the paper has had no conflict to talk over.
+ */
+export function DiscussionShut({ open, by }: { open: Open; by: Shut }) {
+  return (
+    <Section title="Discussion" help={about(open)} aside={<ShutChip by={by} />}>
+      {/* "In conflict" is the result's own name: votes that differ while one is still awaited are not a conflict yet, and the result over the votes says which it is. */}
+      <ShutNote by={by}>Reviewers talk over a paper in conflict here.{by === "vote" ? " It stays out of sight so it can't sway your vote." : null}</ShutNote>
+    </Section>
+  );
+}
 
 export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   const said = open.thread(paper);
@@ -53,11 +74,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   return (
     <Section
       title="Discussion"
-      help={
-        <Help title="Discussion">
-Write to everyone on this paper, or to one reviewer. A line to one reviewer is a question: it shows on their Screening list and on Screen, as a question for them, until they answer it. Models don&apos;t answer: press one of their answers in the table for the passage they read.
-        </Help>
-      }
+      help={about(open)}
       aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{firstName(owed.name)} asked you</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>Waiting for {firstName(waitingFor.name)}</StateChip> : null}
     >
       {said.length ? (

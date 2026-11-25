@@ -30,9 +30,9 @@ import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
-import { Discussion, discussed } from "./discussion";
+import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -89,7 +89,6 @@ const apartAt = (given: Array<Answer | undefined>) => {
 };
 /** "Differ", as a chip that is pressed: it opens the answer that stands apart. A plain chip of that colour was pressed and did nothing. */
 const DIFFER = "flex h-5 items-center gap-0.5 rounded-full bg-info/12 ps-1.5 pe-1 text-2xs font-medium text-info outline-none transition-colors hover:bg-info/20 focus-visible:ring-2 focus-visible:ring-ring/50";
-const rank = (reviewer: Reviewer, me: string) => (reviewer.id === me ? 0 : reviewer.kind === "person" ? 1 : 2);
 
 /**
  * Where someone is, kept in the address: the queue, the paper open in it, what they searched for, which
@@ -225,7 +224,7 @@ function Screen({ open }: { open: Open }) {
   const mine = paper ? open.myVote(paper) : undefined;
   const visible = paper ? resolving || open.canSee(paper) : false;
   // Your own column first, then the other people, then the models, the same on every paper.
-  const cast = paper ? [...votes[paper.id]!].sort((a, b) => rank(a.reviewer, open.me) - rank(b.reviewer, open.me)) : [];
+  const cast = paper ? youFirst(votes[paper.id]!, open.me) : [];
   const mayDecide = resolving ? open.canResolve : open.isReviewer;
   const answering = !resolving && open.isReviewer;
   const resolver = screening.rule.resolver === open.me ? "you" : (personOf(screening.rule.resolver)?.name ?? "the person who settles them");
@@ -505,6 +504,8 @@ function Screen({ open }: { open: Open }) {
 
   // What the reviewers said to each other about it, where its votes show and there is something to talk over. Drawn with the votes, in whichever of their two places is on the page.
   const discussion = paper && visible && discussed(open, paper) ? <div data-discussion><Discussion open={open} paper={paper} /></div> : null;
+  // Where a rule keeps it shut for someone who could write in it, the rule stands in its place: the others' votes are still hidden, or the paper has had no conflict.
+  const noDiscussion = paper && !discussion && (open.isReviewer || open.canResolve) ? <DiscussionShut open={open} by={visible ? "conflict" : "vote"} /> : null;
   const said = paper ? open.thread(paper).length : 0;
   // What scrolls is the outside system: the discussion is brought to the top of its pane from a laptop's width, and of the page under that. The page is moved by hand, for the reason `openIt` gives.
   const reach = (mark: "data-discussion" | "data-votes") => {
@@ -527,13 +528,13 @@ function Screen({ open }: { open: Open }) {
                     <Section
                       title="Everyone's votes"
                       help={
-                        <Help title="Reading the votes" facts={<><HelpFact icon={Lock}>Hidden until you vote</HelpFact><HelpFact icon={Hourglass}>No vote yet</HelpFact><HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact><HelpFact><StateChip tone="info" className="-ms-1 h-4 px-1 text-2xs">Differ</StateChip>Reviewers answered it differently</HelpFact><HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="A model's answer" pressable /></span>Opens the passage a model read</HelpFact></>}>
+                        <Help title="Reading the votes" facts={<><HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact><HelpFact icon={Hourglass}>No vote yet</HelpFact><HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact><HelpFact><StateChip tone="info" className="-ms-1 h-4 px-1 text-2xs">Differ</StateChip>Reviewers answered it differently</HelpFact><HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="A model's answer" pressable /></span>Opens the passage a model read</HelpFact></>}>
                           Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note, and a model&apos;s answer for the passage it read. A model that couldn&apos;t read a paper has no say in it.
                         </Help>
                       }
                       aside={
                         !visible ? (
-                          <Chip icon={Lock}>Shown after you vote</Chip>
+                          <ShutChip by="vote" />
                         ) : state ? (
                           <>
                             <span className="text-xs text-muted-foreground">Result</span>
@@ -560,6 +561,7 @@ function Screen({ open }: { open: Open }) {
                           passage={quoting && quotedCriterion ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={quotedCriterion} criteria={criteria} answer={quoting.vote?.answers[quotedCriterion.key]} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={quotedCriterion} criteria={criteria} you={quoting.reviewer.id === open.me} />) : null}
                         />
                       </div>
+                      {visible ? null : <ShutNote by="vote">{VOTES_SHUT}</ShutNote>}
                     </Section>
   ) : null;
 
@@ -710,7 +712,7 @@ function Screen({ open }: { open: Open }) {
                     </motion.article>
 
                     {/* Under a laptop's width the votes follow your answers, further down: the questions come first there. */}
-                    <div className="space-y-8 max-lg:hidden">{everyonesVotes}{discussion}</div>
+                    <div className="space-y-8 max-lg:hidden">{everyonesVotes}{discussion ?? noDiscussion}</div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -815,7 +817,7 @@ function Screen({ open }: { open: Open }) {
                   {hint ? <div data-hint className="scroll-mb-3 max-lg:hidden">{hint}</div> : null}
                 </Section>
               </div>
-              <div className="space-y-8 border-t border-border-subtle p-5 sm:p-8 lg:hidden">{everyonesVotes}{discussion}</div>
+              <div className="space-y-8 border-t border-border-subtle p-5 sm:p-8 lg:hidden">{everyonesVotes}{discussion ?? noDiscussion}</div>
             </ScrollArea>
           </>
         )}
@@ -1105,7 +1107,7 @@ function Face({ reviewer, vote, failed, you, kept, criteria, named }: { reviewer
           {failed ? (
             <StateChip tone="destructive" icon={TriangleAlert}>Couldn&apos;t read this paper</StateChip>
           ) : kept && vote ? (
-            <Chip icon={Lock}>Voted, shown after you vote</Chip>
+            <ShutChip by="vote">Voted, {SHUT.vote.says.toLowerCase()}</ShutChip>
           ) : vote && style ? (
             <StateChip tone={style.tone} icon={style.icon}>{DECISION_LABEL[vote.decision]}</StateChip>
           ) : (
@@ -1161,7 +1163,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
             </span>
             {cast.map(({ reviewer, vote }, i) => {
               if (kept(reviewer) && vote) {
-                return <span key={reviewer.id} role="img" aria-label={`${reviewer.name}, ${criterion.short}: hidden until you vote`} className="mx-auto flex size-6 items-center justify-center rounded-md bg-muted text-muted-foreground"><Lock aria-hidden className="size-3" /></span>;
+                return <span key={reviewer.id} role="img" aria-label={`${reviewer.name}, ${criterion.short}: ${SHUT.vote.says.toLowerCase()}`} className="mx-auto flex size-6 items-center justify-center rounded-md bg-muted text-muted-foreground"><Lock aria-hidden className="size-3" /></span>;
               }
               const answer = given[i];
               if (!answer) return <span key={reviewer.id} className="mx-auto size-6 rounded-md border border-dashed border-border" />;
