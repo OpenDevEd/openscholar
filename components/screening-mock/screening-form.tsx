@@ -456,8 +456,11 @@ export function ScreeningForm({ id }: { id?: string }) {
         // A second collection started here is the screening's own once saved, under the name it shows.
         ...(draft.destination.collection === ANOTHER_COLLECTION ? { destination: { ...draft.destination, name: collectionName(draft)!, collection: undefined } } : {}),
         reached: { ...draft.reached, ...now.reached },
+        // What happened on the screening while the draft was open stays: the votes, what was settled, the papers moved between reviewers and what was said about a paper.
         cast: now.cast,
         resolved: now.resolved,
+        moved: now.moved,
+        threads: now.threads,
         changes: now.changes,
         spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
         updates: now.updates,
@@ -968,7 +971,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             {/* What counts and what doesn't. A reviewer opens it from the criterion's "?" on Screen, and a model is given it with the question: it wears the same "?" here. */}
                             <div className="flex items-start gap-1 ps-1 text-muted-foreground">
                               <CircleHelp aria-hidden className="mt-1 size-3.5 shrink-0" />
-                              <Textarea rows={1} value={criterion.note ?? ""} onChange={(event) => patchCriterion(criterion.key, { note: event.target.value || undefined })} aria-label={`Guidance for criterion ${i + 1}`} placeholder="Add guidance on what counts and what doesn't" className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content hover:border-border-subtle" />
+                              <Textarea rows={1} value={criterion.note ?? ""} onChange={(event) => patchCriterion(criterion.key, { note: event.target.value || undefined })} aria-label={`Guidance for criterion ${i + 1}`} placeholder="Add guidance on what counts and what doesn't" className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content placeholder-shown:border-dashed placeholder-shown:border-border hover:border-border-subtle" />
                             </div>
                           </div>
                           <ShortName criterion={criterion} n={i + 1} help={criterion.key === criterionRows.find((row) => !row.gone)?.criterion.key ? shortNameHelp : undefined} onChange={(short) => patchCriterion(criterion.key, { short })} />

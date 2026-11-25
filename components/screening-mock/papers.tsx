@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
 import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
-import { Evidence, Matrix } from "./screen";
+import { Evidence, Matrix, Said } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
 import { Discussion, discussed } from "./discussion";
@@ -267,11 +267,6 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     return () => observer.disconnect();
   }, [tableWidth, papers.length > 0]);
 
-  // On a phone the result tabs scroll sideways: the open one is brought into view. Its position on the page is the outside system.
-  const tabsRow = useCallback((element: HTMLDivElement | null) => {
-    element?.querySelector("[aria-checked=true]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps -- runs again when another tab opens
-
   const conflictsPicked = chosen.filter((one) => settled[one]!.result === "conflict");
   const settleAll = (decision: Decision, why?: { reason: string; note?: string }) => {
     const settling = conflictsPicked.flatMap((one) => papers.find((p) => p.id === one) ?? []);
@@ -413,7 +408,15 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     <div ref={top} className={cn("@container/papers", BELOW_HEADER)}>
       {/* Row one: where the papers stand, and the search. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 pt-4 sm:px-6">
-        <div ref={tabsRow} className="max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:snap-x max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none]">
+        {/* Six tabs don't fit a phone's width, and a row of tabs never runs off the screen: there they are one menu, with the same signs and counts. */}
+        <FilterMenu
+          name="Result"
+          value={filter}
+          onChange={(next) => go({ result: next === "all" ? null : next })}
+          className="h-8 w-full rounded-full px-3.5 text-xs sm:hidden"
+          choices={[{ value: "all" as typeof filter, label: "All", icon: <Layers />, count: narrowed.length }, ...RESULTS.map((result) => { const Icon = RESULT_ICON[result]; return { value: result as typeof filter, label: RESULT_LABEL[result], icon: <Icon />, tone: RESULT_STYLE[result].tone, count: tabCounts[result] }; })]}
+        />
+        <div className="max-sm:hidden">
           <Segmented
             label="Result"
             value={filter}
@@ -777,8 +780,10 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
       </span>
     );
   }
-  if (!visible) return null;
-  if (state.result === "conflict" || state.resolvedBy) return <Tally votes={cast} />;
+  // What whoever settled it wrote down, beside the votes they settled: the reason a settled paper has.
+  const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{`"${state.note}"`}</span></TooltipHint> : null;
+  if (!visible) return settledNote;
+  if (state.result === "conflict" || state.resolvedBy) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
     const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey} unclear`;
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
@@ -933,7 +938,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
 
       <Section title="Votes" help={votesHelp}>
         {visible ? (
-          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : undefined} /></div>
+          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div>
         ) : (
           <p className="flex items-center gap-2 rounded-2xl bg-inset px-3 py-3 text-sm text-muted-foreground"><Lock className="size-4 shrink-0" />Hidden until you vote</p>
         )}

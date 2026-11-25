@@ -22,7 +22,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { HOME, RESULTS, RESULT_LABEL, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
@@ -74,8 +74,8 @@ export function ScreeningsIndex() {
   const me = store.viewer;
   const guest = Boolean(personOf(me)?.guest);
 
-  // A check for new papers started from the list goes on while the list is up: the timer is the outside system.
-  const checking = store.screenings.filter((one) => one.checking).map((one) => one.id).join(" ");
+  // A check for new papers started from the list goes on while the list is up, and so does a question put to a made-up colleague, who answers a few seconds later whichever page is open: the timer is the outside system.
+  const checking = store.screenings.filter((one) => one.checking || Object.values(one.threads ?? {}).some((said) => waitingQuestions(said).some((question) => question.to !== me))).map((one) => one.id).join(" ");
   const { tick } = store;
   useEffect(() => {
     if (!checking) return;
@@ -101,7 +101,7 @@ export function ScreeningsIndex() {
         const votes = Object.values(state.votes).flatMap((cast) => cast.flatMap((one) => one.vote?.at ?? []));
         const active = Math.max(screening.createdAt, screening.finishedAt ?? 0, ...screening.changes.map((change) => change.at), ...(screening.updates ?? []).map((update) => update.at), ...votes);
         // A reviewer asked the person looking about a paper, and waits for the answer.
-        const asked = Object.entries(screening.threads ?? {}).filter(([, said]) => said.at(-1)?.to === me).map(([paper]) => paper);
+        const asked = Object.entries(screening.threads ?? {}).filter(([, said]) => waitingQuestions(said).some((question) => question.to === me)).map(([paper]) => paper);
         const open = screening.finishedAt ? { forYou: 0, conflicts: 0 } : { forYou, conflicts };
         const group = open.forYou + open.conflicts + asked.length ? 0 : screening.finishedAt ? 2 : 1;
         return [{ screening, state, access, ...open, asked, models: held, ahead, active, group }];
@@ -179,6 +179,15 @@ export function ScreeningsIndex() {
                       ]}
                     />
                   </div>
+                  {/* What the bars' colours mean and what "settled" counts, where the list is a table and the row has the room. */}
+                  <span role="group" aria-label="What the colours of a bar mean" className="hidden items-center gap-x-3 text-xs text-muted-foreground @7xl:flex">
+                    {([["Settled", ["include", "maybe", "exclude"]], ["Not yet", ["conflict", "waiting"]]] as const).map(([name, results]) => (
+                      <span key={name} className="flex items-center gap-x-2.5">
+                        <span className="font-medium text-foreground">{name}</span>
+                        {results.map((result) => <span key={result} className="flex items-center gap-1"><span aria-hidden className={cn("size-2 rounded-full", RESULT_STYLE[result].bar)} />{RESULT_LABEL[result]}</span>)}
+                      </span>
+                    ))}
+                  </span>
                   {starters.length > 1 ? (
                     <FilterMenu
                       name="Started by"
@@ -234,8 +243,9 @@ export function ScreeningsIndex() {
                             </button>
                             <span className="whitespace-nowrap">started it {ago(screening.createdAt)}</span>
                             {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living</Chip> : null}
-                            {!access.reviewer ? <Chip icon={Eye} className="h-5 px-1.5">Viewer</Chip> : null}
+                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living, {EVERY_LABEL[screening.living.every].toLowerCase()}</Chip> : null}
+                            {/* A member who isn't one of its reviewers can still change it: only someone it was shared with is a viewer. */}
+                            {!access.reviewer ? <Chip icon={Eye} className="h-5 px-1.5">{access.member ? "Not a reviewer" : "Viewer"}</Chip> : null}
                           </span>
                           {/* On a card the faces and when it last moved share a line under the title; in the table each has its column. */}
                           <span className="flex min-w-0 items-center justify-between gap-3 [grid-area:faces] @5xl:contents">
@@ -407,7 +417,7 @@ function RowMenuItems({ id, onOpen }: { id: string; onOpen: (what: What) => void
         )
       ) : null}
       {member && growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
-      <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />New screening with these settings</NextLink></DropdownMenuItem>
+      <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
       {member ? <DropdownMenuItem onSelect={() => onOpen("move")}><Move />Move to another workspace</DropdownMenuItem> : null}
       {member && !open.isReviewer && !screening.finishedAt ? <DropdownMenuItem onSelect={open.join}><UserPlus />Join as a reviewer</DropdownMenuItem> : null}
       {member ? (

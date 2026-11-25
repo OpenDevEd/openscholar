@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { toMapModel, type MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
-import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, madeUpReply, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
+import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, madeUpReply, waitingQuestions, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
 
 type State = {
   screenings: Screening[];
@@ -24,6 +24,10 @@ type State = {
   drafts: Record<string, Screening>;
   /** The queue's pane on Screen is folded away, to give the paper its width. Kept with the tab, so it holds from page to page. */
   folded?: boolean;
+  /** The criteria whose guidance is open on Screen, each as its screening and its key. A reviewer who wants a rule in front of them opens it once, and it stays open from paper to paper. */
+  guides?: string[];
+  /** Each person's pace on Screen: the seconds between their votes, added up, and how many gaps that is. Kept with the tab, so the time left reads the same after a look at another page, and by person, so seeing the mock as someone else starts from their own. */
+  paced?: Record<string, { sum: number; n: number }>;
 };
 
 type Store = State & {
@@ -133,13 +137,11 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
           const open = s.screenings.find((one) => one.id === id);
           if (!open) return s;
           // A question put to a made-up reviewer is answered a few seconds later: the mock has nobody else to write the answer.
-          const waiting = Object.entries(open.threads ?? {}).find(([, said]) => {
-            const last = said.at(-1);
-            return Boolean(last?.to) && last!.to !== s.viewer && last!.by !== last!.to && last!.at < now() - 4000 && open.reviewers.some((one) => one.id === last!.to && one.kind === "person" && !one.left && !one.email);
-          });
+          const made = (question: { by: string; to?: string; at: number }) => question.to !== s.viewer && question.by !== question.to && question.at < now() - 4000 && open.reviewers.some((one) => one.id === question.to && one.kind === "person" && !one.left && !one.email);
+          const waiting = Object.entries(open.threads ?? {}).find(([, said]) => waitingQuestions(said).some(made));
           if (waiting) {
             const [paperId, said] = waiting;
-            const asked = said.at(-1)!.to!;
+            const asked = waitingQuestions(said).find(made)!.to!;
             const state = standing(open);
             const vote = state.votes[paperId]?.find((one) => one.reviewer.id === asked)?.vote;
             return { ...s, screenings: s.screenings.map((one) => (one.id === id ? { ...one, threads: { ...one.threads, [paperId]: [...said, { by: asked, at: now(), text: madeUpReply(vote, open.criteria) }] } } : one)) };
@@ -295,7 +297,7 @@ export function useOpenScreening(id: string) {
     /** Adds a line to a paper's discussion. With `to`, it is a question that waits for that reviewer. */
     say: (paper: Paper, text: string, to?: string) => store.update(id, (s) => ({ ...s, threads: { ...s.threads, [paper.id]: [...(s.threads?.[paper.id] ?? []), { by: me, at: Math.max(Date.now(), NOW + 1), text, ...(to ? { to } : {}) }] } })),
     /** The papers whose discussion ends on a question for the person looking. */
-    asked: state.papers.filter((paper) => screening.threads?.[paper.id]?.at(-1)?.to === me),
+    asked: state.papers.filter((paper) => waitingQuestions(screening.threads?.[paper.id]).some((question) => question.to === me)),
     /** The papers one person has yet to vote on that another doesn't have: what can be moved from the first to the second. */
     movable,
     /** Moves so many of one person's unvoted papers to another, the ones furthest down their queue first. */

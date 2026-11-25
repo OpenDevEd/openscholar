@@ -654,9 +654,15 @@ const hasVoted = (screening: Screening, paper: Paper, index: number, person: Rev
 export const dealtTo = (screening: Screening, paper: Paper, index: number) => {
   const people = peopleOf(screening).filter((person) => !person.email);
   const dealt = deal(screening, paper, index, people);
-  // A paper moved to someone else is theirs, for as long as they are one of its reviewers.
+  // A paper moved to someone else is theirs, for as long as they are one of its reviewers. A move to someone the deal already gives the paper to changes nothing: once a reviewer leaves the deal is made anew, and a move must never leave a paper with fewer people than the rule asks for.
   const moved = screening.moved?.[paper.id];
-  return moved ? [...new Set(dealt.map((person) => people.find((one) => one.id === moved[person.id]) ?? person))] : dealt;
+  if (!moved) return dealt;
+  const now = [...dealt];
+  dealt.forEach((person, i) => {
+    const to = people.find((one) => one.id === moved[person.id]);
+    if (to && !now.some((one) => one.id === to.id)) now[i] = to;
+  });
+  return now;
 };
 /** Whether a paper was moved to this person: they came to it late, so no made-up vote of theirs stands on it. */
 const movedTo = (screening: Screening, paper: Paper, person: Reviewer) => Object.values(screening.moved?.[paper.id] ?? {}).includes(person.id);
@@ -745,6 +751,13 @@ export function standing(screening: Screening): Standing {
     else if (screening.rule.settle === "all") state = top === given.length ? { result: given[0]!.decision, final: given[0]!.decision } : { result: "conflict" };
     // Most of them: more than half on one side. An even split has no side.
     else state = top * 2 > given.length ? { result: DECISIONS[tally.indexOf(top)]!, final: DECISIONS[tally.indexOf(top)]! } : { result: "conflict" };
+    // A made-up person whose vote went against most of the others on a paper in conflict, or one since settled, left a note saying why: the mock has nobody to write it. Two in three of them did. A vote the person looking cast is theirs, and is never given words.
+    if (state.result === "conflict" || resolved) {
+      for (const one of everyone) {
+        if (one.reviewer.kind !== "person" || !one.vote || one.vote.note || screening.cast[paper.id]?.[one.reviewer.id] !== undefined) continue;
+        if (one.vote.decision !== DECISIONS[tally.indexOf(top)] && hash(`${paper.id}${one.reviewer.id}note`) % 3) one.vote = { ...one.vote, note: madeUpNote(one.vote, screening.criteria) };
+      }
+    }
     settled[paper.id] = state;
     counts[state.result]++;
   });
@@ -756,6 +769,17 @@ export function evidence(paper: Paper, criterion: Criterion, criteria: Criterion
   const quote = paper.sentences[Math.min(criteria.indexOf(criterion), paper.sentences.length - 1)] ?? paper.title;
   const why = !paper.sentences.length ? "There is no abstract, so only the title could be read." : answer === "yes" ? "It reads this passage as meeting the criterion." : answer === "no" ? "It reads this passage as failing the criterion." : "It finds nothing in the text that settles this.";
   return { quote, why };
+}
+
+/** The questions on a paper that still wait for their answer: each line put to one reviewer who has written nothing on the paper since. A line from anyone else in between leaves the question waiting. The list, Screen, the thread and the made-up replies all read this. */
+export const waitingQuestions = (said: Message[] | undefined) => (said ?? []).filter((line, at) => line.to && !said!.slice(at + 1).some((later) => later.by === line.to));
+
+/** The note a made-up person leaves with a vote that went against the others: the criterion it turned on, in a line. */
+function madeUpNote(vote: Vote, criteria: Criterion[]): string {
+  const turned = criteria.find((criterion) => criterion.must && vote.answers[criterion.key] === (vote.decision === "exclude" ? "no" : "unclear")) ?? criteria.find((criterion) => vote.answers[criterion.key] === "unclear");
+  if (vote.decision === "exclude") return turned ? `Fails "${turned.short}" as I read the abstract.` : "Not in scope as I read it.";
+  if (vote.decision === "maybe") return turned ? `Can't tell "${turned.short}" from the abstract. Worth a look at the full text.` : "Can't decide from the abstract alone.";
+  return "Meets every must-have as I read it.";
 }
 
 /** What a made-up reviewer answers when asked about their vote: the criterion their answers turn on, in a sentence. The mock has nobody to write it. */

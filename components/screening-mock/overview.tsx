@@ -233,17 +233,19 @@ function Reviewers({ open }: { open: Open }) {
           const [vote, final] = [votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote, settled[paper.id]!.final];
           return vote && final ? [{ vote: vote.decision, final }] : [];
         });
-        // A vote is compared with the people's: the other people given the paper for a person, all of them for a model, and never with a model's. There is something to agree with only where those people have all voted, and voted alike.
+        // A vote is compared with the people's: the other people given the paper for a person, all of them for a model, and never with a model's. There is something to agree with where at least one of those people has voted and the ones who have voted alike.
         const compared = theirs.flatMap((paper) => {
           const cast = votes[paper.id]!.filter((one) => !one.failed);
           const mine = cast.find((one) => one.reviewer.id === reviewer.id)?.vote;
-          const people = cast.filter((one) => one.reviewer.kind === "person" && one.reviewer.id !== reviewer.id).map((one) => one.vote);
-          if (!mine || !people.length || people.some((vote) => !vote) || new Set(people.map((vote) => vote!.decision)).size > 1) return [];
-          return [people[0]!.decision === mine.decision];
+          const people = cast.flatMap((one) => (one.reviewer.kind === "person" && one.reviewer.id !== reviewer.id && one.vote ? [one.vote.decision] : []));
+          if (!mine || !people.length || new Set(people).size > 1) return [];
+          return [people[0] === mine.decision];
         });
         // A person's pace is what they voted on in the last three days. At that pace, how long what is left takes them.
-        const left = theirs.length - cast.length;
-        const perDay = count(cast, (vote) => vote.at > NOW - 3 * DAY) / 3;
+        // What is left for them is what their To do holds: their papers without their vote that aren't settled already without it.
+        const left = theirs.filter((paper) => !votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote && !settled[paper.id]!.final).length;
+        // There is a pace to go by once their first vote is a day old: five votes in the first five minutes of a screening say nothing about the weeks to come.
+        const perDay = cast.some((vote) => vote.at < NOW - DAY) ? count(cast, (vote) => vote.at > NOW - 3 * DAY) / 3 : 0;
         return {
           reviewer,
           assigned: theirs.length,
@@ -255,6 +257,8 @@ function Reviewers({ open }: { open: Open }) {
           included: count(judged, (one) => one.final === "include"),
           left,
           perDay,
+          // Nothing voted in three days by someone who has been on the screening that long. A screening made from another keeps its reviewers' older dates, so its own start counts too.
+          idle: left > 0 && perDay === 0 && Math.max(reviewer.addedAt, screening.createdAt) < NOW - 3 * DAY && cast.every((vote) => vote.at < NOW - 3 * DAY),
         };
       }),
     [reviewers, papers, votes, settled],
@@ -268,6 +272,9 @@ function Reviewers({ open }: { open: Open }) {
   ].filter((group) => group.rows.length);
   // Who papers can be moved from: a person with papers left that someone else doesn't have. Where every person reads every paper there is nobody to move one to.
   const takers = rows.filter((row) => row.reviewer.kind === "person" && !row.reviewer.email);
+  const stillVoting = takers.filter((row) => row.left > 0);
+  // Said where there is more than one person: for one alone, their own row says it.
+  const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? `Everyone done in about ${daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))}` : null;
   const givers = open.canChange && !screening.finishedAt ? takers.filter((row) => row.left > 0 && takers.some((other) => other !== row && open.movable(row.reviewer.id, other.reviewer.id).length)) : [];
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
   const people = peopleOf(screening).length;
@@ -292,11 +299,13 @@ function Reviewers({ open }: { open: Open }) {
       help={
         <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of ${people} people a paper` : `Every person reads every paper`}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every paper</HelpFact> : null}</>}>
           <p>Each person votes on a share of the papers. Each model votes on every paper.</p>
-          <p>Under a person&apos;s count is how long what they have left takes them, at the pace of their last three days.</p>
+          <p>Under a person&apos;s count is when they get through what they have left, if they keep the pace of their last three days.</p>
         </Help>
       }
       aside={
         <>
+        {/* When the last of the people gets through their papers, where each of them has a pace to go by: what moving papers brings forward. */}
+        {everyoneDone ? <span className="text-xs tabular-nums text-muted-foreground">{everyoneDone}</span> : null}
         {/* Evening out the work: the person with the most left is offered first. */}
         {givers.length ? <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setMoving([...givers].sort((x, y) => y.left - x.left)[0]!.reviewer.id)}><Move />Move papers</Button> : null}
         {pair ? (
@@ -321,7 +330,7 @@ function Reviewers({ open }: { open: Open }) {
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
               {sortable("agrees", "Agrees with people")}
               <Help title="Agrees with people" side="bottom" facts={<><HelpFact>A person with the other people on the paper</HelpFact><HelpFact>A model with the people, never with a model</HelpFact></>}>
-                <p>How often this reviewer voted as the people did, on the papers where those people have all voted and voted alike. A low figure is a reviewer who reads the criteria differently from the rest.</p>
+                <p>How often this reviewer voted as the people did, on the papers where the people who have voted so far voted alike. A low figure is a reviewer who reads the criteria differently from the rest.</p>
                 <p>Under a model, the papers the screening included that it voted to exclude.</p>
               </Help>
             </span>
@@ -376,11 +385,11 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
       <ReviewerMark reviewer={row.reviewer} className="size-7" />
       <span className="min-w-0 flex-1 truncate font-medium">{nameOf(row)}</span>
       <span className="flex shrink-0 items-center gap-1.5 tabular-nums"><span className="text-muted-foreground">{row.left} left</span><ArrowRight aria-hidden className="size-3.5 text-muted-foreground" /><span className="font-semibold">{after} left</span></span>
-      <span className="w-28 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{timeFor(after, row.perDay) ?? (after ? "No votes in 3 days" : "Nothing left")}</span>
+      <span className="w-36 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{doneIn(after, row.perDay) ?? (!after ? "Nothing left" : row.idle ? "No votes in 3 days" : null)}</span>
     </div>
   );
   return (
-    <ConfirmChange open title="Move papers" confirm={taker ? `Move ${papers} ${papers === 1 ? "paper" : "papers"}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => taker && open.move(giver.reviewer, taker.row.reviewer, papers)}>
+    <ConfirmChange open title="Move papers between reviewers" confirm={taker ? `Move ${papers} ${papers === 1 ? "paper" : "papers"}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => taker && open.move(giver.reviewer, taker.row.reviewer, papers)}>
       <div className="flex flex-wrap items-center gap-2">
         <FilterMenu name="From" value={giver.reviewer.id} onChange={(next) => { setFrom(next); setChosen(null); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={people.filter((row) => row.left > 0).map((row) => ({ value: row.reviewer.id, label: nameOf(row), icon: face(row), count: row.left }))} />
         {taker ? <FilterMenu name="To" value={taker.row.reviewer.id} onChange={(next) => { setChosen(next); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={others.filter((one) => one.can).map((one) => ({ value: one.row.reviewer.id, label: nameOf(one.row), icon: face(one.row), count: one.can }))} /> : null}
@@ -404,20 +413,17 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   );
 }
 
-type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number; left: number; perDay: number };
+type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number; left: number; perDay: number; idle: boolean };
 const DAY = 86_400_000;
-/** How long someone takes to get through so many papers at their pace, or nothing where they have no pace to go by. */
-const timeFor = (left: number, perDay: number) => {
-  if (left <= 0 || perDay <= 0) return null;
-  const days = Math.ceil(left / perDay);
-  return days === 1 ? "about a day" : days < 14 ? `about ${days} days` : `about ${Math.round(days / 7)} weeks`;
-};
+/** When someone gets through so many papers at their pace, in days from now, or nothing where they have no pace to go by. It is said as a day to come ("done in"), so it never reads as Screen's count of the minutes the papers themselves take. */
+const doneIn = (left: number, perDay: number) => (left <= 0 || perDay <= 0 ? null : `Done in about ${daysFrom(Math.ceil(left / perDay))}`);
+const daysFrom = (days: number) => (days === 1 ? "a day" : days < 14 ? `${days} days` : `${Math.round(days / 7)} weeks`);
 
 /** One reviewer: the whole row opens the papers they voted on, and each count opens its own. */
 function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void; /** Opens the move of some of this person's papers to someone else, where they have papers that can go. */ onMove?: () => void }) {
   const { screening } = open;
-  const { reviewer, assigned, done, split, agrees, compared, missed, included, left, perDay } = row;
-  const takes = timeFor(left, perDay);
+  const { reviewer, assigned, done, split, agrees, compared, missed, included, left, perDay, idle } = row;
+  const takes = doneIn(left, perDay);
   const id = screening.id;
   const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
   const unread = unreadPapers.length;
@@ -452,10 +458,10 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         {/* When a person gets through what they have left, at the pace of their last three days: a second line, as a model has for what it couldn't read. */}
         {reviewer.kind === "person" && !reviewer.email && left > 0 && !screening.finishedAt ? (
           takes ? (
-            <p className="flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-muted-foreground"><Clock className="size-3.5 shrink-0" />{takes[0]!.toUpperCase()}{takes.slice(1)} left</p>
-          ) : (
+            <p className="flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-muted-foreground"><Clock className="size-3.5 shrink-0" />{takes}</p>
+          ) : idle ? (
             <p className="flex items-center gap-1 whitespace-nowrap text-xs ink-warning"><Hourglass className="size-3.5 shrink-0" />No votes in 3 days</p>
-          )
+          ) : null
         ) : null}
         {/* The papers it got to and couldn't read, under how many it read: a second line that, with the count over it, is no taller than the name and its credits, so a paper that fails while it reads moves nothing. It has no margin of its own for that reason, and neither has a person's second line. */}
         {unread ? (
@@ -463,14 +469,14 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className={cn(above, "flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 space-y-2.5 p-3 text-sm">
+            <PopoverContent align="start" className="flex max-h-[min(26rem,var(--radix-popover-content-available-height))] w-80 flex-col gap-2.5 p-3 text-sm">
               <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
-              <ul className="-mx-1 max-h-64 space-y-0.5 overflow-y-auto">
+              <ul className="-mx-1 min-h-10 flex-1 space-y-0.5 overflow-y-auto">
                 {unreadPapers.map((paper) => (
                   <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title} ({paper.year})</span></NextLink></li>
                 ))}
               </ul>
-              {open.canChange ? <Button size="sm" className="w-full" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!))} credits</Button> : null}
+              {open.canChange ? <Button size="sm" className="w-full shrink-0" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!))} credits</Button> : null}
             </PopoverContent>
           </Popover>
         ) : null}
@@ -494,7 +500,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> with the people</span></>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " with the others" : " with the people"}</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>
@@ -580,14 +586,17 @@ function Agreement({ open }: { open: Open }) {
         <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">How far the reviewers agree shows here once two of them have voted on the same papers.</p>
       ) : (
         <div className="space-y-3">
-          <NextLink href={papersHref(screening.id, { sort: "split" })} className={cn("-mx-2 inline-flex items-center gap-3 px-2 py-1", ROW_LINK)}>
-            <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
-            <span className="text-sm">
-              <span className="font-medium">Overall agreement</span>
-              <span className="block text-xs text-muted-foreground">Across {known.length} {known.length === 1 ? "pair" : "pairs"} of reviewers</span>
+          {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="flex items-center gap-3">
+              <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
+              <span className="text-sm">
+                <span className="font-medium">Overall agreement, as Cohen&apos;s kappa</span>
+                <span className="block text-xs text-muted-foreground">0 is no better than chance, 1 is full agreement. Across {known.length} {known.length === 1 ? "pair" : "pairs"} of reviewers</span>
+              </span>
             </span>
-            <ArrowRight aria-hidden className="size-4 text-muted-foreground" />
-          </NextLink>
+            <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>The papers they split on most</LinkChip>
+          </div>
           {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
           <div className={cn(LIST, "overflow-x-auto p-4 @max-2xl/overview:hidden")}>
             <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>

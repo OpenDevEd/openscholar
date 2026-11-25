@@ -91,11 +91,13 @@ export const COMMUNITY_COLLECTIONS = [
 ];
 
 /** Criteria a model writes from a research question, each with the short name it gives it. */
-// The mock has no model to write them: these fit any question. The product writes them from the question's own words.
+// The mock has no model to write them: these fit any question, one for each part a question has. The product writes them from the question's own words.
 export const WRITTEN = [
-  { text: "Does the study answer the review's question?", short: "Answers the question" },
-  { text: "Does the study report its own data, not only a protocol or a commentary?", short: "Reports its own data" },
-  { text: "Does the study report a comparison group?", short: "Comparison group" },
+  { text: "Are the people studied the ones the question asks about?", short: "Population" },
+  { text: "Is the place or setting the one the question asks about?", short: "Setting" },
+  { text: "Is what was done the intervention the question asks about?", short: "Intervention" },
+  { text: "Does the study report an outcome the question asks about?", short: "Outcome" },
+  { text: "Does the study compare groups, with a control or a comparison group?", short: "Comparison group" },
 ];
 
 /** File endings the upload reads as references, and as papers. */

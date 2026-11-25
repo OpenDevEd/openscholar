@@ -12,11 +12,15 @@ import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ago, personOf, type Paper } from "./data";
+import { ago, personOf, waitingQuestions, type Paper } from "./data";
 import { Help, Section, StateChip } from "./parts";
 import type { Open } from "./store";
 
 const firstName = (name: string) => name.split(" ")[0]!;
+/** A choice of who a line is for. */
+const TO = "flex h-6 items-center gap-1.5 rounded-full border text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50";
+const TO_ON = "border-primary/30 bg-primary/10 text-primary";
+const TO_OFF = "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground";
 
 /** Whether a paper has a discussion to show: one was started, or it is or was in conflict, which is what there is to talk over. */
 export const discussed = (open: Open, paper: Paper) => open.thread(paper).length > 0 || open.settled[paper.id]!.result === "conflict" || Boolean(open.settled[paper.id]!.resolvedBy);
@@ -31,9 +35,12 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   // Who can be asked: the people who vote on this paper, and the person who settles its conflicts.
   const people = [...new Set([...open.votes[paper.id]!.filter((one) => one.reviewer.kind === "person" && !one.reviewer.email).map((one) => one.reviewer.id), open.screening.rule.resolver])].filter((id) => id !== me).flatMap((id) => personOf(id) ?? []);
   const to = people.find((one) => one.id === asking) ?? null;
-  // A question that waits for the person looking is answered to whoever asked it.
-  const owed = last?.to === me ? personOf(last.by) : undefined;
-  const waitingFor = last?.to && last.to !== me ? personOf(last.to) : undefined;
+  // A question that waits for the person looking is answered to whoever asked it. One that waits for someone else is named in the corner, whoever has written since.
+  const waiting = waitingQuestions(said);
+  const mine = waiting.findLast((question) => question.to === me);
+  const theirs = waiting.findLast((question) => question.to !== me);
+  const owed = mine ? personOf(mine.by) : undefined;
+  const waitingFor = theirs ? personOf(theirs.to!) : undefined;
   const maySay = open.isReviewer || open.canResolve;
   const send = () => {
     const words = text.trim();
@@ -48,7 +55,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
       title="Discussion"
       help={
         <Help title="Discussion">
-          Ask a reviewer why they voted as they did, and answer here. A question waits with that reviewer&apos;s screenings until they answer it. Models don&apos;t answer: press one of their answers in the table for the passage they read.
+Write to everyone on this paper, or to one reviewer. A line to one reviewer is a question: it shows on their Screening list and on Screen, as a question for them, until they answer it. Models don&apos;t answer: press one of their answers in the table for the passage they read.
         </Help>
       }
       aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{firstName(owed.name)} asked you</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>Waiting for {firstName(waitingFor.name)}</StateChip> : null}
@@ -92,22 +99,20 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
       ) : null}
       {maySay ? (
         <div className="space-y-2 rounded-2xl border border-border-subtle p-2.5">
-          {/* Naming a reviewer makes the line a question for them. Pressed again, it is a line to everyone. */}
+          {/* Who the line is for: everyone on the paper, or one reviewer, which makes it a question that waits with them. The line under the choices says which, and is always there, so choosing moves nothing. */}
           {people.length && !owed ? (
-            <div role="group" aria-label="Who to ask" className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Ask</span>
-              {people.map((person) => (
-                <button
-                  key={person.id}
-                  type="button"
-                  aria-pressed={to === person}
-                  onClick={() => { setAsking(to === person ? null : person.id); field.current?.focus(); }}
-                  className={cn("flex h-6 items-center gap-1.5 rounded-full border ps-0.5 pe-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50", to === person ? "border-primary/30 bg-primary/10 text-primary" : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}
-                >
-                  <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-5" />
-                  {firstName(person.name)}
-                </button>
-              ))}
+            <div className="space-y-1.5">
+              <div role="group" aria-label="Who it is for" className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">To</span>
+                <button type="button" aria-pressed={!to} onClick={() => { setAsking(null); field.current?.focus(); }} className={cn(TO, "px-2", !to ? TO_ON : TO_OFF)}>Everyone</button>
+                {people.map((person) => (
+                  <button key={person.id} type="button" aria-pressed={to === person} onClick={() => { setAsking(person.id); field.current?.focus(); }} className={cn(TO, "ps-0.5 pe-2", to === person ? TO_ON : TO_OFF)}>
+                    <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-5" />
+                    {firstName(person.name)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">{to ? `A question for ${firstName(to.name)}: it shows on their Screening list until they answer.` : "Everyone who votes on this paper sees it."}</p>
             </div>
           ) : null}
           <div className="flex items-end gap-2">
@@ -118,7 +123,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
               onChange={(event) => setText(event.target.value)}
               // Enter starts a new line, as in any note. With Ctrl or Cmd it sends.
               onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); send(); } }}
-              placeholder={owed ? `Answer ${firstName(owed.name)}` : to ? `Ask ${firstName(to.name)} about their vote` : "Write to this paper's reviewers"}
+              placeholder={owed ? `Answer ${firstName(owed.name)}` : to ? `Ask ${firstName(to.name)} about their vote` : "Write to everyone on this paper"}
               aria-label={owed ? `Your answer to ${owed.name}` : to ? `Your question for ${to.name}` : "Your message"}
               className="max-h-32 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm"
             />

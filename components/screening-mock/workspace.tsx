@@ -80,15 +80,17 @@ export function useWorkspace() {
 const INLINE_LINK = "rounded-sm font-medium text-foreground underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /** How a paper is decided here, in the words the settings use. */
-function ruleFacts(screening: Screening) {
+/** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
+function ruleFacts(screening: Screening, voter: boolean) {
   const [people, models] = [peopleOf(screening).length, modelsOf(screening).length];
   const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
-  const readers = [each ? (each < people ? `${each} of ${people} people` : `${people} ${people === 1 ? "person" : "people"}`) : null, models ? `${models} ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(", ");
+  const readers = [each ? `${each} ${each === 1 ? "person" : "people"}` : null, models ? `${models} ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(" and ");
   return {
-    who: readers || "No reviewer yet",
+    who: readers ? `Each paper: ${readers}` : "No reviewer yet",
     whoIcon: each ? Users : AiIcon,
-    when: screening.rule.settle === "all" ? "All agree" : screening.rule.settle === "most" ? "Most agree" : "One has voted",
-    see: screening.rule.blind === "after" ? "Votes hidden until you vote" : "Votes visible to all",
+    when: screening.rule.settle === "all" ? "Settled when all agree" : screening.rule.settle === "most" ? "Settled when most agree" : "Settled by the first vote",
+    // Someone who doesn't vote here sees every vote: the chip then says what holds for the reviewers.
+    see: screening.rule.blind === "after" ? (voter ? "Votes hidden until you vote" : "Reviewers see votes once they vote") : "Votes visible to all",
     seeIcon: screening.rule.blind === "after" ? Lock : Eye,
   };
 }
@@ -149,7 +151,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   }
 
   const { screening } = open;
-  const facts = ruleFacts(screening);
+  const facts = ruleFacts(screening, open.isReviewer);
   const reviewers = activeReviewers(screening);
   const total = open.papers.length;
   const workspace = workspaceOf(screening);
@@ -213,7 +215,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             {growing(screening).length ? <DropdownMenuItem disabled={Boolean(screening.checking)} onSelect={open.check}><RefreshCw />Check for new papers</DropdownMenuItem> : null}
           </>
         ) : null}
-        <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />New screening with these settings</NextLink></DropdownMenuItem>
+        <DropdownMenuItem asChild><NextLink href={newHref(id)}><Copy />Duplicate as a new screening</NextLink></DropdownMenuItem>
         {open.canChange ? (
           <>
             <DropdownMenuItem onSelect={() => overlays.show("move")}><Move />Move to another workspace</DropdownMenuItem>
@@ -263,12 +265,12 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     </>
   );
 
-  // How a paper is decided, in one line at every width: the chips scroll sideways where the line is too short for them. In the settings the form itself says the same.
+  // How a paper is decided. From a tablet's width it is one line, and its chips scroll sideways where the line is too short for them. On a phone its name and the way to change it share a line, and the chips wrap under them at the card's whole width, so none is cut. In the settings the form itself says the same.
   const rule = (
-    <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
       <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
         {/* Its name shows where the line has room for it: on a line of its own from a tablet up, and beside the pages in a wide window. */}
-        <span className="sr-only @[48rem]/strip:not-sr-only @[66rem]/strip:sr-only @[77rem]/strip:not-sr-only">How a paper is decided</span>
+        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only @[76rem]/strip:sr-only @[92rem]/strip:not-sr-only">How a paper is decided</span>
         <Help
           title="How a paper is decided"
           facts={
@@ -283,20 +285,22 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
         </Help>
       </span>
-      <FadeRow scrolls scrollbar="none" className="flex items-center gap-2">
+      <div className="min-w-0 max-sm:order-last max-sm:basis-full">
+      <FadeRow scrolls scrollbar="none" className="flex items-center gap-2 max-sm:flex-wrap">
         <LinkChip href={overviewHref(id, "reviewers")} icon={facts.whoIcon} className="shrink-0">{facts.who}</LinkChip>
         <Chip icon={Check}>{facts.when}</Chip>
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
-        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">Living</LinkChip> : null}
+        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">Living, {EVERY_LABEL[screening.living.every].toLowerCase()}</LinkChip> : null}
       </FadeRow>
-      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
+      </div>
+      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs max-sm:ms-auto"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
     </div>
   );
 
   // Who the person looking is to it, where that is less than a reviewer who can change it.
   const role = !open.isReviewer
-    ? { label: "Viewer", icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so no paper is dealt to you." : `${workspace.name} shared it with you. You see every paper and every vote, and no paper is dealt to you.` }
+    ? { label: open.canChange ? "Not a reviewer" : "Viewer", icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so no paper is dealt to you." : `${workspace.name} shared it with you. You see every paper and every vote, and no paper is dealt to you.` }
     : !open.canChange
       ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers dealt to you. Only ${workspace.name}'s members change its settings.` }
       : null;
@@ -324,7 +328,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                   </span>
                 ) : null}
                 {/* A living screening says so beside its name, as its row in the list does, and opens its checks. Below a laptop's width the chip is with the rule's. */}
-                {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">Living</LinkChip> : null}
+                {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">Living, {EVERY_LABEL[screening.living.every].toLowerCase()}</LinkChip> : null}
                 {/* On a phone the menu ends the title's row, as an app bar's does. */}
                 <span className="flex sm:hidden">{more}</span>
               </>
@@ -348,11 +352,11 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             intro={
               <div ref={strip} className="@container/strip">
                 {/* One strip under the bar: the pages, then how a paper is decided. Where the card is too narrow for both on a line, the pages take the first and the rule the second. */}
-                <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @[66rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]">{pages(true)}</FadeRow></div>
+                <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @[76rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]">{pages(true)}</FadeRow></div>
                 {/* On Screen from a laptop's width the window's height goes to the paper: the rule shows only where it shares the pages' line. */}
-                <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[66rem]/strip:hidden", view === "screen" && "lg:@max-[66rem]/strip:hidden")}>
-                  <div className="shrink-0 @max-[66rem]/strip:hidden">{pages(false)}</div>
-                  {view === "settings" ? null : <div className="min-w-0 @[66rem]/strip:ms-auto">{rule}</div>}
+                <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[76rem]/strip:hidden", view === "screen" && "lg:@max-[76rem]/strip:hidden")}>
+                  <div className="shrink-0 @max-[76rem]/strip:hidden">{pages(false)}</div>
+                  {view === "settings" ? null : <div className="min-w-0 @[76rem]/strip:ms-auto">{rule}</div>}
                 </div>
                 {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
@@ -467,7 +471,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
       <div className={row}>
         <RefreshCw className={icon} />
         <span><NextLink href={papersHref(id, { added: String(open.latest.at) })} className={INLINE_LINK}>{open.latest.papers} new {open.latest.papers === 1 ? "paper" : "papers"}</NextLink> came in {ago(open.latest.at)}</span>
-        <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />Screen your {open.latest.mine}</NextLink></Button>
+        <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />Screen your {open.latest.mine} first</NextLink></Button>
       </div>
     );
   }
