@@ -123,28 +123,69 @@ export function Section({ id, title, help, aside, className, children }: { id?: 
 /**
  * A column beside the page's main content that stays in view without a height or a scrollbar of its
  * own. It sticks under the header while it fits in the window. Where it is taller than the window,
- * `tall` says what it does: "foot" (the default) scrolls it with the page until its foot is in view and
- * sticks there, for a column read from top to bottom such as an open paper; "flow" leaves it in the
- * page's flow, for a column whose first lines matter most, such as a form's summary. `clear` is the
- * room kept under it, for a page with an ActionBar at the window's foot. Its own height is the outside
- * system it measures: a ResizeObserver writes it to a CSS variable, and the rest is CSS.
+ * `tall` says what it does. "foot" (the default) is for a column read from top to bottom, such as an
+ * open paper: it moves with the page in both directions and never leaves the window, so scrolling down
+ * brings its foot into view and holds it there, and scrolling up brings its top back under the header.
+ * It always starts with its top under the header, however far the page is scrolled, and starts there
+ * again when `anchor` changes, which names what it shows. "flow" leaves it in the page's flow, for a
+ * column whose first lines matter most, such as a form's summary. `clear` is the room kept under it,
+ * in rem, for a page with an ActionBar at the window's foot.
+ *
+ * Never make room over such a column with a spacer to line it up with something: the spacer stays when
+ * the page is scrolled back, as an empty band over the column. Where it sticks is the only thing that
+ * may place it.
  */
-export function StickyColumn({ clear = "1rem", tall = "foot", className, children }: { clear?: string; tall?: "foot" | "flow"; className?: string; children: ReactNode }) {
+export function StickyColumn({ clear = "1rem", tall = "foot", anchor, className, children }: { clear?: string; tall?: "foot" | "flow"; anchor?: string; className?: string; children: ReactNode }) {
   const column = useRef<HTMLDivElement>(null);
+  // The window's scroll and size and the column's own height are the outside systems.
   useEffect(() => {
     const element = column.current;
     if (!element) return;
-    const observer = new ResizeObserver(() => element.style.setProperty("--column-height", `${element.offsetHeight}px`));
+    if (tall === "flow") {
+      const observer = new ResizeObserver(() => element.style.setProperty("--column-height", `${element.offsetHeight}px`));
+      observer.observe(element);
+      return () => observer.disconnect();
+    }
+    let last = window.scrollY;
+    let top: number | null = null;
+    const place = () => {
+      // The line under the header, which the column's scroll margin is set to, and the lowest its top may go: where its foot is in view over the room kept clear.
+      const under = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
+      const low = Math.min(under, window.innerHeight - element.offsetHeight - parseFloat(clear) * parseFloat(getComputedStyle(document.documentElement).fontSize));
+      const y = window.scrollY;
+      top = Math.min(under, Math.max(low, (top ?? under) - (y - last)));
+      last = y;
+      element.style.top = `${top}px`;
+    };
+    place();
+    // A window of another size has another line under its header: the column starts from it again.
+    const resized = () => {
+      top = null;
+      place();
+    };
+    // The column can go no lower than the foot of what it stands beside. Opened near that foot, a tall column would start with its top above the header, so the page moves up until its top is in view. After everything else that opening it does to the page's scroll, so this has the last word.
+    const shown = anchor === undefined ? 0 : requestAnimationFrame(() => {
+      const hidden = (parseFloat(getComputedStyle(element).scrollMarginTop) || 0) - element.getBoundingClientRect().top;
+      if (hidden > 1) window.scrollBy(0, -hidden);
+    });
+    const observer = new ResizeObserver(place);
     observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+    window.addEventListener("scroll", place, { passive: true });
+    window.addEventListener("resize", resized);
+    return () => {
+      cancelAnimationFrame(shown);
+      observer.disconnect();
+      window.removeEventListener("scroll", place);
+      window.removeEventListener("resize", resized);
+    };
+  }, [tall, clear, anchor]);
   const under = "(var(--app-navbar-height) + var(--page-header-height, 4rem))";
   // The room left over once the column is in the window: none, and it doesn't fit.
   const room = `(100dvh - ${under} - var(--column-height, 0px) - ${clear})`;
-  // "flow": 1px of room or more keeps it under the header; with none, its place to stick is far above the window, so it never sticks.
-  const top = tall === "foot" ? `min(${under}, 100dvh - var(--column-height, 0px) - ${clear})` : `calc(${under} - (1px - clamp(0px, ${room} * 9999, 1px)) * 99999)`;
+  // "flow": 1px of room or more keeps it under the header; with none, its place to stick is far above the window, so it never sticks. "foot" starts under the header and is placed from there as the page scrolls.
+  const top = tall === "foot" ? `calc(${under})` : `calc(${under} - (1px - clamp(0px, ${room} * 9999, 1px)) * 99999)`;
   return (
-    <div ref={column} style={{ top }} className={cn("sticky self-start", className)}>
+    <div ref={column} style={{ top, scrollMarginTop: `calc(${under})` }} className={cn("sticky self-start", className)}>
       {children}
     </div>
   );

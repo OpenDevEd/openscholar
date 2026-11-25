@@ -252,20 +252,7 @@ function Papers({ open }: { open: Open }) {
     if (box.top < line) window.scrollBy(0, box.top - line);
     else if (box.bottom > window.innerHeight) window.scrollBy(0, box.bottom - window.innerHeight);
   }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when another paper opens
-  // A paper taller than the window sticks by its foot, so one opened while the page is scrolled would start above the window.
-  // The room over it then grows until its toolbar and title sit under the header, beside the row that opened it.
-  const lead = useRef<HTMLDivElement>(null);
-  const reading = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (!lead.current || !reading.current || !list.current) return;
-    const line = underHeader();
-    const start = lead.current.getBoundingClientRect().top;
-    const height = reading.current.offsetHeight;
-    // Where StickyColumn would hold it with no room over it (1rem kept under its foot), and no lower than the table's end.
-    const held = Math.min(Math.max(start, Math.min(line, window.innerHeight - height - 16)), start + list.current.offsetHeight - height);
-    lead.current.style.height = held < line ? `${line - start}px` : "0px";
-  }, [opened, beside, pager.page, rows.length]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when the paper or the list under it changes
 
   // Reviewers' names show over their columns while no paper is open beside the table, and a column fits a first name.
   const names = !room;
@@ -704,11 +691,9 @@ function Papers({ open }: { open: Open }) {
         <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
           {paper && beside ? (
             <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
-              <div ref={lead} />
-              <StickyColumn>
-                <div ref={reading}>
-                  <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
-                </div>
+              {/* It starts under the header whenever another paper opens, however far the page is scrolled. */}
+              <StickyColumn anchor={paper.id}>
+                <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
               </StickyColumn>
             </motion.aside>
           ) : null}

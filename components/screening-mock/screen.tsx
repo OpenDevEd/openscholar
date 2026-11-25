@@ -396,7 +396,7 @@ function Screen({ open }: { open: Open }) {
           <>
             {/* The paper, and everyone's votes under it. */}
             <div ref={article} className={cn("min-w-0", BELOW_HEADER)}>
-              <StickyColumn clear={CLEAR}>
+              <StickyColumn clear={CLEAR} anchor={paper.id}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={paper.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="max-w-[46rem] space-y-8 p-5 sm:p-8 2xl:max-w-none">
                     <article className="space-y-4">
@@ -468,7 +468,7 @@ function Screen({ open }: { open: Open }) {
 
             {/* Your answers to the criteria. */}
             <div className="min-w-0 border-t border-border-subtle lg:border-t-0">
-              <StickyColumn clear={CLEAR} className="p-5">
+              <StickyColumn clear={CLEAR} anchor={paper.id} className="p-5">
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
                   help={
