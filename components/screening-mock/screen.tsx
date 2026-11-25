@@ -64,8 +64,14 @@ const BAR_FOLDED = "2xl:grid-cols-[22rem_minmax(0,34rem)_minmax(28rem,1fr)]";
 const SLIDES = "min-[87.5rem]:transition-[grid-template-columns] min-[87.5rem]:duration-300 min-[87.5rem]:ease-out motion-reduce:transition-none";
 /** On a very wide window your answers and the last vote keep a width that reads, at the start of their column. */
 const BESIDE = "2xl:max-w-[36rem]";
-/** From a laptop's width up to 1400px there are two columns: the paper, with your answers beside it. The queue's tabs sit over the paper, and its list opens from the window's side. */
-const COLUMNS = "lg:max-[87.5rem]:grid-cols-[minmax(0,1fr)_22rem] lg:max-[87.5rem]:grid-rows-[auto_minmax(0,1fr)] min-[87.5rem]:grid-rows-[minmax(0,1fr)]";
+/** From a laptop's width the queue's bar is a row of its own over the panes. Up to 1400px there are two columns under it: the paper, with your answers beside it, and the queue's list opens from the window's side. */
+const COLUMNS = "lg:max-[87.5rem]:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_minmax(0,1fr)]";
+/**
+ * The queue's bar, and its tabs in it: from 1400px as wide as the queue's column under them. An empty queue shows the same bar, so its tabs stand where they did.
+ * Under 1400px the paper's column can be narrower than the bar's parts: the tabs take what room there is between their own width and 18rem, and what still does not fit goes to a second line.
+ */
+const QUEUE_BAR = "border-b border-border-subtle p-3 lg:max-[87.5rem]:flex-wrap lg:max-[87.5rem]:px-8";
+const QUEUE_TABS = "lg:max-w-[18rem] lg:min-w-max lg:flex-1 min-[87.5rem]:w-[17.5rem] min-[87.5rem]:max-w-none min-[87.5rem]:flex-none 2xl:w-[20.5rem]";
 /** The bar under them: under 1400px, where you are and the vote. */
 const BAR_COLUMNS = `lg:grid-cols-[19rem_minmax(0,1fr)] ${WIDE}`;
 /** A filter over the queue's list: a pill as wide as the queue's column. */
@@ -465,7 +471,7 @@ function Screen({ open }: { open: Open }) {
   if (!paper && !narrowed) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-        {open.isReviewer ? <div className="border-b border-border-subtle p-3"><div className="lg:max-w-[18rem] 2xl:max-w-[21rem]">{tabs}</div></div> : null}
+        {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
         <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center"><Empty open={open} queue={queue} /></div>
       </div>
     );
@@ -586,16 +592,19 @@ function Screen({ open }: { open: Open }) {
   return (
     <>
       <div className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE)}>
-        {/* The queue: from 1400px a pane of its own. Its tabs, search and filters stay at its top and its foot holds its pages, and the list between them scrolls. */}
-        {/* With no paper to show, the tabs have the whole width where there are two columns, as there are no answers to sit beside. */}
-        {/* Folded away, its column closes to nothing and it leaves the page and the keyboard's path once it has closed. What it holds keeps its width while the column slides. */}
-        <div className={cn("border-b border-border-subtle lg:max-[87.5rem]:col-start-1 lg:max-[87.5rem]:row-start-1 min-[87.5rem]:flex min-[87.5rem]:min-h-0 min-[87.5rem]:flex-col min-[87.5rem]:overflow-hidden min-[87.5rem]:border-b-0 min-[87.5rem]:transition-[visibility] min-[87.5rem]:duration-300", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0", !paper && "lg:max-[87.5rem]:col-span-2 lg:max-[87.5rem]:border-e-0")}>
-          <div className="min-[87.5rem]:flex min-[87.5rem]:min-h-0 min-[87.5rem]:w-[19rem] min-[87.5rem]:flex-1 min-[87.5rem]:flex-col 2xl:w-[22rem]">
-          <div className="space-y-2 p-3 lg:max-[87.5rem]:flex lg:max-[87.5rem]:items-center lg:max-[87.5rem]:justify-between lg:max-[87.5rem]:gap-3 lg:max-[87.5rem]:space-y-0 lg:max-[87.5rem]:px-8">
-            <div className="lg:max-[87.5rem]:w-[18rem]">{tabs}</div>
-            {askedChip}
+        {/* The queue's bar: its tabs and the way to its list, over the queue and the paper from a laptop's width. The button has one place and one look. From 1400px it hides the queue's pane and shows it again, and under that it opens the list over the page. */}
+        {/* With no paper to show, the bar has the whole width, as there are no answers to sit beside. */}
+        <div className={cn("flex flex-col gap-2 lg:col-start-1 lg:row-start-1 lg:flex-row lg:items-center lg:gap-3", QUEUE_BAR, paper ? "min-[87.5rem]:col-end-3" : "lg:-col-end-1 lg:border-e-0")}>
+            {/* The button starts where the paper's text does, and stays there while the queue's column closes. */}
+            <div className={QUEUE_TABS}>{tabs}</div>
             {/* Under 1400px the queue's list has no column of its own. It opens over the page, with its search and filters: from the foot on a phone, from the side on a wider screen. While a search or a filter narrows the queue the button stays, so the search can be changed. */}
-            {items.length > 1 || narrowed ? <Button variant="outline" size="sm" className="w-full lg:max-[87.5rem]:w-auto min-[87.5rem]:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
+            {items.length > 1 || narrowed ? <Button variant="outline" size="sm" className="w-full shrink-0 lg:w-auto min-[87.5rem]:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
+            <Button variant="outline" size="sm" aria-expanded={!folded} className="ms-8 shrink-0 max-[87.5rem]:hidden" onClick={() => setMock({ folded: !folded })}>
+              {folded ? <PanelLeftOpen /> : <PanelLeft />}
+              {/* Both names take the same room, so the one that shows never moves what follows the button. */}
+              <span className="grid *:col-start-1 *:row-start-1"><span className={cn(folded && "invisible")}>Hide the queue</span><span className={cn(!folded && "invisible")}>Show the queue</span></span>
+            </Button>
+            {askedChip}
             <Sheet open={listing} onOpenChange={setListing}>
               <SheetContent side={tablet ? "bottom" : "left"} className={cn("flex flex-col gap-0 p-0 min-[87.5rem]:hidden", tablet && "max-h-[85dvh]")}>
                 <SheetHeader className="space-y-3 border-b border-border-subtle p-4">
@@ -611,41 +620,34 @@ function Screen({ open }: { open: Open }) {
                 {pager("border-t border-border-subtle px-3 py-2")}
               </SheetContent>
             </Sheet>
-            {findField("max-[87.5rem]:hidden")}
-            {queueFilters(cn(QUEUE_FILTER, "max-[87.5rem]:hidden"))}
-          </div>
-          <ScrollArea key={holding} shades className="hidden border-t border-border-subtle min-[87.5rem]:flex min-[87.5rem]:min-h-0 min-[87.5rem]:flex-1">
-            <ul className="divide-y divide-border-subtle">
-              {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, openIt))}
-            </ul>
-          </ScrollArea>
-          {/* The pane's foot: the way to fold it away, by name, and the list's pages. */}
-          <div className="hidden items-center gap-2 border-t border-border-subtle px-2 py-1.5 min-[87.5rem]:flex">
-            <Button variant="ghost" size="sm" className="h-7 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground" onClick={() => setMock({ folded: true })}><PanelLeft />Hide the queue</Button>
-            {pager("ms-auto w-28")}
-          </div>
+        </div>
+
+        {/* The queue's pane, from 1400px: its search and filters at its top, the list under them, which scrolls, and the list's pages at its foot where it has more than one. */}
+        {/* Folded away, its column closes to nothing and it leaves the page and the keyboard's path once it has closed. What it holds keeps its width while the column slides. */}
+        <div className={cn("hidden min-[87.5rem]:col-start-1 min-[87.5rem]:row-start-2 min-[87.5rem]:flex min-[87.5rem]:min-h-0 min-[87.5rem]:flex-col min-[87.5rem]:overflow-hidden min-[87.5rem]:transition-[visibility] min-[87.5rem]:duration-300", folded && "min-[87.5rem]:invisible min-[87.5rem]:border-e-0")}>
+          <div className="flex min-h-0 w-[19rem] flex-1 flex-col 2xl:w-[22rem]">
+            <div className="space-y-2 p-3">
+              {findField("")}
+              {queueFilters(QUEUE_FILTER)}
+            </div>
+            <ScrollArea key={holding} shades className="flex min-h-0 flex-1 border-t border-border-subtle">
+              <ul className="divide-y divide-border-subtle">
+                {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, openIt))}
+              </ul>
+            </ScrollArea>
+            {pages > 1 ? <div className="flex justify-center border-t border-border-subtle px-2 py-1.5">{pager("w-28")}</div> : null}
           </div>
         </div>
 
         {!paper ? (
-          <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-span-2">
+          <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
             <p className="text-sm font-medium">Nothing in this queue matches</p>
             <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null, page: null }, { history: "replace" })}>Show the whole queue</Button>
           </div>
         ) : (
           <>
             {/* The paper, and everyone's votes under it: the pane in the middle, which a long paper scrolls. */}
-            <div className={cn("lg:flex lg:flex-col lg:max-[87.5rem]:col-start-1 lg:max-[87.5rem]:row-start-2", PANE)}>
-              {/* With the queue folded away, its tabs and the way to bring it back stand over the paper: the other queues stay one press away, and the button says what it does. The row is always there and opens from nothing as the queue's column closes, so what it holds slides away with it and never blinks out first. Shut, it is out of sight and out of the keyboard's path. */}
-              <div className={cn("grid shrink-0 transition-[grid-template-rows,visibility] duration-300 ease-out motion-reduce:transition-none max-[87.5rem]:hidden", folded ? "grid-rows-[1fr]" : "invisible grid-rows-[0fr]")}>
-                <div className="min-h-0 overflow-hidden">
-                  <div className="flex items-center gap-3 border-b border-border-subtle p-3">
-                    {open.isReviewer ? <div className="w-[18rem] shrink-0">{tabs}</div> : null}
-                    {askedChip}
-                    <Button variant="outline" size="sm" className="ms-auto shrink-0" onClick={() => setMock({ folded: false })}><PanelLeftOpen />Show the queue</Button>
-                  </div>
-                </div>
-              </div>
+            <div className={cn("lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col min-[87.5rem]:col-start-2", PANE)}>
             <ScrollArea shades className="lg:min-h-0 lg:flex-1">
               <div ref={article} tabIndex={-1} role="region" aria-label="Paper" className={cn("outline-none", BELOW_HEADER)}>
                 <AnimatePresence mode="wait" initial={false}>
@@ -716,7 +718,7 @@ function Screen({ open }: { open: Open }) {
             </div>
 
             {/* Your answers to the criteria: a pane of their own. Each paper has its own, so another paper's start at their top. */}
-            <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:max-[87.5rem]:col-start-2 lg:max-[87.5rem]:row-span-2 lg:max-[87.5rem]:row-start-1", PANE)}>
+            <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
               <div className={cn("p-5", BESIDE)}>
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
