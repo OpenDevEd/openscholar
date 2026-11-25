@@ -153,9 +153,14 @@ export function Segmented<T extends string>({
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {/* A label that wraps keeps its icon on its first line: the icon's box is one line high. */}
+            {/* A label that wraps keeps its icon on its first line: the icon sits in a box one of the label's lines high
+                (the box, not the icon, which sets a font size of its own). */}
             <span className={cn("flex min-w-0 items-center gap-2", !fill && !stacked && "max-sm:items-start")}>
-              {o.icon ? <o.icon className={cn(size === "sm" ? "size-3.5" : "size-4", !fill && !stacked && "max-sm:h-[1lh] max-sm:shrink-0")} /> : null}
+              {o.icon ? (
+                <span className={cn("flex shrink-0 items-center", !fill && !stacked && "max-sm:h-[1lh]")}>
+                  <o.icon className={size === "sm" ? "size-3.5" : "size-4"} />
+                </span>
+              ) : null}
               <span className={cn("truncate", !fill && !stacked && "max-sm:whitespace-normal")}>{o.label}</span>
             </span>
             {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
