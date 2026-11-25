@@ -588,7 +588,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                     </button>
                                   </DropdownMenuTrigger>
                                 </TooltipHint>
-                                <DropdownMenuContent align="center" className="w-60">
+                                <DropdownMenuContent align="center" className="w-auto min-w-60 [&_[role=menuitem]]:whitespace-nowrap">
                                   <DropdownMenuLabel><ReviewerName reviewer={one} you={one.id === open.me} /></DropdownMenuLabel>
                                   <DropdownMenuSeparator />
                                   {DECISIONS.map((decision) => {

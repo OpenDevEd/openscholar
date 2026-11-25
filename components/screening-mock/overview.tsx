@@ -566,7 +566,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
                 <Button variant="ghost" size="icon" className={cn(above, "size-8 text-muted-foreground")} aria-label={`More for ${reviewer.name}`}><MoreHorizontal /></Button>
               </DropdownMenuTrigger>
             </TooltipHint>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-auto min-w-56 [&_[role=menuitem]]:whitespace-nowrap">
               <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See {mine ? "your" : "their"} votes in Papers</NextLink></DropdownMenuItem>
               {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => open.retry(reviewer)}><RotateCcw />{retryLabel(unread, credits(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{credits(retry.short)} credits short</span> : null}</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && left ? (

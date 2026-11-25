@@ -465,7 +465,8 @@ function Screen({ open }: { open: Open }) {
             { value: "dealt" as typeof order, label: "As added", icon: <Clock /> },
             // Offered while new papers wait, and kept while it is the order chosen: voting on the last new paper must not rename the order to another.
             ...(toDo.some((one) => one.batch !== undefined) || order === "fresh" ? [{ value: "fresh" as typeof order, label: "New papers first", icon: <RefreshCw /> }] : []),
-            { value: "lean" as typeof order, label: "Included by the models first", icon: <ModelsIcon />, ...(blind ? { shut: `${SHUT.vote.says}: this order would give the models' votes away` } : {}) },
+            { value: "lean" as typeof order, label: "Included by the models first", icon: <ModelsIcon />, // To do holds only papers you have yet to vote on, so on a screening that hides votes this order never opens there: the reason says what this screening does, in words that need no setting's name, and promises no vote that would open it.
+            ...(blind ? { shut: "This screening hides votes, and this order would give the models' away" } : {}) },
           ]}
         />
       ) : null}
@@ -708,7 +709,7 @@ function Screen({ open }: { open: Open }) {
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
                   aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? `${num(criteria.filter((criterion) => given[criterion.key] !== undefined).length)} of ${num(criteria.length)} answered` : plural(criteria.length, "criterion", "criteria")}</span> : undefined}
                   help={
-                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={FileSearch}>Passage: the sentence of this paper that speaks to it</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>Words the criteria look for</HelpFact></>}>
+                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={FileSearch}>Passage: the sentence that speaks to it</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>Words the criteria look for</HelpFact></>}>
                       {answering ? "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude."}
                     </Help>
                   }

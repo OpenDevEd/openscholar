@@ -961,7 +961,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </TooltipHint>
                   <DropdownMenuContent align="end" className="w-72">
                     {importable.length ? <DropdownMenuItem onSelect={() => importable.forEach(({ question }) => addCriterion(question))}><ListChecks />Add {plural(importable.length, "question", "questions")} from your {importSearches === 1 ? "search" : "searches"}</DropdownMenuItem> : null}
-                    <DropdownMenuItem disabled={writing || Boolean(cantWrite)} onSelect={writeCriteria}><AiIcon working={writing} />Write criteria from the question{cantWrite ? <span className="ms-auto ps-3 text-xs text-muted-foreground">{cantWrite}</span> : null}</DropdownMenuItem>
+                    {/* Why it can't be pressed goes under the label, and the icon stays on the label's line. */}
+                    <DropdownMenuItem disabled={writing || Boolean(cantWrite)} onSelect={writeCriteria} className="items-start"><span className="flex h-5 shrink-0 items-center"><AiIcon working={writing} /></span><span className="min-w-0 flex-1">Write criteria from the question{cantWrite ? <span className="block text-xs text-muted-foreground">{cantWrite}</span> : null}</span></DropdownMenuItem>
                     {copyable.length ? (
                       <>
                         <DropdownMenuSeparator />
@@ -1414,7 +1415,7 @@ function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKee
   return (
     <motion.div id={`reviewer-${reviewer.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", BELOW_HEADER, DIVIDED_ROW)}>
       <div className={cn("flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors", gone && TONE.warning.panel)}>
-        <ReviewerMark reviewer={reviewer} className="size-9" />
+        <ReviewerMark reviewer={reviewer} className="size-9 self-start" />
         <div className="min-w-0 flex-1">
           {href && !gone ? <NextLink href={href} className="flex w-fit max-w-full rounded outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{name}</NextLink> : name}
           <p className="truncate text-xs text-muted-foreground">{detail}</p>
@@ -1447,11 +1448,13 @@ function Destination({ on, onPick, icon: Icon, name, facts, below }: { on: boole
   return (
     <div className={cn("transition-colors", on && "bg-primary/5")}>
       <div role="radio" aria-checked={on} tabIndex={0} onClick={onPick} onKeyDown={(event) => (event.key === " " || event.key === "Enter") && event.target === event.currentTarget && onPick()} className={cn("flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset", !on && "hover:bg-muted")}>
-        <Icon className={cn("size-4 shrink-0", on ? "text-primary" : "text-muted-foreground")} />
-        {/* On a phone the name takes two lines if it needs them, and its count goes under it. */}
-        <div className="flex min-w-0 flex-1 items-center gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1">
-          <span className="min-w-0 max-w-full truncate text-sm font-medium sm:flex-1 max-sm:line-clamp-2 max-sm:whitespace-normal">{name}</span>
-          {facts}
+        {/* The icon sits on the name's line: on a phone, where the name runs onto a second line and its count goes under it, it stays on the first. */}
+        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+          <span className="flex h-5 shrink-0 items-center"><Icon className={cn("size-4", on ? "text-primary" : "text-muted-foreground")} /></span>
+          <div className="flex min-w-0 flex-1 items-center gap-3 max-sm:flex-col max-sm:items-start max-sm:gap-1">
+            <span className="min-w-0 max-w-full truncate text-sm font-medium sm:flex-1 max-sm:line-clamp-2 max-sm:whitespace-normal">{name}</span>
+            {facts}
+          </div>
         </div>
         <PickMark on={on} />
       </div>
