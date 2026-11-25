@@ -6,14 +6,17 @@
 
 import { useEffect, useRef, type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
-import { Chip, RequiredMark } from "@/components/screening/parts";
+import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
+import { AVATARS_FADE_IN } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HELP_POPOVER, HelpButton } from "@/components/ui/help";
 import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -80,6 +83,8 @@ export const RESULT_STYLE: Record<Result, { bar: string; chip: string; icon: App
 
 /** An icon in one colour, for a control that takes an icon and would draw it in its text's colour: a tab, a menu item. Made once, outside any component, so the control keeps the same icon from one draw to the next. */
 export const tinted = (Icon: AppIcon, tone: Tone): ComponentType<{ className?: string }> => function Tinted({ className }) { return <Icon className={cn(TONE[tone].ink, className)} />; };
+/** The icon of the kind of place a screening's papers came from. */
+export const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
 /** Each result's icon in its own colour. */
 export const RESULT_ICON = Object.fromEntries(RESULTS.map((result) => [result, tinted(RESULT_STYLE[result].icon, RESULT_STYLE[result].tone)])) as Record<Result, ComponentType<{ className?: string }>>;
 /** A count in a tab, in the colour of what it counts while there is any: what waits for you is primary, a conflict is blue. */
@@ -132,9 +137,60 @@ export function Section({ id, title, help, aside, className, children }: { id?: 
  * page lays the two side by side: narrower than that the sidebar is one more block of the page, with no height of its
  * own. Written out whole, so Tailwind finds them.
  */
+/** A filter's pill while it narrows its list: tinted as the open tab beside it is. */
+export const FILTER_ON = "border-primary/30 bg-primary/8 hover:bg-primary/12";
+/** One thing to pick in a FilterMenu: its sign, its name, and how many papers it holds. `tone` is its colour role, for its sign and its count: a vote's is its result's. Choices that share a `group` sit under its name. */
+export type Choice<T extends string> = { value: T; label: string; icon?: ReactNode; tone?: Tone; count?: number; group?: string };
+// A menu row and a select's pill both turn every icon grey. A choice's sign takes its tone instead.
+const SIGN = "flex items-center [&_svg]:text-current!";
+
+/**
+ * A choice of one in a bar, as a pill: what it sets and the choice made, and under it a menu of the choices,
+ * each with its sign, its name and how many papers it holds. The first choice is the one that leaves the list
+ * whole. With any other the pill is tinted and carries the choice's sign, so the bar shows what is narrowing its
+ * list. `narrows={false}` is for a choice that narrows nothing, such as an order: its pill is never tinted.
+ * `lead` is a sign before the name, where the name alone doesn't say what the pill is for.
+ */
+export function FilterMenu<T extends string>({ name, lead, value, onChange, choices, narrows = true, align = "start", className }: { name: string; lead?: ReactNode; value: T; onChange: (next: T) => void; choices: Choice<T>[]; narrows?: boolean; align?: "start" | "end"; className?: string }) {
+  const picked = choices.find((one) => one.value === value) ?? choices[0]!;
+  const changed = picked !== choices[0];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" data-slot="select-trigger" data-size="sm" aria-label={`${name}: ${picked.label}`} className={cn(SELECT_TRIGGER, narrows && changed && FILTER_ON, className)}>
+          <span className="flex min-w-0 items-center gap-1.5">
+            {lead}
+            <span className="text-muted-foreground">{name}</span>
+            <span className="flex min-w-0 items-center gap-1.5 font-medium">{changed && picked.icon ? <span className={cn(SIGN, TONE[picked.tone ?? "neutral"].ink)}>{picked.icon}</span> : null}<span className="truncate">{picked.label}</span></span>
+          </span>
+          <ChevronDown className="size-4 opacity-50" />
+        </button>
+      </DropdownMenuTrigger>
+      {/* A choice may be a person: their face fades in, as in every part that opens over the page. */}
+      <DropdownMenuContent align={align} className={cn("w-auto max-w-[min(26rem,calc(100vw-2rem))] min-w-[max(14rem,var(--radix-dropdown-menu-trigger-width))]", AVATARS_FADE_IN)}>
+        {[...new Set(choices.map((one) => one.group))].map((group, i) => (
+          <div key={group ?? ""} role="group" aria-label={group}>
+            {i ? <DropdownMenuSeparator /> : null}
+            {group ? <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{group}</DropdownMenuLabel> : null}
+            {choices.filter((one) => one.group === group).map((one) => (
+              // A long name runs onto a second line, and the sign, the count and the tick stay on its first.
+              <DropdownMenuItem key={one.value} role="menuitemradio" aria-checked={one.value === value} onSelect={() => onChange(one.value)} className="items-start">
+                {one.icon ? <span className={cn(SIGN, "h-5", TONE[one.tone ?? "neutral"].ink)}>{one.icon}</span> : null}
+                <span className="min-w-0 flex-1">{one.label}</span>
+                {one.count !== undefined ? <span className="ps-3 text-xs leading-5"><span className="sr-only">, </span><TabCount value={one.count} tone={one.tone} /></span> : null}
+                <span className="flex h-5 items-center"><Check aria-hidden className={cn("size-4", one.value !== value && "invisible")} /></span>
+              </DropdownMenuItem>
+            ))}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const SIDEBAR = {
-  always: "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] overflow-y-auto overscroll-contain",
   lg: "lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] lg:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] lg:overflow-y-auto lg:overscroll-contain",
+  xl: "xl:sticky xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] xl:overflow-y-auto xl:overscroll-contain",
   form: "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] @6xl:overflow-y-auto @6xl:overscroll-contain",
 };
 
@@ -148,8 +204,12 @@ const SIDEBAR = {
  * each sidebar keeps its own place. A sidebar is a tool beside the content: a list to pick from, the item picked, a form's summary. Blocks of a page's own content laid in two columns, as on the Overview, are not one, and scroll with the page. `from`: the width at which the page lays it beside the main content.
  * `clear`: the room kept under it for an ActionBar at the window's foot. `anchor` names what it shows: when that
  * changes, it starts from its top again.
+ *
+ * The padding around what it holds goes on the sidebar itself (`className`), never on a box around it. A box that
+ * scrolls down also scrolls sideways as soon as anything in it reaches past its padding, and a row's hover fill
+ * that hangs a few pixels out of its text does. With the padding inside, that fill lands in it.
  */
-export function StickyColumn({ from = "always", clear = "1rem", anchor, className, children }: { from?: keyof typeof SIDEBAR; clear?: string; anchor?: string; className?: string; children: ReactNode }) {
+export function StickyColumn({ from, clear = "1rem", anchor, className, children }: { from: keyof typeof SIDEBAR; clear?: string; anchor?: string; className?: string; children: ReactNode }) {
   const column = useRef<HTMLDivElement>(null);
   // Its own scroll is the outside system: another paper starts at its title, not where the last one was left.
   useEffect(() => {

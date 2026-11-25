@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { createSerializer, parseAsArrayOf, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, GitCompare, ListChecks, Lock, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, X } from "@/components/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Lock, Play, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -22,14 +22,15 @@ import { HelpFact } from "@/components/ui/help";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { SELECT_TRIGGER, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FadeRow } from "@/components/ui/fade-row";
+import { SELECT_TRIGGER } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -41,6 +42,8 @@ const ROW = 57;
 const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
 type Sort = (typeof SORTS)[number];
 const SORT_LABEL: Record<Sort, string> = { added: "Order added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
+/** Each order's sign: an arrow for the way a title runs, and what the others go by. */
+const SORT_ICON: Record<Sort, AppIcon> = { added: Clock, title: ArrowDown, "title-desc": ArrowUp, result: ListChecks, newest: CalendarDays, split: GitCompare, points: Award };
 /** A result tab with nothing in it, while no filter or search narrows it. */
 const EMPTY_TAB: Record<Result | "all", string> = { all: "No papers yet", include: "Nothing included yet", maybe: "Nothing marked Maybe yet", exclude: "Nothing excluded yet", conflict: "No papers in conflict", waiting: "No papers waiting for a vote" };
 const VOTED = ["any", ...DECISIONS, "none", "settled", "failed"] as const;
@@ -150,25 +153,25 @@ function Papers({ open }: { open: Open }) {
     },
     [settled, votes, criteria],
   );
+  const entryOf = (paper: Paper, reviewerId: string) => votes[paper.id]!.find((one) => one.reviewer.id === reviewerId);
+  /** Whether a reviewer's vote on a paper is of a kind: what the Vote filter keeps, and what it counts beside each choice. */
+  const votedAs = (paper: Paper, reviewerId: string, kind: Voted) => {
+    if (kind === "settled") return settled[paper.id]!.resolvedBy === reviewerId;
+    const theirs = entryOf(paper, reviewerId);
+    if (!theirs) return false;
+    if (kind === "failed") return Boolean(theirs.failed);
+    if (kind === "none") return !theirs.vote && !theirs.failed && !settled[paper.id]!.final;
+    return kind === "any" ? Boolean(theirs.vote) : theirs.vote?.decision === kind;
+  };
   // Every paper the filters and the search leave, whatever its result: the tabs count these.
   const narrowed = useMemo(() => {
     const words = query.trim().toLowerCase();
-    const entry = (paper: Paper, reviewerId: string) => votes[paper.id]!.find((one) => one.reviewer.id === reviewerId);
-    const byWho = (paper: Paper) => {
-      if (!who) return true;
-      if (voted === "settled") return settled[paper.id]!.resolvedBy === who;
-      const theirs = entry(paper, who);
-      if (!theirs) return false;
-      if (voted === "failed") return Boolean(theirs.failed);
-      if (voted === "none") return !theirs.vote && !theirs.failed && !settled[paper.id]!.final;
-      return voted === "any" ? Boolean(theirs.vote) : theirs.vote?.decision === voted;
-    };
     return papers.filter(
       (paper) =>
         (from === "all" || paper.source === from) &&
         (added === "all" || (added === "start" ? paper.batch === undefined : String(paper.batch) === added)) &&
-        byWho(paper) &&
-        also.every((one) => Boolean(entry(paper, one)?.vote)) &&
+        (!who || votedAs(paper, who, voted)) &&
+        also.every((one) => Boolean(entryOf(paper, one)?.vote)) &&
         (!reason || reasonKey(paper) === reason) &&
         (!words || `${paper.title} ${paper.authors.join(" ")}`.toLowerCase().includes(words)),
     );
@@ -313,22 +316,23 @@ function Papers({ open }: { open: Open }) {
 
   const reviewerOptions = [...reviewers.filter((one) => one.id === open.me), ...reviewers.filter((one) => one.id !== open.me && one.kind === "person"), ...reviewers.filter((one) => one.kind === "model")];
   const settles = (reviewerId: string) => reviewerId === screening.rule.resolver || reviewerId === screening.createdBy;
+  const countVoted = (kind: Voted) => (who ? papers.filter((paper) => votedAs(paper, who, kind)).length : 0);
   // The filters, in the row over the table and in a phone's sheet.
   const filters = (trigger: string) => (
     <>
       {screening.sources.length > 1 ? (
-        <Select value={from} onValueChange={(next) => go({ source: next === "all" ? null : next })}>
-          <SelectTrigger aria-label="Source" className={trigger}><span className="text-muted-foreground">Source</span><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            {screening.sources.map((source) => <SelectItem key={source.id} value={source.id}>{source.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <FilterMenu
+          name="Source"
+          value={from}
+          onChange={(next) => go({ source: next === "all" ? null : next })}
+          className={trigger}
+          choices={[{ value: "all", label: "All", icon: <Layers />, count: papers.length }, ...screening.sources.map((source) => { const Icon = kindIcon(source.kind); return { value: source.id, label: source.name, icon: <Icon />, count: papers.filter((one) => one.source === source.id).length }; })]}
+        />
       ) : null}
       {/* Any number of reviewers: with several, the table shows the papers all of them voted on. The menu stays open while they are picked. */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button type="button" data-slot="select-trigger" data-size="sm" aria-label={`Reviewers: ${everyone.length ? listed(everyone.map((one) => (one === open.me ? "you" : nameOf(open, one)))) : "anyone"}`} className={cn(SELECT_TRIGGER, trigger)}>
+          <button type="button" data-slot="select-trigger" data-size="sm" aria-label={`Reviewers: ${everyone.length ? listed(everyone.map((one) => (one === open.me ? "you" : nameOf(open, one)))) : "anyone"}`} className={cn(SELECT_TRIGGER, everyone.length > 0 && FILTER_ON, trigger)}>
             <span className="text-muted-foreground">{everyone.length > 1 ? "Reviewers" : "Reviewer"}</span>
             {everyone.length > 1 ? (
               <span className="flex items-center">{everyone.map((one, i) => { const mark = reviewerOptions.find((option) => option.id === one); return mark ? <span key={one} className={cn("flex rounded-full ring-2 ring-card", i > 0 && "-ms-1")}><ReviewerMark reviewer={mark} className="size-4" /></span> : null; })}</span>
@@ -338,8 +342,8 @@ function Papers({ open }: { open: Open }) {
             <ChevronDown className="size-4 opacity-50" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64">
-          <DropdownMenuItem onSelect={() => go({ reviewer: null, voted: null, with: null })}><span className="flex-1">Anyone</span>{everyone.length ? null : <Check className="size-4" />}</DropdownMenuItem>
+        <DropdownMenuContent align="start" className={cn("w-64", AVATARS_FADE_IN)}>
+          <DropdownMenuItem onSelect={() => go({ reviewer: null, voted: null, with: null })}><Users /><span className="flex-1">Anyone</span>{everyone.length ? null : <Check className="size-4" />}</DropdownMenuItem>
           {[["People", reviewerOptions.filter((one) => one.kind === "person")], ["Models", reviewerOptions.filter((one) => one.kind === "model")]].map(([label, list]) =>
             (list as Reviewer[]).length ? (
               <div key={label as string} role="group" aria-label={label as string}>
@@ -356,39 +360,40 @@ function Papers({ open }: { open: Open }) {
         </DropdownMenuContent>
       </DropdownMenu>
       {who && everyone.length === 1 ? (
-        <Select value={voted} onValueChange={(next) => go({ reviewer: who, voted: next === "any" ? null : (next as Voted) })}>
-          <SelectTrigger aria-label="Their vote" className={trigger}><span className="text-muted-foreground">Vote</span><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="any">Any vote</SelectItem>
-            {DECISIONS.map((decision) => { const Icon = RESULT_STYLE[decision].icon; return <SelectItem key={decision} value={decision}><Icon className={cn("size-3.5", TONE[RESULT_STYLE[decision].tone].ink)} />{DECISION_LABEL[decision]}</SelectItem>; })}
-            <SelectItem value="none">Not voted yet</SelectItem>
-            {papers.some((one) => votes[one.id]!.some((entry) => entry.reviewer.id === who && entry.failed)) ? <SelectItem value="failed"><TriangleAlert className="size-3.5 ink-destructive" />Couldn&apos;t read it</SelectItem> : null}
-            {settles(who) ? <SelectItem value="settled">Settled a conflict</SelectItem> : null}
-          </SelectContent>
-        </Select>
+        <FilterMenu
+          name="Vote"
+          value={voted}
+          onChange={(next) => go({ reviewer: who, voted: next === "any" ? null : next })}
+          className={trigger}
+          choices={[
+            { value: "any" as Voted, label: "Any vote", icon: <ListChecks />, count: countVoted("any") },
+            ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as Voted, label: DECISION_LABEL[decision], icon: <Icon />, tone, count: countVoted(decision) }; }),
+            { value: "none" as Voted, label: "Not voted yet", icon: <Hourglass />, count: countVoted("none"), group: "No vote" },
+            ...(countVoted("failed") ? [{ value: "failed" as Voted, label: "Couldn't read it", icon: <TriangleAlert />, tone: "destructive" as const, count: countVoted("failed"), group: "No vote" }] : []),
+            ...(settles(who) ? [{ value: "settled" as Voted, label: "Settled a conflict", icon: <GitCompare />, tone: "info" as const, count: countVoted("settled"), group: "Conflicts" }] : []),
+          ]}
+        />
       ) : null}
       {arrivals.length ? (
-        <Select value={added} onValueChange={(next) => go({ added: next === "all" ? null : next })}>
-          <SelectTrigger aria-label="Added" className={trigger}><span className="text-muted-foreground">Added</span><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any time</SelectItem>
-            {arrivals.map((time) => <SelectItem key={time} value={String(time)}>{ago(time)}</SelectItem>)}
-            <SelectItem value="start">At the start</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterMenu
+          name="Added"
+          value={added}
+          onChange={(next) => go({ added: next === "all" ? null : next })}
+          className={trigger}
+          choices={[
+            { value: "all", label: "Any time", icon: <Clock />, count: papers.length },
+            { value: "start", label: "At the start", icon: <Play />, count: papers.filter((one) => one.batch === undefined).length },
+            ...arrivals.map((time) => ({ value: String(time), label: ago(time), icon: <RefreshCw />, tone: "primary" as const, count: papers.filter((one) => one.batch === time).length, group: "After the start" })),
+          ]}
+        />
       ) : null}
     </>
   );
   const sorter = (trigger: string) => (
-    <Select value={sort} onValueChange={(next) => go({ sort: next === "added" ? null : (next as Sort) })}>
-      <SelectTrigger aria-label="Sort" className={trigger}><ArrowUpDown className="size-3.5" /><span className="text-muted-foreground">Sort</span><SelectValue /></SelectTrigger>
-      <SelectContent align="end">
-        {SORTS.map((one) => <SelectItem key={one} value={one}>{SORT_LABEL[one]}</SelectItem>)}
-      </SelectContent>
-    </Select>
+    <FilterMenu name="Sort" lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: SORT_LABEL[one], icon: <Icon /> }; })} />
   );
-  // Pills, as the tabs and the search box in the same bar are.
-  const trigger = "h-8 w-auto max-w-72 gap-1.5 rounded-full px-3.5 text-xs [&>[data-slot=select-value]]:font-medium";
+  // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
+  const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
 
   // A column head that orders the table: pressed again, the other way round.
   const sortHead = (label: string, on: boolean, next: Sort | null, descending = false) => (
@@ -430,15 +435,15 @@ function Papers({ open }: { open: Open }) {
         </div>
       </div>
 
-      {/* Row two: what the columns show, what narrows the list, and its order. */}
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-4 sm:px-6 @max-2xl/papers:hidden">
-        {criteria.length ? <Segmented label="Show columns" value={columns} onChange={(next) => void setPlace({ by: next === "reviewers" ? null : next })} options={[{ id: "reviewers", label: "Votes" }, { id: "criteria", label: "Answers" }]} /> : null}
-        {filters(trigger)}
-        {anyFilter ? <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={clearFilters}><X />Clear filters</Button> : null}
-        <div className="ms-auto">{sorter(trigger)}</div>
+      {/* Row two, on one line at every width: what the columns show, what narrows the list, and its order. Where the filters don't all fit, the run of them scrolls sideways under a fade, and the order keeps its place at the row's end. Taking every filter away is with the chips under this row. */}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-4 sm:px-6 @max-2xl/papers:hidden">
+        {criteria.length ? <div className="shrink-0"><Segmented label="Show columns" value={columns} onChange={(next) => void setPlace({ by: next === "reviewers" ? null : next })} options={[{ id: "reviewers", label: "Votes" }, { id: "criteria", label: "Answers" }]} /></div> : null}
+        {/* Its margin and padding give the pills' focus rings room inside the box that cuts what runs past it. */}
+        <FadeRow scrolls scrollbar="none" className="-m-1 flex flex-1 items-center gap-2 p-1 *:shrink-0">{filters(trigger)}</FadeRow>
+        <div className="shrink-0">{sorter(trigger)}</div>
       </div>
 
-      {/* What narrows the list, each a chip that takes it away. On a phone this is where the filters show. */}
+      {/* What narrows the list, each a chip that takes it away, and one press that takes them all. On a phone this is where the filters show. */}
       {active.length ? (
         <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3 @max-2xl/papers:pt-3 sm:px-6">
           {active.map((one) => (
@@ -449,7 +454,7 @@ function Papers({ open }: { open: Open }) {
               {"fact" in one && one.fact ? <Chip>{one.fact}</Chip> : null}
             </span>
           ))}
-          <Button variant="ghost" size="xs" className="h-6 text-xs @2xl/papers:hidden" onClick={clearFilters}>Clear filters</Button>
+          <Button variant="ghost" size="xs" className="h-6 text-xs" onClick={clearFilters}><X />Clear filters</Button>
         </div>
       ) : null}
 

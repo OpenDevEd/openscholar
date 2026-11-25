@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -19,7 +19,6 @@ import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
@@ -27,7 +26,7 @@ import { HOME, RESULTS, RESULT_LABEL, accessOf, activeReviewers, ago, day, growi
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { Help, LinkChip, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted } from "./parts";
+import { FilterMenu, Help, LinkChip, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted } from "./parts";
 import { isReading, paperCredits, useMock, useOpenScreening } from "./store";
 
 const PAGE = 25;
@@ -179,13 +178,17 @@ export function ScreeningsIndex() {
                     />
                   </div>
                   {starters.length > 1 ? (
-                    <Select value={by} onValueChange={(next) => go({ by: next })}>
-                      <SelectTrigger aria-label="Started by" className="h-8 w-64 rounded-full px-3.5 text-xs max-sm:w-full"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="anyone">Started by anyone</SelectItem>
-                        {starters.map((id) => <SelectItem key={id} value={id}><span className="flex items-center gap-2"><IdentityAvatar name={personOf(id)?.name ?? ""} imageUrl={personOf(id)?.imageUrl} className="size-4" />{id === me ? "Started by you" : `Started by ${personOf(id)?.name}`}</span></SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <FilterMenu
+                      name="Started by"
+                      value={by}
+                      onChange={(next) => go({ by: next })}
+                      align="end"
+                      className="h-8 max-w-72 rounded-full px-3.5 text-xs max-sm:w-full max-sm:max-w-none"
+                      choices={[
+                        { value: "anyone", label: "Anyone", icon: <Users />, count: all.length },
+                        ...starters.map((one) => ({ value: one, label: one === me ? "You" : (personOf(one)?.name ?? "Someone"), icon: <IdentityAvatar name={personOf(one)?.name ?? ""} imageUrl={personOf(one)?.imageUrl} className="size-4" />, count: all.filter((row) => row.screening.createdBy === one).length })),
+                      ]}
+                    />
                   ) : null}
                 </div>
                 {/* The column names stay under the page's bar while the list scrolls. */}

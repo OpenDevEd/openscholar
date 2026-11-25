@@ -9,8 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { Asterisk, ChevronLeft, ChevronRight, CircleCheck, Eye, GitCompare, Hourglass, ListChecks, Lock, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
-import { Chip, Meter, SOURCE_ICON } from "@/components/screening/parts";
+import { Asterisk, ChevronLeft, ChevronRight, CircleCheck, Clock, Eye, GitCompare, Hourglass, ListChecks, Lock, ModelsIcon, MoreHorizontal, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
@@ -19,7 +19,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { HelpFact } from "@/components/ui/help";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -28,7 +27,7 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -43,11 +42,16 @@ const OTHER = "other";
 /** The bar's height on a wide screen, and the room the columns that stick keep clear above it. */
 const BAR_HEIGHT = "lg:h-[6.25rem]";
 const CLEAR = "7.25rem";
-/** The page's three columns, the same for the bar under them: the queue, the paper, your answers. */
-const COLUMNS = "lg:grid-cols-[19rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[22rem_minmax(0,56rem)_minmax(28rem,1fr)]";
+/** From xl the page has three columns, the same for the bar under them: the queue, the paper, your answers. */
+const WIDE = "xl:grid-cols-[19rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[22rem_minmax(0,56rem)_minmax(28rem,1fr)]";
+/** Between lg and xl three columns leave the paper no room. There are two: the paper, with your answers beside it. The queue's tabs sit over the paper, and its list opens from the window's side. */
+const COLUMNS = `lg:max-xl:grid-cols-[minmax(0,1fr)_22rem] lg:max-xl:grid-rows-[auto_1fr] ${WIDE}`;
+/** The bar under them: between lg and xl, where you are and the vote. */
+const BAR_COLUMNS = `lg:grid-cols-[19rem_minmax(0,1fr)] ${WIDE}`;
+/** A filter over the queue's list: a pill as wide as the queue's column. */
+const QUEUE_FILTER = "h-8 w-full rounded-full px-3.5 text-xs";
 /** Your answers, each with its own sign. Unclear is a dash: a "?" is help. */
 const RULE_LABEL = { all: "All agree", most: "Most agree", one: "One vote" } as const;
-const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
 const inQuotes = (text: string) => `"${text}"`;
 const rank = (reviewer: Reviewer, me: string) => (reviewer.id === me ? 0 : reviewer.kind === "person" ? 1 : 2);
 
@@ -303,6 +307,8 @@ function Screen({ open }: { open: Open }) {
       </li>
     );
   };
+  // The papers you have voted on: what the Done queue holds, and what its filter counts.
+  const votedByMe = yours.filter((one) => open.myVote(one));
   const pager = (className: string) => (pages > 1 ? <PageStepper className={className} page={shownPage} pageCount={pages} canPrevious={shownPage > 1} canNext={shownPage < pages} onPrevious={() => setPage(shownPage - 1)} onNext={() => setPage(shownPage + 1)} /> : null);
   const findField = (className: string) => (
     <div className={cn("relative", className)}>
@@ -311,6 +317,37 @@ function Screen({ open }: { open: Open }) {
     </div>
   );
 
+  // What narrows the queue and puts it in order: over its list in its own column, and in the drawer that holds the list under xl.
+  const queueFilters = (className: string) => (
+    <>
+      {queue === "done" ? (
+        <FilterMenu
+          name="Your vote"
+          value={voted}
+          onChange={(next) => void setPlace({ voted: next, paper: null, page: null })}
+          className={className}
+          choices={[
+            { value: "any" as typeof voted, label: "Any", icon: <ListChecks />, count: votedByMe.length },
+            ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as typeof voted, label: DECISION_LABEL[decision], icon: <Icon />, tone, count: votedByMe.filter((one) => open.myVote(one)?.decision === decision).length }; }),
+          ]}
+        />
+      ) : null}
+      {queue === "todo" && toDo.length > 1 ? (
+        <FilterMenu
+          name="Order"
+          value={order}
+          onChange={(next) => void setPlace({ order: next, paper: null, page: null })}
+          narrows={false}
+          className={className}
+          choices={[
+            { value: "dealt" as typeof order, label: "As added", icon: <Clock /> },
+            ...(toDo.some((one) => one.batch !== undefined) ? [{ value: "fresh" as typeof order, label: "New papers first", icon: <RefreshCw /> }] : []),
+            { value: "lean" as typeof order, label: "Models' includes first", icon: <ModelsIcon /> },
+          ]}
+        />
+      ) : null}
+    </>
+  );
   // A queue with nothing in it, not because of a search: the whole width says so, under the queue's tabs.
   if (!paper && !narrowed) {
     return (
@@ -350,19 +387,21 @@ function Screen({ open }: { open: Open }) {
   return (
     <>
       <div className={cn("grid grid-cols-1 max-lg:pb-44 lg:divide-x lg:divide-border-subtle", COLUMNS)}>
-        {/* The queue: a sidebar that scrolls on its own, with its tabs and search held at its top. */}
-        <div className="border-b border-border-subtle lg:border-b-0">
-          <StickyColumn from="lg" clear={CLEAR}>
-          <div className="space-y-2 bg-card p-3 lg:sticky lg:top-0 lg:z-10">
-            {tabs}
-            {/* A phone shows one paper at a time: the whole queue, to find a paper in, opens over it. */}
-            {items.length > 1 ? <Button variant="outline" size="sm" className="w-full lg:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
+        {/* The queue: from xl a sidebar that scrolls on its own, with its tabs and search held at its top. */}
+        {/* With no paper to show, the tabs have the whole width between lg and xl: there are no answers to sit beside. */}
+        <div className={cn("border-b border-border-subtle lg:max-xl:col-start-1 lg:max-xl:row-start-1 xl:border-b-0", !paper && "lg:max-xl:col-span-2 lg:max-xl:border-e-0")}>
+          <StickyColumn from="xl" clear={CLEAR}>
+          <div className="space-y-2 bg-card p-3 lg:max-xl:flex lg:max-xl:items-center lg:max-xl:justify-between lg:max-xl:gap-3 lg:max-xl:space-y-0 lg:max-xl:px-8 xl:sticky xl:top-0 xl:z-10">
+            <div className="lg:max-xl:w-[18rem]">{tabs}</div>
+            {/* Below xl the queue's list has no column of its own. It opens over the page, with its search and filters: from the foot on a phone, from the side on a wider screen. While a search or a filter narrows the queue the button stays, so the search can be changed. */}
+            {items.length > 1 || narrowed ? <Button variant="outline" size="sm" className="w-full lg:max-xl:w-auto xl:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
             <Sheet open={listing} onOpenChange={setListing}>
-              <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col gap-0 p-0 lg:hidden">
+              <SheetContent side={tablet ? "bottom" : "left"} className={cn("flex flex-col gap-0 p-0 xl:hidden", tablet && "max-h-[85dvh]")}>
                 <SheetHeader className="space-y-3 border-b border-border-subtle p-4">
                   <SheetTitle>{QUEUE_LABEL[queue]}</SheetTitle>
                   <SheetDescription className="sr-only">Every paper in this queue. Press one to open it.</SheetDescription>
                   {findField("")}
+                  {queueFilters(QUEUE_FILTER)}
                 </SheetHeader>
                 <ul className="min-h-0 flex-1 divide-y divide-border-subtle overflow-y-auto">
                   {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, (picked) => { openPaper(picked); setListing(false); }))}
@@ -371,31 +410,13 @@ function Screen({ open }: { open: Open }) {
                 {pager("border-t border-border-subtle px-3 py-2")}
               </SheetContent>
             </Sheet>
-            {findField("max-lg:hidden")}
-            {queue === "done" ? (
-              <Select value={voted} onValueChange={(next) => void setPlace({ voted: next as typeof voted, paper: null, page: null })}>
-                <SelectTrigger aria-label="Your vote" className="h-8 w-full rounded-full px-3.5 text-xs max-lg:hidden"><span className="text-muted-foreground">Your vote</span><span className="me-auto"><SelectValue /></span></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
-                  {DECISIONS.map((decision) => <SelectItem key={decision} value={decision}>{DECISION_LABEL[decision]}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            ) : null}
-            {queue === "todo" && toDo.length > 1 ? (
-              <Select value={order} onValueChange={(next) => void setPlace({ order: next as typeof order, paper: null, page: null })}>
-                <SelectTrigger aria-label="Order" className="h-8 w-full rounded-full px-3.5 text-xs max-lg:hidden"><span className="text-muted-foreground">Order</span><span className="me-auto"><SelectValue /></span></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dealt">As added</SelectItem>
-                  {toDo.some((one) => one.batch !== undefined) ? <SelectItem value="fresh">New papers first</SelectItem> : null}
-                  <SelectItem value="lean">Models&apos; includes first</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : null}
+            {findField("max-xl:hidden")}
+            {queueFilters(cn(QUEUE_FILTER, "max-xl:hidden"))}
           </div>
-          <ul className="hidden divide-y divide-border-subtle border-t border-border-subtle lg:block">
+          <ul className="hidden divide-y divide-border-subtle border-t border-border-subtle xl:block">
             {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, openPaper))}
           </ul>
-          {pager("hidden border-t border-border-subtle px-3 py-2 lg:flex")}
+          {pager("hidden border-t border-border-subtle px-3 py-2 xl:flex")}
           </StickyColumn>
         </div>
 
@@ -407,7 +428,7 @@ function Screen({ open }: { open: Open }) {
         ) : (
           <>
             {/* The paper, and everyone's votes under it: the page's main content, as long as it is. */}
-            <div ref={article} className={cn("min-w-0", BELOW_HEADER)}>
+            <div ref={article} className={cn("min-w-0 lg:max-xl:col-start-1 lg:max-xl:row-start-2", BELOW_HEADER)}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={paper.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="max-w-[46rem] space-y-8 p-5 sm:p-8 2xl:max-w-none">
                     <article className="space-y-4">
@@ -477,7 +498,7 @@ function Screen({ open }: { open: Open }) {
             </div>
 
             {/* Your answers to the criteria. */}
-            <div className="min-w-0 border-t border-border-subtle lg:border-t-0">
+            <div className="min-w-0 border-t border-border-subtle lg:border-t-0 lg:max-xl:col-start-2 lg:max-xl:row-span-2 lg:max-xl:row-start-1">
               <StickyColumn from="lg" clear={CLEAR} anchor={paper.id} className="p-5">
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
@@ -537,9 +558,9 @@ function Screen({ open }: { open: Open }) {
       </div>
 
       {paper ? (
-        /* The vote stays at the foot of the window, in three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. On a phone it is fixed to the foot, its last row clear of the assistant's button. */
+        /* The vote stays at the foot of the window. From xl it has three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. Under xl the last vote's way back sits with where you are. On a phone the bar is fixed to the foot, its last row clear of the assistant's button. */
         <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30">
-          <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, COLUMNS)}>
+          <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS)}>
             {/* Where you are */}
             <div className="flex items-center gap-1 max-lg:order-last max-lg:h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:flex-wrap lg:content-center lg:gap-y-2 lg:px-4">
               <span className="me-1 text-xs tabular-nums text-muted-foreground">{queue === "done" || !mayDecide ? `${at + 1} of ${items.length}` : `${left.toLocaleString("en-GB")} left`}</span>
@@ -557,15 +578,16 @@ function Screen({ open }: { open: Open }) {
                   ))}
                 </PopoverContent>
               </Popover>
+              {/* Under xl the last vote has no part of the bar to itself: its way back sits here. */}
+              {last ? <TooltipHint label="Undo the last vote"><Button variant="ghost" size="icon" className="size-8 xl:hidden" aria-label="Undo the last vote" onClick={undo}><Undo2 /></Button></TooltipHint> : null}
               {mayDecide && queue !== "done" ? (
                 <label className="flex basis-full items-center justify-between gap-2 ps-1 text-xs text-muted-foreground max-lg:hidden">
                   Next paper after each vote
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a vote" />
                 </label>
               ) : null}
-              {/* On a phone the last vote's way back sits here, and the rest folds into one menu. */}
-              {last ? <Button variant="ghost" size="icon" className="size-8 lg:hidden" aria-label="Undo the last vote" onClick={undo}><Undo2 /></Button> : null}
-              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="lg:hidden">Now in Conflicts</LinkChip> : null}
+              {/* On a phone the rest folds into one menu. */}
+              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="xl:hidden">Now in Conflicts</LinkChip> : null}
               <Popover>
                 <PopoverTrigger asChild><Button variant="ghost" size="icon" className="ms-auto size-8 text-muted-foreground lg:hidden" aria-label="More for this paper"><MoreHorizontal /></Button></PopoverTrigger>
                 <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
@@ -659,7 +681,7 @@ function Screen({ open }: { open: Open }) {
             </div>
 
             {/* The last vote, the paper it was on, and its way back. */}
-            <div className="flex min-w-0 flex-col justify-center gap-1 px-4 py-3 text-xs text-muted-foreground max-lg:hidden">
+            <div className="flex min-w-0 flex-col justify-center gap-1 px-4 py-3 text-xs text-muted-foreground max-xl:hidden">
               {last ? (
                 <>
                   <div className="flex min-w-0 items-center gap-2">
@@ -799,9 +821,9 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
 }) {
   const kept = (reviewer: Reviewer) => hidden && reviewer.id !== me;
   return (
-    // The marks sit right after the longest criterion, so a row reads across. On a phone the criteria take what is left and cut off, so every column fits.
+    // The marks sit right after the longest criterion, so a row reads across. Where that is wider than the room there is, on a phone or in a narrow sidebar, the criteria take what is left and cut off, so every column fits before anything scrolls sideways.
     // The rows are set apart by their cells' own margins, not by a gap. A grid keeps a gap around a row for as long as the row is there, even at no height, so the passage that opens under a row would take 6px with it in the last frame of closing.
-    <div className="-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 *:my-[3px] sm:w-max sm:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]" style={{ "--marks": `repeat(${cast.length}, 1.75rem)` } as React.CSSProperties}>
+    <div className="-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 *:my-[3px] sm:w-fit sm:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]" style={{ "--marks": `repeat(${cast.length}, 1.75rem)` } as React.CSSProperties}>
       <span />
       {cast.map(({ reviewer, vote, failed }) => <Face key={reviewer.id} reviewer={reviewer} vote={vote} failed={failed} you={reviewer.id === me} kept={kept(reviewer)} criteria={criteria} />)}
       {criteria.map((criterion, n) => {
