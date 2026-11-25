@@ -4,7 +4,7 @@
 // section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
 // examples that show what a rule does.
 
-import { useEffect, useRef, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
 import { ArrowRight, Check, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
@@ -121,71 +121,33 @@ export function Section({ id, title, help, aside, className, children }: { id?: 
 }
 
 /**
- * A column beside the page's main content that stays in view without a height or a scrollbar of its
- * own. It sticks under the header while it fits in the window. Where it is taller than the window,
- * `tall` says what it does. "foot" (the default) is for a column read from top to bottom, such as an
- * open paper: it moves with the page in both directions and never leaves the window, so scrolling down
- * brings its foot into view and holds it there, and scrolling up brings its top back under the header.
- * It always starts with its top under the header, however far the page is scrolled, and starts there
- * again when `anchor` changes, which names what it shows. "flow" leaves it in the page's flow, for a
- * column whose first lines matter most, such as a form's summary. `clear` is the room kept under it,
- * in rem, for a page with an ActionBar at the window's foot.
- *
- * Never make room over such a column with a spacer to line it up with something: the spacer stays when
- * the page is scrolled back, as an empty band over the column. Where it sticks is the only thing that
- * may place it.
+ * Where a sidebar stands beside the main content, and from there scrolls on its own. Each is the width at which its
+ * page lays the two side by side: narrower than that the sidebar is one more block of the page, with no height of its
+ * own. Written out whole, so Tailwind finds them.
  */
-export function StickyColumn({ clear = "1rem", tall = "foot", anchor, className, children }: { clear?: string; tall?: "foot" | "flow"; anchor?: string; className?: string; children: ReactNode }) {
+const SIDEBAR = {
+  always: "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] overflow-y-auto overscroll-contain",
+  lg: "lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] lg:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] lg:overflow-y-auto lg:overscroll-contain",
+  overview: "@5xl/overview:sticky @5xl/overview:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] @5xl/overview:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] @5xl/overview:overflow-y-auto @5xl/overview:overscroll-contain",
+  form: "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] @6xl:overflow-y-auto @6xl:overscroll-contain",
+};
+
+/**
+ * A sidebar: a column beside the page's main content. It stays under the header, as tall as the window allows, and
+ * where what it holds is taller than that it scrolls on its own. The main content is never given a height: it is as
+ * long as it is, and the page scrolls. So a page has one thing that moves with the window, its main content, and
+ * each sidebar keeps its own place. `from`: the width at which the page lays it beside the main content.
+ * `clear`: the room kept under it for an ActionBar at the window's foot. `anchor` names what it shows: when that
+ * changes, it starts from its top again.
+ */
+export function StickyColumn({ from = "always", clear = "1rem", anchor, className, children }: { from?: keyof typeof SIDEBAR; clear?: string; anchor?: string; className?: string; children: ReactNode }) {
   const column = useRef<HTMLDivElement>(null);
-  // The window's scroll and size and the column's own height are the outside systems.
+  // Its own scroll is the outside system: another paper starts at its title, not where the last one was left.
   useEffect(() => {
-    const element = column.current;
-    if (!element) return;
-    if (tall === "flow") {
-      const observer = new ResizeObserver(() => element.style.setProperty("--column-height", `${element.offsetHeight}px`));
-      observer.observe(element);
-      return () => observer.disconnect();
-    }
-    let last = window.scrollY;
-    let top: number | null = null;
-    const place = () => {
-      // The line under the header, which the column's scroll margin is set to, and the lowest its top may go: where its foot is in view over the room kept clear.
-      const under = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
-      const low = Math.min(under, window.innerHeight - element.offsetHeight - parseFloat(clear) * parseFloat(getComputedStyle(document.documentElement).fontSize));
-      const y = window.scrollY;
-      top = Math.min(under, Math.max(low, (top ?? under) - (y - last)));
-      last = y;
-      element.style.top = `${top}px`;
-    };
-    place();
-    // A window of another size has another line under its header: the column starts from it again.
-    const resized = () => {
-      top = null;
-      place();
-    };
-    // The column can go no lower than the foot of what it stands beside. Opened near that foot, a tall column would start with its top above the header, so the page moves up until its top is in view. After everything else that opening it does to the page's scroll, so this has the last word.
-    const shown = anchor === undefined ? 0 : requestAnimationFrame(() => {
-      const hidden = (parseFloat(getComputedStyle(element).scrollMarginTop) || 0) - element.getBoundingClientRect().top;
-      if (hidden > 1) window.scrollBy(0, -hidden);
-    });
-    const observer = new ResizeObserver(place);
-    observer.observe(element);
-    window.addEventListener("scroll", place, { passive: true });
-    window.addEventListener("resize", resized);
-    return () => {
-      cancelAnimationFrame(shown);
-      observer.disconnect();
-      window.removeEventListener("scroll", place);
-      window.removeEventListener("resize", resized);
-    };
-  }, [tall, clear, anchor]);
-  const under = "(var(--app-navbar-height) + var(--page-header-height, 4rem))";
-  // The room left over once the column is in the window: none, and it doesn't fit.
-  const room = `(100dvh - ${under} - var(--column-height, 0px) - ${clear})`;
-  // "flow": 1px of room or more keeps it under the header; with none, its place to stick is far above the window, so it never sticks. "foot" starts under the header and is placed from there as the page scrolls.
-  const top = tall === "foot" ? `calc(${under})` : `calc(${under} - (1px - clamp(0px, ${room} * 9999, 1px)) * 99999)`;
+    column.current?.scrollTo({ top: 0 });
+  }, [anchor]);
   return (
-    <div ref={column} style={{ top, scrollMarginTop: `calc(${under})` }} className={cn("sticky self-start", className)}>
+    <div ref={column} style={{ "--clear": clear } as CSSProperties} className={cn("scrollbar-hover self-start", SIDEBAR[from], className)}>
       {children}
     </div>
   );

@@ -691,7 +691,7 @@ function Papers({ open }: { open: Open }) {
         <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
           {paper && beside ? (
             <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
-              {/* It starts under the header whenever another paper opens, however far the page is scrolled. */}
+              {/* A sidebar: it stays under the header and scrolls on its own, and another paper starts at its title. */}
               <StickyColumn anchor={paper.id}>
                 <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
               </StickyColumn>
@@ -889,7 +889,7 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
   return (
     <div className="space-y-5 px-4 pb-6 sm:px-6">
       {/* Where it is in the list, and the way through it: it stays in view while the paper is read. */}
-      <div className={cn("sticky z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6", inSheet ? "top-0" : UNDER_HEADER)}>
+      <div className={cn("sticky z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6", "top-0")}>
         <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at >= 0 ? `${(place.at + 1).toLocaleString("en-GB")} of ${place.of.toLocaleString("en-GB")}` : "Not in this list"}</span>
         <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
         <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={place.at < 0 || place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>

@@ -1129,7 +1129,7 @@ export function ScreeningForm({ id }: { id?: string }) {
 
         {/* What it comes to: a well beside the form, in view while the form scrolls. */}
         <aside id="summary" aria-label="Summary" className={cn("min-w-0 border-border-subtle bg-inset/60 p-4 @max-6xl:border-t sm:p-6 @6xl:border-s @6xl:py-0", BELOW_HEADER)}>
-          <StickyColumn tall="flow" clear={fresh || dirty ? "5rem" : "1rem"} className="space-y-6 @6xl:py-6">
+          <StickyColumn from="form" clear={fresh || dirty ? "5rem" : "1rem"} className="space-y-6 @6xl:py-6">
             {/* What saving will do, before it is done, and after it what the save did, until the next edit. Each line opens the part of the form it is about. */}
             {!fresh ? (
               <Section

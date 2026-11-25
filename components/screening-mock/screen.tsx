@@ -132,10 +132,20 @@ function Screen({ open }: { open: Open }) {
     setShown(null);
     // The button just pressed keeps neither the keyboard nor a pressed look on the next paper.
     if (document.activeElement instanceof HTMLElement && document.activeElement.closest("[data-decision]")) document.activeElement.blur();
-    // The page is the scroller: where the next paper's title is out of sight, the page moves to it.
+    // The paper is the page's main content: where the next one's title is out of sight, the page moves to it. The queue scrolls on its own, and brings the next paper's row into view the same way.
     requestAnimationFrame(() => {
       const top = article.current?.getBoundingClientRect().top;
-      if (top !== undefined && (top < 0 || top > window.innerHeight / 2)) article.current?.scrollIntoView({ block: "start" });
+      // Under the page's header, which covers the top of the window.
+      const line = document.querySelector("[data-sticky-page-header]")?.getBoundingClientRect().bottom ?? 0;
+      if (top !== undefined && (top < line || top > window.innerHeight / 2)) article.current?.scrollIntoView({ block: "start" });
+      // Its row, in the queue's own scroll: under the tabs and search held at the queue's top, and over its foot.
+      const row = document.querySelector<HTMLElement>(`[data-queue-paper="${CSS.escape(next.id)}"]`);
+      let side = row?.parentElement ?? null;
+      while (side && getComputedStyle(side).overflowY !== "auto") side = side.parentElement;
+      if (!row || !side?.firstElementChild) return;
+      const [box, held, foot] = [row.getBoundingClientRect(), side.firstElementChild.getBoundingClientRect().bottom, side.getBoundingClientRect().bottom];
+      if (box.top < held) side.scrollTop -= held - box.top;
+      else if (box.bottom > foot) side.scrollTop += box.bottom - foot;
     });
   };
 
@@ -277,7 +287,7 @@ function Screen({ open }: { open: Open }) {
     const result = settled[one.id]!;
     return (
       <li key={one.id}>
-        <button type="button" aria-current={one === paper || undefined} onClick={() => pick(one)} className={cn("flex w-full items-start gap-3 px-4 py-3 text-start transition-colors", one === paper ? "bg-primary/8" : "hover:bg-muted")}>
+        <button type="button" data-queue-paper={one.id} aria-current={one === paper || undefined} onClick={() => pick(one)} className={cn("flex w-full items-start gap-3 px-4 py-3 text-start transition-colors", one === paper ? "bg-primary/8" : "hover:bg-muted")}>
           <span className="min-w-0 flex-1">
             <span className={cn("line-clamp-2 text-sm leading-5", one === paper ? "font-semibold" : "font-medium")}>{one.title}</span>
             <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -340,9 +350,10 @@ function Screen({ open }: { open: Open }) {
   return (
     <>
       <div className={cn("grid grid-cols-1 max-lg:pb-44 lg:divide-x lg:divide-border-subtle", COLUMNS)}>
-        {/* The queue: it flows with the page, a page of papers at a time. */}
+        {/* The queue: a sidebar that scrolls on its own, with its tabs and search held at its top. */}
         <div className="border-b border-border-subtle lg:border-b-0">
-          <div className="space-y-2 p-3">
+          <StickyColumn from="lg" clear={CLEAR}>
+          <div className="space-y-2 bg-card p-3 lg:sticky lg:top-0 lg:z-10">
             {tabs}
             {/* A phone shows one paper at a time: the whole queue, to find a paper in, opens over it. */}
             {items.length > 1 ? <Button variant="outline" size="sm" className="w-full lg:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
@@ -385,6 +396,7 @@ function Screen({ open }: { open: Open }) {
             {items.slice((shownPage - 1) * QUEUE_PAGE, shownPage * QUEUE_PAGE).map((one) => row(one, openPaper))}
           </ul>
           {pager("hidden border-t border-border-subtle px-3 py-2 lg:flex")}
+          </StickyColumn>
         </div>
 
         {!paper ? (
@@ -394,9 +406,8 @@ function Screen({ open }: { open: Open }) {
           </div>
         ) : (
           <>
-            {/* The paper, and everyone's votes under it. */}
+            {/* The paper, and everyone's votes under it: the page's main content, as long as it is. */}
             <div ref={article} className={cn("min-w-0", BELOW_HEADER)}>
-              <StickyColumn clear={CLEAR} anchor={paper.id}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={paper.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="max-w-[46rem] space-y-8 p-5 sm:p-8 2xl:max-w-none">
                     <article className="space-y-4">
@@ -463,12 +474,11 @@ function Screen({ open }: { open: Open }) {
                     </Section>
                   </motion.div>
                 </AnimatePresence>
-              </StickyColumn>
             </div>
 
             {/* Your answers to the criteria. */}
             <div className="min-w-0 border-t border-border-subtle lg:border-t-0">
-              <StickyColumn clear={CLEAR} anchor={paper.id} className="p-5">
+              <StickyColumn from="lg" clear={CLEAR} anchor={paper.id} className="p-5">
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
                   help={

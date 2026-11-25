@@ -76,7 +76,7 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
           <Reviewers open={open} />
           <Agreement open={open} />
         </div>
-        <StickyColumn className="min-w-0">
+        <StickyColumn from="overview" className="min-w-0">
           <Facts open={open} />
         </StickyColumn>
       </div>
