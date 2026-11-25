@@ -33,15 +33,24 @@ export const IntakeOpen = createContext<IntakeState>({ open: true });
 export const IntakeShut = createContext<string | null>(null);
 export const useShutNext = () => useContext(IntakeShut);
 
-const useWhen = () => {
+/** The timezone the admin set new reports' dates and calendar periods in (Settings > Admin > Publications). */
+export const IntakeClock = createContext("UTC");
+
+/**
+ * A date on that clock, with its name: the time the admin set, the same for every author wherever they are. Left to
+ * itself the formatter reads the server's clock, and says nothing of it.
+ */
+const useWhen = (given?: string) => {
   const format = useFormatter();
-  return (at: number) => format.dateTime(at, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const read = useContext(IntakeClock);
+  const timeZone = given ?? read;
+  return (at: number) => format.dateTime(at, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone, timeZoneName: "short" });
 };
 
-/** Why a new report can't start or a draft go on now, in a few words for beside the button; null while they can. `given` is for the page that provides it. */
-export function useIntakeShut(given?: IntakeState): string | null {
+/** Why a new report can't start or a draft go on now, in a few words for beside the button; null while they can. `given` and `timeZone` are for the page that provides them. */
+export function useIntakeShut(given?: IntakeState, timeZone?: string): string | null {
   const t = useTranslations("publishReports.flow.intake.shut");
-  const when = useWhen();
+  const when = useWhen(timeZone);
   const read = useContext(IntakeOpen);
   const state = given ?? read;
   if (state.open) return null;

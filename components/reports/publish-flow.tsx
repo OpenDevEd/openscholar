@@ -43,7 +43,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
 import { NextButton } from "@/components/reports/next-button";
-import { IntakeClosedPage, IntakeNotice, IntakeOpen, IntakeShut, useIntakeShut, useNow } from "@/components/reports/intake-notice";
+import { IntakeClock, IntakeClosedPage, IntakeNotice, IntakeOpen, IntakeShut, useIntakeShut, useNow } from "@/components/reports/intake-notice";
 import { intakeAt, type IntakeState } from "@/lib/reports/intake";
 import { FieldMessage, StepNav, useStepForm } from "@/components/reports/form";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -450,7 +450,7 @@ export function PublishFlow() {
   // Whether new reports are open now (lib/reports/intake.ts): the series' settings and limits, against the clock.
   const clock = useNow();
   const intake: IntakeState = basics ? intakeAt(basics.intake, basics.nths, clock) : { open: true };
-  const intakeShut = useIntakeShut(intake);
+  const intakeShut = useIntakeShut(intake, basics?.intake.timezone);
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
@@ -523,6 +523,7 @@ export function PublishFlow() {
 
   return (
     <IntakeOpen.Provider value={intake}>
+    <IntakeClock.Provider value={basics.intake.timezone}>
     <LibraryPageShell
       icon={PublishIcon}
       title={listing || missing || closed ? t("publish") : report?.metadata?.title || report?.title || t("newReport")}
@@ -685,6 +686,7 @@ export function PublishFlow() {
         </div>
       )}
     </LibraryPageShell>
+    </IntakeClock.Provider>
     </IntakeOpen.Provider>
   );
 }
