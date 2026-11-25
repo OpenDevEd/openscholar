@@ -13,11 +13,10 @@ import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ago, personOf, waitingQuestions, type Paper } from "./data";
+import { ago, firstName, personOf, waitingQuestions, type Paper } from "./data";
 import { Help, SHUT, Section, ShutChip, ShutNote, StateChip, type Shut } from "./parts";
 import type { Open } from "./store";
 
-const firstName = (name: string) => name.split(" ")[0]!;
 /** A choice of who a line is for. */
 const TO = "flex h-6 items-center gap-1.5 rounded-full border text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50";
 const TO_ON = "border-primary/30 bg-primary/10 text-primary";

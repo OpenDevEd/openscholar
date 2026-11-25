@@ -6,7 +6,7 @@
 
 import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, FileText, GitCompare, Hash, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
@@ -47,7 +47,6 @@ export function Help({ title, children, facts, side, className }: { title: strin
   );
 }
 
-/** Where a page's content starts under the bars that stick to the top of the window: for an anchor another page links to. */
 /**
  * Under what stays at the top of the window on a screening's pages: the app's bar, the page's bar and, from a laptop's
  * width, the screening's own strip of tabs (`--screening-frame`, its height, which its frame writes). Nothing above a
@@ -85,7 +84,7 @@ export const RESULT_STYLE: Record<Result, { bar: string; chip: string; icon: App
 /** An icon in one colour, for a control that takes an icon and would draw it in its text's colour: a tab, a menu item. Made once, outside any component, so the control keeps the same icon from one draw to the next. */
 export const tinted = (Icon: AppIcon, tone: Tone): ComponentType<{ className?: string }> => function Tinted({ className }) { return <Icon className={cn(TONE[tone].ink, className)} />; };
 /** The icon of the kind of place a screening's papers came from. */
-export const kindIcon = (kind: string) => SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"];
+export const kindIcon = (kind: string): AppIcon => (kind === "upload" || kind === "pdf" ? FileText : kind === "dois" ? Hash : SOURCE_ICON[kind === "search" || kind === "collection" || kind === "saved" || kind === "screening" || kind === "evidenceLibrary" || kind === "zotero" ? kind : "collection"]);
 /** Each result's icon in its own colour. */
 export const RESULT_ICON = Object.fromEntries(RESULTS.map((result) => [result, tinted(RESULT_STYLE[result].icon, RESULT_STYLE[result].tone)])) as Record<Result, ComponentType<{ className?: string }>>;
 /** A count in a tab, in the colour of what it counts while there is any: what waits for you is primary, a conflict is blue. */
@@ -289,22 +288,6 @@ export function ReviewerMark({ reviewer, you = false, className }: { reviewer: P
   return (
     <span aria-hidden className={cn("flex size-6 shrink-0 items-center justify-center rounded-md border border-border-subtle bg-card", className)} style={{ color: tint }}>
       <Brand className="size-[62%]" />
-    </span>
-  );
-}
-
-/** Reviewers as overlapping marks, people first. */
-export function ReviewerStack({ reviewers, max = 7, className }: { reviewers: Reviewer[]; max?: number; className?: string }) {
-  return (
-    <span className={cn("flex shrink-0 items-center", className)}>
-      {reviewers.slice(0, max).map((reviewer, i) => (
-        <TooltipHint key={reviewer.id} label={reviewer.name}>
-          <span className={cn("flex ring-2 ring-card", reviewer.kind === "model" ? "rounded-md" : "rounded-full", i > 0 && "-ms-1.5")} tabIndex={0}>
-            <ReviewerMark reviewer={reviewer} />
-          </span>
-        </TooltipHint>
-      ))}
-      {reviewers.length > max ? <span className="ms-1.5 text-xs tabular-nums text-muted-foreground">+{reviewers.length - max}</span> : null}
     </span>
   );
 }

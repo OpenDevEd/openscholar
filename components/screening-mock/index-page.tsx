@@ -22,7 +22,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, stillReading, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { resolves, firstName, EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, stillReading, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
@@ -91,7 +91,7 @@ export function ScreeningsIndex() {
         if (!access) return [];
         const state = standing(screening);
         const forYou = state.papers.filter((paper) => !state.settled[paper.id]!.final && state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
-        const conflicts = screening.rule.resolver === me || screening.createdBy === me ? state.counts.conflict : 0;
+        const conflicts = resolves(screening, me) ? state.counts.conflict : 0;
         const models = modelsOf(screening);
         const reading = !screening.finishedAt && models.some((model) => stillReading(screening, model));
         const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
@@ -133,7 +133,7 @@ export function ScreeningsIndex() {
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((row) => row.group)).size > 1;
-  const first = (name: string | undefined) => name?.split(" ")[0];
+  const first = (name: string | undefined) => (name ? firstName(name) : undefined);
   const byName = by === "anyone" ? null : by === me ? "you" : personOf(by)?.name;
   const words = search.trim();
   const none = show === "you"

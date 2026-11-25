@@ -24,12 +24,12 @@ import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, HOME, NOW, day, growing, readBy, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
+import { num, SETTLE_SAYS, readersOf, EVERY_LABEL, HOME, NOW, day, growing, readBy, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
 import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { Help, LinkChip, ReviewerMark, TONE, TabCount, type Tone } from "./parts";
+import { Help, LinkChip, ReviewerMark, SHUT, TONE, TabCount, type Tone } from "./parts";
 import { credits, paperCredits, useMock, useModelsReading, useOpenScreening, type Open } from "./store";
 import { AddModel, AddPerson } from "./team";
 
@@ -82,15 +82,14 @@ const INLINE_LINK = "rounded-sm font-medium text-foreground underline decoration
 /** How a paper is decided here, in the words the settings use. */
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
 function ruleFacts(screening: Screening, voter: boolean) {
-  const [people, models] = [peopleOf(screening).length, modelsOf(screening).length];
-  const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
+  const [{ each }, models] = [readersOf(screening), modelsOf(screening).length];
   const readers = [each ? `${each} ${each === 1 ? "person" : "people"}` : null, models ? `${models} AI ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(" and ");
   return {
     who: readers ? `Each paper: ${readers}` : "No reviewer yet",
     whoIcon: each ? Users : AiIcon,
-    when: screening.rule.settle === "all" ? "Settled when all agree" : screening.rule.settle === "most" ? "Settled when most agree" : "Settled by the first vote",
+    when: SETTLE_SAYS[screening.rule.settle],
     // Someone who doesn't vote here sees every vote: the chip then says what holds for the reviewers.
-    see: screening.rule.blind === "after" ? (voter ? "Votes hidden until you vote" : "Reviewers see votes once they vote") : "Votes visible to all",
+    see: screening.rule.blind === "after" ? (voter ? `Votes ${SHUT.vote.says.toLowerCase()}` : "Reviewers see votes once they vote") : "Votes visible to all",
     seeIcon: screening.rule.blind === "after" ? Lock : Eye,
   };
 }
@@ -177,7 +176,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       options={[
         { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
         { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <TabCount value={open.toDo.length} tone="primary" /> : undefined },
-        { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{total}</span> },
+        { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{num(total)}</span> },
         // Only someone who may change it has its settings.
         ...(open.canChange ? [{ id: "settings" as const, label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <span className="rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : undefined }] : []),
       ]}
@@ -255,10 +254,10 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       {open.canChange ? (
         <>
           <AddPerson exclude={reviewers.map((reviewer) => reviewer.id)} onPick={(pick) => overlays.add("person" in pick ? personReviewer(pick.person, Date.now()) : invitedReviewer(pick.email, Date.now()))}>
-            <PickerButton hint="Add person"><UserPlus /></PickerButton>
+            <PickerButton hint="Add a person"><UserPlus /></PickerButton>
           </AddPerson>
           <AddModel exclude={modelsOf(screening).map((model) => model.model!.id)} onPick={(model) => overlays.add(modelReviewer(model, Date.now()))}>
-            <PickerButton hint="Add model"><AiIcon /></PickerButton>
+            <PickerButton hint="Add a model"><AiIcon /></PickerButton>
           </AddModel>
         </>
       ) : null}
@@ -281,7 +280,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           }
         >
           <p>Each paper gets the votes named in these chips, and the rule settles it once they are in.</p>
-          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>When its reviewers split, the paper is in conflict until {resolver?.name ?? "a person"} settles it.</p>}
+          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>{screening.rule.settle === "all" ? "When its reviewers split" : "With no majority among its reviewers"}, the paper is in conflict until {resolver?.name ?? "a person"} settles it.</p>}
           {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
         </Help>
       </span>
@@ -506,7 +505,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
             A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once credits are added.
           </Help>
         </span>
-        <span className="text-muted-foreground">{models(reading)} stopped at {Math.max(...reading.map((model) => readBy(screening, model)))} of {papers.length} papers</span>
+        <span className="text-muted-foreground">{models(reading)} stopped at {num(Math.max(...reading.map((model) => readBy(screening, model))))} of {num(papers.length)} papers</span>
         {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
         {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button> : null}
       </div>
@@ -535,7 +534,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
           Models paused
           <Help title="Paused models">Paused models read nothing and spend no credits. People keep voting, and papers settle on the votes they have.</Help>
         </span>
-        <span className="text-xs tabular-nums text-muted-foreground">{done} of {papers.length} papers read</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(papers.length)} papers read</span>
         {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
       </div>
     );
@@ -562,7 +561,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
         <AiIcon working className="size-4 shrink-0" />
         <span className="font-medium">{reading.length === 1 ? modelLink(reading[0]!) : `${reading.length} models`} reading</span>
         <Meter value={done} max={papers.length} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground">{done} of {papers.length}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(papers.length)}</span>
       </div>
     );
   }

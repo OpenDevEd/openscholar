@@ -10,7 +10,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
-import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -34,13 +34,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
+import { SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
-import { ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
+import { ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
 import { credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
@@ -55,9 +55,7 @@ const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = 
   { id: "upload", label: "Upload", icon: Upload },
   { id: "dois", label: "DOIs", icon: Hash },
 ];
-const iconOf = (kind: SourceKind): AppIcon => (kind === "upload" || kind === "pdf" ? FileText : kind === "dois" ? Hash : SOURCE_ICON[kind]);
 const OFFER_PAGE = 5;
-const hashOf = (text: string) => [...text].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
 /**
  * What happened on a running screening while its settings were open, which a save keeps: the votes, how far each
  * model has read, what was settled, the results held and let go, the papers moved between reviewers, the places of
@@ -70,9 +68,7 @@ const live = (draft: Screening, now: Screening) => {
 };
 const withLive = (draft: Screening, now: Screening): Screening => ({ ...draft, ...live(draft, now) });
 const nextSlot = (sources: Source[]) => Math.max(-1, ...sources.map((source) => source.slot)) + 1;
-const sourceId = (sources: Source[], name: string) => `src-${nextSlot(sources)}-${hashOf(name) % 1000}`;
-const slugOf = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;
+const sourceId = (sources: Source[], name: string) => `src-${nextSlot(sources)}-${hash(name) % 1000}`;
 
 /** Where a source can be read as it stands, in a new tab: a search runs again, a collection opens where it lives, a screening opens its included papers. A file or pasted DOIs have nowhere to open. */
 function sourceLink(source: Pick<Source, "kind" | "name" | "detail">, screenings: Screening[]): { href: string; where: string } | null {
@@ -89,7 +85,7 @@ function sourceLink(source: Pick<Source, "kind" | "name" | "detail">, screenings
   if (source.kind === "evidenceLibrary") {
     const community = COMMUNITIES.find((one) => source.detail === `In ${one.name}`);
     if (!community) return null;
-    return { href: source.name.startsWith("Every record in") ? community.address : `${community.address}/collections/${slugOf(source.name)}`, where: "in the community" };
+    return { href: source.name.startsWith("Every record in") ? community.address : `${community.address}/collections/${slug(source.name)}`, where: "in the community" };
   }
   if (source.kind === "zotero") return { href: "https://www.zotero.org/mylibrary", where: "in Zotero" };
   return null;
@@ -214,7 +210,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // A copy's sources start over: what they hold now is what the new screening starts with, and nothing has come in since.
   const [made] = useState<Screening>(() =>
     copied
-      ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, sources: copied.sources.map((source) => ({ ...source, id: `src-${source.slot}-${hashOf(source.name) % 1000}`, updates: undefined, scope: "all" as const, range: [1, Math.max(1, source.total)] as [number, number], addedAt: NOW })), criteria: copied.criteria, theme: copied.theme, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } }
+      ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, sources: copied.sources.map((source) => ({ ...source, id: `src-${source.slot}-${hash(source.name) % 1000}`, updates: undefined, scope: "all" as const, range: [1, Math.max(1, source.total)] as [number, number], addedAt: NOW })), criteria: copied.criteria, theme: copied.theme, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } }
       : blank(store.viewer),
   );
   const origin = saved ?? made;
@@ -255,6 +251,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [scoring, setScoring] = useState(false);
   const [where, setWhere] = useState<"openscholar" | "community">(draft.destination.kind === "community" ? "community" : "openscholar");
   const files = useRef<HTMLInputElement>(null);
+  // The draft with what happened on the running screening since its settings were opened. Kept from draw to draw, so what it projects is worked out once. It is here, over the returns below, because a hook can't follow a return: someone who opens Settings without the right to change it is shown the lock, and the page then drew fewer hooks than the draw before and fell over.
+  const merged = useMemo(() => (saved ? withLive(draft, saved) : draft), [draft, saved]);
 
   // A screening that is gone, or not shared with the person, is said by the frame its settings open in.
   if (id && (!saved || !accessOf(saved, store.viewer))) return null;
@@ -279,18 +277,16 @@ export function ScreeningForm({ id }: { id?: string }) {
   const set = (patch: Partial<Screening>) => setDraft((d) => ({ ...d, ...patch }));
   const people = peopleOf(draft);
   // Someone invited by email reads papers once they have joined.
-  const joined = people.filter((person) => !person.email);
+  const { people: joined, each } = readersOf(draft);
   const models = modelsOf(draft);
-  const found = draft.sources.reduce((sum, source) => sum + taken(source), 0);
+  const found = foundTotal(draft.sources);
   const papers = paperTotal(draft.sources);
-  const each = draft.rule.each === "all" ? joined.length : Math.min(Number(draft.rule.each), joined.length);
   // The running screening as a save would leave it: the papers that were settled held as they are, unless the change asks for them to be checked again.
-  const merged = useMemo(() => (saved ? withLive(draft, saved) : draft), [draft, saved]);
   const held = saved ? projected(saved, merged) : null;
   // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
   const share = (() => {
     if (!joined.length) return undefined;
-    if (!held && joined.length === 1) return `${joined[0]!.id === store.viewer ? "You read" : `${joined[0]!.name.split(" ")[0]} reads`} every paper`;
+    if (!held && joined.length === 1) return `${joined[0]!.id === store.viewer ? "You read" : `${firstName(joined[0]!.name)} reads`} every paper`;
     if (!held) return `About ${Math.ceil((papers * each) / joined.length).toLocaleString("en-GB")} papers for each person`;
     const state = standing(held);
     const loads = joined.map((person) => state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === person.id)).length);
@@ -346,7 +342,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const addSource = (kind: SourceKind, name: string, detail: string, total: number, facts?: string[]) =>
     setDraft((d) => {
       if (d.sources.some((source) => source.kind === kind && source.name === name)) return d;
-      const duplicates = d.sources.length && total > 3 ? Math.min(total - 1, Math.round(total * 0.07) + (hashOf(name) % 4)) : 0;
+      const duplicates = d.sources.length && total > 3 ? Math.min(total - 1, Math.round(total * 0.07) + (hash(name) % 4)) : 0;
       const slot = nextSlot(d.sources);
       return { ...d, sources: [...d.sources, { id: sourceId(d.sources, name), slot, kind, name, detail, total, scope: "all", range: [1, Math.max(1, total)], duplicates, addedAt: Date.now(), ...(facts ? { facts } : {}) }] };
     });
@@ -366,9 +362,9 @@ export function ScreeningForm({ id }: { id?: string }) {
     setReading((now) => [...now, ...names]);
     setTimeout(() => {
       for (const file of references) {
-        const total = 12 + (hashOf(file.name) % 140);
-        const matched = total - 2 - (hashOf(file.name) % 5);
-        addSource("upload", file.name, "Reference file", total, [`${matched} found in Openscholar's index`, `${total - matched} not in the index`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
+        const total = 12 + (hash(file.name) % 140);
+        const matched = total - 2 - (hash(file.name) % 5);
+        addSource("upload", file.name, "Reference file", total, [`${matched} found in Openscholar's index`, `${total - matched} not in the index`, `${1 + (hash(file.name) % 4)} without an abstract`]);
       }
       if (pdfs.length) addSource("pdf", `${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, pdfs.length === 1 ? "A PDF, read from the file" : "PDFs, read from the files", pdfs.length, ["Titles and abstracts read from the files"]);
       setReading((now) => now.filter((name) => !names.includes(name)));
@@ -380,7 +376,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     setDraft((d) => {
       const clean = words.trim();
       if (!clean || d.criteria.some((criterion) => criterion.text.toLowerCase() === clean.toLowerCase())) return d;
-      const key = `c${hashOf(clean)}`;
+      const key = `c${hash(clean)}`;
       return withCriteria(d, [...d.criteria, { key, text: clean, short: short ?? shortOf(clean), must: true, terms: [], addedAt: Date.now() }], { ...d.scoring.points, [key]: [1, 0, 0] });
     });
   const patchCriterion = (key: string, patch: Partial<Criterion>) => setDraft((d) => ({ ...d, criteria: d.criteria.map((criterion) => (criterion.key === key ? { ...criterion, ...patch } : criterion)) }));
@@ -412,6 +408,8 @@ export function ScreeningForm({ id }: { id?: string }) {
         ...d,
         reviewers,
         reached: startsOver ? { ...d.reached, [reviewer.id]: 0 } : { [reviewer.id]: 0, ...d.reached },
+        // A reviewer is no longer someone it is only shared with to look at.
+        viewers: d.viewers?.filter((one) => one.id !== reviewer.id),
         // Two people on every paper is how a review is usually screened: a new screening takes that up when its second person is added.
         ...(fresh && reviewer.kind === "person" && !reviewer.email && here === 2 && d.rule.each === "1" ? { rule: { ...d.rule, each: "2" as const } } : {}),
       };
@@ -519,13 +517,16 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (!/openscholar\.ai(\/|$)/.test(text)) return setAddressProblem("Openscholar doesn't run that community.");
     const name = decodeURIComponent(text.replace(/[?#].*$/, "").replace(/\/$/, "").split("/").pop() ?? "").replace(/[-_]+/g, " ").trim();
     if (!name || /openscholar\.ai$/.test(name)) return setAddressProblem("That address is a community, not one of its collections.");
-    setPasted((rows) => (rows.some((row) => row.name.toLowerCase() === name.toLowerCase()) ? rows : [{ name: name.charAt(0).toUpperCase() + name.slice(1), total: 24 + (hashOf(name) % 160), group: "shared", access: "viewer", pasted: true }, ...rows]));
+    setPasted((rows) => (rows.some((row) => row.name.toLowerCase() === name.toLowerCase()) ? rows : [{ name: name.charAt(0).toUpperCase() + name.slice(1), total: 24 + (hash(name) % 160), group: "shared", access: "viewer", pasted: true }, ...rows]));
     setAddress("");
     setAddressProblem(null);
     setGroup("all");
     setOfferPage(1);
   };
-  const offers = kind === "upload" || kind === "dois" || kind === "evidenceLibrary" ? [] : OFFERS[kind].filter((offer) => offer.name.toLowerCase().includes(find.trim().toLowerCase()));
+  // Another screening's included papers are a source: the screenings are the ones this person can open, with what each has included so far and whether it is still running.
+  const screeningOffers: Offer[] = kind !== "screening" ? [] : store.screenings.filter((one) => one.id !== draft.id && accessOf(one, store.viewer)).map((one) => ({ name: `Included in ${one.name}`, detail: one.finishedAt ? "Finished screening" : "Running screening", total: standing(one).counts.include })).filter((offer) => offer.total > 0);
+  const offered = kind === "upload" || kind === "dois" || kind === "evidenceLibrary" ? [] : kind === "screening" ? screeningOffers : OFFERS[kind];
+  const offers = offered.filter((offer) => offer.name.toLowerCase().includes(find.trim().toLowerCase()));
   const offerPager = pagerOf(offers.length, OFFER_PAGE, offerPage, setOfferPage);
   const importable = draft.sources.flatMap((source) => (source.kind === "search" ? (OFFERS.search.find((offer) => offer.name === source.name)?.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text === question)).map((question) => ({ question, source })) : []));
   const importSearches = new Set(importable.map(({ source }) => source.id)).size;
@@ -581,7 +582,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         </span>
       ) : null,
     },
-    { id: "decided", label: "How a paper is decided", value: `${draft.rule.settle === "all" ? "All agree" : draft.rule.settle === "most" ? "Most agree" : "One vote decides"}, conflicts to ${!resolver || resolver.id === store.viewer ? "you" : resolver.name.split(" ")[0]}`, problem: false },
+    { id: "decided", label: "How a paper is decided", value: `${SETTLE_LABEL[draft.rule.settle]}${draft.rule.settle === "one" ? "" : `, conflicts to ${!resolver || resolver.id === store.viewer ? "you" : resolver.name.split(" ")[0]}`}`, problem: false },
     { id: "goes-to", label: "Where included papers go", value: destinationName, problem: false },
   ];
 
@@ -648,11 +649,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <div className={cn(LIST, "bg-card")}>
                     <AnimatePresence initial={false}>
                       {sourceRows.map(({ source, gone }) => {
-                        const Icon = iconOf(source.kind);
+                        const Icon = kindIcon(source.kind);
                         const isOpen = openSource === source.id && !gone;
                         const link = sourceLink(source, store.screenings);
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own another source already had.
-                        const grew = (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
+                        const grew = grown(source);
                         const grewDoubled = (source.updates ?? []).reduce((sum, update) => sum + update.duplicates, 0);
                         const grewText = `${grew.toLocaleString("en-GB")} more since it started${grewDoubled ? `, ${grewDoubled.toLocaleString("en-GB")} already in another source` : ""}`;
                         const doubled = Math.min(source.duplicates, taken(source) - grew);
@@ -840,7 +841,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                             <OfferRow
                               key={row.name}
                               offer={{ name: row.name, detail: row.group === "library" && !row.parent ? `${inCommunity.records.toLocaleString("en-GB")} records` : `In ${inCommunity.name}`, total: row.total }}
-                              icon={iconOf("evidenceLibrary")}
+                              icon={kindIcon("evidenceLibrary")}
                               chips={
                                 <>
                                   {row.pasted ? <Chip icon={Link2} className="h-5 px-1.5">From a link</Chip> : null}
@@ -859,14 +860,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {OFFERS[kind].length > OFFER_PAGE ? (
+                        {offered.length > OFFER_PAGE ? (
                           <div className="relative">
                             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                             <Input value={find} onChange={(event) => { setFind(event.target.value); setOfferPage(1); }} placeholder={KINDS.find((one) => one.id === kind)!.find ?? `Find a ${KINDS.find((one) => one.id === kind)!.label.toLowerCase()}`} aria-label="Find a source" className="h-8 rounded-full bg-card ps-8 text-sm" />
                           </div>
                         ) : null}
                         <div className="divide-y divide-border-subtle" style={{ minHeight: offerPager.pages > 1 ? OFFER_PAGE * 57 : undefined }}>
-                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={iconOf(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { openAdded(offer.name, offer.total); addSource(as, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
+                          {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={kindIcon(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { openAdded(offer.name, offer.total); addSource(as, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
                           {!offers.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">Nothing by that name.</p> : null}
                         </div>
                         {offerPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={offerPager.page} totalPages={offerPager.pages} onPageChange={setOfferPage} totalItems={offers.length} itemsPerPage={OFFER_PAGE} itemLabel="sources" /> : null}
@@ -927,7 +928,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         {copyable.map((one) => (
                           <DropdownMenuItem key={one.id} onSelect={() => copyCriteria(one)}>
                             <span className="min-w-0 flex-1 truncate">{one.name}</span>
-                            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{one.criteria.length} criteria</span>
+                            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{plural(one.criteria.length, "criterion", "criteria")}</span>
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>
@@ -1065,7 +1066,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="reviewers"
             title="Reviewers"
-            help={<><Help title="Reviewers" facts={<><HelpFact>People are free</HelpFact><HelpFact icon={Coins}>Models cost credits</HelpFact></>}>Each reviewer votes include, maybe or exclude on the papers dealt to them. A person reads the title and abstract and votes. A model answers every criterion on every paper, and its answers make its vote.</Help>{changed("reviewers")}</>}
+            help={<><Help title="Reviewers" facts={<><HelpFact>People are free</HelpFact><HelpFact icon={Coins}>Models cost credits</HelpFact></>}>Each reviewer votes include, maybe or exclude on the papers dealt to them. A person reads the title and abstract and votes. A model answers every criterion on every paper it reads, and its answers make its vote.</Help>{changed("reviewers")}</>}
             aside={<Chip>{[plural(joined.length, "person", "people"), people.length > joined.length ? `${people.length - joined.length} invited` : null, plural(models.length, "model", "models")].filter(Boolean).join(" and ")}</Chip>}
           >
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
@@ -1086,7 +1087,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         gone ? (
                           <>
                             <StateChip tone="warning" icon={Trash2}>Removed when you save</StateChip>
-                            {votes ? <Chip>{plural(votes, "vote stops", "votes stop")} counting</Chip> : null}
+                            {votes ? <Chip>{plural(votes, "vote keeps", "votes keep")} counting</Chip> : null}
                           </>
                         ) : (
                           <>
@@ -1126,17 +1127,17 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="decided"
             title="How a paper is decided"
-            help={<><Help title="How a paper is decided" facts={<><HelpFact icon={Check}><Named name="Votes agree">Settled</Named></HelpFact><HelpFact icon={GitCompare}><Named name="Votes split">In conflict</Named></HelpFact></>}>Every vote on a paper goes into this rule. When the votes agree as the rule asks, the paper is settled. When they split, it is in conflict, and one person settles it.</Help>{changed("decided")}</>}
+            help={<><Help title="How a paper is decided" facts={<><HelpFact icon={Check}><Named name="Votes agree">Settled</Named></HelpFact><HelpFact icon={GitCompare}><Named name="Votes split">In conflict</Named></HelpFact></>}>Every vote on a paper goes into this rule. When the votes agree as the rule asks, the paper is settled. When they don&apos;t, it is in conflict, and one person settles it.</Help>{changed("decided")}</>}
           >
             <div className={cn(LIST, "bg-card")}>
-              <RuleRow name="People on each paper" help={<Help title="People on each paper" facts={<><HelpFact>Models read every paper</HelpFact><HelpFact>Everyone includes whoever joins later</HelpFact></>}>Every model reads every paper. This sets how many people vote on each one. The papers are shared out so each person reads about the same number. A number stays that number when the team grows. Everyone means every person on the screening, then and later.</Help>} detail={share}>
+              <RuleRow name="People on each paper" help={<Help title="People on each paper" facts={<><HelpFact>Models read every open paper</HelpFact><HelpFact>Everyone includes whoever joins later</HelpFact></>}>Every model reads every paper that is open when it joins. This sets how many people vote on each one. The papers are shared out so each person reads about the same number. A number stays that number when the team grows. Everyone means every person on the screening, then and later.</Help>} detail={share}>
                 {joined.length ? (
                   // Every number up to the team's size, then Everyone, which is its own choice: it goes on meaning everyone when someone joins, where a number stays that number. One person alone can choose it too, for whoever joins later.
                   <Segmented label="People on each paper" value={draft.rule.each !== "all" && Number(draft.rule.each) > joined.length ? (String(joined.length) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: joined.length }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: String(k + 1) })), { id: "all" as const, label: "Everyone" }]} />
                 ) : <span className="text-sm text-muted-foreground">Add a person to choose</span>}
               </RuleRow>
-              <RuleRow name="A paper is settled when" help={<Help title="Settling a paper">Every reviewer given a paper has one vote, a model as much as a person. All agree: any split vote is a conflict. Most agree: more than half on one side settles it, and an even split is a conflict. One has voted: the first vote decides.</Help>}>
-                <Segmented label="A paper is settled when" value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next } })} options={[{ id: "all" as const, label: "All agree" }, { id: "most" as const, label: "Most agree" }, { id: "one" as const, label: "One has voted" }]} />
+              <RuleRow name="A paper is settled when" help={<Help title="Settling a paper">Every reviewer given a paper has one vote, a model as much as a person. {SETTLE_LABEL.all}: any split is a conflict. {SETTLE_LABEL.most}: more than half on one side settles it, and with no such majority it is a conflict. {SETTLE_LABEL.one}: the first vote settles it, so there is never a conflict.</Help>}>
+                <Segmented label="A paper is settled when" value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next } })} options={(["all", "most", "one"] as const).map((id) => ({ id, label: SETTLE_LABEL[id] }))} />
               </RuleRow>
               <RuleRow name="Conflicts are settled by" help={<Help title="Conflicts">This person sees every vote on the paper, and their decision is its result.</Help>}>
                 {joined.length ? (
@@ -1450,5 +1451,5 @@ function Destination({ on, onPick, icon: Icon, name, facts, below }: { on: boole
 /** Opens the screening's record of past changes. A screening's settings are inside its frame, which has that record. */
 function PastChanges() {
   const { openActivity } = useWorkspace();
-  return <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={openActivity}>Past changes</Button>;
+  return <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={openActivity}>Activity</Button>;
 }

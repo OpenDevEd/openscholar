@@ -10,10 +10,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleHelp, Clock, ExternalLink, Eye, FileSearch, GitCompare, Hourglass, ListChecks, Lock, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleHelp, Clock, ExternalLink, Eye, FileSearch, GitCompare, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
-import { LIST, Segmented } from "@/components/settings/parts";
+import { LIST, Segmented, pagerOf } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -29,7 +29,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { SETTLE_LABEL, DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
@@ -78,7 +78,6 @@ const BAR_COLUMNS = `lg:grid-cols-[19rem_minmax(0,1fr)] ${WIDE}`;
 const QUEUE_FILTER = "h-8 w-full rounded-full px-3.5 text-xs";
 /** What helps with a criterion's answer, named under its question: a word with its sign that opens it in place and closes it again. */
 const AID = "flex h-5 items-center gap-1 rounded text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50";
-const RULE_LABEL = { all: "All agree", most: "Most agree", one: "One vote" } as const;
 const inQuotes = (text: string) => `"${text}"`;
 const NO_PACE = { sum: 0, n: 0 };
 /** Among the answers reviewers gave to one criterion, in their order, the place of the first that stands apart from the answer most of them gave. */
@@ -158,9 +157,7 @@ function Screen({ open }: { open: Open }) {
 
   const paper = items.find((one) => one.id === picked) ?? items[0];
   const at = paper ? items.indexOf(paper) : -1;
-  const pages = Math.max(1, Math.ceil(items.length / QUEUE_PAGE));
-  const shownPage = Math.min(pages, place.page || (at >= 0 ? Math.floor(at / QUEUE_PAGE) + 1 : 1));
-  const setPage = (next: number) => void setPlace({ page: next });
+  const { pages, page: shownPage, setPage } = pagerOf(items.length, QUEUE_PAGE, place.page || (at >= 0 ? Math.floor(at / QUEUE_PAGE) + 1 : 1), (next) => void setPlace({ page: next }));
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   // "Another reason" is written before it is saved: the paper whose reason is being written.
   const [writing, setWriting] = useState<string | null>(null);
@@ -249,7 +246,7 @@ function Screen({ open }: { open: Open }) {
     if (gap < 300) setMock({ paced: { ...paces, [open.me]: { sum: paced.sum + gap, n: paced.n + 1 } } });
     if (resolving) open.resolve(paper, decision, note, reason);
     // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
-    else open.vote(paper, { decision, answers: { ...mine?.answers, ...answers[paper.id], ...(reason && criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note, at: Date.now() });
+    else open.vote(paper, { decision, answers: { ...mine?.answers, ...answers[paper.id] }, reason, note, at: Date.now() });
     setReasonFor(null);
     setWriting(null);
     const waits = (one: Paper) => one.id !== paper.id && (resolving ? settled[one.id]!.result === "conflict" : !open.myVote(one));
@@ -380,6 +377,8 @@ function Screen({ open }: { open: Open }) {
   // The note's field is open when it was asked for, when it holds a note, and always for the reason a conflict is settled with.
   const noteOpen = resolving || noting || hasNote;
 
+  // The papers you have voted on: what the Done queue holds, and what its tab and its filter count.
+  const votedByMe = yours.filter((one) => open.myVote(one));
   const tabs = (
     <Segmented
       label="Queue"
@@ -389,7 +388,7 @@ function Screen({ open }: { open: Open }) {
         id: which,
         label: QUEUE_LABEL[which],
         href: screenHref(id, which === "todo" ? undefined : { queue: which }),
-        detail: <TabCount value={which === "todo" ? toDo.length : which === "done" ? yours.length - toDo.length : conflicts.length} tone={QUEUE_TONE[which]} />,
+        detail: <TabCount value={which === "todo" ? toDo.length : which === "done" ? votedByMe.length : conflicts.length} tone={QUEUE_TONE[which]} />,
       }))}
     />
   );
@@ -422,8 +421,6 @@ function Screen({ open }: { open: Open }) {
       </li>
     );
   };
-  // The papers you have voted on: what the Done queue holds, and what its filter counts.
-  const votedByMe = yours.filter((one) => open.myVote(one));
   const pager = (className: string) => (pages > 1 ? <PageStepper className={className} page={shownPage} pageCount={pages} canPrevious={shownPage > 1} canNext={shownPage < pages} onPrevious={() => setPage(shownPage - 1)} onNext={() => setPage(shownPage + 1)} /> : null);
   const findField = (className: string) => (
     <div className={cn("relative", className)}>
@@ -692,7 +689,7 @@ function Screen({ open }: { open: Open }) {
                       {!paper.sentences.length ? (
                         <div className="flex items-center gap-1.5 rounded-2xl border border-dashed border-border px-5 py-5 text-sm text-muted-foreground">
                           No abstract
-                          <Help title="Papers without an abstract" facts={<HelpFact>Models vote on the title alone</HelpFact>}>Vote on the title, or vote Maybe to keep the paper open.</Help>
+                          <Help title="Papers without an abstract" facts={<HelpFact>Models vote on the title alone</HelpFact>}>Vote on the title, or vote Maybe where the title can&apos;t settle it.</Help>
                         </div>
                       ) : paper.original && !translated ? (
                         <div className="space-y-3">
@@ -726,12 +723,12 @@ function Screen({ open }: { open: Open }) {
                   title={answering ? "Your answers" : "Criteria"}
                   help={
                     <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={FileSearch}>Passage: the sentence of this paper that speaks to it</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>Words the criteria look for</HelpFact></>}>
-                      {answering ? "Answering is optional: one vote is enough. A paper that fails a must-have is excluded, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A paper that fails a must-have is excluded."}
+                      {answering ? "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude."}
                     </Help>
                   }
                 >
                   {/* What the star means, in sight: it was taken for "an answer is required". */}
-                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>A must-have: a paper that fails one is excluded.{answering ? " Answers are optional and are not your vote." : ""}</p> : null}
+                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>A must-have: a No on one points to Exclude.{answering ? " Answers are optional and are not your vote." : ""}</p> : null}
                   {criteria.length ? (
                     <ol key={paper.id} className={LIST}>
                       {criteria.map((criterion, i) => {
@@ -918,8 +915,8 @@ function Screen({ open }: { open: Open }) {
                         {resolving ? (
                           <span className="flex shrink-0 items-center gap-1 text-xs font-medium">
                             Settle this conflict
-                            <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name="Your own vote">{DECISION_LABEL[mine.decision]}</Named></HelpFact> : null}<HelpFact><Named name="Rule">{RULE_LABEL[screening.rule.settle]}</Named></HelpFact></>}>
-                              The reviewers split on this paper. Your vote becomes its result, whatever they voted. Maybe keeps it open.
+                            <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name="Your own vote">{DECISION_LABEL[mine.decision]}</Named></HelpFact> : null}<HelpFact><Named name="Rule">{SETTLE_LABEL[screening.rule.settle]}</Named></HelpFact></>}>
+                              The reviewers split on this paper. Your vote becomes its result, whatever they voted. Maybe is a result too: it settles the paper as one to look at again.
                             </Help>
                           </span>
                         ) : null}
@@ -1163,7 +1160,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
             </span>
             {cast.map(({ reviewer, vote }, i) => {
               if (kept(reviewer) && vote) {
-                return <span key={reviewer.id} role="img" aria-label={`${reviewer.name}, ${criterion.short}: ${SHUT.vote.says.toLowerCase()}`} className="mx-auto flex size-6 items-center justify-center rounded-md bg-muted text-muted-foreground"><Lock aria-hidden className="size-3" /></span>;
+                return <VoteMark key={reviewer.id} vote={vote} hidden who={`${reviewer.name}, ${criterion.short}`} className="mx-auto flex" />;
               }
               const answer = given[i];
               if (!answer) return <span key={reviewer.id} className="mx-auto size-6 rounded-md border border-dashed border-border" />;

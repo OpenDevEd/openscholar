@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
+import { firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
 import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
@@ -39,11 +39,10 @@ import { useWorkspace } from "./workspace";
 
 const PAGE = 20;
 const ROW = 57;
-/** Under the page's header: where the table's head row and the paper's toolbar stick. */
 
 const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
 type Sort = (typeof SORTS)[number];
-const SORT_LABEL: Record<Sort, string> = { added: "Order added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
+const SORT_LABEL: Record<Sort, string> = { added: "As added", title: "Title, A to Z", "title-desc": "Title, Z to A", result: "Result", newest: "Newest first", split: "Most disagreement", points: "Most points" };
 /** Each order's sign: an arrow for the way a title runs, and what the others go by. */
 const SORT_ICON: Record<Sort, AppIcon> = { added: Clock, title: ArrowDown, "title-desc": ArrowUp, result: ListChecks, newest: CalendarDays, split: GitCompare, points: Award };
 /** A result tab with nothing in it, while no filter or search narrows it. */
@@ -94,7 +93,6 @@ function useNarrow(id: string, me: string) {
 }
 
 /** Names as a phrase: "A", "A and B", "A, B and C". */
-const listed = (names: string[]) => (names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
 /** The Papers table as a page of the open screening. */
 export function PapersPage() {
@@ -106,7 +104,7 @@ export function PapersPage() {
 const reasonsOf = (open: Open) => [...open.screening.criteria.map((criterion) => ({ key: criterion.key, label: `${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short} not met` })), ...OTHER_REASONS];
 
 /** A reviewer's name, or a person's who settles conflicts without voting. */
-const nameOf = (open: Open, id: string) => open.screening.reviewers.find((one) => one.id === id)?.name ?? personOf(id)?.name ?? "A reviewer";
+const nameOf = (open: Open, id: string) => nameOn(open.screening, id);
 
 function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, papers, votes, settled } = open;
@@ -305,7 +303,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
       : null,
     // Beside a reviewer's own kind of vote, the others are named apart.
     also.length && voted !== "any" ? { key: "with", label: `Also voted on by ${listed(also.map((one) => (one === open.me ? "you" : nameOf(open, one))))}`, clear: { with: null } } : null,
-    reason ? { key: "reason", label: filter === "maybe" ? `${criteria.find((c) => c.key === reason)?.short ?? reason} unclear` : failedLabel(reason, criteria), shown: <Reason reason={reason} criteria={criteria} unclear={filter === "maybe"} />, clear: { reason: null } } : null,
+    reason ? { key: "reason", label: filter === "maybe" ? unclearLabel(reason, criteria) : failedLabel(reason, criteria), shown: <Reason reason={reason} criteria={criteria} unclear={filter === "maybe"} />, clear: { reason: null } } : null,
     added !== "all" ? { key: "added", label: `Added ${addedLabel(added)}`, shown: <Named name="Added">{addedLabel(added)}</Named>, clear: { added: null } } : null,
   ].filter((one) => one !== null);
   const anyFilter = active.length > 0 || Boolean(query.trim());
@@ -313,7 +311,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "This screening has no papers yet."}</p>;
 
   const reviewerOptions = [...reviewers.filter((one) => one.id === open.me), ...reviewers.filter((one) => one.id !== open.me && one.kind === "person"), ...reviewers.filter((one) => one.kind === "model")];
-  const settles = (reviewerId: string) => reviewerId === screening.rule.resolver || reviewerId === screening.createdBy;
+  const settles = (reviewerId: string) => resolves(screening, reviewerId);
   const countVoted = (kind: Voted) => (who ? papers.filter((paper) => votedAs(paper, who, kind)).length : 0);
   // The filters, in the row over the table and in a phone's sheet.
   const filters = (trigger: string) => (
@@ -388,7 +386,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     </>
   );
   const sorter = (trigger: string) => (
-    <FilterMenu name="Sort" lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: SORT_LABEL[one], icon: <Icon /> }; })} />
+    <FilterMenu name="Order" lead={<ArrowUpDown className="size-3.5" />} value={sort} onChange={(next) => go({ sort: next === "added" ? null : next })} narrows={false} align="end" className={trigger} choices={SORTS.map((one) => { const Icon = SORT_ICON[one]; return { value: one, label: SORT_LABEL[one], icon: <Icon /> }; })} />
   );
   // Pills, as the tabs and the search box in the same bar are. A long value is cut sooner where the page is narrow, so more of the row is in view.
   const trigger = "h-8 w-auto max-w-48 gap-1.5 rounded-full px-3.5 text-xs @5xl/papers:max-w-72";
@@ -590,7 +588,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                     <button type="button" aria-label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
                                       <ReviewerMark reviewer={one} you={one.id === open.me} />
                                       {/* Each head opens a menu of that reviewer's votes, and says so with the arrow a menu has. */}
-                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{one.id === open.me ? "You" : one.name.split(" ")[0]}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
+                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{one.id === open.me ? "You" : firstName(one.name)}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
                                     </button>
                                   </DropdownMenuTrigger>
                                 </TooltipHint>
@@ -601,11 +599,11 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                                     const Icon = RESULT_STYLE[decision].icon;
                                     return (
                                       <DropdownMenuItem key={decision} asChild>
-                                        <NextLink href={papersHref(id, { reviewer: one.id, voted: decision })}><Icon />Papers {one.id === open.me ? "you" : one.name.split(" ")[0]} voted {DECISION_LABEL[decision]}</NextLink>
+                                        <NextLink href={papersHref(id, { reviewer: one.id, voted: decision })}><Icon />Papers {one.id === open.me ? "you" : firstName(one.name)} voted {DECISION_LABEL[decision]}</NextLink>
                                       </DropdownMenuItem>
                                     );
                                   })}
-                                  <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })}><ListChecks />Papers waiting for {one.id === open.me ? "your" : `${one.name.split(" ")[0]}'s`} vote</NextLink></DropdownMenuItem>
+                                  <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: one.id, voted: "none" })}><ListChecks />Papers waiting for {one.id === open.me ? "your" : `${firstName(one.name)}'s`} vote</NextLink></DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableHead>
@@ -786,7 +784,7 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
   if (!visible) return settledNote;
   if (state.result === "conflict" || state.resolvedBy) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
-    const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : `${open.screening.criteria.find((c) => c.key === reasonKey)?.short ?? reasonKey} unclear`;
+    const label = state.result === "exclude" ? failedLabel(reasonKey, open.screening.criteria) : unclearLabel(reasonKey, open.screening.criteria);
     // Pressed again while the table is narrowed to this reason, it takes the reason away and keeps the result.
     const link = narrow({ result: state.result, reason: reasonKey }, ["reason"]);
     return (
@@ -857,7 +855,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const score = state.result === "include" && visible && screening.criteria.length ? scoreOf(screening, cast) : null;
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
     const said = withNote ?? (note.trim() || undefined);
-    if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers, ...(reason && screening.criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note: said, at: Date.now() });
+    if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers }, reason, note: said, at: Date.now() });
     else open.resolve(paper, decision, said, reason);
     setDeciding(null);
     setReasonFor(null);
@@ -895,7 +893,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   return (
     <div className="space-y-5 px-4 pb-6 sm:px-6">
       {/* Where it is in the list, and the way through it: it stays in view while the paper is read. */}
-      <div className={cn("sticky z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6", "top-0")}>
+      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6">
         <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at >= 0 ? `${(place.at + 1).toLocaleString("en-GB")} of ${place.of.toLocaleString("en-GB")}` : "Not in this list"}</span>
         <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
         <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={place.at < 0 || place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
@@ -908,7 +906,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       <div className="flex flex-wrap items-center gap-1.5">
         <ResultChip result={state.result} />
         {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
-        <Chip icon={Quote}>{paper.cited.toLocaleString("en-GB")} cited</Chip>
+        <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
         {added ? <LinkChip href={added.href} aria-current={added["aria-current"]} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(paper.batch!)}</LinkChip> : null}
         {from ? <LinkChip href={from.href} aria-current={from["aria-current"]} tone={from.on ? "primary" : "neutral"} className="max-w-full">Papers from {source!.name}</LinkChip> : null}
       </div>

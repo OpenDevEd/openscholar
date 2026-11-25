@@ -33,6 +33,18 @@ export const PEOPLE: Person[] = [
   { id: "tomas", name: "Tomás Rivera", imageUrl: face("tomas"), guest: true, seen: "Not active yet" },
 ];
 export const personOf = (id: string) => PEOPLE.find((person) => person.id === id);
+/** The name someone is called by in a line of text or a narrow column. */
+export const firstName = (name: string) => name.split(" ")[0]!;
+/** A name as part of a file's name or an address. */
+export const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/** A number as people read it: "1,204". */
+export const num = (n: number) => n.toLocaleString("en-GB");
+/** A small number as a word at the start of a sentence: "Three of the 5 reviewers". */
+export const numberWord = (n: number) => ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"][n - 1] ?? num(n);
+/** A count with its noun: "1 paper", "1,204 papers". */
+export const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;
+/** Names as a phrase: "A", "A and B", "A, B and C". */
+export const listed = (names: string[]) => (names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
 /** Workspaces a screening can be in. The first is the one the mock is in; the others are where it can move to, or be shared from. */
 export type Workspace = { id: string; kind: "organization" | "personal"; name: string; colour?: string; imageUrl?: string; members: string; credits: number; /** Whether the person the mock starts as is a member: a screening moves only between those. */ mine: boolean };
@@ -102,7 +114,7 @@ export type SourceKind = "search" | "collection" | "saved" | "screening" | "evid
 export type Source = { id: string; /** Which run of made-up papers it holds: never reused, so a paper keeps its identity when sources change. */ slot: number; kind: SourceKind; name: string; detail: string; total: number; scope: "all" | "range"; range: [number, number]; duplicates: number; facts?: string[]; /** A search's filters, which tell two searches for the same words apart. */ filters?: string[]; /** What each later check found in it: `total` counts these too. */ updates?: Array<{ at: number; added: number; duplicates: number }>; addedAt: number };
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
-const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
+export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
 /** What a source held when it was added, before any check found more. */
 export const baseTotal = (source: Source) => source.total - grown(source);
 /** The papers taken from what it held at first: all of them, or a range. */
@@ -110,6 +122,8 @@ const baseTaken = (source: Source) => (source.scope === "all" ? baseTotal(source
 export const taken = (source: Source) => baseTaken(source) + grown(source);
 export const keptOf = (source: Source) => Math.max(0, baseTaken(source) - Math.min(source.duplicates, baseTaken(source))) + (source.updates ?? []).reduce((sum, update) => sum + update.added - update.duplicates, 0);
 export const paperTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + keptOf(source), 0);
+/** What a screening's sources brought before duplicates were merged: the first count of its flow diagram. */
+export const foundTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + taken(source), 0);
 
 export type Rule = {
   /** How many people read each paper: a number, or everyone on the screening, whoever joins later included. */
@@ -130,6 +144,8 @@ export const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "dup
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** A reason for excluding in words, for a file, a tooltip or a screen reader: the criterion that wasn't met, named as such, or one of the other reasons. On a page it is drawn, by `Reason`. */
 export const failedLabel = (key: string, criteria: Criterion[]) => (criteria.some((criterion) => criterion.key === key) ? `${reasonLabel(key, criteria)} not met` : reasonLabel(key, criteria));
+/** A criterion nobody could answer, as the reason a paper stands at Maybe, in words. */
+export const unclearLabel = (key: string, criteria: Criterion[]) => `${criteria.find((criterion) => criterion.key === key)?.short ?? key} unclear`;
 /** The question a short name or a reason stands for, where the name isn't already the question's own words. */
 export const questionOf = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
@@ -151,6 +167,9 @@ export type Message = { by: string; at: number; text: string; to?: string };
 export type Change = { at: number; /** A person, or SCHEDULE for something that happened by itself. */ by: string; what: string; effect?: string };
 export type Every = "day" | "week" | "month";
 export const EVERY_LABEL: Record<Every, string> = { day: "Every day", week: "Every week", month: "Every month" };
+/** The rule that settles a paper: the name its choice has in the settings, and the same rule said of a screening. One place, so the settings, their summary, the frame's chips and a "?" never name it differently. */
+export const SETTLE_LABEL: Record<Rule["settle"], string> = { all: "All agree", most: "Most agree", one: "First vote decides" };
+export const SETTLE_SAYS: Record<Rule["settle"], string> = { all: "Settled when all agree", most: "Settled when most agree", one: "Settled by the first vote" };
 /** A check of a screening's sources: how many papers it found, and how many of those were new to the screening. */
 export type Update = { at: number; found: number; added: number; by: string };
 /** Who a scheduled check is by: nobody. */
@@ -242,7 +261,7 @@ function seeded(seed: number) {
   };
 }
 const pick = <T,>(rand: () => number, list: readonly T[]) => list[Math.floor(rand() * list.length)]!;
-const hash = (text: string) => [...text].reduce((sum, char) => (Math.imul(sum, 31) + char.charCodeAt(0)) >>> 0, 7);
+export const hash = (text: string) => [...text].reduce((sum, char) => (Math.imul(sum, 31) + char.charCodeAt(0)) >>> 0, 7);
 
 // ── Papers ───────────────────────────────────────────────────────────────────────────────────────
 
@@ -599,14 +618,18 @@ export function papersOf(screening: Pick<Screening, "seed" | "sources" | "theme"
   papersCache.set(key, mixed);
   return mixed;
 }
+/** A paper a model can't read when it gets to it, until it is sent back to the ones it couldn't. Made up, a few in a hundred. */
+const cantRead = (screening: Screening, paper: string, reviewer: Reviewer) =>
+  reviewer.kind === "model" && !screening.retried?.includes(reviewer.id) && screening.cast[paper]?.[reviewer.id] === undefined && hash(`${paper}${reviewer.id}`) % 113 === 0;
 /**
  * A model's next stretch of reading: how far it gets through up to so many papers, and how many of those it
  * reads and is charged for. A paper whose result was held before the model was added is passed over unread.
+ * A paper it can't read is not charged: it is paid for each paper it reads, and reading that one again is what costs.
  */
 export function readNext(screening: Screening, model: Reviewer, most: number, affordable: (papers: number) => number) {
   const state = standing(screening);
   const from = screening.reached[model.id] ?? 0;
-  const ahead = state.papers.map((paper) => ({ place: placeOf(screening, paper), mine: state.votes[paper.id]!.some((one) => one.reviewer.id === model.id) })).filter((one) => one.place >= from).sort((a, b) => a.place - b.place);
+  const ahead = state.papers.map((paper) => ({ place: placeOf(screening, paper), mine: state.votes[paper.id]!.some((one) => one.reviewer.id === model.id) && !cantRead(screening, paper.id, model) })).filter((one) => one.place >= from).sort((a, b) => a.place - b.place);
   let [read, reached] = [0, from];
   for (const paper of ahead.slice(0, most)) {
     if (paper.mine && read + 1 > affordable(read + 1)) break;
@@ -691,6 +714,15 @@ function madeUpVote(paper: Paper, reviewer: Reviewer, every: Criterion[], since:
 }
 
 export const activeReviewers = (screening: Screening) => screening.reviewers.filter((reviewer) => !reviewer.left);
+/** The people who read a screening's papers, and how many of them each paper goes to. Someone invited by email is dealt no paper until they join, so they are not counted. */
+export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
+  const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
+  return { people, each: screening.rule.each === "all" ? people.length : Math.min(Number(screening.rule.each), people.length) };
+};
+/** Whether someone settles a screening's conflicts: the person its rule names, and whoever started it. */
+export const resolves = (screening: Pick<Screening, "rule" | "createdBy">, id: string) => screening.rule.resolver === id || screening.createdBy === id;
+/** What someone on a screening is called: their name there (an invited address, a model), or their name in the workspace. */
+export const nameOn = (screening: Pick<Screening, "reviewers">, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? personOf(id)?.name ?? "A reviewer";
 export const peopleOf = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person");
 export const modelsOf = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "model");
 
@@ -825,8 +857,7 @@ function voteOf(screening: Screening, paper: Paper, reviewer: Reviewer): Vote | 
  * A paper a model got to and couldn't read: its provider gave an error, or sent back nothing usable.
  * It counts as no vote from that model, and the paper is settled by its other reviewers.
  */
-const failedRead = (screening: Screening, paper: Paper, reviewer: Reviewer) =>
-  reviewer.kind === "model" && !screening.retried?.includes(reviewer.id) && placeOf(screening, paper) < (screening.reached[reviewer.id] ?? 0) && screening.cast[paper.id]?.[reviewer.id] === undefined && hash(`${paper.id}${reviewer.id}`) % 113 === 0;
+const failedRead = (screening: Screening, paper: Paper, reviewer: Reviewer) => cantRead(screening, paper.id, reviewer) && placeOf(screening, paper) < (screening.reached[reviewer.id] ?? 0);
 
 /** How sure a model is of one answer, from 0 to 1: less with no abstract to read, and where it couldn't tell. */
 export const confidenceOf = (paper: Paper, reviewer: Reviewer, criterion: Criterion, answer: Answer) => {
@@ -846,6 +877,13 @@ export function scoreOf(screening: Pick<Screening, "criteria" | "scoring">, cast
 }
 
 // ── Where each paper stands ──────────────────────────────────────────────────────────────────────
+
+/** The excluded papers counted by the reason each stands under, the most given first: the last column of the flow diagram, on the Overview and in the export. */
+export const excludedBy = ({ papers, votes, settled }: Pick<Standing, "papers" | "votes" | "settled">) => {
+  const tally = new Map<string, number>();
+  for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
+  return [...tally].sort((a, b) => b[1] - a[1]);
+};
 
 export type Standing = {
   papers: Paper[];
@@ -925,7 +963,7 @@ export function madeUpReply(vote: Vote | undefined, criteria: Criterion[]): stri
   if (!vote) return "I haven't got to this one yet. I'll vote on it today.";
   const turned = criteria.find((criterion) => criterion.must && vote.answers[criterion.key] === (vote.decision === "exclude" ? "no" : "unclear")) ?? criteria.find((criterion) => vote.answers[criterion.key] === "unclear");
   if (vote.decision === "exclude") return turned ? `I read it as failing "${turned.short}". The abstract points that way, and I'd keep my Exclude unless the full text says otherwise.` : "Nothing in the abstract made me want to keep it. I'm happy to go with your read.";
-  if (vote.decision === "maybe") return turned ? `The abstract doesn't settle "${turned.short}" for me, so I left it at Maybe. If you can tell from the full text, I'll follow you.` : "I couldn't decide from the abstract alone, so I left it open.";
+  if (vote.decision === "maybe") return turned ? `The abstract doesn't settle "${turned.short}" for me, so I left it at Maybe. If you can tell from the full text, I'll follow you.` : "I couldn't decide from the abstract alone, so I left it at Maybe.";
   return "Every must-have looked met to me. If you read one of them differently, tell me which and I'll look again.";
 }
 
@@ -981,11 +1019,11 @@ export function keep(before: Screening, after: Screening, at: number): Screening
 
 const projections = new WeakMap<Screening, WeakMap<Screening, Screening>>();
 /** A change as a save would leave it, for saying what it does before it is made. Worked out once for each pair: the lines, the moves and the costs of a preview all read the same one. */
-/** The papers a change has a model read at once: ones it had passed over, behind where it has read to, that the change opens again. */
+/** The papers a change has a model read at once, and charges for: ones it had passed over, behind where it has read to, that the change opens again. One it can't read is not charged. */
 export const readsAgain = (before: Screening, after: Screening, model: Reviewer) => {
   const now = new Set(after.reviewers.find((one) => one.id === model.id)?.skips);
   const places = placesOf(after);
-  return (before.reviewers.find((one) => one.id === model.id)?.skips ?? []).filter((paper) => !now.has(paper) && (places.get(paper) ?? Infinity) < (after.reached[model.id] ?? 0)).length;
+  return (before.reviewers.find((one) => one.id === model.id)?.skips ?? []).filter((paper) => !now.has(paper) && (places.get(paper) ?? Infinity) < (after.reached[model.id] ?? 0) && !cantRead(after, paper, model)).length;
 };
 
 export function projected(before: Screening, after: Screening): Screening {

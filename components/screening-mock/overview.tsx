@@ -22,7 +22,7 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, peopleOf, personOf, questionOf, reasonOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import { num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
 import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
@@ -282,8 +282,8 @@ function Reviewers({ open }: { open: Open }) {
   const givers = open.canChange && !screening.finishedAt ? takers.filter((row) => row.left > 0 && takers.some((other) => other !== row && open.movable(row.reviewer.id, other.reviewer.id).length)) : [];
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now(), ...(discard ? { discarded: Date.now() } : {}) } : one)) });
   const leavingVotes = leaving ? count(open.papers, (paper) => open.votes[paper.id]!.some((one) => one.reviewer.id === leaving.id && one.vote)) : 0;
-  const people = peopleOf(screening).length;
-  const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
+  const { people: readers, each } = readersOf(screening);
+  const people = readers.length;
   // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
   const [a, b] = reviewers;
   const pair = reviewers.length === 2 ? agreement(b!.id, a!.id, open) : null;
@@ -302,8 +302,8 @@ function Reviewers({ open }: { open: Open }) {
       id="reviewers"
       title="Reviewers"
       help={
-        <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of ${people} people a paper` : `Every person reads every paper`}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every paper</HelpFact> : null}</>}>
-          <p>Each person votes on a share of the papers. Each model votes on every paper.</p>
+        <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of ${people} people a paper` : `Every person reads every paper`}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every open paper</HelpFact> : null}</>}>
+          <p>Each person votes on a share of the papers. Each model votes on every paper that was open when it joined.</p>
           <p>Under a person&apos;s count is when they get through what they have left, if they keep the pace of their last three days.</p>
         </Help>
       }
@@ -423,12 +423,12 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
     <div key={row.reviewer.id} className="flex items-center gap-2.5 px-3 py-2.5 text-sm">
       <ReviewerMark reviewer={row.reviewer} className="size-7" />
       <span className="min-w-0 flex-1 truncate font-medium">{nameOf(row)}</span>
-      <span className="flex shrink-0 items-center gap-1.5 tabular-nums"><span className="text-muted-foreground">{row.left} left</span><ArrowRight aria-hidden className="size-3.5 text-muted-foreground" /><span className="font-semibold">{after} left</span></span>
+      <span className="flex shrink-0 items-center gap-1.5 tabular-nums"><span className="text-muted-foreground">{num(row.left)} left</span><ArrowRight aria-hidden className="size-3.5 text-muted-foreground" /><span className="font-semibold">{num(after)} left</span></span>
       <span className="w-36 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{doneIn(after, row.perDay) ?? (!after ? "Nothing left" : row.idle ? "No votes in 3 days" : null)}</span>
     </div>
   );
   return (
-    <ConfirmChange open title="Move papers between reviewers" confirm={taker ? `Move ${papers} ${papers === 1 ? "paper" : "papers"}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => taker && open.move(giver.reviewer, taker.row.reviewer, papers)}>
+    <ConfirmChange open title="Move papers between reviewers" confirm={taker ? `Move ${plural(papers, "paper", "papers")}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => taker && open.move(giver.reviewer, taker.row.reviewer, papers)}>
       <div className="flex flex-wrap items-center gap-2">
         <FilterMenu name="From" value={giver.reviewer.id} onChange={(next) => { setFrom(next); setChosen(null); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={people.filter((row) => row.left > 0).map((row) => ({ value: row.reviewer.id, label: nameOf(row), icon: face(row), count: row.left }))} />
         {taker ? <FilterMenu name="To" value={taker.row.reviewer.id} onChange={(next) => { setChosen(next); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={others.filter((one) => one.can).map((one) => ({ value: one.row.reviewer.id, label: nameOf(one.row), icon: face(one.row), count: one.can }))} /> : null}
@@ -445,10 +445,10 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
           </div>
           {/* What the move does to the day the last of them is done, where every one of them has a pace to go by. */}
           {doneAfter && doneBefore ? <p className="text-sm tabular-nums"><span className="font-medium">Everyone done in about {daysFrom(doneAfter)}</span>{doneAfter === doneBefore ? <span className="text-muted-foreground">, the same as now</span> : <span className="text-muted-foreground">, where it is about {daysFrom(doneBefore)} now</span>}</p> : null}
-          <p className="text-sm text-muted-foreground">It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} queue go. Votes already cast stay where they are.</p>
+          <p className="text-sm text-muted-foreground">It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} queue go. Votes already cast stay where they are.</p>
         </>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} papers.</p>
+        <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} papers.</p>
       )}
     </ConfirmChange>
   );
@@ -494,7 +494,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
       <div role="cell" className="min-w-0 @max-2xl/reviewers:col-start-1 @max-2xl/reviewers:row-start-2">
         <div className="flex items-center gap-3">
           <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><AnimatedNumber value={done} /> of {assigned}</NextLink>
+          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><AnimatedNumber value={done} /> of {num(assigned)}</NextLink>
         </div>
         {/* When a person gets through what they have left, at the pace of their last three days: a second line, as a model has for what it couldn't read. */}
         {reviewer.kind === "person" && !reviewer.email && left > 0 && !screening.finishedAt ? (
@@ -544,9 +544,9 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " same vote as the others" : " same vote as the people"}</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
-            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>
+            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of the {num(included)} included it voted on</NextLink>
           ) : (
-            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of {included} included</p>
+            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of the {num(included)} included it voted on</p>
           )
         ) : agrees !== null ? (
           <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">of {compared} papers</p>
@@ -608,7 +608,7 @@ function Agreement({ open }: { open: Open }) {
   const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
-  const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : reviewer.name.split(" ")[0]);
+  const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : firstName(reviewer.name));
 
   return (
     <Section
@@ -884,14 +884,12 @@ type FlowRow = { key: string; label: string; value: number; href?: string; fill:
 
 /** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, the papers screened, and included. Every count above none opens its papers. */
 function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
-  const { screening, papers, votes, settled, counts } = open;
+  const { screening, papers, settled, counts } = open;
   const id = screening.id;
-  const found = screening.sources.reduce((sum, source) => sum + taken(source), 0);
-  const kept = screening.sources.reduce((sum, source) => sum + keptOf(source), 0);
+  const found = foundTotal(screening.sources);
+  const kept = paperTotal(screening.sources);
   const arriving = open.gathering ? kept - papers.length : 0;
-  const tally = new Map<string, number>();
-  for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
-  const reasons = [...tally].sort((a, b) => b[1] - a[1]);
+  const reasons = excludedBy(open);
   const neutral = "bg-foreground/25";
   const steps: Array<{ title: string; total: number; href?: string; rows: FlowRow[] }> = [
     { title: "Found", total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source), href: papersHref(id, { source: source.id }), fill: neutral })) },

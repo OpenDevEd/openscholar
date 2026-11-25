@@ -5,7 +5,7 @@ import type { SourceKind } from "./data";
 
 export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[]; /** The kind it is added as, where that is not its tab's: the whole library sits above its collections. */ kind?: SourceKind };
 
-export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evidenceLibrary" | "saved">, Offer[]> = {
+export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evidenceLibrary" | "saved" | "screening">, Offer[]> = {
   search: [
     { name: "structured pedagogy AND early grade reading", detail: "Searched yesterday", total: 318, filters: ["2010 to 2026", "Articles", "Open access"], questions: ["Does the study report reading outcomes?", "Was the programme delivered by government teachers?"] },
     { name: "teaching at the right level", detail: "Searched 3 days ago", total: 96, filters: ["2015 to 2026"] },
@@ -30,11 +30,6 @@ export const OFFERS: Record<Exclude<SourceKind, "upload" | "pdf" | "dois" | "evi
     { name: "Girls' education, 2020 onwards", detail: "Yours, updated 12 Nov", total: 71 },
     { name: "Methods: cluster trials", detail: "Shared by Kwame Mensah", total: 12 },
     { name: "Empty for now", detail: "Yours, made 3 Nov", total: 0 },
-  ],
-  screening: [
-    { name: "Included in TVET and youth employment", detail: "Finished screening", total: 61 },
-    { name: "Included in Climate adaptation in schools", detail: "Finished screening", total: 29 },
-    { name: "Included in Early childhood development and home visits", detail: "Finished screening", total: 74 },
   ],
   zotero: [
     { name: "My library", detail: "Your Zotero account", total: 934 },

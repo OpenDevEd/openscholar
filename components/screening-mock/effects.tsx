@@ -12,7 +12,7 @@ import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "@/components/screening/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, NOW, RESULT_LABEL, activeReviewers, day, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening } from "./data";
+import { listed, plural, readersOf, firstName, EVERY_LABEL, NOW, RESULT_LABEL, activeReviewers, day, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening } from "./data";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { papersHref } from "./links";
 import { ResultChip } from "./parts";
@@ -29,8 +29,8 @@ export type EffectSection = "name" | "papers" | "new-papers" | "criteria" | "rev
 export type EffectLine = { text: string; kind?: "cost" | "join" | "leave" | "schedule" | "mail" | "reopen" | "held"; credits?: number; each?: boolean; section?: EffectSection };
 
 const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw, held: Lock };
-const n = (count: number, one: string, many: string) => `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
-const names = (list: string[]) => (list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`);
+const n = plural;
+const names = listed;
 
 /** A criterion in quotes, in its own words as the list shows them, cut at a word near 60 letters where it runs longer. */
 export const criterionName = (criterion: Pick<Criterion, "text">) => {
@@ -141,7 +141,7 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
       return own ? [{ id: paper.id, voted: Boolean(own.vote), to: (now.votes[paper.id] ?? []).filter((one) => one.reviewer.kind === "person" && !had.some((old) => old.reviewer.id === one.reviewer.id)).map((one) => one.reviewer.name) }] : [];
     });
     const going = theirs.filter((one) => one.to.length);
-    const first = reviewer.name.split(" ")[0];
+    const first = firstName(reviewer.name);
     if (going.length) {
       const [unvoted, voted] = [going.filter((one) => !one.voted).length, going.filter((one) => one.voted).length];
       const parts = [unvoted ? `${unvoted.toLocaleString("en-GB")} ${reviewer.name} had not voted on` : null, voted ? `${voted.toLocaleString("en-GB")} whose vote from ${first} stops counting` : null].filter(Boolean);
@@ -159,8 +159,8 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
     const [from, to] = [personOf(before.rule.resolver)?.name, personOf(after.rule.resolver)?.name ?? "the person who started it"];
     lines.push({ text: from && !isIds.has(before.rule.resolver) ? `${from} settled conflicts: they go to ${to} from now on` : `Conflicts go to ${to} from now on`, section: "decided" });
   }
-  const people = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person" && !reviewer.email).length;
-  const eachOf = (screening: Screening) => (screening.rule.each === "all" ? people(screening) : Math.min(Number(screening.rule.each), people(screening)));
+  const people = (screening: Screening) => readersOf(screening).people.length;
+  const eachOf = (screening: Screening) => readersOf(screening).each;
   if (before.rule.each !== after.rule.each && eachOf(before) !== eachOf(after) && people(before) === people(after)) {
     const more = eachOf(after) > eachOf(before);
     const changed = now.papers.filter((paper) => was.votes[paper.id] && (now.votes[paper.id]?.length ?? 0) !== was.votes[paper.id]!.length).length;
@@ -182,7 +182,7 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
   for (const criterion of before.criteria) {
     const now = after.criteria.find((one) => one.key === criterion.key);
     if (!now) lines.push({ text: `The models stop answering ${criterionName(criterion)}. Votes people cast stay as they were cast`, kind: "leave", section: "criteria" });
-    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: from now on a no on it excludes a paper. Votes people cast stay as they were cast` : `${criterionName(now)} becomes nice to have and stops excluding papers from now on. Votes people cast stay as they were cast`, section: "criteria" });
+    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: from now on a no on it points to Exclude. Votes people cast stay as they were cast` : `${criterionName(now)} becomes nice to have: from now on a no on it no longer points to Exclude. Votes people cast stay as they were cast`, section: "criteria" });
     else if (now.text !== criterion.text) lines.push({ text: `The models answer the reworded ${criterionName(now)} on papers they read from now on`, section: "criteria" });
     // Guidance changes how the question is read from here on. What was answered under the old guidance is left as it was.
     else if ((now.note ?? "") !== (criterion.note ?? "")) lines.push({ text: `Reviewers and models read ${criterionName(now)} with its ${criterion.note ? "new " : ""}guidance from now on. Answers already given stay`, section: "criteria" });

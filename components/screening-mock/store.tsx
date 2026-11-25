@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { toMapModel, type MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
-import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withReviewer, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
+import { resolves, NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withReviewer, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
 
 type State = {
   screenings: Screening[];
@@ -61,12 +61,12 @@ const settingsOf = (screening: Screening) => JSON.stringify([screening.name, scr
 /** What decides where a paper stands, apart from the votes: its papers, its criteria, who is on it and its rule. A change to any of these holds the settled papers' results. */
 const rulesOf = (screening: Screening) => JSON.stringify([screening.sources, screening.criteria, screening.reviewers.map((one) => [one.id, one.left, one.discarded]), screening.rule.each, screening.rule.settle]);
 
-/** What each model has cost by the time the mock opens: what it has read, at its price. */
+/** What each model has cost by the time the mock opens: the papers it has read, at its price. One it couldn't read is not among them. */
 const withSpent = (screening: Screening): Screening => {
   const models = modelsOf(screening);
   if (!models.length) return screening;
-  const total = standing(screening).papers.length;
-  return { ...screening, spent: Object.fromEntries(models.map((model) => [model.id, Math.min(screening.reached[model.id] ?? 0, total) * paperCredits(model.model!)])) };
+  const state = standing(screening);
+  return { ...screening, spent: Object.fromEntries(models.map((model) => [model.id, state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.vote)).length * paperCredits(model.model!)])) };
 };
 /** The screenings the mock opens with. */
 export const seeded = () => startingScreenings().map(withSpent);
@@ -250,7 +250,7 @@ export function useOpenScreening(id: string) {
     me,
     /** Whether the person looking votes here, may settle a split, and may change the screening. */
     isReviewer: Boolean(reviewer),
-    canResolve: screening.rule.resolver === me || screening.createdBy === me,
+    canResolve: resolves(screening, me),
     /** Its workspace's members change it. Someone it is shared with from outside votes or looks. */
     canChange: access.member,
     /** Its papers are still being fetched from its sources. */
@@ -290,11 +290,10 @@ export function useOpenScreening(id: string) {
     myVote,
     /** Other votes show on a paper that isn't yours to vote on, on one you've voted on, and always where the rule says so. */
     canSee: (paper: Paper) => screening.rule.blind === "always" || !mine(paper) || Boolean(myVote(paper)),
-    /** How many of the papers still waiting each reviewer has yet to vote on. */
-    waitingOn: activeReviewers(screening).map((one) => ({ reviewer: one, papers: state.papers.filter((paper) => state.settled[paper.id]!.result === "waiting" && state.votes[paper.id]!.some((entry) => entry.reviewer.id === one.id && !entry.vote && !entry.failed)).length })).filter((one) => one.papers > 0),
     // A vote on a paper whose result was held lets go of it: the paper stands where its votes put it under the settings as they are now.
+    // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
     vote: (paper: Paper, vote: Vote | null) =>
-      store.update(id, (s) => ({ ...s, kept: letGo(s.kept, paper.id), cast: { ...s.cast, [paper.id]: { ...s.cast[paper.id], [me]: vote } } })),
+      store.update(id, (s) => ({ ...s, kept: letGo(s.kept, paper.id), cast: { ...s.cast, [paper.id]: { ...s.cast[paper.id], [me]: vote?.reason && s.criteria.some((criterion) => criterion.key === vote.reason) ? { ...vote, answers: { ...vote.answers, [vote.reason]: "no" } } : vote } } })),
     resolve: (paper: Paper, decision: Decision | null, note?: string, reason?: string) =>
       store.update(id, (s) => ({ ...s, kept: letGo(s.kept, paper.id), resolved: { ...s.resolved, [paper.id]: decision ? { decision, by: me, ...(note ? { note } : {}), ...(reason ? { reason } : {}) } : null } })),
     update: (fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) => store.update(id, fn, log),

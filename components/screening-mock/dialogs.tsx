@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronRight, Clock, Copy, Download, Info, Lock, X } from "@/components/icons";
+import { ArrowRight, Check, ChevronRight, Clock, Copy, Download, Info, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { Chip } from "@/components/screening/parts";
 import { PickMark } from "@/components/screening/source-row";
@@ -19,10 +19,10 @@ import { HelpFact } from "@/components/ui/help";
 import { ROLE_ICONS } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, keptOf, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, reasonOf, taken, workspaceOf, type Change, type Paper, type Result, type Reviewer, type Screening, lookOf, growing } from "./data";
+import { num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
+import { Help, LinkChip, Panel, SHUT, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
 
 const save = (name: string, type: string, text: string) => {
@@ -32,7 +32,6 @@ const save = (name: string, type: string, text: string) => {
   link.click();
   URL.revokeObjectURL(link.href);
 };
-const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /**
  * Where a change in the activity opens: the papers a check brought, the setting it changed, or the reviewers.
@@ -132,7 +131,7 @@ const SHARE_ROLES: Array<ShareRole<"reviewer" | "viewer">> = [
 export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { open: boolean; onClose: () => void; state: Open; onPromote: (viewer: Reviewer) => void; onDemote: (reviewer: Reviewer) => void }) {
   const { screening } = state;
   const [query, setQuery] = useState("");
-  // What the people added from the field become. A reviewer goes through the same question as Add person.
+  // What the people added from the field become. A reviewer goes through the same question as Add a person.
   const [addAs, setAddAs] = useState<"reviewer" | "viewer">("viewer");
   const workspace = workspaceOf(screening);
   const people = peopleOf(screening);
@@ -150,7 +149,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
           <div className="min-w-0 flex-1">
             <DialogTitle className="flex items-center gap-1 text-base">
               Share this screening
-              <Help title="Reviewer or viewer" facts={screening.rule.blind === "after" ? <HelpFact icon={Lock}>Votes hidden until you vote</HelpFact> : undefined}>
+              <Help title="Reviewer or viewer" facts={screening.rule.blind === "after" ? <HelpFact icon={SHUT.vote.icon}>Votes {SHUT.vote.says.toLowerCase()}</HelpFact> : undefined}>
                 A viewer sees every paper and every vote. A reviewer is dealt papers and votes on them.
               </Help>
             </DialogTitle>
@@ -258,7 +257,7 @@ function flowSvg(rows: FlowRow[]) {
   const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
   const heightOf = (box: FlowBox) => (box.lines?.length ? 57 + box.lines.length * line : 54);
   const draw = (box: FlowBox, x: number, y: number, w: number, max: number) =>
-    `<rect x="${x}" y="${y}" width="${w}" height="${heightOf(box)}" rx="8" fill="#fff" stroke="#999"/><text x="${x + 16}" y="${y + 24}" font-size="13" font-weight="600" fill="#111">${esc(box.title)}</text><text x="${x + 16}" y="${y + 42}" font-size="12" fill="#333">n = ${box.n}</text>${(box.lines ?? []).map((one, k) => `<text x="${x + 16}" y="${y + 62 + k * line}" font-size="11" fill="#444">${esc(cut(one.label, max))} (n = ${one.n})</text>`).join("")}`;
+    `<rect x="${x}" y="${y}" width="${w}" height="${heightOf(box)}" rx="8" fill="#fff" stroke="#999"/><text x="${x + 16}" y="${y + 24}" font-size="13" font-weight="600" fill="#111">${esc(box.title)}</text><text x="${x + 16}" y="${y + 42}" font-size="12" fill="#333">n = ${num(box.n)}</text>${(box.lines ?? []).map((one, k) => `<text x="${x + 16}" y="${y + 62 + k * line}" font-size="11" fill="#444">${esc(cut(one.label, max))} (n = ${one.n})</text>`).join("")}`;
   let y = 20;
   const parts = rows.map((row, i) => {
     const mainH = heightOf(row.main);
@@ -305,14 +304,12 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       ]),
     ].map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
-  const found = screening.sources.reduce((sum, source) => sum + taken(source), 0);
-  const kept = screening.sources.reduce((sum, source) => sum + keptOf(source), 0);
+  const found = foundTotal(screening.sources);
+  const kept = paperTotal(screening.sources);
   // The checks of its sources for new papers, and what those checks found.
   const looks = screening.updates ?? [];
   const later = looks.reduce((sum, look) => sum + look.found, 0);
-  const tally = new Map<string, number>();
-  for (const paper of papers) if (settled[paper.id]!.final === "exclude") { const key = reasonOf(votes[paper.id]!, settled[paper.id]) ?? "other"; tally.set(key, (tally.get(key) ?? 0) + 1); }
-  const reasons = [...tally].sort((a, b) => b[1] - a[1]).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n }));
+  const reasons = excludedBy(state).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n }));
   // What a researcher takes away: the papers settled as included.
   const settledIn: Paper[] = papers.filter((paper) => settled[paper.id]!.final === "include");
   // Your own includes: there before the others have voted too.
@@ -357,26 +354,25 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
     };
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`;
   };
-  const people = peopleOf(screening);
+  const { people, each } = readersOf(screening);
   const models = modelsOf(screening);
   const pair = people.length > 1 ? agreement(people[0]!.id, people[1]!.id, state) : null;
   // Who read each record, said the way a methods section says it.
-  const each = screening.rule.each === "all" ? people.length : Math.min(Number(screening.rule.each), people.length);
-  const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${people[0]!.name})` : people.length === 2 ? `Both human reviewers (${people.map((p) => p.name).join(" and ")})` : `All ${people.length} human reviewers (${people.map((p) => p.name).join(", ")})`) : `${each === 1 ? "One" : "Two"} of the ${people.length} human reviewers (${people.map((p) => p.name).join(", ")})`;
+  const readers = !people.length ? "" : each >= people.length ? (people.length === 1 ? `One human reviewer (${people[0]!.name})` : people.length === 2 ? `Both human reviewers (${people.map((p) => p.name).join(" and ")})` : `All ${people.length} human reviewers (${people.map((p) => p.name).join(", ")})`) : `${numberWord(each)} of the ${people.length} human reviewers (${people.map((p) => p.name).join(", ")})`;
   const unread = count(papers, (paper) => votes[paper.id]!.some((one) => one.failed));
-  const n = (count: number, one: string, many: string) => `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
+  const n = plural;
   // How far every pair of reviewers agreed, people and models: the lowest and the highest kappa.
   const kappas = reviewers.flatMap((a, i) => reviewers.slice(i + 1).flatMap((b) => agreement(a.id, b.id, state)?.kappa ?? [])).sort((a, b) => a - b);
   const lateCriteria = screening.criteria.filter((criterion) => criterion.addedAt > screening.createdAt);
   const methods = [
     openNow ? `Screening was still in progress when this was written: ${(kept - openNow).toLocaleString("en-GB")} of ${kept.toLocaleString("en-GB")} records had been settled.` : "",
-    `Records from ${screening.sources.length} ${screening.sources.length === 1 ? "source" : "sources"} (n = ${found}) were brought into Openscholar. After ${found - kept} duplicates were merged, ${kept} were screened.`,
+    `Records from ${screening.sources.length} ${screening.sources.length === 1 ? "source" : "sources"} (n = ${num(found)}) were brought into Openscholar. After ${num(found - kept)} duplicates were merged, ${num(kept)} were screened.`,
     looks.length ? `${growing(screening).length === screening.sources.length ? "The sources were" : `The ${growing(screening).length} of the ${screening.sources.length} sources that gain records over time (${growing(screening).map((source) => source.name).join("; ")}) were`} searched again ${screening.living ? `${EVERY_LABEL[screening.living.every].toLowerCase()}, ` : ""}${looks.length === 1 ? "once" : `${looks.length} times`} after screening began, most recently on ${day(looks.at(-1)!.at)}; ${later ? `${later} of the records identified came from ${looks.length === 1 ? "that search" : "those searches"}` : "no further records were found"}.` : "",
     screening.criteria.length ? `Each record was assessed on its title and abstract against ${screening.criteria.length} ${screening.criteria.length === 1 ? "criterion" : "criteria"}, ${screening.criteria.filter((c) => c.must).length} of which a record had to meet to be included.` : "Each record was assessed on its title and abstract.",
     readers ? `${readers} voted on each record${screening.rule.blind === "after" ? " without seeing the other votes" : ""}.` : "No human reviewer voted on the records.",
     models.length ? `${models.length === 1 ? "One AI model" : `${models.length} AI models`} (${models.map((m) => m.name).join(", ")}) voted on the records as ${models.length === 1 ? "an additional reviewer" : "additional reviewers"}, giving an answer and a quoted passage for every criterion${unread ? `; ${unread} ${unread === 1 ? "record" : "records"} could not be read by a model and ${unread === 1 ? "was" : "were"} decided by the other reviewers` : ""}.` : "No AI model took part.",
-    screening.rule.settle === "all" ? `A record was settled when all of its reviewers agreed, and disagreements went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}${counts.conflict ? `; ${counts.conflict} ${counts.conflict === 1 ? "was" : "were"} still open` : ""}.` : screening.rule.settle === "most" ? `A record was settled by the majority of its reviewers, and ties went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}.` : "The first vote on a record settled it.",
-    lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: the votes people had cast were kept, the models answered ${lateCriteria.length === 1 ? "it" : "them"} on every record, and records where that changed the outcome went to ${personOf(screening.rule.resolver)?.name ?? "the named reviewer"}.` : "",
+    screening.rule.settle === "all" ? `A record was settled when all of its reviewers agreed, and disagreements went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}${counts.conflict ? `; ${counts.conflict} ${counts.conflict === 1 ? "was" : "were"} still open` : ""}.` : screening.rule.settle === "most" ? `A record was settled by the majority of its reviewers, and records with no majority went to ${personOf(screening.rule.resolver)?.name ?? "a named reviewer"}.` : "The first vote on a record settled it.",
+    lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: the votes people had cast were kept, the models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open, records already settled kept their result, and records where that changed the outcome went to ${personOf(screening.rule.resolver)?.name ?? "the named reviewer"}.` : "",
     pair ? `Agreement between ${people[0]!.name} and ${people[1]!.name} over the ${pair.papers} records both assessed was ${Math.round(pair.same * 100)}% (Cohen's kappa ${pair.kappa.toFixed(2)}).` : "",
     kappas.length > 1 ? `Across all ${reviewers.length} reviewers, pairwise agreement (Cohen's kappa) ranged from ${kappas[0]!.toFixed(2)} to ${kappas.at(-1)!.toFixed(2)}.` : "",
     `${n(counts.include, "study was", "studies were")} included.`,
@@ -394,7 +390,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       ),
     },
     votes: {
-      title: `${n(rows.length, "vote", "votes")} by ${voters} of ${n(reviewers.length, "reviewer", "reviewers")}`,
+      title: `${n(rows.length, "vote", "votes")} by ${n(voters, "reviewer", "reviewers")}`,
       help: (
         <Help title="Every vote" facts={<><HelpFact>CSV opens in Excel or Google Sheets</HelpFact><HelpFact>JSON is for code</HelpFact><HelpFact>A column for each criterion</HelpFact></>}>
           One row for each vote a reviewer cast, with its reason, its note, the answer to each criterion and where the paper stands now.
@@ -538,4 +534,3 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   );
 }
 
-export type { Result };
