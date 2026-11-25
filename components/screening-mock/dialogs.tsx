@@ -425,9 +425,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       <DialogContent className="top-[max(1rem,6dvh)] flex h-[min(44rem,88dvh)] translate-y-0 flex-col gap-0 p-0 sm:max-w-5xl">
         <DialogHeader className="space-y-3 border-b border-border-subtle p-5">
           <DialogTitle>Export</DialogTitle>
-          <DialogDescription className="sr-only">The included papers, every vote, the flow diagram and a methods paragraph</DialogDescription>
+          <DialogDescription className="sr-only">The included papers, every vote, the PRISMA diagram and a methods paragraph</DialogDescription>
           {/* On a phone the four make two rows of two, so none is cut off. */}
-          <Segmented label="What to export" value={tab} onChange={setTab} className="max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[1.375rem] max-sm:*:justify-center" options={[{ id: "papers", label: "Included papers" }, { id: "votes", label: "Every vote" }, { id: "flow", label: "Flow diagram" }, { id: "methods", label: "Methods paragraph" }]} />
+          <Segmented label="What to export" value={tab} onChange={setTab} className="max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[1.375rem] max-sm:*:justify-center" options={[{ id: "papers", label: "Included papers" }, { id: "votes", label: "Every vote" }, { id: "flow", label: "PRISMA" }, { id: "methods", label: "Methods paragraph" }]} />
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           {/* What is taken out now is what stands now: it says so while papers are still open. */}
@@ -503,7 +503,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
               </div>
             ) : tab === "flow" ? (
               // The drawing itself, as it will be saved: what you see is what your co-author gets.
-              <img alt={`Flow diagram: ${flow.map((row) => `${row.main.title}, ${row.main.n}`).join("; ")}`} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`} className="w-full rounded-2xl border border-border-subtle bg-white" />
+              <img alt={`PRISMA diagram: ${flow.map((row) => `${row.main.title}, ${row.main.n}`).join("; ")}`} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`} className="w-full rounded-2xl border border-border-subtle bg-white" />
             ) : (
               <p className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
             )}
