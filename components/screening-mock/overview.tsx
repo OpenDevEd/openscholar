@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
+import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, peopleOf, personOf, questionOf, reasonOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
@@ -221,6 +222,8 @@ function Reviewers({ open }: { open: Open }) {
   const { screening, papers, votes, settled } = open;
   const [{ sort }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
+  // Taking someone off keeps their votes counting. Throwing the votes out is asked for, in the same dialog.
+  const [discard, setDiscard] = useState(false);
   // The person some papers are being moved from, while that is being set up.
   const [moving, setMoving] = useState<string | null>(null);
   const reviewers = activeReviewers(screening);
@@ -272,11 +275,13 @@ function Reviewers({ open }: { open: Open }) {
   ].filter((group) => group.rows.length);
   // Who papers can be moved from: a person with papers left that someone else doesn't have. Where every person reads every paper there is nobody to move one to.
   const takers = rows.filter((row) => row.reviewer.kind === "person" && !row.reviewer.email);
+  const gone = screening.reviewers.filter((one) => one.left && !one.email).map((reviewer) => ({ reviewer, cast: count(papers, (paper) => votes[paper.id]!.some((one) => one.reviewer.id === reviewer.id && one.vote)) }));
   const stillVoting = takers.filter((row) => row.left > 0);
   // Said where there is more than one person: for one alone, their own row says it.
   const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? `Everyone done in about ${daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))}, at this pace` : null;
   const givers = open.canChange && !screening.finishedAt ? takers.filter((row) => row.left > 0 && takers.some((other) => other !== row && open.movable(row.reviewer.id, other.reviewer.id).length)) : [];
-  const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
+  const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now(), ...(discard ? { discarded: Date.now() } : {}) } : one)) });
+  const leavingVotes = leaving ? count(open.papers, (paper) => open.votes[paper.id]!.some((one) => one.reviewer.id === leaving.id && one.vote)) : 0;
   const people = peopleOf(screening).length;
   const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
   // With two reviewers there is one pair, so its figure sits in this section's head instead of a section of its own.
@@ -344,6 +349,23 @@ function Reviewers({ open }: { open: Open }) {
               {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} onMove={givers.includes(row) ? () => setMoving(row.reviewer.id) : undefined} />)}
             </div>
           ))}
+          {/* Whoever was taken off, and what became of their votes: results can rest on votes from someone no longer in the lists above. */}
+          {gone.length ? (
+            <div role="rowgroup" className="divide-y divide-border-subtle border-t border-border-subtle">
+              <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
+                <span role="cell">Taken off <span className="font-normal tabular-nums text-muted-foreground">{gone.length}</span></span>
+              </div>
+              {gone.map(({ reviewer, cast }) => (
+                <div key={reviewer.id} role="row" className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                  <span role="cell" className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="flex opacity-55"><ReviewerMark reviewer={reviewer} className="size-8" /></span>
+                    <span className="min-w-0 truncate font-medium">{reviewer.name}</span>
+                  </span>
+                  <span role="cell" className="shrink-0 text-xs tabular-nums text-muted-foreground">{reviewer.discarded ? "Votes thrown out" : cast ? `${cast.toLocaleString("en-GB")} ${cast === 1 ? "vote still counts" : "votes still count"}` : "Cast no vote"}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nobody votes on these papers yet. Add a person or a model from the row above.</p>
@@ -352,10 +374,20 @@ function Reviewers({ open }: { open: Open }) {
         open={leaving !== null}
         title={leavingMe ? "Leave this screening?" : leaving ? `Take ${leaving.name} off this screening?` : ""}
         confirm={leavingMe ? "Leave" : "Take off"}
-        onClose={() => setLeaving(null)}
+        onClose={() => { setLeaving(null); setDiscard(false); }}
         onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectItems(screening, without(leaving)).filter((line) => line.kind !== "leave").map(lineText), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
       >
         {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} /> : null}
+        {/* Their work stands unless whoever takes them off says otherwise: the votes go only where that is asked for, and what it undoes shows above before it is done. */}
+        {leaving && leavingVotes ? (
+          <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
+            <span className="min-w-0 flex-1">
+              <span className="font-medium">Throw out {leavingMe ? "your" : "their"} {leavingVotes.toLocaleString("en-GB")} {leavingVotes === 1 ? "vote" : "votes"}</span>
+              <span className="block text-xs text-muted-foreground">{discard ? "The votes stay on record and count for nothing. The papers they decided are voted on again." : "Off, the votes go on counting and no paper's result changes."}</span>
+            </span>
+            <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Throw out ${leavingMe ? "your" : "their"} votes`} />
+          </label>
+        ) : null}
       </ConfirmChange>
       {/* Made anew for each move, so it starts from the person it was opened for. */}
       {moving ? <MovePapers key={moving} open={open} people={takers} from={moving} onClose={() => setMoving(null)} /> : null}

@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { toMapModel, type MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
-import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, madeUpReply, waitingQuestions, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
+import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withReviewer, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
 
 type State = {
   screenings: Screening[];
@@ -53,10 +53,13 @@ export function paperCredits(model: MapModel) {
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : Math.ceil(n).toLocaleString("en-GB"));
 
 /** Where the tab keeps the mock's state. The name changes with its shape. */
-export const KEPT = "screening-mock:8";
+export const KEPT = "screening-mock:9";
 
 /** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
 const settingsOf = (screening: Screening) => JSON.stringify([screening.name, screening.question, screening.sources, screening.criteria, screening.reviewers, screening.rule, screening.scoring, screening.destination, screening.living?.every]);
+
+/** What decides where a paper stands, apart from the votes: its papers, its criteria, who is on it and its rule. A change to any of these holds the settled papers' results. */
+const rulesOf = (screening: Screening) => JSON.stringify([screening.sources, screening.criteria, screening.reviewers.map((one) => [one.id, one.left, one.discarded]), screening.rule.each, screening.rule.settle]);
 
 /** What each model has cost by the time the mock opens: what it has read, at its price. */
 const withSpent = (screening: Screening): Screening => {
@@ -118,7 +121,9 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
           drafts: s.drafts[id] && s.screenings.some((one) => one.id === id && settingsOf(fn(one)) !== settingsOf(one)) ? Object.fromEntries(Object.entries(s.drafts).filter(([key]) => key !== id)) : s.drafts,
           screenings: s.screenings.map((one) => {
             if (one.id !== id) return one;
-            const next = fn(one);
+            const made = fn(one);
+            // A change to what decides a paper applies from now on: the papers already settled keep their result, unless the change asks for them to be checked again.
+            const next = made.recheck || rulesOf(made) !== rulesOf(one) ? keep(one, made, now()) : made;
             return log ? { ...next, changes: [...next.changes, { ...log, at: now(), by: s.viewer }] } : next;
           }),
         })),
@@ -170,16 +175,15 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
           const reached = { ...screening.reached };
           const spent = { ...screening.spent };
           let moved = false;
-          const total = standing(screening).papers.length;
-          const step = Math.max(1, Math.ceil(total / 40));
+          const step = Math.max(1, Math.ceil(standing(screening).papers.length / 40));
           for (const reviewer of modelsOf(screening)) {
-            const at = Math.min(reached[reviewer.id] ?? 0, total);
             const each = paperCredits(reviewer.model!);
-            const more = Math.min(step, total - at, each > 0 ? Math.floor(wallet / each) : step);
-            if (more <= 0) continue;
-            reached[reviewer.id] = at + more;
-            wallet -= more * each;
-            spent[reviewer.id] = (spent[reviewer.id] ?? 0) + more * each;
+            // It gets through the next papers in its way, and pays for the ones it reads: a paper settled before it was added is passed over.
+            const next = readNext(screening, reviewer, step, () => (each > 0 ? Math.floor(wallet / each) : Infinity));
+            if (next.reached === (reached[reviewer.id] ?? 0)) continue;
+            reached[reviewer.id] = next.reached;
+            wallet -= next.read * each;
+            spent[reviewer.id] = (spent[reviewer.id] ?? 0) + next.read * each;
             moved = true;
           }
           return moved ? { ...s, wallet, screenings: s.screenings.map((one) => (one.id === screening.id ? { ...one, reached, spent } : one)) } : s;
@@ -196,7 +200,7 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
 }
 
 /** Whether a screening's models still have papers to read, and are free to. */
-export const isReading = (screening: Screening) => !screening.finishedAt && !screening.paused && modelsOf(screening).some((model) => (screening.reached[model.id] ?? 0) < paperTotal(screening.sources));
+export const isReading = (screening: Screening) => !screening.finishedAt && !screening.paused && modelsOf(screening).some((model) => stillReading(screening, model));
 
 export function useMock() {
   const store = use(Context);
@@ -205,6 +209,8 @@ export function useMock() {
 }
 
 export type Open = NonNullable<ReturnType<typeof useOpenScreening>>;
+/** The held results without one paper's. A person lets a paper go by voting on it or settling it. A model reading on never does: a result someone chose to keep is not undone by a model getting to the paper. */
+const letGo = (kept: Screening["kept"], paper: string) => (kept?.[paper] ? Object.fromEntries(Object.entries(kept).filter(([id]) => id !== paper)) : kept);
 
 /**
  * One screening as the person looking at it sees it: where each paper stands, what is
@@ -220,8 +226,7 @@ export function useOpenScreening(id: string) {
   if (!screening || !access || !state) return null;
   const me = store.viewer;
   const reviewer = activeReviewers(screening).find((one) => one.id === me);
-  const index = new Map(state.papers.map((paper, i) => [paper.id, i]));
-  const mine = (paper: Paper) => dealtTo(screening, paper, index.get(paper.id)!).some((one) => one.id === me);
+  const mine = (paper: Paper) => dealtTo(screening, paper).some((one) => one.id === me);
   const myVote = (paper: Paper) => state.votes[paper.id]!.find((one) => one.reviewer.id === me)?.vote;
   const yours = reviewer ? state.papers.filter(mine) : [];
   // A paper that has its final decision waits for nobody: settled by the first vote, or by the person who settles conflicts.
@@ -229,7 +234,7 @@ export function useOpenScreening(id: string) {
   const conflicts = state.papers.filter((paper) => state.settled[paper.id]!.result === "conflict");
   const models = modelsOf(screening);
   // A model still has papers to read, and the credits to read them with or not.
-  const reading = models.filter((model) => (screening.reached[model.id] ?? 0) < state.papers.length);
+  const reading = models.filter((model) => stillReading(screening, model));
   const outOfCredits = !screening.finishedAt && !screening.paused && reading.length > 0 && reading.every((model) => paperCredits(model.model!) > store.wallet);
   const spent = (model: Reviewer) => screening.spent?.[model.id] ?? 0;
   const movable = (fromId: string, toId: string) =>
@@ -238,7 +243,7 @@ export function useOpenScreening(id: string) {
       return !state.settled[paper.id]!.final && cast.some((one) => one.reviewer.id === fromId && !one.vote) && !cast.some((one) => one.reviewer.id === toId);
     });
   /** The most a model can come to: what it has cost, and the papers it has still to read. */
-  const most = (model: Reviewer) => spent(model) + Math.max(0, state.papers.length - (screening.reached[model.id] ?? 0)) * paperCredits(model.model!);
+  const most = (model: Reviewer) => spent(model) + readNext(screening, model, Infinity, () => Infinity).read * paperCredits(model.model!);
   return {
     screening,
     ...state,
@@ -253,7 +258,7 @@ export function useOpenScreening(id: string) {
     /** The screening whose models read before this one's. */
     waitingFor: (() => {
       const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
-      return ahead && isReading(ahead) ? { screening: ahead, done: Math.min(...modelsOf(ahead).map((model) => ahead.reached[model.id] ?? 0)), of: paperTotal(ahead.sources) } : null;
+      return ahead && isReading(ahead) ? { screening: ahead, done: Math.min(...modelsOf(ahead).map((model) => readBy(ahead, model))), of: paperTotal(ahead.sources) } : null;
     })(),
     /** Looks in its sources again now, whoever asks: the papers they gained since the last look join the queue. */
     check: () => store.update(id, (s) => (s.checking || !growing(s).length ? s : { ...s, checking: { done: 0, of: growing(s).length, by: me } })),
@@ -274,7 +279,7 @@ export function useOpenScreening(id: string) {
       store.set({ wallet: Math.max(0, store.wallet - cost) });
     },
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
-    join: () => store.update(id, (s) => ({ ...s, reviewers: [...s.reviewers.filter((one) => one.id !== me), personReviewer(store.me, Date.now())], viewers: s.viewers?.filter((one) => one.id !== me), reached: { ...s.reached, [me]: 0 } }), { what: "Joined as a reviewer" }),
+    join: () => store.update(id, (s) => ({ ...s, ...withReviewer(s, personReviewer(store.me, Date.now())), viewers: s.viewers?.filter((one) => one.id !== me) }), { what: "Joined as a reviewer" }),
     yours,
     toDo,
     conflicts,
@@ -287,10 +292,11 @@ export function useOpenScreening(id: string) {
     canSee: (paper: Paper) => screening.rule.blind === "always" || !mine(paper) || Boolean(myVote(paper)),
     /** How many of the papers still waiting each reviewer has yet to vote on. */
     waitingOn: activeReviewers(screening).map((one) => ({ reviewer: one, papers: state.papers.filter((paper) => state.settled[paper.id]!.result === "waiting" && state.votes[paper.id]!.some((entry) => entry.reviewer.id === one.id && !entry.vote && !entry.failed)).length })).filter((one) => one.papers > 0),
+    // A vote on a paper whose result was held lets go of it: the paper stands where its votes put it under the settings as they are now.
     vote: (paper: Paper, vote: Vote | null) =>
-      store.update(id, (s) => ({ ...s, cast: { ...s.cast, [paper.id]: { ...s.cast[paper.id], [me]: vote } } })),
+      store.update(id, (s) => ({ ...s, kept: letGo(s.kept, paper.id), cast: { ...s.cast, [paper.id]: { ...s.cast[paper.id], [me]: vote } } })),
     resolve: (paper: Paper, decision: Decision | null, note?: string, reason?: string) =>
-      store.update(id, (s) => ({ ...s, resolved: { ...s.resolved, [paper.id]: decision ? { decision, by: me, ...(note ? { note } : {}), ...(reason ? { reason } : {}) } : null } })),
+      store.update(id, (s) => ({ ...s, kept: letGo(s.kept, paper.id), resolved: { ...s.resolved, [paper.id]: decision ? { decision, by: me, ...(note ? { note } : {}), ...(reason ? { reason } : {}) } : null } })),
     update: (fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) => store.update(id, fn, log),
     /** What was said about a paper, oldest first. */
     thread: (paper: Paper) => screening.threads?.[paper.id] ?? [],

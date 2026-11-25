@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
+import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
 import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
@@ -111,7 +111,8 @@ const nameOf = (open: Open, id: string) => open.screening.reviewers.find((one) =
 function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, papers, votes, settled } = open;
   const id = screening.id;
-  const reviewers = activeReviewers(screening);
+  // Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes, so its column and its filter stay.
+  const reviewers = votingReviewers(screening);
   const criteria = screening.criteria;
   // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });

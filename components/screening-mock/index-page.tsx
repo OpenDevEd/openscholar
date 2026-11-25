@@ -22,7 +22,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, stillReading, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
@@ -93,7 +93,7 @@ export function ScreeningsIndex() {
         const forYou = state.papers.filter((paper) => !state.settled[paper.id]!.final && state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
         const conflicts = screening.rule.resolver === me || screening.createdBy === me ? state.counts.conflict : 0;
         const models = modelsOf(screening);
-        const reading = !screening.finishedAt && models.some((model) => (screening.reached[model.id] ?? 0) < state.papers.length);
+        const reading = !screening.finishedAt && models.some((model) => stillReading(screening, model));
         const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
         // What its models are doing, where they still have papers to read.
         const held = screening.checking ? ("checking" as const) : !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!) > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : ("reading" as const);

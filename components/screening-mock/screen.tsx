@@ -1086,7 +1086,8 @@ function Face({ reviewer, vote, failed, you, kept, criteria, named }: { reviewer
       <TooltipHint label={you ? `${reviewer.name}, you` : reviewer.name}>
         <PopoverTrigger asChild>
           <button type="button" aria-label={`${reviewer.name}${you ? ", you" : ""}: their vote`} className="mx-auto flex max-w-full flex-col items-center gap-1 self-start rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
-            <ReviewerMark reviewer={reviewer} you={you} />
+            {/* Dimmed for someone taken off the screening, whose vote on this paper still counts. */}
+            <span className={cn("flex", reviewer.left && "opacity-55")}><ReviewerMark reviewer={reviewer} you={you} /></span>
             {/* A person by their first name, a model by its own, on two lines at most. */}
             {/* The clamp sets its own display, so what hides the name is a box around it. */}
             <span aria-hidden className={cn("hidden max-w-full", named)}><span className={cn("text-center text-2xs leading-3 text-muted-foreground line-clamp-2", you && "font-medium text-foreground")}>{you ? "You" : reviewer.kind === "person" && !reviewer.email ? reviewer.name.split(" ")[0] : reviewer.name}</span></span>

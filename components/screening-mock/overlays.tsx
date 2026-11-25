@@ -9,7 +9,7 @@ import NextLink from "next/link";
 import { Coins, GitCompare, Hourglass } from "@/components/icons";
 import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
-import type { Reviewer, Screening } from "./data";
+import { projected, readNext, withReviewer, type Reviewer, type Screening } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
 import { EffectList, collectionName, effectLines, effectMoves, movesText } from "./effects";
 import { papersHref, settingsHref } from "./links";
@@ -42,12 +42,12 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const close = () => { setOver(null); setAdding(null); setDemoting(null); onClosed?.(); };
   const unsettled = state.counts.conflict + state.counts.waiting;
   const collection = collectionName(screening);
-  const withAdded = (reviewer: Reviewer): Screening => ({
-    ...screening,
-    reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), reviewer],
-    viewers: screening.viewers?.filter((one) => one.id !== reviewer.id),
-    reached: { ...screening.reached, [reviewer.id]: 0 },
-  });
+  const withAdded = (reviewer: Reviewer): Screening => ({ ...screening, ...withReviewer(screening, reviewer), viewers: screening.viewers?.filter((one) => one.id !== reviewer.id) });
+  // What a model put on the screening still has to read, as adding it would leave things: the open papers it hasn't read, fewer when it comes back with votes it had cast.
+  const toRead = (model: Reviewer) => {
+    const next = projected(screening, withAdded(model));
+    return readNext(next, next.reviewers.find((one) => one.id === model.id)!, Infinity, () => Infinity).read;
+  };
   const demoted = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)), viewers: [...(screening.viewers ?? []), { ...reviewer, left: undefined }] });
 
   const overlays = (
@@ -113,7 +113,8 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
               // Here nothing is saved apart from the adding itself.
               <EffectList lines={effectLines(screening, withAdded(adding)).map((line) => line.replace("as soon as this is saved", "as soon as it is added"))} moves={effectMoves(screening, withAdded(adding))} />
             )}
-            {adding.model ? <Credits model={adding.model} papers={state.papers.length} wallet={store.wallet} onAddCredits={() => { store.set({ wallet: store.wallet + 20_000 }); close(); }} /> : null}
+            {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
+            {adding.model ? <Credits model={adding.model} papers={toRead(adding)} wallet={store.wallet} onAddCredits={() => { store.set({ wallet: store.wallet + 20_000 }); close(); }} /> : null}
           </>
         ) : null}
       </ConfirmChange>

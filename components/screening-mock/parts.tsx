@@ -225,11 +225,13 @@ export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
 }
 
 /** A reviewer's name with what kind of reviewer it is: You after your own, AI after a model's. One marker, the same on every page. */
-export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name">; you?: boolean; className?: string }) {
+export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name"> & { left?: number }; you?: boolean; className?: string }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       <span className="truncate">{reviewer.name}</span>
       {you ? <YouTag /> : reviewer.kind === "model" ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">AI</span> : null}
+      {/* Someone taken off the screening whose vote still stands on this paper: said beside their name, so nobody looks for them among the reviewers. */}
+      {reviewer.left ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">Taken off</span> : null}
     </span>
   );
 }

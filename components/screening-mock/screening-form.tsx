@@ -4,7 +4,7 @@
 // decided and where the included ones go. A new screening starts from it, and a running or finished
 // one is changed with the same form, which says what each change will do before it is saved.
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,8 +34,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
-import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, scoringChanged, type EffectLine, type EffectSection } from "./effects";
+import { DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
+import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
@@ -58,6 +58,17 @@ const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = 
 const iconOf = (kind: SourceKind): AppIcon => (kind === "upload" || kind === "pdf" ? FileText : kind === "dois" ? Hash : SOURCE_ICON[kind]);
 const OFFER_PAGE = 5;
 const hashOf = (text: string) => [...text].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
+/**
+ * What happened on a running screening while its settings were open, which a save keeps: the votes, how far each
+ * model has read, what was settled, the results held and let go, the papers moved between reviewers, the places of
+ * papers that came in, and what was said about a paper. A model the draft starts over, after its votes were thrown
+ * out, keeps that fresh start. The preview and the save both read this, so they agree.
+ */
+const live = (draft: Screening, now: Screening) => {
+  const over = draft.reviewers.filter((one) => one.kind === "model" && !one.discarded && now.reviewers.some((was) => was.id === one.id && was.discarded));
+  return { reached: { ...draft.reached, ...now.reached, ...Object.fromEntries(over.map((one) => [one.id, draft.reached[one.id] ?? 0])) }, cast: now.cast, resolved: now.resolved, kept: now.kept, placed: now.placed, started: now.started, moved: now.moved, threads: now.threads };
+};
+const withLive = (draft: Screening, now: Screening): Screening => ({ ...draft, ...live(draft, now) });
 const nextSlot = (sources: Source[]) => Math.max(-1, ...sources.map((source) => source.slot)) + 1;
 const sourceId = (sources: Source[], name: string) => `src-${nextSlot(sources)}-${hashOf(name) % 1000}`;
 const slugOf = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -273,14 +284,32 @@ export function ScreeningForm({ id }: { id?: string }) {
   const found = draft.sources.reduce((sum, source) => sum + taken(source), 0);
   const papers = paperTotal(draft.sources);
   const each = draft.rule.each === "all" ? joined.length : Math.min(Number(draft.rule.each), joined.length);
-  // What each model has still to read: all of it for a new screening, what is left for a running one.
-  const due = (model: Reviewer) => paperCredits(model.model!) * Math.max(0, papers - (saved && saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached[model.id] ?? 0, papers) : 0));
-  // A criterion added to a running screening is answered on the papers already read, which is paid for again.
-  const reread = saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)) ? models.reduce((sum, model) => sum + (saved.reviewers.some((one) => one.id === model.id && !one.left) ? Math.min(saved.reached[model.id] ?? 0, papers) * paperCredits(model.model!) : 0), 0) : 0;
+  // The running screening as a save would leave it: the papers that were settled held as they are, unless the change asks for them to be checked again.
+  const merged = useMemo(() => (saved ? withLive(draft, saved) : draft), [draft, saved]);
+  const held = saved ? projected(saved, merged) : null;
+  // What each person reads. A new screening shares all of it out evenly. A running one says what a save would leave each person with: settled papers take nobody new, so the loads can differ.
+  const share = (() => {
+    if (!joined.length) return undefined;
+    if (!held && joined.length === 1) return `${joined[0]!.id === store.viewer ? "You read" : `${joined[0]!.name.split(" ")[0]} reads`} every paper`;
+    if (!held) return `About ${Math.ceil((papers * each) / joined.length).toLocaleString("en-GB")} papers for each person`;
+    const state = standing(held);
+    const loads = joined.map((person) => state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === person.id)).length);
+    const [least, most] = [Math.min(...loads), Math.max(...loads)];
+    return most - least <= 2 ? `About ${most.toLocaleString("en-GB")} papers for each person` : `${least.toLocaleString("en-GB")} to ${most.toLocaleString("en-GB")} papers for each person`;
+  })();
+  // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
+  const ahead = (model: Reviewer) => (held ? readNext(held, model, Infinity, () => Infinity).read : papers);
+  const due = (model: Reviewer) => paperCredits(model.model!) * ahead(model);
+  // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
+  const added = Boolean(saved && draft.criteria.some((criterion) => !saved.criteria.some((one) => one.key === criterion.key)));
+  const atOnce = (model: Reviewer) => (held && saved ? (added ? rereads(held, model) : readsAgain(saved, held, model)) * paperCredits(model.model!) : 0);
+  const reread = models.reduce((sum, model) => sum + atOnce(model), 0);
+  // How many settled papers the change would move if they were checked again. They keep their result unless that is asked for.
+  const again = saved ? recheckable(saved, merged) : 0;
   const cost = models.reduce((sum, model) => sum + due(model), 0) + reread;
   const perNew = models.reduce((sum, model) => sum + paperCredits(model.model!), 0);
-  const lines = saved ? effectItems(saved, draft) : [];
-  const moves = saved ? effectMoves(saved, draft) : [];
+  const lines = saved ? effectItems(saved, merged) : [];
+  const moves = saved ? effectMoves(saved, merged) : [];
   // A model answers criteria: with none it would include every paper it reads.
   const needsCriteria = models.length > 0 && draft.criteria.length === 0;
   const lastCheck = saved?.updates?.findLast((update) => update.added > 0);
@@ -375,12 +404,14 @@ export function ScreeningForm({ id }: { id?: string }) {
   const addReviewer = (reviewer: Reviewer) =>
     setDraft((d) => {
       // Someone taken off and put back counts again from where they were.
-      const reviewers = d.reviewers.some((one) => one.id === reviewer.id) ? d.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: undefined } : one)) : [...d.reviewers, { ...reviewer, addedAt: fresh ? d.createdAt : Date.now() }];
+      // Someone put back on keeps the votes they cast and their place in the reading. A model whose votes were thrown out starts its reading over.
+      const startsOver = d.reviewers.some((one) => one.id === reviewer.id && one.kind === "model" && one.discarded);
+      const reviewers = d.reviewers.some((one) => one.id === reviewer.id) ? d.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: undefined, ...(startsOver ? { discarded: undefined, skips: undefined } : {}) } : one)) : [...d.reviewers, { ...reviewer, addedAt: fresh ? d.createdAt : Date.now() }];
       const here = reviewers.filter((one) => !one.left && one.kind === "person" && !one.email).length;
       return {
         ...d,
         reviewers,
-        reached: { [reviewer.id]: 0, ...d.reached },
+        reached: startsOver ? { ...d.reached, [reviewer.id]: 0 } : { [reviewer.id]: 0, ...d.reached },
         // Two people on every paper is how a review is usually screened: a new screening takes that up when its second person is added.
         ...(fresh && reviewer.kind === "person" && !reviewer.email && here === 2 && d.rule.each === "1" ? { rule: { ...d.rule, each: "2" as const } } : {}),
       };
@@ -433,6 +464,8 @@ export function ScreeningForm({ id }: { id?: string }) {
       theme: draft.theme ?? themeFor(`${name} ${draft.question} ${draft.sources.map((source) => source.name).join(" ")}`),
       reviewers: draft.reviewers.map((reviewer) => ({ ...reviewer, addedAt: at })),
       reached: Object.fromEntries(draft.reviewers.map((reviewer) => [reviewer.id, 0])),
+      // How it starts: papers are first dealt among these people, so many to a paper, under these criteria.
+      started: { people: draft.reviewers.filter((reviewer) => reviewer.kind === "person" && !reviewer.email).map((reviewer) => reviewer.id), each: draft.rule.each, criteria: draft.criteria, sources: draft.sources.map(asStarted) },
       // Papers from a search, a community or a reference manager are fetched once it starts; the rest are to hand.
       ...(draft.sources.some((source) => ["search", "evidenceLibrary", "zotero", "dois"].includes(source.kind)) ? { gathered: 0 } : {}),
       ...(busy && models.length ? { after: busy.id } : {}),
@@ -445,9 +478,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   };
   const save = () => {
     if (!saved || !id) return;
-    // Models answer a new criterion on the papers they have read, and that reading is paid for.
-    const had = new Set(saved.criteria.map((criterion) => criterion.key));
-    const again = draft.criteria.some((criterion) => !had.has(criterion.key)) ? models.filter((model) => saved.reviewers.some((one) => one.id === model.id && !one.left)).map((model) => ({ id: model.id, cost: Math.min(saved.reached[model.id] ?? 0, papers) * paperCredits(model.model!) })) : [];
+    // What the models read at once is paid for at once.
+    const again = models.map((model) => ({ id: model.id, cost: atOnce(model) })).filter((one) => one.cost);
     const reopens = lines.some((line) => line.kind === "reopen");
     store.update(
       id,
@@ -455,12 +487,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         ...draft,
         // A second collection started here is the screening's own once saved, under the name it shows.
         ...(draft.destination.collection === ANOTHER_COLLECTION ? { destination: { ...draft.destination, name: collectionName(draft)!, collection: undefined } } : {}),
-        reached: { ...draft.reached, ...now.reached },
-        // What happened on the screening while the draft was open stays: the votes, what was settled, the papers moved between reviewers and what was said about a paper.
-        cast: now.cast,
-        resolved: now.resolved,
-        moved: now.moved,
-        threads: now.threads,
+        ...live(draft, now),
         changes: now.changes,
         spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
         updates: now.updates,
@@ -1046,7 +1073,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               <AnimatePresence initial={false}>
                 {[...reviewerRows.filter(({ reviewer }) => reviewer.kind === "person"), ...reviewerRows.filter(({ reviewer }) => reviewer.kind === "model")].map(({ reviewer, gone }) => {
                   const votes = wasOn(reviewer) || gone ? votesOf(reviewer) : 0;
-                  const left = Math.max(0, papers - (wasOn(reviewer) ? Math.min(saved?.reached[reviewer.id] ?? 0, papers) : 0));
+                  const left = reviewer.kind === "model" ? ahead(reviewer) : Math.max(0, papers - (wasOn(reviewer) ? Math.min(saved?.reached[reviewer.id] ?? 0, papers) : 0));
                   return (
                     <ReviewerRow
                       key={reviewer.id}
@@ -1102,11 +1129,10 @@ export function ScreeningForm({ id }: { id?: string }) {
             help={<><Help title="How a paper is decided" facts={<><HelpFact icon={Check}><Named name="Votes agree">Settled</Named></HelpFact><HelpFact icon={GitCompare}><Named name="Votes split">In conflict</Named></HelpFact></>}>Every vote on a paper goes into this rule. When the votes agree as the rule asks, the paper is settled. When they split, it is in conflict, and one person settles it.</Help>{changed("decided")}</>}
           >
             <div className={cn(LIST, "bg-card")}>
-              <RuleRow name="People on each paper" help={<Help title="People on each paper" facts={<HelpFact>Models read every paper</HelpFact>}>Every model reads every paper. This sets how many people vote on each one. The papers are shared out so each person reads about the same number.</Help>} detail={joined.length ? `About ${Math.ceil((papers * each) / joined.length).toLocaleString("en-GB")} papers for each person` : undefined}>
-                {joined.length === 1 ? (
-                  <Chip>{joined[0]!.id === store.viewer ? "You read" : `${joined[0]!.name.split(" ")[0]} reads`} every paper</Chip>
-                ) : joined.length ? (
-                  <Segmented label="People on each paper" value={joined.length === 1 || (joined.length === 2 && draft.rule.each === "2") ? "all" : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[{ id: "1" as const, label: "One" }, ...(joined.length > 1 ? [{ id: "2" as const, label: "Two" }] : []), { id: "all" as const, label: joined.length > 2 ? `All ${joined.length}` : joined.length === 2 ? "Both" : "The one" }].filter((option, i, all) => all.findIndex((one) => one.label === option.label) === i && !(joined.length === 2 && option.id === "2") && !(joined.length === 1 && option.id === "1"))} />
+              <RuleRow name="People on each paper" help={<Help title="People on each paper" facts={<><HelpFact>Models read every paper</HelpFact><HelpFact>Everyone includes whoever joins later</HelpFact></>}>Every model reads every paper. This sets how many people vote on each one. The papers are shared out so each person reads about the same number. A number stays that number when the team grows. Everyone means every person on the screening, then and later.</Help>} detail={share}>
+                {joined.length ? (
+                  // Every number up to the team's size, then Everyone, which is its own choice: it goes on meaning everyone when someone joins, where a number stays that number. One person alone can choose it too, for whoever joins later.
+                  <Segmented label="People on each paper" value={draft.rule.each !== "all" && Number(draft.rule.each) > joined.length ? (String(joined.length) as Screening["rule"]["each"]) : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[...Array.from({ length: joined.length }, (_, k) => ({ id: String(k + 1) as Screening["rule"]["each"], label: String(k + 1) })), { id: "all" as const, label: "Everyone" }]} />
                 ) : <span className="text-sm text-muted-foreground">Add a person to choose</span>}
               </RuleRow>
               <RuleRow name="A paper is settled when" help={<Help title="Settling a paper">Every reviewer given a paper has one vote, a model as much as a person. All agree: any split vote is a conflict. Most agree: more than half on one side settles it, and an even split is a conflict. One has voted: the first vote decides.</Help>}>
@@ -1187,6 +1213,16 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? "What saving does" : "What the save did"}</p>
                       <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} screening={saved?.id} jump />
+                      {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
+                      {dirty && (again > 0 || draft.recheck) ? (
+                        <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
+                          <span className="min-w-0 flex-1">
+                            <span className="font-medium">Check the settled papers again</span>
+                            <span className="block text-xs text-muted-foreground">{draft.recheck ? "Every settled paper is checked under the new settings. The ones listed above get another result." : `${again.toLocaleString("en-GB")} settled ${again === 1 ? "paper" : "papers"} would get another result under the new settings. ${again === 1 ? "It keeps its" : "They keep their"} result unless you turn this on.`}</span>
+                          </span>
+                          <Switch checked={Boolean(draft.recheck)} onCheckedChange={(on) => set({ recheck: on || undefined })} aria-label="Check the settled papers again" />
+                        </label>
+                      ) : null}
                     </div>
                   </>
                 ) : (
@@ -1246,7 +1282,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? `${credits(due(model))} credits` : fresh ? <span className="text-muted-foreground">Free</span> : null}</span>
                   </JumpLink>
                 ))}
-                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">Answering the new criterion on papers already read</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
+                {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? "Answering the new criterion on papers already read" : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? "Total, at most" : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                 <div role="img" aria-label={cost > wallet ? `${credits(cost - wallet)} credits more than the workspace has` : `Share of the workspace's credits: ${Math.round((cost / Math.max(wallet, 1)) * 100)}%`}>
                   <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />

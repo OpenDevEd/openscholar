@@ -8,11 +8,11 @@ import { EASE } from "@/components/settings/model-map";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 import NextLink from "next/link";
-import { ArrowRight, ChevronDown, Coins, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
+import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "@/components/screening/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, NOW, RESULT_LABEL, activeReviewers, day, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, standing, type Criterion, type Move, type Screening } from "./data";
+import { EVERY_LABEL, NOW, RESULT_LABEL, activeReviewers, day, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening } from "./data";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { papersHref } from "./links";
 import { ResultChip } from "./parts";
@@ -22,12 +22,13 @@ import { credits, paperCredits } from "./store";
 export type EffectSection = "name" | "papers" | "new-papers" | "criteria" | "reviewers" | "decided" | "goes-to";
 /**
  * One thing a change does. `kind` gives it its icon: what it costs, who joins, votes that stop
- * counting, the schedule, an email that goes out, or a screening that opens again. `credits` is
- * shown in a chip at the line's end, `each` when it is paid for every new paper.
+ * counting, the schedule, an email that goes out, a screening that opens again, or results that
+ * are held as they are. `credits` is shown in a chip at the line's end, `each` when it is paid for
+ * every new paper.
  */
-export type EffectLine = { text: string; kind?: "cost" | "join" | "leave" | "schedule" | "mail" | "reopen"; credits?: number; each?: boolean; section?: EffectSection };
+export type EffectLine = { text: string; kind?: "cost" | "join" | "leave" | "schedule" | "mail" | "reopen" | "held"; credits?: number; each?: boolean; section?: EffectSection };
 
-const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw };
+const KIND_ICON: Record<NonNullable<EffectLine["kind"]>, AppIcon> = { cost: Coins, join: UserPlus, leave: Minus, schedule: RefreshCw, mail: Mail, reopen: RotateCcw, held: Lock };
 const n = (count: number, one: string, many: string) => `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
 const names = (list: string[]) => (list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`);
 
@@ -95,11 +96,13 @@ export function scoringChanged(before: Screening, after: Screening) {
 }
 
 /** Each thing a change does besides moving results, in the order a person checks them. */
-export function effectItems(before: Screening, after: Screening): EffectLine[] {
+export function effectItems(before: Screening, raw: Screening): EffectLine[] {
   const lines: EffectLine[] = [];
+  // As a save leaves it: the papers that were settled keep their result, unless the change asks for them to be checked again.
+  const after = projected(before, raw);
   const [was, now] = [standing(before), standing(after)];
   const total = now.papers.length;
-  const effect = effectOf(before, after);
+  const effect = effectOf(before, raw);
   const wasIds = new Set(activeReviewers(before).map((reviewer) => reviewer.id));
   const isIds = new Set(activeReviewers(after).map((reviewer) => reviewer.id));
 
@@ -109,11 +112,15 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
 
   const joining = activeReviewers(after).filter((reviewer) => !wasIds.has(reviewer.id));
   for (const reviewer of joining) {
-    if (reviewer.kind === "model") lines.push({ text: `${reviewer.name} reads all ${n(total, "paper", "papers")} ${after.paused ? "once the models resume" : "as soon as this is saved"}`, kind: "cost", credits: total * paperCredits(reviewer.model!), section: "reviewers" });
+    if (reviewer.kind === "model") {
+      // It reads the papers still open. One that was settled before it came is not read again, and is not paid for.
+      const reads = readNext(after, reviewer, Infinity, () => Infinity).read;
+      lines.push({ text: `${reviewer.name} reads ${reads === total ? `all ${n(total, "paper", "papers")}` : `the ${n(reads, "paper", "papers")} not settled yet`} ${after.paused ? "once the models resume" : "as soon as this is saved"}`, kind: "cost", credits: reads * paperCredits(reviewer.model!), section: "reviewers" });
+    }
     else if (reviewer.email) lines.push({ text: `${reviewer.name} gets an invitation by email, and papers once they join`, kind: "mail", section: "reviewers" });
     else {
-      const dealt = now.papers.filter((paper, index) => dealtTo(after, paper, index).some((one) => one.id === reviewer.id)).length;
-      lines.push({ text: dealt ? `${reviewer.name} is dealt ${n(dealt, "paper", "papers")} nobody has voted on yet, and is told by email` : `${reviewer.name} joins with no paper left to deal, and is told by email`, kind: "join", section: "reviewers" });
+      const dealt = now.papers.filter((paper) => !now.settled[paper.id]!.final && dealtTo(after, paper).some((one) => one.id === reviewer.id)).length;
+      lines.push({ text: dealt ? `${reviewer.name} is dealt ${n(dealt, "paper", "papers")} that still ${dealt === 1 ? "waits" : "wait"} for a vote, an even share of what is left, and is told by email` : `${reviewer.name} joins with no paper left to deal, and is told by email`, kind: "join", section: "reviewers" });
     }
   }
   if (joining.length && wasIds.size) {
@@ -122,7 +129,10 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;
-    lines.push({ text: `${reviewer.name}'s votes stay on record and stop counting`, kind: "leave", section: "reviewers" });
+    const cast = was.papers.filter((paper) => was.votes[paper.id]!.some((one) => one.reviewer.id === reviewer.id && one.vote)).length;
+    // Thrown out by this change, not by an earlier one: votes cast since an earlier one count.
+    const thrown = after.reviewers.some((one) => one.id === reviewer.id && one.discarded && one.discarded !== reviewer.discarded);
+    lines.push(!cast ? { text: `${reviewer.name} has cast no vote`, section: "reviewers" } : thrown ? { text: `${reviewer.name}'s ${n(cast, "vote stays", "votes stay")} on record and ${cast === 1 ? "stops" : "stop"} counting`, kind: "leave", section: "reviewers" } : { text: `${reviewer.name}'s ${n(cast, "vote keeps", "votes keep")} counting`, kind: "held", section: "reviewers" });
     if (reviewer.kind !== "person") continue;
     // Every paper dealt to them, and who is dealt it now in their place. Whoever takes one starts without a vote on it, whether or not they had voted.
     const theirs = was.papers.flatMap((paper) => {
@@ -135,7 +145,8 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
     if (going.length) {
       const [unvoted, voted] = [going.filter((one) => !one.voted).length, going.filter((one) => one.voted).length];
       const parts = [unvoted ? `${unvoted.toLocaleString("en-GB")} ${reviewer.name} had not voted on` : null, voted ? `${voted.toLocaleString("en-GB")} whose vote from ${first} stops counting` : null].filter(Boolean);
-      lines.push({ text: `${n(going.length, "paper goes", "papers go")} to ${names([...new Set(going.flatMap((one) => one.to))])}: ${parts.join(", and ")}`, kind: "join", section: "reviewers" });
+      const takers = names([...new Set(going.flatMap((one) => one.to))]);
+      lines.push({ text: voted ? `${n(going.length, "paper goes", "papers go")} to ${takers}: ${parts.join(", and ")}` : `The ${n(unvoted, "paper", "papers")} ${reviewer.name} had not voted on ${unvoted === 1 ? "goes" : "go"} to ${takers}`, kind: "join", section: "reviewers" });
     }
     // The ones nobody takes over: settled where the votes that remain meet the rule, and still waiting where they don't.
     const kept = theirs.filter((one) => !one.to.length && !one.voted);
@@ -154,7 +165,10 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
     const more = eachOf(after) > eachOf(before);
     const changed = now.papers.filter((paper) => was.votes[paper.id] && (now.votes[paper.id]?.length ?? 0) !== was.votes[paper.id]!.length).length;
     const diff = Math.abs(eachOf(after) - eachOf(before));
-    lines.push({ text: `Each paper goes to ${n(eachOf(after), "person", "people")}${changed ? `: ${n(changed, "paper is", "papers are")} dealt to ${diff === 1 ? "one" : diff} ${more ? "more" : "fewer"} ${diff === 1 ? "person" : "people"}` : ""}`, kind: more ? "join" : undefined, section: "decided" });
+    lines.push({ text: `From now on each paper goes to ${after.rule.each === "all" ? `everyone on the screening, ${n(eachOf(after), "person", "people")} today` : n(eachOf(after), "person", "people")}${changed ? `. ${n(changed, "paper", "papers")} still open ${more ? `${changed === 1 ? "gets" : "get"} ${diff === 1 ? "one more person" : `up to ${diff} more people`}` : `${changed === 1 ? "needs" : "need"} fewer votes`}` : ""}. Votes already cast stay as they are`, kind: more ? "join" : undefined, section: "decided" });
+  } else if (before.rule.each !== after.rule.each && people(before) === people(after) && (before.rule.each === "all" || after.rule.each === "all")) {
+    // The same number today, and another rule for whoever joins later.
+    lines.push({ text: after.rule.each === "all" ? `Each paper still goes to ${n(eachOf(after), "person", "people")} today. Anyone added later joins every paper that is still open` : `Each paper still goes to ${n(eachOf(after), "person", "people")}. Anyone added later takes an even share of the open papers, not every one`, section: "decided" });
   }
   if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? "Everyone sees every vote as it is cast" : "People see a paper's votes once they have cast theirs", section: "decided" });
 
@@ -167,8 +181,8 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
   }
   for (const criterion of before.criteria) {
     const now = after.criteria.find((one) => one.key === criterion.key);
-    if (!now) lines.push({ text: `Answers to ${criterionName(criterion)} stop counting`, kind: "leave", section: "criteria" });
-    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: a no on it excludes a paper` : `${criterionName(now)} becomes nice to have and stops excluding papers`, section: "criteria" });
+    if (!now) lines.push({ text: `The models stop answering ${criterionName(criterion)}. Votes people cast stay as they were cast`, kind: "leave", section: "criteria" });
+    else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: from now on a no on it excludes a paper. Votes people cast stay as they were cast` : `${criterionName(now)} becomes nice to have and stops excluding papers from now on. Votes people cast stay as they were cast`, section: "criteria" });
     else if (now.text !== criterion.text) lines.push({ text: `The models answer the reworded ${criterionName(now)} on papers they read from now on`, section: "criteria" });
     // Guidance changes how the question is read from here on. What was answered under the old guidance is left as it was.
     else if ((now.note ?? "") !== (criterion.note ?? "")) lines.push({ text: `Reviewers and models read ${criterionName(now)} with its ${criterion.note ? "new " : ""}guidance from now on. Answers already given stay`, section: "criteria" });
@@ -204,11 +218,13 @@ export const effectLines = (before: Screening, after: Screening) => effectItems(
 /** One line as a sentence, its credits said in words. */
 export const lineText = (line: EffectLine) => (line.credits ? `${line.text}, for up to ${credits(line.credits)} credits${line.each ? " each" : ""}` : line.text);
 
-/** What it costs for the models to answer new criteria on the papers they have already read. */
-export const rereadCost = (screening: Screening) => {
-  const total = standing(screening).papers.length;
-  return modelsOf(screening).reduce((sum, model) => sum + Math.min(screening.reached[model.id] ?? 0, total) * paperCredits(model.model!), 0);
+/** How many papers a model answers a new criterion on: the ones it has read that are still open. A paper whose result is held, or that a person settled, is not read again. */
+export const rereads = (screening: Screening, model: Reviewer) => {
+  const state = standing(screening);
+  return state.papers.filter((paper) => !screening.kept?.[paper.id] && !screening.resolved[paper.id] && state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.vote)).length;
 };
+/** What that costs, for all its models. The preview and the save both charge this. */
+export const rereadCost = (screening: Screening) => modelsOf(screening).reduce((sum, model) => sum + rereads(screening, model) * paperCredits(model.model!), 0);
 
 /** The results a change moves: so many papers from one result to another. */
 export const effectMoves = (before: Screening, after: Screening) => effectOf(before, after).moves;

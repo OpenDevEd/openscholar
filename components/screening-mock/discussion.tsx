@@ -32,13 +32,13 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   const field = useRef<HTMLTextAreaElement>(null);
   const me = open.me;
   const last = said.at(-1);
-  // Who can be asked: the people who vote on this paper, and the person who settles its conflicts.
-  const people = [...new Set([...open.votes[paper.id]!.filter((one) => one.reviewer.kind === "person" && !one.reviewer.email).map((one) => one.reviewer.id), open.screening.rule.resolver])].filter((id) => id !== me).flatMap((id) => personOf(id) ?? []);
+  // Who can be asked: the people still on the screening who vote on this paper, and the person who settles its conflicts. Someone taken off keeps their vote here and can't be asked about it.
+  const people = [...new Set([...open.votes[paper.id]!.filter((one) => one.reviewer.kind === "person" && !one.reviewer.email && !one.reviewer.left).map((one) => one.reviewer.id), open.screening.rule.resolver])].filter((id) => id !== me).flatMap((id) => personOf(id) ?? []);
   const to = people.find((one) => one.id === asking) ?? null;
   // A question that waits for the person looking is answered to whoever asked it. One that waits for someone else is named in the corner, whoever has written since.
   const waiting = waitingQuestions(said);
   const mine = waiting.findLast((question) => question.to === me);
-  const theirs = waiting.findLast((question) => question.to !== me);
+  const theirs = waiting.findLast((question) => question.to !== me && open.screening.reviewers.some((one) => one.id === question.to && !one.left));
   const owed = mine ? personOf(mine.by) : undefined;
   const waitingFor = theirs ? personOf(theirs.to!) : undefined;
   const maySay = open.isReviewer || open.canResolve;

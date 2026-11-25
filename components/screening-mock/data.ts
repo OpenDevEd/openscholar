@@ -51,8 +51,9 @@ export const workspaceOf = (screening: Pick<Screening, "workspace">) => WORKSPAC
 
 /**
  * Someone or something that votes: a person, a person invited by email who has no account yet,
- * or a model at one reasoning effort. A reviewer taken off a screening keeps their votes on record
- * (`left`), and they stop counting.
+ * or a model at one reasoning effort. A reviewer taken off a screening (`left`) keeps the votes they
+ * cast, and those go on counting: taking someone off never undoes their work. Their votes stop
+ * counting only where whoever took them off asked for that (`discarded`).
  */
 export type Reviewer = {
   id: string;
@@ -63,6 +64,10 @@ export type Reviewer = {
   model?: MapModel;
   addedAt: number;
   left?: number;
+  /** When their votes were thrown out, on being taken off: the votes cast until then stay on record and count for nothing. A vote cast after it, by someone put back on, counts. */
+  discarded?: number;
+  /** Papers a model passes without reading: the ones already settled when it was added. Fixed when it joins, so nothing that changes later makes it a voter on them. */
+  skips?: string[];
   /** When the person was last sent a reminder. */
   reminded?: number;
 };
@@ -107,8 +112,8 @@ export const keptOf = (source: Source) => Math.max(0, baseTaken(source) - Math.m
 export const paperTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + keptOf(source), 0);
 
 export type Rule = {
-  /** How many people read each paper. */
-  each: "1" | "2" | "all";
+  /** How many people read each paper: a number, or everyone on the screening, whoever joins later included. */
+  each: `${number}` | "all";
   /** When a paper is settled: every reviewer agrees, most of them do, or the first vote decides. */
   settle: "all" | "most" | "one";
   /** Who settles a split. */
@@ -200,6 +205,14 @@ export type Screening = {
   after?: string;
   /** Papers taken off one person and given to another, by paper: who gave it up, and who has it now. */
   moved?: Record<string, Record<string, string>>;
+  /** The place in the round of each paper that came after the start, kept from when it arrived: taking a source out later moves no other paper. */
+  placed?: Record<string, number>;
+  /** How it stood when it started: who was on it, how many people a paper went to, and its criteria. The votes that were cast then were cast under these, so nothing changed later moves them. */
+  started?: { people: string[]; each: Rule["each"]; criteria: Criterion[]; sources: Source[] };
+  /** Results held through a change of settings. A paper that was settled keeps its result when the team, the rule or the criteria change, until someone votes on it again or asks for the settled papers to be checked again. */
+  kept?: Record<string, { state: Settled; at: number }>;
+  /** Asked for with a change of settings: the settled papers are checked again under the new settings, and none is held. It rides on the change and is never stored. */
+  recheck?: boolean;
   /** What the reviewers said to each other about a paper, by paper, oldest first. */
   threads?: Record<string, Message[]>;
 };
@@ -586,6 +599,46 @@ export function papersOf(screening: Pick<Screening, "seed" | "sources" | "theme"
   papersCache.set(key, mixed);
   return mixed;
 }
+/**
+ * A model's next stretch of reading: how far it gets through up to so many papers, and how many of those it
+ * reads and is charged for. A paper whose result was held before the model was added is passed over unread.
+ */
+export function readNext(screening: Screening, model: Reviewer, most: number, affordable: (papers: number) => number) {
+  const state = standing(screening);
+  const from = screening.reached[model.id] ?? 0;
+  const ahead = state.papers.map((paper) => ({ place: placeOf(screening, paper), mine: state.votes[paper.id]!.some((one) => one.reviewer.id === model.id) })).filter((one) => one.place >= from).sort((a, b) => a.place - b.place);
+  let [read, reached] = [0, from];
+  for (const paper of ahead.slice(0, most)) {
+    if (paper.mine && read + 1 > affordable(read + 1)) break;
+    if (paper.mine) read++;
+    reached = paper.place + 1;
+  }
+  return { reached, read, left: ahead.length };
+}
+/** How many papers a model has got through: the ones it is on and has passed, read or not read. Its cursor is a place in the round, never a count. */
+export const readBy = (screening: Screening, model: Reviewer) => {
+  const state = standing(screening);
+  return count(state.papers, (paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && (one.vote !== undefined || one.failed === true)));
+};
+/** Everyone whose votes are on the screening: its reviewers, and whoever was taken off with votes that still count. A page that shows votes shows theirs too. */
+export const votingReviewers = (screening: Screening) => {
+  const state = standing(screening);
+  const gone = screening.reviewers.filter((one) => one.left && !one.email && state.papers.some((paper) => state.votes[paper.id]!.some((entry) => entry.reviewer.id === one.id && entry.vote)));
+  return [...activeReviewers(screening), ...gone];
+};
+/**
+ * A reviewer put on a screening, new or back again. Someone who comes back keeps the votes they cast and their
+ * place in the reading. Votes that were thrown out stay out: a person's later votes count, and a model starts
+ * its reading over, since every vote it had was thrown out.
+ */
+export function withReviewer(screening: Screening, reviewer: Reviewer): Pick<Screening, "reviewers" | "reached"> {
+  const old = screening.reviewers.find((one) => one.id === reviewer.id);
+  const over = !old || (old.kind === "model" && Boolean(old.discarded));
+  const back: Reviewer = old && !over ? { ...reviewer, discarded: old.discarded, skips: old.skips } : reviewer;
+  return { reviewers: [...screening.reviewers.filter((one) => one.id !== reviewer.id), back], reached: over ? { ...screening.reached, [reviewer.id]: 0 } : { [reviewer.id]: 0, ...screening.reached } };
+}
+/** Whether a model has papers still to read. */
+export const stillReading = (screening: Screening, model: Reviewer) => arrived(screening).some((paper) => placeOf(screening, paper) >= (screening.reached[model.id] ?? 0));
 /** The papers that have arrived so far: all of them, once they are fetched. */
 const arrived = (screening: Pick<Screening, "seed" | "sources" | "theme" | "gathered" | "createdAt">) => (screening.gathered === undefined ? papersOf(screening) : papersOf(screening).slice(0, screening.gathered));
 
@@ -641,65 +694,139 @@ export const activeReviewers = (screening: Screening) => screening.reviewers.fil
 export const peopleOf = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person");
 export const modelsOf = (screening: Screening) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "model");
 
-/** Whether a person has voted on a paper: in the mock, or in the made-up votes they came with. */
-const hasVoted = (screening: Screening, paper: Paper, index: number, person: Reviewer) => {
-  const cast = screening.cast[paper.id]?.[person.id];
-  return cast !== undefined ? cast !== null : !person.email && index < (screening.reached[person.id] ?? 0);
-};
-/**
- * The people a paper is dealt to: as many as the rule asks for, taken in turn so the work is shared
- * evenly. Someone added after the start takes a share of the papers nobody has got to yet, and never
- * a paper someone has already voted on.
- */
-export const dealtTo = (screening: Screening, paper: Paper, index: number) => {
-  const people = peopleOf(screening).filter((person) => !person.email);
-  const dealt = deal(screening, paper, index, people);
-  // A paper moved to someone else is theirs, for as long as they are one of its reviewers. A move to someone the deal already gives the paper to changes nothing: once a reviewer leaves the deal is made anew, and a move must never leave a paper with fewer people than the rule asks for.
-  const moved = screening.moved?.[paper.id];
-  if (!moved) return dealt;
-  const now = [...dealt];
-  dealt.forEach((person, i) => {
-    const to = people.find((one) => one.id === moved[person.id]);
-    if (to && !now.some((one) => one.id === to.id)) now[i] = to;
-  });
-  return now;
-};
-/** Whether a paper was moved to this person: they came to it late, so no made-up vote of theirs stands on it. */
-const movedTo = (screening: Screening, paper: Paper, person: Reviewer) => Object.values(screening.moved?.[paper.id] ?? {}).includes(person.id);
-/** The deal among `people`. Someone invited by email is dealt papers once they have joined, so they are never among them. */
-function deal(screening: Screening, paper: Paper, index: number, people: Reviewer[]): Reviewer[] {
-  if (screening.rule.each === "all") return people;
-  const founders = people.filter((person) => person.addedAt <= screening.createdAt);
-  const base = founders.length ? founders : people;
-  const late = base === people ? [] : people.filter((person) => !base.includes(person));
-  const each = Math.min(Number(screening.rule.each), people.length);
-  const dealt = Array.from({ length: Math.min(each, base.length) }, (_, k) => base[(index + k) % base.length]!).map((person, k) => {
-    if (!late.length || hasVoted(screening, paper, index, person)) return person;
-    return [person, ...late][(index + k) % (late.length + 1)]!;
-  });
-  // Fewer founders than the rule asks for: the later people make up the number.
-  for (let k = 0; dealt.length < each && k < late.length; k++) if (!dealt.includes(late[(index + k) % late.length]!)) dealt.push(late[(index + k) % late.length]!);
-  return [...new Set(dealt)];
-}
-/** Who votes on a paper: every model, and the people it is dealt to. */
-export const votersOf = (screening: Screening, paper: Paper, index: number) => [...dealtTo(screening, paper, index), ...modelsOf(screening)];
+/** How a screening started. One whose start was never written down is taken as it stands. */
+const startOf = (screening: Screening) =>
+  screening.started ?? {
+    people: screening.reviewers.filter((one) => one.kind === "person" && !one.email && one.addedAt <= screening.createdAt).map((one) => one.id),
+    each: screening.rule.each,
+    criteria: screening.criteria.filter((criterion) => criterion.addedAt <= screening.createdAt),
+    sources: screening.sources.filter((source) => source.addedAt <= screening.createdAt).map(asStarted),
+  };
+/** A source as it was when the screening started: without what later checks found in it, which its total counts. */
+export const asStarted = ({ updates: _later, ...source }: Source): Source => ({ ...source, total: baseTotal({ ...source, updates: _later }) });
 
-/** One reviewer's vote on a paper, if they have got to it: the one cast in the mock, or a made-up one. */
-export function voteOf(screening: Screening, paper: Paper, index: number, reviewer: Reviewer): Vote | undefined {
+const places = new WeakMap<Screening, Map<string, number>>();
+/**
+ * A paper's place in the round: where it stood in the list the screening started with. Who a paper went to and
+ * who had got to it are worked out from this, so a source taken out later moves no other paper. A paper that
+ * came later stands after all of those, in the order it came.
+ */
+function placesOf(screening: Screening): Map<string, number> {
+  const known = places.get(screening);
+  if (known) return known;
+  const start = papersOf({ seed: screening.seed, theme: screening.theme, createdAt: screening.createdAt, sources: startOf(screening).sources });
+  const at = new Map(start.map((paper, place) => [paper.id, place]));
+  for (const [paper, place] of Object.entries(screening.placed ?? {})) at.set(paper, place);
+  // A paper whose place was never kept stands after every other. `withPlaces` keeps it from then on.
+  let next = Math.max(start.length, ...[...at.values()].map((place) => place + 1));
+  for (const paper of arrived(screening)) if (!at.has(paper.id)) at.set(paper.id, next++);
+  places.set(screening, at);
+  return at;
+}
+const placeOf = (screening: Screening, paper: Paper) => placesOf(screening).get(paper.id) ?? 0;
+/** The screening with a place kept for every paper that came after its start. Called wherever papers arrive: when it is made, when a check finds some, and when its settings are saved. */
+export function withPlaces(screening: Screening): Screening {
+  const start = new Set(papersOf({ seed: screening.seed, theme: screening.theme, createdAt: screening.createdAt, sources: startOf(screening).sources }).map((paper) => paper.id));
+  const late = arrived(screening).filter((paper) => !start.has(paper.id) && screening.placed?.[paper.id] === undefined);
+  if (!late.length) return screening;
+  const all = placesOf(screening);
+  return { ...screening, placed: { ...screening.placed, ...Object.fromEntries(late.map((paper) => [paper.id, all.get(paper.id)!])) } };
+}
+/** The people a paper went to when the screening started: as many as its rule asked for then, taken in turn so the work was shared evenly. */
+const firstDealt = (screening: Screening, index: number) => {
+  const { people, each } = startOf(screening);
+  const n = each === "all" ? people.length : Math.min(Number(each), people.length);
+  return Array.from({ length: n }, (_, k) => people[(index + k) % people.length]!);
+};
+/** Whether a vote counts: always, unless its reviewer's votes were thrown out after it was cast. */
+const counts = (reviewer: Reviewer, vote: Vote) => !(reviewer.discarded && vote.at <= reviewer.discarded);
+const skipSets = new WeakMap<Reviewer, Set<string>>();
+/** Whether a model passes a paper without reading it. */
+const skips = (model: Reviewer, paper: Paper) => {
+  if (!model.skips?.length) return false;
+  if (!skipSets.has(model)) skipSets.set(model, new Set(model.skips));
+  return skipSets.get(model)!.has(paper.id);
+};
+
+/**
+ * A person's vote on a paper: the one cast in the mock, or the made-up one of someone the paper went to at the
+ * start and who had got to it. A made-up vote was cast under the criteria of the start, so it is what it was
+ * whatever the criteria have become since.
+ */
+function personVote(screening: Screening, paper: Paper, person: Reviewer): Vote | undefined {
+  const cast = screening.cast[paper.id]?.[person.id];
+  const vote = cast !== undefined ? (cast ?? undefined) : madeUpPersonVote(screening, paper, person);
+  return vote && counts(person, vote) ? vote : undefined;
+}
+function madeUpPersonVote(screening: Screening, paper: Paper, person: Reviewer): Vote | undefined {
+  const index = placeOf(screening, paper);
+  // No made-up vote from someone invited by email, someone who had not got to the paper, someone it was moved away from, or someone it never went to.
+  if (person.email || index >= (screening.reached[person.id] ?? 0) || screening.moved?.[paper.id]?.[person.id] || !firstDealt(screening, index).includes(person.id)) return undefined;
+  return madeUpVote(paper, person, startOf(screening).criteria, screening.createdAt, screening.votedBy ?? NOW);
+}
+
+/**
+ * The people on a paper: whoever has voted on it, then whoever it still waits for.
+ *
+ * Three things hold whatever changes on the screening. A vote is never taken off a paper: whoever voted stays on
+ * it, though the rule now asks for fewer people or they have since left. A paper whose result is held waits for
+ * nobody. And only places nobody has voted in are dealt again: to the people who were to vote from the start, in
+ * the order of the first deal, with anyone added later taking an even share of them.
+ */
+export const dealtTo = (screening: Screening, paper: Paper): Reviewer[] => {
+  const index = placeOf(screening, paper);
+  const everyone = screening.reviewers.filter((one) => one.kind === "person" && !one.email);
+  const voted = everyone.filter((person) => personVote(screening, paper, person));
+  // Held through a change of settings, or settled by the person who settles conflicts: either way nobody else is asked.
+  if (screening.kept?.[paper.id] || screening.resolved[paper.id]) return voted;
+  const active = everyone.filter((person) => !person.left && !voted.includes(person));
+  const free = Math.min(active.length, (screening.rule.each === "all" ? Infinity : Number(screening.rule.each)) - voted.length);
+  if (free <= 0) return voted;
+  const start = startOf(screening).people;
+  const away = screening.moved?.[paper.id] ?? {};
+  // A paper moved to someone is theirs for as long as they are on the screening and have yet to vote.
+  const takers = [...new Set(Object.values(away))].flatMap((id) => active.find((person) => person.id === id) ?? []);
+  // The line for the free places has one position for each person of the start, in the order of the first deal from this paper's place in the round.
+  // Someone added later takes over one position in as many as there were people when they joined, so places are shared evenly, and which position
+  // depends on the paper and on them alone. So nobody's papers move when someone else votes, joins or leaves: a leaver frees only their own places.
+  const later = everyone.filter((person) => !start.includes(person.id));
+  const claim = (person: Reviewer) => hash(`${paper.id}:${person.id}`) % (everyone.slice(0, everyone.indexOf(person)).filter((one) => !(one.left && one.left <= person.addedAt)).length + 1);
+  const line = start.flatMap((_, k) => {
+    const holder = everyone.find((person) => person.id === start[(index + k) % start.length]);
+    const claimed = later.filter((person) => claim(person) === k);
+    // A position somebody voted from is used up: nobody else stands in it.
+    if ([holder, ...claimed].some((person) => person && voted.includes(person))) return [];
+    // Of two newcomers on one position, the one who joined last has it: that is what leaves each of them the same share.
+    const stands = claimed.filter((person) => !person.left).at(-1) ?? holder;
+    return stands && active.includes(stands) ? [stands] : [];
+  });
+  // After the line, whoever has no position on this paper, for when the line runs out. Whoever the paper was moved away from comes last of all: they take it back only where nobody else is left to, so a move never leaves a paper short of the people its rule asks for.
+  const rest = active.filter((person) => !line.includes(person));
+  const order = [...takers, ...[...line, ...rest].filter((person) => !away[person.id]), ...[...line, ...rest].filter((person) => away[person.id])];
+  return [...voted, ...[...new Set(order)].slice(0, free)];
+};
+/** Who votes on a paper: the people on it, and every model that doesn't pass it over. A model that was taken off stays on the papers it had read, unless its votes were thrown out. */
+const votersOf = (screening: Screening, paper: Paper) => {
+  const models = screening.reviewers.filter((one) => one.kind === "model" && !skips(one, paper) && (!one.left || (!one.discarded && placeOf(screening, paper) < (screening.reached[one.id] ?? 0))));
+  return [...dealtTo(screening, paper), ...models];
+};
+
+/** One reviewer's vote on a paper, if they have got to it: the one cast in the mock, or a made-up one. A model's vote follows the criteria as they are now. */
+function voteOf(screening: Screening, paper: Paper, reviewer: Reviewer): Vote | undefined {
+  if (reviewer.kind === "person") return personVote(screening, paper, reviewer);
   const cast = screening.cast[paper.id]?.[reviewer.id];
   if (cast !== undefined) return cast ?? undefined;
-  if (reviewer.email || index >= (screening.reached[reviewer.id] ?? 0) || movedTo(screening, paper, reviewer)) return undefined;
-  // Once someone has left, their papers go to the others. Those come without a vote: a made-up vote stands only on a paper its person was dealt before anyone left.
-  if (reviewer.kind === "person" && screening.reviewers.some((one) => one.left && one.kind === "person") && !deal(screening, paper, index, screening.reviewers.filter((one) => one.kind === "person" && !one.email)).some((one) => one.id === reviewer.id)) return undefined;
-  return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt, screening.votedBy ?? NOW);
+  if (placeOf(screening, paper) >= (screening.reached[reviewer.id] ?? 0)) return undefined;
+  const vote = madeUpVote(paper, reviewer, screening.criteria, screening.createdAt, screening.votedBy ?? NOW);
+  return counts(reviewer, vote) ? vote : undefined;
 }
 
 /**
  * A paper a model got to and couldn't read: its provider gave an error, or sent back nothing usable.
  * It counts as no vote from that model, and the paper is settled by its other reviewers.
  */
-export const failedRead = (screening: Screening, paper: Paper, index: number, reviewer: Reviewer) =>
-  reviewer.kind === "model" && !screening.retried?.includes(reviewer.id) && index < (screening.reached[reviewer.id] ?? 0) && screening.cast[paper.id]?.[reviewer.id] === undefined && hash(`${paper.id}${reviewer.id}`) % 113 === 0;
+const failedRead = (screening: Screening, paper: Paper, reviewer: Reviewer) =>
+  reviewer.kind === "model" && !screening.retried?.includes(reviewer.id) && placeOf(screening, paper) < (screening.reached[reviewer.id] ?? 0) && screening.cast[paper.id]?.[reviewer.id] === undefined && hash(`${paper.id}${reviewer.id}`) % 113 === 0;
 
 /** How sure a model is of one answer, from 0 to 1: less with no abstract to read, and where it couldn't tell. */
 export const confidenceOf = (paper: Paper, reviewer: Reviewer, criterion: Criterion, answer: Answer) => {
@@ -729,13 +856,22 @@ export type Standing = {
 };
 
 /** Where each of a screening's papers stands. */
+const standings = new WeakMap<Screening, Standing>();
+/** Where every paper stands. Worked out once for each state of a screening: a screening is never changed in place. */
 export function standing(screening: Screening): Standing {
+  const known = standings.get(screening);
+  if (known) return known;
+  const made = standingOf(screening);
+  standings.set(screening, made);
+  return made;
+}
+function standingOf(screening: Screening): Standing {
   const papers = arrived(screening);
   const votes: Standing["votes"] = {};
   const settled: Standing["settled"] = {};
   const counts: Record<Result, number> = { include: 0, maybe: 0, exclude: 0, conflict: 0, waiting: 0 };
-  papers.forEach((paper, index) => {
-    const everyone = votersOf(screening, paper, index).map((reviewer) => (failedRead(screening, paper, index, reviewer) ? { reviewer, vote: undefined, failed: true } : { reviewer, vote: voteOf(screening, paper, index, reviewer) }));
+  papers.forEach((paper) => {
+    const everyone = votersOf(screening, paper).map((reviewer) => (failedRead(screening, paper, reviewer) ? { reviewer, vote: undefined, failed: true } : { reviewer, vote: voteOf(screening, paper, reviewer) }));
     votes[paper.id] = everyone;
     // A model that couldn't read the paper has no say in it.
     const cast = everyone.filter((one) => !("failed" in one));
@@ -745,6 +881,8 @@ export function standing(screening: Screening): Standing {
     const top = Math.max(...tally);
     let state: Settled;
     if (resolved) state = { result: resolved.decision, final: resolved.decision, resolvedBy: resolved.by, note: resolved.note, reason: resolved.reason };
+    // Settled before the settings last changed, and nobody has voted on it since: it keeps its result.
+    else if (screening.kept?.[paper.id]) state = screening.kept[paper.id]!.state;
     else if (!cast.length) state = { result: "waiting" };
     else if (screening.rule.settle === "one") state = given.length ? { result: given[0]!.decision, final: given[0]!.decision } : { result: "waiting" };
     else if (given.length < cast.length) state = { result: "waiting" };
@@ -808,8 +946,72 @@ export function agreement(a: string, b: string, state: Standing) {
  * settled ones open again or end up somewhere else, and how many become settled. Shown before a
  * change is made, so nothing about it is a surprise.
  */
+/**
+ * A change of settings applies from now on. The papers that were settled keep their result through it, whoever
+ * joins or leaves and whatever the rule or the criteria become: the screening as it is saved carries them as held.
+ * Two things undo that, and both are asked for: checking the settled papers again (`recheck`), which holds none,
+ * and throwing out the votes of a reviewer who is taken off, which lets go of the papers they voted on.
+ */
+export function keep(before: Screening, after: Screening, at: number): Screening {
+  const { recheck, ...made } = after;
+  const was = standing(before);
+  // A model put on a running screening reads the papers still open. The ones settled by then, which it hasn't read, it passes over for good: fixed here, so no later change makes it a voter on them. Checking everything again is the exception: it reads them all.
+  const on = new Set(activeReviewers(before).map((one) => one.id));
+  const settled = recheck ? [] : was.papers.filter((paper) => was.settled[paper.id]!.final).map((paper) => paper.id);
+  const reviewers = made.reviewers.map((one) => (one.kind === "model" && !one.left && !on.has(one.id) && was.papers.length ? { ...one, skips: [...new Set([...(one.skips ?? []), ...settled.filter((paper) => (placesOf(before).get(paper) ?? 0) >= (made.reached[one.id] ?? 0))])] } : one));
+  const next = withPlaces({ ...made, reviewers });
+  if (recheck) {
+    // Checked again, nothing is held. A model added later passed over the papers that were settled then: the ones this opens again it reads like any other open paper.
+    const open = standing({ ...next, kept: undefined });
+    return { ...next, kept: undefined, reviewers: next.reviewers.map((one) => (one.kind === "model" && !one.left && one.skips?.length ? { ...one, skips: one.skips.filter((paper) => open.settled[paper]?.final) } : one)) };
+  }
+  const thrown = next.reviewers.filter((reviewer) => reviewer.discarded && before.reviewers.find((one) => one.id === reviewer.id)?.discarded !== reviewer.discarded).map((reviewer) => reviewer.id);
+  const kept: NonNullable<Screening["kept"]> = {};
+  for (const paper of was.papers) {
+    const state = was.settled[paper.id]!;
+    if (!state.final || state.resolvedBy || was.votes[paper.id]!.some((one) => one.vote && thrown.includes(one.reviewer.id))) continue;
+    // A paper held since an earlier change stays held from then.
+    kept[paper.id] = before.kept?.[paper.id] ?? { state, at };
+  }
+  // Conflicts always have someone to settle them: when that person is taken off, they go to whoever started the screening, or failing that the first person still on it.
+  const people = next.reviewers.filter((one) => one.kind === "person" && !one.left && !one.email);
+  const resolver = people.some((one) => one.id === next.rule.resolver) ? next.rule.resolver : ((people.find((one) => one.id === next.createdBy) ?? people[0])?.id ?? next.rule.resolver);
+  return { ...next, kept, rule: resolver === next.rule.resolver ? next.rule : { ...next.rule, resolver } };
+}
+
+const projections = new WeakMap<Screening, WeakMap<Screening, Screening>>();
+/** A change as a save would leave it, for saying what it does before it is made. Worked out once for each pair: the lines, the moves and the costs of a preview all read the same one. */
+/** The papers a change has a model read at once: ones it had passed over, behind where it has read to, that the change opens again. */
+export const readsAgain = (before: Screening, after: Screening, model: Reviewer) => {
+  const now = new Set(after.reviewers.find((one) => one.id === model.id)?.skips);
+  const places = placesOf(after);
+  return (before.reviewers.find((one) => one.id === model.id)?.skips ?? []).filter((paper) => !now.has(paper) && (places.get(paper) ?? Infinity) < (after.reached[model.id] ?? 0)).length;
+};
+
+export function projected(before: Screening, after: Screening): Screening {
+  const known = projections.get(before)?.get(after);
+  if (known) return known;
+  const made = keep(before, after, NOW + 1);
+  if (!projections.has(before)) projections.set(before, new WeakMap());
+  projections.get(before)!.set(after, made);
+  return made;
+}
+const rechecks = new WeakMap<Screening, Screening>();
+/** The same change, asking for the settled papers to be checked again. */
+const rechecked = (after: Screening) => {
+  if (!rechecks.has(after)) rechecks.set(after, { ...after, recheck: true });
+  return rechecks.get(after)!;
+};
+
+/** How many settled papers a change of settings would move if they were checked again: what it holds back, and what asking for the check lets go. */
+export function recheckable(before: Screening, after: Screening) {
+  const [was, now] = [standing(before), standing(projected(before, rechecked(after)))];
+  return count(was.papers, (paper) => Boolean(was.settled[paper.id]!.final) && !was.settled[paper.id]!.resolvedBy && now.settled[paper.id] !== undefined && now.settled[paper.id]!.result !== was.settled[paper.id]!.result);
+}
+
+/** What a change of settings does to the papers' results, with the settled ones held as a save holds them. */
 export function effectOf(before: Screening, after: Screening) {
-  const [was, now] = [standing(before), standing(after)];
+  const [was, now] = [standing(before), standing(projected(before, after))];
   const moves = new Map<string, { from: Result; to: Result; papers: Paper[] }>();
   let added = 0;
   for (const paper of now.papers) {
@@ -844,7 +1046,7 @@ function made(id: string, name: string, theme: ThemeId, seed: number, sources: S
   const reviewers = [...people.map((person) => personReviewer(personOf(person)!, NOW - 6 * DAY)), ...SEED_MODELS.slice(0, models).map((model) => modelReviewer(model, NOW - 6 * DAY))];
   const total = paperTotal(sources);
   const reached = Object.fromEntries(reviewers.map((reviewer) => [reviewer.id, Math.round(total * (progress[reviewer.id] ?? progress[reviewer.kind] ?? 1))]));
-  return {
+  return withPlaces({
     id,
     name,
     createdBy: people[0] ?? "amina",
@@ -861,12 +1063,16 @@ function made(id: string, name: string, theme: ThemeId, seed: number, sources: S
     reached,
     ...blank(),
     ...more,
+    // How it started: its made-up votes were cast by these people, so many to a paper, on these criteria.
+    started: { people: reviewers.filter((one) => one.kind === "person" && !one.email).map((one) => one.id), each: more.rule?.each ?? (people.length > 1 ? "2" : "1"), criteria, sources: sources.map(asStarted) },
     changes: more.changes ?? [{ at: more.createdAt ?? NOW - 6 * DAY, by: more.createdBy ?? people[0] ?? "amina", what: "Started the screening" }],
-  };
+  });
 }
 
 /** The screenings the mock opens with. The first is half way through; the others show the other states. */
 export function startingScreenings(): Screening[] {
+  // Every call deals the same papers, so "Has screenings" brings back the numbers the mock opened with.
+  slots = 0;
   const edtech = made(
     "edtech",
     "EdTech and foundational learning",
@@ -895,8 +1101,8 @@ export function startingScreenings(): Screening[] {
     { at: NOW - 2 * DAY, by: "amina", what: "Added Gemma 3 4B as a reviewer", effect: "It reads all 132 papers" },
     { at: THIS_MORNING, by: SCHEDULE, what: "The week's check found 9, 7 of them new", effect: "2 were in it already. 7 joined the queue, and the reviewers they were dealt to were told by email" },
   ];
-  // Half of the splits found so far were settled before the mock opens.
-  const state = standing(edtech);
+  // Half of the splits found so far were settled before the mock opens. The standing is worked out for a copy: one is remembered for the object it was made for, and this one is written into below.
+  const state = standing({ ...edtech });
   let n = 0;
   for (const paper of state.papers) {
     if (state.settled[paper.id]!.result !== "conflict" || n++ % 2) continue;
@@ -913,7 +1119,7 @@ export function startingScreenings(): Screening[] {
   }
   const tvet = made("tvet", "TVET and youth employment", "tvet", 2, [source("t1", "search", "TVET AND youth employment AND Africa", "Openscholar search", 412, 0), source("t2", "collection", "Skills and work, shared reading", "Collection", 148, 31)], ["thandiwe", "amina", "kwame"], 2, { person: 0.55, model: 1 }, { createdAt: NOW - 12 * DAY });
   // On another screening a question waits for the person the mock starts as.
-  const there = standing(tvet);
+  const there = standing({ ...tvet });
   const asked = there.papers.find((paper) => paper.sentences.length > 0 && !paper.original && there.settled[paper.id]!.result === "conflict" && there.votes[paper.id]!.some((one) => one.reviewer.id === "amina" && one.vote));
   if (asked) tvet.threads = { [asked.id]: [{ by: "thandiwe", to: "amina", at: NOW - 5 * 60 * 60_000, text: "Amina, could you say why you voted as you did on this one? I need it to settle the conflict." }] };
   return [
@@ -973,7 +1179,7 @@ export function checked(screening: Screening, at: number, by: string): Screening
     added += fresh - duplicates;
     return { ...source, total: source.total + fresh, updates: [...(source.updates ?? []), { at, added: fresh, duplicates }] };
   });
-  return {
+  return withPlaces({
     ...screening,
     sources,
     checking: undefined,
@@ -982,7 +1188,7 @@ export function checked(screening: Screening, at: number, by: string): Screening
     living: screening.living && by === SCHEDULE ? { ...screening.living, next: at + PERIOD[screening.living.every] } : screening.living,
     finishedAt: added ? undefined : screening.finishedAt,
     changes: [...screening.changes, { at, by, what: found ? `${by === SCHEDULE ? `${EVERY_LABEL[screening.living?.every ?? "week"].replace("Every", "The")}'s check` : "Checked for new papers and"} found ${found}${added !== found ? `, ${added} of them new` : ""}` : by === SCHEDULE ? "The scheduled check found nothing new" : "Checked for new papers and found none", effect: found ? `${found - added ? `${found - added} ${found - added === 1 ? "was" : "were"} in it already. ` : ""}${added} joined the queue, and the reviewers they were dealt to were told by email` : undefined }],
-  };
+  });
 }
 
 /** Settings being changed, brought up to date with what the screening's checks have found since: its sources keep the papers they gained. */

@@ -24,7 +24,7 @@ import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { EVERY_LABEL, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
+import { EVERY_LABEL, HOME, NOW, day, growing, readBy, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
 import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
@@ -506,7 +506,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
             A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once credits are added.
           </Help>
         </span>
-        <span className="text-muted-foreground">{models(reading)} stopped at {Math.max(...reading.map((model) => screening.reached[model.id] ?? 0))} of {papers.length} papers</span>
+        <span className="text-muted-foreground">{models(reading)} stopped at {Math.max(...reading.map((model) => readBy(screening, model)))} of {papers.length} papers</span>
         {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
         {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button> : null}
       </div>
@@ -527,7 +527,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     );
   }
   if (kind === "paused") {
-    const done = Math.min(...modelsOf(screening).map((model) => screening.reached[model.id] ?? 0));
+    const done = Math.min(...modelsOf(screening).map((model) => readBy(screening, model)));
     return (
       <div className={row}>
         <CirclePause className={icon} />
@@ -556,7 +556,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     );
   }
   if (kind === "reading") {
-    const done = Math.min(...reading.map((model) => screening.reached[model.id] ?? 0));
+    const done = Math.min(...reading.map((model) => readBy(screening, model)));
     return (
       <div className={row}>
         <AiIcon working className="size-4 shrink-0" />
