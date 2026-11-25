@@ -33,7 +33,7 @@ const about = (open: Open) => (
 );
 
 /**
- * The discussion where a rule keeps it shut, for someone who could write in it.
+ * The discussion where a rule keeps it shut.
  * `vote`: the others' votes are still hidden from the person looking, and so is what they wrote. `conflict`: the votes show, and the paper has had no conflict to talk over.
  */
 export function DiscussionShut({ open, by }: { open: Open; by: Shut }) {
@@ -69,7 +69,6 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
     // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
   };
-  if (!maySay && !said.length) return null;
   return (
     <Section
       title="Discussion"
@@ -113,6 +112,8 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
         </ul>
         </div>
       ) : null}
+      {/* Someone who only looks reads what was written, and is told who writes here. Nothing is left out for them without a word. */}
+      {maySay ? null : <ShutNote by="reviewer">{said.length ? "Only this screening's reviewers write here." : "Nobody has written about this paper yet. Only this screening's reviewers write here."}</ShutNote>}
       {maySay ? (
         <div className="space-y-2 rounded-2xl border border-border-subtle p-2.5">
           {/* Who the line is for: everyone on the paper, or one reviewer, which makes it a question that waits with them. The line under the choices says which, and is always there, so choosing moves nothing. */}

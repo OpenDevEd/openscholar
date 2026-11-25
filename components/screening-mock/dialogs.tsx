@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, SHUT, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
+import { Help, LinkChip, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
 
 const save = (name: string, type: string, text: string) => {
@@ -162,7 +162,10 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
             <span className="text-xs font-medium text-muted-foreground">Add people as</span>
             <Segmented label="Add people as" value={addAs} onChange={setAddAs} options={SHARE_ROLES.map((role) => ({ id: role.id, label: role.label, icon: ROLE_ICONS[role.kind] }))} />
           </div>
-        ) : null}
+        ) : (
+          // Someone it is shared with from outside sees who is on it. Adding people is said to be the members' to do, where the field would be.
+          <div className="px-4 pt-3"><ShutNote by="member">Members of {workspace.name} add people and change what each may do.</ShutNote></div>
+        )}
         <SharePanel
           roles={SHARE_ROLES}
           adding={
@@ -291,8 +294,10 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const { id } = screening;
   const reviewers = activeReviewers(screening);
 
-  // One row per reviewer per paper: the complete record.
-  const rows = papers.flatMap((paper) => votes[paper.id]!.flatMap(({ reviewer, vote }) => (vote ? [{ paper, reviewer, vote, result: settled[paper.id]!.result }] : [])));
+  // One row per reviewer per paper: the record, as far as the person taking it out may see it. The others' votes on a paper they have yet to vote on are hidden from them here as on Screen and Papers.
+  const [seen, unseen] = [papers.filter((paper) => state.canSee(paper)), papers.filter((paper) => !state.canSee(paper))];
+  const rows = seen.flatMap((paper) => votes[paper.id]!.flatMap(({ reviewer, vote }) => (vote ? [{ paper, reviewer, vote, result: settled[paper.id]!.result }] : [])));
+  const hiddenVotes = unseen.reduce((sum, paper) => sum + votes[paper.id]!.filter((one) => one.vote).length, 0);
   // The first vote on each of three papers: what the file holds, without a title three times over.
   const sample = rows.filter((row, i) => rows.findIndex((one) => one.paper.id === row.paper.id) === i).slice(0, 3);
   const csv = () =>
@@ -427,11 +432,11 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           {/* What is taken out now is what stands now: it says so while papers are still open. */}
-          {openNow && !screening.finishedAt ? (
+          {openNow ? (
             <Panel tone="warning" className="flex items-start gap-2.5 py-2.5 text-sm">
               <Info className="mt-1 size-4 shrink-0 ink-warning" />
               <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="font-medium">Not finished, so this is part of the result</span>
+                <span className="font-medium">{screening.finishedAt ? "Marked finished with papers still open, so this is part of the result" : "Not finished, so this is part of the result"}</span>
                 <span className="flex flex-wrap gap-1.5">
                   {counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} onClick={onClose} tone="info">{counts.conflict.toLocaleString("en-GB")} in conflict</LinkChip> : null}
                   {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} onClick={onClose}>{waiting.toLocaleString("en-GB")} waiting for votes</LinkChip> : null}
@@ -469,6 +474,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
               )
             ) : tab === "votes" ? (
               <div className="space-y-3">
+                {hiddenVotes ? <ShutNote by="vote">{plural(hiddenVotes, "vote", "votes")} on the {plural(unseen.length, "paper", "papers")} you have yet to vote on {hiddenVotes === 1 ? "is" : "are"} left out, so {hiddenVotes === 1 ? "it" : "they"} can&apos;t sway yours.</ShutNote> : null}
                 {/* The file's columns over its first rows: a table may scroll sideways only where it can't fit. */}
                 <div className="overflow-x-auto rounded-2xl border border-border-subtle">
                   {/* The paper takes what the other columns leave, and only it and the free text are ever cut. */}

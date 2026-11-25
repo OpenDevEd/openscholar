@@ -22,13 +22,13 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, HOME, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import { num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
 import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
-import { credits, paperCredits, useMock, type Open } from "./store";
+import { ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
+import { walletOf, credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
 
@@ -143,7 +143,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
             <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
-            {open.reading.length && !screening.paused && !open.outOfCredits && !finished ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />Models are reading</Chip> : null}
+            {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />Models are reading</Chip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
@@ -257,7 +257,8 @@ function Reviewers({ open }: { open: Open }) {
           agrees: compared.length ? count(compared, (same) => same) / compared.length : null,
           compared: compared.length,
           missed: count(judged, (one) => one.final === "include" && one.vote === "exclude"),
-          included: count(judged, (one) => one.final === "include"),
+          // Out of every included paper, the number Progress shows: one it never voted on is one it didn't exclude.
+          included: count(papers, (paper) => settled[paper.id]!.final === "include"),
           left,
           perDay,
           // Nothing voted in three days by someone who has been on the screening that long. A screening made from another keeps its reviewers' older dates, so its own start counts too.
@@ -469,7 +470,8 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
   const unread = unreadPapers.length;
   const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
-  const held = open.outOfCredits ? { icon: Coins, text: "Stopped, out of credits" } : screening.paused ? { icon: CirclePause, text: "Paused" } : open.waitingFor ? { icon: Clock, text: "Waiting its turn" } : null;
+  const retry = open.retryOf(reviewer);
+  const held = open.modelsNow === "credits" ? { icon: Coins, text: "Stopped, out of credits", stop: true } : open.modelsNow === "paused" ? { icon: CirclePause, text: "Paused", stop: true } : open.modelsNow === "waiting" ? { icon: Clock, text: "Waiting its turn", stop: false } : null;
   const mine = reviewer.id === open.me;
   // Above the row's own link, so a count or a menu opens itself and not the row.
   const above = "relative z-[1]";
@@ -482,7 +484,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <ReviewerName reviewer={reviewer} you={mine} />
           </NextLink>
           {reviewer.kind === "model" ? (
-            <p className="flex min-w-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
+            <p className={cn("flex min-w-0 items-center gap-1 text-xs tabular-nums", reading && held?.stop ? "ink-warning" : "text-muted-foreground")}>
               {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
               <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
             </p>
@@ -517,7 +519,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
                   <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title} ({paper.year})</span></NextLink></li>
                 ))}
               </ul>
-              {open.canChange ? <Button size="sm" className="w-full shrink-0" onClick={() => open.retry(reviewer)}><RotateCcw />Have it read {unread === 1 ? "it" : "them"} again, for {credits(unread * paperCredits(reviewer.model!))} credits</Button> : null}
+              {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => open.retry(reviewer)} variant="default" size="sm" className="shrink-0" /> : null}
             </PopoverContent>
           </Popover>
         ) : null}
@@ -544,9 +546,9 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " same vote as the others" : " same vote as the people"}</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
-            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of the {num(included)} included it voted on</NextLink>
+            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {num(included)} included</NextLink>
           ) : (
-            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of the {num(included)} included it voted on</p>
+            <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of {num(included)} included</p>
           )
         ) : agrees !== null ? (
           <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">of {compared} papers</p>
@@ -562,7 +564,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             </TooltipHint>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See {mine ? "your" : "their"} votes in Papers</NextLink></DropdownMenuItem>
-              {unread ? <DropdownMenuItem onSelect={() => open.retry(reviewer)}><RotateCcw />Read the {unread} it couldn&apos;t again</DropdownMenuItem> : null}
+              {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => open.retry(reviewer)}><RotateCcw />{retryLabel(unread, credits(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{credits(retry.short)} credits short</span> : null}</DropdownMenuItem> : null}
               {reviewer.kind === "person" && !mine && done < assigned ? (
                 <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
               ) : null}
@@ -704,7 +706,7 @@ function Facts({ open }: { open: Open }) {
   const most = models.reduce((sum, model) => sum + open.most(model), 0);
   // The papers a model got to and couldn't read: the line under what was spent says so, as each model's row does. A paper two models failed on is one paper.
   const unread = new Set(models.flatMap((model) => open.unread(model).map((paper) => paper.id))).size;
-  const left = workspace === HOME ? store.wallet : workspace.credits;
+  const left = walletOf(screening, store.wallet);
   const to = screening.destination;
   const collection = to.kind === "none" ? null : to.kind === "new" ? to.name || `Included in ${screening.name}` : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? "A collection");
   return (
@@ -754,9 +756,9 @@ function Facts({ open }: { open: Open }) {
               <div>
                 <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
                   <AnimatedNumber value={Math.ceil(spent)} /> spent
-                  {open.reading.length && !screening.paused && !open.outOfCredits ? <AiIcon working className="size-3.5" /> : null}
+                  {open.modelsNow === "reading" ? <AiIcon working className="size-3.5" /> : null}
                 </p>
-                <p className="text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${unread} ${unread === 1 ? "paper" : "papers"} couldn't be read` : "Every paper is read"}</p>
+                <p className={cn("text-xs tabular-nums", most - spent < 1 && unread ? "ink-destructive" : "text-muted-foreground")}>{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${plural(unread, "paper", "papers")} couldn't be read` : "Every paper is read"}</p>
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
@@ -784,7 +786,14 @@ function Checks({ open }: { open: Open }) {
   const { screening, papers, settled } = open;
   const [{ checks }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const sources = growing(screening);
-  if (!sources.length) return null;
+  // A screening that is not living and has no source to check has no checks to show. A living one whose sources can't gain papers keeps the part, shut, with why: its "Living" chip would otherwise promise checks that never come.
+  if (!sources.length) {
+    return screening.living ? (
+      <Section id="new-papers" title="Checks for new papers" aside={<ShutChip by="sources" />}>
+        <ShutNote by="sources">A check looks in a search, a collection or a community for papers this screening doesn&apos;t have yet. An uploaded file or a pasted list holds what it held, so there is nothing to check.</ShutNote>
+      </Section>
+    ) : null;
+  }
   const all = [...(screening.updates ?? [])].reverse();
   const shown = checks === "all" ? all : all.slice(0, RECENT_CHECKS);
   const fixed = screening.sources.length - sources.length;

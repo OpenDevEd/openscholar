@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { SETTLE_LABEL, DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, NOT_A_REVIEWER, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -86,8 +86,6 @@ const apartAt = (given: Array<Answer | undefined>) => {
   const top = ANSWERS[most.indexOf(Math.max(...most))];
   return given.findIndex((one) => one !== undefined && one !== top);
 };
-/** "Differ", as a chip that is pressed: it opens the answer that stands apart. A plain chip of that colour was pressed and did nothing. */
-const DIFFER = "flex h-5 items-center gap-0.5 rounded-full bg-info/12 ps-1.5 pe-1 text-2xs font-medium text-info outline-none transition-colors hover:bg-info/20 focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /**
  * Where someone is, kept in the address: the queue, the paper open in it, what they searched for, which
@@ -501,8 +499,8 @@ function Screen({ open }: { open: Open }) {
 
   // What the reviewers said to each other about it, where its votes show and there is something to talk over. Drawn with the votes, in whichever of their two places is on the page.
   const discussion = paper && visible && discussed(open, paper) ? <div data-discussion><Discussion open={open} paper={paper} /></div> : null;
-  // Where a rule keeps it shut for someone who could write in it, the rule stands in its place: the others' votes are still hidden, or the paper has had no conflict.
-  const noDiscussion = paper && !discussion && (open.isReviewer || open.canResolve) ? <DiscussionShut open={open} by={visible ? "conflict" : "vote"} /> : null;
+  // Where a rule keeps it shut, the rule stands in its place, whoever is looking: the others' votes are still hidden, or the paper has had no conflict.
+  const noDiscussion = paper && !discussion ? <DiscussionShut open={open} by={visible ? "conflict" : "vote"} /> : null;
   const said = paper ? open.thread(paper).length : 0;
   // What scrolls is the outside system: the discussion is brought to the top of its pane from a laptop's width, and of the page under that. The page is moved by hand, for the reason `openIt` gives.
   const reach = (mark: "data-discussion" | "data-votes") => {
@@ -524,11 +522,7 @@ function Screen({ open }: { open: Open }) {
   const everyonesVotes = paper ? (
                     <Section
                       title="Everyone's votes"
-                      help={
-                        <Help title="Reading the votes" facts={<><HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact><HelpFact icon={Hourglass}>No vote yet</HelpFact><HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact><HelpFact><StateChip tone="info" className="-ms-1 h-4 px-1 text-2xs">Differ</StateChip>Reviewers answered it differently</HelpFact><HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="A model's answer" pressable /></span>Opens the passage a model read</HelpFact></>}>
-                          Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note, and a model&apos;s answer for the passage it read. A model that couldn&apos;t read a paper has no say in it.
-                        </Help>
-                      }
+                      help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (
                           <ShutChip by="vote" />
@@ -885,10 +879,7 @@ function Screen({ open }: { open: Open }) {
             {/* The vote */}
             <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 2xl:max-w-none">
               {!mayDecide ? (
-                <p className="flex items-center gap-2 rounded-xl bg-inset px-3 py-3 text-sm text-muted-foreground">
-                  <Eye className="size-4 shrink-0" />
-                  {resolving ? `${resolver === "you" ? "You settle" : `${resolver} settles`} conflicts on this screening. You can read them here.` : "You aren't one of this screening's reviewers."}
-                </p>
+                <ShutNote by={resolving ? "settler" : "reviewer"}>{resolving ? `${resolver === "you" ? "You settle" : `${resolver} settles`} conflicts on this screening. You can read them here.` : `${NOT_A_REVIEWER}, so you don't vote on its papers.`}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER); }}>
                   <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder="Why exclude it?" aria-label="Why exclude it" className="h-8 text-sm" />
@@ -1037,9 +1028,9 @@ function Screen({ open }: { open: Open }) {
 /** What a queue says when it holds nothing, and where to go from there. */
 function Empty({ open, queue }: { open: Open; queue: Queue }) {
   const id = open.screening.id;
-  const voted = open.yours.length - open.toDo.length;
+  const voted = open.yours.filter((one) => open.myVote(one)).length;
   const [Icon, title, line]: [AppIcon, string, ReactNode] = !open.isReviewer
-    ? [Eye, "You can't vote on this screening", null]
+    ? [Eye, NOT_A_REVIEWER, null]
     : queue === "todo"
       ? open.gathering
         ? [Hourglass, "Its papers are on their way", `${open.gathering.done.toLocaleString("en-GB")} of ${open.gathering.of.toLocaleString("en-GB")} are in`]
@@ -1102,7 +1093,7 @@ function Face({ reviewer, vote, failed, you, kept, criteria, named }: { reviewer
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {failed ? (
-            <StateChip tone="destructive" icon={TriangleAlert}>Couldn&apos;t read this paper</StateChip>
+            <StateChip tone="destructive" icon={TriangleAlert}>Couldn&apos;t read it</StateChip>
           ) : kept && vote ? (
             <ShutChip by="vote">Voted, {SHUT.vote.says.toLowerCase()}</ShutChip>
           ) : vote && style ? (
@@ -1168,7 +1159,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
               // Every answer opens what is behind it: a model's the passage it read, a person's their vote and their note.
               return (
                 <button key={reviewer.id} type="button" aria-pressed={on} aria-label={`${reviewer.name}, ${criterion.short}: ${reviewer.kind === "model" ? "show the passage" : "show their vote and note"}`} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex cursor-pointer rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
-                  <AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} pressable={reviewer.kind === "model" && !on} />
+                  <AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} pressable={!on} />
                 </button>
               );
             })}

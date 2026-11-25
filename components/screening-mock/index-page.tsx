@@ -22,12 +22,12 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { resolves, firstName, EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, stillReading, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { resolves, firstName, EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { FilterMenu, Help, LinkChip, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted } from "./parts";
-import { isReading, paperCredits, useMock, useOpenScreening } from "./store";
+import { FilterMenu, Help, LinkChip, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted } from "./parts";
+import { modelsState, useMock, useOpenScreening } from "./store";
 
 const PAGE = 25;
 const SORTS = [
@@ -92,11 +92,9 @@ export function ScreeningsIndex() {
         const state = standing(screening);
         const forYou = state.papers.filter((paper) => !state.settled[paper.id]!.final && state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length;
         const conflicts = resolves(screening, me) ? state.counts.conflict : 0;
-        const models = modelsOf(screening);
-        const reading = !screening.finishedAt && models.some((model) => stillReading(screening, model));
         const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
-        // What its models are doing, where they still have papers to read.
-        const held = screening.checking ? ("checking" as const) : !reading ? null : screening.gathered !== undefined ? ("gathering" as const) : screening.paused ? ("paused" as const) : models.every((model) => paperCredits(model.model!) > store.wallet) ? ("credits" as const) : ahead && isReading(ahead) ? ("waiting" as const) : ("reading" as const);
+        // What its models are doing: the same answer the open screening's own pages give.
+        const held = modelsState(screening, store.screenings, store.wallet);
         // The last time anything happened in it: a vote, a change, a check, or its start.
         const votes = Object.values(state.votes).flatMap((cast) => cast.flatMap((one) => one.vote?.at ?? []));
         const active = Math.max(screening.createdAt, screening.finishedAt ?? 0, ...screening.changes.map((change) => change.at), ...(screening.updates ?? []).map((update) => update.at), ...votes);
@@ -197,7 +195,7 @@ export function ScreeningsIndex() {
                     {([["Settled", ["include", "maybe", "exclude"]], ["Not yet", ["conflict", "waiting"]]] as const).map(([name, results]) => (
                       <span key={name} className="flex items-center gap-x-2.5">
                         <span className="font-medium text-foreground">{name}</span>
-                        {results.map((result) => <span key={result} className="flex items-center gap-1"><span aria-hidden className={cn("size-2 rounded-full", RESULT_STYLE[result].bar)} />{RESULT_LABEL[result]}</span>)}
+                        {results.map((result) => { const Icon = RESULT_ICON[result]; return <span key={result} className="flex items-center gap-1"><Icon aria-hidden className="size-3.5 shrink-0" />{RESULT_LABEL[result]}</span>; })}
                       </span>
                     ))}
                   </span>

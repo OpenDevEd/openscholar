@@ -41,7 +41,7 @@ import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
-import { credits, isReading, paperCredits, useMock } from "./store";
+import { walletOf, credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
 // The whole library and its collections are one place to a person, so they share a tab.
@@ -271,7 +271,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const outsider = Boolean(personOf(store.viewer)?.guest);
   const workspace = saved ? workspaceOf(saved) : outsider ? WORKSPACES.find((one) => one.id === "theirs")! : HOME;
   // The credits its models are paid from: its own workspace's.
-  const wallet = workspace === HOME ? store.wallet : workspace.credits;
+  const wallet = saved ? walletOf(saved, store.wallet) : workspace === HOME ? store.wallet : workspace.credits;
   // The workspace's models read so many papers at once: a screening started while another's are reading waits its turn.
   const busy = fresh ? store.screenings.find(isReading) : undefined;
   const set = (patch: Partial<Screening>) => setDraft((d) => ({ ...d, ...patch }));
@@ -947,7 +947,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </TooltipHint>
                   <DropdownMenuContent align="end" className="w-72">
                     {importable.length ? <DropdownMenuItem onSelect={() => importable.forEach(({ question }) => addCriterion(question))}><ListChecks />Add {importable.length} {importable.length === 1 ? "question" : "questions"} from your {importSearches === 1 ? "search" : "searches"}</DropdownMenuItem> : null}
-                    <DropdownMenuItem disabled={writing || Boolean(cantWrite)} onSelect={writeCriteria}><AiIcon working={writing} />Write criteria from the question</DropdownMenuItem>
+                    <DropdownMenuItem disabled={writing || Boolean(cantWrite)} onSelect={writeCriteria}><AiIcon working={writing} />Write criteria from the question{cantWrite ? <span className="ms-auto ps-3 text-xs text-muted-foreground">{cantWrite}</span> : null}</DropdownMenuItem>
                     {copyable.length ? (
                       <>
                         <DropdownMenuSeparator />
@@ -1097,9 +1097,11 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 <Chip icon={Coins}>{credits(paperCredits(reviewer.model))} credits a paper</Chip>
                                 {due(reviewer) ? (
                                   <Chip icon={Coins}>{credits(due(reviewer))} credits for {plural(left, "paper", "papers")}</Chip>
-                                ) : saved && unreadBy(reviewer).length ? (
-                                  <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id, voted: "failed", ...(unreadBy(reviewer).length === 1 ? { paper: unreadBy(reviewer)[0]!.id } : {}) })} tone="warning" icon={TriangleAlert}>{unreadText(unreadBy(reviewer).length)}</LinkChip>
-                                ) : !fresh && papers ? <Chip icon={Check}>All read</Chip> : null}
+                                ) : null}
+                                {/* A paper it couldn't read shows beside what it still has to read: one never hides the other. */}
+                                {saved && unreadBy(reviewer).length ? (
+                                  <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id, voted: "failed", ...(unreadBy(reviewer).length === 1 ? { paper: unreadBy(reviewer)[0]!.id } : {}) })} tone="destructive" icon={TriangleAlert}>{unreadText(unreadBy(reviewer).length)}</LinkChip>
+                                ) : !due(reviewer) && !fresh && papers ? <Chip icon={Check}>All read</Chip> : null}
                               </>
                             ) : null}
                             {votes && saved ? <LinkChip href={papersHref(saved.id, { reviewer: reviewer.id })}>{plural(votes, "vote", "votes")}</LinkChip> : null}
@@ -1140,7 +1142,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                 <Segmented label="A paper is settled when" value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next } })} options={(["all", "most", "one"] as const).map((id) => ({ id, label: SETTLE_LABEL[id] }))} />
               </RuleRow>
               <RuleRow name="Conflicts are settled by" help={<Help title="Conflicts">This person sees every vote on the paper, and their decision is its result.</Help>}>
-                {joined.length ? (
+                {draft.rule.settle === "one" ? (
+                  <Chip icon={Check}>No conflicts to settle under this rule</Chip>
+                ) : joined.length ? (
                   <Select value={joined.some((person) => person.id === draft.rule.resolver) ? draft.rule.resolver : joined[0]!.id} onValueChange={(next) => set({ rule: { ...draft.rule, resolver: next } })}>
                     <SelectTrigger aria-label="Who settles a conflict" className="h-9 w-56"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1279,19 +1283,19 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <JumpLink key={model.id} to={`reviewer-${model.id}`} block="center" className="-mx-1.5 flex min-h-7 items-center gap-2 rounded-md px-1.5 py-0.5 text-sm outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
                     <ReviewerMark reviewer={model} className="size-5" />
                     <span className="min-w-0 truncate">{model.name}</span>
-                    {!due(model) && !fresh ? (unreadBy(model).length ? <StateChip tone="warning" icon={TriangleAlert} className="h-5 px-1.5">{unreadText(unreadBy(model).length)}</StateChip> : <Chip icon={Check} className="h-5 px-1.5">All read</Chip>) : null}
+                    {!fresh && unreadBy(model).length ? <StateChip tone="destructive" icon={TriangleAlert} className="h-5 px-1.5">{unreadText(unreadBy(model).length)}</StateChip> : !due(model) && !fresh ? <Chip icon={Check} className="h-5 px-1.5">All read</Chip> : null}
                     <span className="ms-auto shrink-0 text-end tabular-nums">{due(model) ? `${credits(due(model))} credits` : fresh ? <span className="text-muted-foreground">Free</span> : null}</span>
                   </JumpLink>
                 ))}
                 {reread ? <div className="flex items-center gap-2 text-sm"><span className="min-w-0 flex-1">{added ? "Answering the new criterion on papers already read" : "Reading the papers this opens again"}</span><span className="shrink-0 tabular-nums">{credits(reread)} credits</span></div> : null}
                 <div className="flex items-center gap-2 border-t border-border-subtle pt-2.5 text-sm font-semibold"><Coins className="size-4 text-primary" /><span className="flex-1">{fresh ? "Total, at most" : paused ? "Still to pay once resumed" : "Still to pay"}</span><span className="shrink-0 text-end tabular-nums">{cost || fresh ? `${credits(cost)} credits` : "Nothing"}</span></div>
                 <div role="img" aria-label={cost > wallet ? `${credits(cost - wallet)} credits more than the workspace has` : `Share of the workspace's credits: ${Math.round((cost / Math.max(wallet, 1)) * 100)}%`}>
-                  <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-destructive" : "bg-primary"} />
+                  <Meter value={cost} max={Math.max(wallet, 1)} fill={cost > wallet ? "bg-warning" : "bg-primary"} />
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {cost && cost <= wallet ? <span className="text-xs tabular-nums text-muted-foreground">{cost / Math.max(wallet, 1) < 0.01 ? "Under 1%" : `${Math.round((cost / Math.max(wallet, 1)) * 100)}%`} of</span> : null}
                   <WorkspaceTag size="sm" workspace={lookOf(workspace, saved?.createdBy ?? store.viewer)}>{credits(wallet)} in {workspace.name}</WorkspaceTag>
-                  {cost > wallet ? <Chip className="bg-destructive/10 ink-destructive">{credits(cost - wallet)} short</Chip> : cost ? <Chip>{credits(wallet - cost)} left after</Chip> : null}
+                  {cost > wallet ? <StateChip tone="warning" icon={Coins}>{credits(cost - wallet)} credits short</StateChip> : cost ? <Chip>{credits(wallet - cost)} left after</Chip> : null}
                   {saved?.spent ? <Chip>{credits(Object.values(saved.spent).reduce((sum, one) => sum + one, 0))} spent so far</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (

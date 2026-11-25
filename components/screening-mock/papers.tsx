@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { createSerializer, parseAsArrayOf, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, Quote, RefreshCw, RotateCcw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, Quote, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -30,9 +30,9 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
-import { credits, paperCredits, type Open } from "./store";
+import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { useWorkspace } from "./workspace";
@@ -297,7 +297,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     who
       ? {
           key: "reviewer",
-          label: voted === "any" ? (everyone.length > 1 ? `Voted on by ${listed(everyone.map((one) => (one === open.me ? "you" : nameOf(open, one))))}` : whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : voted === "failed" ? `${whoName ?? "You"} couldn't read` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
+          label: voted === "any" ? (everyone.length > 1 ? `Voted on by ${listed(everyone.map((one) => (one === open.me ? "you" : nameOf(open, one))))}` : whoName ? `Votes by ${whoName}` : "Your votes") : voted === "none" ? (whoName ? `Waiting for ${whoName}'s vote` : "Waiting for your vote") : voted === "settled" ? `Settled by ${whoName ?? "you"}` : voted === "failed" ? `${whoName ?? "You"} couldn't read it` : `${whoName ?? "You"} voted ${DECISION_LABEL[voted]}`,
           clear: { reviewer: null, voted: null, with: null },
         }
       : null,
@@ -437,7 +437,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
             <SlidersHorizontal />Filters
             {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
           </Button>
-          <VoteMarksHelp className="@2xl/papers:hidden">Each paper shows one mark for each reviewer it was given to, in the order of the reviewers.</VoteMarksHelp>
+          <VoteMarksHelp blind={screening.rule.blind === "after"} className="@2xl/papers:hidden">Each paper shows one mark for each reviewer it was given to, in the order of the reviewers.</VoteMarksHelp>
         </div>
       </div>
 
@@ -531,7 +531,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                           <span className="block truncate text-xs text-muted-foreground">{one.authors.join(", ")}, {one.year}</span>
                           <span className="flex items-center gap-1">
                             {votes[one.id]!.map(({ reviewer: r, vote, failed }) => <VoteMark key={r.id} vote={vote} failed={failed} hidden={!visible && r.id !== open.me} who={r.name} />)}
-                            <ResultChip result={settled[one.id]!.result} className="ms-auto" />
+                            {visible || settled[one.id]!.result === "waiting" ? <ResultChip result={settled[one.id]!.result} className="ms-auto" /> : <span className="ms-auto"><ShutChip by="vote" /></span>}
                           </span>
                         </button>
                       </li>
@@ -561,7 +561,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                               </Legend>
                             </Help>
                           ) : (
-                            <VoteMarksHelp>Each column is a reviewer. Press a face for the papers they voted on.</VoteMarksHelp>
+                            <VoteMarksHelp blind={screening.rule.blind === "after"}>Each column is a reviewer. Press a face for the papers they voted on.</VoteMarksHelp>
                           )}
                         </span>
                       </TableHead>
@@ -663,8 +663,11 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
                               ) : null}
                               {waitsForMe ? (
                                 <Button asChild size="xs" className="h-6"><NextLink href={screenHref(id, { paper: one.id })}>Vote<ChevronRight /></NextLink></Button>
-                              ) : (
+                              ) : visible || state.result === "waiting" ? (
                                 <ResultChip result={state.result} />
+                              ) : (
+                                // A result the votes would give away is hidden with them, from someone who has yet to vote on the paper.
+                                <ShutChip by="vote" />
                               )}
                             </span>
                           </TableCell>
@@ -730,13 +733,13 @@ function LegendRow({ mark, children }: { mark: ReactNode; children: ReactNode })
 }
 
 /** What each vote mark means, over the table's columns and beside a phone's search. `children` says where the marks are. */
-function VoteMarksHelp({ children, className }: { children: ReactNode; className?: string }) {
+function VoteMarksHelp({ blind, children, className }: { /** The screening hides the others' votes until you vote. */ blind: boolean; children: ReactNode; className?: string }) {
   return (
-    <Help title="Vote marks" side="bottom" className={className} facts={<HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact>}>
+    <Help title="Vote marks" side="bottom" className={className} facts={blind ? <HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact> : undefined}>
       <p>{children}</p>
       <Legend>
         {DECISIONS.map((decision) => <LegendRow key={decision} mark={<VoteMark vote={{ decision }} who="A reviewer" />}>Voted {DECISION_LABEL[decision]}</LegendRow>)}
-        <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, {SHUT.vote.says.toLowerCase()}</LegendRow>
+        {blind ? <LegendRow mark={<VoteMark vote={{ decision: "include" }} hidden who="A reviewer" />}>Voted, {SHUT.vote.says.toLowerCase()}</LegendRow> : null}
         <LegendRow mark={<VoteMark who="A reviewer" />}>Hasn&apos;t voted yet</LegendRow>
         <LegendRow mark={<VoteMark failed who="A model" />}>A model couldn&apos;t read it</LegendRow>
         <LegendRow mark={<span className="size-6" />}>An empty cell is a paper that isn&apos;t theirs to vote on</LegendRow>
@@ -880,15 +883,6 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         </div>
       </div>
     );
-  const votesHelp = !visible ? (
-    <Help title="Blind voting" side="left" facts={<HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact>}>
-      <p>You see how the others voted on a paper only after you vote on it, so their votes don&apos;t sway yours. The organiser sets this in the screening&apos;s settings.</p>
-    </Help>
-  ) : failed.length ? (
-    <Help title="A model that couldn't read a paper" side="left" facts={<><HelpFact>No vote counted</HelpFact><HelpFact icon={RotateCcw}>Can be read again</HelpFact></>}>
-      <p>A model that can&apos;t open a paper&apos;s title and abstract casts no vote on it. The other reviewers&apos; votes settle the paper. Read it again to give the model another try.</p>
-    </Help>
-  ) : undefined;
 
   return (
     <div className="space-y-5 px-4 pb-6 sm:px-6">
@@ -904,7 +898,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <ResultChip result={state.result} />
+        {visible || state.result === "waiting" ? <ResultChip result={state.result} /> : <ShutChip by="vote" />}
         {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
         <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
         {added ? <LinkChip href={added.href} aria-current={added["aria-current"]} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(paper.batch!)}</LinkChip> : null}
@@ -936,20 +930,20 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       ) : null}
 
       {/* While the rule hides the others' votes, the table is the one Screen draws: a lock where a vote is cast, the rule's chip beside the title and its reason under the table. */}
-      <Section title="Votes" help={votesHelp} aside={visible ? undefined : <ShutChip by="vote" />}>
+      <Section title="Votes" help={<VotesHelp blind={screening.rule.blind === "after"} side="left" />} aside={visible ? undefined : <ShutChip by="vote" />}>
           <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={!visible} shown={shown} onShow={setShown} passage={visible && quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div>
         {visible ? null : <ShutNote by="vote">{VOTES_SHUT}</ShutNote>}
         {visible ? (
           <ul className="space-y-2 pt-1">
             {failed.map(({ reviewer }) => {
               const unread = open.unread(reviewer).length;
-              const cost = unread * paperCredits(reviewer.model!);
+              const retry = open.retryOf(reviewer);
               return (
                 // On a phone the button goes under the name, so the name is never cut short.
                 <li key={reviewer.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 text-xs sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                   <ReviewerMark reviewer={reviewer} className="size-5" />
                   <span className="flex min-w-0 items-center gap-1"><ReviewerName reviewer={reviewer} className="font-medium" /><span className="shrink-0 text-muted-foreground">couldn&apos;t read it</span></span>
-                  {open.canChange ? <Button variant="outline" size="xs" className="justify-self-start max-sm:col-start-2" onClick={() => open.retry(reviewer)}><RotateCcw />{unread > 1 ? `Read all ${unread} again` : "Read it again"}, {credits(cost)} credits</Button> : null}
+                  {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => open.retry(reviewer)} className="justify-self-start max-sm:col-start-2" /> : null}
                 </li>
               );
             })}
@@ -966,8 +960,8 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         ) : null}
       </Section>
 
-      {/* What its reviewers said to each other, where its votes show and there is something to talk over. Where a rule keeps it shut for someone who could write in it, the rule stands in its place. */}
-      {visible && discussed(open, paper) ? <Discussion open={open} paper={paper} /> : open.isReviewer || open.canResolve ? <DiscussionShut open={open} by={visible ? "conflict" : "vote"} /> : null}
+      {/* What its reviewers said to each other, where its votes show and there is something to talk over. Where a rule keeps it shut, the rule stands in its place. */}
+      {visible && discussed(open, paper) ? <Discussion open={open} paper={paper} /> : <DiscussionShut open={open} by={visible ? "conflict" : "vote"} />}
 
       {/* The paper's result: settled by a person where its reviewers disagree, and open to change after that. */}
       {state.resolvedBy ? (

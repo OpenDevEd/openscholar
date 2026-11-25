@@ -6,13 +6,14 @@
 
 import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, FileText, GitCompare, Hash, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, Coins, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, Minus, RotateCcw, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { HELP_POPOVER, HelpButton } from "@/components/ui/help";
+import { HELP_POPOVER, HelpButton, HelpFact } from "@/components/ui/help";
 import { YouTag } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,7 +21,7 @@ import { SELECT_TRIGGER } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import type { Answer } from "@/lib/screening/setup";
+import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { DECISION_LABEL, RESULTS, RESULT_LABEL, reasonLabel, type Criterion, type Decision, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
 /**
@@ -115,7 +116,16 @@ export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Ch
 export const SHUT = {
   vote: { icon: Lock, says: "Hidden until you vote" },
   conflict: { icon: GitCompare, says: "Opens on a conflict" },
+  // Who the person is to the screening: its reviewers vote and write, and one person settles its conflicts.
+  reviewer: { icon: Eye, says: "For its reviewers" },
+  settler: { icon: Eye, says: "For whoever settles conflicts" },
+  // Changing who is on it and its settings is for the members of its workspace.
+  member: { icon: Lock, says: "For the workspace's members" },
+  // A living screening whose sources hold what they held: a file, a pasted list.
+  sources: { icon: Lock, says: "No source gains papers" },
 } as const;
+/** What someone who doesn't vote on a screening is told, wherever a vote would be cast. */
+export const NOT_A_REVIEWER = "You aren't one of this screening's reviewers";
 export type Shut = keyof typeof SHUT;
 
 /** Beside the title of a part a rule shuts, or beside a control it shuts: what opens it. A control is not hidden, so it says when it opens in its own words. */
@@ -142,6 +152,21 @@ export const youFirst = <T extends { reviewer: Pick<Reviewer, "id" | "kind"> }>(
 
 /** The line under the others' votes while the rule hides them, on Screen and in the Papers drawer. */
 export const VOTES_SHUT = "The other votes stay out of sight so they can't sway yours.";
+
+/**
+ * Sends a model back to the papers it couldn't read: the one control for it, wherever a failed read shows, with the
+ * same words and the same price. Where the workspace can't pay for it, it is shut and says how many credits are missing.
+ */
+export function RetryRead({ papers, cost, short, onRetry, variant = "outline", size = "xs", className }: { papers: number; /** In credits, as it is said. */ cost: string; /** The credits missing, as they are said, or nothing where there are enough. */ short?: string; onRetry: () => void; variant?: "default" | "outline"; size?: "xs" | "sm"; className?: string }) {
+  return (
+    <span className={cn("flex flex-wrap items-center gap-2", className)}>
+      <Button variant={variant} size={size} disabled={Boolean(short)} className={cn(variant === "default" && "min-w-0 flex-1")} onClick={onRetry}><RotateCcw />{retryLabel(papers, cost)}</Button>
+      {short ? <StateChip tone="warning" icon={Coins}>{short} credits short</StateChip> : null}
+    </span>
+  );
+}
+/** What that control says, for a menu's row too. */
+export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Read all ${papers.toLocaleString("en-GB")} again` : "Read it again"}, ${cost} credits`;
 
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
@@ -485,5 +510,34 @@ export function AnswerMark({ answer, label, pressable = false }: { answer: Answe
     <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", pressable ? cn("border border-current/45 bg-card shadow-xs", TONE[tone].ink) : TONE[tone].chip)}>
       <Icon aria-hidden className="size-3.5" />
     </span>
+  );
+}
+
+/** "Differ", beside a criterion its reviewers answered differently: a chip that is pressed, and opens the answer that stands apart. */
+export const DIFFER = "flex h-5 items-center gap-0.5 rounded-full bg-info/12 ps-1.5 pe-1 text-2xs font-medium text-info outline-none transition-colors hover:bg-info/20 focus-visible:ring-2 focus-visible:ring-ring/50";
+
+/**
+ * What a paper's table of votes shows, behind its "?": the same on Screen and in the Papers drawer, with every sign the
+ * table draws. The rule that hides votes is named only on a screening that has it.
+ */
+export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bottom" | "left" }) {
+  return (
+    <Help
+      title="Reading the votes"
+      side={side}
+      facts={
+        <>
+          {blind ? <HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact> : null}
+          <HelpFact icon={Hourglass}>No vote yet</HelpFact>
+          <HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact>
+          {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label="An answer" /></span>{ANSWER_SIGN[answer].label}</HelpFact>)}
+          <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />No answer</HelpFact>
+          <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>Differ<ChevronDown aria-hidden className="size-3" /></span>Reviewers answered it differently</HelpFact>
+          <HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="An answer" pressable /></span>Opens what is behind the answer</HelpFact>
+        </>
+      }
+    >
+      Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note. Press an answer for what is behind it: the passage a model read, or a person&apos;s vote and note. A model that couldn&apos;t read a paper has no say in it.
+    </Help>
   );
 }
