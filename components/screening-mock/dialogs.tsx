@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronRight, Clock, Copy, Download, Info, X } from "@/components/icons";
+import { Layers, ArrowRight, Check, ChevronRight, Clock, Copy, Download, Info, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { Chip } from "@/components/screening/parts";
 import { PickMark } from "@/components/screening/source-row";
@@ -19,19 +19,13 @@ import { HelpFact } from "@/components/ui/help";
 import { ROLE_ICONS } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { PERSON_SAYS, num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
+import { RESULTS, votingReviewers, type Result, PERSON_SAYS, num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
-import { EmptyNote, Help, LinkChip, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
+import { FilterMenu, RESULT_STYLE, EmptyNote, Help, LinkChip, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
+import { bibOf, hiddenIn, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken } from "./export";
 import { credits, type Open } from "./store";
 
-const save = (name: string, type: string, text: string) => {
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([text], { type }));
-  link.download = name;
-  link.click();
-  URL.revokeObjectURL(link.href);
-};
 
 /**
  * Where a change in the activity opens: the papers a check brought, the setting it changed, or the reviewers.
@@ -246,7 +240,10 @@ export function MoveDialog({ open, onClose, screening, me, onMove }: { open: boo
   );
 }
 
-export type ExportTab = "papers" | "votes" | "flow" | "methods";
+export type ExportTab = "papers" | "votes" | "flow" | "methods" | "record";
+/** Which papers the first tab takes out: the ones with one result, every paper, or the person's own includes. */
+type Group = Result | "all" | "mine";
+const GROUP_FILE: Record<Group, string> = { include: "included", maybe: "maybe", exclude: "excluded", conflict: "in-conflict", waiting: "waiting", all: "all-papers", mine: "my-includes" };
 
 /** A box of the flow diagram: its count, and the lines that break the count down. */
 type FlowBox = { title: string; n: number; lines?: Array<{ label: string; n: number }> };
@@ -288,26 +285,19 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   // What was last taken out, so its button says so: a download gives no other sign.
   const [done, setDone] = useState<string | null>(null);
   const setTab = (next: ExportTab) => { setDone(null); onTab(next); };
-  // Which included papers: the screening's, or your own. Unset, it is whichever has some.
-  const [picked, setPicked] = useState<"settled" | "mine" | null>(null);
+  // Which papers: unset, the included ones, or the person's own includes where nothing is included yet.
+  const [picked, setPicked] = useState<Group | null>(null);
   const { screening, papers, votes, settled, counts } = state;
   const { id } = screening;
   const reviewers = activeReviewers(screening);
 
-  // One row per reviewer per paper: the record, as far as the person taking it out may see it. The others' votes on a paper they have yet to vote on are hidden from them here as on Screen and Papers.
-  const [seen, unseen] = [papers.filter((paper) => state.canSee(paper)), papers.filter((paper) => !state.canSee(paper))];
-  const rows = seen.flatMap((paper) => votes[paper.id]!.flatMap(({ reviewer, vote }) => (vote ? [{ paper, reviewer, vote, result: settled[paper.id]!.result }] : [])));
-  const hiddenVotes = unseen.reduce((sum, paper) => sum + votes[paper.id]!.filter((one) => one.vote).length, 0);
+  // Every file is built by export.ts, from the screening as it stands and from who takes it out: what is hidden from them on a page is hidden from them in the file.
+  const out: Taken = { screening, state, me: state.me };
+  const hidden = hiddenIn(out, papers);
+  // The votes that were cast and show: what the tab counts and previews. The file also has a row for a reviewer who has yet to vote and for a model that couldn't read the paper.
+  const rows = voteRows(out, papers).flatMap((row) => (row.vote ? [{ ...row, vote: row.vote, result: settled[row.paper.id]!.result }] : []));
   // The first vote on each of three papers: what the file holds, without a title three times over.
   const sample = rows.filter((row, i) => rows.findIndex((one) => one.paper.id === row.paper.id) === i).slice(0, 3);
-  const csv = () =>
-    [
-      ["paper", "year", "reviewer", "reviewer_kind", "decision", "reason", ...screening.criteria.map((c) => c.short), "note", "paper_result", "voted_at"],
-      ...rows.map((row) => [
-        row.paper.title, row.paper.year, row.reviewer.name, row.reviewer.kind, DECISION_LABEL[row.vote.decision],
-        row.vote.reason ? failedLabel(row.vote.reason, screening.criteria) : "", ...screening.criteria.map((c) => row.vote.answers[c.key] ?? ""), row.vote.note ?? "", RESULT_LABEL[row.result], new Date(row.vote.at).toISOString(),
-      ]),
-    ].map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
   const found = foundTotal(screening.sources);
   const kept = paperTotal(screening.sources);
@@ -315,17 +305,13 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const looks = screening.updates ?? [];
   const later = looks.reduce((sum, look) => sum + look.found, 0);
   const reasons = excludedBy(state).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n }));
-  // What a researcher takes away: the papers settled as included.
-  // A paper settled as included before the person looking has voted on it is one whose result is hidden from them: it stays out of the list and both files until they vote.
-  const settledIn: Paper[] = seen.filter((paper) => settled[paper.id]!.final === "include");
-  const hiddenIn = unseen.filter((paper) => settled[paper.id]!.final === "include").length;
-  // Your own includes: there before the others have voted too.
-  const mine: Paper[] = papers.filter((paper) => state.myVote(paper)?.decision === "include");
-  const which = picked ?? (settledIn.length || !mine.length ? "settled" : "mine");
-  const included = which === "mine" ? mine : settledIn;
-  const allIncluded = which === "mine" ? papersHref(id, { voted: "include" }) : papersHref(id, { result: "include" });
-  const ris = () => included.map((paper) => ["TY  - JOUR", `TI  - ${paper.title}`, ...paper.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${paper.year}`, `JO  - ${paper.venue}`, ...(paper.sentences.length ? [`AB  - ${paper.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
-  const bib = () => included.map((paper, i) => `@article{${paper.authors[0]!.split(" ").pop()!.toLowerCase()}${paper.year}${String.fromCharCode(97 + (i % 26))},\n  title = {${paper.title}},\n  author = {${paper.authors.filter((a) => a !== "and others").join(" and ")}},\n  year = {${paper.year}},\n  journal = {${paper.venue}}\n}`).join("\n\n");
+  // The papers by where they stand. One whose result is hidden from the person is in no result's group until they vote on it: it is in "Every paper", with its result hidden.
+  const shows = (paper: Paper) => state.canSee(paper) || settled[paper.id]!.result === "waiting";
+  const groups = { ...(Object.fromEntries(RESULTS.map((result) => [result, papers.filter((paper) => shows(paper) && settled[paper.id]!.result === result)])) as Record<Result, Paper[]>), all: papers, mine: papers.filter((paper) => state.myVote(paper)?.decision === "include") } satisfies Record<Group, Paper[]>;
+  const group: Group = picked ?? (groups.include.length || !groups.mine.length ? "include" : "mine");
+  const included = groups[group];
+  const outOfGroups = papers.filter((paper) => !shows(paper)).length;
+  const allIncluded = papersHref(id, group === "mine" ? { voted: "include" } : group === "all" ? {} : { result: group });
   // Papers still on their way from its sources wait for votes like the rest, so the counts add up while they arrive.
   const waiting = counts.waiting + (kept - papers.length);
   const openNow = counts.conflict + waiting;
@@ -386,21 +372,28 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   ].filter(Boolean).join(" ");
 
   const voters = new Set(rows.map((row) => row.reviewer.id)).size;
+  // The places where someone was on a paper and cast no vote: rows of the votes file, and a part of the whole record.
+  const unvoted = voteRows(out, papers).length - rows.length;
+  const file = slug(screening.name);
+  // What a file leaves out for this person, said over it: the others' votes on the papers they have yet to vote on.
+  const leftOut = hidden.votes ? <ShutNote by="vote">{plural(hidden.votes, "vote", "votes")} on the {plural(hidden.papers, "paper", "papers")} you have yet to vote on {hidden.votes === 1 ? "is" : "are"} left out, so {hidden.votes === 1 ? "it" : "they"} can&apos;t sway yours.</ShutNote> : null;
+  // A paper whose result is hidden is in no result's group: said where a group is shown.
+  const hiddenNote = group !== "all" && group !== "mine" && outOfGroups ? <ShutNote by="vote">{plural(outOfGroups, "paper is", "papers are")} in none of these groups: {outOfGroups === 1 ? "its" : "their"} result is hidden until you vote on {outOfGroups === 1 ? "it" : "them"}. Every paper is in &quot;Every paper&quot;.</ShutNote> : null;
   // What the open tab holds, as the title over it, with its "?".
   const heading = {
     papers: {
-      title: which === "mine" ? `${n(included.length, "paper", "papers")} you voted Include` : `${n(included.length, "included paper", "included papers")}`,
+      title: { include: n(included.length, "included paper", "included papers"), maybe: `${n(included.length, "paper", "papers")} at Maybe`, exclude: n(included.length, "excluded paper", "excluded papers"), conflict: `${n(included.length, "paper", "papers")} in conflict`, waiting: `${n(included.length, "paper", "papers")} waiting for votes`, all: n(included.length, "paper", "papers"), mine: `${n(included.length, "paper", "papers")} you voted Include` }[group],
       help: (
-        <Help title="Included papers" facts={<><HelpFact>BibTeX goes into Zotero or JabRef</HelpFact><HelpFact>RIS goes into EndNote or Mendeley</HelpFact></>}>
-          The papers with their titles, authors, years and journals, for a reference manager.
+        <Help title="Papers" facts={<><HelpFact>BibTeX goes into Zotero or JabRef</HelpFact><HelpFact>RIS goes into EndNote or Mendeley</HelpFact><HelpFact>CSV opens in Excel or Google Sheets</HelpFact></>}>
+          The papers of one result, or every paper. BibTeX and RIS carry each paper&apos;s title, authors, year, journal, DOI and abstract, for a reference manager. The CSV adds where each came from, where it stands, why it was excluded, who settled it and how its reviewers voted.
         </Help>
       ),
     },
     votes: {
       title: `${n(rows.length, "vote", "votes")} by ${n(voters, "reviewer", "reviewers")}`,
       help: (
-        <Help title="Every vote" facts={<><HelpFact>CSV opens in Excel or Google Sheets</HelpFact><HelpFact>JSON is for code</HelpFact><HelpFact>A column for each criterion</HelpFact></>}>
-          One row for each vote a reviewer cast, with its reason, its note, the answer to each criterion and where the paper stands now.
+        <Help title="Every vote" facts={<><HelpFact>CSV opens in Excel or Google Sheets</HelpFact><HelpFact>A column for each criterion</HelpFact><HelpFact>Each paper by its id and DOI</HelpFact></>}>
+          One row for each reviewer on each paper: their vote with its reason, its note and the answer to each criterion, and where the paper stands now. A reviewer who has yet to vote has a row too, and so has a model that couldn&apos;t read the paper.
         </Help>
       ),
     },
@@ -409,6 +402,14 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       help: (
         <Help title="PRISMA 2020 flow diagram" facts={<><HelpFact>SVG opens in Inkscape or Illustrator</HelpFact><HelpFact>PNG goes into Word or Google Docs</HelpFact></>}>
           The counts fill PRISMA 2020&apos;s identification and screening boxes, taken from this screening as it stands now.
+        </Help>
+      ),
+    },
+    record: {
+      title: "The whole record",
+      help: (
+        <Help title="The whole record" facts={<><HelpFact>JSON is for code and for keeping</HelpFact><HelpFact>Ids tie its parts together</HelpFact></>}>
+          Everything this screening holds, in one file: its rule and criteria as they are asked, its reviewers and sources, every paper with where it stands, every vote with the passage a model read, what reviewers wrote to each other, and what was changed.
         </Help>
       ),
     },
@@ -428,9 +429,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       <DialogContent className="top-[max(1rem,6dvh)] flex h-[min(44rem,88dvh)] translate-y-0 flex-col gap-0 p-0 sm:max-w-5xl">
         <DialogHeader className="space-y-3 border-b border-border-subtle p-5">
           <DialogTitle>Export</DialogTitle>
-          <DialogDescription className="sr-only">The included papers, every vote, the PRISMA diagram and a methods paragraph</DialogDescription>
-          {/* On a phone the four make two rows of two, so none is cut off. */}
-          <Segmented label="What to export" value={tab} onChange={setTab} className="max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[1.375rem] max-sm:*:justify-center" options={[{ id: "papers", label: "Included papers" }, { id: "votes", label: "Every vote" }, { id: "flow", label: "PRISMA" }, { id: "methods", label: "Methods paragraph" }]} />
+          <DialogDescription className="sr-only">The papers, every vote, the PRISMA diagram, a methods paragraph and the whole record</DialogDescription>
+          {/* On a phone the five make rows of two, the last across both, so none is cut off. */}
+          <Segmented label="What to export" value={tab} onChange={setTab} className="max-sm:grid max-sm:grid-cols-2 max-sm:rounded-[1.375rem] max-sm:*:justify-center max-sm:[&>*:last-child]:col-span-2" options={[{ id: "papers", label: "Papers" }, { id: "votes", label: "Every vote" }, { id: "flow", label: "PRISMA" }, { id: "methods", label: "Methods paragraph" }, { id: "record", label: "Whole record" }]} />
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           {/* What is taken out now is what stands now: it says so while papers are still open. */}
@@ -449,12 +450,26 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
           <Section
             title={heading.title}
             help={heading.help}
-            aside={tab === "papers" && mine.length ? <Segmented label="Which papers" value={which} onChange={(next) => { setDone(null); setPicked(next); }} options={[{ id: "settled" as const, label: "Included", detail: <span className="tabular-nums text-muted-foreground">{settledIn.length}</span> }, { id: "mine" as const, label: "You voted Include", detail: <span className="tabular-nums text-muted-foreground">{mine.length}</span> }]} /> : undefined}
+            aside={tab === "papers" ? (
+              <FilterMenu
+                name="Which papers"
+                value={group}
+                onChange={(next) => { setDone(null); setPicked(next); }}
+                narrows={false}
+                align="end"
+                className="h-8 rounded-full px-3.5 text-xs"
+                choices={[
+                  ...RESULTS.map((result) => ({ value: result as Group, label: RESULT_LABEL[result], icon: (() => { const Icon = RESULT_STYLE[result].icon; return <Icon />; })(), tone: RESULT_STYLE[result].tone, count: groups[result].length })),
+                  { value: "all" as Group, label: "Every paper", icon: <Layers />, count: papers.length, group: "All of them" },
+                  ...(groups.mine.length ? [{ value: "mine" as Group, label: "You voted Include", icon: <Check />, tone: "success" as const, count: groups.mine.length, group: "Your own" }] : []),
+                ]}
+              />
+            ) : undefined}
           >
             {tab === "papers" ? (
               included.length ? (
                 <div className="space-y-3">
-                  {which === "settled" && hiddenIn ? <ShutNote by="vote">{plural(hiddenIn, "included paper is", "included papers are")} left out: {hiddenIn === 1 ? "it was" : "they were"} settled before you voted on {hiddenIn === 1 ? "it" : "them"}, and {hiddenIn === 1 ? "its" : "their"} result shows once you have.</ShutNote> : null}
+                  {hiddenNote}
                   <ul className={LIST}>
                     {included.slice(0, 8).map((paper) => (
                       <li key={paper.id}>
@@ -473,11 +488,11 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   </Button>
                 </div>
               ) : (
-                <EmptyNote>{which === "mine" ? "You haven't voted Include on a paper yet." : "No paper is included yet."}</EmptyNote>
+                <div className="space-y-3">{hiddenNote}<EmptyNote>{group === "mine" ? "You haven't voted Include on a paper yet." : group === "all" ? "This screening has no papers yet." : `No paper is ${RESULT_LABEL[group].toLowerCase()} yet.`}</EmptyNote></div>
               )
             ) : tab === "votes" ? (
               <div className="space-y-3">
-                {hiddenVotes ? <ShutNote by="vote">{plural(hiddenVotes, "vote", "votes")} on the {plural(unseen.length, "paper", "papers")} you have yet to vote on {hiddenVotes === 1 ? "is" : "are"} left out, so {hiddenVotes === 1 ? "it" : "they"} can&apos;t sway yours.</ShutNote> : null}
+                {leftOut}
                 {/* The file's columns over its first rows: a table may scroll sideways only where it can't fit. */}
                 <div className="overflow-x-auto rounded-2xl border border-border-subtle">
                   {/* The paper takes what the other columns leave, and only it and the free text are ever cut. */}
@@ -502,6 +517,8 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                     </tbody>
                   </table>
                 </div>
+                {/* The file holds more rows than there are votes: said here, so its length is no surprise. */}
+                {unvoted ? <p className="text-xs text-muted-foreground">The file has {plural(unvoted, "more row", "more rows")}: a reviewer who has yet to vote on a paper, and a model that couldn&apos;t read one.</p> : null}
                 <Button asChild variant="outline" size="sm">
                   <NextLink href={papersHref(id)} onClick={onClose}>See every vote in Papers<ArrowRight /></NextLink>
                 </Button>
@@ -509,6 +526,29 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
             ) : tab === "flow" ? (
               // The drawing itself, as it will be saved: what you see is what your co-author gets.
               <img alt={`PRISMA diagram: ${flow.map((row) => `${row.main.title}, ${row.main.n}`).join("; ")}`} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`} className="w-full rounded-2xl border border-border-subtle bg-white" />
+            ) : tab === "record" ? (
+              // What the one file holds, counted: someone who takes it knows what they have before they open it.
+              <div className="space-y-3">
+                {leftOut}
+                <ul className={LIST}>
+                  {([
+                    ["Papers", papers.length, "Each with its DOI, its abstract, where it came from and where it stands"],
+                    ["Votes", rows.length, "Each with its reason, its note, its answers, and the passage a model read"],
+                    ["Without a vote", unvoted, "Who has yet to vote on a paper, and what a model couldn't read"],
+                    ["Criteria", screening.criteria.length, "As they are asked, with their guidance, and which are must-haves"],
+                    ["Reviewers", votingReviewers(screening).length, "People and models, with when each joined or was taken off"],
+                    ["Sources", screening.sources.length, "What each brought, before and after duplicates"],
+                    ["Messages", Object.entries(screening.threads ?? {}).reduce((sum, [paper, lines]) => sum + (state.canSee(papers.find((one) => one.id === paper) ?? papers[0]!) ? lines.length : 0), 0), "What reviewers wrote to each other about a paper"],
+                    ["Changes", screening.changes.length, "The activity log: what was changed, by whom and when"],
+                  ] as const).map(([name, count, what]) => (
+                    <li key={name} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                      <span className="w-28 shrink-0 font-medium">{name}</span>
+                      <span className="w-14 shrink-0 text-end font-semibold tabular-nums">{num(count)}</span>
+                      <span className="min-w-0 flex-1 text-muted-foreground">{what}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : (
               <p className="rounded-2xl border border-border-subtle p-4 text-sm leading-6">{methods}</p>
             )}
@@ -517,24 +557,24 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle p-4">
           {(tab === "papers"
             ? [
-                { key: "bib", label: "Download BibTeX", run: () => save(`${slug(screening.name)}-included.bib`, "application/x-bibtex", bib()), off: !included.length },
-                { key: "ris", label: "Download RIS", run: () => save(`${slug(screening.name)}-included.ris`, "application/x-research-info-systems", ris()), off: !included.length },
+                { key: "papers-csv", label: "Download CSV", run: () => save(`${file}-${GROUP_FILE[group]}.csv`, "text/csv", papersCsv(out, included)), off: !included.length },
+                { key: "bib", label: "Download BibTeX", run: () => save(`${file}-${GROUP_FILE[group]}.bib`, "application/x-bibtex", bibOf(included)), off: !included.length },
+                { key: "ris", label: "Download RIS", run: () => save(`${file}-${GROUP_FILE[group]}.ris`, "application/x-research-info-systems", risOf(included)), off: !included.length },
               ]
             : tab === "votes"
-              ? [
-                  { key: "json", label: "Download JSON", run: () => save(`${slug(screening.name)}-votes.json`, "application/json", JSON.stringify(rows.map((row) => ({ paper: row.paper.title, reviewer: row.reviewer.name, kind: row.reviewer.kind, ...row.vote, result: row.result })), null, 2)), off: !rows.length },
-                  { key: "csv", label: "Download CSV", run: () => save(`${slug(screening.name)}-votes.csv`, "text/csv", csv()), off: !rows.length },
-                ]
+              ? [{ key: "csv", label: "Download CSV", run: () => save(`${file}-votes.csv`, "text/csv", votesCsv(out, papers)), off: !papers.length }]
               : tab === "flow"
                 ? [
-                    { key: "svg", label: "Download SVG", run: () => save(`${slug(screening.name)}-flow.svg`, "image/svg+xml", svg()), off: false },
+                    { key: "svg", label: "Download SVG", run: () => save(`${file}-flow.svg`, "image/svg+xml", svg()), off: false },
                     { key: "png", label: "Download PNG", run: png, off: false },
                   ]
-                : [{ key: "copy", label: "Copy", run: () => void navigator.clipboard.writeText(methods), off: false }]
+                : tab === "record"
+                  ? [{ key: "json", label: "Download JSON", run: () => save(`${file}-record.json`, "application/json", JSON.stringify(recordOf(out, Date.now()), null, 2)), off: false }]
+                  : [{ key: "copy", label: "Copy", run: () => void navigator.clipboard.writeText(methods), off: false }]
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off} onClick={() => { button.run(); setDone(button.key); }}>
               {done === button.key ? <Check /> : button.key === "copy" ? <Copy /> : <Download />}
-              {done === button.key ? (button.key === "copy" ? "Copied" : "Downloaded") : button.label}
+              {done === button.key ? (button.key === "copy" ? "Copied" : "Downloaded") : button.label.startsWith("Download ") ? <><span className="max-sm:sr-only">Download </span>{button.label.slice(9)}</> : button.label}
             </Button>
           ))}
         </div>

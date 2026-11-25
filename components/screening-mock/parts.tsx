@@ -22,7 +22,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
-import { DECISION_LABEL, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
 /**
  * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
@@ -114,7 +114,7 @@ export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Ch
  * "?" and a vote's mark all say the rule the same way.
  */
 export const SHUT = {
-  vote: { icon: Lock, says: "Hidden until you vote" },
+  vote: { icon: Lock, says: HIDDEN_UNTIL_VOTE },
   conflict: { icon: GitCompare, says: "Opens on a conflict" },
   // Who the person is to the screening: its reviewers vote and write, and one person settles its conflicts.
   reviewer: { icon: Eye, says: "For its reviewers" },

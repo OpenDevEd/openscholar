@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { toMapModel, type MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
-import { HOME, workspaceOf, resolves, NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withReviewer, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
+import { seesVotes, HOME, workspaceOf, resolves, NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withReviewer, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
 
 type State = {
   screenings: Screening[];
@@ -331,7 +331,7 @@ export function useOpenScreening(id: string) {
     most,
     myVote,
     /** Other votes show on a paper that isn't yours to vote on, on one you've voted on, and always where the rule says so. */
-    canSee: (paper: Paper) => screening.rule.blind === "always" || !mine(paper) || Boolean(myVote(paper)),
+    canSee: (paper: Paper) => seesVotes(screening, state, me, paper),
     // A vote on a paper whose result was held lets go of it: the paper stands where its votes put it under the settings as they are now.
     // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
     vote: (paper: Paper, vote: Vote | null) =>

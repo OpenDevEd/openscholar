@@ -41,6 +41,8 @@ export const firstName = (name: string) => name.split(" ")[0]!;
 export const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 /** What someone wrote, quoted: a note with a vote, a paper's title in a line of text. One form everywhere. */
 export const inQuotes = (text: string) => `"${text}"`;
+/** A paper's DOI. Made up, on the prefix kept for examples, and missing for about one paper in eleven: some papers have none, and a file has to say so with an empty cell. */
+export const doiOf = (paper: Pick<Paper, "id" | "year">) => (hash(`doi${paper.id}`) % 11 === 0 ? undefined : `10.5555/os.${paper.year}.${String(hash(paper.id) % 1_000_000).padStart(6, "0")}`);
 /** A number as people read it: "1,204". */
 export const num = (n: number) => n.toLocaleString("en-GB");
 /** A small number as a word at the start of a sentence: "Three of the 5 reviewers". */
@@ -896,6 +898,16 @@ export function scoreOf(screening: Pick<Screening, "criteria" | "scoring">, cast
 }
 
 // ── Where each paper stands ──────────────────────────────────────────────────────────────────────
+
+/** What stands where the others' votes on a paper are kept from someone: on a chip, behind a "?", in a file's cell. */
+export const HIDDEN_UNTIL_VOTE = "Hidden until you vote";
+/**
+ * Whether someone sees the other votes on a paper, and with them its result and what was written about it: on a paper
+ * that isn't theirs to vote on, on one they have voted on, and always where the rule says so. One rule, for every page
+ * and every file.
+ */
+export const seesVotes = (screening: Screening, state: Pick<Standing, "votes">, me: string, paper: Paper) =>
+  screening.rule.blind === "always" || !dealtTo(screening, paper).some((one) => one.id === me) || Boolean(state.votes[paper.id]!.find((one) => one.reviewer.id === me)?.vote);
 
 /** The excluded papers counted by the reason each stands under, the most given first: the last column of the flow diagram, on the Overview and in the export. */
 export const excludedBy = ({ papers, votes, settled }: Pick<Standing, "papers" | "votes" | "settled">) => {

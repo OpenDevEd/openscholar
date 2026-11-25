@@ -34,6 +34,7 @@ import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStep
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
+import { risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { useWorkspace } from "./workspace";
 
@@ -274,17 +275,11 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     setPicked([]);
     toast(`Settled ${settling.length} as ${RESULT_LABEL[decision]}`, { action: { label: "Undo", onClick: () => settling.forEach((one) => open.resolve(one, null)) } });
   };
+  // The selection as a file: built by the builders the Export dialog uses, so the rows are the same and a vote hidden on this page is hidden in the file.
   const exportPicked = (as: "csv" | "ris") => {
     const picks = chosen.flatMap((one) => papers.find((p) => p.id === one) ?? []);
-    const lines = [["paper", "year", "result", ...reviewers.map((r) => r.name)], ...picks.map((one) => [one.title, one.year, RESULT_LABEL[settled[one.id]!.result], ...reviewers.map((r) => { const vote = votes[one.id]!.find((v) => v.reviewer.id === r.id)?.vote; return vote ? DECISION_LABEL[vote.decision] : ""; })])];
-    const text = as === "csv"
-      ? lines.map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")
-      : picks.map((one) => ["TY  - JOUR", `TI  - ${one.title}`, ...one.authors.filter((a) => a !== "and others").map((a) => `AU  - ${a}`), `PY  - ${one.year}`, `JO  - ${one.venue}`, ...(one.sentences.length ? [`AB  - ${one.sentences.join(" ")}`] : []), "ER  - "].join("\n")).join("\n\n");
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([text], { type: as === "csv" ? "text/csv" : "application/x-research-info-systems" }));
-    link.download = `selected-papers.${as}`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    if (as === "csv") save("selected-papers-votes.csv", "text/csv", votesCsv({ screening, state: open, me: open.me }, picks));
+    else save("selected-papers.ris", "application/x-research-info-systems", risOf(picks));
   };
 
   // What narrows the table, each as a chip that takes it away.
