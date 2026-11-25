@@ -790,7 +790,8 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
   const kept = (reviewer: Reviewer) => hidden && reviewer.id !== me;
   return (
     // The marks sit right after the longest criterion, so a row reads across. On a phone the criteria take what is left and cut off, so every column fits.
-    <div className="grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 gap-y-1.5 sm:w-max sm:grid-cols-[minmax(7rem,max-content)_var(--marks)]" style={{ "--marks": `repeat(${cast.length}, 1.75rem)` } as React.CSSProperties}>
+    // The rows are set apart by their cells' own margins, not by a gap. A grid keeps a gap around a row for as long as the row is there, even at no height, so the passage that opens under a row would take 6px with it in the last frame of closing.
+    <div className="-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 *:my-[3px] sm:w-max sm:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]" style={{ "--marks": `repeat(${cast.length}, 1.75rem)` } as React.CSSProperties}>
       <span />
       {cast.map(({ reviewer, vote, failed }) => <Face key={reviewer.id} reviewer={reviewer} vote={vote} failed={failed} you={reviewer.id === me} kept={kept(reviewer)} criteria={criteria} />)}
       {criteria.map((criterion, n) => {
@@ -818,11 +819,11 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
                 <span key={reviewer.id} className="mx-auto flex"><AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} /></span>
               );
             })}
-            {/* The passage opens under its own row. It takes the grid's width and never widens it. */}
+            {/* The passage opens under its own row. It takes the grid's width and never widens it. It has no margin of its own, so closed it takes no room at all. */}
             <AnimatePresence initial={false}>
               {passage && shown?.criterion === criterion.key ? (
-                <motion.div key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="col-span-full overflow-hidden [contain:inline-size]">
-                  <div className="py-1">{passage}</div>
+                <motion.div key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="col-span-full my-0! overflow-hidden [contain:inline-size]">
+                  <div className="py-[7px]">{passage}</div>
                 </motion.div>
               ) : null}
             </AnimatePresence>

@@ -20,6 +20,7 @@ import { PaperScope, PickMark } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented, pagerOf } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
@@ -38,7 +39,7 @@ import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
-import { ActionBar, BELOW_HEADER, Help, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
+import { ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
 import { credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
@@ -594,6 +595,8 @@ export function ScreeningForm({ id }: { id?: string }) {
             {/* Two columns only where the well beside the sources is wide enough for its seven tabs on one line. */}
             <div className="@container"><div className="grid items-start gap-4 @[88rem]:grid-cols-2 @[88rem]:grid-rows-[auto_1fr]">
               <div className="min-w-0 space-y-3">
+                {/* The list and what stands in for it when it is empty are different heights: the frame around them slides from one to the other. */}
+                <AutoHeight>
                 {sourceRows.length || reading.length ? (
                   <div className={cn(LIST, "bg-card")}>
                     <AnimatePresence initial={false}>
@@ -609,7 +612,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         // On a running screening the name opens the papers it brought; where it lives opens from the icon beside it.
                         const own = saved?.sources.some((one) => one.id === source.id) ? saved.id : null;
                         return (
-                          <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                          <motion.div key={source.id} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                             <div className={cn("flex min-h-14 items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors max-sm:flex-wrap", gone && TONE.warning.panel)}>
                               <span className="flex size-9 shrink-0 items-center justify-center self-start rounded-lg bg-foreground/[0.06] text-foreground"><Icon className="size-4" /></span>
                               <div className="min-w-0 flex-1 space-y-1.5 max-sm:basis-[calc(100%-3rem)]">
@@ -701,7 +704,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         );
                       })}
                       {reading.map((name) => (
-                        <motion.div key={`reading:${name}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                        <motion.div key={`reading:${name}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                           <div className="flex min-h-14 items-center gap-3 px-4 py-3">
                             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06]"><Spinner className="size-4" /></span>
                             <p className="min-w-0 flex-1 truncate text-sm font-medium">{name}</p>
@@ -714,6 +717,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : (
                   <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">No papers yet</p>
                 )}
+                </AutoHeight>
                 {rejected.length ? (
                   <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
                     <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
@@ -914,17 +918,22 @@ export function ScreeningForm({ id }: { id?: string }) {
             }
           >
             <div className={cn(LIST, "bg-card")}>
-              {criterionRows.length ? (
-                <div className="flex items-center gap-x-3 px-4 py-1.5 text-xs text-muted-foreground @max-3xl/criteria:hidden">
+              {/* The column names come and go with the first and the last criterion, growing and shrinking as a row does. */}
+              <AnimatePresence initial={false}>
+                {criterionRows.length ? (
+                  <motion.div key="names" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden @max-3xl/criteria:hidden", DIVIDED_ROW)}>
+                <div className="flex items-center gap-x-3 px-4 py-1.5 text-xs text-muted-foreground">
                   <span className="w-4 shrink-0" />
                   <span className="min-w-0 flex-1 px-1">Question</span>
                   <span className={cn(SHORT_NAME, "flex items-center gap-1")}>Short name{shortNameHelp}</span>
                   <span aria-hidden className={ROW_END} />
                 </div>
-              ) : null}
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
               <AnimatePresence initial={false}>
                 {criterionRows.map(({ criterion, gone }, i) => (
-                  <motion.div key={criterion.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                  <motion.div key={criterion.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
                     <div className={cn("flex items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors @max-3xl/criteria:flex-wrap", gone && TONE.warning.panel)}>
                       <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
                       {gone ? (
@@ -949,8 +958,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </div>
                   </motion.div>
                 ))}
+                {/* The line a list with nothing in it shows grows in as its last row shrinks away, as a row does. */}
+                {!criterionRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="px-4 py-4 text-sm text-muted-foreground">No criteria yet</p></motion.div> : null}
               </AnimatePresence>
-              {!criterionRows.length ? <p className="px-4 py-4 text-sm text-muted-foreground">No criteria yet</p> : null}
               <form className="flex items-center gap-2 px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); addCriterion(text); setText(""); }}>
                 <Input id="new-criterion" value={text} onChange={(event) => setText(event.target.value)} placeholder="Add a criterion with a yes or no answer" aria-label="New criterion" className="h-9 flex-1" />
                 <Button type="submit" variant="outline" size="sm" className="h-9" disabled={!text.trim()}><Plus />Add</Button>
@@ -1045,8 +1055,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                     />
                   );
                 })}
+                {!reviewerRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="px-4 py-4 text-sm text-muted-foreground">No reviewers yet</p></motion.div> : null}
               </AnimatePresence>
-              {!reviewerRows.length ? <p className="px-4 py-4 text-sm text-muted-foreground">No reviewers yet</p> : null}
               <div className="grid gap-2 px-4 py-2.5 sm:grid-cols-2">
                 <AddPerson exclude={people.map((person) => person.id)} onPick={(pick) => addReviewer("person" in pick ? personReviewer(pick.person, NOW) : invitedReviewer(pick.email, NOW))}>
                   <Button id="add-person" variant="outline" size="sm" className="w-full"><UserPlus />Add a person</Button>
@@ -1323,7 +1333,7 @@ function OfferRow({ offer, icon: Icon, chips, added, onAdd }: { offer: Offer; ic
 function ReviewerRow({ reviewer, you, detail, chips, href, gone, onRemove, onKeep }: { reviewer: Reviewer; you: boolean; detail: string; chips?: ReactNode; /** Their votes on the Papers page, for someone already on the screening. */ href?: string; /** Removed in the form and not saved yet: struck through, with Keep. */ gone: boolean; onRemove: () => void; onKeep: () => void }) {
   const name = <ReviewerName reviewer={reviewer} you={you} className={cn("text-sm font-medium", gone && "text-muted-foreground line-through")} />;
   return (
-    <motion.div id={`reviewer-${reviewer.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", BELOW_HEADER)}>
+    <motion.div id={`reviewer-${reviewer.id}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", BELOW_HEADER, DIVIDED_ROW)}>
       <div className={cn("flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors", gone && TONE.warning.panel)}>
         <ReviewerMark reviewer={reviewer} className="size-9" />
         <div className="min-w-0 flex-1">

@@ -4,6 +4,8 @@
 // it costs, one line each with an icon for its kind, then which results move, as counts that open
 // the papers behind them.
 
+import { EASE } from "@/components/settings/model-map";
+import { AnimatePresence, motion } from "motion/react";
 import { useState, type ComponentProps } from "react";
 import NextLink from "next/link";
 import { ArrowRight, ChevronDown, Coins, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
@@ -267,7 +269,10 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
                   </span>
                   <ChevronDown aria-hidden className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", shown && "rotate-180")} />
                 </button>
-                {shown ? (
+                {/* The papers a change moves open under it by growing, and close by shrinking away to nothing. */}
+                <AnimatePresence initial={false}>
+                  {shown ? (
+                    <motion.div key="papers" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
                   <div className="space-y-1 border-t border-border-subtle bg-inset px-3 py-2">
                     <ul className="space-y-1">
                       {move.papers.slice((at - 1) * PAPERS_PAGE, at * PAPERS_PAGE).map((paper) => (
@@ -283,7 +288,9 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
                     </ul>
                     {pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={at} totalPages={pages} onPageChange={setPage} totalItems={move.papers.length} itemsPerPage={PAPERS_PAGE} itemLabel="papers" /> : null}
                   </div>
-                ) : null}
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
               </li>
             );
           })}

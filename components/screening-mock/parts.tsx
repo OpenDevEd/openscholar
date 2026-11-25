@@ -266,6 +266,19 @@ export function QuestionName({ question, label, className, children }: { questio
   );
 }
 
+/**
+ * For a part that opens and closes by growing from no height and shrinking back to it, where it is a row of a divided
+ * list. The list draws a line under each of its rows, and at no height that line still takes a pixel, until the row has
+ * left: the jump in the last frame of closing. So the row gives the pixel back with a margin and holds one inside
+ * instead, which shrinks with the rest. Closed, it takes no room at all.
+ *
+ * The same goes for any space a parent puts around its children. In a flex parent with a gap, the part's wrapper takes
+ * the gap off with a negative margin (`-mt-3` in a `gap-3`) and its content carries it as padding (`pt-3`). A grid's gap
+ * can't be taken off that way, since a row's track never goes below nothing: there the rows are set apart by their
+ * cells' margins and the part has none (the votes table in screen.tsx).
+ */
+export const DIVIDED_ROW = "-mb-px after:block after:h-px";
+
 /** A fact with its name: the name quiet, the fact in the text's own weight. What "Name: fact" would say, drawn with weight in place of a colon. */
 export function Named({ name, children }: { name: string; children: ReactNode }) {
   return <><span className="shrink-0 font-normal text-muted-foreground">{name}</span><span className="min-w-0 truncate">{children}</span></>;

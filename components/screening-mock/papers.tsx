@@ -948,11 +948,10 @@ function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { 
 
       <Section title="Votes" help={votesHelp}>
         {visible ? (
-          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} /></div>
+          <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} shown={shown} onShow={setShown} passage={quoting?.vote && shown ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : undefined} /></div>
         ) : (
           <p className="flex items-center gap-2 rounded-2xl bg-inset px-3 py-3 text-sm text-muted-foreground"><Lock className="size-4 shrink-0" />Hidden until you vote</p>
         )}
-        {quoting?.vote && shown && visible ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : null}
         {visible ? (
           <ul className="space-y-2 pt-1">
             {failed.map(({ reviewer }) => {
