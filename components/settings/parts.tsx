@@ -143,9 +143,9 @@ export function Segmented<T extends string>({
               "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
               stacked ? "rounded-2xl" : "rounded-full",
               stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
-              // On a phone, a segment its group has made narrower than its label (a row at large text) wraps the label
-              // inside it rather than running out of the group. A segment as wide as its label stays as it is.
-              !fill && !stacked && ["max-sm:h-auto max-sm:min-w-0 max-sm:py-1", size === "lg" ? "max-sm:min-h-11" : size === "md" ? "max-sm:min-h-9" : "max-sm:min-h-8"],
+              // On a phone, a group narrower than a segment's label (a row at large text) wraps the label between its
+              // words, never inside one, rather than running out of the group. A segment as wide as its label stays as it is.
+              !fill && !stacked && ["max-sm:h-auto max-sm:py-1", size === "lg" ? "max-sm:min-h-11" : size === "md" ? "max-sm:min-h-9" : "max-sm:min-h-8"],
               fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
               // Each segment starts from its label's width and they share what is left over. Where the row is too narrow for them all, the last ones go to a second line: no label is cut.
               fill === "labels" && "flex-auto justify-center",
