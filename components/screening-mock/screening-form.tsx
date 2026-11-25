@@ -10,7 +10,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
-import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, Clock, Coins, Copy, ExternalLink, Eye, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -34,15 +34,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
+import { listed, num, PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf, includedIn, inQuotes, seesVotes, inOrder } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
-import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
+import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, UPLOAD_ACCEPT, UPLOAD_FORMATS, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
-import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
-import { paid, walletOf, credits, isReading, paperCredits, useMock } from "./store";
+import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
+import { paid, walletOf, credits, isReading, paperCredits, useMock, toppedUp, spentOf, perPaper } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // The whole library and its collections are one place to a person, so they share a tab.
 type Kind = Exclude<SourceKind, "pdf" | "saved">;
@@ -80,7 +81,7 @@ function sourceLink(source: Pick<Source, "kind" | "name" | "detail">, screenings
     return { href: collection ? `/library?col=${collection.id}` : "/library", where: "in the collection" };
   }
   if (source.kind === "screening") {
-    const screening = screenings.find((one) => source.name === `Included in ${one.name}`);
+    const screening = screenings.find((one) => source.name === includedIn(one.name));
     return screening ? { href: papersHref(screening.id, { result: "include" }), where: "in the screening" } : null;
   }
   if (source.kind === "evidenceLibrary") {
@@ -129,7 +130,7 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   // One or two by name, more as a count.
   const named = (list: string[], one: string, many: string) => (list.length > 2 ? `${list.length} ${many}` : list.length === 2 ? `${list[0]} and ${list[1]}` : (list[0] ?? one));
   const gone = <T extends { id?: string; key?: string }>(a: T[], b: T[]) => a.filter((x) => !b.some((y) => (y.id ?? y.key) === (x.id ?? x.key)));
-  if (before.name !== after.name) push(`Renamed it to “${after.name.trim() || "Untitled screening"}”`, "name");
+  if (before.name !== after.name) push(`Renamed it to ${inQuotes(after.name.trim() || "Untitled screening")}`, "name");
   if (before.question !== after.question) push("Changed the research question", "name");
   const [newSources, oldSources] = [gone(after.sources, before.sources), gone(before.sources, after.sources)];
   if (newSources.length) push(`Added ${named(newSources.map((source) => source.name), "a source", "sources")}`, "papers");
@@ -148,7 +149,7 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   if (guided.length) push(`Changed the guidance on ${named(quoted(guided), "a criterion", "criteria")}`, "criteria");
   // A short name that only followed its reworded question is part of that change, not one of its own.
   const own = (criterion: Criterion) => criterion.short === shortOf(criterion.text);
-  const renamed = after.criteria.flatMap((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && was.short !== criterion.short && !(own(was) && own(criterion)) ? [`“${was.short}” to “${criterion.short}”`] : []; });
+  const renamed = after.criteria.flatMap((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && was.short !== criterion.short && !(own(was) && own(criterion)) ? [`${inQuotes(was.short)} to ${inQuotes(criterion.short)}`] : []; });
   if (renamed.length) push(`Renamed ${named(renamed, "a criterion", "criteria")}`, "criteria");
   if (scoringChanged(before, after)) push("Changed the scoring", "criteria");
   const [was, is] = [activeReviewers(before), activeReviewers(after)];
@@ -157,7 +158,7 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   if (JSON.stringify(before.rule) !== JSON.stringify(after.rule)) push("Changed how a paper is decided", "decided");
   if (JSON.stringify(before.destination) !== JSON.stringify(after.destination)) {
     const renamed = before.destination.kind === "new" && after.destination.kind === "new" && !after.destination.collection;
-    push(collectionName(before) === collectionName(after) ? "Changed where included papers go" : renamed ? `Renamed its collection to “${collectionName(after)}”` : `Included papers go to ${collectionName(after) ?? "no collection"}`, "goes-to");
+    push(collectionName(before) === collectionName(after) ? "Changed where included papers go" : renamed ? `Renamed its collection to ${inQuotes(collectionName(after) ?? "")}` : `Included papers go to ${collectionName(after) ?? "no collection"}`, "goes-to");
   }
   return parts;
 }
@@ -166,7 +167,7 @@ const describe = (before: Screening, after: Screening) => changesOf(before, afte
 /** A list with one item put back where it was. */
 const insertAt = <T,>(list: T[], at: number, item: T) => [...list.slice(0, at), item, ...list.slice(at)];
 /** A list in the saved order, with what is new to it after. */
-const inOrder = <T extends { id?: string; key?: string }>(list: T[], saved: T[]) => {
+const inSavedOrder = <T extends { id?: string; key?: string }>(list: T[], saved: T[]) => {
   const idOf = (item: T) => item.id ?? item.key;
   return [...saved.flatMap((one) => list.find((item) => idOf(item) === idOf(one)) ?? []), ...list.filter((item) => !saved.some((one) => idOf(one) === idOf(item)))];
 };
@@ -209,11 +210,13 @@ export function ScreeningForm({ id }: { id?: string }) {
   const copied = !id && from ? store.screenings.find((one) => one.id === from) : undefined;
   // What the form starts from: the saved screening, a copy of another to run again, or nothing yet.
   // A copy's sources start over: what they hold now is what the new screening starts with, and nothing has come in since.
-  const [made] = useState<Screening>(() =>
+  // Built for whoever is looking: the mock restores who that is after the first draw, so it isn't fixed at the first.
+  const made = useMemo<Screening>(() =>
     copied
       ? { ...blank(store.viewer), name: `${copied.name}, again`, question: copied.question, sources: copied.sources.map((source) => ({ ...source, id: `src-${source.slot}-${hash(source.name) % 1000}`, updates: undefined, scope: "all" as const, range: [1, Math.max(1, source.total)] as [number, number], addedAt: NOW })), criteria: copied.criteria, theme: copied.theme, reviewers: activeReviewers(copied), rule: copied.rule, scoring: copied.scoring, destination: { ...copied.destination, name: "" } }
       : blank(store.viewer),
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one blank form for each person and each screening it is copied from
+  [store.viewer, copied?.id]);
   const origin = saved ?? made;
   // What isn't saved yet is kept by the mock's store, so leaving the page and coming back loses nothing.
   const key = id ?? `new:${from ?? ""}`;
@@ -223,7 +226,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const [discarding, setDiscarding] = useState<Edit[] | null>(null);
   const setDraft = (next: Screening | ((now: Screening) => Screening)) => {
     setLastSave(null);
-    store.draft(key, (now) => (typeof next === "function" ? next(now ?? origin) : next));
+    // An edit taken back leaves nothing unsaved: a draft that says what is saved is no draft.
+    store.draft(key, (now) => {
+      const made = typeof next === "function" ? next(now ?? origin) : next;
+      return saved && !changesOf(saved, made).length ? undefined : made;
+    });
   };
   // A link to a part of the form lands on it with a short tint, so the eye finds where it landed. The window's address and its hash changes are the outside system.
   useEffect(() => {
@@ -272,7 +279,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   const outsider = Boolean(personOf(store.viewer)?.guest);
   const workspace = saved ? workspaceOf(saved) : outsider ? WORKSPACES.find((one) => one.id === "theirs")! : HOME;
   // The credits its models are paid from: its own workspace's.
-  const wallet = saved ? walletOf(saved, store) : workspace === HOME ? store.wallet : workspace.credits;
+  const purse = saved ?? { workspace: workspace.id };
+  const wallet = walletOf(purse, store);
   // The workspace's models read so many papers at once: a screening started while another's are reading waits its turn.
   const busy = fresh ? store.screenings.find(isReading) : undefined;
   const set = (patch: Partial<Screening>) => setDraft((d) => ({ ...d, ...patch }));
@@ -288,11 +296,11 @@ export function ScreeningForm({ id }: { id?: string }) {
   const share = (() => {
     if (!joined.length) return undefined;
     if (!held && joined.length === 1) return `${joined[0]!.id === store.viewer ? "You read" : `${firstName(joined[0]!.name)} reads`} every paper`;
-    if (!held) return `About ${Math.ceil((papers * each) / joined.length).toLocaleString("en-GB")} papers for each person`;
+    if (!held) return `About ${num(Math.ceil((papers * each) / joined.length))} papers for each person`;
     const state = standing(held);
     const loads = joined.map((person) => state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === person.id)).length);
     const [least, most] = [Math.min(...loads), Math.max(...loads)];
-    return most - least <= 2 ? `About ${most.toLocaleString("en-GB")} papers for each person` : `${least.toLocaleString("en-GB")} to ${most.toLocaleString("en-GB")} papers for each person`;
+    return most - least <= 2 ? `About ${num(most)} papers for each person` : `${num(least)} to ${num(most)} papers for each person`;
   })();
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
   const ahead = (model: Reviewer) => (held ? readNext(held, model, Infinity, () => Infinity).read : papers);
@@ -320,25 +328,24 @@ export function ScreeningForm({ id }: { id?: string }) {
   const changed = (...sections: EffectSection[]) => (edits.some((edit) => sections.includes(edit.section)) ? <StateChip tone="warning" icon={PenLine} className="ms-1.5 h-5 px-1.5">Changed</StateChip> : null);
   // A criterion whose question was deleted asks nothing, and leaves its short name no words to fall back to.
   const unasked = draft.criteria.some((criterion) => !criterion.text.trim()) ? { text: "Write a question for the empty criterion", section: "criteria" as const, focus: "#criteria textarea[aria-invalid=true]" } : null;
-  // What saving can't do yet, and the control that fixes it.
-  const holdUp: { text: string; section?: "criteria"; focus?: string } | null = !saved ? null : (unasked ?? (needsCriteria ? { text: "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : cost > wallet ? { text: `${credits(cost - wallet)} credits short` } : null));
+  // What it has to be able to pay for now: all its reading to start, and for a running screening only what the save itself has the models read. What is left to read is paid for as it is read, and stops where the credits do.
+  const owed = saved ? reread : cost;
+  // What neither starting nor saving can do yet, and the control that fixes it: the reason opens its section and puts the cursor there.
+  const lacking: Block | null = unasked ?? (needsCriteria ? { text: "Add a criterion for the model", section: "criteria", focus: "#new-criterion" } : owed > wallet ? { text: `${credits(owed - wallet)} credits short` } : null);
+  const holdUp = saved ? lacking : null;
   // How many votes each reviewer has cast, and which papers each check added: what a row's chips open.
   const savedState = saved ? standing(saved) : null;
   const votesOf = (reviewer: Reviewer) => (savedState ? savedState.papers.reduce((sum, paper) => sum + (savedState.votes[paper.id]?.some((one) => one.reviewer.id === reviewer.id && one.vote) ? 1 : 0), 0) : 0);
   const wasOn = (reviewer: Reviewer) => Boolean(saved?.reviewers.some((one) => one.id === reviewer.id && !one.left));
   // The papers a model got to and couldn't read: it has read everything else.
   const unreadBy = (reviewer: Reviewer) => (savedState ? savedState.papers.filter((paper) => savedState.votes[paper.id]?.some((one) => one.reviewer.id === reviewer.id && one.failed)) : []);
-  const unreadText = (count: number) => `${count.toLocaleString("en-GB")} couldn't be read`;
-  // Why it can't start yet, and the control that fixes it: the reason opens its section and puts the cursor there.
-  const stop: { text: string; section?: "papers" | "reviewers" | "criteria"; focus?: string } | null = !papers
+  const unreadText = (count: number) => `${num(count)} couldn't be read`;
+  // Why it can't start yet: it needs papers and a reviewer first.
+  const stop: Block | null = !papers
     ? { text: "Add papers to start", section: "papers", focus: "#add-papers [role=tab][data-state=active]" }
     : !activeReviewers(draft).length
       ? { text: "Add a reviewer to start", section: "reviewers", focus: "#add-person" }
-      : (unasked ?? (needsCriteria
-        ? { text: "Add a criterion for the model", section: "criteria", focus: "#new-criterion" }
-        : cost > wallet
-          ? { text: `${credits(cost - wallet)} credits short` }
-          : null));
+      : lacking;
 
   const addSource = (kind: SourceKind, name: string, detail: string, total: number, facts?: string[]) =>
     setDraft((d) => {
@@ -358,7 +365,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (bad.length) setRejected((names) => [...new Set([...names, ...bad])]);
     const references = all.filter((file) => REFERENCE_FILES.test(file.name));
     const pdfs = all.filter((file) => PDF_FILES.test(file.name));
-    const names = [...references.map((file) => file.name), ...(pdfs.length ? [`${pdfs.length} ${pdfs.length === 1 ? "PDF" : "PDFs"}`] : [])];
+    const names = [...references.map((file) => file.name), ...(pdfs.length ? [`${plural(pdfs.length, "PDF", "PDFs")}`] : [])];
     if (!names.length) return;
     setReading((now) => [...now, ...names]);
     setTimeout(() => {
@@ -435,17 +442,17 @@ export function ScreeningForm({ id }: { id?: string }) {
     setDraft((d) => ({ ...d, sources: d.sources.filter((one) => one.id !== source.id) }));
     if (!saved?.sources.some((one) => one.id === source.id)) undoable(source.name, () => setDraft((d) => ({ ...d, sources: insertAt(d.sources, at, source) })));
   };
-  const keepSource = (source: Source) => setDraft((d) => ({ ...d, sources: inOrder([...d.sources, source], saved?.sources ?? []) }));
+  const keepSource = (source: Source) => setDraft((d) => ({ ...d, sources: inSavedOrder([...d.sources, source], saved?.sources ?? []) }));
   const removeCriterion = (criterion: Criterion) => {
     const at = draft.criteria.findIndex((one) => one.key === criterion.key);
     const points = draft.scoring.points[criterion.key] ?? [1, 0, 0];
     setDraft((d) => withCriteria(d, d.criteria.filter((one) => one.key !== criterion.key), d.scoring.points));
     if (!saved?.criteria.some((one) => one.key === criterion.key)) undoable(criterionName(criterion), () => setDraft((d) => withCriteria(d, insertAt(d.criteria, at, criterion), { ...d.scoring.points, [criterion.key]: points })));
   };
-  const keepCriterion = (criterion: Criterion) => setDraft((d) => withCriteria(d, inOrder([...d.criteria, criterion], saved?.criteria ?? []), { ...d.scoring.points, [criterion.key]: saved?.scoring.points[criterion.key] ?? [1, 0, 0] }));
+  const keepCriterion = (criterion: Criterion) => setDraft((d) => withCriteria(d, inSavedOrder([...d.criteria, criterion], saved?.criteria ?? []), { ...d.scoring.points, [criterion.key]: saved?.scoring.points[criterion.key] ?? [1, 0, 0] }));
   // What each list shows: on a running screening, what saving would remove stays in its place.
-  const sourceRows = saved ? inOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : draft.sources.map((source) => ({ source, gone: false }));
-  const criterionRows = saved ? inOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
+  const sourceRows = saved ? inSavedOrder([...draft.sources, ...saved.sources.filter((one) => !draft.sources.some((source) => source.id === one.id))], saved.sources).map((source) => ({ source, gone: !draft.sources.some((one) => one.id === source.id) })) : draft.sources.map((source) => ({ source, gone: false }));
+  const criterionRows = saved ? inSavedOrder([...draft.criteria, ...saved.criteria.filter((one) => !draft.criteria.some((criterion) => criterion.key === one.key))], saved.criteria).map((criterion) => ({ criterion, gone: !draft.criteria.some((one) => one.key === criterion.key) })) : draft.criteria.map((criterion) => ({ criterion, gone: false }));
   const reviewerRows = draft.reviewers.filter((reviewer) => !reviewer.left || wasOn(reviewer)).map((reviewer) => ({ reviewer, gone: Boolean(reviewer.left) }));
 
   const start = () => {
@@ -468,8 +475,8 @@ export function ScreeningForm({ id }: { id?: string }) {
       // Papers from a search, a community or a reference manager are fetched once it starts; the rest are to hand.
       ...(draft.sources.some((source) => ["search", "evidenceLibrary", "zotero", "dois"].includes(source.kind)) ? { gathered: 0 } : {}),
       ...(busy && models.length ? { after: busy.id } : {}),
-      destination: { ...draft.destination, name: draft.destination.name || `Included in ${name}` },
-      changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${papers.toLocaleString("en-GB")} papers from ${draft.sources.length} ${draft.sources.length === 1 ? "source" : "sources"}, ${people.length} ${people.length === 1 ? "person" : "people"} and ${models.length} ${models.length === 1 ? "model" : "models"}` }],
+      destination: { ...draft.destination, name: draft.destination.name || includedIn(name) },
+      changes: [{ at, by: store.viewer, what: "Started the screening", effect: `${num(papers)} papers from ${plural(draft.sources.length, "source", "sources")}, ${plural(people.length, "person", "people")} and ${plural(models.length, "model", "models")}` }],
     });
     store.draft(key, () => undefined);
     // The new screening takes the form's place in the history: Back from it returns to the list, not to a form already sent.
@@ -525,14 +532,14 @@ export function ScreeningForm({ id }: { id?: string }) {
     setOfferPage(1);
   };
   // Another screening's included papers are a source: the screenings are the ones this person can open, with what each has included so far and whether it is still running.
-  const screeningOffers: Offer[] = kind !== "screening" ? [] : store.screenings.filter((one) => one.id !== draft.id && accessOf(one, store.viewer)).map((one) => ({ name: `Included in ${one.name}`, detail: one.finishedAt ? "Finished screening" : "Running screening", total: standing(one).counts.include })).filter((offer) => offer.total > 0);
+  const screeningOffers: Offer[] = kind !== "screening" ? [] : store.screenings.filter((one) => one.id !== draft.id && accessOf(one, store.viewer)).map((one) => ({ name: includedIn(one.name), detail: one.finishedAt ? "Finished screening" : "Running screening", total: standing(one).counts.include })).filter((offer) => offer.total > 0);
   const offered = kind === "upload" || kind === "dois" || kind === "evidenceLibrary" ? [] : kind === "screening" ? screeningOffers : OFFERS[kind];
   const offers = offered.filter((offer) => offer.name.toLowerCase().includes(find.trim().toLowerCase()));
   const offerPager = pagerOf(offers.length, OFFER_PAGE, offerPage, setOfferPage);
   const importable = draft.sources.flatMap((source) => (source.kind === "search" ? (OFFERS.search.find((offer) => offer.name === source.name)?.questions ?? []).filter((question) => !draft.criteria.some((criterion) => criterion.text === question)).map((question) => ({ question, source })) : []));
   const importSearches = new Set(importable.map(({ source }) => source.id)).size;
   const collections = where === "community" ? COMMUNITY_COLLECTIONS : COLLECTIONS;
-  const suggested = draft.name || draft.sources[0] ? `Included in ${draft.name || draft.sources[0]!.name}` : "Included papers";
+  const suggested = draft.name || draft.sources[0] ? includedIn(draft.name || draft.sources[0]!.name) : "Included papers";
   // A started screening's own collection already holds what it has included: it is a collection like the others, which can be renamed.
   const ownCollection = saved?.destination.kind === "new" ? saved.destination : null;
   const onOwn = Boolean(ownCollection) && draft.destination.kind === "new" && !draft.destination.collection;
@@ -560,17 +567,19 @@ export function ScreeningForm({ id }: { id?: string }) {
     <Destination key="none" on={draft.destination.kind === "none"} onPick={() => set({ destination: { ...draft.destination, kind: "none", collection: undefined } })} icon={Ban} name="Nowhere" facts={<Chip>Kept in the screening</Chip>} />,
   ];
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
+  // The lookup is made up: about one pasted DOI in eight isn't in the index, and the source says how many were left out.
+  const doiMissing = Math.floor(dois.split(/[\s,;]+/).filter(Boolean).length / 8);
   const doiCount = dois.split(/[\s,;]+/).filter((word) => /^10\.\d{4,}\//.test(word.replace(/^https?:\/\/(dx\.)?doi\.org\//, ""))).length;
 
   // The summary beside the form: one line for each part, which opens it.
   const resolver = joined.find((person) => person.id === draft.rule.resolver) ?? joined[0];
-  const destinationName = draft.destination.kind === "none" ? "Nowhere" : draft.destination.kind === "new" ? (draft.destination.name || "New collection") : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === draft.destination.collection)?.name ?? "A collection");
+  const destinationName = draft.destination.kind === "none" ? "Nowhere" : draft.destination.kind === "new" && !draft.destination.name && !draft.name ? "New collection" : (collectionName(draft) ?? "A collection");
   const musts = draft.criteria.filter((criterion) => criterion.must).length;
-  const reviewersNow = activeReviewers(draft);
+  const reviewersNow = inOrder(activeReviewers(draft), store.viewer);
   // `unset`: a part left empty that the screening can start without. It gets no tick, which would read as done.
   const summary: Array<{ id: string; label: string; value: string; problem: boolean; unset?: boolean; aside?: ReactNode }> = [
     { id: "papers", label: "Papers", value: papers ? `${plural(papers, "paper", "papers")} from ${plural(draft.sources.length, "source", "sources")}` : "No papers yet", problem: !papers },
-    { id: "criteria", label: "Criteria", value: draft.criteria.length ? `${plural(draft.criteria.length, "criterion", "criteria")}, ${musts} must-have` : "No criteria", problem: needsCriteria, unset: !draft.criteria.length },
+    { id: "criteria", label: "Criteria", value: draft.criteria.length ? `${plural(draft.criteria.length, "criterion", "criteria")}, ${plural(musts, "must-have", "must-haves")}` : "No criteria", problem: needsCriteria, unset: !draft.criteria.length },
     {
       id: "reviewers",
       label: "Reviewers",
@@ -656,7 +665,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         // What it held at the start and what its checks found add up to its total. Each says how many of its own another source already had.
                         const grew = grown(source);
                         const grewDoubled = (source.updates ?? []).reduce((sum, update) => sum + update.duplicates, 0);
-                        const grewText = `${grew.toLocaleString("en-GB")} more since it started${grewDoubled ? `, ${grewDoubled.toLocaleString("en-GB")} already in another source` : ""}`;
+                        const grewText = `${num(grew)} more since it started${grewDoubled ? `, ${num(grewDoubled)} already in another source` : ""}`;
                         const doubled = Math.min(source.duplicates, taken(source) - grew);
                         // On a running screening the name opens the papers it brought; where it lives opens from the icon beside it.
                         const own = saved?.sources.some((one) => one.id === source.id) ? saved.id : null;
@@ -669,7 +678,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                   {gone ? (
                                     <p className="truncate text-sm font-medium text-muted-foreground line-through max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</p>
                                   ) : own ? (
-                                    <NextLink href={papersHref(own, { source: source.id })} className="truncate rounded text-sm font-medium underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50 max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</NextLink>
+                                    <NextLink href={papersHref(own, { source: source.id })} className={cn(INLINE_LINK, "truncate text-sm max-sm:line-clamp-2 max-sm:whitespace-normal")}>{source.name}</NextLink>
                                   ) : link ? (
                                     <a href={link.href} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 rounded text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
                                       <span className="truncate max-sm:line-clamp-2 max-sm:whitespace-normal">{source.name}</span>
@@ -687,8 +696,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
                                   {gone ? <StateChip tone="warning" icon={Trash2}>Removed when you save</StateChip> : null}
-                                  <Chip>{source.scope === "all" ? (source.total > baseTotal(source) ? `${baseTotal(source).toLocaleString("en-GB")} at the start` : `All ${baseTotal(source).toLocaleString("en-GB")}`) : `${baseTotal(source).toLocaleString("en-GB")} in the source`}</Chip>
-                                  {doubled > 0 && taken(source) ? <Chip>{doubled.toLocaleString("en-GB")} already in another source</Chip> : null}
+                                  <Chip>{source.scope === "all" ? (source.total > baseTotal(source) ? `${num(baseTotal(source))} at the start` : `All ${num(baseTotal(source))}`) : `${num(baseTotal(source))} in the source`}</Chip>
+                                  {doubled > 0 && taken(source) ? <Chip>{num(doubled)} already in another source</Chip> : null}
                                   {grew > 0 && own && !gone ? (
                                     <LinkChip href={papersHref(own, { source: source.id, ...((source.updates?.length ?? 0) === 1 ? { added: String(source.updates![0]!.at) } : { sort: "added" }) })} tone="primary" icon={RefreshCw}>{grewText}</LinkChip>
                                   ) : grew > 0 ? (
@@ -704,7 +713,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                 <>
                                   {baseTotal(source) > 1 ? (
                                     <Button variant="ghost" size="sm" aria-expanded={isOpen} className="h-8 shrink-0 text-xs text-muted-foreground max-sm:ms-auto" onClick={() => setOpenSource(isOpen ? null : source.id)}>
-                                      {source.scope === "range" ? `Papers ${source.range[0].toLocaleString("en-GB")} to ${source.range[1].toLocaleString("en-GB")}` : "Choose papers"}<ChevronDown className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
+                                      {source.scope === "range" ? `Papers ${num(source.range[0])} to ${num(source.range[1])}` : "Choose papers"}<ChevronDown className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
                                     </Button>
                                   ) : null}
                                   <TooltipHint label={`Remove ${source.name}`}>
@@ -726,7 +735,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       onRange={(next) => patchSource(source.id, (now) => ({ range: typeof next === "function" ? next(now.range) : next }))}
                                       total={baseTotal(source)}
                                       label={`Papers of ${source.name}`}
-                                      summary={<p className="text-xs text-muted-foreground">Every one of its {baseTotal(source).toLocaleString("en-GB")} papers.</p>}
+                                      summary={<p className="text-xs text-muted-foreground">Every one of its {num(baseTotal(source))} papers.</p>}
                                     />
                                     <ul className="space-y-1 border-t border-border-subtle pt-3">
                                       {papersOf({ seed: draft.seed, sources: [{ ...source, duplicates: 0 }] }).slice(0, 3).map((paper) => (
@@ -738,9 +747,9 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       {taken(source) > 3 ? (
                                         <li className="text-xs">
                                           {link ? (
-                                            <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">See all {taken(source).toLocaleString("en-GB")} {link.where}<ExternalLink aria-hidden className="size-3" /></a>
+                                            <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">See all {num(taken(source))} {link.where}<ExternalLink aria-hidden className="size-3" /></a>
                                           ) : (
-                                            <span className="text-muted-foreground">and {(taken(source) - 3).toLocaleString("en-GB")} more</span>
+                                            <span className="text-muted-foreground">and {num(taken(source) - 3)} more</span>
                                           )}
                                         </li>
                                       ) : null}
@@ -770,7 +779,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {rejected.length ? (
                   <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
                     <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
-                    <p className="min-w-0 flex-1">Couldn&apos;t read {rejected.length < 2 ? rejected[0] : `${rejected.slice(0, -1).join(", ")} and ${rejected.at(-1)}`}. It reads RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF files.</p>
+                    <p className="min-w-0 flex-1">Couldn&apos;t read {listed(rejected)}. It reads {UPLOAD_FORMATS} files.</p>
                     <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRejected([])}><X /></Button></TooltipHint>
                   </div>
                 ) : null}
@@ -780,13 +789,15 @@ export function ScreeningForm({ id }: { id?: string }) {
               <Panel className="@container min-w-0 space-y-3 @[88rem]:col-start-2 @[88rem]:row-span-2 @[88rem]:row-start-1">
                 <h3 className="text-sm font-semibold">Add papers from</h3>
                 <Tabs value={kind} onValueChange={(next) => { setKind(next as Kind); setFind(""); setOfferPage(1); }} className="gap-3">
-                  <TabsList id="add-papers" aria-label="Add papers from" className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-[1.375rem] bg-card p-1 ring-1 ring-border-subtle [scrollbar-width:none] group-data-[orientation=horizontal]/tabs:h-auto">
+                  <ScrollArea axis="x" shades className="rounded-[1.375rem] bg-card ring-1 ring-border-subtle">
+                  <TabsList id="add-papers" aria-label="Add papers from" className="h-auto w-max justify-start gap-1 bg-transparent p-1 group-data-[orientation=horizontal]/tabs:h-auto">
                     {KINDS.map((one) => (
                       <TabsTrigger key={one.id} value={one.id} className="h-8 flex-none rounded-full px-3 text-xs text-muted-foreground data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none data-[state=active]:ring-1 data-[state=active]:ring-primary/40 dark:data-[state=active]:bg-primary/15 dark:data-[state=active]:text-primary">
                         <one.icon className="size-3.5 @max-[43rem]:hidden" />{one.label}
                       </TabsTrigger>
                     ))}
                   </TabsList>
+                  </ScrollArea>
                   <TabsContent value={kind}>
                     {kind === "upload" ? (
                       <div
@@ -796,8 +807,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                         className={cn("flex flex-col items-center gap-1.5 rounded-2xl border border-dashed bg-card px-6 py-7 text-center transition-colors", dragging ? "border-primary bg-primary/5" : "border-border")}
                       >
                         <p className="text-sm font-medium">Drop reference files or PDFs here</p>
-                        <p className="text-xs text-muted-foreground">RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF, any number at once</p>
-                        <input ref={files} type="file" multiple accept=".ris,.bib,.enw,.nbib,.xml,.ciw,.csv,.txt,.pdf" className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) take(event.target.files); event.target.value = ""; }} />
+                        <p className="text-xs text-muted-foreground">{UPLOAD_FORMATS}, any number at once</p>
+                        <input ref={files} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) take(event.target.files); event.target.value = ""; }} />
                         <Button variant="outline" size="sm" className="mt-2" onClick={() => files.current?.click()}><Upload />Choose files</Button>
                       </div>
                     ) : kind === "dois" ? (
@@ -808,8 +819,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                         </span>
                         <Textarea id="dois" value={dois} onChange={(event) => setDois(event.target.value)} rows={4} placeholder="Paste DOIs, one a line or separated by commas" className="bg-card text-sm" />
                         <div className="flex min-h-8 items-center justify-between gap-3">
-                          <p className="text-xs text-muted-foreground">{doiCount ? `${plural(doiCount, "DOI", "DOIs")} found` : null}</p>
-                          <Button variant="outline" size="sm" disabled={!doiCount} onClick={() => { addSource("dois", `${doiCount} pasted ${doiCount === 1 ? "DOI" : "DOIs"}`, "Looked up in Openscholar's index", doiCount, [`${Math.max(0, doiCount - 1)} found in Openscholar's index`]); setDois(""); }}><Plus />Add {doiCount || ""} {doiCount === 1 ? "paper" : "papers"}</Button>
+                          <p className="text-xs text-muted-foreground">{doiCount ? `${plural(doiCount, "DOI", "DOIs")} in what you pasted` : null}</p>
+                          <Button variant="outline" size="sm" disabled={!doiCount} onClick={() => { addSource("dois", `${plural(doiCount, "pasted DOI", "pasted DOIs")}`, "Looked up in Openscholar's index", doiCount - doiMissing, [`${num(doiCount - doiMissing)} found in Openscholar's index`, ...(doiMissing ? [`${num(doiMissing)} not found, and left out`] : [])]); setDois(""); }}><Plus />Look up {doiCount ? plural(doiCount, "DOI", "DOIs") : "DOIs"}</Button>
                         </div>
                       </div>
                     ) : kind === "evidenceLibrary" ? (
@@ -841,7 +852,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           {communityRows.slice((communityPager.page - 1) * OFFER_PAGE, communityPager.page * OFFER_PAGE).map((row) => (
                             <OfferRow
                               key={row.name}
-                              offer={{ name: row.name, detail: row.group === "library" && !row.parent ? `${inCommunity.records.toLocaleString("en-GB")} records` : `In ${inCommunity.name}`, total: row.total }}
+                              offer={{ name: row.name, detail: row.group === "library" && !row.parent ? `${num(inCommunity.records)} records` : `In ${inCommunity.name}`, total: row.total }}
                               icon={kindIcon("evidenceLibrary")}
                               chips={
                                 <>
@@ -890,7 +901,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     label="Check for new papers"
                     value={draft.living?.every ?? "off"}
                     onChange={(next) => set({ living: next === "off" ? undefined : { every: next, next: Date.now() + PERIOD[next] } })}
-                    options={[{ id: "off" as const, label: "Off" }, { id: "day" as const, label: "Every day" }, { id: "week" as const, label: "Every week" }, { id: "month" as const, label: "Every month" }]}
+                    options={[{ id: "off" as const, label: "Off" }, ...(["day", "week", "month"] as const).map((id) => ({ id, label: EVERY_LABEL[id] }))]}
                   />
                 </div>
                 {draft.living ? (
@@ -898,7 +909,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <div className="flex flex-wrap gap-1.5 bg-inset px-4 py-2.5">
                       <Chip icon={RefreshCw}>{growing(draft).length} of {plural(draft.sources.length, "source", "sources")} checked</Chip>
                       <Chip icon={Clock}>{saved?.living ? `Next check ${day(draft.living.next)}` : fresh ? `First check ${day(NOW + PERIOD[draft.living.every])}` : "First check as soon as this is saved"}</Chip>
-                      {models.length ? <Chip icon={Coins}>{credits(perNew)} credits for each new paper</Chip> : null}
+                      {models.length ? <Chip icon={Coins}>{credits(perNew)} credits a new paper</Chip> : null}
                     </div>
                   ) : (
                     <p className="bg-warning/10 px-4 py-2.5 text-sm ink-warning">{draft.sources.length ? "None of these sources gains papers. Add a search, a collection or a community to check." : "Add a search, a collection or a community to check."}</p>
@@ -912,13 +923,13 @@ export function ScreeningForm({ id }: { id?: string }) {
             id="criteria"
             className="@container/criteria"
             title="Criteria"
-            help={<><Help title="Must-have and nice to have" facts={<><HelpFact>People vote directly</HelpFact><HelpFact>Answers decide models&apos; votes</HelpFact></>}>Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have criterion makes its vote exclude, and an unclear makes it maybe. A nice-to-have criterion never excludes a paper. Guidance under a question says what counts: a reviewer opens it from the criterion&apos;s &quot;?&quot; on Screen, and a model reads it with the question.</Help>{changed("criteria")}</>}
+            help={<><Help title="Must-have and nice to have" facts={<><HelpFact>People vote directly</HelpFact><HelpFact>Answers decide models&apos; votes</HelpFact></>}>Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have criterion makes its vote exclude, and an unclear makes it maybe. A nice-to-have criterion never excludes a paper. Guidance under a question says what counts: a reviewer opens it with &quot;Guidance&quot; under the question on Screen, and a model reads it with the question.</Help>{changed("criteria")}</>}
             aside={
               <span className="flex items-center gap-1">
                 <span className="flex flex-wrap items-center justify-end gap-1 @max-[40rem]/criteria:hidden">
                   {importable.length ? (
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => importable.forEach(({ question }) => addCriterion(question))}>
-                      <ListChecks />Add {importable.length} {importable.length === 1 ? "question" : "questions"} from your {importSearches === 1 ? "search" : "searches"}
+                      <ListChecks />Add {plural(importable.length, "question", "questions")} from your {importSearches === 1 ? "search" : "searches"}
                     </Button>
                   ) : null}
                   {copyable.length ? (
@@ -947,7 +958,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground @[40rem]/criteria:hidden" aria-label="Criteria actions"><MoreHorizontal /></Button></DropdownMenuTrigger>
                   </TooltipHint>
                   <DropdownMenuContent align="end" className="w-72">
-                    {importable.length ? <DropdownMenuItem onSelect={() => importable.forEach(({ question }) => addCriterion(question))}><ListChecks />Add {importable.length} {importable.length === 1 ? "question" : "questions"} from your {importSearches === 1 ? "search" : "searches"}</DropdownMenuItem> : null}
+                    {importable.length ? <DropdownMenuItem onSelect={() => importable.forEach(({ question }) => addCriterion(question))}><ListChecks />Add {plural(importable.length, "question", "questions")} from your {importSearches === 1 ? "search" : "searches"}</DropdownMenuItem> : null}
                     <DropdownMenuItem disabled={writing || Boolean(cantWrite)} onSelect={writeCriteria}><AiIcon working={writing} />Write criteria from the question{cantWrite ? <span className="ms-auto ps-3 text-xs text-muted-foreground">{cantWrite}</span> : null}</DropdownMenuItem>
                     {copyable.length ? (
                       <>
@@ -997,7 +1008,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                           {/* The short name follows the question's words until someone has written one. */}
                           <div className="min-w-0 flex-1 @max-3xl/criteria:basis-[calc(100%-1.75rem)]">
                             <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.short === shortOf(criterion.text) ? shortOf(event.target.value) : criterion.short })} aria-label={`Criterion ${i + 1}`} aria-invalid={!criterion.text.trim() || undefined} placeholder="Write a yes or no question" className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
-                            {/* What counts and what doesn't. A reviewer opens it from the criterion's "?" on Screen, and a model is given it with the question: it wears the same "?" here. */}
+                            {/* What counts and what doesn't. A reviewer opens it with "Guidance" under the question on Screen, and a model is given it with the question. */}
                             <div className="flex items-start gap-1 ps-1 text-muted-foreground">
                               <CircleHelp aria-hidden className="mt-1 size-3.5 shrink-0" />
                               <Textarea rows={1} value={criterion.note ?? ""} onChange={(event) => patchCriterion(criterion.key, { note: event.target.value || undefined })} aria-label={`Guidance for criterion ${i + 1}`} placeholder="Add guidance on what counts and what doesn't" className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content placeholder-shown:border-dashed placeholder-shown:border-border hover:border-border-subtle" />
@@ -1094,8 +1105,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                           <>
                             {reviewer.model ? (
                               <>
-                                {paused ? <StateChip tone="warning" icon={CirclePause}>Paused</StateChip> : null}
-                                <Chip icon={Coins}>{credits(paperCredits(reviewer.model))} credits a paper</Chip>
+                                {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon}>{MODELS_SAY.paused.row}</StateChip> : null}
+                                <Chip icon={Coins}>{perPaper(reviewer.model)}</Chip>
                                 {due(reviewer) ? (
                                   <Chip icon={Coins}>{credits(due(reviewer))} credits for {plural(left, "paper", "papers")}</Chip>
                                 ) : null}
@@ -1178,10 +1189,10 @@ export function ScreeningForm({ id }: { id?: string }) {
             {fromCollection ? (
               <label className="flex items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">
                 <span className="min-w-0 flex-1 space-y-1.5">
-                  <span className="block truncate text-sm font-medium">Remove papers that aren&apos;t included from {fromCollection.name}</span>
+                  <span className="block truncate text-sm font-medium">Remove excluded papers from {fromCollection.name}</span>
                   <span className="flex flex-wrap gap-1.5"><Chip icon={X}>Excluded leave</Chip><Chip>Maybe and in conflict stay</Chip></span>
                 </span>
-                <Switch checked={draft.destination.prune} onCheckedChange={(prune) => set({ destination: { ...draft.destination, prune } })} aria-label={`Remove papers that aren't included from ${fromCollection.name}`} />
+                <Switch checked={draft.destination.prune} onCheckedChange={(prune) => set({ destination: { ...draft.destination, prune } })} aria-label={`Remove excluded papers from ${fromCollection.name}`} />
               </label>
             ) : null}
           </Section>
@@ -1218,13 +1229,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </ul>
                     <div className="space-y-2 border-t border-border-subtle pt-3">
                       <p className="text-xs font-medium text-muted-foreground">{dirty ? "What saving does" : "What the save did"}</p>
-                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} screening={saved?.id} jump />
+                      <EffectList lines={dirty ? lines : lastSave!.lines} moves={dirty ? moves : lastSave!.moves} screening={saved?.id} jump unseen={saved && savedState ? (paper) => !seesVotes(saved, savedState, store.viewer, paper) : undefined} />
                       {/* A change applies to the papers still open. Checking the settled ones again is asked for here, where the change would give some of them another result. */}
                       {dirty && (again > 0 || draft.recheck) ? (
                         <label className="flex items-start gap-3 rounded-xl border border-border-subtle bg-card p-2.5 text-sm">
                           <span className="min-w-0 flex-1">
                             <span className="font-medium">Check the settled papers again</span>
-                            <span className="block text-xs text-muted-foreground">{draft.recheck ? "Every settled paper is checked under the new settings. The ones listed above get another result." : `${again.toLocaleString("en-GB")} settled ${again === 1 ? "paper" : "papers"} would get another result under the new settings. ${again === 1 ? "It keeps its" : "They keep their"} result unless you turn this on.`}</span>
+                            <span className="block text-xs text-muted-foreground">{draft.recheck ? "Every settled paper is checked under the new settings. The ones listed above get another result." : `${num(again)} settled ${again === 1 ? "paper" : "papers"} would get another result under the new settings. ${again === 1 ? "It keeps its" : "They keep their"} result unless you turn this on.`}</span>
                           </span>
                           <Switch checked={Boolean(draft.recheck)} onCheckedChange={(on) => set({ recheck: on || undefined })} aria-label="Check the settled papers again" />
                         </label>
@@ -1240,7 +1251,7 @@ export function ScreeningForm({ id }: { id?: string }) {
               <div className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2.5 text-sm">
                 <RefreshCw className="size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
                 <span className="min-w-0 flex-1">Checking for new papers</span>
-                <Chip className="tabular-nums">{saved.checking.done} of {saved.checking.of} {saved.checking.of === 1 ? "source" : "sources"} checked</Chip>
+                <Chip className="tabular-nums">{saved.checking.done} of {plural(saved.checking.of, "source", "sources")} checked</Chip>
               </div>
             ) : saved?.updates?.length && saved.updates.at(-1)!.at > NOW ? (
               <div className="flex items-center gap-2.5 rounded-2xl bg-primary/8 px-3 py-2.5 text-sm">
@@ -1273,7 +1284,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     <p>Each model&apos;s cost is its credits for one paper times the papers to screen. The workspace&apos;s plan lets models read 40 papers at once, so a screening started while another&apos;s models are reading waits its turn. People can vote from the start.</p>
                     {models.length && draft.living ? <p>A living screening also pays for each new paper a check finds.</p> : null}
                   </Help>
-                  {paused ? <StateChip tone="warning" icon={CirclePause} className="ms-1.5 h-5 px-1.5">Paused</StateChip> : null}
+                  {paused ? <StateChip tone="warning" icon={MODELS_SAY.paused.icon} className="ms-1.5 h-5 px-1.5">{MODELS_SAY.paused.row}</StateChip> : null}
                 </>
               }
             >
@@ -1297,13 +1308,13 @@ export function ScreeningForm({ id }: { id?: string }) {
                   {cost && cost <= wallet ? <span className="text-xs tabular-nums text-muted-foreground">{cost / Math.max(wallet, 1) < 0.01 ? "Under 1%" : `${Math.round((cost / Math.max(wallet, 1)) * 100)}%`} of</span> : null}
                   <WorkspaceTag size="sm" workspace={lookOf(workspace, saved?.createdBy ?? store.viewer)}>{credits(wallet)} in {workspace.name}</WorkspaceTag>
                   {cost > wallet ? <StateChip tone="warning" icon={Coins}>{credits(cost - wallet)} credits short</StateChip> : cost ? <Chip>{credits(wallet - cost)} left after</Chip> : null}
-                  {saved?.spent ? <Chip>{credits(Object.values(saved.spent).reduce((sum, one) => sum + one, 0))} spent so far</Chip> : null}
+                  {saved?.spent ? <Chip>{credits(spentOf(saved))} spent so far</Chip> : null}
                   {/* In the same run of chips, so the column stays short enough to stay in view. */}
                   {models.length && draft.living ? (
                     <Chip icon={RefreshCw}>{credits(perNew)} credits a new paper{lastCheck ? `, ${credits(lastCheck.added * perNew)} for the last ${lastCheck.added}` : ""}</Chip>
                   ) : null}
                 </div>
-                {busy && models.length ? <LinkChip href={overviewHref(busy.id)} icon={Clock} className="w-fit max-w-full [&>span]:shrink">Models start after {busy.name}</LinkChip> : null}
+                {busy && models.length ? <LinkChip href={overviewHref(busy.id)} icon={MODELS_SAY.waiting.icon} className="w-fit max-w-full [&>span]:shrink">{MODELS_SAY.waiting.says} {busy.name}</LinkChip> : null}
               </div>
             </Section>
 
@@ -1320,16 +1331,8 @@ export function ScreeningForm({ id }: { id?: string }) {
               <span className="text-sm">{models.length ? <><span className="text-muted-foreground">Total, at most</span> <span className="font-semibold tabular-nums">{credits(cost)} credits</span></> : <span className="text-muted-foreground">People only, no credits</span>}</span>
             </div>
             <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-              {stop ? (
-                stop.section ? (
-                  <JumpLink to={stop.section} find={() => (stop.focus ? document.querySelector<HTMLElement>(stop.focus) : null)} block="center" className="flex items-center gap-1.5 rounded text-sm font-medium ink-warning outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">
-                    <TriangleAlert aria-hidden className="size-4 shrink-0" />{stop.text}
-                  </JumpLink>
-                ) : (
-                  <span className="flex items-center gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="size-4 shrink-0" />{stop.text}</span>
-                )
-              ) : null}
-              {stop && cost > wallet ? <Button variant="outline" onClick={() => store.set({ wallet: store.wallet + 20_000 })}>Add 20,000 credits</Button> : null}
+              {stop ? <Blocker block={stop} /> : null}
+              {stop && cost > wallet ? <Button variant="outline" onClick={() => store.set(toppedUp(purse, store))}><Coins />Add credits</Button> : null}
               <Button disabled={Boolean(stop)} onClick={start}><ListChecks />Start screening</Button>
             </div>
           </div>
@@ -1341,16 +1344,10 @@ export function ScreeningForm({ id }: { id?: string }) {
             <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
               <PenLine aria-hidden className="size-4 shrink-0 ink-warning" />{unsaved}
               {/* Papers that saving moves to another result are said here, where Save is: the summary that lists them can be far from it. */}
-              {moved ? <StateChip tone="warning">{moved} {moved === 1 ? "paper changes" : "papers change"} result</StateChip> : null}
+              {moved ? <StateChip tone="warning">{plural(moved, "paper changes", "papers change")} result</StateChip> : null}
               <Button asChild variant="ghost" size="sm" className="h-8"><JumpLink to="changes" find={() => document.getElementById("summary")}>Review</JumpLink></Button>
             </span>
-            {holdUp ? (
-              holdUp.section ? (
-                <JumpLink to={holdUp.section} find={() => (holdUp.focus ? document.querySelector<HTMLElement>(holdUp.focus) : null)} block="center" className="flex items-center gap-1.5 rounded text-sm font-medium ink-warning outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"><TriangleAlert aria-hidden className="size-4 shrink-0" />{holdUp.text}</JumpLink>
-              ) : (
-                <span className="flex items-center gap-1.5 text-sm font-medium ink-destructive"><TriangleAlert aria-hidden className="size-4 shrink-0" />{holdUp.text}</span>
-              )
-            ) : null}
+            {holdUp ? <Blocker block={holdUp} /> : null}
             <div className="ms-auto flex items-center gap-2">
               <Button variant="ghost" onClick={() => setDiscarding(edits)}>Discard</Button>
               <Button disabled={Boolean(holdUp)} onClick={save}><Check />Save changes</Button>
@@ -1385,6 +1382,14 @@ export function ScreeningForm({ id }: { id?: string }) {
       </PageWrapper>
     </MotionConfig>
   );
+}
+
+type Block = { text: string; section?: "papers" | "reviewers" | "criteria"; focus?: string };
+/** Why the form can't be started or saved yet. One that names a section opens it and puts the cursor on the control that fixes it. */
+function Blocker({ block }: { block: Block }) {
+  const says = <><TriangleAlert aria-hidden className="size-4 shrink-0" />{block.text}</>;
+  if (!block.section) return <span className="flex items-center gap-1.5 text-sm font-medium ink-warning">{says}</span>;
+  return <JumpLink to={block.section} find={() => (block.focus ? document.querySelector<HTMLElement>(block.focus) : null)} block="center" className="flex items-center gap-1.5 rounded text-sm font-medium ink-warning outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">{says}</JumpLink>;
 }
 
 function OfferRow({ offer, icon: Icon, chips, added, onAdd }: { offer: Offer; icon: AppIcon; /** What else tells this row from the others, after its detail. */ chips?: ReactNode; added: boolean; onAdd: () => void }) {

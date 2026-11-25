@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -22,15 +22,15 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { PERSON_SAYS, inOrder, num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import { DAY, PERSON_SAYS, inOrder, num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
-import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
-import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
+import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText, collectionName } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
-import { walletOf, credits, paperCredits, useMock, type Open } from "./store";
+import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone, MODELS_READING, MODELS_SAY, INLINE_LINK, LeftOutNote } from "./parts";
+import { walletOf, credits, useMock, type Open, spentOf, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 /** What the Overview shows, kept in its address: the order of the reviewers, and every check for new papers or the last few. */
 const PLACE = {
@@ -95,7 +95,6 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
   const settle = conflicts.length > 0 && open.canResolve;
   const tone: Tone = toDo.length || settle ? "primary" : settledAll ? "success" : "neutral";
   const finishable = settledAll && open.canChange && !open.screening.finishedAt;
-  const resolver = personOf(screening.rule.resolver)?.name ?? "the person who settles them";
   const to = screening.destination;
   const extract = `/extraction/new?${to.collection ? `collection=${to.collection}` : `screening=${screening.id}`}`;
   const finished = Boolean(screening.finishedAt);
@@ -116,7 +115,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             title="Where a paper stands"
             facts={RESULTS.map((result) => {
               const Icon = RESULT_STYLE[result].icon;
-              const text = result === "maybe" ? "Maybe when a must-have can't be answered" : result === "conflict" ? `In conflict until ${resolver} settles it` : RESULT_LABEL[result];
+              const text = result === "maybe" ? "Maybe when a must-have can't be answered" : result === "conflict" ? `In conflict until ${settlerSettles(screening, open.me)} it` : RESULT_LABEL[result];
               return <HelpFact key={result} icon={Icon}>{text}</HelpFact>;
             })}
           >
@@ -142,8 +141,8 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
         <div className="space-y-3">
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-3xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={papers.length - counts.conflict - counts.waiting} /></span>
-            <span className="text-sm text-muted-foreground">of {papers.length.toLocaleString("en-GB")} papers settled</span>
-            {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />Models are reading</Chip> : null}
+            <span className="text-sm text-muted-foreground">of {num(papers.length)} papers settled</span>
+            {open.modelsNow === "reading" ? <Chip className="self-center bg-card/70"><AiIcon working className="size-3.5" />{MODELS_READING}</Chip> : null}
           </p>
           <ResultBar counts={counts} className="h-3" />
           <div className="-mx-2 flex flex-wrap gap-x-1 gap-y-1">
@@ -181,7 +180,7 @@ function Yours({ open }: { open: Open }) {
   const named = others.slice(0, 2);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-card/70 px-3 py-2 text-sm">
-      <span className="font-medium">Your {mine.length.toLocaleString("en-GB")} {mine.length === 1 ? "vote" : "votes"}</span>
+      <span className="font-medium">Your {plural(mine.length, "vote", "votes")}</span>
       <span className="flex items-center gap-1">
         {DECISIONS.map((decision) => {
           const n = count(mine, (vote) => vote.decision === decision);
@@ -196,13 +195,13 @@ function Yours({ open }: { open: Open }) {
       </span>
       {waiting.length ? (
         <span className="min-w-0 flex-1 text-muted-foreground max-sm:basis-full">
-          <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className="font-medium text-foreground underline-offset-2 hover:underline">{waiting.length.toLocaleString("en-GB")} of them {waiting.length === 1 ? "waits" : "wait"}</NextLink>
+          <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={INLINE_LINK}>{num(waiting.length)} of them {waiting.length === 1 ? "waits" : "wait"}</NextLink>
           {" for "}
           {named.map((reviewer, i) => (
             <span key={reviewer.id}>
               {i ? " and " : ""}
               {/* Your papers that still wait for this reviewer's vote. */}
-              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none", with: open.me })} className="text-foreground underline-offset-2 hover:underline">{reviewer.name}</NextLink>
+              <NextLink href={papersHref(screening.id, { reviewer: reviewer.id, voted: "none", with: open.me })} className={cn(INLINE_LINK, "font-normal")}>{reviewer.name}</NextLink>
             </span>
           ))}
           {others.length > 2 ? ` and ${others.length - 2} more` : ""} to vote.
@@ -232,12 +231,15 @@ function Reviewers({ open }: { open: Open }) {
       reviewers.map((reviewer) => {
         const theirs = papers.filter((paper) => votes[paper.id]!.some((one) => one.reviewer.id === reviewer.id));
         const cast = theirs.flatMap((paper) => votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote ?? []);
+        // Which way someone else voted counts only on the papers whose votes the person looking may see: the split and the agreement leave the rest out, as the Papers page does.
+        const seen = reviewer.id === open.me ? theirs : theirs.filter((paper) => open.canSee(paper));
+        const told = seen.flatMap((paper) => votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote ?? []);
         const judged = theirs.flatMap((paper) => {
           const [vote, final] = [votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote, settled[paper.id]!.final];
           return vote && final ? [{ vote: vote.decision, final }] : [];
         });
         // A vote is compared with the people's: the other people given the paper for a person, all of them for a model, and never with a model's. There is something to agree with where at least one of those people has voted and the ones who have voted alike.
-        const compared = theirs.flatMap((paper) => {
+        const compared = seen.flatMap((paper) => {
           const cast = votes[paper.id]!.filter((one) => !one.failed);
           const mine = cast.find((one) => one.reviewer.id === reviewer.id)?.vote;
           const people = cast.flatMap((one) => (one.reviewer.kind === "person" && one.reviewer.id !== reviewer.id && one.vote ? [one.vote.decision] : []));
@@ -253,7 +255,7 @@ function Reviewers({ open }: { open: Open }) {
           reviewer,
           assigned: theirs.length,
           done: cast.length,
-          split: DECISIONS.map((decision) => count(cast, (vote) => vote.decision === decision)),
+          split: DECISIONS.map((decision) => count(told, (vote) => vote.decision === decision)),
           agrees: compared.length ? count(compared, (same) => same) / compared.length : null,
           compared: compared.length,
           missed: count(judged, (one) => one.final === "include" && one.vote === "exclude"),
@@ -327,6 +329,7 @@ function Reviewers({ open }: { open: Open }) {
         </>
       }
     >
+      <div className="mb-3 empty:hidden"><LeftOutNote {...open.leftOut} of="the counts by vote and the agreement" /></div>
       {rows.length ? (
         <div role="table" aria-label="Reviewers" className={cn(LIST, "@container/reviewers overflow-clip")}>
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
@@ -362,7 +365,7 @@ function Reviewers({ open }: { open: Open }) {
                     <span className="flex opacity-55"><ReviewerMark reviewer={reviewer} className="size-8" /></span>
                     <span className="min-w-0 truncate font-medium">{reviewer.name}</span>
                   </span>
-                  <span role="cell" className="shrink-0 text-xs tabular-nums text-muted-foreground">{reviewer.discarded ? "Votes thrown out" : cast ? `${cast.toLocaleString("en-GB")} ${cast === 1 ? "vote still counts" : "votes still count"}` : "Cast no vote"}</span>
+                  <span role="cell" className="shrink-0 text-xs tabular-nums text-muted-foreground">{reviewer.discarded ? "Votes thrown out" : cast ? `${plural(cast, "vote still counts", "votes still count")}` : "Cast no vote"}</span>
                 </div>
               ))}
             </div>
@@ -378,12 +381,12 @@ function Reviewers({ open }: { open: Open }) {
         onClose={() => { setLeaving(null); setDiscard(false); }}
         onConfirm={() => leaving && open.update(() => without(leaving), { what: `Took ${leaving.name} off the screening`, effect: [...effectItems(screening, without(leaving)).filter((line) => line.kind !== "leave").map(lineText), movesText(effectMoves(screening, without(leaving)))].filter(Boolean).join(". ") || undefined })}
       >
-        {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} /> : null}
+        {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} unseen={(paper) => !open.canSee(paper)} /> : null}
         {/* Their work stands unless whoever takes them off says otherwise: the votes go only where that is asked for, and what it undoes shows above before it is done. */}
         {leaving && leavingVotes ? (
           <label className="flex items-start gap-3 rounded-xl border border-border-subtle p-2.5 text-sm">
             <span className="min-w-0 flex-1">
-              <span className="font-medium">Throw out {leavingMe ? "your" : "their"} {leavingVotes.toLocaleString("en-GB")} {leavingVotes === 1 ? "vote" : "votes"}</span>
+              <span className="font-medium">Throw out {leavingMe ? "your" : "their"} {plural(leavingVotes, "vote", "votes")}</span>
               <span className="block text-xs text-muted-foreground">{discard ? "The votes stay on record and count for nothing. The papers they decided are voted on again." : "Off, the votes go on counting and no paper's result changes."}</span>
             </span>
             <Switch checked={discard} onCheckedChange={setDiscard} aria-label={`Throw out ${leavingMe ? "your" : "their"} votes`} />
@@ -456,7 +459,6 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
 }
 
 type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number; left: number; perDay: number; idle: boolean };
-const DAY = 86_400_000;
 /** When someone gets through so many papers at their pace, in days from now, or nothing where they have no pace to go by. It is said as a day to come ("done in"), so it never reads as Screen's count of the minutes the papers themselves take. */
 const doneIn = (left: number, perDay: number) => (left <= 0 || perDay <= 0 ? null : `Done in about ${daysFrom(Math.ceil(left / perDay))}`);
 const daysFrom = (days: number) => (days === 1 ? "a day" : days < 14 ? `${days} days` : `${Math.round(days / 7)} weeks`);
@@ -471,7 +473,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const unread = unreadPapers.length;
   const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
   const retry = open.retryOf(reviewer);
-  const held = open.modelsNow === "credits" ? { icon: Coins, text: "Stopped, out of credits", stop: true } : open.modelsNow === "paused" ? { icon: CirclePause, text: "Paused", stop: true } : open.modelsNow === "waiting" ? { icon: Clock, text: "Waiting its turn", stop: false } : open.modelsNow === "gathering" ? { icon: Clock, text: "Waiting for its papers", stop: false } : open.modelsNow === "checking" ? { icon: RefreshCw, text: "Waiting for the check", stop: false } : null;
+  const held = open.modelsNow && open.modelsNow !== "reading" ? MODELS_SAY[open.modelsNow] : null;
   const mine = reviewer.id === open.me;
   // Above the row's own link, so a count or a menu opens itself and not the row.
   const above = "relative z-[1]";
@@ -486,7 +488,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
           {reviewer.kind === "model" ? (
             <p className={cn("flex min-w-0 items-center gap-1 text-xs tabular-nums", reading && held?.stop ? "ink-warning" : "text-muted-foreground")}>
               {reading ? (held ? <held.icon className="size-3.5 shrink-0" /> : <AiIcon working className="size-3.5 shrink-0" />) : <Coins className="size-3.5 shrink-0" />}
-              <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
+              <span className="truncate">{reading ? (held?.row ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
             </p>
           ) : (
             <p className="truncate text-xs text-muted-foreground">{reviewer.email ? PERSON_SAYS.invited : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : mine ? "Active now" : (personOf(reviewer.id)?.seen)}</p>
@@ -510,15 +512,17 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         {unread ? (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className={cn(above, "flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
+              <Button variant="ghost" size="sm" className={cn(above, "flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${plural(unread, "paper", "papers")} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="flex max-h-[min(26rem,var(--radix-popover-content-available-height))] w-80 flex-col gap-2.5 p-3 text-sm">
               <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
-              <ul className="-mx-1 min-h-10 flex-1 space-y-0.5 overflow-y-auto">
+              <ScrollArea shades className="-mx-1 min-h-10 flex-1">
+              <ul className="space-y-0.5">
                 {unreadPapers.map((paper) => (
                   <li key={paper.id}><NextLink href={papersHref(id, { paper: paper.id })} className={cn("block px-1 py-1 text-xs", ROW_LINK)}><span className="line-clamp-2">{paper.title} ({paper.year})</span></NextLink></li>
                 ))}
               </ul>
+              </ScrollArea>
               {open.canChange ? <RetryRead papers={unread} cost={credits(retry.cost)} short={retry.short ? credits(retry.short) : undefined} onRetry={() => open.retry(reviewer)} variant="default" size="sm" className="shrink-0" /> : null}
             </PopoverContent>
           </Popover>
@@ -546,7 +550,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " same vote as the others" : " same vote as the people"}</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
-            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {num(included)} included</NextLink>
+            <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, FIGURE_LINK, "block whitespace-nowrap text-xs tabular-nums ink-destructive")}>Excluded {missed} of {num(included)} included</NextLink>
           ) : (
             <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">Excluded 0 of {num(included)} included</p>
           )
@@ -565,8 +569,8 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem asChild><NextLink href={papersHref(id, { reviewer: reviewer.id })}><ListChecks />See {mine ? "your" : "their"} votes in Papers</NextLink></DropdownMenuItem>
               {unread ? <DropdownMenuItem disabled={Boolean(retry.short)} onSelect={() => open.retry(reviewer)}><RotateCcw />{retryLabel(unread, credits(retry.cost))}{retry.short ? <span className="ms-auto ps-3 text-xs ink-warning">{credits(retry.short)} credits short</span> : null}</DropdownMenuItem> : null}
-              {reviewer.kind === "person" && !mine && done < assigned ? (
-                <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
+              {reviewer.kind === "person" && !mine && left ? (
+                <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${plural(left, "paper waits", "papers wait")} for them` })}><Mail />Send a reminder</DropdownMenuItem>
               ) : null}
               {onMove ? <DropdownMenuItem onSelect={onMove}><Move />Move papers to someone else</DropdownMenuItem> : null}
               <DropdownMenuItem variant="destructive" onSelect={() => onLeave(reviewer)}><Trash2 />{mine ? "Leave this screening" : "Take off this screening"}</DropdownMenuItem>
@@ -601,7 +605,7 @@ const KAPPA_HELP = (
 /** How far each pair of reviewers agrees. With two reviewers, their one figure is in the Reviewers section's head instead. */
 function Agreement({ open }: { open: Open }) {
   const { screening } = open;
-  const reviewers = activeReviewers(screening);
+  const reviewers = inOrder(activeReviewers(screening), open.me);
   const pairs = useMemo(
     () => reviewers.flatMap((a, row) => reviewers.slice(0, row).map((b) => ({ a, b, pair: agreement(a.id, b.id, open) }))),
     [reviewers, open],
@@ -610,7 +614,7 @@ function Agreement({ open }: { open: Open }) {
   const known = pairs.flatMap((one) => (one.pair ? [one.pair.kappa] : []));
   // Light's kappa: the mean of every pair's, the figure the squares add up to.
   const overall = known.length ? known.reduce((sum, kappa) => sum + kappa, 0) / known.length : null;
-  const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : firstName(reviewer.name));
+  const short = (reviewer: Reviewer) => (reviewer.id === open.me ? "You" : shortName(reviewer));
 
   return (
     <Section
@@ -625,6 +629,7 @@ function Agreement({ open }: { open: Open }) {
         </span>
       }
     >
+      <div className="mb-3 empty:hidden"><LeftOutNote {...open.leftOut} of="these figures" /></div>
       {overall === null ? (
         <EmptyNote>How far the reviewers agree shows here once two of them have voted on the same papers.</EmptyNote>
       ) : (
@@ -635,13 +640,14 @@ function Agreement({ open }: { open: Open }) {
               <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
               <span className="text-sm">
                 <span className="font-medium">Overall agreement, as Cohen&apos;s kappa</span>
-                <span className="block text-xs text-muted-foreground">0 is no better than chance, 1 is full agreement. Across {known.length} {known.length === 1 ? "pair" : "pairs"} of reviewers</span>
+                <span className="block text-xs text-muted-foreground">0 is no better than chance, 1 is full agreement. Across {plural(known.length, "pair", "pairs")} of reviewers</span>
               </span>
             </span>
             <LinkChip href={papersHref(screening.id, { sort: "split" })} icon={GitCompare}>The papers they split on most</LinkChip>
           </div>
           {/* Each pair once: the rows from the second reviewer on, the columns up to the one before last. */}
-          <div className={cn(LIST, "overflow-x-auto p-4 @max-2xl/overview:hidden")}>
+          <ScrollArea axis="x" shades className={cn(LIST, "@max-2xl/overview:hidden")}>
+          <div className="p-4">
             <div className="grid min-w-max items-center gap-1" style={{ gridTemplateColumns: `minmax(9rem, auto) repeat(${reviewers.length - 1}, minmax(3.5rem, 1fr))` }}>
               <span />
               {reviewers.slice(0, -1).map((reviewer) => (
@@ -668,6 +674,7 @@ function Agreement({ open }: { open: Open }) {
               ))}
             </div>
           </div>
+          </ScrollArea>
           {/* On a phone, the same pairs as a list. */}
           <ul className={cn(LIST, "@2xl/overview:hidden")}>
             {pairs.map(({ a, b, pair }) => (
@@ -702,13 +709,14 @@ function Facts({ open }: { open: Open }) {
   const starter = personOf(screening.createdBy);
   const workspace = workspaceOf(screening);
   const models = modelsOf(screening);
-  const spent = models.reduce((sum, model) => sum + open.spent(model), 0);
-  const most = models.reduce((sum, model) => sum + open.most(model), 0);
+  // What was spent counts a model since taken off: the credits went. What it comes to in the end is that and what the models still on it have left to read.
+  const spent = spentOf(screening);
+  const most = spent + models.reduce((sum, model) => sum + open.most(model) - open.spent(model), 0);
   // The papers a model got to and couldn't read: the line under what was spent says so, as each model's row does. A paper two models failed on is one paper.
   const unread = new Set(models.flatMap((model) => open.unread(model).map((paper) => paper.id))).size;
   const left = walletOf(screening, store);
   const to = screening.destination;
-  const collection = to.kind === "none" ? null : to.kind === "new" ? to.name || `Included in ${screening.name}` : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? "A collection");
+  const collection = to.kind === "none" ? null : (collectionName(screening) ?? "A collection");
   return (
     <div className="space-y-6">
       <Panel className="flex flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-sm">
@@ -745,7 +753,7 @@ function Facts({ open }: { open: Open }) {
       <Section
         title="Credits"
         help={
-          <Help title="What a screening costs" facts={models.length ? models.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {credits(paperCredits(model.model!))} a paper</HelpFact>) : <HelpFact>People only</HelpFact>}>
+          <Help title="What a screening costs" facts={models.length ? models.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {perPaper(model.model!)}</HelpFact>) : <HelpFact>People only</HelpFact>}>
             <p>People screen for free. A model is paid for each paper it reads, from this workspace&apos;s credits.</p>
           </Help>
         }
@@ -763,7 +771,7 @@ function Facts({ open }: { open: Open }) {
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">
                 <LinkChip href="/settings/billing" tone={left < most - spent ? "warning" : "neutral"} icon={Coins}>{credits(left)} left in {workspace.name}</LinkChip>
-                <Chip>{models.length} {models.length === 1 ? "model" : "models"}</Chip>
+                <Chip>{plural(models.length, "model", "models")}</Chip>
               </div>
             </>
           ) : (
@@ -840,7 +848,7 @@ function Checks({ open }: { open: Open }) {
                           {screening.sources.flatMap((source) => {
                             const found = source.updates?.find((one) => one.at === update.at);
                             const fresh = found ? found.added - found.duplicates : 0;
-                            return fresh ? [<NextLink key={source.id} href={papersHref(screening.id, { added, source: source.id })} className="block text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"><span className="line-clamp-2">{fresh} new from {source.name}</span></NextLink>] : [];
+                            return fresh ? [<NextLink key={source.id} href={papersHref(screening.id, { added, source: source.id })} className={cn(INLINE_LINK, "block text-xs font-normal text-muted-foreground hover:text-foreground")}><span className="line-clamp-2">{fresh} new from {source.name}</span></NextLink>] : [];
                           })}
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Chip>{update.found} found</Chip>
@@ -878,7 +886,7 @@ function Checks({ open }: { open: Open }) {
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground"><Folder className="size-3.5" /></span>
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm"><span className="font-medium">At the start</span><span className="text-xs text-muted-foreground">{ago(screening.createdAt)}</span></p>
-              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{atStart.toLocaleString("en-GB")} papers from {screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</LinkChip>
+              <LinkChip href={papersHref(screening.id, { added: "start" })} className="w-fit">{num(atStart)} papers from {plural(screening.sources.length, "source", "sources")}</LinkChip>
             </div>
           </div>
         </div>
@@ -889,7 +897,7 @@ function Checks({ open }: { open: Open }) {
 
 // ── Flow ─────────────────────────────────────────────────────────────────────────────────────────
 
-type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; indent?: boolean; /** The question a reason stands for. */ question?: string; /** A reason for excluding, which is drawn where the label would be. */ reason?: string };
+type FlowRow = { key: string; label: string; value: number; href?: string; fill: string; /** The result the count is of, which gives it that result's colour as in Progress. */ tone?: Result; indent?: boolean; /** The question a reason stands for. */ question?: string; /** A reason for excluding, which is drawn where the label would be. */ reason?: string };
 
 /** The counts a PRISMA diagram is drawn from, left to right: found, duplicates merged, the papers screened, and included. Every count above none opens its papers. */
 function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
@@ -900,7 +908,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
   const arriving = open.gathering ? kept - papers.length : 0;
   const reasons = excludedBy(open);
   const neutral = "bg-foreground/25";
-  const steps: Array<{ title: string; total: number; href?: string; rows: FlowRow[] }> = [
+  const steps: Array<{ title: string; total: number; href?: string; tone?: Result; rows: FlowRow[] }> = [
     { title: "Found", total: found, rows: screening.sources.map((source) => ({ key: source.id, label: source.name, value: taken(source), href: papersHref(id, { source: source.id }), fill: neutral })) },
     {
       title: "Duplicates merged",
@@ -913,10 +921,10 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       total: kept,
       href: papersHref(id),
       rows: [
-        { key: "exclude", label: RESULT_LABEL.exclude, value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar },
-        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, indent: true })),
-        { key: "maybe", label: RESULT_LABEL.maybe, value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar },
-        { key: "conflict", label: RESULT_LABEL.conflict, value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar },
+        { key: "exclude", label: RESULT_LABEL.exclude, value: counts.exclude, href: papersHref(id, { result: "exclude" }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" },
+        ...reasons.map(([key, value]) => ({ key: `reason:${key}`, label: failedLabel(key, screening.criteria), reason: key, question: questionOf(key, screening.criteria), value, href: papersHref(id, { result: "exclude", reason: key }), fill: RESULT_STYLE.exclude.bar, tone: "exclude" as const, indent: true })),
+        { key: "maybe", label: RESULT_LABEL.maybe, value: counts.maybe, href: papersHref(id, { result: "maybe" }), fill: RESULT_STYLE.maybe.bar, tone: "maybe" },
+        { key: "conflict", label: RESULT_LABEL.conflict, value: counts.conflict, href: papersHref(id, { result: "conflict" }), fill: RESULT_STYLE.conflict.bar, tone: "conflict" },
         { key: "waiting", label: RESULT_LABEL.waiting, value: counts.waiting, href: papersHref(id, { result: "waiting" }), fill: HATCH },
         // Papers still on their way from its sources have nowhere to open yet.
         ...(open.gathering ? [{ key: "arriving", label: "Still arriving", value: arriving, fill: HATCH }] : []),
@@ -925,10 +933,11 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
     {
       title: "Included",
       total: counts.include,
+      tone: "include",
       href: papersHref(id, { result: "include" }),
       rows: screening.sources.flatMap((source) => {
         const value = count(papers, (paper) => paper.source === source.id && settled[paper.id]!.result === "include");
-        return value ? [{ key: source.id, label: source.name, value, href: papersHref(id, { result: "include", source: source.id }), fill: RESULT_STYLE.include.bar }] : [];
+        return value ? [{ key: source.id, label: source.name, value, href: papersHref(id, { result: "include", source: source.id }), fill: RESULT_STYLE.include.bar, tone: "include" as const }] : [];
       }),
     },
   ];
@@ -937,7 +946,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
       id="flow"
       title="PRISMA flow"
       help={
-        <Help title="PRISMA flow" facts={<><HelpFact>Title and abstract</HelpFact><HelpFact>{screening.sources.length} {screening.sources.length === 1 ? "source" : "sources"}</HelpFact></>}>
+        <Help title="PRISMA flow" facts={<><HelpFact>Title and abstract</HelpFact><HelpFact>{plural(screening.sources.length, "source", "sources")}</HelpFact></>}>
           <p>The counts a review&apos;s PRISMA diagram is drawn from, from the papers its sources found to the ones it included.</p>
         </Help>
       }
@@ -950,12 +959,12 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
             {step.href && step.total ? (
               <NextLink href={step.href} className={cn("-mx-2 -my-1 block px-2 py-1", ROW_LINK)}>
                 <p className="text-xs text-muted-foreground">{step.title}</p>
-                <p className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></p>
+                <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", step.tone && step.total ? TONE[RESULT_STYLE[step.tone].tone].ink : undefined)}><AnimatedNumber value={step.total} /></p>
               </NextLink>
             ) : (
               <div className={cn(!step.total && "opacity-60")}>
                 <p className="text-xs text-muted-foreground">{step.title}</p>
-                <p className="text-2xl font-semibold tabular-nums tracking-tight"><AnimatedNumber value={step.total} /></p>
+                <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", step.tone && step.total ? TONE[RESULT_STYLE[step.tone].tone].ink : undefined)}><AnimatedNumber value={step.total} /></p>
               </div>
             )}
             {step.rows.length ? null : <p className="text-xs text-muted-foreground">None</p>}
@@ -963,7 +972,7 @@ function Flow({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => vo
               {step.rows.map((row) => {
                 const inner = (
                   <>
-                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 min-w-0 text-muted-foreground", row.indent && "ps-3")}>{row.reason ? <Reason reason={row.reason} criteria={screening.criteria} /> : row.label}</span><span className="shrink-0 font-medium tabular-nums">{row.value.toLocaleString("en-GB")}</span></span>
+                    <span className="flex items-baseline justify-between gap-3 text-xs"><span className={cn("line-clamp-2 min-w-0 text-muted-foreground", row.indent && "ps-3")}>{row.reason ? <Reason reason={row.reason} criteria={screening.criteria} /> : row.label}</span><span className={cn("shrink-0 font-medium tabular-nums", row.tone && row.value ? TONE[RESULT_STYLE[row.tone].tone].ink : undefined)}>{num(row.value)}</span></span>
                     <Meter value={row.value} max={Math.max(found, 1)} fill={row.fill} className={cn("h-1", row.indent && "ms-3 w-[calc(100%-0.75rem)]")} />
                   </>
                 );

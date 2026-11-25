@@ -95,6 +95,9 @@ export const WRITTEN = [
   { text: "Does the study compare groups, with a control or a comparison group?", short: "Comparison group" },
 ];
 
-/** File endings the upload reads as references, and as papers. */
-export const REFERENCE_FILES = /\.(ris|bib|enw|nbib|xml|ciw|csv|txt)$/i;
+/** File endings the upload reads as references, and as papers, and the formats as they are named to people. */
+const REFERENCE_ENDINGS = ["ris", "bib", "enw", "nbib", "xml", "ciw", "csv", "txt"];
+export const REFERENCE_FILES = new RegExp(`\\.(${REFERENCE_ENDINGS.join("|")})$`, "i");
 export const PDF_FILES = /\.pdf$/i;
+export const UPLOAD_ACCEPT = [...REFERENCE_ENDINGS, "pdf"].map((ending) => `.${ending}`).join(",");
+export const UPLOAD_FORMATS = "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF";

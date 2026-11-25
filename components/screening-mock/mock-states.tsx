@@ -11,7 +11,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { PEOPLE } from "./data";
+import { PEOPLE, HOME } from "./data";
 import { KEPT, credits, seeded, useMock } from "./store";
 
 const AS = [
@@ -63,7 +63,7 @@ export function MockStates() {
         </div>
         <div role="radiogroup" aria-label="Credits" className="space-y-0.5">
           <p className="px-2.5 pb-1 text-xs font-medium text-muted-foreground">Credits</p>
-          {option(store.wallet > 50, "Plenty", `${credits(Math.max(store.wallet, 18_420))} credits`, () => store.set({ wallet: Math.max(store.wallet, 18_420) }))}
+          {option(store.wallet > 50, "Plenty", `${credits(Math.max(store.wallet, HOME.credits))} credits`, () => store.set({ wallet: Math.max(store.wallet, HOME.credits) }))}
           {option(store.wallet <= 50, "Run out", "Models stop where they are", () => store.set({ wallet: 0 }))}
         </div>
         <div role="radiogroup" aria-label="Workspace" className="space-y-0.5">

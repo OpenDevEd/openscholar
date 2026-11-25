@@ -24,13 +24,13 @@ import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, HOME, NOW, day, growing, readBy, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
+import { plural, inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, HOME, NOW, day, growing, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personReviewer, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel } from "./data";
 import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { StateChip, Help, LinkChip, ReviewerMark, SHUT, TONE, TabCount, type Tone } from "./parts";
-import { credits, paperCredits, useMock, useModelsReading, useOpenScreening, type Open } from "./store";
+import { StateChip, Help, LinkChip, ReviewerMark, SHUT, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
+import { useMock, useModelsReading, useOpenScreening, type Open, modelsDone, toppedUp, perPaper } from "./store";
 import { AddModel, AddPerson } from "./team";
 
 type View = "overview" | "screen" | "papers" | "settings";
@@ -77,13 +77,11 @@ export function useWorkspace() {
 }
 
 /** A name or a count inside a sentence that opens what it stands for. */
-const INLINE_LINK = "rounded-sm font-medium text-foreground underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
 
-/** How a paper is decided here, in the words the settings use. */
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
 function ruleFacts(screening: Screening, voter: boolean) {
   const [{ each }, models] = [readersOf(screening), modelsOf(screening).length];
-  const readers = [each ? `${each} ${each === 1 ? "person" : "people"}` : null, models ? `${models} AI ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(" and ");
+  const readers = [each ? `${plural(each, "person", "people")}` : null, models ? `${models} AI ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(" and ");
   return {
     who: readers ? `Each paper: ${readers}` : "No reviewer yet",
     whoIcon: each ? Users : AiIcon,
@@ -154,7 +152,6 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.papers.length;
   const workspace = workspaceOf(screening);
-  const resolver = personOf(screening.rule.resolver);
   // On Screen a row that came and went would move the paper being read.
   const banner = bannerKind(open, view === "screen");
   const shared = (screening.viewers?.length ?? 0) + peopleOf(screening).length;
@@ -274,13 +271,13 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
           title="How a paper is decided"
           facts={
             <>
-              {screening.rule.settle !== "one" && resolver ? <HelpFact icon={Users}>Conflicts go to {resolver.name}</HelpFact> : null}
+              {screening.rule.settle !== "one" ? <HelpFact icon={Users}>Conflicts go to {whoIs(screening, screening.rule.resolver, open.me)}</HelpFact> : null}
               {screening.living ? <HelpFact icon={RefreshCw}>Checks for new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</HelpFact> : null}
             </>
           }
         >
           <p>Each paper gets the votes named in these chips, and the rule settles it once they are in.</p>
-          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>{screening.rule.settle === "all" ? "When its reviewers split" : "With no majority among its reviewers"}, the paper is in conflict until {resolver?.name ?? "a person"} settles it.</p>}
+          {screening.rule.settle === "one" ? <p>The first vote on a paper settles it, so reviewers never split.</p> : <p>{screening.rule.settle === "all" ? "When its reviewers split" : "With no majority among its reviewers"}, the paper is in conflict until {settlerSettles(screening, open.me)} it.</p>}
           {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
         </Help>
       </span>
@@ -291,7 +288,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         <Chip icon={Check}>{facts.when}</Chip>
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
-        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">Living, new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</LinkChip> : null}
+        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{livingSays(screening.living.every)}</LinkChip> : null}
       </FadeRow>
       </div>
       {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs max-sm:ms-auto"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
@@ -300,7 +297,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 
   // Who the person looking is to it, where that is less than a reviewer who can change it.
   const role = !open.isReviewer
-    ? { label: open.canChange ? "Not a reviewer" : "Viewer", icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on." : `${workspace.name} shared it with you. You see every paper and every vote, and you get no papers to vote on.` }
+    ? { label: lookerLabel(open.canChange), icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on." : `${workspace.name} shared it with you. You see every paper and every vote, and you get no papers to vote on.` }
     : !open.canChange
       ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers you get. Only ${workspace.name}'s members change its settings.` }
       : null;
@@ -341,7 +338,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("activity")}><History />Activity</Button>
                 <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("export")}><Download />Export</Button>
                 {/* Icon-only, it keeps its count, so it is as wide as both. */}
-                <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={`Share, ${shared} ${shared === 1 ? "person" : "people"}`} onClick={() => overlays.show("share")}>
+                <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={`Share, ${plural(shared, "person", "people")}`} onClick={() => overlays.show("share")}>
                   <Share2 /><span className={BAR_LABEL}>Share</span>
                   {shared ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{shared}</span> : null}
                 </Button>
@@ -361,7 +358,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
                 {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
                 <AutoHeight>
-                  <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set({ wallet: store.wallet + 20_000 })} onReopen={reopen} onResume={resume} />
+                  <Banner kind={banner} open={open} workspace={workspace.name} onAddCredits={() => store.set(toppedUp(screening, store))} onReopen={reopen} onResume={resume} />
                 </AutoHeight>
               </div>
             }
@@ -459,9 +456,9 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span className="font-medium">Checking for new papers</span>
+        <span className="font-medium">{MODELS_SAY.checking.says}</span>
         <Meter value={screening.checking.done} max={screening.checking.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground">{screening.checking.done} of {screening.checking.of} {screening.checking.of === 1 ? "source" : "sources"} checked</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{screening.checking.done} of {plural(screening.checking.of, "source", "sources")} checked</span>
       </div>
     );
   }
@@ -479,7 +476,7 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span className="font-medium">No new papers since {ago(before) === day(before) ? day(before) : ago(before)}</span>
+        <span className="font-medium">No new papers since {ago(before)}</span>
       </div>
     );
   }
@@ -487,9 +484,9 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     return (
       <div className={row}>
         <Search className={icon} />
-        <span className="font-medium">Getting its papers</span>
+        <span className="font-medium">{MODELS_SAY.gathering.says}</span>
         <Meter value={open.gathering.done} max={open.gathering.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {open.gathering.of.toLocaleString("en-GB")}</span>
+        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {num(open.gathering.of)}</span>
         {open.isReviewer ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
       </div>
     );
@@ -499,12 +496,12 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
       <div className={row}>
         <Coins className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          Out of credits
-          <Help title="Out of credits" facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {credits(paperCredits(model.model!))} credits a paper</HelpFact>)}>
+          {MODELS_SAY.credits.says}
+          <Help title={MODELS_SAY.credits.says} facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {perPaper(model.model!)}</HelpFact>)}>
             A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once credits are added.
           </Help>
         </span>
-        <span className="text-muted-foreground">{models(reading)} stopped at {num(Math.max(...reading.map((model) => readBy(screening, model))))} of {num(papers.length)} papers</span>
+        <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsDone(screening, reading))} of {num(papers.length)} papers</span>
         {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
         {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button> : null}
       </div>
@@ -525,12 +522,12 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
     );
   }
   if (kind === "paused") {
-    const done = Math.min(...modelsOf(screening).map((model) => readBy(screening, model)));
+    const done = modelsDone(screening);
     return (
       <div className={row}>
         <CirclePause className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          Models paused
+          {MODELS_SAY.paused.says}
           <Help title="Paused models">Paused models read nothing and spend no credits. People keep voting, and papers settle on the votes they have.</Help>
         </span>
         <span className="text-xs tabular-nums text-muted-foreground">{num(done)} of {num(papers.length)} papers read</span>
@@ -543,18 +540,18 @@ function Banner({ kind, open, workspace, onAddCredits, onReopen, onResume }: { k
       <div className={row}>
         <Clock className={icon} />
         <span className="flex items-center gap-1">
-          <span className="font-medium">{reading.length === 1 ? "Its model starts" : "Its models start"} after <NextLink href={overviewHref(open.waitingFor.screening.id)} className={INLINE_LINK}>{open.waitingFor.screening.name}</NextLink></span>
+          <span className="font-medium">{MODELS_SAY.waiting.says} <NextLink href={overviewHref(open.waitingFor.screening.id)} className={INLINE_LINK}>{open.waitingFor.screening.name}</NextLink></span>
           <Help title="Models take turns" facts={<HelpFact icon={ListChecks}>40 papers at a time</HelpFact>}>
             {workspace}&apos;s models read 40 papers at a time, so a screening started while another is reading waits for it. People can vote in the meantime.
           </Help>
         </span>
         <Meter value={open.waitingFor.done} max={open.waitingFor.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.waitingFor.done} /> of {open.waitingFor.of.toLocaleString("en-GB")}</span>
+        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.waitingFor.done} /> of {num(open.waitingFor.of)}</span>
       </div>
     );
   }
   if (kind === "reading") {
-    const done = Math.min(...reading.map((model) => readBy(screening, model)));
+    const done = modelsDone(screening, reading);
     return (
       <div className={row}>
         <AiIcon working className="size-4 shrink-0" />

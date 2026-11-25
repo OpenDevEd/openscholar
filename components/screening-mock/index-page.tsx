@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Copy, Download, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -22,12 +22,13 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { inOrder, resolves, firstName, EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { plural, num, inOrder, resolves, livingSays, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf, whoIs, lookerLabel, inQuotes } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { FilterMenu, Help, LinkChip, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted } from "./parts";
+import { FilterMenu, Help, LinkChip, RESULT_ICON, RESULT_STYLE, ResultChip, ReviewerMark, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
 import { modelsState, useMock, useOpenScreening } from "./store";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const PAGE = 25;
 const SORTS = [
@@ -50,13 +51,13 @@ const PLACE = {
   page: parseAsInteger.withDefault(1),
 };
 
+/** Each tab in the colour its rows' status chips have: what waits for you is primary, a finished screening is green. */
+const SHOW_ICON = { you: tinted(ListChecks, "primary"), open: tinted(Hourglass, "neutral"), finished: tinted(CircleCheck, "success") };
 /**
  * The table's columns, from a laptop's width up: Screening, Reviewers, Papers, Status, Last activity
  * and the menu. Narrower, each row is a card: the title and its menu, the facts under it, the faces
  * and when it last moved on one line, the bar, then the status.
  */
-/** Each tab in the colour its rows' status chips have: what waits for you is primary, a finished screening is green. */
-const SHOW_ICON = { you: tinted(ListChecks, "primary"), open: tinted(Hourglass, "neutral"), finished: tinted(CircleCheck, "success") };
 const COLUMNS = "@5xl:grid-cols-[minmax(14rem,1.75fr)_9rem_minmax(8rem,1fr)_minmax(15rem,2fr)_6rem_2rem]";
 const CARD = "grid-cols-[minmax(0,1fr)_auto] [grid-template-areas:'title_menu'_'meta_meta'_'faces_faces'_'papers_papers'_'status_status'] @5xl:[grid-template-areas:'title_faces_papers_status_when_menu'_'meta_faces_papers_status_when_menu']";
 /** A link inside a row sits above the link the whole row is, and shows that it is one. */
@@ -104,7 +105,7 @@ export function ScreeningsIndex() {
         const group = open.forYou + open.conflicts + asked.length ? 0 : screening.finishedAt ? 2 : 1;
         return [{ screening, state, access, ...open, asked, models: held, ahead, active, group }];
       }),
-    [store.screenings, store.wallet, me],
+    [store.screenings, store.wallet, store.away, me],
   );
   type Row = (typeof all)[number];
   const starters = [...new Set(all.map((row) => row.screening.createdBy))];
@@ -131,12 +132,11 @@ export function ScreeningsIndex() {
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   // Under the default order the rows sit in their groups, where there is more than one.
   const grouped = sort === "you" && new Set(rows.map((row) => row.group)).size > 1;
-  const first = (name: string | undefined) => (name ? firstName(name) : undefined);
   const byName = by === "anyone" ? null : by === me ? "you" : personOf(by)?.name;
   const words = search.trim();
   const none = show === "you"
-    ? `Nothing${byName ? ` started by ${byName}` : ""}${words ? ` called “${words}”` : ""} needs you.`
-    : `No ${show === "finished" ? "finished screenings" : show === "open" ? "screenings in progress" : "screenings"}${byName ? ` started by ${byName}` : ""}${words ? ` called “${words}”` : ""}.`;
+    ? `Nothing${byName ? ` started by ${byName}` : ""}${words ? ` called ${inQuotes(words)}` : ""} needs you.`
+    : `No ${show === "finished" ? "finished screenings" : show === "open" ? "screenings in progress" : "screenings"}${byName ? ` started by ${byName}` : ""}${words ? ` called ${inQuotes(words)}` : ""}.`;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -177,7 +177,8 @@ export function ScreeningsIndex() {
                       { value: "finished" as typeof show, label: "Finished", icon: <CircleCheck />, tone: "success" as const, count: tally.finished },
                     ]}
                   />
-                  <div className="max-w-full max-sm:hidden max-lg:-mx-4 max-lg:overflow-x-auto max-lg:px-4">
+                  <ScrollArea axis="x" shades className="max-w-full max-sm:hidden max-lg:-mx-4">
+                  <div className="w-max max-lg:px-4">
                     <Segmented
                       label="Which screenings"
                       value={show}
@@ -190,6 +191,7 @@ export function ScreeningsIndex() {
                       ]}
                     />
                   </div>
+                  </ScrollArea>
                   {/* What the bars' colours mean and what "settled" counts: beside the tabs where the row has the room, and on a line of its own under them where it hasn't. */}
                   <span role="group" aria-label="What the colours of a bar mean" className="order-last flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground @7xl:order-none @7xl:basis-auto">
                     {([["Settled", ["include", "maybe", "exclude"]], ["Not yet", ["conflict", "waiting"]]] as const).map(([name, results]) => (
@@ -238,7 +240,7 @@ export function ScreeningsIndex() {
                     const reviewers = inOrder(activeReviewers(screening), me);
                     const total = state.papers.length;
                     const settled = total - state.counts.conflict - state.counts.waiting;
-                    const resolver = screening.rule.resolver === me ? "you" : (first(personOf(screening.rule.resolver)?.name) ?? "its starter");
+                    const resolver = whoIs(screening, screening.rule.resolver, me, true);
                     return (
                       <Group key={id} label={(grouped || show === "you") && (i === 0 || shown[i - 1]!.group !== group) ? GROUPS[group] : null} note={group === 0 ? "Papers to screen, conflicts to settle and questions put to you" : undefined} count={rows.filter((one) => one.group === group).length}>
                         <li className={cn("relative grid items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @5xl:gap-y-0.5", CARD, COLUMNS)}>
@@ -254,9 +256,9 @@ export function ScreeningsIndex() {
                             </button>
                             <span className="whitespace-nowrap">started it {ago(screening.createdAt)}</span>
                             {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living, new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</Chip> : null}
+                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">{livingSays(screening.living.every)}</Chip> : null}
                             {/* A member who isn't one of its reviewers can still change it: only someone it was shared with is a viewer. */}
-                            {!access.reviewer ? <Chip icon={Eye} className="h-5 px-1.5">{access.member ? "Not a reviewer" : "Viewer"}</Chip> : null}
+                            {!access.reviewer ? <Chip icon={Eye} className="h-5 px-1.5">{lookerLabel(access.member)}</Chip> : null}
                           </span>
                           {/* On a card the faces and when it last moved share a line under the title; in the table each has its column. */}
                           <span className="flex min-w-0 items-center justify-between gap-3 [grid-area:faces] @5xl:contents">
@@ -265,29 +267,26 @@ export function ScreeningsIndex() {
                           </span>
                           <span className="min-w-0 space-y-1.5 [grid-area:papers]">
                             <Bar id={id} counts={state.counts} />
-                            <NextLink href={screening.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground hover:underline")}>
-                              {screening.finishedAt ? `${state.counts.include.toLocaleString("en-GB")} included of ${total.toLocaleString("en-GB")}` : `${settled.toLocaleString("en-GB")} of ${total.toLocaleString("en-GB")} settled`}
+                            <NextLink href={screening.finishedAt ? papersHref(id, { result: "include" }) : papersHref(id)} className={cn(ABOVE, FIGURE_LINK, "block w-fit text-xs tabular-nums text-muted-foreground hover:text-foreground")}>
+                              {screening.finishedAt ? `${num(state.counts.include)} included of ${num(total)}` : `${num(settled)} of ${num(total)} settled`}
                             </NextLink>
                           </span>
                           <span className="flex min-w-0 flex-wrap items-center gap-1.5 [grid-area:status] @5xl:row-span-2">
-                            {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{forYou.toLocaleString("en-GB")} for you to screen</LinkChip> : null}
-                            {conflicts ? <LinkChip href={screenHref(id, { queue: "conflicts" })} tone="info" icon={GitCompare} className="relative shrink-0">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</LinkChip> : null}
+                            {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{num(forYou)} for you to screen</LinkChip> : null}
+                            {conflicts ? <LinkChip href={screenHref(id, { queue: "conflicts" })} tone="info" icon={GitCompare} className="relative shrink-0">{plural(conflicts, "conflict", "conflicts")} to settle</LinkChip> : null}
                             {/* It opens the paper the question is about, where it is answered. */}
-                            {asked.length ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: asked[0] })} tone="primary" icon={MessagesSquare} className="relative shrink-0">{asked.length} {asked.length === 1 ? "question" : "questions"} for you</LinkChip> : null}
+                            {asked.length ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: asked[0] })} tone="primary" icon={MessagesSquare} className="relative shrink-0">{plural(asked.length, "question", "questions")} for you</LinkChip> : null}
                             {/* What its models are doing shows beside your work. */}
-                            {models === "checking" ? <LinkChip href={overviewHref(id)} icon={RefreshCw} className="relative shrink-0">Checking for new papers</LinkChip>
-                              : models === "gathering" ? <LinkChip href={overviewHref(id)} icon={Search} className="relative shrink-0">Getting its papers</LinkChip>
-                              : models === "paused" ? <LinkChip href={overviewHref(id)} tone="warning" icon={CirclePause} className="relative shrink-0">Models paused</LinkChip>
-                              : models === "credits" ? <LinkChip href={overviewHref(id)} tone="warning" icon={Coins} className="relative shrink-0">Out of credits</LinkChip>
-                              : models === "waiting" && ahead ? <LinkChip href={overviewHref(ahead.id)} icon={Clock} className="relative shrink-0">Models start after {ahead.name}</LinkChip>
-                              : models === "reading" ? <LinkChip href={overviewHref(id)} className="relative shrink-0"><span className="flex items-center gap-1.5"><AiIcon working className="size-3.5" />Models reading</span></LinkChip>
+                            {models === "reading" ? <LinkChip href={overviewHref(id)} className="relative shrink-0"><span className="flex items-center gap-1.5"><AiIcon working className="size-3.5" />{MODELS_READING}</span></LinkChip>
+                              : models === "waiting" ? (ahead ? <LinkChip href={overviewHref(ahead.id)} icon={MODELS_SAY.waiting.icon} className="relative shrink-0">{MODELS_SAY.waiting.says} {ahead.name}</LinkChip> : null)
+                              : models ? <LinkChip href={overviewHref(id)} tone={MODELS_SAY[models].stop ? "warning" : undefined} icon={MODELS_SAY[models].icon} className="relative shrink-0">{MODELS_SAY[models].says}</LinkChip>
                               : null}
                             {/* Where its papers stand shows where nothing waits for you. */}
                             {forYou || conflicts ? null
-                              : screening.finishedAt ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{state.counts.include.toLocaleString("en-GB")} included, finished {ago(screening.finishedAt)}</LinkChip>
+                              : screening.finishedAt ? <LinkChip href={papersHref(id, { result: "include" })} tone="success" icon={CircleCheck} className="relative shrink-0">{num(state.counts.include)} included, finished {ago(screening.finishedAt)}</LinkChip>
                               : models ? null
-                              : state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} className="relative shrink-0">{state.counts.waiting.toLocaleString("en-GB")} waiting for votes</LinkChip>
-                              : state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} className="relative shrink-0">{state.counts.conflict.toLocaleString("en-GB")} in conflict, for {resolver} to settle</LinkChip>
+                              : state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} className="relative shrink-0">{num(state.counts.waiting)} waiting for votes</LinkChip>
+                              : state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} className="relative shrink-0">{num(state.counts.conflict)} in conflict, for {resolver} to settle</LinkChip>
                               : screening.living ? <LinkChip href={settingsHref(id, "new-papers")} icon={RefreshCw} className="relative shrink-0">Up to date, next check {day(screening.living.next)}</LinkChip>
                               : <LinkChip href={papersHref(id)} tone="success" icon={CircleCheck} className="relative shrink-0">Every paper is settled</LinkChip>}
                           </span>
@@ -367,7 +366,7 @@ function Bar({ id, counts }: { id: string; counts: Record<Result, number> }) {
       {total === 0 ? <span className="h-full flex-1 rounded-full bg-foreground/10" /> : null}
       {RESULTS.map((result) => {
         if (!counts[result]) return null;
-        const label = `${counts[result].toLocaleString("en-GB")} ${RESULT_LABEL[result].toLowerCase()}`;
+        const label = `${num(counts[result])} ${RESULT_LABEL[result].toLowerCase()}`;
         return (
           <TooltipHint key={result} label={label}>
             <NextLink

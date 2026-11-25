@@ -6,15 +6,15 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { Coins, GitCompare, Hourglass } from "@/components/icons";
+import { Coins } from "@/components/icons";
 import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
-import { num, plural, projected, readNext, withReviewer, type Reviewer, type Screening } from "./data";
+import { num, plural, projected, readNext, withAdded, type Reviewer, type Screening, inQuotes } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
-import { EffectList, collectionName, effectLines, effectMoves, movesText } from "./effects";
-import { papersHref, settingsHref } from "./links";
-import { LinkChip, Panel, ReviewerMark } from "./parts";
-import { credits, paperCredits, useMock, type Open } from "./store";
+import { EffectList, ON_SAVE, collectionName, effectLines, effectMoves, movesText } from "./effects";
+import { settingsHref } from "./links";
+import { Panel, ReviewerMark, OpenPapersChips } from "./parts";
+import { credits, paperCredits, useMock, type Open, walletOf, toppedUp, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 
 export type Over = "activity" | "export" | "share" | "move" | "finish" | "delete";
@@ -42,10 +42,9 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
   const close = () => { setOver(null); setAdding(null); setDemoting(null); onClosed?.(); };
   const unsettled = state.counts.conflict + state.counts.waiting;
   const collection = collectionName(screening);
-  const withAdded = (reviewer: Reviewer): Screening => ({ ...screening, ...withReviewer(screening, reviewer), viewers: screening.viewers?.filter((one) => one.id !== reviewer.id) });
   // What a model put on the screening still has to read, as adding it would leave things: the open papers it hasn't read, fewer when it comes back with votes it had cast.
   const toRead = (model: Reviewer) => {
-    const next = projected(screening, withAdded(model));
+    const next = projected(screening, withAdded(screening, model));
     return readNext(next, next.reviewers.find((one) => one.id === model.id)!, Infinity, () => Infinity).read;
   };
   const demoted = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)), viewers: [...(screening.viewers ?? []), { ...reviewer, left: undefined }] });
@@ -61,7 +60,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         title="Mark this screening as finished?"
         confirm="Mark as finished"
         onClose={close}
-        onConfirm={() => state.update((s) => ({ ...s, finishedAt: Date.now(), living: undefined }), { what: "Marked the screening as finished", effect: [unsettled ? `${unsettled} papers were not settled` : "", screening.living ? "It stopped checking for new papers" : ""].filter(Boolean).join(". ") || undefined })}
+        onConfirm={() => state.update((s) => ({ ...s, finishedAt: Date.now(), living: undefined }), { what: "Marked the screening as finished", effect: [unsettled ? `${plural(unsettled, "paper was", "papers were")} not settled` : "", screening.living ? "It stopped checking for new papers" : ""].filter(Boolean).join(". ") || undefined })}
       >
         <EffectList
           lines={[
@@ -72,15 +71,10 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
           ]}
         />
         {/* The papers that would be left unsettled, one press away. */}
-        {unsettled ? (
-          <div className="flex flex-wrap gap-1.5">
-            {state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={close}>{num(state.counts.conflict)} in conflict</LinkChip> : null}
-            {state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={close}>{num(state.counts.waiting)} waiting for votes</LinkChip> : null}
-          </div>
-        ) : null}
+        {unsettled ? <OpenPapersChips id={id} conflict={state.counts.conflict} waiting={state.counts.waiting} onClick={close} /> : null}
       </ConfirmChange>
-      <ConfirmChange open={over === "delete"} variant="destructive" title={`Delete “${screening.name}”?`} confirm="Delete" onClose={close} onConfirm={() => { store.remove(id); onDeleted?.(); }}>
-        <EffectList lines={["Its votes and its settings go with it", ...(collection && state.counts.include ? [`The ${state.counts.include} ${state.counts.include === 1 ? "paper" : "papers"} saved to “${collection}” stay there`] : []), "This can't be undone"]} />
+      <ConfirmChange open={over === "delete"} variant="destructive" title={`Delete ${inQuotes(screening.name)}?`} confirm="Delete" onClose={close} onConfirm={() => { store.remove(id); onDeleted?.(); }}>
+        <EffectList lines={["Its votes and its settings go with it", ...(collection && state.counts.include ? [`The ${plural(state.counts.include, "paper", "papers")} saved to ${inQuotes(collection)} stay there`] : []), "This can't be undone"]} />
       </ConfirmChange>
       <ConfirmChange
         open={adding !== null}
@@ -90,14 +84,14 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         onClose={close}
         onConfirm={() => {
           if (!adding) return;
-          const after = withAdded(adding);
+          const after = withAdded(screening, adding);
           state.update(() => after, { what: `Added ${adding.name} as a reviewer`, effect: effectLines(screening, after)[0] });
         }}
       >
         {adding ? (
           <>
             {adding.model ? (
-              <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{credits(paperCredits(adding.model))} credits a paper</span>} />
+              <NodeCard model={adding.model} paidBy="credits" tabIndex={-1} note={<span className="tabular-nums">{perPaper(adding.model)}</span>} />
             ) : (
               <Panel className="flex items-center gap-3 p-3">
                 <ReviewerMark reviewer={adding} className="size-9" />
@@ -111,10 +105,10 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
               </Panel>
             ) : (
               // Here nothing is saved apart from the adding itself.
-              <EffectList lines={effectLines(screening, withAdded(adding)).map((line) => line.replace("as soon as this is saved", "as soon as it is added"))} moves={effectMoves(screening, withAdded(adding))} />
+              <EffectList lines={effectLines(screening, withAdded(screening, adding)).map((line) => line.replace(ON_SAVE, "as soon as it is added"))} moves={effectMoves(screening, withAdded(screening, adding))} unseen={(paper) => !state.canSee(paper)} />
             )}
             {/* A model reads the papers still open: the ones already settled are not read again, and are not paid for. */}
-            {adding.model ? <Credits model={adding.model} papers={toRead(adding)} wallet={store.wallet} onAddCredits={() => { store.set({ wallet: store.wallet + 20_000 }); close(); }} /> : null}
+            {adding.model ? <Credits model={adding.model} papers={toRead(adding)} wallet={walletOf(screening, store)} onAddCredits={() => { store.set(toppedUp(screening, store)); close(); }} /> : null}
           </>
         ) : null}
       </ConfirmChange>
@@ -125,7 +119,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         onClose={close}
         onConfirm={() => demoting && state.update(() => demoted(demoting), { what: `Made ${demoting.name} a viewer`, effect: [...effectLines(screening, demoted(demoting)), movesText(effectMoves(screening, demoted(demoting)))].filter(Boolean).join(". ") || undefined })}
       >
-        {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting)), "They go on seeing every paper and every vote"]} moves={effectMoves(screening, demoted(demoting))} /> : null}
+        {demoting ? <EffectList lines={[...effectLines(screening, demoted(demoting)), "They go on seeing every paper and every vote"]} moves={effectMoves(screening, demoted(demoting))} unseen={(paper) => !state.canSee(paper)} /> : null}
       </ConfirmChange>
     </>
   );
@@ -140,7 +134,7 @@ function Credits({ model, papers, wallet, onAddCredits }: { model: MapModel; pap
   return (
     <Panel tone="warning" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl p-3">
       <Coins className="mt-0.5 size-4 shrink-0 self-start ink-warning" />
-      <p className="min-w-0 flex-1 text-sm tabular-nums ink-warning">{credits(wallet)} credits pay for {paid ? `about ${paid.toLocaleString("en-GB")}` : "none"} of its {papers.toLocaleString("en-GB")} papers. It stops there until credits are added.</p>
+      <p className="min-w-0 flex-1 text-sm tabular-nums ink-warning">{credits(wallet)} credits pay for {paid ? `about ${num(paid)}` : "none"} of its {num(papers)} papers. It stops there until credits are added.</p>
       {/* The mock has no payment: going to billing adds the credits, and Back returns here with them. */}
       <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing" onClick={onAddCredits}><Coins />Add credits</NextLink></Button>
     </Panel>

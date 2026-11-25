@@ -10,7 +10,8 @@ import { api } from "@/convex/_generated/api";
 import { toMapModel, type MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
-import { seesVotes, HOME, workspaceOf, resolves, NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withReviewer, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
+import { num, plural, seesVotes, HOME, workspaceOf, resolves, NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, keep, madeUpReply, readBy, readNext, stillReading, waitingQuestions, withAdded, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote, inQuotes } from "./data";
+import { hiddenIn } from "./export";
 
 type State = {
   screenings: Screening[];
@@ -52,7 +53,9 @@ export function paperCredits(model: MapModel) {
   return estimateCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, CALL_TOKENS.paper);
 }
 /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
-export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : Math.ceil(n).toLocaleString("en-GB"));
+export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : num(Math.ceil(n)));
+/** What a model charges to read one paper, as every page says it. */
+export const perPaper = (model: MapModel) => `${credits(paperCredits(model))} credits a paper`;
 
 /** Where the tab keeps the mock's state. The name changes with its shape. */
 export const KEPT = "screening-mock:9";
@@ -77,7 +80,7 @@ export const seeded = () => startingScreenings().map(withSpent);
 const now = () => Math.max(Date.now(), NOW + 1);
 
 export function ScreeningMockProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>(() => ({ screenings: seeded(), viewer: PEOPLE[0]!.id, wallet: 18_420, firstTime: false, drafts: {} }));
+  const [state, setState] = useState<State>(() => ({ screenings: seeded(), viewer: PEOPLE[0]!.id, wallet: HOME.credits, firstTime: false, drafts: {} }));
   // The tab's storage is the outside system: what was done in the mock is read back after a reload, and written as it changes.
   const [restored, setRestored] = useState(false);
   useEffect(() => {
@@ -119,8 +122,14 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
       update: (id: string, fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) =>
         setState((s) => ({
           ...s,
-          // Settings changed here, from the open screening or by a save: a draft started from the old ones is dropped.
-          drafts: s.drafts[id] && s.screenings.some((one) => one.id === id && settingsOf(fn(one)) !== settingsOf(one)) ? Object.fromEntries(Object.entries(s.drafts).filter(([key]) => key !== id)) : s.drafts,
+          // Settings changed here, from the open screening or by a save. A draft keeps the edits that are still its own: the same change is made to it, and it goes once nothing in it differs from what is saved.
+          drafts: (() => {
+            const [draft, one] = [s.drafts[id], s.screenings.find((each) => each.id === id)];
+            if (!draft || !one || settingsOf(fn(one)) === settingsOf(one)) return s.drafts;
+            const { [id]: _saved, ...rest } = s.drafts;
+            const mine = fn(draft);
+            return settingsOf(mine) === settingsOf(fn(one)) ? rest : { ...rest, [id]: mine };
+          })(),
           screenings: s.screenings.map((one) => {
             if (one.id !== id) return one;
             const made = fn(one);
@@ -205,9 +214,15 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
 
 /** The credits a screening's models are paid from: its own workspace's. The mock's wallet is the home workspace's; another workspace has what it had, less what its screenings have spent since. */
 export type Purse = Pick<State, "wallet" | "away">;
-export const walletOf = (screening: Screening, purse: Purse) => (workspaceOf(screening) === HOME ? purse.wallet : Math.max(0, workspaceOf(screening).credits - (purse.away?.[workspaceOf(screening).id] ?? 0)));
+export const walletOf = (screening: Pick<Screening, "workspace">, purse: Purse) => (workspaceOf(screening) === HOME ? purse.wallet : Math.max(0, workspaceOf(screening).credits - (purse.away?.[workspaceOf(screening).id] ?? 0)));
 /** The purse after a screening has paid so many credits: taken from the workspace whose balance let it. */
-export const paid = (screening: Screening, purse: Purse, cost: number): Purse => (workspaceOf(screening) === HOME ? { wallet: Math.max(0, purse.wallet - cost), away: purse.away } : { wallet: purse.wallet, away: { ...purse.away, [workspaceOf(screening).id]: (purse.away?.[workspaceOf(screening).id] ?? 0) + cost } });
+export const paid = (screening: Pick<Screening, "workspace">, purse: Purse, cost: number): Purse => (workspaceOf(screening) === HOME ? { wallet: Math.max(0, purse.wallet - cost), away: purse.away } : { wallet: purse.wallet, away: { ...purse.away, [workspaceOf(screening).id]: (purse.away?.[workspaceOf(screening).id] ?? 0) + cost } });
+
+/** What a screening's models have spent, a model since taken off included: the credits went. */
+export const spentOf = (screening: Pick<Screening, "spent">) => Object.values(screening.spent ?? {}).reduce((sum, one) => sum + one, 0);
+
+/** The purse after "Add credits": the mock has no payment, so the button stands for a purchase, in the workspace that pays for the screening. */
+export const toppedUp = (screening: Pick<Screening, "workspace">, purse: Purse): Purse => paid(screening, purse, -20_000);
 
 /**
  * What a screening's models are doing, worked out in one place, so the list's row, the frame's notice, the Overview's
@@ -228,6 +243,9 @@ export const modelsState = (screening: Screening, screenings: Screening[], purse
   const ahead = screening.after ? screenings.find((one) => one.id === screening.after) : undefined;
   return ahead && isReading(ahead) ? "waiting" : "reading";
 };
+
+/** How far a screening's models have read: the place of the slowest of them, as the meters show it. */
+export const modelsDone = (screening: Screening, models = modelsOf(screening)) => (models.length ? Math.min(...models.map((model) => readBy(screening, model))) : 0);
 
 /** Whether a screening's models still have papers to read, and are free to. */
 export const isReading = (screening: Screening) => !screening.finishedAt && !screening.paused && modelsOf(screening).some((model) => stillReading(screening, model));
@@ -262,6 +280,14 @@ export function useOpenScreening(id: string) {
   // A paper that has its final decision waits for nobody: settled by the first vote, or by the person who settles conflicts.
   const toDo = yours.filter((paper) => !myVote(paper) && !state.settled[paper.id]!.final);
   const conflicts = state.papers.filter((paper) => state.settled[paper.id]!.result === "conflict");
+  const unread = (model: Reviewer) => state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.failed));
+  /** What sending a model back to the papers it couldn't read comes to, and how far the workspace's credits fall short of it. */
+  const retryOf = (model: Reviewer) => {
+    const papers = unread(model).length;
+    // Asked of every row of the reviewers' table: a person has no reading to pay for.
+    const cost = model.model ? papers * paperCredits(model.model) : 0;
+    return { papers, cost, short: Math.max(0, cost - walletOf(screening, store)) };
+  };
   const models = modelsOf(screening);
   // A model still has papers to read, and the credits to read them with or not.
   const reading = models.filter((model) => stillReading(screening, model));
@@ -289,7 +315,7 @@ export function useOpenScreening(id: string) {
     /** The screening whose models read before this one's. */
     waitingFor: (() => {
       const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
-      return ahead && isReading(ahead) ? { screening: ahead, done: Math.min(...modelsOf(ahead).map((model) => readBy(ahead, model))), of: paperTotal(ahead.sources) } : null;
+      return ahead && isReading(ahead) ? { screening: ahead, done: modelsDone(ahead), of: paperTotal(ahead.sources) } : null;
     })(),
     /** Looks in its sources again now, whoever asks: the papers they gained since the last look join the queue. */
     check: () => store.update(id, (s) => (s.checking || !growing(s).length ? s : { ...s, checking: { done: 0, of: growing(s).length, by: me } })),
@@ -301,25 +327,18 @@ export function useOpenScreening(id: string) {
       return { ...last, papers: papers.length, mine: reviewer ? papers.filter((paper) => !state.settled[paper.id]!.final && state.votes[paper.id]!.some((one) => one.reviewer.id === me && !one.vote)).length : 0, open: papers.filter((paper) => !state.settled[paper.id]!.final).length };
     })(),
     /** The papers a model got to and couldn't read. */
-    unread: (model: Reviewer) => state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.failed)),
+    unread,
+    retryOf,
     /** Sends a model back to the papers it couldn't read. Reading them again is paid for like any reading. */
-    /** What sending a model back to the papers it couldn't read comes to, and how far the workspace's credits fall short of it. */
-    retryOf: (model: Reviewer) => {
-      const papers = state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.failed)).length;
-      // Asked of every row of the reviewers' table: a person has no reading to pay for.
-      const cost = model.model ? papers * paperCredits(model.model) : 0;
-      return { papers, cost, short: Math.max(0, cost - walletOf(screening, store)) };
-    },
     retry: (model: Reviewer) => {
-      const papers = state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.failed)).length;
-      const cost = papers * paperCredits(model.model!);
+      const { papers, cost, short } = retryOf(model);
       // With too few credits it is not sent: the control says how many are missing.
-      if (cost > walletOf(screening, store)) return;
-      store.update(id, (s) => ({ ...s, retried: [...(s.retried ?? []), model.id], spent: { ...s.spent, [model.id]: (s.spent?.[model.id] ?? 0) + cost } }), { what: `Sent ${model.name} back to ${papers} ${papers === 1 ? "paper" : "papers"} it couldn't read`, effect: `${credits(cost)} credits` });
+      if (short) return;
+      store.update(id, (s) => ({ ...s, retried: [...(s.retried ?? []), model.id], spent: { ...s.spent, [model.id]: (s.spent?.[model.id] ?? 0) + cost } }), { what: `Sent ${model.name} back to ${plural(papers, "paper", "papers")} it couldn't read`, effect: `${credits(cost)} credits` });
       store.set(paid(screening, store, cost));
     },
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
-    join: () => store.update(id, (s) => ({ ...s, ...withReviewer(s, personReviewer(store.me, Date.now())), viewers: s.viewers?.filter((one) => one.id !== me) }), { what: "Joined as a reviewer" }),
+    join: () => store.update(id, (s) => withAdded(s, personReviewer(store.me, Date.now())), { what: "Joined as a reviewer" }),
     yours,
     toDo,
     conflicts,
@@ -332,6 +351,8 @@ export function useOpenScreening(id: string) {
     myVote,
     /** Other votes show on a paper that isn't yours to vote on, on one you've voted on, and always where the rule says so. */
     canSee: (paper: Paper) => seesVotes(screening, state, me, paper),
+    /** What is kept from the person looking: the others' votes on the papers they have yet to vote on. Counts and files leave them out and say so. */
+    leftOut: hiddenIn({ screening, state, me }, state.papers),
     // A vote on a paper whose result was held lets go of it: the paper stands where its votes put it under the settings as they are now.
     // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
     vote: (paper: Paper, vote: Vote | null) =>
@@ -343,7 +364,7 @@ export function useOpenScreening(id: string) {
     thread: (paper: Paper) => screening.threads?.[paper.id] ?? [],
     /** Adds a line to a paper's discussion. With `to`, it is a question that waits for that reviewer. */
     // A question put to one reviewer is written into the screening's activity too, where someone looks for what was asked lately.
-    say: (paper: Paper, text: string, to?: string) => store.update(id, (s) => ({ ...s, threads: { ...s.threads, [paper.id]: [...(s.threads?.[paper.id] ?? []), { by: me, at: Math.max(Date.now(), NOW + 1), text, ...(to ? { to } : {}) }] } }), to ? { what: `Asked ${PEOPLE.find((one) => one.id === to)?.name ?? "a reviewer"} about “${paper.title}”` } : undefined),
+    say: (paper: Paper, text: string, to?: string) => store.update(id, (s) => ({ ...s, threads: { ...s.threads, [paper.id]: [...(s.threads?.[paper.id] ?? []), { by: me, at: Math.max(Date.now(), NOW + 1), text, ...(to ? { to } : {}) }] } }), to ? { what: `Asked ${PEOPLE.find((one) => one.id === to)?.name ?? "a reviewer"} about ${inQuotes(paper.title)}` } : undefined),
     /** The papers whose discussion ends on a question for the person looking. */
     asked: state.papers.filter((paper) => waitingQuestions(screening.threads?.[paper.id]).some((question) => question.to === me)),
     /** The papers one person has yet to vote on that another doesn't have: what can be moved from the first to the second. */
@@ -368,7 +389,7 @@ export function useOpenScreening(id: string) {
             ),
           },
         }),
-        { what: `Moved ${picked.length} ${picked.length === 1 ? "paper" : "papers"} from ${from.name} to ${to.name}`, effect: `${to.name} votes on ${picked.length === 1 ? "it" : "them"} now` },
+        { what: `Moved ${plural(picked.length, "paper", "papers")} from ${from.name} to ${to.name}`, effect: `${to.name} votes on ${picked.length === 1 ? "it" : "them"} now` },
       );
     },
   };

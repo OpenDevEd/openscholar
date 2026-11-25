@@ -6,7 +6,7 @@
 
 import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, CirclePause, Clock, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, Search, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
@@ -22,7 +22,24 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
-import { DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { num, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE } from "./data";
+import type { ModelsState } from "./store";
+import { papersHref } from "./links";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+/**
+ * What a screening's models are doing when they are not reading, in words and a mark: `says` of the whole screening,
+ * `row` of one model in its own row. One table, so the list, the notice, the Overview and the settings say it alike.
+ * `stop` is a state somebody has to act on.
+ */
+export const MODELS_SAY: Record<Exclude<ModelsState, "reading">, { icon: AppIcon; says: string; row: string; stop?: true }> = {
+  checking: { icon: RefreshCw, says: "Checking for new papers", row: "Waiting for the check" },
+  gathering: { icon: Search, says: "Getting its papers", row: "Waiting for its papers" },
+  paused: { icon: CirclePause, says: "Models paused", row: "Paused", stop: true },
+  credits: { icon: Coins, says: "Out of credits", row: "Out of credits", stop: true },
+  waiting: { icon: Clock, says: "Models start after", row: "Waiting its turn" },
+};
+export const MODELS_READING = "Models reading";
 
 /**
  * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
@@ -90,7 +107,7 @@ export const kindIcon = (kind: string): AppIcon => (kind === "upload" || kind ==
 export const RESULT_ICON = Object.fromEntries(RESULTS.map((result) => [result, tinted(RESULT_STYLE[result].icon, RESULT_STYLE[result].tone)])) as Record<Result, ComponentType<{ className?: string }>>;
 /** A count in a tab, in the colour of what it counts while there is any: what waits for you is primary, a conflict is blue. */
 export function TabCount({ value, tone = "neutral" }: { value: number; tone?: Tone }) {
-  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{value.toLocaleString("en-GB")}</span>;
+  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{num(value)}</span>;
 }
 
 /**
@@ -115,7 +132,6 @@ export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Ch
  */
 export const SHUT = {
   vote: { icon: Lock, says: HIDDEN_UNTIL_VOTE },
-  conflict: { icon: GitCompare, says: "Opens on a conflict" },
   // Who the person is to the screening: its reviewers vote and write, and one person settles its conflicts.
   reviewer: { icon: Eye, says: "For its reviewers" },
   settler: { icon: Eye, says: "For whoever settles conflicts" },
@@ -170,12 +186,30 @@ export function RetryRead({ papers, cost, short, onRetry, variant = "outline", s
   );
 }
 /** What that control says, for a menu's row too. */
-export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Read all ${papers.toLocaleString("en-GB")} again` : "Read it again"}, ${cost} credits`;
+export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Read all ${num(papers)} again` : "Read it again"}, ${cost} credits`;
 
 /** A figure that opens the papers it counts: underlined at rest, so it is told apart from a figure that only says how many. */
+/** A name or a count inside a sentence that opens something: underlined where it stands, so it reads as a link before the pointer is on it. */
+export const INLINE_LINK = "rounded-sm font-medium text-foreground underline decoration-foreground/25 underline-offset-2 outline-none transition-colors hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring/50";
 export const FIGURE_LINK = "underline decoration-current/35 underline-offset-[3px]";
 
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
+/** What is left out for the person looking, said over the numbers or the file it is left out of: the others' votes on the papers they have yet to vote on. */
+export function LeftOutNote({ votes, papers, of = "" }: { votes: number; papers: number; /** What they are left out of, where "left out" alone doesn't say. */ of?: string }) {
+  if (!votes) return null;
+  return <ShutNote by="vote">{plural(votes, "vote", "votes")} on the {plural(papers, "paper", "papers")} you have yet to vote on {votes === 1 ? "is" : "are"} left out{of ? ` of ${of}` : ""}, so {votes === 1 ? "it" : "they"} can&apos;t sway yours.</ShutNote>;
+}
+
+/** The papers a screening still has open, as two counts that open them on Papers: in conflict, and waiting for votes. */
+export function OpenPapersChips({ id, conflict, waiting, onClick }: { id: string; conflict: number; waiting: number; onClick?: () => void }) {
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={onClick}>{num(conflict)} in conflict</LinkChip> : null}
+      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={onClick}>{num(waiting)} waiting for votes</LinkChip> : null}
+    </span>
+  );
+}
+
 export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
   return (
     <NextLink {...link} href={href} className={cn("flex min-w-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50", className)}>
@@ -209,7 +243,7 @@ export function Section({ id, title, help, aside, className, children }: { id?: 
 /** A filter's pill while it narrows its list: tinted as the open tab beside it is. */
 export const FILTER_ON = "border-primary/30 bg-primary/8 hover:bg-primary/12";
 /** One thing to pick in a FilterMenu: its sign, its name, and how many papers it holds. `tone` is its colour role, for its sign and its count: a vote's is its result's. Choices that share a `group` sit under its name. */
-export type Choice<T extends string> = { value: T; label: string; icon?: ReactNode; tone?: Tone; count?: number; group?: string };
+export type Choice<T extends string> = { value: T; label: string; icon?: ReactNode; tone?: Tone; count?: number; group?: string; /** A rule shuts this choice: it stays in the menu, with the reason, and can't be picked. */ shut?: string };
 // A menu row and a select's pill both turn every icon grey. A choice's sign takes its tone instead.
 const SIGN = "flex items-center [&_svg]:text-current!";
 
@@ -230,7 +264,7 @@ export function FilterMenu<T extends string>({ name, lead, value, onChange, choi
           <span className="flex min-w-0 items-center gap-1.5">
             {lead}
             <span className="text-muted-foreground">{name}</span>
-            <span className="flex min-w-0 items-center gap-1.5 font-medium">{changed && picked.icon ? <span className={cn(SIGN, TONE[picked.tone ?? "neutral"].ink)}>{picked.icon}</span> : null}<span className="truncate">{picked.label}</span></span>
+            <span className="flex min-w-0 items-center gap-1.5 font-medium">{/* A filter left at its first choice narrows nothing and shows no sign. Where every choice is a real one, the one picked always shows its own. */}{(changed || !narrows) && picked.icon ? <span className={cn(SIGN, TONE[picked.tone ?? "neutral"].ink)}>{picked.icon}</span> : null}<span className="truncate">{picked.label}</span></span>
           </span>
           <ChevronDown className="size-4 opacity-50" />
         </button>
@@ -243,9 +277,9 @@ export function FilterMenu<T extends string>({ name, lead, value, onChange, choi
             {group ? <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{group}</DropdownMenuLabel> : null}
             {choices.filter((one) => one.group === group).map((one) => (
               // A long name runs onto a second line, and the sign, the count and the tick stay on its first.
-              <DropdownMenuItem key={one.value} role="menuitemradio" aria-checked={one.value === value} onSelect={() => onChange(one.value)} className="items-start">
-                {one.icon ? <span className={cn(SIGN, "h-5", TONE[one.tone ?? "neutral"].ink)}>{one.icon}</span> : null}
-                <span className="min-w-0 flex-1">{one.label}</span>
+              <DropdownMenuItem key={one.value} role="menuitemradio" aria-checked={one.value === value} disabled={Boolean(one.shut)} onSelect={() => onChange(one.value)} className="items-start data-[disabled]:opacity-100">
+                {one.icon ? <span className={cn(SIGN, "h-5", TONE[one.tone ?? "neutral"].ink, one.shut && "opacity-50")}>{one.icon}</span> : null}
+                <span className="min-w-0 flex-1"><span className={cn(one.shut && "opacity-50")}>{one.label}</span>{one.shut ? <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Lock aria-hidden className="size-3 shrink-0" />{one.shut}</span> : null}</span>
                 {one.count !== undefined ? <span className="ps-3 text-xs leading-5"><span className="sr-only">, </span><TabCount value={one.count} tone={one.tone} /></span> : null}
                 <span className="flex h-5 items-center"><Check aria-hidden className={cn("size-4", one.value !== value && "invisible")} /></span>
               </DropdownMenuItem>
@@ -258,7 +292,7 @@ export function FilterMenu<T extends string>({ name, lead, value, onChange, choi
 }
 
 // The 1.5rem taken off the height is the page's own padding over its card, the one thing over a sidebar that scrolls away.
-const SIDEBAR = "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] @6xl:overflow-y-auto @6xl:overscroll-contain";
+const SIDEBAR = "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)]";
 
 /**
  * A sidebar: a column beside a page's main content, where the page itself scrolls. It stays under what is held at
@@ -276,8 +310,9 @@ const SIDEBAR = "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-
  */
 export function StickyColumn({ clear = "1rem", className, children }: { clear?: string; className?: string; children: ReactNode }) {
   return (
-    <div style={{ "--clear": clear } as CSSProperties} className={cn("scrollbar-hover self-start", SIDEBAR, className)}>
-      {children}
+    // The column sticks and takes its height; what scrolls is the area inside it, which positions itself and so can't be the one that sticks.
+    <div style={{ "--clear": clear } as CSSProperties} className={cn("flex flex-col self-start", SIDEBAR)}>
+      <ScrollArea shades className="min-h-0 flex-1"><div className={className}>{children}</div></ScrollArea>
     </div>
   );
 }
@@ -327,11 +362,11 @@ export function ReviewerMark({ reviewer, you = false, className }: { reviewer: P
 }
 
 /** One vote as a small square with its sign. `hidden` is a vote cast but not shown yet, to someone who hasn't voted. */
-export function VoteMark({ vote, hidden = false, failed = false, who, className }: { vote?: Pick<Vote, "decision">; hidden?: boolean; failed?: boolean; who: string; className?: string }) {
+export function VoteMark({ vote, hidden = false, failed = false, settled = false, who, className }: { vote?: Pick<Vote, "decision">; hidden?: boolean; failed?: boolean; /** The paper is settled for good: a place with no vote in it waits for nobody. */ settled?: boolean; who: string; className?: string }) {
   if (failed) {
     return (
-      <TooltipHint label={`${who} couldn't read it`}>
-        <span role="img" tabIndex={0} aria-label={`${who}: couldn't read it`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive text-white", className)}>
+      <TooltipHint label={`${who}: ${NO_VOTE.failed.toLowerCase()}`}>
+        <span role="img" tabIndex={0} aria-label={`${who}: ${NO_VOTE.failed.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive text-white", className)}>
           <TriangleAlert aria-hidden className="size-3.5" />
         </span>
       </TooltipHint>
@@ -339,8 +374,8 @@ export function VoteMark({ vote, hidden = false, failed = false, who, className 
   }
   if (!vote) {
     return (
-      <span role="img" aria-label={`${who}: no vote yet`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground", className)}>
-        <Hourglass aria-hidden className="size-3" />
+      <span role="img" aria-label={`${who}: ${(settled ? NO_VOTE.none : NO_VOTE.yet).toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground", className)}>
+        {settled ? <Minus aria-hidden className="size-3" /> : <Hourglass aria-hidden className="size-3" />}
       </span>
     );
   }
@@ -424,7 +459,7 @@ export function Reason({ reason, criteria, unclear = false, className }: { reaso
 /** A screening's papers as one bar, split by where they stand. */
 export function ResultBar({ counts, className }: { counts: Record<Result, number>; className?: string }) {
   const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
-  const label = RESULTS.filter((result) => counts[result]).map((result) => `${counts[result].toLocaleString("en-GB")} ${RESULT_LABEL[result].toLowerCase()}`).join(", ") || "No papers yet";
+  const label = RESULTS.filter((result) => counts[result]).map((result) => `${num(counts[result])} ${RESULT_LABEL[result].toLowerCase()}`).join(", ") || "No papers yet";
   return (
     <TooltipHint label={label}>
       <div role="img" aria-label={label} tabIndex={0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
@@ -537,8 +572,9 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
       facts={
         <>
           {blind ? <HelpFact icon={SHUT.vote.icon}>{SHUT.vote.says}</HelpFact> : null}
-          <HelpFact icon={Hourglass}>No vote yet</HelpFact>
-          <HelpFact icon={TriangleAlert}>Couldn&apos;t read it</HelpFact>
+          <HelpFact icon={Hourglass}>{NO_VOTE.yet}</HelpFact>
+          <HelpFact icon={Minus}>{NO_VOTE.none}: settled without it</HelpFact>
+          <HelpFact icon={TriangleAlert}>{NO_VOTE.failed}</HelpFact>
           {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label="An answer" /></span>{ANSWER_SIGN[answer].label}</HelpFact>)}
           <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />No answer</HelpFact>
           <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>Differ<ChevronDown aria-hidden className="size-3" /></span>Reviewers answered it differently</HelpFact>
@@ -631,7 +667,7 @@ export function PaperFacts({ paper, source, added }: {
       {/* Where the paper came from, said as that: a search's name is its query, which was taken for a label on the paper. */}
       {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">From {source.name}</LinkChip> : null}
       {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(added.at)}</LinkChip> : null}
-      <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
+      <Chip icon={Quote}>Cited by {num(paper.cited)}</Chip>
       {/* The made-up papers have no page of their own: a search for the title finds the paper, in a new tab so the place in the list is kept. */}
       <LinkChip href={`/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
     </>

@@ -59,7 +59,7 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{email}</span>
-                    <span className="block text-xs text-muted-foreground">Gets an email, and votes once they join</span>
+                    <span className="block text-xs text-muted-foreground">{PERSON_SAYS.invited}</span>
                   </span>
                 </CommandItem>
               </CommandGroup>
