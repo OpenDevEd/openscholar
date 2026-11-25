@@ -44,7 +44,14 @@ export function Help({ title, children, facts, side, className }: { title: strin
 }
 
 /** Where a page's content starts under the bars that stick to the top of the window: for an anchor another page links to. */
-export const BELOW_HEADER = "scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]";
+/**
+ * Under what stays at the top of the window on a screening's pages: the app's bar, the page's bar and, from a laptop's
+ * width, the screening's own strip of tabs (`--screening-frame`, its height, which its frame writes). Nothing above a
+ * sidebar or a table's head scrolls away, so where they stick and how tall they may be never depends on how far the
+ * page is scrolled. Written out whole, so Tailwind finds them.
+ */
+export const BELOW_HEADER = "scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px)+1rem)]";
+export const UNDER_FRAME = "top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))]";
 
 /**
  * The colours that tell kinds of things apart, the same on every page. Neutral is a plain fact. Primary
@@ -126,17 +133,19 @@ export function Section({ id, title, help, aside, className, children }: { id?: 
  * own. Written out whole, so Tailwind finds them.
  */
 const SIDEBAR = {
-  always: "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] overflow-y-auto overscroll-contain",
-  lg: "lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] lg:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] lg:overflow-y-auto lg:overscroll-contain",
-  overview: "@5xl/overview:sticky @5xl/overview:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] @5xl/overview:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] @5xl/overview:overflow-y-auto @5xl/overview:overscroll-contain",
-  form: "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--clear))] @6xl:overflow-y-auto @6xl:overscroll-contain",
+  always: "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] overflow-y-auto overscroll-contain",
+  lg: "lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] lg:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] lg:overflow-y-auto lg:overscroll-contain",
+  form: "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] @6xl:overflow-y-auto @6xl:overscroll-contain",
 };
 
 /**
- * A sidebar: a column beside the page's main content. It stays under the header, as tall as the window allows, and
- * where what it holds is taller than that it scrolls on its own. The main content is never given a height: it is as
+ * A sidebar: a column beside the page's main content. It stays under what is held at the window's top, reaches to
+ * the window's foot and no further, and where what it holds is taller than that it scrolls on its own. It must stand
+ * right under that held top, with nothing over it that scrolls away: that is what makes its height the same however
+ * far the page is scrolled, with no measuring. The 1.5rem taken off its height is the page's own padding over its
+ * card, the one thing over a sidebar that does scroll away. The main content is never given a height: it is as
  * long as it is, and the page scrolls. So a page has one thing that moves with the window, its main content, and
- * each sidebar keeps its own place. `from`: the width at which the page lays it beside the main content.
+ * each sidebar keeps its own place. A sidebar is a tool beside the content: a list to pick from, the item picked, a form's summary. Blocks of a page's own content laid in two columns, as on the Overview, are not one, and scroll with the page. `from`: the width at which the page lays it beside the main content.
  * `clear`: the room kept under it for an ActionBar at the window's foot. `anchor` names what it shows: when that
  * changes, it starts from its top again.
  */

@@ -1,7 +1,7 @@
 "use client";
 
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
-// the paper stands. A row opens the paper beside the table, with who voted what and when.
+// the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -26,11 +26,10 @@ import { SELECT_TRIGGER, Select, SelectContent, SelectItem, SelectTrigger, Selec
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, activeReviewers, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, TONE, Tally, VoteMark } from "./parts";
+import { AnswerMark, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import { useWorkspace } from "./workspace";
@@ -38,7 +37,6 @@ import { useWorkspace } from "./workspace";
 const PAGE = 20;
 const ROW = 57;
 /** Under the page's header: where the table's head row and the paper's toolbar stick. */
-const UNDER_HEADER = "top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))]";
 
 const SORTS = ["added", "title", "title-desc", "result", "newest", "split", "points"] as const;
 type Sort = (typeof SORTS)[number];
@@ -129,11 +127,7 @@ function Papers({ open }: { open: Open }) {
   const picked = selection.scope === scope ? selection.ids : [];
   const setPicked = (ids: string[]) => setSelection({ scope, ids });
   const [filtering, setFiltering] = useState(false);
-  // A paper opens beside the table where there is room for both, and over the page where there isn't.
-  const beside = useMediaQuery("(min-width: 1280px)");
   const top = useRef<HTMLDivElement>(null);
-  // The table keeps the room it gave the paper until the paper has finished leaving, so the two never change places.
-  const [made, setMade] = useState(false);
 
   // Whose votes narrow the table: the reviewer named, or you when only a vote is, or the first of the others where an address names only those. With others beside them, the table shows the papers all of them voted on.
   const who = reviewer ?? (voted !== "any" ? open.me : (also[0] ?? null));
@@ -200,8 +194,6 @@ function Papers({ open }: { open: Open }) {
   const pager = pagerOf(rows.length, PAGE, page ?? (at >= 0 ? Math.floor(at / PAGE) + 1 : 1), (next) => void setPlace({ page: next }));
   const shown = rows.slice((pager.page - 1) * PAGE, pager.page * PAGE);
   const inView = at >= 0 && Math.floor(at / PAGE) + 1 === pager.page;
-  if (paper && beside && !made) setMade(true);
-  const room = made && beside;
   const chosen = picked.filter((one) => papers.some((p) => p.id === one));
   const allShown = shown.length > 0 && shown.every((one) => chosen.includes(one.id));
   const everyRow = rows.length > shown.length && rows.every((one) => chosen.includes(one.id));
@@ -224,13 +216,13 @@ function Papers({ open }: { open: Open }) {
     // Again when the table is put in another order or narrowed, which can move the row. Not on a search being typed or on papers arriving: the page would move under the person.
   }, [opened, inView, pager.page, filter, from, reviewer, voted, alsoKey, reason, added, sort]);
 
-  // The keyboard is the outside system: Escape closes the open paper, J and K or the arrows step through the list.
+  // The keyboard is the outside system: J and K or the arrows step through the list.
   useEffect(() => {
     if (!opened) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest("[role=dialog], [role=menu], [role=listbox]")) return;
-      if (event.key === "Escape") return close();
+      // Inside the paper's own drawer the keys still step; the drawer closes itself on Escape. Any other dialog or menu keeps its keys.
+      if (target?.closest("[role=menu], [role=listbox], [role=dialog]:not([data-paper-drawer])") || event.key === "Escape") return;
       if (event.metaKey || event.ctrlKey || event.altKey || target?.closest("input, textarea, select, [contenteditable=true]")) return;
       if (event.key === "j" || event.key === "ArrowRight") step(1);
       else if (event.key === "k" || event.key === "ArrowLeft") step(-1);
@@ -254,11 +246,10 @@ function Papers({ open }: { open: Open }) {
   }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps -- runs when another paper opens
   const list = useRef<HTMLDivElement>(null);
 
-  // Reviewers' names show over their columns while no paper is open beside the table, and a column fits a first name.
-  const names = !room;
-  const reviewerWidth = names ? 3.5 : 3;
+  // A reviewer's column fits their first name under their face.
+  const reviewerWidth = 3.5;
   // The narrowest the table can be, in rem. Where its column is narrower, it scrolls sideways and its head row stops sticking.
-  const tableWidth = 15 + (room ? 10 : 12) + (columns === "criteria" ? criteria.length * 4.5 : reviewers.length * reviewerWidth);
+  const tableWidth = 15 + 12 + (columns === "criteria" ? criteria.length * 4.5 : reviewers.length * reviewerWidth);
   const [fits, setFits] = useState(true);
   // The column's width is the outside system: measured before the first paint, then whenever it changes.
   useLayoutEffect(() => {
@@ -409,10 +400,10 @@ function Papers({ open }: { open: Open }) {
   const showReason = columns === "reviewers";
   // The Reason column shows wherever the table is wide enough for it, beside an open paper too.
   const reasonHidden = showReason ? "@max-[60rem]/table:hidden" : "hidden";
-  const lastCell = room ? "w-40 pe-4" : "w-48 pe-4 sm:pe-6 lg:w-60";
+  const lastCell = "w-48 pe-4 sm:pe-6 lg:w-60";
 
   return (
-    <div ref={top} className="@container/papers scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+1rem)]">
+    <div ref={top} className={cn("@container/papers", BELOW_HEADER)}>
       {/* Row one: where the papers stand, and the search. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 pt-4 sm:px-6">
         <div ref={tabsRow} className="max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:snap-x max-sm:overflow-x-auto max-sm:px-4 max-sm:[scrollbar-width:none]">
@@ -512,7 +503,7 @@ function Papers({ open }: { open: Open }) {
         ) : null}
       </AnimatePresence>
 
-      <div className={cn("grid border-t border-border-subtle", room && "grid-cols-[minmax(0,1fr)_30rem] min-[1800px]:grid-cols-[minmax(0,1fr)_36rem]")}>
+      <div className="grid border-t border-border-subtle">
         <div ref={list} className="@container/table min-w-0">
           {/* A full page's height while there are pages, so a short last page doesn't move the pager. The table scrolls sideways only where it can't fit, which would stop its head row sticking. */}
           <div className={cn(!fits && "overflow-x-auto")} style={{ minHeight: pager.pages > 1 ? (PAGE + 2) * ROW : undefined }}>
@@ -537,7 +528,7 @@ function Papers({ open }: { open: Open }) {
                   })}
                 </ul>
                 <table className="w-full table-fixed text-sm @max-2xl/papers:hidden" style={{ minWidth: `${tableWidth}rem` }}>
-                  <TableHeader className={cn("z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] [&_tr]:border-b-0", fits && cn("sticky", UNDER_HEADER))}>
+                  <TableHeader className={cn("z-10 bg-card shadow-[0_1px_0_var(--color-border-subtle)] [&_tr]:border-b-0", fits && cn("sticky", UNDER_FRAME))}>
                     <TableRow className="hover:bg-transparent">
                       <TableHead rowSpan={2} className="w-12 ps-4 sm:ps-6">
                         <Checkbox checked={allShown} onCheckedChange={() => setPicked(allShown ? chosen.filter((p) => !shown.some((one) => one.id === p)) : [...new Set([...chosen, ...shown.map((one) => one.id)])])} aria-label="Select every paper on this page" />
@@ -586,7 +577,7 @@ function Papers({ open }: { open: Open }) {
                                     <button type="button" aria-label={one.id === open.me ? "Your votes" : `Votes by ${one.name}`} className="mx-auto flex w-full flex-col items-center gap-1 rounded-md py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted">
                                       <ReviewerMark reviewer={one} you={one.id === open.me} />
                                       {/* Each head opens a menu of that reviewer's votes, and says so with the arrow a menu has. */}
-                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground">{names ? <span className="truncate">{one.id === open.me ? "You" : one.name.split(" ")[0]}</span> : null}<ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
+                                      <span className="flex max-w-full items-center gap-0.5 px-0.5 text-2xs font-normal text-muted-foreground"><span className="truncate">{one.id === open.me ? "You" : one.name.split(" ")[0]}</span><ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" /></span>
                                     </button>
                                   </DropdownMenuTrigger>
                                 </TooltipHint>
@@ -688,23 +679,15 @@ function Papers({ open }: { open: Open }) {
           {pager.pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4 sm:px-6" currentPage={pager.page} totalPages={pager.pages} onPageChange={(next) => { pager.setPage(next); top.current?.scrollIntoView({ block: "start" }); }} totalItems={pager.total} itemsPerPage={PAGE} itemLabel="papers" /> : null}
         </div>
 
-        <AnimatePresence initial={false} onExitComplete={() => setMade(false)}>
-          {paper && beside ? (
-            <motion.aside key="panel" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25, ease: EASE }} className="min-w-0 border-s border-border-subtle">
-              {/* A sidebar: it stays under the header and scrolls on its own, and another paper starts at its title. */}
-              <StickyColumn anchor={paper.id}>
-                <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} />
-              </StickyColumn>
-            </motion.aside>
-          ) : null}
-        </AnimatePresence>
       </div>
-      <Sheet open={Boolean(paper) && !beside} onOpenChange={(next) => !next && close()}>
+      {/* The paper opens in a drawer at the window's side, from its top to its foot, and scrolls there on its own: the place a record's details open in most products with a table. It never sits in the page, under the filters, where how much of it shows would depend on how far the page is scrolled. */}
+      <Sheet open={Boolean(paper)} onOpenChange={(next) => !next && close()}>
         {/* It opens with the focus on itself, so no button's tooltip covers the paper's title. */}
-        <SheetContent showCloseButton={false} onOpenAutoFocus={focusContent} className={`w-full gap-0 overflow-y-auto p-0 outline-none sm:max-w-lg ${AVATARS_FADE_IN}`}>
+        <SheetContent data-paper-drawer showCloseButton={false} onOpenAutoFocus={focusContent} className={`w-full gap-0 p-0 outline-none sm:max-w-lg xl:max-w-xl ${AVATARS_FADE_IN}`}>
           <SheetTitle className="sr-only">{paper?.title ?? "Paper"}</SheetTitle>
           <SheetDescription className="sr-only">Its abstract, its votes and its result</SheetDescription>
-          {paper ? <PaperPanel key={paper.id} paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} inSheet /> : null}
+          {/* Each paper has its own scroll, so the next one starts at its title and not where the last was left. */}
+          {paper ? <div key={paper.id} className="min-h-0 flex-1 overflow-y-auto"><PaperPanel paper={paper} open={open} onClose={close} place={{ at, of: rows.length }} onStep={step} /></div> : null}
         </SheetContent>
       </Sheet>
     </div>
@@ -827,7 +810,7 @@ function ReasonPicker({ reasons, onPick, onBack }: { reasons: Array<{ key: strin
 }
 
 /** One paper beside the table: what it says, who voted what on each criterion and when, your own vote where it is yours to give, and the final decision when they disagree. */
-function PaperPanel({ paper, open, onClose, onStep, place, inSheet = false }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; place: { at: number; of: number }; inSheet?: boolean }) {
+function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; open: Open; onClose: () => void; onStep: (by: 1 | -1) => void; place: { at: number; of: number } }) {
   const { screening, settled, votes } = open;
   const id = screening.id;
   const narrow = useNarrow(id, open.me);

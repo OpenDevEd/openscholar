@@ -3,7 +3,7 @@
 // An open screening, across the whole window: the frame its four pages share (Overview, Screen, Papers
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
-import { createContext, use, useLayoutEffect, type ComponentProps, type ReactNode } from "react";
+import { createContext, use, useLayoutEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useParams, useRouter, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
@@ -110,6 +110,32 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     if (!returning && !window.location.hash) window.scrollTo(0, 0);
   }, [view, id]);
+
+  // The strip of tabs stays under the page's bar from a laptop's width. Its height is the outside system: it is written where a table's head and the sidebars under it read it, so they stand right below it. Zero where the strip scrolls with the page.
+  const frame = useRef<HTMLDivElement>(null);
+  const strip = useRef<HTMLDivElement>(null);
+  const found = Boolean(open);
+  useLayoutEffect(() => {
+    const [root, held] = [frame.current, strip.current];
+    if (!root || !held) return;
+    // A link to a part of the page is followed before the strip's height is known, and the strip can still settle after that (its notice arriving). Until the person first touches the page, the part the address names lands again under the strip as it is now.
+    let untouched = true;
+    const touched = () => { untouched = false; };
+    const write = () => {
+      root.style.setProperty("--screening-frame", held.parentElement && getComputedStyle(held.parentElement).position === "sticky" ? `${held.offsetHeight}px` : "0px");
+      if (untouched && window.location.hash) document.getElementById(decodeURIComponent(window.location.hash.slice(1)))?.scrollIntoView();
+    };
+    write();
+    const observer = new ResizeObserver(write);
+    observer.observe(held);
+    window.addEventListener("resize", write);
+    for (const kind of ["wheel", "keydown", "pointerdown", "touchstart"]) window.addEventListener(kind, touched, { once: true, passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", write);
+      for (const kind of ["wheel", "keydown", "pointerdown", "touchstart"]) window.removeEventListener(kind, touched);
+    };
+  }, [found]);
 
   if (!open) {
     return (
@@ -280,7 +306,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       <PageWrapper>
         {/* Faces fade in as they load, where they would otherwise appear in one frame. */}
         {/* The screening's name keeps some room in the bar at every width, so it always shows at least in part. */}
-        <div className={`contents ${AVATARS_FADE_IN} [&_[data-sticky-page-header]_h1]:min-w-32 @7xl:[&_[data-sticky-page-header]_h1]:min-w-64`}>
+        <div ref={frame} className={`contents ${AVATARS_FADE_IN} [&_[data-sticky-page-header]_h1]:min-w-32 @7xl:[&_[data-sticky-page-header]_h1]:min-w-64`}>
           <LibraryPageShell
             wide
             icon={ListChecks}
@@ -316,8 +342,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 <span className="flex max-sm:hidden">{more}</span>
               </>
             }
+            stickyIntro
             intro={
-              <div className="@container/strip">
+              <div ref={strip} className="@container/strip">
                 {/* One strip under the bar: the pages, then how a paper is decided. Where the card is too narrow for both on a line, the pages take the first and the rule the second. */}
                 <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @[66rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]">{pages(true)}</FadeRow></div>
                 <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[66rem]/strip:hidden")}>

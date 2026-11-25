@@ -135,8 +135,8 @@ function Screen({ open }: { open: Open }) {
     // The paper is the page's main content: where the next one's title is out of sight, the page moves to it. The queue scrolls on its own, and brings the next paper's row into view the same way.
     requestAnimationFrame(() => {
       const top = article.current?.getBoundingClientRect().top;
-      // Under the page's header, which covers the top of the window.
-      const line = document.querySelector("[data-sticky-page-header]")?.getBoundingClientRect().bottom ?? 0;
+      // Under what is held at the window's top, the page's bar and the screening's strip: the paper's scroll margin is that line and 1rem.
+      const line = article.current ? parseFloat(getComputedStyle(article.current).scrollMarginTop) - parseFloat(getComputedStyle(document.documentElement).fontSize) : 0;
       if (top !== undefined && (top < line || top > window.innerHeight / 2)) article.current?.scrollIntoView({ block: "start" });
       // Its row, in the queue's own scroll: under the tabs and search held at the queue's top, and over its foot.
       const row = document.querySelector<HTMLElement>(`[data-queue-paper="${CSS.escape(next.id)}"]`);

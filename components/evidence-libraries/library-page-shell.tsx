@@ -29,6 +29,7 @@ export function LibraryPageShell({
   filters,
   actions,
   intro,
+  stickyIntro = false,
   filtersInCard = false,
   allowOverflow = false,
   wide = false,
@@ -49,6 +50,8 @@ export function LibraryPageShell({
   actions?: ReactNode;
   /** The top of a detail page's card, above the toolbar and the list. */
   intro?: ReactNode;
+  /** Keep the intro under the page's bar while the page scrolls, from a laptop's width: for one that holds the page's own tabs. */
+  stickyIntro?: boolean;
   /** Keep the filters in the card at every width, for a search that belongs to one tab's list. */
   filtersInCard?: boolean;
   /** Let the card's content overflow, for a sticky footer or popovers inside it. */
@@ -87,7 +90,7 @@ export function LibraryPageShell({
       <div className={wide ? "p-4 sm:p-6 lg:pe-[5.5rem]" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
         {/* Its pages come from the server (papers, topics, authors): the card rises in CSS from the first paint, not once the code loads. */}
         <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn>
-          {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
+          {intro ? <div className={cn("border-b border-border-subtle", stickyIntro && "rounded-t-2xl bg-card lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] lg:z-20")}>{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>
               <div className="group/toolbar flex flex-wrap items-center gap-x-3 border-b border-border-subtle p-4">

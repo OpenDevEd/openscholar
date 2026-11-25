@@ -25,7 +25,7 @@ import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { DIVIDED_ROW, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, StickyColumn, type Tone } from "./parts";
+import { DIVIDED_ROW, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -71,14 +71,12 @@ function Overview({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
   return (
     <div className="@container/overview space-y-8 p-4 sm:p-6">
       <Progress open={open} onExport={onExport} />
-      <div className="grid grid-cols-1 gap-8 @5xl/overview:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-8">
-          <Reviewers open={open} />
-          <Agreement open={open} />
-        </div>
-        <StickyColumn from="overview" className="min-w-0">
-          <Facts open={open} />
-        </StickyColumn>
+      {/* Everything here is the page's own content and scrolls with it: nothing is a sidebar. Two rows of two, each smaller block beside the one it goes with: who started it, where its papers go and what its models cost beside the reviewers, and the checks that bring papers in beside how far the reviewers agree. */}
+      <div className="grid grid-cols-1 items-start gap-8 @5xl/overview:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="min-w-0"><Reviewers open={open} /></div>
+        <div className="min-w-0"><Facts open={open} /></div>
+        <div className="min-w-0"><Agreement open={open} /></div>
+        <div className="min-w-0"><Checks open={open} /></div>
       </div>
       <Flow open={open} onExport={onExport} />
     </div>
@@ -300,7 +298,7 @@ function Reviewers({ open }: { open: Open }) {
     >
       {rows.length ? (
         <div role="table" aria-label="Reviewers" className={cn(LIST, "@container/reviewers overflow-clip")}>
-          <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
+          <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
             <span role="columnheader">Reviewer</span>
             <span role="columnheader" aria-sort={sort === "voted" ? "descending" : "none"}>{sortable("voted", "Papers voted on")}</span>
             {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex items-center justify-end gap-1"><Icon className="size-3.5 shrink-0" />{DECISION_LABEL[decision]}</span>; })}
@@ -637,7 +635,6 @@ function Facts({ open }: { open: Open }) {
         </Panel>
       </Section>
 
-      <Checks open={open} />
     </div>
   );
 }
