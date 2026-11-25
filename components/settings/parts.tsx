@@ -64,6 +64,7 @@ export function Segmented<T extends string>({
   label,
   size = "sm",
   fill = false,
+  wraps = false,
   className,
 }: {
   value: T;
@@ -77,11 +78,17 @@ export function Segmented<T extends string>({
    * or with `"labels"`, where each segment is at least as wide as its label and none is cut.
    */
   fill?: boolean | "labels";
+  /**
+   * On a phone, never wider than its row: where the segments don't fit on one line they take more, and a label
+   * wraps between its words. Where they fit, nothing changes.
+   */
+  wraps?: boolean;
   className?: string;
 }) {
   const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
   // Segments with a line under the label are two-line cards rather than pills.
   const stacked = options.some((o) => o.below);
+  const wrapping = wraps && !fill && !stacked;
   const [box, setBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   useLayoutEffect(() => {
     const el = buttons.current[value];
@@ -113,6 +120,8 @@ export function Segmented<T extends string>({
           : fill
             ? "flex w-full flex-wrap"
             : "inline-flex shrink-0",
+        // A group of one line keeps its pill shape: 1.375rem is more than half its height.
+        wrapping && "max-sm:max-w-full max-sm:flex-wrap max-sm:rounded-[1.375rem]",
         className,
       )}
     >
@@ -143,9 +152,8 @@ export function Segmented<T extends string>({
               "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
               stacked ? "rounded-2xl" : "rounded-full",
               stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
-              // On a phone, a group narrower than a segment's label (a row at large text) wraps the label between its
-              // words, never inside one, rather than running out of the group. A segment as wide as its label stays as it is.
-              !fill && !stacked && ["max-sm:h-auto max-sm:py-1", size === "lg" ? "max-sm:min-h-11" : size === "md" ? "max-sm:min-h-9" : "max-sm:min-h-8"],
+              // A segment wider than its row wraps its label between its words, never inside one.
+              wrapping && ["max-sm:h-auto max-sm:py-1", size === "lg" ? "max-sm:min-h-11" : size === "md" ? "max-sm:min-h-9" : "max-sm:min-h-8"],
               fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
               // Each segment starts from its label's width and they share what is left over. Where the row is too narrow for them all, the last ones go to a second line: no label is cut.
               fill === "labels" && "flex-auto justify-center",
@@ -155,13 +163,13 @@ export function Segmented<T extends string>({
           >
             {/* A label that wraps keeps its icon on its first line: the icon sits in a box one of the label's lines high
                 (the box, not the icon, which sets a font size of its own). */}
-            <span className={cn("flex min-w-0 items-center gap-2", !fill && !stacked && "max-sm:items-start")}>
+            <span className={cn("flex min-w-0 items-center gap-2", wrapping && "max-sm:items-start")}>
               {o.icon ? (
-                <span className={cn("flex shrink-0 items-center", !fill && !stacked && "max-sm:h-[1lh]")}>
+                <span className={cn("flex shrink-0 items-center", wrapping && "max-sm:h-[1lh]")}>
                   <o.icon className={size === "sm" ? "size-3.5" : "size-4"} />
                 </span>
               ) : null}
-              <span className={cn("truncate", !fill && !stacked && "max-sm:whitespace-normal")}>{o.label}</span>
+              <span className={cn("truncate", wrapping && "max-sm:whitespace-normal")}>{o.label}</span>
             </span>
             {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
             {/* The line under a label wraps where the segment is narrow, rather than running into the next one. */}
