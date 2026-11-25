@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, Layers, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -165,8 +165,21 @@ export function ScreeningsIndex() {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 border-b border-border-subtle p-4 sm:px-6">
-                  {/* On a phone the tabs scroll sideways under the card's edge, so the cut one shows there is more. */}
-                  <div className="max-w-full max-lg:-mx-4 max-lg:overflow-x-auto max-lg:px-4 max-sm:w-[calc(100%+2rem)]">
+                  {/* Four tabs don't fit a phone's width, and a row of tabs never runs off the screen: there they are one menu, with the same signs and counts. */}
+                  <FilterMenu
+                    name="Show"
+                    value={show}
+                    onChange={(next) => go({ show: next })}
+                    narrows={false}
+                    className="h-8 w-full rounded-full px-3.5 text-xs sm:hidden"
+                    choices={[
+                      { value: "all" as typeof show, label: "All", icon: <Layers />, count: tally.all },
+                      { value: "you" as typeof show, label: "Needs you", icon: <ListChecks />, tone: "primary" as const, count: tally.you },
+                      { value: "open" as typeof show, label: "In progress", icon: <Hourglass />, count: tally.open },
+                      { value: "finished" as typeof show, label: "Finished", icon: <CircleCheck />, tone: "success" as const, count: tally.finished },
+                    ]}
+                  />
+                  <div className="max-w-full max-sm:hidden max-lg:-mx-4 max-lg:overflow-x-auto max-lg:px-4">
                     <Segmented
                       label="Which screenings"
                       value={show}
@@ -179,8 +192,8 @@ export function ScreeningsIndex() {
                       ]}
                     />
                   </div>
-                  {/* What the bars' colours mean and what "settled" counts, where the list is a table and the row has the room. */}
-                  <span role="group" aria-label="What the colours of a bar mean" className="hidden items-center gap-x-3 text-xs text-muted-foreground @7xl:flex">
+                  {/* What the bars' colours mean and what "settled" counts: beside the tabs where the row has the room, and on a line of its own under them where it hasn't. */}
+                  <span role="group" aria-label="What the colours of a bar mean" className="order-last flex basis-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground @7xl:order-none @7xl:basis-auto">
                     {([["Settled", ["include", "maybe", "exclude"]], ["Not yet", ["conflict", "waiting"]]] as const).map(([name, results]) => (
                       <span key={name} className="flex items-center gap-x-2.5">
                         <span className="font-medium text-foreground">{name}</span>
@@ -229,7 +242,7 @@ export function ScreeningsIndex() {
                     const settled = total - state.counts.conflict - state.counts.waiting;
                     const resolver = screening.rule.resolver === me ? "you" : (first(personOf(screening.rule.resolver)?.name) ?? "its starter");
                     return (
-                      <Group key={id} label={grouped && (i === 0 || shown[i - 1]!.group !== group) ? GROUPS[group] : null} count={rows.filter((one) => one.group === group).length}>
+                      <Group key={id} label={(grouped || show === "you") && (i === 0 || shown[i - 1]!.group !== group) ? GROUPS[group] : null} note={group === 0 ? "Papers to screen, conflicts to settle and questions put to you" : undefined} count={rows.filter((one) => one.group === group).length}>
                         <li className={cn("relative grid items-center gap-x-5 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted sm:px-6 @5xl:gap-y-0.5", CARD, COLUMNS)}>
                           {/* The whole row opens the screening. Its title is the link a keyboard reaches; what is pressable inside the row sits above this one. */}
                           <NextLink href={overviewHref(id)} tabIndex={-1} aria-hidden className="absolute inset-0" />
@@ -243,7 +256,7 @@ export function ScreeningsIndex() {
                             </button>
                             <span className="whitespace-nowrap">started it {ago(screening.createdAt)}</span>
                             {elsewhere ? <span className="flex min-w-0"><WorkspaceTag size="sm" workspace={lookOf(workspace, screening.createdBy)} /></span> : null}
-                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living, {EVERY_LABEL[screening.living.every].toLowerCase()}</Chip> : null}
+                            {screening.living ? <Chip icon={RefreshCw} className="h-5 px-1.5">Living, new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</Chip> : null}
                             {/* A member who isn't one of its reviewers can still change it: only someone it was shared with is a viewer. */}
                             {!access.reviewer ? <Chip icon={Eye} className="h-5 px-1.5">{access.member ? "Not a reviewer" : "Viewer"}</Chip> : null}
                           </span>
@@ -309,13 +322,14 @@ export function ScreeningsIndex() {
 }
 
 /** A group's labelled row before its first screening on the page, under the default order. */
-function Group({ label, count, children }: { label: string | null; count: number; children: ReactNode }) {
+function Group({ label, note, count, children }: { label: string | null; /** What the group holds, where its name doesn't say: with it, a row that shows no question is a screening where nobody waits for an answer. */ note?: string; count: number; children: ReactNode }) {
   return (
     <>
       {label ? (
-        <li className="flex items-center gap-2 bg-inset px-4 py-2 text-xs font-medium sm:px-6">
-          {label}
-          <span className="tabular-nums text-muted-foreground">{count}</span>
+        <li className="flex items-baseline gap-2 bg-inset px-4 py-2 text-xs font-medium sm:px-6">
+          <span className="shrink-0">{label}</span>
+          <span className="shrink-0 tabular-nums text-muted-foreground">{count}</span>
+          {note ? <span className="min-w-0 ps-1 font-normal text-muted-foreground">{note}</span> : null}
         </li>
       ) : null}
       {children}

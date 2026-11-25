@@ -75,6 +75,14 @@ const AID = "flex h-5 items-center gap-1 rounded text-xs font-medium outline-non
 const RULE_LABEL = { all: "All agree", most: "Most agree", one: "One vote" } as const;
 const inQuotes = (text: string) => `"${text}"`;
 const NO_PACE = { sum: 0, n: 0 };
+/** Among the answers reviewers gave to one criterion, in their order, the place of the first that stands apart from the answer most of them gave. */
+const apartAt = (given: Array<Answer | undefined>) => {
+  const most = ANSWERS.map((answer) => given.filter((one) => one === answer).length);
+  const top = ANSWERS[most.indexOf(Math.max(...most))];
+  return given.findIndex((one) => one !== undefined && one !== top);
+};
+/** "Differ", as a chip that is pressed: it opens the answer that stands apart. A plain chip of that colour was pressed and did nothing. */
+const DIFFER = "flex h-5 items-center gap-0.5 rounded-full bg-info/12 ps-1.5 pe-1 text-2xs font-medium text-info outline-none transition-colors hover:bg-info/20 focus-visible:ring-2 focus-visible:ring-ring/50";
 const rank = (reviewer: Reviewer, me: string) => (reviewer.id === me ? 0 : reviewer.kind === "person" ? 1 : 2);
 
 /**
@@ -169,6 +177,8 @@ function Screen({ open }: { open: Open }) {
     setWriting(null);
     setTranslated(false);
     setShown(null);
+    // The note's field was opened for the paper being left: the next one starts with it shut, and keeps its room.
+    setNoting(false);
     // The button just pressed keeps neither the keyboard nor a pressed look on the next paper.
     if (document.activeElement instanceof HTMLElement && document.activeElement.closest("[data-decision]")) document.activeElement.blur();
     // Below a laptop's width the page is what scrolls: where the next paper's title is out of sight, the page moves to it. From there up the page stays still and the paper's own pane starts each paper at its top (`startAtTop`).
@@ -290,6 +300,8 @@ function Screen({ open }: { open: Open }) {
         if (current) setLit(next && paper ? { paper: paper.id, key: next.key } : null);
         const upNext = current ? next : criteria.find((criterion) => criterion !== toAnswer && given[criterion.key] === undefined);
         if (upNext) bring(upNext);
+        // With the last one answered, what the answers point to shows under them: it is brought into view, where the pane had it below its foot.
+        else if (!tablet) requestAnimationFrame(() => requestAnimationFrame(() => [...document.querySelectorAll<HTMLElement>("[data-hint]")].find((one) => one.getClientRects().length)?.scrollIntoView({ block: "nearest" })));
       } else if (key === "i") press("include");
       else if (key === "m") press("maybe");
       else if (key === "e") press("exclude");
@@ -443,7 +455,7 @@ function Screen({ open }: { open: Open }) {
             { value: "dealt" as typeof order, label: "As added", icon: <Clock /> },
             // Offered while new papers wait, and kept while it is the order chosen: voting on the last new paper must not rename the order to another.
             ...(toDo.some((one) => one.batch !== undefined) || order === "fresh" ? [{ value: "fresh" as typeof order, label: "New papers first", icon: <RefreshCw /> }] : []),
-            { value: "lean" as typeof order, label: "Models' includes first", icon: <ModelsIcon /> },
+            { value: "lean" as typeof order, label: "Included by the models first", icon: <ModelsIcon /> },
           ]}
         />
       ) : null}
@@ -489,11 +501,20 @@ function Screen({ open }: { open: Open }) {
   const discussion = paper && visible && discussed(open, paper) ? <div data-discussion><Discussion open={open} paper={paper} /></div> : null;
   const said = paper ? open.thread(paper).length : 0;
   // What scrolls is the outside system: the discussion is brought to the top of its pane from a laptop's width, and of the page under that. The page is moved by hand, for the reason `openIt` gives.
-  const toDiscussion = () => {
-    const part = [...document.querySelectorAll<HTMLElement>("[data-discussion]")].find((one) => one.getClientRects().length);
+  const reach = (mark: "data-discussion" | "data-votes") => {
+    const part = [...document.querySelectorAll<HTMLElement>(`[${mark}]`)].find((one) => one.getClientRects().length);
     if (!part) return;
     if (tablet) window.scrollBy({ top: part.getBoundingClientRect().top - (article.current ? parseFloat(getComputedStyle(article.current).scrollMarginTop) : 0), behavior: "smooth" });
     else part.scrollIntoView({ block: "start", behavior: "smooth" });
+  };
+  const toDiscussion = () => reach("data-discussion");
+  /** Opens the answer to a criterion that stands apart from the others, in the table of votes, and goes to the table. */
+  const showApart = (criterion: Criterion) => {
+    const who = cast[apartAt(cast.map((one) => one.vote?.answers[criterion.key]))];
+    if (!who) return;
+    setLit(null);
+    setShown({ reviewer: who.reviewer.id, criterion: criterion.key });
+    reach("data-votes");
   };
   // Everyone's votes on the open paper. It is drawn in one of two places: under the paper from a laptop's width, and after your answers under it, where one column has to put the questions before the others' votes.
   const everyonesVotes = paper ? (
@@ -511,7 +532,7 @@ function Screen({ open }: { open: Open }) {
                           <>
                             <span className="text-xs text-muted-foreground">Result</span>
                             <ResultChip result={state.result} />
-                            {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">Goes to {resolver}</span></> : null}
+                            {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">For {resolver} to settle</span></> : null}
                             {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">from {waitsOn.slice(0, 2).join(" and ")}{waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}</span> : null}
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">Settled by {state.resolvedBy === open.me ? "you" : (personOf(state.resolvedBy)?.name ?? "a reviewer")}</span> : null}
                             {/* What the reviewers said about it is further down the pane: this goes there. */}
@@ -522,7 +543,7 @@ function Screen({ open }: { open: Open }) {
                       }
                     >
                       {state?.resolvedBy && state.note ? <p className="text-sm text-muted-foreground">{inQuotes(state.note)}</p> : null}
-                      <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3">
+                      <div data-votes className="scroll-mt-4 overflow-x-auto rounded-2xl border border-border-subtle p-3">
                         <Matrix
                           criteria={criteria}
                           cast={cast}
@@ -544,12 +565,22 @@ function Screen({ open }: { open: Open }) {
     if (hasNote || !noting) focusNote();
   };
   // What your answers say before, or against, your vote. It sits with the answers from a laptop's width and over the vote buttons under it, where the answers can be a screen away from the button they outline.
+  // Every must-have the answers fail the same way is named, not only the first: two answered No are both why.
+  const failed = failing ? criteria.filter((criterion) => criterion.must && given[criterion.key] === given[failing.key]) : [];
+  const numbers = failed.map((criterion) => criteria.indexOf(criterion) + 1);
+  const why = failing ? `you answered ${given[failing.key] === "no" ? "No" : "Unclear"} to ${numbers.length > 1 ? `criteria ${numbers.slice(0, -1).join(", ")} and ${numbers.at(-1)}, must-haves` : `criterion ${numbers[0]}, a must-have`}` : "";
   const hint = against && mine ? (
-    <Panel tone="warning" className="px-3 py-2.5 text-xs ink-warning">You voted {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{failing ? `: you answered ${given[failing.key] === "no" ? "No" : "Unclear"} to criterion ${criteria.indexOf(failing) + 1}, a must-have` : ""}.</Panel>
+    <Panel tone="warning" className="px-3 py-2.5 text-xs ink-warning">You voted {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{why ? `: ${why}` : ""}.</Panel>
   ) : pointed && failing ? (
-    <Panel className="px-3 py-2.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointed]}</span>: you answered {given[failing.key] === "no" ? "No" : "Unclear"} to criterion {criteria.indexOf(failing) + 1}, a must-have. Your vote is not cast yet.</Panel>
+    <Panel className="px-3 py-2.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointed]}</span>: {why}. Your vote is not cast yet.</Panel>
   ) : pointed ? (
     <Panel className="px-3 py-2.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">Include</span>: every must-have is met. Your vote is not cast yet.</Panel>
+  ) : null;
+  // The same in one line, for the bar a phone holds at its foot: a paragraph there covers the answer just given.
+  const hintLine = against && mine ? (
+    <p className="truncate text-xs ink-warning">You voted {DECISION_LABEL[mine.decision]}. Your answers point to <span className="font-medium">{DECISION_LABEL[pointsTo!.decision]}</span>.</p>
+  ) : pointed ? (
+    <p className="truncate text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointed]}</span>. Not cast yet.</p>
   ) : null;
 
   return (
@@ -651,6 +682,8 @@ function Screen({ open }: { open: Open }) {
                         <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
                         {/* The made-up papers have no page of their own: a search for the title finds the paper, in a new tab so the place in the queue is kept. */}
                         <LinkChip href={`/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
+                        {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
+                        {discussion && said ? <button type="button" onClick={toDiscussion} className="flex h-6 items-center gap-1 rounded-full bg-primary/10 px-2 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50"><MessagesSquare aria-hidden className="size-3.5" />{said} {said === 1 ? "message" : "messages"}</button> : null}
                       </div>
                       {!paper.sentences.length ? (
                         <div className="flex items-center gap-1.5 rounded-2xl border border-dashed border-border px-5 py-5 text-sm text-muted-foreground">
@@ -694,7 +727,7 @@ function Screen({ open }: { open: Open }) {
                   }
                 >
                   {/* What the star means, in sight: it was taken for "an answer is required". */}
-                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>A must-have: a paper that fails one is excluded.{answering ? " Answering is optional." : ""}</p> : null}
+                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>A must-have: a paper that fails one is excluded.{answering ? " Answers are optional and are not your vote." : ""}</p> : null}
                   {criteria.length ? (
                     <ol key={paper.id} className={LIST}>
                       {criteria.map((criterion, i) => {
@@ -761,9 +794,10 @@ function Screen({ open }: { open: Open }) {
                                 {ANSWERS.map((answer) => {
                                   const count = split.filter((one) => one === answer).length;
                                   const { icon: Icon, label, tone } = ANSWER_SIGN[answer];
-                                  return count ? <span key={answer} className={cn("flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium tabular-nums", TONE[tone].chip)}><Icon role="img" aria-label={label} className="size-3.5" />{count}</span> : null;
+                                  // The answer by name with how many gave it: a sign and a number alone had to be worked out.
+                                  return count ? <span key={answer} className={cn("flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium tabular-nums", TONE[tone].chip)}><Icon aria-hidden className="size-3.5" />{label} {count}</span> : null;
                                 })}
-                                {new Set(split).size > 1 ? <StateChip tone="info" className="h-5 px-1.5 text-2xs">Differ</StateChip> : null}
+                                {new Set(split).size > 1 ? <button type="button" aria-label={`Criterion ${i + 1}: show the answer that differs`} onClick={() => showApart(criterion)} className={DIFFER}>Differ<ChevronRight aria-hidden className="size-3" /></button> : null}
                               </div>
                             ) : null}
                           </li>
@@ -776,7 +810,7 @@ function Screen({ open }: { open: Open }) {
                       {open.canChange ? <Button asChild size="sm" variant="outline"><NextLink href={settingsHref(id, "criteria")}>Add criteria</NextLink></Button> : null}
                     </Panel>
                   )}
-                  {hint ? <div className="max-lg:hidden">{hint}</div> : null}
+                  {hint ? <div data-hint className="scroll-mb-3 max-lg:hidden">{hint}</div> : null}
                 </Section>
               </div>
               <div className="space-y-8 border-t border-border-subtle p-5 sm:p-8 lg:hidden">{everyonesVotes}{discussion}</div>
@@ -885,13 +919,13 @@ function Screen({ open }: { open: Open }) {
                             </Help>
                           </span>
                         ) : null}
-                        <Input data-note value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
-                        <Textarea data-note rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
+                        <Input data-note value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others, saved with your vote"} aria-label="Note" className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Textarea data-note rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others, saved with your vote"} aria-label="Note" className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
                   </AutoHeight>
                   {/* On a narrow screen what your answers point to sits over the buttons it is about. */}
-                  <AutoHeight className="-mb-2 lg:hidden">{hint ? <div className="pb-2">{hint}</div> : null}</AutoHeight>
+                  <AutoHeight className="-mb-2 lg:hidden">{hintLine ? <div className="pb-2">{hintLine}</div> : null}</AutoHeight>
                   <div className="flex items-center gap-2">
                     {/* On a wide screen the note's button is with the vote it goes with, always by name: a pen alone was taken for a way to enlarge the paper. Where the row is short of room the votes give up their key hints. */}
                     {!resolving ? <Button type="button" variant={noteOpen ? "secondary" : "outline"} aria-pressed={noteOpen} className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-sm max-lg:hidden" onClick={toggleNote}><PenLine />Note</Button> : null}
@@ -1118,7 +1152,9 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, pass
             <span className="flex min-w-0 items-center gap-1.5 pe-2 text-xs">
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
               <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
-              {split ? <StateChip tone="info" className="h-5 px-1.5 text-2xs">Differ</StateChip> : null}
+              {split ? (
+                <button type="button" aria-label={`${criterion.short}: show the answer that differs`} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>Differ<ChevronDown aria-hidden className="size-3" /></button>
+              ) : null}
             </span>
             {cast.map(({ reviewer, vote }, i) => {
               if (kept(reviewer) && vote) {

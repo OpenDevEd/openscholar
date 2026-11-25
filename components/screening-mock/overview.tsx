@@ -274,7 +274,7 @@ function Reviewers({ open }: { open: Open }) {
   const takers = rows.filter((row) => row.reviewer.kind === "person" && !row.reviewer.email);
   const stillVoting = takers.filter((row) => row.left > 0);
   // Said where there is more than one person: for one alone, their own row says it.
-  const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? `Everyone done in about ${daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))}` : null;
+  const everyoneDone = !screening.finishedAt && takers.length > 1 && stillVoting.length > 0 && stillVoting.every((row) => row.perDay > 0) ? `Everyone done in about ${daysFrom(Math.max(...stillVoting.map((row) => Math.ceil(row.left / row.perDay))))}, at this pace` : null;
   const givers = open.canChange && !screening.finishedAt ? takers.filter((row) => row.left > 0 && takers.some((other) => other !== row && open.movable(row.reviewer.id, other.reviewer.id).length)) : [];
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
   const people = peopleOf(screening).length;
@@ -378,6 +378,13 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
   const most = taker?.can ?? 0;
   // To start with, enough to leave the two with the same number.
   const papers = Math.max(1, Math.min(most, asked ?? Math.round((giver.left - (taker?.row.left ?? 0)) / 2)));
+  // The day the last of the people is done, as it is and with the move, in days from now.
+  const lastDay = (leftOf: (row: ReviewerRowData) => number) => {
+    const still = people.filter((row) => leftOf(row) > 0);
+    return still.length && still.every((row) => row.perDay > 0) ? Math.max(...still.map((row) => Math.ceil(leftOf(row) / row.perDay))) : null;
+  };
+  const doneBefore = lastDay((row) => row.left);
+  const doneAfter = taker ? lastDay((row) => (row === giver ? row.left - papers : row === taker.row ? row.left + papers : row.left)) : null;
   const face = (row: ReviewerRowData) => <ReviewerMark reviewer={row.reviewer} className="size-4" />;
   const nameOf = (row: ReviewerRowData) => (row.reviewer.id === open.me ? "You" : row.reviewer.name);
   const load = (row: ReviewerRowData, after: number) => (
@@ -404,7 +411,9 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
             {load(giver, giver.left - papers)}
             {load(taker.row, taker.row.left + papers)}
           </div>
-          <p className="text-sm text-muted-foreground">The papers furthest down {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} queue go. Votes already cast stay where they are.</p>
+          {/* What the move does to the day the last of them is done, where every one of them has a pace to go by. */}
+          {doneAfter && doneBefore ? <p className="text-sm tabular-nums"><span className="font-medium">Everyone done in about {daysFrom(doneAfter)}</span>{doneAfter === doneBefore ? <span className="text-muted-foreground">, the same as now</span> : <span className="text-muted-foreground">, where it is about {daysFrom(doneBefore)} now</span>}</p> : null}
+          <p className="text-sm text-muted-foreground">It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} queue go. Votes already cast stay where they are.</p>
         </>
       ) : (
         <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} papers.</p>
@@ -446,7 +455,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : (personOf(reviewer.id)?.seen)}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : mine ? "Active now" : (personOf(reviewer.id)?.seen)}</p>
           )}
         </div>
       </div>
@@ -500,7 +509,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " with the others" : " with the people"}</span></>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden">{reviewer.kind === "person" ? " same vote as the others" : " same vote as the people"}</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>

@@ -295,7 +295,8 @@ export function useOpenScreening(id: string) {
     /** What was said about a paper, oldest first. */
     thread: (paper: Paper) => screening.threads?.[paper.id] ?? [],
     /** Adds a line to a paper's discussion. With `to`, it is a question that waits for that reviewer. */
-    say: (paper: Paper, text: string, to?: string) => store.update(id, (s) => ({ ...s, threads: { ...s.threads, [paper.id]: [...(s.threads?.[paper.id] ?? []), { by: me, at: Math.max(Date.now(), NOW + 1), text, ...(to ? { to } : {}) }] } })),
+    // A question put to one reviewer is written into the screening's activity too, where someone looks for what was asked lately.
+    say: (paper: Paper, text: string, to?: string) => store.update(id, (s) => ({ ...s, threads: { ...s.threads, [paper.id]: [...(s.threads?.[paper.id] ?? []), { by: me, at: Math.max(Date.now(), NOW + 1), text, ...(to ? { to } : {}) }] } }), to ? { what: `Asked ${PEOPLE.find((one) => one.id === to)?.name ?? "a reviewer"} about “${paper.title}”` } : undefined),
     /** The papers whose discussion ends on a question for the person looking. */
     asked: state.papers.filter((paper) => waitingQuestions(screening.threads?.[paper.id]).some((question) => question.to === me)),
     /** The papers one person has yet to vote on that another doesn't have: what can be moved from the first to the second. */

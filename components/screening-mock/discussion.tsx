@@ -46,8 +46,8 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
     const words = text.trim();
     if (!words) return;
     open.say(paper, words, to?.id);
+    // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
-    setAsking(null);
   };
   if (!maySay && !said.length) return null;
   return (
@@ -112,7 +112,7 @@ Write to everyone on this paper, or to one reviewer. A line to one reviewer is a
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">{to ? `A question for ${firstName(to.name)}: it shows on their Screening list until they answer.` : "Everyone who votes on this paper sees it."}</p>
+              <p className="text-xs text-muted-foreground">{to ? `For ${firstName(to.name)} to answer. Everyone on this paper sees it, and it stays on ${firstName(to.name)}'s Screening list until then.` : "Everyone who votes on this paper sees it. Pick a name to put a question to one of them."}</p>
             </div>
           ) : null}
           <div className="flex items-end gap-2">
