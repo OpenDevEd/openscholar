@@ -4,7 +4,7 @@
 // section with its "?", a reviewer's face or model mark, a vote, a paper's result, and the worked
 // examples that show what a rule does.
 
-import { useEffect, useRef, type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
+import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
 import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, GitCompare, Hourglass, Lock, Mail, Minus, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
@@ -33,7 +33,8 @@ export function Help({ title, children, facts, side, className }: { title: strin
   return (
     <Popover>
       <PopoverTrigger asChild><HelpButton aria-label={`About ${title}`} className={className} /></PopoverTrigger>
-      <PopoverContent side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={`About ${title}`} className={HELP_POPOVER}>
+      {/* Scrolled out of sight, its "?" takes the explanation with it: it never stays behind over the page, cut off at an edge. */}
+      <PopoverContent hideWhenDetached side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={`About ${title}`} className={HELP_POPOVER}>
         <div className="space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-semibold">{title}</p>
@@ -188,35 +189,26 @@ export function FilterMenu<T extends string>({ name, lead, value, onChange, choi
   );
 }
 
-const SIDEBAR = {
-  lg: "lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] lg:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] lg:overflow-y-auto lg:overscroll-contain",
-  xl: "xl:sticky xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] xl:overflow-y-auto xl:overscroll-contain",
-  form: "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] @6xl:overflow-y-auto @6xl:overscroll-contain",
-};
+// The 1.5rem taken off the height is the page's own padding over its card, the one thing over a sidebar that scrolls away.
+const SIDEBAR = "@6xl:sticky @6xl:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] @6xl:max-h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-var(--screening-frame,0px)-var(--clear)-1.5rem)] @6xl:overflow-y-auto @6xl:overscroll-contain";
 
 /**
- * A sidebar: a column beside the page's main content. It stays under what is held at the window's top, reaches to
- * the window's foot and no further, and where what it holds is taller than that it scrolls on its own. It must stand
- * right under that held top, with nothing over it that scrolls away: that is what makes its height the same however
- * far the page is scrolled, with no measuring. The 1.5rem taken off its height is the page's own padding over its
- * card, the one thing over a sidebar that does scroll away. The main content is never given a height: it is as
- * long as it is, and the page scrolls. So a page has one thing that moves with the window, its main content, and
- * each sidebar keeps its own place. A sidebar is a tool beside the content: a list to pick from, the item picked, a form's summary. Blocks of a page's own content laid in two columns, as on the Overview, are not one, and scroll with the page. `from`: the width at which the page lays it beside the main content.
- * `clear`: the room kept under it for an ActionBar at the window's foot. `anchor` names what it shows: when that
- * changes, it starts from its top again.
+ * A sidebar: a column beside a page's main content, where the page itself scrolls. It stays under what is held at
+ * the window's top, reaches to the window's foot and no further, and where what it holds is taller than that it
+ * scrolls on its own. It must stand right under that held top, with nothing over it that scrolls away: that is what
+ * makes its height the same however far the page is scrolled, with no measuring. The main content is never given a
+ * height: it is as long as it is, and the page scrolls. A sidebar is a tool beside the content, such as a form's
+ * summary. Blocks of a page's own content laid in two columns, as on the Overview, are not one, and scroll with the
+ * page. A page that fits the window whole, as Screen does, has panes instead (LibraryPageShell's `fill`).
+ * `clear`: the room kept under it for an ActionBar at the window's foot.
  *
  * The padding around what it holds goes on the sidebar itself (`className`), never on a box around it. A box that
  * scrolls down also scrolls sideways as soon as anything in it reaches past its padding, and a row's hover fill
  * that hangs a few pixels out of its text does. With the padding inside, that fill lands in it.
  */
-export function StickyColumn({ from, clear = "1rem", anchor, className, children }: { from: keyof typeof SIDEBAR; clear?: string; anchor?: string; className?: string; children: ReactNode }) {
-  const column = useRef<HTMLDivElement>(null);
-  // Its own scroll is the outside system: another paper starts at its title, not where the last one was left.
-  useEffect(() => {
-    column.current?.scrollTo({ top: 0 });
-  }, [anchor]);
+export function StickyColumn({ clear = "1rem", className, children }: { clear?: string; className?: string; children: ReactNode }) {
   return (
-    <div ref={column} style={{ "--clear": clear } as CSSProperties} className={cn("scrollbar-hover self-start", SIDEBAR[from], className)}>
+    <div style={{ "--clear": clear } as CSSProperties} className={cn("scrollbar-hover self-start", SIDEBAR, className)}>
       {children}
     </div>
   );

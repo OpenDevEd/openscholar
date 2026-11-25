@@ -30,6 +30,7 @@ export function LibraryPageShell({
   actions,
   intro,
   stickyIntro = false,
+  fill = false,
   filtersInCard = false,
   allowOverflow = false,
   wide = false,
@@ -52,6 +53,12 @@ export function LibraryPageShell({
   intro?: ReactNode;
   /** Keep the intro under the page's bar while the page scrolls, from a laptop's width: for one that holds the page's own tabs. */
   stickyIntro?: boolean;
+  /**
+   * From a laptop's width the card takes the window's height under the page's bar, and what is in it scrolls inside it
+   * instead of the page: a workbench, such as the page a screening is voted on. The card is a column, so its content
+   * takes the room the intro leaves with `min-h-0 flex-1`. A window too short for it scrolls as any page does.
+   */
+  fill?: boolean;
   /** Keep the filters in the card at every width, for a search that belongs to one tab's list. */
   filtersInCard?: boolean;
   /** Let the card's content overflow, for a sticky footer or popovers inside it. */
@@ -68,7 +75,7 @@ export function LibraryPageShell({
   // The card toolbar closes at the width where the bar holds everything it has.
   const cardToolbar = filtersInCard && filters ? OPEN : filtersInBar ? "grid-rows-[1fr] @6xl:invisible @6xl:grid-rows-[0fr]" : "grid-rows-[1fr] @3xl:invisible @3xl:grid-rows-[0fr]";
   return (
-    <div className="@container w-full pb-16">
+    <div className={cn("@container w-full pb-16", fill && "lg:pb-0")}>
       <StickyPageHeader wide={wide}>
         <PanelHeader
           icon={icon}
@@ -89,7 +96,7 @@ export function LibraryPageShell({
       {/* A wide page stops short of the assistant's button in the window's corner, so nothing in its card is ever under it. */}
       <div className={wide ? "p-4 sm:p-6 lg:pe-[5.5rem]" : "container mx-auto max-w-6xl p-4 sm:p-6"}>
         {/* Its pages come from the server (papers, topics, authors): the card rises in CSS from the first paint, not once the code loads. */}
-        <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn>
+        <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn className={fill ? FILL : undefined}>
           {intro ? <div className={cn("border-b border-border-subtle", stickyIntro && "rounded-t-2xl bg-card lg:sticky lg:top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem))] lg:z-20")}>{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>
@@ -114,6 +121,8 @@ export function LibraryPageShell({
   );
 }
 
+// The 3rem is the padding over and under the card.
+const FILL = "lg:flex lg:h-[calc(100dvh-var(--app-navbar-height)-var(--page-header-height,4rem)-3rem)] lg:min-h-[30rem] lg:flex-col";
 const OPEN = "grid-rows-[1fr]";
 const CLOSED = "invisible grid-rows-[0fr]";
 

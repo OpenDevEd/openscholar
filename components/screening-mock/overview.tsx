@@ -119,6 +119,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
             })}
           >
             <p>A paper settles once its votes meet the screening&apos;s rule. Maybe counts as settled: the reviewers agree the abstract can&apos;t decide it.</p>
+            <p>A Maybe is not saved with the included papers. It stays under Maybe on the Papers page, and a reviewer who changes their vote settles it again.</p>
           </Help>
         }
         aside={
@@ -410,7 +411,7 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">None yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> with the majority</span></>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> with the majority</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>
@@ -458,8 +459,9 @@ const shade = (kappa: number) => (kappa < 0.4 ? "color-mix(in oklab, var(--destr
 const pairHref = (id: string, a: Reviewer, b: Reviewer) => papersHref(id, { reviewer: a.id, with: b.id, sort: "split" });
 const sameText = (pair: { same: number }) => `${Math.round(pair.same * 100)}% same`;
 const KAPPA_HELP = (
-  <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>0.6 and up substantial</HelpFact></>}>
+  <Help title="Cohen's kappa" facts={<><HelpFact>1.0 same vote every time</HelpFact><HelpFact>0.6 and up substantial</HelpFact><HelpFact>0 no better than chance</HelpFact><HelpFact>Below 0 worse than chance</HelpFact></>}>
     <p>How far two reviewers agree beyond chance, on the papers both have voted on. Methods sections report it. The overall figure is the mean of every pair.</p>
+    <p>On a handful of papers it swings widely, and can fall below 0. It steadies as more papers have both votes.</p>
   </Help>
 );
 
@@ -498,7 +500,7 @@ function Agreement({ open }: { open: Open }) {
             <span className="rounded-lg px-2.5 py-1 text-2xl font-semibold tabular-nums tracking-tight" style={{ backgroundColor: shade(overall) }}>{overall.toFixed(2)}</span>
             <span className="text-sm">
               <span className="font-medium">Overall agreement</span>
-              <span className="block text-xs text-muted-foreground">Across {known.length} pairs of reviewers</span>
+              <span className="block text-xs text-muted-foreground">Across {known.length} {known.length === 1 ? "pair" : "pairs"} of reviewers</span>
             </span>
             <ArrowRight aria-hidden className="size-4 text-muted-foreground" />
           </NextLink>
@@ -566,6 +568,8 @@ function Facts({ open }: { open: Open }) {
   const models = modelsOf(screening);
   const spent = models.reduce((sum, model) => sum + open.spent(model), 0);
   const most = models.reduce((sum, model) => sum + open.most(model), 0);
+  // The papers a model got to and couldn't read: the line under what was spent says so, as each model's row does. A paper two models failed on is one paper.
+  const unread = new Set(models.flatMap((model) => open.unread(model).map((paper) => paper.id))).size;
   const left = workspace === HOME ? store.wallet : workspace.credits;
   const to = screening.destination;
   const collection = to.kind === "none" ? null : to.kind === "new" ? to.name || `Included in ${screening.name}` : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? "A collection");
@@ -618,7 +622,7 @@ function Facts({ open }: { open: Open }) {
                   <AnimatedNumber value={Math.ceil(spent)} /> spent
                   {open.reading.length && !screening.paused && !open.outOfCredits ? <AiIcon working className="size-3.5" /> : null}
                 </p>
-                <p className="text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `${credits(most)} once every paper is read` : "Every paper is read"}</p>
+                <p className="text-xs tabular-nums text-muted-foreground">{most - spent >= 1 ? `${credits(most)} once every paper is read` : unread ? `${unread} ${unread === 1 ? "paper" : "papers"} couldn't be read` : "Every paper is read"}</p>
               </div>
               <Meter value={spent} max={Math.max(most, 1)} fill={left < most - spent ? "bg-warning" : "bg-foreground/45"} />
               <div className="flex flex-wrap gap-1.5">

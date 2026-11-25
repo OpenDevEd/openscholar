@@ -91,9 +91,10 @@ export const COMMUNITY_COLLECTIONS = [
 ];
 
 /** Criteria a model writes from a research question, each with the short name it gives it. */
+// The mock has no model to write them: these fit any question. The product writes them from the question's own words.
 export const WRITTEN = [
-  { text: "Is the study published in 2010 or later?", short: "Published since 2010" },
-  { text: "Is the paper written in English or French?", short: "English or French" },
+  { text: "Does the study answer the review's question?", short: "Answers the question" },
+  { text: "Does the study report its own data, not only a protocol or a commentary?", short: "Reports its own data" },
   { text: "Does the study report a comparison group?", short: "Comparison group" },
 ];
 

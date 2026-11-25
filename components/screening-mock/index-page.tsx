@@ -116,8 +116,8 @@ export function ScreeningsIndex() {
   const rows = useMemo(() => {
     const found = show === "all" ? narrowed : narrowed.filter((row) => row.group === SHOWS.indexOf(show));
     const order: Record<Sort, (a: Row, b: Row) => number> = {
-      // What waits on you first, then what is running, then what is finished, newest first within each.
-      you: (a, b) => a.group - b.group || b.screening.createdAt - a.screening.createdAt,
+      // What waits on you first, the one with the most waiting at the top. Then what is running, then what is finished, newest first within each.
+      you: (a, b) => a.group - b.group || b.forYou + b.conflicts - (a.forYou + a.conflicts) || b.screening.createdAt - a.screening.createdAt,
       active: (a, b) => b.active - a.active,
       newest: (a, b) => b.screening.createdAt - a.screening.createdAt,
       oldest: (a, b) => a.screening.createdAt - b.screening.createdAt,
@@ -223,7 +223,7 @@ export function ScreeningsIndex() {
                           {/* The whole row opens the screening. Its title is the link a keyboard reaches; what is pressable inside the row sits above this one. */}
                           <NextLink href={overviewHref(id)} tabIndex={-1} aria-hidden className="absolute inset-0" />
                           <TooltipHint label={screening.name} onlyWhenClipped>
-                            <NextLink href={overviewHref(id)} className={cn(ABOVE, "min-w-0 self-end text-sm font-semibold [grid-area:title] hover:underline @max-5xl:line-clamp-2 @5xl:truncate")}>{screening.name}</NextLink>
+                            <NextLink href={overviewHref(id)} className={cn(ABOVE, "min-w-0 self-end text-sm font-semibold [grid-area:title] hover:underline line-clamp-2")}>{screening.name}</NextLink>
                           </TooltipHint>
                           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 self-start text-xs text-muted-foreground [grid-area:meta]">
                             <button type="button" onClick={() => go({ by: screening.createdBy })} aria-label={`Show the screenings ${screening.createdBy === me ? "you" : starter?.name} started`} className={cn(ABOVE, "flex min-w-0 items-center gap-1.5 hover:text-foreground hover:underline")}>

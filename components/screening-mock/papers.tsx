@@ -33,6 +33,7 @@ import { papersHref, screenHref } from "./links";
 import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
+import type { ExportTab } from "./dialogs";
 import { useWorkspace } from "./workspace";
 
 const PAGE = 20;
@@ -96,8 +97,8 @@ const listed = (names: string[]) => (names.length < 2 ? (names[0] ?? "") : `${na
 
 /** The Papers table as a page of the open screening. */
 export function PapersPage() {
-  const { open } = useWorkspace();
-  return <Papers open={open} />;
+  const { open, exportTo } = useWorkspace();
+  return <Papers open={open} onExport={exportTo} />;
 }
 
 /** The reasons a paper can be excluded for: each criterion not met, then the others. */
@@ -106,7 +107,7 @@ const reasonsOf = (open: Open) => [...open.screening.criteria.map((criterion) =>
 /** A reviewer's name, or a person's who settles conflicts without voting. */
 const nameOf = (open: Open, id: string) => open.screening.reviewers.find((one) => one.id === id)?.name ?? personOf(id)?.name ?? "A reviewer";
 
-function Papers({ open }: { open: Open }) {
+function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => void }) {
   const { screening, papers, votes, settled } = open;
   const id = screening.id;
   const reviewers = activeReviewers(screening);
@@ -427,6 +428,8 @@ function Papers({ open }: { open: Open }) {
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input value={query} onChange={(event) => void setPlace({ q: event.target.value || null, page: null }, { history: "replace" })} placeholder="Title or author" aria-label="Find a paper" className="h-8 rounded-full ps-8 text-sm" />
           </div>
+          {/* Under a wide window the bar's Export is in its menu: here it is beside the list it exports. */}
+          <Button variant="outline" size="sm" className="h-8 max-sm:hidden xl:hidden" onClick={() => onExport("papers")}><Download />Export</Button>
           <Button variant="outline" size="sm" className="h-8 @2xl/papers:hidden" onClick={() => setFiltering(true)}>
             <SlidersHorizontal />Filters
             {active.length ? <span className="rounded-full bg-primary/12 px-1.5 text-2xs tabular-nums text-primary">{active.length}</span> : null}
@@ -676,7 +679,15 @@ function Papers({ open }: { open: Open }) {
                     <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{EMPTY_TAB[filter]}</p>
+                  <>
+                    <p className="text-sm text-muted-foreground">{EMPTY_TAB[filter]}</p>
+                    {/* Nothing has got this far, and the papers that could are still short of a vote or split: each count opens them. */}
+                    {filter === "include" || filter === "maybe" || filter === "exclude" ? (
+                      <div className="flex flex-wrap justify-center gap-1.5">
+                        {(["waiting", "conflict"] as const).map((result) => (tabCounts[result] ? <LinkChip key={result} href={papersHref(id, { result })} tone={RESULT_STYLE[result].tone} icon={RESULT_STYLE[result].icon}>{tabCounts[result].toLocaleString("en-GB")} {RESULT_LABEL[result].toLowerCase()}</LinkChip> : null))}
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </div>
             )}

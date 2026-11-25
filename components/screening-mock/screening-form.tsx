@@ -10,7 +10,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
-import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -20,6 +20,7 @@ import { PaperScope, PickMark } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented, pagerOf } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
+import { FadeRow } from "@/components/ui/fade-row";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -286,6 +287,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Paused models read nothing until someone resumes them: their rows and the cost say so.
   const paused = Boolean(saved?.paused && !saved.finishedAt && models.length);
   const unsaved = `${edits.length} unsaved ${edits.length === 1 ? "change" : "changes"}`;
+  const moved = moves.reduce((sum, move) => sum + move.papers.length, 0);
   // Beside a part's title while it holds an edit that isn't saved.
   const changed = (...sections: EffectSection[]) => (edits.some((edit) => sections.includes(edit.section)) ? <StateChip tone="warning" icon={PenLine} className="ms-1.5 h-5 px-1.5">Changed</StateChip> : null);
   // A criterion whose question was deleted asks nothing, and leaves its short name no words to fall back to.
@@ -335,7 +337,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       for (const file of references) {
         const total = 12 + (hashOf(file.name) % 140);
         const matched = total - 2 - (hashOf(file.name) % 5);
-        addSource("upload", file.name, "Reference file", total, [`${matched} matched to Openscholar's index`, `${total - matched} not in the index, screened as uploaded`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
+        addSource("upload", file.name, "Reference file", total, [`${matched} found in Openscholar's index`, `${total - matched} not in the index`, `${1 + (hashOf(file.name) % 4)} without an abstract`]);
       }
       if (pdfs.length) addSource("pdf", `${pdfs[0]!.name}${pdfs.length > 1 ? ` and ${pdfs.length - 1} more` : ""}`, pdfs.length === 1 ? "A PDF, read from the file" : "PDFs, read from the files", pdfs.length, ["Titles and abstracts read from the files"]);
       setReading((now) => now.filter((name) => !names.includes(name)));
@@ -466,7 +468,8 @@ export function ScreeningForm({ id }: { id?: string }) {
     if (again.length) store.set({ wallet: Math.max(0, store.wallet - again.reduce((sum, one) => sum + one.cost, 0)) });
     // The page stays where it is: Changes keeps what the save did until the next edit.
     setLastSave({ edits, lines, moves });
-    toast("Changes saved", { action: <NextLink data-button href={overviewHref(id)}>Go to the Overview</NextLink> });
+    // What the save did to the papers is said with it, so a count that changed elsewhere is no surprise.
+    toast("Changes saved", { description: moves.length ? movesText(moves) : undefined, action: <NextLink data-button href={overviewHref(id)}>Go to the Overview</NextLink> });
   };
   const discard = () => {
     const was = store.drafts[key];
@@ -530,9 +533,10 @@ export function ScreeningForm({ id }: { id?: string }) {
   const destinationName = draft.destination.kind === "none" ? "Nowhere" : draft.destination.kind === "new" ? (draft.destination.name || "New collection") : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === draft.destination.collection)?.name ?? "A collection");
   const musts = draft.criteria.filter((criterion) => criterion.must).length;
   const reviewersNow = activeReviewers(draft);
-  const summary: Array<{ id: string; label: string; value: string; problem: boolean; aside?: ReactNode }> = [
+  // `unset`: a part left empty that the screening can start without. It gets no tick, which would read as done.
+  const summary: Array<{ id: string; label: string; value: string; problem: boolean; unset?: boolean; aside?: ReactNode }> = [
     { id: "papers", label: "Papers", value: papers ? `${plural(papers, "paper", "papers")} from ${plural(draft.sources.length, "source", "sources")}` : "No papers yet", problem: !papers },
-    { id: "criteria", label: "Criteria", value: draft.criteria.length ? `${plural(draft.criteria.length, "criterion", "criteria")}, ${musts} must-have` : "No criteria", problem: needsCriteria },
+    { id: "criteria", label: "Criteria", value: draft.criteria.length ? `${plural(draft.criteria.length, "criterion", "criteria")}, ${musts} must-have` : "No criteria", problem: needsCriteria, unset: !draft.criteria.length },
     {
       id: "reviewers",
       label: "Reviewers",
@@ -558,6 +562,17 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><NextLink href={overviewHref(copied.id)}>Open it<ChevronRight /></NextLink></Button>
         </div>
       ) : null}
+      {/* Where the summary follows the form instead of standing beside it, its list of the form's parts is a long way down: the parts are one line of links over the form. */}
+      <nav aria-label="Go to a part of the form" className="border-b border-border-subtle px-4 py-2.5 sm:px-6 @6xl:hidden">
+        <FadeRow scrolls scrollbar="none" className="flex items-center gap-1.5 *:shrink-0">
+          {summary.map((line) => (
+            <JumpLink key={line.id} to={line.id} className="flex h-7 items-center gap-1.5 rounded-full bg-foreground/[0.06] px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
+              {line.problem ? <TriangleAlert aria-label="Needed to start" className="size-3.5 shrink-0 ink-warning" /> : null}
+              {line.label}
+            </JumpLink>
+          ))}
+        </FadeRow>
+      </nav>
       {/* The summary sits beside the form only where that leaves the form's rows room to stay on one line each; below that it follows the form. */}
       <div className="grid @6xl:grid-cols-[minmax(0,1fr)_24rem] @7xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="min-w-0 space-y-10 p-4 sm:p-6">
@@ -578,7 +593,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="papers"
             title="Papers"
-            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</Help>{changed("papers")}</>}
+            help={<><Help title="Papers" facts={<><HelpFact>As many sources as you need</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A paper from a file that is found in Openscholar&apos;s index takes its abstract and details from there. One that is not in the index is screened as the file has it.</p></Help>{changed("papers")}</>}
             aside={
               <>
                 <Chip><AnimatedNumber value={found} /> found</Chip>
@@ -959,7 +974,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   </motion.div>
                 ))}
                 {/* The line a list with nothing in it shows grows in as its last row shrinks away, as a row does. */}
-                {!criterionRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="px-4 py-4 text-sm text-muted-foreground">No criteria yet</p></motion.div> : null}
+                {!criterionRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">{writing ? <><AiIcon working className="size-4" />Writing criteria from the question</> : "No criteria yet"}</p></motion.div> : null}
               </AnimatePresence>
               <form className="flex items-center gap-2 px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); addCriterion(text); setText(""); }}>
                 <Input id="new-criterion" value={text} onChange={(event) => setText(event.target.value)} placeholder="Add a criterion with a yes or no answer" aria-label="New criterion" className="h-9 flex-1" />
@@ -1081,7 +1096,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <Segmented label="People on each paper" value={joined.length === 1 || (joined.length === 2 && draft.rule.each === "2") ? "all" : draft.rule.each} onChange={(next) => set({ rule: { ...draft.rule, each: next } })} options={[{ id: "1" as const, label: "One" }, ...(joined.length > 1 ? [{ id: "2" as const, label: "Two" }] : []), { id: "all" as const, label: joined.length > 2 ? `All ${joined.length}` : joined.length === 2 ? "Both" : "The one" }].filter((option, i, all) => all.findIndex((one) => one.label === option.label) === i && !(joined.length === 2 && option.id === "2") && !(joined.length === 1 && option.id === "1"))} />
                 ) : <span className="text-sm text-muted-foreground">Add a person to choose</span>}
               </RuleRow>
-              <RuleRow name="A paper is settled when" help={<Help title="Settling a paper">All agree: any split vote is a conflict. Most agree: more than half on one side settles it, and an even split is a conflict. One has voted: the first vote decides.</Help>}>
+              <RuleRow name="A paper is settled when" help={<Help title="Settling a paper">Every reviewer given a paper has one vote, a model as much as a person. All agree: any split vote is a conflict. Most agree: more than half on one side settles it, and an even split is a conflict. One has voted: the first vote decides.</Help>}>
                 <Segmented label="A paper is settled when" value={draft.rule.settle} onChange={(next) => set({ rule: { ...draft.rule, settle: next } })} options={[{ id: "all" as const, label: "All agree" }, { id: "most" as const, label: "Most agree" }, { id: "one" as const, label: "One has voted" }]} />
               </RuleRow>
               <RuleRow name="Conflicts are settled by" help={<Help title="Conflicts">This person sees every vote on the paper, and their decision is its result.</Help>}>
@@ -1129,7 +1144,7 @@ export function ScreeningForm({ id }: { id?: string }) {
 
         {/* What it comes to: a well beside the form, in view while the form scrolls. */}
         <aside id="summary" aria-label="Summary" className={cn("min-w-0 border-border-subtle bg-inset/60 @max-6xl:border-t @6xl:border-s", BELOW_HEADER)}>
-          <StickyColumn from="form" clear={fresh || dirty ? "5rem" : "1rem"} className="space-y-6 p-4 sm:p-6">
+          <StickyColumn clear={fresh || dirty ? "5rem" : "1rem"} className="space-y-6 p-4 sm:p-6">
             {/* What saving will do, before it is done, and after it what the save did, until the next edit. Each line opens the part of the form it is about. */}
             {!fresh ? (
               <Section
@@ -1184,7 +1199,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             <nav aria-label="Parts of the form" className={cn(LIST, "bg-card")}>
               {summary.map((line) => (
                 <JumpLink key={line.id} to={line.id} className="flex items-center gap-3 px-3.5 py-2.5 outline-none transition-colors hover:bg-muted focus-visible:bg-muted">
-                  {line.problem ? <TriangleAlert aria-label="Needed to start" className="mt-0.5 size-4 shrink-0 self-start ink-warning" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
+                  {line.problem ? <TriangleAlert aria-label="Needed to start" className="mt-0.5 size-4 shrink-0 self-start ink-warning" /> : line.unset ? <Minus aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground opacity-60" /> : <Check aria-hidden className="mt-0.5 size-4 shrink-0 self-start text-muted-foreground" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-muted-foreground">{line.label}</span>
                     <span className="block truncate text-sm font-medium">{line.value}</span>
@@ -1268,8 +1283,10 @@ export function ScreeningForm({ id }: { id?: string }) {
         // While anything is unsaved: how much, what stops the save, and the three things to do about it. It rises in from the window's foot.
         <ActionBar className="animate-in fade-in slide-in-from-bottom-4 duration-300 motion-reduce:animate-none">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6 max-lg:pe-[5.5rem]">
-            <span className="flex items-center gap-2 text-sm font-medium">
+            <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
               <PenLine aria-hidden className="size-4 shrink-0 ink-warning" />{unsaved}
+              {/* Papers that saving moves to another result are said here, where Save is: the summary that lists them can be far from it. */}
+              {moved ? <StateChip tone="warning">{moved} {moved === 1 ? "paper changes" : "papers change"} result</StateChip> : null}
               <Button asChild variant="ghost" size="sm" className="h-8"><JumpLink to="changes" find={() => document.getElementById("summary")}>Review</JumpLink></Button>
             </span>
             {holdUp ? (

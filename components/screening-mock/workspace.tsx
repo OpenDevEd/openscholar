@@ -303,12 +303,14 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <PageWrapper>
+      {/* Screen fits the window from a laptop's width and scrolls inside its own panes, so the site's footer has no page to end there. */}
+      <PageWrapper className={view === "screen" ? "lg:[&>footer]:hidden" : undefined}>
         {/* Faces fade in as they load, where they would otherwise appear in one frame. */}
         {/* The screening's name keeps some room in the bar at every width, so it always shows at least in part. */}
         <div ref={frame} className={`contents ${AVATARS_FADE_IN} [&_[data-sticky-page-header]_h1]:min-w-32 @7xl:[&_[data-sticky-page-header]_h1]:min-w-64`}>
           <LibraryPageShell
             wide
+            fill={view === "screen"}
             icon={ListChecks}
             title={screening.name}
             trail={[SCREENINGS_CRUMB]}
@@ -347,7 +349,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
               <div ref={strip} className="@container/strip">
                 {/* One strip under the bar: the pages, then how a paper is decided. Where the card is too narrow for both on a line, the pages take the first and the rule the second. */}
                 <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @[66rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]">{pages(true)}</FadeRow></div>
-                <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[66rem]/strip:hidden")}>
+                {/* On Screen from a laptop's width the window's height goes to the paper: the rule shows only where it shares the pages' line. */}
+                <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[66rem]/strip:hidden", view === "screen" && "lg:@max-[66rem]/strip:hidden")}>
                   <div className="shrink-0 @max-[66rem]/strip:hidden">{pages(false)}</div>
                   {view === "settings" ? null : <div className="min-w-0 @[66rem]/strip:ms-auto">{rule}</div>}
                 </div>
@@ -360,7 +363,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             }
           >
             {/* Each page rises in as it opens. */}
-            <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
+            <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className={view === "screen" ? "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col" : undefined}>
               <Workspace value={{ open, exportTo: overlays.exportTo, finish: () => overlays.show("finish"), openActivity: () => overlays.show("activity") }}>{children}</Workspace>
             </motion.div>
           </LibraryPageShell>
