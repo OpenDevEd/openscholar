@@ -170,6 +170,8 @@ export function effectItems(before: Screening, after: Screening): EffectLine[] {
     if (!now) lines.push({ text: `Answers to ${criterionName(criterion)} stop counting`, kind: "leave", section: "criteria" });
     else if (now.must !== criterion.must) lines.push({ text: now.must ? `${criterionName(now)} becomes must-have: a no on it excludes a paper` : `${criterionName(now)} becomes nice to have and stops excluding papers`, section: "criteria" });
     else if (now.text !== criterion.text) lines.push({ text: `The models answer the reworded ${criterionName(now)} on papers they read from now on`, section: "criteria" });
+    // Guidance changes how the question is read from here on. What was answered under the old guidance is left as it was.
+    else if ((now.note ?? "") !== (criterion.note ?? "")) lines.push({ text: `Reviewers and models read ${criterionName(now)} with its ${criterion.note ? "new " : ""}guidance from now on. Answers already given stay`, section: "criteria" });
   }
   if (scoringChanged(before, after)) lines.push({ text: "Included papers' points and stars are worked out again", section: "criteria" });
 

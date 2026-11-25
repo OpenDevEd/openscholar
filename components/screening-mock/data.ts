@@ -83,7 +83,7 @@ export const SEED_MODELS: MapModel[] = [
 
 // ── Criteria, sources and the rule ───────────────────────────────────────────────────────────────
 
-export type Criterion = { key: string; text: string; short: string; must: boolean; terms: string[]; addedAt: number };
+export type Criterion = { key: string; text: string; short: string; must: boolean; terms: string[]; addedAt: number; /** Guidance for whoever answers it, a person or a model: what counts and what doesn't. */ note?: string };
 /** How long a criterion's short name can be. */
 export const SHORT_NAME_LENGTH = 40;
 /** The short name a criterion has until someone writes one: its question's own words, cut where they run longer than a short name can be. */
@@ -141,6 +141,8 @@ export function reasonOf(cast: Array<{ vote: Vote | undefined }>, settled?: Sett
 
 export type Vote = { decision: Decision; answers: Record<string, Answer>; reason?: string; note?: string; at: number };
 export type Settled = { result: Result; final?: Decision; resolvedBy?: string; note?: string; reason?: string };
+/** One line of a paper's discussion. `to` names the reviewer it asks, who then has a question waiting. */
+export type Message = { by: string; at: number; text: string; to?: string };
 export type Change = { at: number; /** A person, or SCHEDULE for something that happened by itself. */ by: string; what: string; effect?: string };
 export type Every = "day" | "week" | "month";
 export const EVERY_LABEL: Record<Every, string> = { day: "Every day", week: "Every week", month: "Every month" };
@@ -196,6 +198,10 @@ export type Screening = {
   checking?: { done: number; of: number; by: string };
   /** The screening whose models read first: a workspace's models read so many papers at once. */
   after?: string;
+  /** Papers taken off one person and given to another, by paper: who gave it up, and who has it now. */
+  moved?: Record<string, Record<string, string>>;
+  /** What the reviewers said to each other about a paper, by paper, oldest first. */
+  threads?: Record<string, Message[]>;
 };
 
 /**
@@ -255,10 +261,10 @@ type Theme = {
   who: Array<{ text: string; answer: Answer }>;
   measured: (outcome: string, effect: string) => string;
   flagged: (means: string, flag: boolean) => string;
-  criteria: Array<{ text: string; short: string; must: boolean; terms: string[] }>;
+  criteria: Array<{ text: string; short: string; must: boolean; terms: string[]; note?: string }>;
 };
 const DESIGN_TERMS = ["randomised", "quasi-experimental", "trial", "control", "survey", "case study", "review"];
-const DESIGN = { text: "Is the study a randomised or quasi-experimental evaluation?", short: "Experimental design", must: true, terms: DESIGN_TERMS };
+const DESIGN = { text: "Is the study a randomised or quasi-experimental evaluation?", short: "Experimental design", must: true, terms: DESIGN_TERMS, note: "Counts: a randomised trial, or a design with a comparison group. A survey, a case study or a review does not." };
 const PLACE = { text: "Was the study carried out in sub-Saharan Africa?", short: "Sub-Saharan Africa", must: true, terms: [] as string[] };
 const PRIMARY = [
   { text: "learners in grades 1 to 3", answer: "yes" },
@@ -290,10 +296,10 @@ export const THEMES = {
     flagged: (means, flag) => (flag ? `The programme was delivered with ${means}, with devices kept at the school.` : `The programme used ${means} and printed materials only.`),
     criteria: [
       DESIGN,
-      { text: "Are the learners of primary-school age, 5 to 12?", short: "Primary age", must: true, terms: ["primary", "secondary", "grades", "aged"] },
+      { text: "Are the learners of primary-school age, 5 to 12?", short: "Primary age", must: true, terms: ["primary", "secondary", "grades", "aged"], note: "Go by age where the abstract gives it, and by grade where it does not: grades 1 to 6 count." },
       PLACE,
       { text: "Does it report a learning outcome measured with a test?", short: "Tested outcome", must: false, terms: ["test", "assessment", "scores", "standard deviations"] },
-      { text: "Is the intervention delivered with digital technology?", short: "Digital delivery", must: false, terms: ["tablet", "software", "radio", "mobile", "digital", "SMS"] },
+      { text: "Is the intervention delivered with digital technology?", short: "Digital delivery", must: false, terms: ["tablet", "software", "radio", "mobile", "digital", "SMS"], note: "Counts: tablets, computers, phones and software, SMS included. Radio, television and printed materials do not." },
     ],
   },
   cash: {
@@ -452,7 +458,7 @@ export const THEMES = {
     flagged: (means, flag) => (flag ? `Food was served at school: the programme provided ${means}.` : `No food was served at school: the programme provided ${means}.`),
     criteria: [
       DESIGN,
-      { text: "Are the learners of primary-school age, 5 to 12?", short: "Primary age", must: true, terms: ["primary", "secondary", "grades", "aged"] },
+      { text: "Are the learners of primary-school age, 5 to 12?", short: "Primary age", must: true, terms: ["primary", "secondary", "grades", "aged"], note: "Go by age where the abstract gives it, and by grade where it does not: grades 1 to 6 count." },
       PLACE,
       { text: "Does it report attendance or a learning outcome?", short: "Attendance or learning", must: false, terms: ["attendance", "scores", "standard deviations", "reading", "numeracy"] },
       { text: "Is food provided at school, not as take-home rations?", short: "Food at school", must: false, terms: ["lunch", "breakfast", "meals", "rations", "served"] },
@@ -473,7 +479,7 @@ export const THEMES = {
     flagged: (means, flag) => (flag ? `The programme ran in school hours, with ${means}.` : `The programme ran outside school hours, with ${means}.`),
     criteria: [
       DESIGN,
-      { text: "Are the learners of primary-school age, 5 to 12?", short: "Primary age", must: true, terms: ["primary", "secondary", "grades", "aged"] },
+      { text: "Are the learners of primary-school age, 5 to 12?", short: "Primary age", must: true, terms: ["primary", "secondary", "grades", "aged"], note: "Go by age where the abstract gives it, and by grade where it does not: grades 1 to 6 count." },
       PLACE,
       { text: "Does it report a learning outcome measured with a test?", short: "Tested outcome", must: false, terms: ["test", "scores", "standard deviations"] },
       { text: "Is it delivered during the school day?", short: "During school", must: false, terms: ["school hours", "after-school", "holiday", "class time"] },
@@ -645,7 +651,15 @@ const hasVoted = (screening: Screening, paper: Paper, index: number, person: Rev
  * evenly. Someone added after the start takes a share of the papers nobody has got to yet, and never
  * a paper someone has already voted on.
  */
-export const dealtTo = (screening: Screening, paper: Paper, index: number) => deal(screening, paper, index, peopleOf(screening).filter((person) => !person.email));
+export const dealtTo = (screening: Screening, paper: Paper, index: number) => {
+  const people = peopleOf(screening).filter((person) => !person.email);
+  const dealt = deal(screening, paper, index, people);
+  // A paper moved to someone else is theirs, for as long as they are one of its reviewers.
+  const moved = screening.moved?.[paper.id];
+  return moved ? [...new Set(dealt.map((person) => people.find((one) => one.id === moved[person.id]) ?? person))] : dealt;
+};
+/** Whether a paper was moved to this person: they came to it late, so no made-up vote of theirs stands on it. */
+const movedTo = (screening: Screening, paper: Paper, person: Reviewer) => Object.values(screening.moved?.[paper.id] ?? {}).includes(person.id);
 /** The deal among `people`. Someone invited by email is dealt papers once they have joined, so they are never among them. */
 function deal(screening: Screening, paper: Paper, index: number, people: Reviewer[]): Reviewer[] {
   if (screening.rule.each === "all") return people;
@@ -668,7 +682,7 @@ export const votersOf = (screening: Screening, paper: Paper, index: number) => [
 export function voteOf(screening: Screening, paper: Paper, index: number, reviewer: Reviewer): Vote | undefined {
   const cast = screening.cast[paper.id]?.[reviewer.id];
   if (cast !== undefined) return cast ?? undefined;
-  if (reviewer.email || index >= (screening.reached[reviewer.id] ?? 0)) return undefined;
+  if (reviewer.email || index >= (screening.reached[reviewer.id] ?? 0) || movedTo(screening, paper, reviewer)) return undefined;
   // Once someone has left, their papers go to the others. Those come without a vote: a made-up vote stands only on a paper its person was dealt before anyone left.
   if (reviewer.kind === "person" && screening.reviewers.some((one) => one.left && one.kind === "person") && !deal(screening, paper, index, screening.reviewers.filter((one) => one.kind === "person" && !one.email)).some((one) => one.id === reviewer.id)) return undefined;
   return madeUpVote(paper, reviewer, screening.criteria, screening.createdAt, screening.votedBy ?? NOW);
@@ -742,6 +756,15 @@ export function evidence(paper: Paper, criterion: Criterion, criteria: Criterion
   const quote = paper.sentences[Math.min(criteria.indexOf(criterion), paper.sentences.length - 1)] ?? paper.title;
   const why = !paper.sentences.length ? "There is no abstract, so only the title could be read." : answer === "yes" ? "It reads this passage as meeting the criterion." : answer === "no" ? "It reads this passage as failing the criterion." : "It finds nothing in the text that settles this.";
   return { quote, why };
+}
+
+/** What a made-up reviewer answers when asked about their vote: the criterion their answers turn on, in a sentence. The mock has nobody to write it. */
+export function madeUpReply(vote: Vote | undefined, criteria: Criterion[]): string {
+  if (!vote) return "I haven't got to this one yet. I'll vote on it today.";
+  const turned = criteria.find((criterion) => criterion.must && vote.answers[criterion.key] === (vote.decision === "exclude" ? "no" : "unclear")) ?? criteria.find((criterion) => vote.answers[criterion.key] === "unclear");
+  if (vote.decision === "exclude") return turned ? `I read it as failing "${turned.short}". The abstract points that way, and I'd keep my Exclude unless the full text says otherwise.` : "Nothing in the abstract made me want to keep it. I'm happy to go with your read.";
+  if (vote.decision === "maybe") return turned ? `The abstract doesn't settle "${turned.short}" for me, so I left it at Maybe. If you can tell from the full text, I'll follow you.` : "I couldn't decide from the abstract alone, so I left it open.";
+  return "Every must-have looked met to me. If you read one of them differently, tell me which and I'll look again.";
 }
 
 /** Cohen's kappa between two reviewers over the papers both voted on, with how many those were. */
@@ -858,9 +881,20 @@ export function startingScreenings(): Screening[] {
     const decision = DECISIONS[tally.indexOf(Math.max(...tally))]!;
     edtech.resolved[paper.id] = { decision, by: "amina", note: SECOND_READ[decision] };
   }
+  // One conflict was talked over before the mock opens: the person who settles them asked, and was answered.
+  const talked = state.papers.find((paper) => paper.sentences.length > 0 && state.settled[paper.id]!.result === "conflict" && !edtech.resolved[paper.id] && state.votes[paper.id]!.some((one) => one.reviewer.id === "thandiwe" && one.vote));
+  if (talked) {
+    const theirs = state.votes[talked.id]!.find((one) => one.reviewer.id === "thandiwe")!.vote;
+    edtech.threads = { [talked.id]: [{ by: "amina", to: "thandiwe", at: NOW - 3 * 60 * 60_000, text: "Thandiwe, what made you vote the way you did here? I read the design differently." }, { by: "thandiwe", at: NOW - 2 * 60 * 60_000, text: madeUpReply(theirs, edtech.criteria) }] };
+  }
+  const tvet = made("tvet", "TVET and youth employment", "tvet", 2, [source("t1", "search", "TVET AND youth employment AND Africa", "Openscholar search", 412, 0), source("t2", "collection", "Skills and work, shared reading", "Collection", 148, 31)], ["thandiwe", "amina", "kwame"], 2, { person: 0.55, model: 1 }, { createdAt: NOW - 12 * DAY });
+  // On another screening a question waits for the person the mock starts as.
+  const there = standing(tvet);
+  const asked = there.papers.find((paper) => paper.sentences.length > 0 && !paper.original && there.settled[paper.id]!.result === "conflict" && there.votes[paper.id]!.some((one) => one.reviewer.id === "amina" && one.vote));
+  if (asked) tvet.threads = { [asked.id]: [{ by: "thandiwe", to: "amina", at: NOW - 5 * 60 * 60_000, text: "Amina, could you say why you voted as you did on this one? I need it to settle the conflict." }] };
   return [
     edtech,
-    made("tvet", "TVET and youth employment", "tvet", 2, [source("t1", "search", "TVET AND youth employment AND Africa", "Openscholar search", 412, 0), source("t2", "collection", "Skills and work, shared reading", "Collection", 148, 31)], ["thandiwe", "amina", "kwame"], 2, { person: 0.55, model: 1 }, { createdAt: NOW - 12 * DAY }),
+    tvet,
     made("girls", "Girls' secondary schooling and cash transfers", "cash", 3, [source("g1", "search", "cash transfer AND girls AND secondary school", "Openscholar search", 240, 0), source("g2", "zotero", "CCT review 2026", "Zotero group collection", 96, 22)], ["jonas", "leila", "rahul"], 1, { jonas: 0.7, leila: 0.2, rahul: 0.45, model: 0.6 }, { createdAt: NOW - 9 * DAY, paused: true, changes: [{ at: NOW - 9 * DAY, by: "jonas", what: "Started the screening" }, { at: NOW - 2 * DAY, by: "jonas", what: "Paused the models", effect: undefined }] }),
     // In another workspace, shared with the person the mock starts as: they vote, and its settings are that workspace's.
     made("remedial", "Remedial education, rapid review", "remedial", 8, [source("r1", "search", "remedial education AND randomised", "Openscholar search", 133, 0)], ["sofia", "amina"], 1, { sofia: 0.8, amina: 0.3, model: 1 }, { createdBy: "sofia", createdAt: NOW - 5 * DAY, workspace: "lab" }),

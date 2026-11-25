@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MotionConfig } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
+import { AiIcon, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, GitCompare, Hourglass, ListChecks, MoreHorizontal, Move, Play, Plus, RefreshCw, MessagesSquare, RotateCcw, Search, Settings2, Share2, Trash2, UserPlus, Users } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -100,9 +100,11 @@ export function ScreeningsIndex() {
         // The last time anything happened in it: a vote, a change, a check, or its start.
         const votes = Object.values(state.votes).flatMap((cast) => cast.flatMap((one) => one.vote?.at ?? []));
         const active = Math.max(screening.createdAt, screening.finishedAt ?? 0, ...screening.changes.map((change) => change.at), ...(screening.updates ?? []).map((update) => update.at), ...votes);
+        // A reviewer asked the person looking about a paper, and waits for the answer.
+        const asked = Object.entries(screening.threads ?? {}).filter(([, said]) => said.at(-1)?.to === me).map(([paper]) => paper);
         const open = screening.finishedAt ? { forYou: 0, conflicts: 0 } : { forYou, conflicts };
-        const group = open.forYou + open.conflicts ? 0 : screening.finishedAt ? 2 : 1;
-        return [{ screening, state, access, ...open, models: held, ahead, active, group }];
+        const group = open.forYou + open.conflicts + asked.length ? 0 : screening.finishedAt ? 2 : 1;
+        return [{ screening, state, access, ...open, asked, models: held, ahead, active, group }];
       }),
     [store.screenings, store.wallet, me],
   );
@@ -207,7 +209,7 @@ export function ScreeningsIndex() {
                 </div>
                 <ul className="divide-y divide-border-subtle">
                   {shown.map((row, i) => {
-                    const { screening, state, access, forYou, conflicts, models, ahead, active, group } = row;
+                    const { screening, state, access, forYou, conflicts, asked, models, ahead, active, group } = row;
                     const id = screening.id;
                     const starter = personOf(screening.createdBy);
                     const workspace = workspaceOf(screening);
@@ -249,6 +251,8 @@ export function ScreeningsIndex() {
                           <span className="flex min-w-0 flex-wrap items-center gap-1.5 [grid-area:status] @5xl:row-span-2">
                             {forYou ? <LinkChip href={screenHref(id)} tone="primary" icon={ListChecks} className="relative shrink-0">{forYou.toLocaleString("en-GB")} for you to screen</LinkChip> : null}
                             {conflicts ? <LinkChip href={screenHref(id, { queue: "conflicts" })} tone="info" icon={GitCompare} className="relative shrink-0">{conflicts} {conflicts === 1 ? "conflict" : "conflicts"} to settle</LinkChip> : null}
+                            {/* It opens the paper the question is about, where it is answered. */}
+                            {asked.length ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: asked[0] })} tone="primary" icon={MessagesSquare} className="relative shrink-0">{asked.length} {asked.length === 1 ? "question" : "questions"} for you</LinkChip> : null}
                             {/* What its models are doing shows beside your work. */}
                             {models === "checking" ? <LinkChip href={overviewHref(id)} icon={RefreshCw} className="relative shrink-0">Checking for new papers</LinkChip>
                               : models === "gathering" ? <LinkChip href={overviewHref(id)} icon={Search} className="relative shrink-0">Getting its papers</LinkChip>

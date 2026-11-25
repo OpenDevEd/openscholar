@@ -34,6 +34,7 @@ import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Named, Panel, Q
 import { Evidence, Matrix } from "./screen";
 import { credits, paperCredits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
+import { Discussion, discussed } from "./discussion";
 import { useWorkspace } from "./workspace";
 
 const PAGE = 20;
@@ -962,6 +963,9 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
           </ul>
         ) : null}
       </Section>
+
+      {/* What its reviewers said to each other, where its votes show and there is something to talk over. */}
+      {visible && discussed(open, paper) ? <Discussion open={open} paper={paper} /> : null}
 
       {/* The paper's result: settled by a person where its reviewers disagree, and open to change after that. */}
       {state.resolvedBy ? (

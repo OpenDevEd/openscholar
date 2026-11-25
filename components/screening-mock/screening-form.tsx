@@ -10,7 +10,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
-import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
+import { GitCompare, AiIcon, Ban, Check, ChevronDown, ChevronRight, CircleHelp, CirclePause, Clock, Coins, Copy, ExternalLink, Eye, FileText, FileX, Folder, FolderPlus, Globe, Hash, Link2, ListChecks, Lock, Minus, MoreHorizontal, PenLine, Plus, RefreshCw, Search, Trash2, TriangleAlert, Undo2, Upload, UserPlus, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -136,6 +136,8 @@ function changesOf(before: Screening, after: Screening): Edit[] {
   if (oldCriteria.length) push(`Removed ${named(quoted(oldCriteria), "a criterion", "criteria")}`, "criteria");
   const reworded = after.criteria.filter((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && (was.must !== criterion.must || was.text !== criterion.text); });
   if (reworded.length) push(`Changed ${named(quoted(reworded), "a criterion", "criteria")}`, "criteria");
+  const guided = after.criteria.filter((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && (was.note ?? "") !== (criterion.note ?? ""); });
+  if (guided.length) push(`Changed the guidance on ${named(quoted(guided), "a criterion", "criteria")}`, "criteria");
   // A short name that only followed its reworded question is part of that change, not one of its own.
   const own = (criterion: Criterion) => criterion.short === shortOf(criterion.text);
   const renamed = after.criteria.flatMap((criterion) => { const was = before.criteria.find((one) => one.key === criterion.key); return was && was.short !== criterion.short && !(own(was) && own(criterion)) ? [`“${was.short}” to “${criterion.short}”`] : []; });
@@ -878,7 +880,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             id="criteria"
             className="@container/criteria"
             title="Criteria"
-            help={<><Help title="Must-have and nice to have" facts={<><HelpFact>People vote directly</HelpFact><HelpFact>Answers decide models&apos; votes</HelpFact></>}>Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have criterion makes its vote exclude, and an unclear makes it maybe. A nice-to-have criterion never excludes a paper.</Help>{changed("criteria")}</>}
+            help={<><Help title="Must-have and nice to have" facts={<><HelpFact>People vote directly</HelpFact><HelpFact>Answers decide models&apos; votes</HelpFact></>}>Write each criterion as a yes-or-no question. A model answers each one yes, no or unclear. A no on a must-have criterion makes its vote exclude, and an unclear makes it maybe. A nice-to-have criterion never excludes a paper. Guidance under a question says what counts: a reviewer opens it from the criterion&apos;s &quot;?&quot; on Screen, and a model reads it with the question.</Help>{changed("criteria")}</>}
             aside={
               <span className="flex items-center gap-1">
                 <span className="flex flex-wrap items-center justify-end gap-1 @max-[40rem]/criteria:hidden">
@@ -939,7 +941,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                   <motion.div key="names" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden @max-3xl/criteria:hidden", DIVIDED_ROW)}>
                 <div className="flex items-center gap-x-3 px-4 py-1.5 text-xs text-muted-foreground">
                   <span className="w-4 shrink-0" />
-                  <span className="min-w-0 flex-1 px-1">Question</span>
+                  <span className="min-w-0 flex-1 px-1">Question and guidance</span>
                   <span className={cn(SHORT_NAME, "flex items-center gap-1")}>Short name{shortNameHelp}</span>
                   <span aria-hidden className={ROW_END} />
                 </div>
@@ -949,8 +951,9 @@ export function ScreeningForm({ id }: { id?: string }) {
               <AnimatePresence initial={false}>
                 {criterionRows.map(({ criterion, gone }, i) => (
                   <motion.div key={criterion.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}>
-                    <div className={cn("flex items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors @max-3xl/criteria:flex-wrap", gone && TONE.warning.panel)}>
-                      <span className="w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                    {/* A criterion is two lines, its question and the guidance under it, so what sits beside them lines up with the question. */}
+                    <div className={cn("flex items-start gap-x-3 gap-y-1 px-4 py-2 transition-colors @max-3xl/criteria:flex-wrap", gone && TONE.warning.panel)}>
+                      <span className="mt-2 w-4 shrink-0 text-xs tabular-nums text-muted-foreground">{i + 1}</span>
                       {gone ? (
                         <>
                           <p className="min-w-0 flex-1 px-1 py-1.5 text-sm text-muted-foreground line-through @max-3xl/criteria:basis-[calc(100%-1.75rem)]">{criterion.text}</p>
@@ -960,7 +963,14 @@ export function ScreeningForm({ id }: { id?: string }) {
                       ) : (
                         <>
                           {/* The short name follows the question's words until someone has written one. */}
-                          <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.short === shortOf(criterion.text) ? shortOf(event.target.value) : criterion.short })} aria-label={`Criterion ${i + 1}`} aria-invalid={!criterion.text.trim() || undefined} placeholder="Write a yes or no question" className="min-h-8 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle @max-3xl/criteria:basis-[calc(100%-1.75rem)]" />
+                          <div className="min-w-0 flex-1 @max-3xl/criteria:basis-[calc(100%-1.75rem)]">
+                            <Textarea rows={1} value={criterion.text} onChange={(event) => patchCriterion(criterion.key, { text: event.target.value, short: criterion.short === shortOf(criterion.text) ? shortOf(event.target.value) : criterion.short })} aria-label={`Criterion ${i + 1}`} aria-invalid={!criterion.text.trim() || undefined} placeholder="Write a yes or no question" className="min-h-8 w-full resize-none border-transparent bg-transparent px-1 py-1.5 text-sm shadow-none field-sizing-content hover:border-border-subtle" />
+                            {/* What counts and what doesn't. A reviewer opens it from the criterion's "?" on Screen, and a model is given it with the question: it wears the same "?" here. */}
+                            <div className="flex items-start gap-1 ps-1 text-muted-foreground">
+                              <CircleHelp aria-hidden className="mt-1 size-3.5 shrink-0" />
+                              <Textarea rows={1} value={criterion.note ?? ""} onChange={(event) => patchCriterion(criterion.key, { note: event.target.value || undefined })} aria-label={`Guidance for criterion ${i + 1}`} placeholder="Add guidance on what counts and what doesn't" className="min-h-0 min-w-0 flex-1 resize-none border-transparent bg-transparent px-1 py-0.5 text-xs text-muted-foreground shadow-none field-sizing-content hover:border-border-subtle" />
+                            </div>
+                          </div>
                           <ShortName criterion={criterion} n={i + 1} help={criterion.key === criterionRows.find((row) => !row.gone)?.criterion.key ? shortNameHelp : undefined} onChange={(short) => patchCriterion(criterion.key, { short })} />
                           <span className={ROW_END}>
                             <Segmented label={`Criterion ${i + 1} is`} value={criterion.must ? "must" : "nice"} onChange={(next) => patchCriterion(criterion.key, { must: next === "must" })} options={[{ id: "must", label: "Must-have" }, { id: "nice", label: "Nice to have" }]} />

@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, ArrowDown, ArrowRight, Ban, ChevronDown, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, ListChecks, Mail, MoreHorizontal, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowRight, Ban, ChevronDown, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { HelpFact } from "@/components/ui/help";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -25,7 +26,7 @@ import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { DIVIDED_ROW, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
+import { DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
 import { credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -220,6 +221,8 @@ function Reviewers({ open }: { open: Open }) {
   const { screening, papers, votes, settled } = open;
   const [{ sort }, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
   const [leaving, setLeaving] = useState<Reviewer | null>(null);
+  // The person some papers are being moved from, while that is being set up.
+  const [moving, setMoving] = useState<string | null>(null);
   const reviewers = activeReviewers(screening);
   const rows = useMemo(
     () =>
@@ -230,15 +233,17 @@ function Reviewers({ open }: { open: Open }) {
           const [vote, final] = [votes[paper.id]!.find((one) => one.reviewer.id === reviewer.id)!.vote, settled[paper.id]!.final];
           return vote && final ? [{ vote: vote.decision, final }] : [];
         });
-        // On papers where everyone given the paper has voted: did this one choose what most of the others chose?
+        // A vote is compared with the people's: the other people given the paper for a person, all of them for a model, and never with a model's. There is something to agree with only where those people have all voted, and voted alike.
         const compared = theirs.flatMap((paper) => {
           const cast = votes[paper.id]!.filter((one) => !one.failed);
           const mine = cast.find((one) => one.reviewer.id === reviewer.id)?.vote;
-          const others = cast.filter((one) => one.reviewer.id !== reviewer.id).map((one) => one.vote);
-          if (!mine || !others.length || others.some((vote) => !vote)) return [];
-          const tally = DECISIONS.map((decision) => count(others, (vote) => vote!.decision === decision));
-          return [tally[DECISIONS.indexOf(mine.decision)] === Math.max(...tally)];
+          const people = cast.filter((one) => one.reviewer.kind === "person" && one.reviewer.id !== reviewer.id).map((one) => one.vote);
+          if (!mine || !people.length || people.some((vote) => !vote) || new Set(people.map((vote) => vote!.decision)).size > 1) return [];
+          return [people[0]!.decision === mine.decision];
         });
+        // A person's pace is what they voted on in the last three days. At that pace, how long what is left takes them.
+        const left = theirs.length - cast.length;
+        const perDay = count(cast, (vote) => vote.at > NOW - 3 * DAY) / 3;
         return {
           reviewer,
           assigned: theirs.length,
@@ -248,6 +253,8 @@ function Reviewers({ open }: { open: Open }) {
           compared: compared.length,
           missed: count(judged, (one) => one.final === "include" && one.vote === "exclude"),
           included: count(judged, (one) => one.final === "include"),
+          left,
+          perDay,
         };
       }),
     [reviewers, papers, votes, settled],
@@ -259,6 +266,9 @@ function Reviewers({ open }: { open: Open }) {
     { label: "People", rows: ordered(rows.filter((row) => row.reviewer.kind === "person")) },
     { label: "Models", rows: ordered(rows.filter((row) => row.reviewer.kind === "model")) },
   ].filter((group) => group.rows.length);
+  // Who papers can be moved from: a person with papers left that someone else doesn't have. Where every person reads every paper there is nobody to move one to.
+  const takers = rows.filter((row) => row.reviewer.kind === "person" && !row.reviewer.email);
+  const givers = open.canChange && !screening.finishedAt ? takers.filter((row) => row.left > 0 && takers.some((other) => other !== row && open.movable(row.reviewer.id, other.reviewer.id).length)) : [];
   const without = (reviewer: Reviewer): Screening => ({ ...screening, reviewers: screening.reviewers.map((one) => (one.id === reviewer.id ? { ...one, left: Date.now() } : one)) });
   const people = peopleOf(screening).length;
   const each = screening.rule.each === "all" ? people : Math.min(Number(screening.rule.each), people);
@@ -282,10 +292,14 @@ function Reviewers({ open }: { open: Open }) {
       help={
         <Help title="How papers are shared out" facts={<>{each ? <HelpFact>{each < people ? `${each} of ${people} people a paper` : `Every person reads every paper`}</HelpFact> : null}{modelsOf(screening).length ? <HelpFact>Models read every paper</HelpFact> : null}</>}>
           <p>Each person votes on a share of the papers. Each model votes on every paper.</p>
+          <p>Under a person&apos;s count is how long what they have left takes them, at the pace of their last three days.</p>
         </Help>
       }
       aside={
-        pair ? (
+        <>
+        {/* Evening out the work: the person with the most left is offered first. */}
+        {givers.length ? <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setMoving([...givers].sort((x, y) => y.left - x.left)[0]!.reviewer.id)}><Move />Move papers</Button> : null}
+        {pair ? (
           <span className="flex items-center gap-1">
             <NextLink href={pairHref(screening.id, b!, a!)} className={cn("flex items-center gap-2 px-2 py-1 text-sm", ROW_LINK)}>
               <span className="text-muted-foreground">Agreement</span>
@@ -294,7 +308,8 @@ function Reviewers({ open }: { open: Open }) {
             </NextLink>
             {KAPPA_HELP}
           </span>
-        ) : null
+        ) : null}
+        </>
       }
     >
       {rows.length ? (
@@ -304,9 +319,9 @@ function Reviewers({ open }: { open: Open }) {
             <span role="columnheader" aria-sort={sort === "voted" ? "descending" : "none"}>{sortable("voted", "Papers voted on")}</span>
             {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex items-center justify-end gap-1"><Icon className="size-3.5 shrink-0" />{DECISION_LABEL[decision]}</span>; })}
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
-              {sortable("agrees", "Agrees with majority")}
-              <Help title="Agrees with majority" side="bottom">
-                <p>On papers where everyone given the paper has voted, how often this reviewer voted the way most of them did. A low figure is a reviewer who reads the criteria differently from the rest.</p>
+              {sortable("agrees", "Agrees with people")}
+              <Help title="Agrees with people" side="bottom" facts={<><HelpFact>A person with the other people on the paper</HelpFact><HelpFact>A model with the people, never with a model</HelpFact></>}>
+                <p>How often this reviewer voted as the people did, on the papers where those people have all voted and voted alike. A low figure is a reviewer who reads the criteria differently from the rest.</p>
                 <p>Under a model, the papers the screening included that it voted to exclude.</p>
               </Help>
             </span>
@@ -317,7 +332,7 @@ function Reviewers({ open }: { open: Open }) {
               <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
                 <span role="cell">{group.label} <span className="font-normal tabular-nums text-muted-foreground">{group.rows.length}</span></span>
               </div>
-              {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} />)}
+              {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} onMove={givers.includes(row) ? () => setMoving(row.reviewer.id) : undefined} />)}
             </div>
           ))}
         </div>
@@ -333,16 +348,76 @@ function Reviewers({ open }: { open: Open }) {
       >
         {leaving ? <EffectList lines={effectLines(screening, without(leaving))} moves={effectMoves(screening, without(leaving))} /> : null}
       </ConfirmChange>
+      {/* Made anew for each move, so it starts from the person it was opened for. */}
+      {moving ? <MovePapers key={moving} open={open} people={takers} from={moving} onClose={() => setMoving(null)} /> : null}
     </Section>
   );
 }
 
-type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number };
+/**
+ * Moves papers one person has yet to vote on to another, to even out the work: who gives them up, who takes them,
+ * how many, and where that leaves the two of them. Only papers the taker doesn't already have can go.
+ */
+function MovePapers({ open, people, from: first, onClose }: { open: Open; people: ReviewerRowData[]; from: string; onClose: () => void }) {
+  const [from, setFrom] = useState(first);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [asked, setAsked] = useState<number | null>(null);
+  const giver = people.find((row) => row.reviewer.id === from) ?? people[0]!;
+  const others = people.filter((row) => row !== giver).map((row) => ({ row, can: open.movable(giver.reviewer.id, row.reviewer.id).length }));
+  // Whoever has the least left is offered first.
+  const taker = others.find((one) => one.row.reviewer.id === chosen && one.can) ?? [...others].filter((one) => one.can).sort((x, y) => x.row.left - y.row.left)[0];
+  const most = taker?.can ?? 0;
+  // To start with, enough to leave the two with the same number.
+  const papers = Math.max(1, Math.min(most, asked ?? Math.round((giver.left - (taker?.row.left ?? 0)) / 2)));
+  const face = (row: ReviewerRowData) => <ReviewerMark reviewer={row.reviewer} className="size-4" />;
+  const nameOf = (row: ReviewerRowData) => (row.reviewer.id === open.me ? "You" : row.reviewer.name);
+  const load = (row: ReviewerRowData, after: number) => (
+    <div key={row.reviewer.id} className="flex items-center gap-2.5 px-3 py-2.5 text-sm">
+      <ReviewerMark reviewer={row.reviewer} className="size-7" />
+      <span className="min-w-0 flex-1 truncate font-medium">{nameOf(row)}</span>
+      <span className="flex shrink-0 items-center gap-1.5 tabular-nums"><span className="text-muted-foreground">{row.left} left</span><ArrowRight aria-hidden className="size-3.5 text-muted-foreground" /><span className="font-semibold">{after} left</span></span>
+      <span className="w-28 shrink-0 text-end text-xs tabular-nums text-muted-foreground">{timeFor(after, row.perDay) ?? (after ? "No votes in 3 days" : "Nothing left")}</span>
+    </div>
+  );
+  return (
+    <ConfirmChange open title="Move papers" confirm={taker ? `Move ${papers} ${papers === 1 ? "paper" : "papers"}` : "Move"} disabled={!taker} onClose={onClose} onConfirm={() => taker && open.move(giver.reviewer, taker.row.reviewer, papers)}>
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterMenu name="From" value={giver.reviewer.id} onChange={(next) => { setFrom(next); setChosen(null); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={people.filter((row) => row.left > 0).map((row) => ({ value: row.reviewer.id, label: nameOf(row), icon: face(row), count: row.left }))} />
+        {taker ? <FilterMenu name="To" value={taker.row.reviewer.id} onChange={(next) => { setChosen(next); setAsked(null); }} narrows={false} className="h-8 rounded-full px-3.5 text-xs" choices={others.filter((one) => one.can).map((one) => ({ value: one.row.reviewer.id, label: nameOf(one.row), icon: face(one.row), count: one.can }))} /> : null}
+      </div>
+      {taker ? (
+        <>
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-3 text-sm"><span id="move-how-many" className="font-medium">Papers to move</span><span className="tabular-nums text-muted-foreground"><span className="text-base font-semibold text-foreground">{papers}</span> of {most} that {nameOf(taker.row) === "You" ? "you don't" : `${taker.row.reviewer.name.split(" ")[0]} doesn't`} already have</span></div>
+            <Slider aria-labelledby="move-how-many" min={1} max={Math.max(most, 1)} step={1} value={[papers]} onValueChange={([next]) => setAsked(next ?? 1)} disabled={most <= 1} />
+          </div>
+          <div className={cn(LIST, "divide-y divide-border-subtle")}>
+            {load(giver, giver.left - papers)}
+            {load(taker.row, taker.row.left + papers)}
+          </div>
+          <p className="text-sm text-muted-foreground">The papers furthest down {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} queue go. Votes already cast stay where they are.</p>
+        </>
+      ) : (
+        <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${giver.reviewer.name.split(" ")[0]}'s`} papers.</p>
+      )}
+    </ConfirmChange>
+  );
+}
+
+type ReviewerRowData = { reviewer: Reviewer; assigned: number; done: number; split: number[]; agrees: number | null; compared: number; missed: number; included: number; left: number; perDay: number };
+const DAY = 86_400_000;
+/** How long someone takes to get through so many papers at their pace, or nothing where they have no pace to go by. */
+const timeFor = (left: number, perDay: number) => {
+  if (left <= 0 || perDay <= 0) return null;
+  const days = Math.ceil(left / perDay);
+  return days === 1 ? "about a day" : days < 14 ? `about ${days} days` : `about ${Math.round(days / 7)} weeks`;
+};
 
 /** One reviewer: the whole row opens the papers they voted on, and each count opens its own. */
-function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void }) {
+function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: ReviewerRowData; onLeave: (reviewer: Reviewer) => void; /** Opens the move of some of this person's papers to someone else, where they have papers that can go. */ onMove?: () => void }) {
   const { screening } = open;
-  const { reviewer, assigned, done, split, agrees, compared, missed, included } = row;
+  const { reviewer, assigned, done, split, agrees, compared, missed, included, left, perDay } = row;
+  const takes = timeFor(left, perDay);
   const id = screening.id;
   const unreadPapers = reviewer.kind === "model" ? open.unread(reviewer) : [];
   const unread = unreadPapers.length;
@@ -374,11 +449,19 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
           <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
           <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><AnimatedNumber value={done} /> of {assigned}</NextLink>
         </div>
-        {/* The papers it got to and couldn't read, under how many it read: a second line no taller than the name and its credits, so a paper that fails while it reads moves nothing. */}
+        {/* When a person gets through what they have left, at the pace of their last three days: a second line, as a model has for what it couldn't read. */}
+        {reviewer.kind === "person" && !reviewer.email && left > 0 && !screening.finishedAt ? (
+          takes ? (
+            <p className="flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-muted-foreground"><Clock className="size-3.5 shrink-0" />{takes[0]!.toUpperCase()}{takes.slice(1)} left</p>
+          ) : (
+            <p className="flex items-center gap-1 whitespace-nowrap text-xs ink-warning"><Hourglass className="size-3.5 shrink-0" />No votes in 3 days</p>
+          )
+        ) : null}
+        {/* The papers it got to and couldn't read, under how many it read: a second line that, with the count over it, is no taller than the name and its credits, so a paper that fails while it reads moves nothing. It has no margin of its own for that reason, and neither has a person's second line. */}
         {unread ? (
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className={cn(above, "mt-1 flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
+              <Button variant="ghost" size="sm" className={cn(above, "flex h-4 w-fit gap-1 rounded px-1.5 text-xs bg-destructive/10 ink-destructive hover:bg-destructive/15")} aria-label={`${unread} ${unread === 1 ? "paper" : "papers"} it couldn't read`}>{unread} couldn&apos;t be read<ChevronDown aria-hidden className="size-3.5 opacity-60" /></Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-80 space-y-2.5 p-3 text-sm">
               <p>Its provider gave an error on {unread === 1 ? "this paper" : `these ${unread} papers`}, so it has no say in {unread === 1 ? "it" : "them"}. The other reviewers settle {unread === 1 ? "it" : "them"}.</p>
@@ -411,7 +494,7 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
         );
       })}
       <div role="cell" className="min-w-0 text-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
-        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> with the majority</span></>}</p>
+        <p className="text-sm font-semibold tabular-nums">{agrees === null ? <span className="font-normal text-muted-foreground">Nothing to compare yet</span> : <>{Math.round(agrees * 100)}%<span className="font-normal text-muted-foreground @2xl/reviewers:hidden"> with the people</span></>}</p>
         {reviewer.kind === "model" && included ? (
           missed ? (
             <NextLink href={papersHref(id, { reviewer: reviewer.id, voted: "exclude", result: "include" })} className={cn(above, "block whitespace-nowrap text-xs tabular-nums ink-destructive underline-offset-2 hover:underline")}>Excluded {missed} of {included} included</NextLink>
@@ -436,6 +519,7 @@ function ReviewerRow({ open, row, onLeave }: { open: Open; row: ReviewerRowData;
               {reviewer.kind === "person" && !mine && done < assigned ? (
                 <DropdownMenuItem onSelect={() => open.update((s) => ({ ...s, reviewers: s.reviewers.map((one) => (one.id === reviewer.id ? { ...one, reminded: Date.now() } : one)) }), { what: `Sent ${reviewer.name} a reminder`, effect: `${assigned - done} papers wait for them` })}><Mail />Send a reminder</DropdownMenuItem>
               ) : null}
+              {onMove ? <DropdownMenuItem onSelect={onMove}><Move />Move papers to someone else</DropdownMenuItem> : null}
               <DropdownMenuItem variant="destructive" onSelect={() => onLeave(reviewer)}><Trash2 />{mine ? "Leave this screening" : "Take off this screening"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { toMapModel, type MapModel } from "@/components/settings/model-map";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { CALL_TOKENS, estimateCredits } from "@/lib/pricing/estimate";
-import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
+import { NOW, PEOPLE, SEED_MODELS, accessOf, activeReviewers, checked, dealtTo, growing, madeUpReply, modelsOf, paperTotal, personReviewer, standing, startingScreenings, withUpdates, type Change, type Decision, type Paper, type Person, type Reviewer, type Screening, type Standing, type Vote } from "./data";
 
 type State = {
   screenings: Screening[];
@@ -22,6 +22,8 @@ type State = {
   firstTime: boolean;
   /** Changes to a screening's settings that aren't saved yet, and a new screening being filled in, by where they are made. */
   drafts: Record<string, Screening>;
+  /** The queue's pane on Screen is folded away, to give the paper its width. Kept with the tab, so it holds from page to page. */
+  folded?: boolean;
 };
 
 type Store = State & {
@@ -47,7 +49,7 @@ export function paperCredits(model: MapModel) {
 export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : Math.ceil(n).toLocaleString("en-GB"));
 
 /** Where the tab keeps the mock's state. The name changes with its shape. */
-export const KEPT = "screening-mock:7";
+export const KEPT = "screening-mock:8";
 
 /** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
 const settingsOf = (screening: Screening) => JSON.stringify([screening.name, screening.question, screening.sources, screening.criteria, screening.reviewers, screening.rule, screening.scoring, screening.destination, screening.living?.every]);
@@ -130,6 +132,18 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
         setState((s) => {
           const open = s.screenings.find((one) => one.id === id);
           if (!open) return s;
+          // A question put to a made-up reviewer is answered a few seconds later: the mock has nobody else to write the answer.
+          const waiting = Object.entries(open.threads ?? {}).find(([, said]) => {
+            const last = said.at(-1);
+            return Boolean(last?.to) && last!.to !== s.viewer && last!.by !== last!.to && last!.at < now() - 4000 && open.reviewers.some((one) => one.id === last!.to && one.kind === "person" && !one.left && !one.email);
+          });
+          if (waiting) {
+            const [paperId, said] = waiting;
+            const asked = said.at(-1)!.to!;
+            const state = standing(open);
+            const vote = state.votes[paperId]?.find((one) => one.reviewer.id === asked)?.vote;
+            return { ...s, screenings: s.screenings.map((one) => (one.id === id ? { ...one, threads: { ...one.threads, [paperId]: [...said, { by: asked, at: now(), text: madeUpReply(vote, open.criteria) }] } } : one)) };
+          }
           // A check of its sources, which a finished screening can be given too: each answers in turn, then what they found joins the queue.
           if (open.checking) {
             const done = open.checking.done + 1;
@@ -216,6 +230,11 @@ export function useOpenScreening(id: string) {
   const reading = models.filter((model) => (screening.reached[model.id] ?? 0) < state.papers.length);
   const outOfCredits = !screening.finishedAt && !screening.paused && reading.length > 0 && reading.every((model) => paperCredits(model.model!) > store.wallet);
   const spent = (model: Reviewer) => screening.spent?.[model.id] ?? 0;
+  const movable = (fromId: string, toId: string) =>
+    state.papers.filter((paper) => {
+      const cast = state.votes[paper.id]!;
+      return !state.settled[paper.id]!.final && cast.some((one) => one.reviewer.id === fromId && !one.vote) && !cast.some((one) => one.reviewer.id === toId);
+    });
   /** The most a model can come to: what it has cost, and the papers it has still to read. */
   const most = (model: Reviewer) => spent(model) + Math.max(0, state.papers.length - (screening.reached[model.id] ?? 0)) * paperCredits(model.model!);
   return {
@@ -271,6 +290,37 @@ export function useOpenScreening(id: string) {
     resolve: (paper: Paper, decision: Decision | null, note?: string, reason?: string) =>
       store.update(id, (s) => ({ ...s, resolved: { ...s.resolved, [paper.id]: decision ? { decision, by: me, ...(note ? { note } : {}), ...(reason ? { reason } : {}) } : null } })),
     update: (fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) => store.update(id, fn, log),
+    /** What was said about a paper, oldest first. */
+    thread: (paper: Paper) => screening.threads?.[paper.id] ?? [],
+    /** Adds a line to a paper's discussion. With `to`, it is a question that waits for that reviewer. */
+    say: (paper: Paper, text: string, to?: string) => store.update(id, (s) => ({ ...s, threads: { ...s.threads, [paper.id]: [...(s.threads?.[paper.id] ?? []), { by: me, at: Math.max(Date.now(), NOW + 1), text, ...(to ? { to } : {}) }] } })),
+    /** The papers whose discussion ends on a question for the person looking. */
+    asked: state.papers.filter((paper) => screening.threads?.[paper.id]?.at(-1)?.to === me),
+    /** The papers one person has yet to vote on that another doesn't have: what can be moved from the first to the second. */
+    movable,
+    /** Moves so many of one person's unvoted papers to another, the ones furthest down their queue first. */
+    move: (from: Reviewer, to: Reviewer, papers: number) => {
+      const picked = movable(from.id, to.id).slice(-papers);
+      if (!picked.length) return;
+      store.update(
+        id,
+        (s) => ({
+          ...s,
+          moved: {
+            ...s.moved,
+            ...Object.fromEntries(
+              picked.map((paper) => {
+                const now = s.moved?.[paper.id] ?? {};
+                // A paper that came to them by an earlier move goes on from whoever had it first.
+                const first = Object.entries(now).find(([, holder]) => holder === from.id)?.[0] ?? from.id;
+                return [paper.id, { ...now, [first]: to.id }];
+              }),
+            ),
+          },
+        }),
+        { what: `Moved ${picked.length} ${picked.length === 1 ? "paper" : "papers"} from ${from.name} to ${to.name}`, effect: `${to.name} votes on ${picked.length === 1 ? "it" : "them"} now` },
+      );
+    },
   };
 }
 

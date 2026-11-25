@@ -2,14 +2,15 @@
 
 // The open screening's Screen page: your queue on the left, the paper with everyone's votes in the
 // middle, your answers to the criteria on the right, and the vote at the foot of the window. One paper
-// at a time, voted on with a key. Conflicts are settled in the same place. The page is the only thing
-// that scrolls: the paper and the answers stay in view while the queue goes by.
+// at a time, answered and voted on with keys. Conflicts are settled in the same place, with what the
+// reviewers said to each other about them. From a laptop's width the page fits the window and each of
+// the three scrolls on its own. Under that the page scrolls.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { Asterisk, ChevronLeft, ChevronRight, CircleCheck, Clock, ExternalLink, Eye, GitCompare, Hourglass, ListChecks, Lock, ModelsIcon, MoreHorizontal, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronLeft, ChevronRight, CircleCheck, Clock, ExternalLink, Eye, FileSearch, GitCompare, Hourglass, ListChecks, Lock, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented } from "@/components/settings/parts";
@@ -29,6 +30,7 @@ import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
 import { DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { Discussion, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
@@ -40,10 +42,12 @@ const QUEUE_LABEL: Record<Queue, string> = { todo: "To do", done: "Done", confli
 /** Each queue's count in the colour of what it holds: what waits for you is primary, a conflict is blue, what is done is neither. The tabs carry no icons, which would not fit the three on one line of the queue's column. */
 const QUEUE_TONE: Record<Queue, Tone> = { todo: "primary", done: "neutral", conflicts: "info" };
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
-const SHORTCUTS: Array<[string[], string, "vote"?]> = [[["I"], "Include", "vote"], [["M"], "Maybe", "vote"], [["E"], "Exclude, then the reason's key", "vote"], [["S"], "Skip to the next paper"], [["J", "→"], "Next paper"], [["K", "←"], "Previous paper"], [["Z"], "Undo the last vote", "vote"], [["?"], "Show these shortcuts"]];
+/** The keys, each with who it is for: a vote's are for whoever may vote here, an answer's for whoever answers the criteria. */
+const SHORTCUTS: Array<[string[], string, ("vote" | "answer")?]> = [[["1…9"], "Go to that criterion, and its passage"], [["Y", "N", "U"], "Answer it yes, no or unclear", "answer"], [["I"], "Include", "vote"], [["M"], "Maybe", "vote"], [["E"], "Exclude, then the reason's key", "vote"], [["S", "J", "→"], "Next paper, without a vote"], [["K", "←"], "Previous paper"], [["Z"], "Undo the last vote", "vote"], [["?"], "Show these shortcuts"]];
+const ANSWER_KEY: Record<Answer, string> = { yes: "Y", no: "N", unclear: "U" };
 const OTHER = "other";
-/** The bar's height on a wide screen. */
-const BAR_HEIGHT = "lg:h-[6.25rem]";
+/** The bar is one row of controls on a wide screen, and grows by a row where a note is being written. */
+const BAR_HEIGHT = "lg:min-h-[4.5rem]";
 /**
  * From a laptop's width Screen is a workbench that fits the window (LibraryPageShell's `fill`): the page never scrolls,
  * and each of its panes does. A pane is the product's ScrollArea with its shades, so a bar and a fade at the edge
@@ -52,14 +56,20 @@ const BAR_HEIGHT = "lg:h-[6.25rem]";
  */
 const PANE = "min-w-0 lg:min-h-0";
 /** From xl the page has three columns, the same for the bar under them: the queue, the paper, your answers. */
-const WIDE = "xl:grid-cols-[19rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[22rem_minmax(0,56rem)_minmax(28rem,1fr)]";
+const WIDE = "xl:grid-cols-[19rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[22rem_minmax(0,56rem)_minmax(28rem,1fr)]";
+/** The same columns with the queue folded away: its column closes to nothing and the paper takes its width. The tracks keep their form, so the change slides. */
+const FOLDED = "xl:grid-cols-[0rem_minmax(0,1fr)_22rem] 2xl:grid-cols-[0rem_minmax(0,56rem)_minmax(28rem,1fr)]";
+/** The bar keeps its first part while the queue is folded. From 2xl, where the paper's column has a width of its own, the vote gives up the queue's width, so it still ends where the paper does and the last vote stays under the answers. */
+const BAR_FOLDED = "2xl:grid-cols-[22rem_minmax(0,34rem)_minmax(28rem,1fr)]";
+const SLIDES = "xl:transition-[grid-template-columns] xl:duration-300 xl:ease-out motion-reduce:transition-none";
+/** On a very wide window your answers and the last vote keep a width that reads, at the start of their column. */
+const BESIDE = "2xl:max-w-[36rem]";
 /** Between lg and xl three columns leave the paper no room. There are two: the paper, with your answers beside it. The queue's tabs sit over the paper, and its list opens from the window's side. */
-const COLUMNS = `lg:max-xl:grid-cols-[minmax(0,1fr)_22rem] lg:max-xl:grid-rows-[auto_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)] ${WIDE}`;
+const COLUMNS = "lg:max-xl:grid-cols-[minmax(0,1fr)_22rem] lg:max-xl:grid-rows-[auto_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)]";
 /** The bar under them: between lg and xl, where you are and the vote. */
 const BAR_COLUMNS = `lg:grid-cols-[19rem_minmax(0,1fr)] ${WIDE}`;
 /** A filter over the queue's list: a pill as wide as the queue's column. */
 const QUEUE_FILTER = "h-8 w-full rounded-full px-3.5 text-xs";
-/** Your answers, each with its own sign. Unclear is a dash: a "?" is help. */
 const RULE_LABEL = { all: "All agree", most: "Most agree", one: "One vote" } as const;
 const inQuotes = (text: string) => `"${text}"`;
 const rank = (reviewer: Reviewer, me: string) => (reviewer.id === me ? 0 : reviewer.kind === "person" ? 1 : 2);
@@ -112,7 +122,7 @@ function Screen({ open }: { open: Open }) {
   );
   // The queue as it was when it was opened: a paper you vote on stays in its place, with your vote on it, until you change queues.
   // After a reload it is built again once the saved votes are read back, so a reload shows the same queue as Back.
-  const { ready } = useMock();
+  const { ready, folded = false, set: setMock } = useMock();
   const holding = `${ready}:${id}:${queue}:${order}:${open.me}:${find.trim().toLowerCase()}:${voted}`;
   const [held, setHeld] = useState<{ of: string; ids: string[] }>(() => ({ of: holding, ids: listed(queue) }));
   if (held.of !== holding) setHeld({ of: holding, ids: listed(queue) });
@@ -170,10 +180,17 @@ function Screen({ open }: { open: Open }) {
   const [listing, setListing] = useState(false);
   const [answers, setAnswers] = useState<Record<string, Record<string, Answer>>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue }>>([]);
+  const [history, setHistory] = useState<Array<{ paper: Paper; decision: Decision; reason?: string; noted: boolean; before: Vote | null; resolved: boolean; queue: Queue; at: number }>>([]);
   const last = history.findLast((one) => one.queue === queue) ?? null;
   const [shown, setShown] = useState<{ reviewer: string; criterion: string } | null>(null);
   const [translated, setTranslated] = useState(false);
+  // The criterion being looked at on the open paper: its passage opens under its question and is marked in the abstract, and Y, N and U answer it. It belongs to its paper, so another paper starts with none.
+  const [lit, setLit] = useState<{ paper: string; key: string } | null>(null);
+  // On a phone the paper is dragged sideways to vote: how far it has been dragged shows which vote it would cast.
+  const swipe = useDragControls();
+  const dragged = useMotionValue(0);
+  const includeShows = useTransform(dragged, [24, 110], [0, 1]);
+  const excludeShows = useTransform(dragged, [-110, -24], [1, 0]);
 
   const resolving = queue === "conflicts";
   const mine = paper ? open.myVote(paper) : undefined;
@@ -198,7 +215,7 @@ function Screen({ open }: { open: Open }) {
       setReasonFor(null);
       return setWriting(paper.id);
     }
-    setHistory((all) => [...all, { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue }]);
+    setHistory((all) => [...all, { paper, decision, reason, noted: Boolean(note), before: resolving ? null : (mine ?? null), resolved: resolving, queue, at: Date.now() }]);
     if (resolving) open.resolve(paper, decision, note, reason);
     // The answers given before stay: a new vote adds to them, and a criterion named as the reason becomes a no.
     else open.vote(paper, { decision, answers: { ...mine?.answers, ...answers[paper.id], ...(reason && criteria.some((c) => c.key === reason) ? { [reason]: "no" as const } : {}) }, reason, note, at: Date.now() });
@@ -209,11 +226,11 @@ function Screen({ open }: { open: Open }) {
       if (next >= 0) go(next);
     }
   };
-  const answerIt = (criterion: string, answer: Answer) => {
+  const answerIt = (criterion: string, answer: Answer, keep = false) => {
     if (!paper) return;
-    // A second press on the chosen answer takes it back. What is shown is what was set here and, under it, what the vote holds, so both are counted.
+    // A second press on the chosen answer takes it back. A key only ever sets it: pressed twice, the answer stays. What is shown is what was set here and, under it, what the vote holds, so both are counted.
     const given = { ...(resolving ? undefined : mine?.answers), ...answers[paper.id] };
-    if (given[criterion] === answer) delete given[criterion];
+    if (given[criterion] === answer && !keep) delete given[criterion];
     else given[criterion] = answer;
     setAnswers((all) => ({ ...all, [paper.id]: given }));
     // On a paper you have voted on, the answer joins the vote at once.
@@ -244,7 +261,14 @@ function Screen({ open }: { open: Open }) {
       const key = event.key.toLowerCase();
       // Inside a group of choices the arrow keys move between the choices, as they do everywhere.
       if (key.startsWith("arrow") && target?.closest("[role=radiogroup]")) return;
-      if (key === "i") press("include");
+      const numbered = /^[1-9]$/.test(key) ? criteria[Number(key) - 1] : undefined;
+      if (numbered) light(numbered);
+      else if ((key === "y" || key === "n" || key === "u") && toAnswer) {
+        answerIt(toAnswer.key, key === "y" ? "yes" : key === "n" ? "no" : "unclear", true);
+        // On to the next one still unanswered, so a paper's criteria are a run of keys. With a passage open, the next one's opens in its place. With none open, none opens: the keys then answer the first criterion still unanswered.
+        const next = criteria.slice(criteria.indexOf(toAnswer) + 1).find((criterion) => given[criterion.key] === undefined);
+        if (current) setLit(next && paper ? { paper: paper.id, key: next.key } : null);
+      } else if (key === "i") press("include");
       else if (key === "m") press("maybe");
       else if (key === "e") press("exclude");
       else if (key === "z") undo();
@@ -255,14 +279,29 @@ function Screen({ open }: { open: Open }) {
       event.preventDefault();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers close over this render's state, and the listener is renewed with it
-    [at, items, history, answers, notes, advance, votes, settled, queue, mayDecide],
+    [at, items, history, answers, notes, advance, votes, settled, queue, mayDecide, lit, translated, tablet],
   );
   useEffect(() => {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onKey]);
 
-  const given = paper && !resolving ? { ...mine?.answers, ...answers[paper.id] } : {};
+  const given: Record<string, Answer> = paper && !resolving ? { ...mine?.answers, ...answers[paper.id] } : {};
+  const current = paper && lit?.paper === paper.id ? criteria.find((criterion) => criterion.key === lit.key) : undefined;
+  // The criterion Y, N and U answer: the one being looked at, or the first still unanswered.
+  const toAnswer = answering ? (current ?? criteria.find((criterion) => given[criterion.key] === undefined)) : undefined;
+  // A criterion has a passage where the abstract is on the page in the language the criteria are written in: the sentence that speaks to it, as the models quote it.
+  const readable = paper ? paper.sentences.length > 0 && !(paper.original && !translated) : false;
+  const sentenceOf = (criterion: Criterion) => (paper && readable ? Math.min(criteria.indexOf(criterion), paper.sentences.length - 1) : -1);
+  /** Looks at a criterion, or away from it when it is the one being looked at. Where the paper has a pane of its own, its sentence is brought into view there. Under that width the passage under the question is the sentence, and the page stays on the answers. */
+  const light = (criterion: Criterion) => {
+    if (!paper) return;
+    const off = current === criterion;
+    setLit(off ? null : { paper: paper.id, key: criterion.key });
+    setShown(null);
+    const sentence = sentenceOf(criterion);
+    if (!off && sentence >= 0 && !tablet) requestAnimationFrame(() => [...document.querySelectorAll<HTMLElement>(`[data-sentence="${sentence}"]`)].find((one) => one.getClientRects().length)?.scrollIntoView({ block: "nearest" }));
+  };
   const pointsTo = Object.keys(given).length ? decide(given, criteria) : null;
   const failing = pointsTo?.reason ? criteria.find((criterion) => criterion.key === pointsTo.reason) : criteria.find((criterion) => criterion.must && given[criterion.key] === "unclear");
   // The vote your answers lead to, once they say why: a must-have answered No or Unclear, or every must-have met. Its button is outlined only then, with the line that explains it.
@@ -270,7 +309,7 @@ function Screen({ open }: { open: Open }) {
   const against = mine && pointsTo && pointsTo.decision !== mine.decision && (pointsTo.decision === "exclude" || mine.decision === "exclude");
   const quoting = paper && shown && visible ? cast.find((one) => one.reviewer.id === shown.reviewer) : undefined;
   const quotedCriterion = quoting ? criteria.find((c) => c.key === shown!.criterion) : undefined;
-  const quotedSentence = quotedCriterion ? criteria.indexOf(quotedCriterion) : -1;
+  const quotedSentence = current ? sentenceOf(current) : quotedCriterion ? criteria.indexOf(quotedCriterion) : -1;
   const source = paper ? screening.sources.find((one) => one.id === paper.source) : undefined;
   const fromSource = source ? papers.filter((one) => one.source === source.id).length : 0;
   // What your last vote did: put the paper in conflict, or went against what others voted.
@@ -283,6 +322,16 @@ function Screen({ open }: { open: Open }) {
   // What the counter says: how many are left to do, or where you are among the ones done.
   const left = resolving ? conflicts.length : toDo.length;
   const narrowed = Boolean(find.trim()) || (queue === "done" && voted !== "any");
+  // How long what is left will take: this sitting's own pace once three votes show it (the middle gap between them), and a usual pace until then.
+  const gaps = history.slice(1).map((one, i) => (one.at - history[i]!.at) / 1000).filter((seconds) => seconds < 300).sort((a, b) => a - b);
+  const pace = gaps.length >= 2 ? Math.max(8, gaps[Math.floor(gaps.length / 2)]!) : 45;
+  const minutes = Math.round((left * pace) / 60);
+  const timeLeft = mayDecide && queue !== "done" && left > 0 ? (minutes < 1 ? "under a minute" : minutes < 90 ? `about ${minutes} min` : `about ${Math.round(minutes / 60)} h`) : null;
+  // Dragging the paper casts a vote only where a vote is still to cast, on a screen that is touched.
+  const swipeable = tablet && answering && mayDecide && !mine && Boolean(paper) && writing !== paper?.id;
+  const hasNote = Boolean(paper && (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim());
+  // The note's field is open when it was asked for, when it holds a note, and always for the reason a conflict is settled with.
+  const noteOpen = resolving || noting || hasNote;
   const openPaper = (one: Paper) => go(items.indexOf(one));
 
   const tabs = (
@@ -305,6 +354,8 @@ function Screen({ open }: { open: Open }) {
     const result = settled[one.id]!;
     // The list is kept as it was opened, so a paper you have dealt with stays in its place. It is dimmed: voted on in To do, settled in Conflicts, or no longer the vote Done is narrowed to.
     const dealt = queue === "todo" ? Boolean(vote) : queue === "conflicts" ? result.result !== "conflict" : voted !== "any" && vote?.decision !== voted;
+    const said = open.thread(one);
+    const asksMe = said.at(-1)?.to === open.me;
     return (
       <li key={one.id}>
         <button type="button" data-queue-paper={one.id} aria-current={one === paper || undefined} onClick={() => pick(one)} className={cn("flex w-full items-start gap-3 px-4 py-3 text-start transition-colors", one === paper ? "bg-primary/8" : "hover:bg-muted")}>
@@ -316,6 +367,8 @@ function Screen({ open }: { open: Open }) {
               {queue === "done" && vote ? <span className="ms-auto shrink-0">{ago(vote.at)}</span> : null}
             </span>
           </span>
+          {/* What was said about it, where anything was: lit where the last line asks the person looking. */}
+          {said.length ? <span role="img" aria-label={asksMe ? "A question for you" : `${said.length} ${said.length === 1 ? "message" : "messages"}`} className={cn("mt-0.5 flex shrink-0 items-center gap-0.5 text-xs tabular-nums", asksMe ? "font-medium text-primary" : "text-muted-foreground")}><MessagesSquare aria-hidden className="size-3.5" />{said.length}</span> : null}
           {resolving ? (
             result.result === "conflict" ? <Tally votes={votes[one.id]!.flatMap((one) => one.vote ?? [])} className="mt-0.5 shrink-0 gap-1.5" /> : result.final ? <VoteMark vote={{ decision: result.final }} who="Result" /> : null
           ) : vote ? <VoteMark vote={vote} who="Your vote" /> : null}
@@ -438,6 +491,15 @@ function Screen({ open }: { open: Open }) {
                       </div>
                     </Section>
   ) : null;
+  // What the reviewers said to each other about it, where its votes show and there is something to talk over. Drawn with the votes, in whichever of their two places is on the page.
+  const discussion = paper && visible && discussed(open, paper) ? <Discussion open={open} paper={paper} /> : null;
+  // The note's field: the one line on a wide screen, or the two on a narrow one.
+  const focusNote = () => requestAnimationFrame(() => [...document.querySelectorAll<HTMLElement>("[data-note]")].find((one) => one.getClientRects().length)?.focus());
+  // The note's button opens its field and closes it again. A field that holds a note stays: the button then takes the keyboard to it.
+  const toggleNote = () => {
+    if (!hasNote) setNoting(!noting);
+    if (hasNote || !noting) focusNote();
+  };
   // What your answers say before, or against, your vote. It sits with the answers from a laptop's width and over the vote buttons under it, where the answers can be a screen away from the button they outline.
   const hint = against && mine ? (
     <Panel tone="warning" className="px-3 py-2.5 text-xs ink-warning">You voted {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{failing ? `: you answered ${given[failing.key] === "no" ? "No" : "Unclear"} to criterion ${criteria.indexOf(failing) + 1}, a must-have` : ""}.</Panel>
@@ -449,12 +511,16 @@ function Screen({ open }: { open: Open }) {
 
   return (
     <>
-      <div className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS)}>
+      <div className={cn("grid grid-cols-1 max-lg:pb-64 lg:min-h-0 lg:flex-1 lg:divide-x lg:divide-border-subtle", COLUMNS, SLIDES, folded ? FOLDED : WIDE)}>
         {/* The queue: from xl a pane of its own. Its tabs, search and filters stay at its top and its pages at its foot, and the list between them scrolls. */}
         {/* With no paper to show, the tabs have the whole width between lg and xl: there are no answers to sit beside. */}
-        <div className={cn("border-b border-border-subtle lg:max-xl:col-start-1 lg:max-xl:row-start-1 xl:flex xl:min-h-0 xl:flex-col xl:border-b-0", !paper && "lg:max-xl:col-span-2 lg:max-xl:border-e-0")}>
+        {/* Folded away from xl, its column closes to nothing and it leaves the page and the keyboard's path once it has closed. What it holds keeps its width while the column slides. */}
+        <div className={cn("border-b border-border-subtle lg:max-xl:col-start-1 lg:max-xl:row-start-1 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden xl:border-b-0 xl:transition-[visibility] xl:duration-300", folded && "xl:invisible xl:border-e-0", !paper && "lg:max-xl:col-span-2 lg:max-xl:border-e-0")}>
+          <div className="xl:flex xl:min-h-0 xl:w-[19rem] xl:flex-1 xl:flex-col 2xl:w-[22rem]">
           <div className="space-y-2 p-3 lg:max-xl:flex lg:max-xl:items-center lg:max-xl:justify-between lg:max-xl:gap-3 lg:max-xl:space-y-0 lg:max-xl:px-8">
             <div className="lg:max-xl:w-[18rem]">{tabs}</div>
+            {/* A reviewer asked the person looking about a paper: it opens that paper, where the question is. */}
+            {open.asked.length ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: open.asked[0]!.id })} tone="primary" icon={MessagesSquare} className="w-fit">{open.asked.length} {open.asked.length === 1 ? "question" : "questions"} for you</LinkChip> : null}
             {/* Below xl the queue's list has no column of its own. It opens over the page, with its search and filters: from the foot on a phone, from the side on a wider screen. While a search or a filter narrows the queue the button stays, so the search can be changed. */}
             {items.length > 1 || narrowed ? <Button variant="outline" size="sm" className="w-full lg:max-xl:w-auto xl:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
             <Sheet open={listing} onOpenChange={setListing}>
@@ -481,6 +547,7 @@ function Screen({ open }: { open: Open }) {
             </ul>
           </ScrollArea>
           {pager("hidden border-t border-border-subtle px-3 py-2 xl:flex")}
+          </div>
         </div>
 
         {!paper ? (
@@ -494,8 +561,30 @@ function Screen({ open }: { open: Open }) {
             <ScrollArea shades className={cn("lg:max-xl:col-start-1 lg:max-xl:row-start-2", PANE)}>
               <div ref={article} tabIndex={-1} role="region" aria-label="Paper" className={cn("outline-none", BELOW_HEADER)}>
                 <AnimatePresence mode="wait" initial={false}>
-                  <motion.div key={paper.id} ref={startAtTop} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className="max-w-[46rem] space-y-8 p-5 sm:p-8 2xl:max-w-none">
-                    <article className="space-y-4">
+                  <motion.div key={paper.id} ref={startAtTop} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className={cn("max-w-[46rem] space-y-8 p-5 sm:p-8 2xl:max-w-none", folded && "xl:max-w-none")}>
+                    {/* On a touch screen the paper is dragged to vote: right to include, left to exclude, which asks its reason as the button does. A finger that moves up or down scrolls the page as before. */}
+                    <motion.article
+                      className="relative space-y-4"
+                      drag={swipeable ? "x" : false}
+                      dragControls={swipe}
+                      dragListener={false}
+                      dragDirectionLock
+                      dragSnapToOrigin
+                      dragElastic={0.5}
+                      dragConstraints={{ left: 0, right: 0 }}
+                      style={{ x: dragged, touchAction: "pan-y" }}
+                      onPointerDown={(event) => { if (swipeable && event.pointerType === "touch") swipe.start(event); }}
+                      onDragEnd={(_, info) => {
+                        if (info.offset.x > 110 || info.velocity.x > 700) press("include");
+                        else if (info.offset.x < -110 || info.velocity.x < -700) press("exclude");
+                      }}
+                    >
+                      {swipeable ? (
+                        <>
+                          <motion.span aria-hidden style={{ opacity: includeShows }} className="pointer-events-none absolute start-0 top-0 z-10 -rotate-6 rounded-lg border-2 border-success bg-card px-2 py-0.5 text-sm font-bold ink-success">Include</motion.span>
+                          <motion.span aria-hidden style={{ opacity: excludeShows }} className="pointer-events-none absolute end-0 top-0 z-10 rotate-6 rounded-lg border-2 border-destructive bg-card px-2 py-0.5 text-sm font-bold ink-destructive">Exclude</motion.span>
+                        </>
+                      ) : null}
                       <h2 className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
                       <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -518,15 +607,15 @@ function Screen({ open }: { open: Open }) {
                       ) : (
                         <div className="space-y-3">
                           <p className="text-[0.95rem] leading-7">
-                            {paper.sentences.map((sentence, i) => <Sentence key={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} />)}
+                            {paper.sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} />)}
                           </p>
                           {paper.original ? <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setTranslated(false)}><TranslateIcon />Translated from {paper.original.language}. Show the original</Button> : null}
                         </div>
                       )}
-                    </article>
+                    </motion.article>
 
                     {/* Under a laptop's width the votes follow your answers, further down: the questions come first there. */}
-                    <div className="max-lg:hidden">{everyonesVotes}</div>
+                    <div className="space-y-8 max-lg:hidden">{everyonesVotes}{discussion}</div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -534,11 +623,11 @@ function Screen({ open }: { open: Open }) {
 
             {/* Your answers to the criteria: a pane of their own. Each paper has its own, so another paper's start at their top. */}
             <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:max-xl:col-start-2 lg:max-xl:row-span-2 lg:max-xl:row-start-1", PANE)}>
-              <div className="p-5">
+              <div className={cn("p-5", BESIDE)}>
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
                   help={
-                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Highlighted</mark>Words from the criteria</HelpFact></>}>
+                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={FileSearch}>Shows the passage that speaks to it</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Highlighted</mark>Words from the criteria</HelpFact></>}>
                       {answering ? "Answering is optional: one vote is enough. A paper that fails a must-have is excluded, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A paper that fails a must-have is excluded."}
                     </Help>
                   }
@@ -548,28 +637,51 @@ function Screen({ open }: { open: Open }) {
                       {criteria.map((criterion, i) => {
                         const answered = answers[paper.id]?.[criterion.key] ?? (resolving ? undefined : mine?.answers[criterion.key]);
                         const split = cast.flatMap((one) => one.vote?.answers[criterion.key] ?? []);
+                        const passage = sentenceOf(criterion);
                         return (
-                          <li key={criterion.key} className="space-y-2.5 px-3 py-3">
-                            <p className="flex gap-2.5 text-sm leading-5">
-                              <span className="w-4 shrink-0 tabular-nums text-muted-foreground">{i + 1}</span>
-                              <span className="min-w-0"><CriterionText text={criterion.text} must={criterion.must} /></span>
-                            </p>
+                          // The rows' parts keep their own room, with no gap between them: the passage opens and closes from nothing.
+                          <li key={criterion.key} className={cn("px-3 py-3 transition-colors duration-200", current === criterion && "bg-primary/5")}>
+                            <div className="flex items-start gap-2.5 text-sm leading-5">
+                              {/* The number is the criterion's key. From a laptop's width, where there are keys, the one Y, N and U answer wears it as a key. */}
+                              <span className={cn("flex h-5 w-4 shrink-0 items-center justify-center rounded text-xs tabular-nums text-muted-foreground", toAnswer === criterion && "lg:bg-primary/15 lg:font-semibold lg:text-primary lg:outline lg:outline-1 lg:outline-offset-1 lg:outline-primary/30")}>{i + 1}</span>
+                              <span className="min-w-0 flex-1">
+                                <CriterionText text={criterion.text} must={criterion.must} />
+                                {/* What counts and what doesn't, where its author wrote it down. */}
+                                {criterion.note ? <Help title={criterion.short} side={tablet ? undefined : "left"} className="ms-1 align-[-0.2em]" facts={criterion.must ? <HelpFact icon={Asterisk}>Must-have</HelpFact> : undefined}>{criterion.note}</Help> : null}
+                              </span>
+                              {passage >= 0 ? (
+                                <TooltipHint label={current === criterion ? "Hide the passage" : "Show the passage"}>
+                                  <button type="button" aria-pressed={current === criterion} aria-label={`${current === criterion ? "Hide" : "Show"} the passage for criterion ${i + 1}`} onClick={() => light(criterion)} className={cn("-my-0.5 flex size-6 shrink-0 items-center justify-center rounded-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50", current === criterion ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                                    <FileSearch className="size-3.5" />
+                                  </button>
+                                </TooltipHint>
+                              ) : null}
+                            </div>
+                            <AnimatePresence initial={false}>
+                              {current === criterion && passage >= 0 ? (
+                                <motion.div key="passage" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
+                                  <p className="ms-6.5 mt-2.5 flex gap-2 rounded-xl bg-warning/12 p-2.5 text-sm leading-5"><Quote aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{paper.sentences[passage]}</span></p>
+                                </motion.div>
+                              ) : null}
+                            </AnimatePresence>
                             {answering ? (
-                              <div role="radiogroup" aria-label={`Your answer to criterion ${i + 1}`} className="flex flex-wrap gap-1.5 ps-6.5">
+                              <div role="radiogroup" aria-label={`Your answer to criterion ${i + 1}`} className="mt-2.5 grid grid-cols-3 gap-1.5 ps-6.5">
                                 {ANSWERS.map((answer) => {
                                   const { icon: Icon, label, tone } = ANSWER_SIGN[answer];
                                   const on = answered === answer;
                                   return (
-                                    <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", TONE[tone].chip) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
-                                      <Icon className={cn("size-3.5", !on && TONE[tone].ink)} />
-                                      {label}
+                                    <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-8 min-w-0 items-center justify-center gap-1 rounded-md border px-1.5 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", TONE[tone].chip) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                                      {/* On the criterion the keys answer, from a laptop's width, each answer's key stands where its sign does, in its sign's colour: the row says which key gives which answer, and nothing gets wider. */}
+                                      <Icon className={cn("size-3.5 shrink-0", !on && TONE[tone].ink, toAnswer === criterion && "lg:hidden")} />
+                                      {toAnswer === criterion ? <Kbd className={cn("max-lg:hidden", on ? "border-current/30 bg-transparent text-current" : TONE[tone].ink)}>{ANSWER_KEY[answer]}</Kbd> : null}
+                                      <span className="truncate">{label}</span>
                                     </button>
                                   );
                                 })}
                               </div>
                             ) : visible && split.length ? (
                               // Read, not answered: how the reviewers answered it, so where they differ shows beside the paper and not only in the table under it.
-                              <div className="flex flex-wrap items-center gap-1.5 ps-6.5">
+                              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 ps-6.5">
                                 {ANSWERS.map((answer) => {
                                   const count = split.filter((one) => one === answer).length;
                                   const { icon: Icon, label, tone } = ANSWER_SIGN[answer];
@@ -591,7 +703,7 @@ function Screen({ open }: { open: Open }) {
                   {hint ? <div className="max-lg:hidden">{hint}</div> : null}
                 </Section>
               </div>
-              <div className="border-t border-border-subtle p-5 sm:p-8 lg:hidden">{everyonesVotes}</div>
+              <div className="space-y-8 border-t border-border-subtle p-5 sm:p-8 lg:hidden">{everyonesVotes}{discussion}</div>
             </ScrollArea>
           </>
         )}
@@ -600,54 +712,71 @@ function Screen({ open }: { open: Open }) {
       {paper ? (
         /* The vote stays at the foot of the window: under the panes from a laptop's width, where it is the workbench's last row. From xl it has three parts under the three columns: where you are in the queue, the vote, and the last vote with its way back. Under xl the last vote's way back sits with where you are. On a phone the bar is fixed to the foot, its last row clear of the assistant's button. */
         <ActionBar className="max-lg:fixed max-lg:inset-x-0 max-lg:z-30 lg:shrink-0">
-          <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS)}>
+          <div className={cn("flex flex-col gap-2 px-3 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:grid lg:items-stretch lg:gap-0 lg:p-0", BAR_HEIGHT, BAR_COLUMNS, SLIDES, folded && BAR_FOLDED)}>
             {/* Where you are */}
-            <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-2 lg:px-4">
-              {/* On a phone the queue's tab already counts what is left, and the row keeps its room for the last vote and the note. */}
-              <span className="me-1 text-xs tabular-nums text-muted-foreground max-sm:hidden">{queue === "done" || !mayDecide ? `${at + 1} of ${items.length}` : `${left.toLocaleString("en-GB")} left`}</span>
+            <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
+              {/* From xl the queue has a pane of its own, which this folds away and brings back. It is here in both states, so it never moves from under the pointer. */}
+              <TooltipHint label={folded ? "Show the queue" : "Hide the queue"}>
+                <Button variant="ghost" size="icon" className="-ms-1.5 size-7 text-muted-foreground max-xl:hidden" aria-label={folded ? "Show the queue" : "Hide the queue"} aria-expanded={!folded} onClick={() => setMock({ folded: !folded })}>{folded ? <PanelLeftOpen /> : <PanelLeft />}</Button>
+              </TooltipHint>
+              {/* How many are left, and from xl how long they take at the pace of this sitting. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
+              <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
+                <span className="font-medium">{queue === "done" || !mayDecide ? `${at + 1} of ${items.length}` : `${left.toLocaleString("en-GB")} left`}</span>
+                {timeLeft ? <span className="text-muted-foreground max-xl:hidden">{timeLeft}</span> : null}
+              </span>
               <TooltipHint label="Previous paper"><Button variant="ghost" size="icon" className="size-7" aria-label="Previous paper" disabled={at <= 0} onClick={() => go(at - 1)}><ChevronLeft /></Button></TooltipHint>
               <TooltipHint label="Next paper"><Button variant="ghost" size="icon" className="size-7" aria-label="Next paper" disabled={at >= items.length - 1} onClick={() => go(at + 1)}><ChevronRight /></Button></TooltipHint>
+              {/* Under xl the last vote has no part of the bar to itself: its way back sits here. */}
+              {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
+              {last ? <span className="flex items-center gap-1 xl:hidden"><TooltipHint label="Undo the last vote"><Button variant="ghost" size="icon" className="size-8" aria-label="Undo the last vote" onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? "Settled as" : "Your last vote"} />{last.noted ? <PenLine role="img" aria-label="Saved with a note" className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
-                <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-1 h-7 gap-1.5 px-2 text-xs text-muted-foreground max-lg:hidden">Shortcuts<Kbd>?</Kbd></Button></PopoverTrigger>
+                <TooltipHint label="Shortcuts">
+                  {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
+                  <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-auto h-7 gap-1.5 px-1.5 text-xs text-muted-foreground max-lg:hidden" aria-label="Shortcuts"><span className="max-2xl:hidden">Shortcuts</span><Kbd>?</Kbd></Button></PopoverTrigger>
+                </TooltipHint>
                 <PopoverContent align="start" side="top" className="w-80 space-y-2 p-3">
                   <p className="text-sm font-semibold">Shortcuts</p>
-                  {SHORTCUTS.filter(([, , vote]) => mayDecide || !vote).map(([keys, what]) => (
+                  {SHORTCUTS.filter(([, , who]) => !who || (who === "vote" ? mayDecide : answering)).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
-                      <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? "or" : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
+                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? "or" : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
                       <span>{what}</span>
                     </p>
                   ))}
                 </PopoverContent>
               </Popover>
-              {/* Under xl the last vote has no part of the bar to itself: its way back sits here. */}
-              {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
-              {last ? <span className="flex items-center gap-1 xl:hidden"><TooltipHint label="Undo the last vote"><Button variant="ghost" size="icon" className="size-8" aria-label="Undo the last vote" onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? "Settled as" : "Your last vote"} />{last.noted ? <PenLine role="img" aria-label="Saved with a note" className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
               {mayDecide && queue !== "done" ? (
-                <label className="flex basis-full items-center justify-between gap-2 ps-1 text-xs text-muted-foreground max-lg:hidden">
+                <label className="flex basis-full items-center justify-between gap-2 text-xs text-muted-foreground max-lg:hidden">
                   Next paper after each vote
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a vote" />
                 </label>
               ) : null}
               {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="xl:hidden">Now in Conflicts</LinkChip> : null}
-              {/* The note's field takes a row of a small screen, so it opens from its own button there. */}
+              {/* The note's field takes a row of a small screen, so it opens from its own button there. The two stay together: a very narrow phone moves both to a second line. */}
               <span className="ms-auto flex items-center gap-1 lg:hidden">
-              {mayDecide && !resolving ? <Button variant={noting ? "secondary" : "ghost"} size="sm" aria-pressed={noting} className="h-8 gap-1.5 px-2 text-xs" onClick={() => setNoting(!noting)}><PenLine />Note</Button> : null}
-              {mayDecide && queue !== "done" ? (
-                <Popover>
-                  <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="More for this paper"><MoreHorizontal /></Button></PopoverTrigger>
-                  <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
-                    <label className="flex items-center gap-3 text-sm">
-                      <span className="min-w-0 flex-1">Next paper after each vote</span>
-                      <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a vote" />
-                    </label>
-                  </PopoverContent>
-                </Popover>
-              ) : null}
+                {mayDecide && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />Note</Button> : null}
+                {mayDecide && queue !== "done" ? (
+                  <Popover>
+                    <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="More for this paper"><MoreHorizontal /></Button></PopoverTrigger>
+                    <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
+                      <label className="flex items-center gap-3 text-sm">
+                        <span className="min-w-0 flex-1">Next paper after each vote</span>
+                        <Switch checked={advance} onCheckedChange={setAdvance} aria-label="Go to the next paper after a vote" />
+                      </label>
+                      {/* What a drag of the paper does, on a paper that can be dragged: one still to vote on. */}
+                      {swipeable ? (
+                        <div className="flex flex-wrap gap-1.5 border-t border-border-subtle pt-3">
+                          <StateChip tone="success" icon={ArrowRight}>Drag the paper right to include</StateChip>
+                          <StateChip tone="destructive" icon={ArrowLeft}>Drag it left to exclude</StateChip>
+                        </div>
+                      ) : null}
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
               </span>
             </div>
 
             {/* The vote */}
-            <div className="flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 2xl:max-w-none">
+            <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 2xl:max-w-none">
               {!mayDecide ? (
                 <p className="flex items-center gap-2 rounded-xl bg-inset px-3 py-3 text-sm text-muted-foreground">
                   <Eye className="size-4 shrink-0" />
@@ -671,61 +800,73 @@ function Screen({ open }: { open: Open }) {
                       {!resolving && conflicts.length ? <Button asChild size="sm" className="shrink-0" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} {conflicts.length} {conflicts.length === 1 ? "conflict" : "conflicts"}</NextLink></Button> : null}
                       {resolving && toDo.length ? <Button asChild size="sm" className="shrink-0"><NextLink href={screenHref(id)}><ListChecks />Screen {toDo.length} {toDo.length === 1 ? "paper" : "papers"}</NextLink></Button> : null}
                     </div>
-                  ) : (
-                    <div className={cn("flex items-center gap-3", !noting && !resolving && "max-lg:hidden")}>
-                      {resolving ? (
-                        <span className="flex shrink-0 items-center gap-1 text-xs font-medium">
-                          Settle this conflict
-                          <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name="Your own vote">{DECISION_LABEL[mine.decision]}</Named></HelpFact> : null}<HelpFact><Named name="Rule">{RULE_LABEL[screening.rule.settle]}</Named></HelpFact></>}>
-                            The reviewers split on this paper. Your vote becomes its result, whatever they voted. Maybe keeps it open.
-                          </Help>
-                        </span>
-                      ) : null}
-                      <Input value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
-                      {noting || resolving ? <Textarea rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" autoFocus={noting && !resolving} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" /> : null}
-                    </div>
-                  )}
-                  {/* Slides in over the buttons, so the bar grows without a jump. */}
+                  ) : null}
+                  {/* The note, and for a conflict the reason it is settled with: a field over the buttons, open when asked for, when it holds a note, and always for a conflict. It slides open, so the bar grows without a jump. */}
+                  <AutoHeight className="-mb-2">
+                    {noteOpen ? (
+                      <div className="flex items-center gap-3 pb-2">
+                        {resolving ? (
+                          <span className="flex shrink-0 items-center gap-1 text-xs font-medium">
+                            Settle this conflict
+                            <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name="Your own vote">{DECISION_LABEL[mine.decision]}</Named></HelpFact> : null}<HelpFact><Named name="Rule">{RULE_LABEL[screening.rule.settle]}</Named></HelpFact></>}>
+                              The reviewers split on this paper. Your vote becomes its result, whatever they voted. Maybe keeps it open.
+                            </Help>
+                          </span>
+                        ) : null}
+                        <Input data-note value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Textarea data-note rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others (optional)"} aria-label="Note" className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
+                      </div>
+                    ) : null}
+                  </AutoHeight>
+                  {/* On a narrow screen what your answers point to sits over the buttons it is about. */}
                   <AutoHeight className="-mb-2 lg:hidden">{hint ? <div className="pb-2">{hint}</div> : null}</AutoHeight>
-                  <div className="grid grid-cols-3 gap-2">
-                    {voteButton("include")}
-                    {voteButton("maybe")}
-                    {tablet ? (
-                      voteButton("exclude")
-                    ) : (
-                      <DropdownMenu open={reasonFor === paper.id} onOpenChange={(next) => (next ? press("exclude") : setReasonFor(null))}>
-                        <DropdownMenuTrigger asChild>{voteButton("exclude")}</DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="top"
-                          align="end"
-                          sideOffset={8}
-                          className="w-80 p-1.5"
-                          // After a reason the next paper opens: the keyboard stays with the page, not on Exclude.
-                          onCloseAutoFocus={(event) => event.preventDefault()}
-                          onKeyDown={(event) => {
-                            const reason = reasons.find((one) => one.hotkey.toLowerCase() === event.key.toLowerCase());
-                            if (!reason || event.metaKey || event.ctrlKey || event.altKey) return;
-                            event.preventDefault();
-                            decideOn("exclude", reason.key);
-                          }}
-                        >
-                          <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Why exclude it?</DropdownMenuLabel>
-                          {reasons.map((reason) => (
-                            <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
-                              <span className="min-w-0 flex-1">{reason.label}</span>
-                              <Kbd>{reason.hotkey}</Kbd>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                  <div className="flex items-center gap-2">
+                    {/* On a wide screen the note's button is with the vote it goes with. Where the three votes need the room, beside a narrow paper, it is its pen alone. */}
+                    {!resolving ? (
+                      <TooltipHint label={noteOpen ? "Your note, saved with your vote" : "Add a note to your vote"}>
+                        <Button type="button" variant={noteOpen ? "secondary" : "outline"} aria-pressed={noteOpen} aria-label="Note" className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-sm max-lg:hidden @max-[30rem]/vote:w-10 @max-[30rem]/vote:px-0" onClick={toggleNote}><PenLine /><span className="@max-[30rem]/vote:hidden">Note</span></Button>
+                      </TooltipHint>
+                    ) : null}
+                    <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+                      {voteButton("include")}
+                      {voteButton("maybe")}
+                      {tablet ? (
+                        voteButton("exclude")
+                      ) : (
+                        <DropdownMenu open={reasonFor === paper.id} onOpenChange={(next) => (next ? press("exclude") : setReasonFor(null))}>
+                          <DropdownMenuTrigger asChild>{voteButton("exclude")}</DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            side="top"
+                            align="end"
+                            sideOffset={8}
+                            className="w-80 p-1.5"
+                            // After a reason the next paper opens: the keyboard stays with the page, not on Exclude.
+                            onCloseAutoFocus={(event) => event.preventDefault()}
+                            onKeyDown={(event) => {
+                              const reason = reasons.find((one) => one.hotkey.toLowerCase() === event.key.toLowerCase());
+                              if (!reason || event.metaKey || event.ctrlKey || event.altKey) return;
+                              event.preventDefault();
+                              decideOn("exclude", reason.key);
+                            }}
+                          >
+                            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Why exclude it?</DropdownMenuLabel>
+                            {reasons.map((reason) => (
+                              <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
+                                <span className="min-w-0 flex-1">{reason.label}</span>
+                                <Kbd>{reason.hotkey}</Kbd>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                 </>
               )}
             </div>
 
-            {/* The last vote, the paper it was on, and its way back. */}
-            <div className="flex min-w-0 flex-col justify-center gap-1 px-4 py-3 text-xs text-muted-foreground max-xl:hidden">
+            {/* The last vote and its way back, then the paper it was on and what the vote led to. */}
+            <div className={cn("flex min-w-0 flex-col justify-center gap-1 px-4 py-2 text-xs text-muted-foreground max-xl:hidden", BESIDE)}>
               {last ? (
                 <>
                   <div className="flex min-w-0 items-center gap-2">
@@ -734,18 +875,22 @@ function Screen({ open }: { open: Open }) {
                     {last.decision === "exclude" && last.reason && criteria.some((criterion) => criterion.key === last.reason) ? <Reason reason={last.reason} criteria={criteria} className="shrink text-foreground" /> : null}
                     <Button variant="ghost" size="xs" className="shrink-0" onClick={undo}><Undo2 />Undo<Kbd>Z</Kbd></Button>
                   </div>
-                  {last.paper.id !== paper.id ? (
-                    <TooltipHint label={last.paper.title} onlyWhenClipped>
-                      <button type="button" onClick={() => openPaper(last.paper)} className="min-w-0 truncate text-start text-foreground hover:underline">{inQuotes(last.paper.title)}</button>
-                    </TooltipHint>
+                  {last.paper.id !== paper.id || madeConflict || differ ? (
+                    <div className="flex min-w-0 items-center gap-2">
+                      {last.paper.id !== paper.id ? (
+                        <TooltipHint label={last.paper.title} onlyWhenClipped>
+                          <button type="button" onClick={() => openPaper(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline">{inQuotes(last.paper.title)}</button>
+                        </TooltipHint>
+                      ) : <span className="flex-1" />}
+                      {madeConflict ? (
+                        <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="shrink-0">Now in Conflicts</LinkChip>
+                      ) : differ ? (
+                        // Where the paper stands now says what a different vote led to: still waiting for votes, or settled by the rule.
+                        <span className="flex shrink-0 items-center gap-1.5">{differ} voted differently<ResultChip result={settled[last.paper.id]!.result} /></span>
+                      ) : null}
+                    </div>
                   ) : null}
                 </>
-              ) : null}
-              {madeConflict && last ? (
-                <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="self-start">Now in Conflicts</LinkChip>
-              ) : differ && last ? (
-                // Where the paper stands now says what a different vote led to: still waiting for votes, or settled by the rule.
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">{differ} voted differently<ResultChip result={settled[last.paper.id]!.result} /></span>
               ) : null}
             </div>
           </div>
@@ -801,17 +946,17 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
   );
 }
 
-/** A sentence of the abstract, with the criteria's words marked, and the whole of it when a model quoted it. */
 /** Why a paper was excluded, as a chip that shows the criterion's question when pointed at. */
 function ReasonChip({ reason, criteria }: { reason: string; criteria: Criterion[] }) {
   return <QuestionName question={questionOf(reason, criteria)} label={failedLabel(reason, criteria)} className="inline-flex"><Chip><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
 
-function Sentence({ text, quoted, terms }: { text: string; quoted: boolean; terms: string[] }) {
+/** A sentence of the abstract, with the criteria's words marked, and the whole of it marked where it is the passage being looked at. */
+function Sentence({ at, text, quoted, terms }: { at: number; text: string; quoted: boolean; terms: string[] }) {
   const words = [...new Set(terms)].sort((a, b) => b.length - a.length);
   const parts = words.length ? text.split(new RegExp(`\\b(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "gi")) : [text];
   return (
-    <span className={cn("rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
+    <span data-sentence={at} className={cn("scroll-my-6 rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
       {parts.map((part, i) => (i % 2 ? <mark key={i} className="rounded-sm bg-primary/15 text-foreground">{part}</mark> : part))}{" "}
     </span>
   );
