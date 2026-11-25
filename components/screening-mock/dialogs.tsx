@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
-import { Help, LinkChip, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
+import { EmptyNote, Help, LinkChip, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
 import { credits, type Open } from "./store";
 
 const save = (name: string, type: string, text: string) => {
@@ -470,7 +470,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
                   </Button>
                 </div>
               ) : (
-                <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">{which === "mine" ? "You haven't voted Include on a paper yet." : "No paper is included yet."}</p>
+                <EmptyNote>{which === "mine" ? "You haven't voted Include on a paper yet." : "No paper is included yet."}</EmptyNote>
               )
             ) : tab === "votes" ? (
               <div className="space-y-3">

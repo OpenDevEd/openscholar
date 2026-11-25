@@ -140,6 +140,16 @@ export type Destination = { kind: "none" | "new" | "collection" | "community"; n
 
 /** Why a paper is excluded when it isn't one of the criteria: shown after them in the list of reasons. */
 export const OTHER_REASONS: Array<{ key: string; label: string }> = [{ key: "duplicate", label: "A duplicate of another paper" }, { key: "other", label: "Another reason, in the note" }];
+/**
+ * What a paper can be excluded for, in two groups, the same wherever Exclude asks why: a must-have it fails, or another
+ * reason. A nice-to-have criterion is never one: failing it doesn't exclude a paper. Each has a key for the keyboard: a
+ * must-have its own number, as far as the digits go, and another reason its first letter.
+ */
+export const excludeGroups = (criteria: Criterion[]) => {
+  const musts = criteria.flatMap((criterion, i) => (criterion.must ? [{ key: criterion.key, hotkey: i < 9 ? String(i + 1) : "" }] : []));
+  const others = OTHER_REASONS.map((reason) => ({ key: reason.key, hotkey: reason.key[0]!.toUpperCase() }));
+  return [{ name: "Which must-have does it fail?", list: musts }, { name: musts.length ? "Or another reason" : "Why exclude it?", list: others }].filter((group) => group.list.length);
+};
 /** A reason in words: the criterion's short name, or one of the others. */
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** A reason for excluding in words, for a file, a tooltip or a screen reader: the criterion that wasn't met, named as such, or one of the other reasons. On a page it is drawn, by `Reason`. */
@@ -718,6 +728,11 @@ export const activeReviewers = (screening: Screening) => screening.reviewers.fil
 export const readersOf = (screening: Pick<Screening, "reviewers" | "rule">) => {
   const people = screening.reviewers.filter((reviewer) => !reviewer.left && reviewer.kind === "person" && !reviewer.email);
   return { people, each: screening.rule.each === "all" ? people.length : Math.min(Number(screening.rule.each), people.length) };
+};
+/** Reviewers in the one order every list, row of faces and table shows them: the person looking, then the other people, then the models. Within each, the order they were added in. */
+export const inOrder = <T extends Pick<Reviewer, "id" | "kind">>(reviewers: T[], me: string) => {
+  const rank = (one: T) => (one.id === me ? 0 : one.kind === "person" ? 1 : 2);
+  return [...reviewers].sort((a, b) => rank(a) - rank(b));
 };
 /** Whether someone settles a screening's conflicts: the person its rule names, and whoever started it. */
 export const resolves = (screening: Pick<Screening, "rule" | "createdBy">, id: string) => screening.rule.resolver === id || screening.createdBy === id;

@@ -40,7 +40,7 @@ import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
-import { ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
+import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
 import { walletOf, credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
@@ -763,7 +763,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                     </AnimatePresence>
                   </div>
                 ) : (
-                  <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">No papers yet</p>
+                  <EmptyNote>No papers yet</EmptyNote>
                 )}
                 </AutoHeight>
                 {rejected.length ? (
@@ -1072,7 +1072,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
             <div className={cn(LIST, "bg-card")}>
               <AnimatePresence initial={false}>
-                {[...reviewerRows.filter(({ reviewer }) => reviewer.kind === "person"), ...reviewerRows.filter(({ reviewer }) => reviewer.kind === "model")].map(({ reviewer, gone }) => {
+                {youFirst(reviewerRows, store.viewer).map(({ reviewer, gone }) => {
                   const votes = wasOn(reviewer) || gone ? votesOf(reviewer) : 0;
                   const left = reviewer.kind === "model" ? ahead(reviewer) : Math.max(0, papers - (wasOn(reviewer) ? Math.min(saved?.reached[reviewer.id] ?? 0, papers) : 0));
                   return (

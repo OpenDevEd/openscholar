@@ -22,7 +22,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { resolves, firstName, EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
+import { inOrder, resolves, firstName, EVERY_LABEL, HOME, RESULTS, RESULT_LABEL, waitingQuestions, accessOf, activeReviewers, ago, day, growing, modelsOf, personOf, standing, workspaceOf, type Result, type Reviewer, type Screening, lookOf } from "./data";
 import { newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
@@ -235,7 +235,7 @@ export function ScreeningsIndex() {
                     const workspace = workspaceOf(screening);
                     // The workspace is named wherever it isn't the one the person looking works in.
                     const elsewhere = guest ? !(workspace.id === "theirs" && screening.createdBy === me) : workspace !== HOME;
-                    const reviewers = activeReviewers(screening);
+                    const reviewers = inOrder(activeReviewers(screening), me);
                     const total = state.papers.length;
                     const settled = total - state.counts.conflict - state.counts.waiting;
                     const resolver = screening.rule.resolver === me ? "you" : (first(personOf(screening.rule.resolver)?.name) ?? "its starter");

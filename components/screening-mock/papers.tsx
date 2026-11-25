@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { createSerializer, parseAsArrayOf, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, Quote, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -28,9 +28,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
+import { inOrder, type Criterion, firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
@@ -101,7 +101,6 @@ export function PapersPage() {
 }
 
 /** The reasons a paper can be excluded for: each criterion not met, then the others. */
-const reasonsOf = (open: Open) => [...open.screening.criteria.map((criterion) => ({ key: criterion.key, label: `${criterion.short.endsWith("…") ? criterion.text.replace(/\?$/, "") : criterion.short} not met` })), ...OTHER_REASONS];
 
 /** A reviewer's name, or a person's who settles conflicts without voting. */
 const nameOf = (open: Open, id: string) => nameOn(open.screening, id);
@@ -110,7 +109,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   const { screening, papers, votes, settled } = open;
   const id = screening.id;
   // Its reviewers, and whoever was taken off with votes that still count: a result can rest on one of those votes, so its column and its filter stay.
-  const reviewers = votingReviewers(screening);
+  const reviewers = inOrder(votingReviewers(screening), open.me);
   const criteria = screening.criteria;
   // A tab, a filter, an order or a page is a step Back returns from. Typing in the search box and going from paper to paper change the address in place.
   const [place, setPlace] = useQueryStates(PLACE, { history: "push", scroll: false });
@@ -310,7 +309,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
 
   if (!papers.length) return <p className="px-6 py-20 text-center text-sm text-muted-foreground">{open.gathering ? "Its papers are on their way. They show here as they arrive." : "This screening has no papers yet."}</p>;
 
-  const reviewerOptions = [...reviewers.filter((one) => one.id === open.me), ...reviewers.filter((one) => one.id !== open.me && one.kind === "person"), ...reviewers.filter((one) => one.kind === "model")];
+  const reviewerOptions = reviewers;
   const settles = (reviewerId: string) => resolves(screening, reviewerId);
   const countVoted = (kind: Voted) => (who ? papers.filter((paper) => votedAs(paper, who, kind)).length : 0);
   // The filters, in the row over the table and in a phone's sheet.
@@ -485,20 +484,18 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
               {conflictsPicked.length && open.canResolve ? (
                 <span className="flex items-center gap-1.5 border-s border-border-subtle ps-2">
                   <span className="text-xs text-muted-foreground">Settle {conflictsPicked.length} in conflict as</span>
-                  {DECISIONS.map((decision) => {
-                    const Icon = RESULT_STYLE[decision].icon;
-                    const look = <><Icon className={TONE[RESULT_STYLE[decision].tone].ink} />{DECISION_LABEL[decision]}</>;
-                    return decision === "exclude" ? (
+                  {DECISIONS.map((decision) =>
+                    decision === "exclude" ? (
                       <Popover key={decision}>
-                        <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-7">{look}</Button></PopoverTrigger>
+                        <PopoverTrigger asChild><VoteButton decision={decision} size="sm" /></PopoverTrigger>
                         <PopoverContent side="top" align="end" className="w-80 p-3">
-                          <ReasonPicker reasons={reasonsOf(open)} onPick={(key, note) => settleAll("exclude", { reason: key, note })} />
+                          <ReasonPicker criteria={open.screening.criteria} onPick={(key, note) => settleAll("exclude", { reason: key, note })} />
                         </PopoverContent>
                       </Popover>
                     ) : (
-                      <Button key={decision} variant="outline" size="sm" className="h-7" onClick={() => settleAll(decision)}>{look}</Button>
-                    );
-                  })}
+                      <VoteButton key={decision} decision={decision} size="sm" onClick={() => settleAll(decision)} />
+                    ),
+                  )}
                 </span>
               ) : null}
               <DropdownMenu>
@@ -802,32 +799,28 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
 }
 
 /** The reasons a paper is excluded for, with a note. "Another reason" needs the note written. */
-function ReasonPicker({ reasons, onPick, onBack }: { reasons: Array<{ key: string; label: string }>; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
-  const [note, setNote] = useState("");
+function ReasonPicker({ criteria, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The note the step before already holds: it is shown here as it was written, and never looks lost. Left out, the picker keeps its own. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
+  const [own, setOwn] = useState("");
   const [missing, setMissing] = useState(false);
   const field = useRef<HTMLInputElement>(null);
+  const note = given ?? own;
+  const setNote = onNote ?? setOwn;
   return (
-    <div className="space-y-1.5">
-      <p className="text-sm font-medium">Why is it excluded?</p>
-      <Input ref={field} value={note} onChange={(event) => { setNote(event.target.value); setMissing(false); }} placeholder="Note (optional)" aria-label="Note" aria-invalid={missing || undefined} aria-describedby={missing ? "reason-note-error" : undefined} className="h-8 text-sm" />
+    <div className="space-y-2">
+      <Input ref={field} value={note} onChange={(event) => { setNote(event.target.value); setMissing(false); }} placeholder="Note (optional)" aria-label="Note" aria-invalid={missing || undefined} aria-describedby={missing ? "reason-note-error" : undefined} className="h-8 bg-card text-sm" />
       {missing ? <p id="reason-note-error" className="text-xs ink-destructive">Write the reason in the note</p> : null}
-      {reasons.map((reason) => (
-        <button
-          key={reason.key}
-          type="button"
-          onClick={() => {
-            if (reason.key === "other" && !note.trim()) {
-              setMissing(true);
-              field.current?.focus();
-              return;
-            }
-            onPick(reason.key, note.trim() || undefined);
-          }}
-          className="flex min-h-9 w-full items-center rounded-lg border border-border-subtle bg-card px-2.5 py-1.5 text-start text-sm transition-colors hover:border-foreground/30"
-        >
-          <span className="line-clamp-2">{reason.label}</span>
-        </button>
-      ))}
+      <ReasonRows
+        criteria={criteria}
+        onPick={(reason) => {
+          // A reason no criterion covers is the note itself.
+          if (reason === "other" && !note.trim()) {
+            setMissing(true);
+            field.current?.focus();
+            return;
+          }
+          onPick(reason, note.trim() || undefined);
+        }}
+      />
       {onBack ? <Button variant="ghost" size="sm" className="w-full" onClick={onBack}>Back</Button> : null}
     </div>
   );
@@ -866,20 +859,12 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   };
   const buttons = (kind: "vote" | "result") =>
     reasonFor === kind ? (
-      <ReasonPicker reasons={reasonsOf(open)} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} />
+      <ReasonPicker criteria={screening.criteria} note={note} onNote={setNote} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} />
     ) : (
       <div className="space-y-2">
         <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={kind === "vote" ? "Note for the others (optional)" : "Note for the record (optional)"} aria-label="Note" className="h-8 bg-card text-sm" />
         <div className="grid grid-cols-3 gap-2">
-          {DECISIONS.map((decision) => {
-            const Icon = RESULT_STYLE[decision].icon;
-            const on = kind === "vote" && mine?.decision === decision;
-            return (
-              <button key={decision} type="button" aria-pressed={on} onClick={() => (decision === "exclude" ? setReasonFor(kind) : settle(kind, decision))} className={cn("flex h-10 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? cn(RESULT_STYLE[decision].chip, "border-transparent ring-1 ring-current") : "border-border-subtle bg-card hover:bg-muted")}>
-                <Icon className={cn("size-4", !on && (decision === "include" ? "ink-success" : decision === "maybe" ? "ink-warning" : "ink-destructive"))} />{DECISION_LABEL[decision]}
-              </button>
-            );
-          })}
+          {DECISIONS.map((decision) => <VoteButton key={decision} decision={decision} on={kind === "vote" && mine?.decision === decision} className="bg-card" onClick={() => (decision === "exclude" ? setReasonFor(kind) : settle(kind, decision))} />)}
         </div>
       </div>
     );
@@ -900,14 +885,12 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       <div className="flex flex-wrap items-center gap-1.5">
         {visible || state.result === "waiting" ? <ResultChip result={state.result} /> : <ShutChip by="vote" />}
         {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
-        <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
-        {added ? <LinkChip href={added.href} aria-current={added["aria-current"]} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(paper.batch!)}</LinkChip> : null}
-        {from ? <LinkChip href={from.href} aria-current={from["aria-current"]} tone={from.on ? "primary" : "neutral"} className="max-w-full">Papers from {source!.name}</LinkChip> : null}
+        <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added ? { at: paper.batch!, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
       {paper.sentences.length ? (
         <p className="text-sm leading-6">{paper.sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">This paper came without an abstract.</p>
+        <NoAbstract />
       )}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}

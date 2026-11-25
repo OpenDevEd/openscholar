@@ -24,7 +24,7 @@ import { HelpFact } from "@/components/ui/help";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { cn } from "@/lib/utils";
-import { num, SETTLE_SAYS, readersOf, EVERY_LABEL, HOME, NOW, day, growing, readBy, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
+import { inOrder, num, SETTLE_SAYS, readersOf, EVERY_LABEL, HOME, NOW, day, growing, readBy, workspaceOf, activeReviewers, invitedReviewer, modelReviewer, modelsOf, peopleOf, personOf, personReviewer, type Reviewer, type Screening, lookOf, ago } from "./data";
 import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
@@ -151,7 +151,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 
   const { screening } = open;
   const facts = ruleFacts(screening, open.isReviewer);
-  const reviewers = activeReviewers(screening);
+  const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.papers.length;
   const workspace = workspaceOf(screening);
   const resolver = personOf(screening.rule.resolver);

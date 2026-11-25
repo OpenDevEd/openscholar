@@ -6,7 +6,7 @@
 
 import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, Coins, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, Minus, RotateCcw, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, Minus, Quote, RefreshCw, RotateCcw, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
@@ -22,7 +22,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
-import { DECISION_LABEL, RESULTS, RESULT_LABEL, reasonLabel, type Criterion, type Decision, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { DECISION_LABEL, RESULTS, RESULT_LABEL, ago, excludeGroups, inOrder, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
 /**
  * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
@@ -146,8 +146,8 @@ export function ShutNote({ by, children }: { by: Shut; children: ReactNode }) {
 
 /** A paper's reviewers in the order every table of its votes shows them: the person looking, then the other people, then the models. */
 export const youFirst = <T extends { reviewer: Pick<Reviewer, "id" | "kind"> }>(cast: T[], me: string) => {
-  const rank = (one: T) => (one.reviewer.id === me ? 0 : one.reviewer.kind === "person" ? 1 : 2);
-  return [...cast].sort((a, b) => rank(a) - rank(b));
+  const order = inOrder(cast.map((one) => one.reviewer), me);
+  return [...cast].sort((a, b) => order.indexOf(a.reviewer) - order.indexOf(b.reviewer));
 };
 
 /** The line under the others' votes while the rule hides them, on Screen and in the Papers drawer. */
@@ -539,5 +539,92 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
     >
       Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note. Press an answer for what is behind it: the passage a model read, or a person&apos;s vote and note. A model that couldn&apos;t read a paper has no say in it.
     </Help>
+  );
+}
+
+/**
+ * Include, Maybe or Exclude as a button: the one look for casting a vote and for settling a result, on Screen, in the
+ * Papers drawer and over a selection. It has its decision's colour, and is filled once chosen: under the pointer an
+ * unchosen one only darkens its border, so it never reads as chosen. `pointed` outlines it dashed, where a person's
+ * answers point to it. What follows its name (a key) is its children.
+ */
+export function VoteButton({ decision, on = false, pointed = false, size = "lg", className, children, ...rest }: Omit<ComponentProps<"button">, "type"> & { decision: Decision; on?: boolean; pointed?: boolean; size?: "lg" | "sm" }) {
+  const Icon = RESULT_STYLE[decision].icon;
+  const look = {
+    include: on ? "bg-success text-success-foreground" : "border-success/35 ink-success hover:border-success/70",
+    maybe: on ? "bg-warning text-warning-foreground" : "border-warning/40 ink-warning hover:border-warning/80",
+    exclude: on ? "bg-destructive text-destructive-foreground" : "border-destructive/30 ink-destructive hover:border-destructive/60",
+  }[decision];
+  return (
+    <button {...rest} type="button" aria-pressed={on} className={cn("flex items-center justify-center border font-semibold transition-colors", size === "lg" ? "h-10 w-full gap-1.5 rounded-xl text-sm" : "h-7 gap-1 rounded-lg px-2.5 text-xs", look, on && "border-transparent", !on && pointed && "border-dashed border-current", className)}>
+      <Icon className={size === "lg" ? "size-4" : "size-3.5"} />
+      {DECISION_LABEL[decision]}
+      {children}
+    </button>
+  );
+}
+
+/** One reason to exclude as a list of them names it: a must-have by its short name, with its whole question under it where `asked` and the name isn't the question, and another reason in its own words. */
+export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
+  if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? "Another reason…" : reasonLabel(reason, criteria)}</>;
+  const question = asked ? questionOf(reason, criteria) : undefined;
+  return (
+    <span className="min-w-0">
+      <Reason reason={reason} criteria={criteria} />
+      {question ? <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{question}</span> : null}
+    </span>
+  );
+}
+
+/** The reasons to exclude as rows to press, in their two groups: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. */
+export function ReasonRows({ criteria, onPick }: { criteria: Criterion[]; onPick: (reason: string) => void }) {
+  return (
+    <>
+      {excludeGroups(criteria).map((group) => (
+        <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
+          <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p>
+          {group.list.map((reason) => (
+            <button key={reason.key} type="button" onClick={() => onPick(reason.key)} className="flex min-h-11 w-full items-center rounded-xl border border-border-subtle bg-card px-3 py-2 text-start text-sm transition-colors hover:bg-muted"><ReasonLabel reason={reason.key} criteria={criteria} asked /></button>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** "Nothing here yet", where a list or a part of a page is empty: one dashed box, the same wherever it stands. */
+export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
+  return <p {...rest} className={cn("rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground", className)} />;
+}
+
+/** A paper that came without an abstract says so in the abstract's place, with what to do about it behind its "?". */
+export function NoAbstract() {
+  return (
+    <EmptyNote className="flex items-center gap-1.5 text-start">
+      No abstract
+      <Help title="Papers without an abstract" facts={<HelpFact>Models vote on the title alone</HelpFact>}>Vote on the title, or vote Maybe where the title can&apos;t settle it.</Help>
+    </EmptyNote>
+  );
+}
+
+/**
+ * The facts under a paper's title, the same on Screen and in the Papers drawer: where it came from, when it was added
+ * if that was after the start, how often it is cited, and the way to its full text. The first two open the papers that
+ * share them, and are tinted while the table is narrowed to them.
+ */
+export function PaperFacts({ paper, source, added }: {
+  paper: Pick<Paper, "title" | "cited">;
+  source?: { name: string; kind: string; href: string; on?: boolean; current?: "true"; label?: string };
+  added?: { at: number; href: string; on?: boolean; current?: "true" };
+}) {
+  return (
+    <>
+      {/* Where the paper came from, said as that: a search's name is its query, which was taken for a label on the paper. */}
+      {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">From {source.name}</LinkChip> : null}
+      {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(added.at)}</LinkChip> : null}
+      <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
+      {/* The made-up papers have no page of their own: a search for the title finds the paper, in a new tab so the place in the list is kept. */}
+      <LinkChip href={`/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
+    </>
   );
 }

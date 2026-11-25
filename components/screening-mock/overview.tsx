@@ -22,12 +22,12 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import { inOrder, num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
 import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
+import { EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
 import { walletOf, credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -226,7 +226,7 @@ function Reviewers({ open }: { open: Open }) {
   const [discard, setDiscard] = useState(false);
   // The person some papers are being moved from, while that is being set up.
   const [moving, setMoving] = useState<string | null>(null);
-  const reviewers = activeReviewers(screening);
+  const reviewers = inOrder(activeReviewers(screening), open.me);
   const rows = useMemo(
     () =>
       reviewers.map((reviewer) => {
@@ -369,7 +369,7 @@ function Reviewers({ open }: { open: Open }) {
           ) : null}
         </div>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nobody votes on these papers yet. Add a person or a model from the row above.</p>
+        <EmptyNote>Nobody votes on these papers yet. Add a person or a model from the row above.</EmptyNote>
       )}
       <ConfirmChange
         open={leaving !== null}
@@ -449,7 +449,7 @@ function MovePapers({ open, people, from: first, onClose }: { open: Open; people
           <p className="text-sm text-muted-foreground">It starts at the number that leaves the two of them with as many papers as each other. The papers furthest down {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} queue go. Votes already cast stay where they are.</p>
         </>
       ) : (
-        <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} papers.</p>
+        <EmptyNote>Everyone else already has all of {nameOf(giver) === "You" ? "your" : `${firstName(giver.reviewer.name)}'s`} papers.</EmptyNote>
       )}
     </ConfirmChange>
   );
@@ -626,7 +626,7 @@ function Agreement({ open }: { open: Open }) {
       }
     >
       {overall === null ? (
-        <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">How far the reviewers agree shows here once two of them have voted on the same papers.</p>
+        <EmptyNote>How far the reviewers agree shows here once two of them have voted on the same papers.</EmptyNote>
       ) : (
         <div className="space-y-3">
           {/* The figure, named for what it is and with its scale, and beside it a link that says where it goes. */}

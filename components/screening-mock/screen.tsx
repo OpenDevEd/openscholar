@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleHelp, Clock, ExternalLink, Eye, FileSearch, GitCompare, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, FileSearch, GitCompare, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented, pagerOf } from "@/components/settings/parts";
@@ -29,10 +29,10 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { SETTLE_LABEL, DECISIONS, DECISION_LABEL, OTHER_REASONS, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, NOT_A_REVIEWER, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, kindIcon, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, NoAbstract, PaperFacts, NOT_A_REVIEWER, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -225,10 +225,8 @@ function Screen({ open }: { open: Open }) {
   const resolver = screening.rule.resolver === open.me ? "you" : (personOf(screening.rule.resolver)?.name ?? "the person who settles them");
 
   // What a paper can be excluded for, in two groups: the must-have it fails, or another reason. Each has its key: a must-have its own number, as far as the digits go, and another reason its first letter.
-  const failures = criteria.flatMap((criterion, i) => (criterion.must ? [{ key: criterion.key, label: <Reason reason={criterion.key} criteria={criteria} /> as ReactNode, hotkey: i < 9 ? String(i + 1) : "" }] : []));
-  const otherReasons = OTHER_REASONS.map((reason) => ({ ...reason, label: (reason.key === OTHER ? "Another reason…" : reason.label) as ReactNode, hotkey: reason.key[0]!.toUpperCase() }));
-  const reasons = [...failures, ...otherReasons];
-  const reasonGroups = [{ name: "Which must-have does it fail?", list: failures }, { name: failures.length ? "Or another reason" : "Why exclude it?", list: otherReasons }].filter((group) => group.list.length);
+  const reasonGroups = excludeGroups(criteria);
+  const reasons = reasonGroups.flatMap((group) => group.list);
 
   const decideOn = (decision: Decision, reason?: string) => {
     if (!paper || !mayDecide) return;
@@ -472,28 +470,11 @@ function Screen({ open }: { open: Open }) {
   }
 
   const voteButton = (decision: Decision) => {
-    const Icon = RESULT_STYLE[decision].icon;
     const on = resolving ? Boolean(state?.resolvedBy) && state?.final === decision : mine?.decision === decision;
-    // Only a vote fills a button: under the pointer an unpressed one darkens its border and keeps the card behind it, so it never reads as chosen.
-    const look = {
-      include: on ? "bg-success text-success-foreground" : "border-success/35 ink-success hover:border-success/70",
-      maybe: on ? "bg-warning text-warning-foreground" : "border-warning/40 ink-warning hover:border-warning/80",
-      exclude: on ? "bg-destructive text-destructive-foreground" : "border-destructive/30 ink-destructive hover:border-destructive/60",
-    }[decision];
     return (
-      <button
-        key={decision}
-        type="button"
-        data-decision
-        aria-pressed={on}
-        aria-haspopup={decision === "exclude" ? "menu" : undefined}
-        onClick={decision === "exclude" && !tablet ? undefined : () => press(decision)}
-        className={cn("flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-colors", on ? "border-transparent" : look, on && look, !on && pointed === decision && "border-dashed border-current")}
-      >
-        <Icon className="size-4" />
-        {DECISION_LABEL[decision]}
+      <VoteButton key={decision} decision={decision} on={on} pointed={pointed === decision} data-decision aria-haspopup={decision === "exclude" ? "menu" : undefined} onClick={decision === "exclude" && !tablet ? undefined : () => press(decision)}>
         <Kbd className={cn("max-lg:hidden @max-[30rem]/vote:hidden", decision === "include" && "font-mono", on && "border-current/30 bg-transparent text-current")}>{KEYS[decision]}</Kbd>
-      </button>
+      </VoteButton>
     );
   };
 
@@ -671,20 +652,12 @@ function Screen({ open }: { open: Open }) {
                       <h2 className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
                       <p className="text-sm text-muted-foreground">{paper.authors.join(", ")}. <span className="italic">{paper.venue}</span>, {paper.year}</p>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {/* Where the paper came from, said as that: a search's name is its query, which was taken for a label on the paper. */}
-                        {source ? <LinkChip href={papersHref(id, { source: source.id })} icon={kindIcon(source.kind)} aria-label={`See the ${fromSource} papers from ${source.name}`} className="max-w-80 [&>span]:shrink">From {source.name}</LinkChip> : null}
-                        {paper.batch !== undefined ? <LinkChip href={papersHref(id, { added: String(paper.batch) })} tone="primary" icon={RefreshCw}>New, added {ago(paper.batch)}</LinkChip> : null}
-                        <Chip icon={Quote}>Cited by {paper.cited.toLocaleString("en-GB")}</Chip>
-                        {/* The made-up papers have no page of their own: a search for the title finds the paper, in a new tab so the place in the queue is kept. */}
-                        <LinkChip href={`/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
+                        <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: `See the ${fromSource} papers from ${source.name}` } : undefined} added={paper.batch !== undefined ? { at: paper.batch, href: papersHref(id, { added: String(paper.batch) }) } : undefined} />
                         {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
                         {discussion && said ? <button type="button" onClick={toDiscussion} className="flex h-6 items-center gap-1 rounded-full bg-primary/10 px-2 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50"><MessagesSquare aria-hidden className="size-3.5" />{said} {said === 1 ? "message" : "messages"}</button> : null}
                       </div>
                       {!paper.sentences.length ? (
-                        <div className="flex items-center gap-1.5 rounded-2xl border border-dashed border-border px-5 py-5 text-sm text-muted-foreground">
-                          No abstract
-                          <Help title="Papers without an abstract" facts={<HelpFact>Models vote on the title alone</HelpFact>}>Vote on the title, or vote Maybe where the title can&apos;t settle it.</Help>
-                        </div>
+                        <NoAbstract />
                       ) : paper.original && !translated ? (
                         <div className="space-y-3">
                           <p lang="fr" className="text-[0.95rem] leading-7">{paper.original.text}</p>
@@ -949,7 +922,7 @@ function Screen({ open }: { open: Open }) {
                                 <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{group.name}</DropdownMenuLabel>
                                 {group.list.map((reason) => (
                                   <DropdownMenuItem key={reason.key} onSelect={() => decideOn("exclude", reason.key)} className="min-h-9">
-                                    <span className="min-w-0 flex-1">{reason.label}</span>
+                                    <span className="min-w-0 flex-1"><ReasonLabel reason={reason.key} criteria={criteria} /></span>
                                     {reason.hotkey ? <Kbd>{reason.hotkey}</Kbd> : null}
                                   </DropdownMenuItem>
                                 ))}
@@ -1009,14 +982,7 @@ function Screen({ open }: { open: Open }) {
               <SheetDescription className="sr-only">Pick the reason this paper is excluded.</SheetDescription>
             </SheetHeader>
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              {reasonGroups.map((group) => (
-                <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
-                  <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p>
-                  {group.list.map((reason) => (
-                    <button key={reason.key} type="button" onClick={() => decideOn("exclude", reason.key)} className="flex min-h-11 w-full items-center rounded-xl border border-border-subtle px-3 py-2 text-start text-sm transition-colors hover:bg-muted">{reason.label}</button>
-                  ))}
-                </div>
-              ))}
+              <ReasonRows criteria={criteria} onPick={(reason) => decideOn("exclude", reason)} />
             </div>
           </SheetContent>
         </Sheet>
