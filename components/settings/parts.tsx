@@ -143,6 +143,9 @@ export function Segmented<T extends string>({
               "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
               stacked ? "rounded-2xl" : "rounded-full",
               stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
+              // On a phone, a segment its group has made narrower than its label (a row at large text) wraps the label
+              // inside it rather than running out of the group. A segment as wide as its label stays as it is.
+              !fill && !stacked && ["max-sm:h-auto max-sm:min-w-0 max-sm:py-1", size === "lg" ? "max-sm:min-h-11" : size === "md" ? "max-sm:min-h-9" : "max-sm:min-h-8"],
               fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
               // Each segment starts from its label's width and they share what is left over. Where the row is too narrow for them all, the last ones go to a second line: no label is cut.
               fill === "labels" && "flex-auto justify-center",
@@ -150,9 +153,10 @@ export function Segmented<T extends string>({
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <span className="flex min-w-0 items-center gap-2">
-              {o.icon ? <o.icon className={size === "sm" ? "size-3.5" : "size-4"} /> : null}
-              <span className="truncate">{o.label}</span>
+            {/* A label that wraps keeps its icon on its first line: the icon's box is one line high. */}
+            <span className={cn("flex min-w-0 items-center gap-2", !fill && !stacked && "max-sm:items-start")}>
+              {o.icon ? <o.icon className={cn(size === "sm" ? "size-3.5" : "size-4", !fill && !stacked && "max-sm:h-[1lh] max-sm:shrink-0")} /> : null}
+              <span className={cn("truncate", !fill && !stacked && "max-sm:whitespace-normal")}>{o.label}</span>
             </span>
             {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
             {/* The line under a label wraps where the segment is narrow, rather than running into the next one. */}

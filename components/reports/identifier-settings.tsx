@@ -136,7 +136,8 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
           return (
             <li key={id} className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5">
               <span className="min-w-0 flex-1 basis-52">
-                <span className="flex h-6 items-center gap-2">
+                {/* On a phone at large text the identifier's name goes under the service's mark. */}
+                <span className="flex h-6 items-center gap-x-2 max-sm:h-auto max-sm:min-h-6 max-sm:flex-wrap">
                   <ServiceMark id={id} />
                   <span className="rounded bg-inset px-1.5 text-2xs text-muted-foreground">{SERVICES[id].identifier}</span>
                 </span>
