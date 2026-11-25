@@ -6,7 +6,7 @@
 
 import { type CSSProperties, type ComponentProps, type ComponentType, type ReactElement, type ReactNode } from "react";
 import NextLink from "next/link";
-import { ArrowRight, Check, ChevronDown, ChevronRight, CircleDashed, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, Minus, Quote, RefreshCw, RotateCcw, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
 import { tintOf } from "@/components/settings/model-map";
@@ -22,7 +22,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
-import { DECISION_LABEL, RESULTS, RESULT_LABEL, ago, excludeGroups, inOrder, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
+import { DECISION_LABEL, RESULTS, RESULT_LABEL, ago, excludeGroups, failedLabel, inOrder, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 
 /**
  * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
@@ -167,6 +167,9 @@ export function RetryRead({ papers, cost, short, onRetry, variant = "outline", s
 }
 /** What that control says, for a menu's row too. */
 export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Read all ${papers.toLocaleString("en-GB")} again` : "Read it again"}, ${cost} credits`;
+
+/** A figure that opens the papers it counts: underlined at rest, so it is told apart from a figure that only says how many. */
+export const FIGURE_LINK = "underline decoration-current/35 underline-offset-[3px]";
 
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 export function LinkChip({ href, tone = "neutral", icon, children, className, ...link }: Omit<ComponentProps<typeof NextLink>, "children"> & { tone?: Tone; icon?: AppIcon; children: ReactNode }) {
@@ -443,7 +446,7 @@ export function Tally({ votes, className }: { votes: Array<Pick<Vote, "decision"
         const n = votes.filter((vote) => vote.decision === decision).length;
         const Icon = RESULT_STYLE[decision].icon;
         return n ? (
-          <span key={decision} role="img" aria-label={`${n} ${DECISION_LABEL[decision].toLowerCase()}`} className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+          <span key={decision} role="img" aria-label={`${n} ${DECISION_LABEL[decision].toLowerCase()}`} className={cn("flex items-center gap-1 text-xs font-medium tabular-nums", TONE[RESULT_STYLE[decision].tone].ink)}>
             <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
             {n}
           </span>
@@ -626,5 +629,30 @@ export function PaperFacts({ paper, source, added }: {
       {/* The made-up papers have no page of their own: a search for the title finds the paper, in a new tab so the place in the list is kept. */}
       <LinkChip href={`/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
     </>
+  );
+}
+
+/** The reason a vote or a result excludes a paper, as a chip: the criterion it fails by its short name, with the whole question for whoever asks. The same chip wherever a reason shows. */
+export function ReasonChip({ reason, criteria, className }: { reason: string; criteria: Criterion[]; className?: string }) {
+  return <QuestionName question={questionOf(reason, criteria)} label={failedLabel(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
+}
+
+/** To the paper before and the one after, with their keys: the same pair in Screen's bar and at the head of the Papers drawer. */
+export function PaperStepper({ onStep, canPrevious, canNext }: { onStep: (by: 1 | -1) => void; canPrevious: boolean; canNext: boolean }) {
+  return (
+    <>
+      <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+    </>
+  );
+}
+
+/** The way to what reviewers wrote about a paper, with how much there is: one chip wherever it stands. With nothing written yet it invites the first line. */
+export function DiscussionLink({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex h-6 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50">
+      <MessagesSquare aria-hidden className="size-3.5" />
+      {count ? plural(count, "message", "messages") : "Discuss"}
+    </button>
   );
 }

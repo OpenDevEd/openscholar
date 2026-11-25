@@ -19,7 +19,7 @@ import { HelpFact } from "@/components/ui/help";
 import { ROLE_ICONS } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
+import { PERSON_SAYS, num, numberWord, excludedBy, foundTotal, paperTotal, plural, readersOf, slug, DECISION_LABEL, EVERY_LABEL, NOW, PEOPLE, RESULT_LABEL, SCHEDULE, WORKSPACES, day, activeReviewers, agreement, ago, count, invitedReviewer, modelsOf, peopleOf, personOf, personReviewer, failedLabel, questionOf, taken, workspaceOf, type Change, type Paper, type Reviewer, type Screening, lookOf, growing } from "./data";
 import { EffectList } from "./effects";
 import { overviewHref, papersHref, settingsHref } from "./links";
 import { EmptyNote, Help, LinkChip, Panel, SHUT, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark } from "./parts";
@@ -120,7 +120,7 @@ export function ActivitySheet({ open, onClose, state }: { open: boolean; onClose
 }
 
 const SHARE_ROLES: Array<ShareRole<"reviewer" | "viewer">> = [
-  { id: "reviewer", kind: "edit", label: "Reviewer", can: "Votes on the papers dealt to them" },
+  { id: "reviewer", kind: "edit", label: "Reviewer", can: "Votes on the papers they get" },
   { id: "viewer", kind: "view", label: "Viewer", can: "Sees every paper and vote" },
 ];
 
@@ -139,8 +139,8 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
   const on = [...people, ...viewers];
   const words = query.trim().toLowerCase();
   // Someone added in this sitting is told so: the row says how they hear of it.
-  const detail = (one: Reviewer) => (one.id === screening.createdBy ? "Started it" : one.email ? "Invited by email, joins when they accept" : one.addedAt > NOW ? "Told by email just now, with a link" : personOf(one.id)?.guest ? "From outside this workspace" : `In ${workspace.name}`);
-  const share = (viewer: Reviewer) => state.update((s) => ({ ...s, viewers: [...(s.viewers ?? []), viewer] }), { what: `Shared it with ${viewer.name}`, effect: "They see every paper and every vote, and aren't dealt papers" });
+  const detail = (one: Reviewer) => (one.id === screening.createdBy ? "Started it" : one.email ? PERSON_SAYS.invited : one.addedAt > NOW ? "Told by email just now, with a link" : personOf(one.id)?.guest ? PERSON_SAYS.guest : `In ${workspace.name}`);
+  const share = (viewer: Reviewer) => state.update((s) => ({ ...s, viewers: [...(s.viewers ?? []), viewer] }), { what: `Shared it with ${viewer.name}`, effect: "They see every paper and every vote, and get no papers to vote on" });
   const add = (one: Reviewer) => (addAs === "reviewer" ? onPromote(one) : share(one));
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -150,7 +150,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
             <DialogTitle className="flex items-center gap-1 text-base">
               Share this screening
               <Help title="Reviewer or viewer" facts={screening.rule.blind === "after" ? <HelpFact icon={SHUT.vote.icon}>Votes {SHUT.vote.says.toLowerCase()}</HelpFact> : undefined}>
-                A viewer sees every paper and every vote. A reviewer is dealt papers and votes on them.
+                A viewer sees every paper and every vote. A reviewer gets papers and votes on them.
               </Help>
             </DialogTitle>
             <DialogDescription className="truncate text-xs">{screening.name}</DialogDescription>
@@ -176,7 +176,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
                   // Its workspace's members see it already: as viewers, the people to add are the ones outside it.
                   candidates: PEOPLE.filter((person) => !on.some((one) => one.id === person.id) && (addAs === "reviewer" || person.guest) && (!words || person.name.toLowerCase().includes(words)))
                     .sort((a, b) => Number(Boolean(a.guest)) - Number(Boolean(b.guest)))
-                    .map((person) => ({ key: person.id, avatar: <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-9" />, name: person.name, detail: person.guest ? "Outside this workspace" : `In ${workspace.name}`, pick: () => add(personReviewer(person, Date.now())) })),
+                    .map((person) => ({ key: person.id, avatar: <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-9" />, name: person.name, detail: person.guest ? PERSON_SAYS.guest : `In ${workspace.name}`, pick: () => add(personReviewer(person, Date.now())) })),
                   invite: (email) => add(invitedReviewer(email, Date.now())),
                   has: (email) => on.some((one) => one.email === email),
                 }

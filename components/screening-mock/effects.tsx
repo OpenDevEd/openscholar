@@ -120,7 +120,7 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
     else if (reviewer.email) lines.push({ text: `${reviewer.name} gets an invitation by email, and papers once they join`, kind: "mail", section: "reviewers" });
     else {
       const dealt = now.papers.filter((paper) => !now.settled[paper.id]!.final && dealtTo(after, paper).some((one) => one.id === reviewer.id)).length;
-      lines.push({ text: dealt ? `${reviewer.name} is dealt ${n(dealt, "paper", "papers")} that still ${dealt === 1 ? "waits" : "wait"} for a vote, an even share of what is left, and is told by email` : `${reviewer.name} joins with no paper left to deal, and is told by email`, kind: "join", section: "reviewers" });
+      lines.push({ text: dealt ? `${reviewer.name} gets ${n(dealt, "paper", "papers")} that still ${dealt === 1 ? "waits" : "wait"} for a vote, an even share of what is left, and is told by email` : `${reviewer.name} joins with no paper left to deal, and is told by email`, kind: "join", section: "reviewers" });
     }
   }
   if (joining.length && wasIds.size) {
@@ -193,7 +193,7 @@ export function effectItems(before: Screening, raw: Screening): EffectLine[] {
     const sources = growing(after).length;
     lines.push({ text: sources ? `It checks ${sources === 1 ? "its source" : `${sources} of its sources`} for new papers as soon as this is saved, then ${EVERY_LABEL[after.living.every].toLowerCase()}` : "It has no source that gains papers, so there is nothing to check yet", kind: "schedule", section: "new-papers" });
     const each = modelsOf(after).reduce((sum, model) => sum + paperCredits(model.model!), 0);
-    lines.push(each ? { text: "The models read each new paper, then it is dealt to its reviewers", kind: "cost", credits: each, each: true, section: "new-papers" } : { text: "Each new paper is dealt to its reviewers, who are told by email", kind: "mail", section: "new-papers" });
+    lines.push(each ? { text: "The models read each new paper, then it goes to its reviewers", kind: "cost", credits: each, each: true, section: "new-papers" } : { text: "Each new paper goes to its reviewers, who are told by email", kind: "mail", section: "new-papers" });
     if (before.finishedAt && !reopened) lines.push({ text: "It is open again, and stays open to new papers", kind: "reopen", section: "new-papers" });
   } else if (before.living && !after.living) lines.push({ text: "It stops checking for new papers. The ones it has stay", kind: "schedule", section: "new-papers" });
   else if (before.living && after.living && before.living.every !== after.living.every) lines.push({ text: `It checks for new papers ${EVERY_LABEL[after.living.every].toLowerCase()} from now on`, kind: "schedule", section: "new-papers" });

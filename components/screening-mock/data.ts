@@ -33,10 +33,14 @@ export const PEOPLE: Person[] = [
   { id: "tomas", name: "Tomás Rivera", imageUrl: face("tomas"), guest: true, seen: "Not active yet" },
 ];
 export const personOf = (id: string) => PEOPLE.find((person) => person.id === id);
+/** Who a person is to a screening, in the words every list of its people uses. `sent` is an invitation that goes out with the save it waits for. */
+export const PERSON_SAYS = { invited: "Invited by email, votes once they join", sent: "Invited by email once you save", guest: "From outside this workspace", member: "In this workspace", settles: "Settles conflicts" } as const;
 /** The name someone is called by in a line of text or a narrow column. */
 export const firstName = (name: string) => name.split(" ")[0]!;
 /** A name as part of a file's name or an address. */
 export const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/** What someone wrote, quoted: a note with a vote, a paper's title in a line of text. One form everywhere. */
+export const inQuotes = (text: string) => `"${text}"`;
 /** A number as people read it: "1,204". */
 export const num = (n: number) => n.toLocaleString("en-GB");
 /** A small number as a word at the start of a sentence: "Three of the 5 reviewers". */

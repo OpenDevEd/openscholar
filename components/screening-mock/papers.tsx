@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { createSerializer, parseAsArrayOf, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
+import { ArrowDown, ArrowUp, ArrowUpDown, Award, CalendarDays, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, GitCompare, Hourglass, Layers, ListChecks, Play, RefreshCw, Search, SlidersHorizontal, TriangleAlert, Undo2, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AnimatedNumber, Chip, Stars } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -28,9 +28,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { inOrder, type Criterion, firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
+import { inQuotes, inOrder, type Criterion, firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, PaperStepper, ReasonChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
@@ -780,7 +780,7 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
     );
   }
   // What whoever settled it wrote down, beside the votes they settled: the reason a settled paper has.
-  const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{`"${state.note}"`}</span></TooltipHint> : null;
+  const settledNote = state.resolvedBy && state.note ? <TooltipHint label={state.note} onlyWhenClipped><span className="min-w-0 truncate text-xs text-muted-foreground">{inQuotes(state.note)}</span></TooltipHint> : null;
   if (!visible) return settledNote;
   if (state.result === "conflict" || state.resolvedBy) return <span className="flex min-w-0 items-center gap-2"><Tally votes={cast} className="shrink-0" />{settledNote}</span>;
   if (reasonKey && (state.result === "exclude" || state.result === "maybe")) {
@@ -874,8 +874,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       {/* Where it is in the list, and the way through it: it stays in view while the paper is read. */}
       <div className="sticky top-0 z-10 -mx-4 flex items-center gap-1 border-b border-border-subtle bg-card px-4 py-2.5 sm:-mx-6 sm:px-6">
         <span className="me-auto text-xs tabular-nums text-muted-foreground">{place.at >= 0 ? `${(place.at + 1).toLocaleString("en-GB")} of ${place.of.toLocaleString("en-GB")}` : "Not in this list"}</span>
-        <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={place.at <= 0} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
-        <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={place.at < 0 || place.at >= place.of - 1} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+        <PaperStepper onStep={onStep} canPrevious={place.at > 0} canNext={place.at >= 0 && place.at < place.of - 1} />
         <TooltipHint label={<span className="flex items-center gap-2">Close<Kbd className="pointer-coarse:hidden">Esc</Kbd></span>}><Button variant="ghost" size="icon" className="-me-2 size-7 text-muted-foreground" aria-label="Close" aria-keyshortcuts="Escape" onClick={onClose}><X /></Button></TooltipHint>
       </div>
       <div className="space-y-2">
@@ -900,7 +899,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
             <h3 className="text-sm font-medium">Your vote</h3>
             <div className="flex items-center gap-2 text-sm">
               <VoteMark vote={mine} who="You" />
-              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">You voted {DECISION_LABEL[mine.decision]}{mine.reason ? <Chip className="min-w-0 shrink"><Reason reason={mine.reason} criteria={screening.criteria} /></Chip> : null}</span>
+              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">You voted {DECISION_LABEL[mine.decision]}{mine.reason ? <ReasonChip reason={mine.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}</span>
               <Button variant="ghost" size="xs" onClick={() => setDeciding("vote")}>Change it</Button>
             </div>
           </section>
@@ -934,8 +933,8 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
               <li key={reviewer.id} className="flex items-start gap-2 text-xs">
                 <ReviewerMark reviewer={reviewer} className="size-5" />
                 <span className="min-w-0 flex-1">
-                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="inline-flex max-w-full align-middle font-medium" /> <span className="text-muted-foreground">voted {DECISION_LABEL[vote!.decision]} {ago(vote!.at)}</span>{vote!.reason ? <> <Chip className="inline-flex h-5 max-w-full min-w-0 shrink align-middle"><Reason reason={vote!.reason} criteria={screening.criteria} /></Chip></> : null}
-                  {vote!.note ? <span className="block text-muted-foreground">&quot;{vote!.note}&quot;</span> : null}
+                  <ReviewerName reviewer={reviewer} you={reviewer.id === open.me} className="inline-flex max-w-full align-middle font-medium" /> <span className="text-muted-foreground">voted {DECISION_LABEL[vote!.decision]} {ago(vote!.at)}</span>{vote!.reason ? <> <ReasonChip reason={vote!.reason} criteria={screening.criteria} className="max-w-full min-w-0 shrink align-middle" /></> : null}
+                  {vote!.note ? <span className="block text-muted-foreground">{inQuotes(vote!.note)}</span> : null}
                 </span>
               </li>
             ))}
@@ -950,7 +949,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
       {state.resolvedBy ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <IdentityAvatar name={nameOf(open, state.resolvedBy)} imageUrl={personOf(state.resolvedBy)?.imageUrl} className="size-5" />
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">Settled by {state.resolvedBy === open.me ? "you" : nameOf(open, state.resolvedBy)}{state.reason ? <Chip className="min-w-0 shrink"><Reason reason={state.reason} criteria={screening.criteria} /></Chip> : null}{state.note ? <span className="text-muted-foreground">“{state.note}”</span> : null}</span>
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">Settled by {state.resolvedBy === open.me ? "you" : nameOf(open, state.resolvedBy)}{state.reason ? <ReasonChip reason={state.reason} criteria={screening.criteria} className="min-w-0 shrink" /> : null}{state.note ? <span className="text-muted-foreground">{inQuotes(state.note)}</span> : null}</span>
           {open.canResolve ? <Button variant="ghost" size="xs" onClick={() => open.resolve(paper, null)}><Undo2 />Reopen</Button> : null}
         </div>
       ) : !open.canResolve ? (

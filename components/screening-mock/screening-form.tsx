@@ -34,7 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
+import { PERSON_SAYS, SETTLE_LABEL, foundTotal, grown, hash, readersOf, slug, firstName, plural, DEFAULT_RULE, EVERY_LABEL, GROWS, HOME, NOW, PERIOD, asStarted, projected, readNext, readsAgain, recheckable, SCHEDULE, SHORT_NAME_LENGTH, WORKSPACES, accessOf, baseTotal, day, growing, themeFor, workspaceOf, activeReviewers, defaultScoring, invitedReviewer, modelReviewer, modelsOf, paperTotal, papersOf, peopleOf, personOf, personReviewer, shortOf, standing, taken, type Criterion, type Move, type Reviewer, type Screening, type Source, type SourceKind, lookOf } from "./data";
 import { ANOTHER_COLLECTION, EffectList, JumpLink, collectionName, criterionName, effectItems, effectMoves, landOn, lineText, movesText, rereads, scoringChanged, type EffectLine, type EffectSection } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
 import { useWorkspace } from "./workspace";
@@ -882,7 +882,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                   <p className="flex min-w-48 flex-1 items-center gap-1 text-sm font-medium">
                     Living screening
-                    <Help title="Living screening" facts={<><HelpFact>Uploaded files and pasted DOIs never gain papers</HelpFact><HelpFact>Reviewers are told by email</HelpFact><HelpFact icon={Coins}>Models charge for each new paper</HelpFact></>}>Openscholar checks the screening&apos;s searches, collections and communities for new papers on the schedule you pick. Only papers that are new are added and dealt to reviewers.</Help>
+                    <Help title="Living screening" facts={<><HelpFact>Uploaded files and pasted DOIs never gain papers</HelpFact><HelpFact>Reviewers are told by email</HelpFact><HelpFact icon={Coins}>Models charge for each new paper</HelpFact></>}>Openscholar checks the screening&apos;s searches, collections and communities for new papers on the schedule you pick. Only papers that are new are added and go to reviewers.</Help>
                     {changed("new-papers")}
                   </p>
                   <Segmented
@@ -1066,7 +1066,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="reviewers"
             title="Reviewers"
-            help={<><Help title="Reviewers" facts={<><HelpFact>People are free</HelpFact><HelpFact icon={Coins}>Models cost credits</HelpFact></>}>Each reviewer votes include, maybe or exclude on the papers dealt to them. A person reads the title and abstract and votes. A model answers every criterion on every paper it reads, and its answers make its vote.</Help>{changed("reviewers")}</>}
+            help={<><Help title="Reviewers" facts={<><HelpFact>People are free</HelpFact><HelpFact icon={Coins}>Models cost credits</HelpFact></>}>Each reviewer votes include, maybe or exclude on the papers they get. A person reads the title and abstract and votes. A model answers every criterion on every paper it reads, and its answers make its vote.</Help>{changed("reviewers")}</>}
             aside={<Chip>{[plural(joined.length, "person", "people"), people.length > joined.length ? `${people.length - joined.length} invited` : null, plural(models.length, "model", "models")].filter(Boolean).join(" and ")}</Chip>}
           >
             {/* People and models in one list, people first, each row the same height: what each costs, what each has voted, and the way to take them off. */}
@@ -1082,7 +1082,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                       you={reviewer.id === store.viewer}
                       href={saved && (wasOn(reviewer) || gone) ? papersHref(saved.id, { reviewer: reviewer.id }) : undefined}
                       gone={gone}
-                      detail={reviewer.kind === "model" ? "AI model" : reviewer.email ? "Invited by email, votes once they join" : reviewer.id === draft.rule.resolver ? "Settles conflicts" : personOf(reviewer.id)?.guest ? "From outside this workspace" : "In this workspace"}
+                      detail={reviewer.kind === "model" ? "AI model" : reviewer.email ? (saved && !wasOn(reviewer) ? PERSON_SAYS.sent : PERSON_SAYS.invited) : reviewer.id === draft.rule.resolver ? PERSON_SAYS.settles : personOf(reviewer.id)?.guest ? PERSON_SAYS.guest : PERSON_SAYS.member}
                       chips={
                         gone ? (
                           <>

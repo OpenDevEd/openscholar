@@ -300,9 +300,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 
   // Who the person looking is to it, where that is less than a reviewer who can change it.
   const role = !open.isReviewer
-    ? { label: open.canChange ? "Not a reviewer" : "Viewer", icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so no paper is dealt to you." : `${workspace.name} shared it with you. You see every paper and every vote, and no paper is dealt to you.` }
+    ? { label: open.canChange ? "Not a reviewer" : "Viewer", icon: Eye, text: open.canChange ? "You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on." : `${workspace.name} shared it with you. You see every paper and every vote, and you get no papers to vote on.` }
     : !open.canChange
-      ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers dealt to you. Only ${workspace.name}'s members change its settings.` }
+      ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers you get. Only ${workspace.name}'s members change its settings.` }
       : null;
 
   return (

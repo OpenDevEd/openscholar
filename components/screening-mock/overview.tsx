@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import NextLink from "next/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { AiIcon, ArrowDown, ArrowRight, Ban, ChevronDown, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, CirclePause, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -22,12 +22,12 @@ import { WorkspaceTag } from "@/components/workspaces/parts";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { inOrder, num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
+import { PERSON_SAYS, inOrder, num, plural, excludedBy, foundTotal, paperTotal, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, NOW, RESULTS, RESULT_LABEL, SCHEDULE, activeReviewers, ago, agreement, count, day, failedLabel, growing, keptOf, lookOf, modelsOf, personOf, questionOf, taken, workspaceOf, type Reviewer, type Screening } from "./data";
 import type { ExportTab } from "./dialogs";
 import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
 import { EffectList, effectItems, effectLines, effectMoves, lineText, movesText } from "./effects";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
+import { TONE, FIGURE_LINK, EmptyNote, ShutChip, ShutNote, RetryRead, retryLabel, DIVIDED_ROW, FilterMenu, Help, LinkChip, Panel, QuestionHint, RESULT_ICON, RESULT_STYLE, Reason, ResultBar, ReviewerMark, ReviewerName, Section, type Tone } from "./parts";
 import { walletOf, credits, paperCredits, useMock, type Open } from "./store";
 import { ConfirmChange } from "./team";
 import { useWorkspace } from "./workspace";
@@ -152,7 +152,7 @@ function Progress({ open, onExport }: { open: Open; onExport: (tab: ExportTab) =
               const inner = (
                 <>
                   <span className={cn("flex size-6 items-center justify-center rounded-md", RESULT_STYLE[result].chip)}><Icon className="size-3.5" /></span>
-                  <span className="font-semibold tabular-nums"><AnimatedNumber value={counts[result]} /></span>
+                  <span className={cn("font-semibold tabular-nums", TONE[RESULT_STYLE[result].tone].ink, counts[result] > 0 && FIGURE_LINK)}><AnimatedNumber value={counts[result]} /></span>
                   <span className="text-muted-foreground">{RESULT_LABEL[result]}</span>
                 </>
               );
@@ -187,9 +187,9 @@ function Yours({ open }: { open: Open }) {
           const n = count(mine, (vote) => vote.decision === decision);
           const Icon = RESULT_STYLE[decision].icon;
           return n ? (
-            <NextLink key={decision} href={papersHref(screening.id, { voted: decision })} aria-label={`${n} you voted ${DECISION_LABEL[decision]}`} className={cn("flex items-center gap-1 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground", ROW_LINK)}>
+            <NextLink key={decision} href={papersHref(screening.id, { voted: decision })} aria-label={`${n} you voted ${DECISION_LABEL[decision]}`} className={cn("flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium tabular-nums", TONE[RESULT_STYLE[decision].tone].ink, ROW_LINK)}>
               <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
-              {n}
+              <span className={FIGURE_LINK}>{n}</span>
             </NextLink>
           ) : null;
         })}
@@ -294,7 +294,7 @@ function Reviewers({ open }: { open: Open }) {
   const sortable = (id: "voted" | "agrees", label: string) => (
     <button type="button" onClick={() => void setPlace({ sort: sort === id ? null : id })} className={cn("flex items-center gap-1 rounded-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50", sort === id && "font-medium text-foreground")}>
       {label}
-      <ArrowDown aria-hidden className={cn("size-3.5 shrink-0", sort === id ? "opacity-100" : "opacity-0")} />
+      {sort === id ? <ArrowDown aria-hidden className="size-3.5 shrink-0" /> : <ArrowUpDown aria-hidden className="size-3 shrink-0 opacity-40" />}
     </button>
   );
 
@@ -489,14 +489,14 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (held?.text ?? "Reading") : `${credits(open.spent(reviewer))} credits spent`}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? "Invited, hasn't joined yet" : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : mine ? "Active now" : (personOf(reviewer.id)?.seen)}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? PERSON_SAYS.invited : assigned && done === assigned ? "Done" : reviewer.addedAt > NOW ? "Added just now" : reviewer.reminded ? `Reminded ${ago(reviewer.reminded)}` : mine ? "Active now" : (personOf(reviewer.id)?.seen)}</p>
           )}
         </div>
       </div>
       <div role="cell" className="min-w-0 @max-2xl/reviewers:col-start-1 @max-2xl/reviewers:row-start-2">
         <div className="flex items-center gap-3">
           <Meter value={done} max={Math.max(assigned, 1)} fill={assigned && done === assigned ? "bg-success" : "bg-foreground/45"} />
-          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><AnimatedNumber value={done} /> of {num(assigned)}</NextLink>
+          <NextLink href={papersHref(id, { reviewer: reviewer.id })} className={cn(above, "-mx-1.5 shrink-0 whitespace-nowrap px-1.5 py-0.5 text-end text-xs tabular-nums text-muted-foreground @2xl/reviewers:w-[4.75rem]", ROW_LINK, "hover:bg-muted hover:text-foreground")}><span className={FIGURE_LINK}><AnimatedNumber value={done} /> of {num(assigned)}</span></NextLink>
         </div>
         {/* When a person gets through what they have left, at the pace of their last three days: a second line, as a model has for what it couldn't read. */}
         {reviewer.kind === "person" && !reviewer.email && left > 0 && !screening.finishedAt ? (
@@ -529,7 +529,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         const inner = (
           <>
             <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
-            {split[i]}
+            <span className={cn(split[i] ? cn("font-medium", TONE[RESULT_STYLE[decision].tone].ink, FIGURE_LINK) : undefined)}>{split[i]}</span>
           </>
         );
         return (

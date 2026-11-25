@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import NextLink from "next/link";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, FileSearch, GitCompare, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Asterisk, ChevronDown, ChevronRight, CircleCheck, CircleHelp, Clock, Eye, FileSearch, GitCompare, Hourglass, ListChecks, MessagesSquare, ModelsIcon, MoreHorizontal, PanelLeft, PanelLeftOpen, PenLine, Quote, RefreshCw, Search, TranslateIcon, TriangleAlert, Undo2, UserPlus, X, type AppIcon } from "@/components/icons";
 import { Chip, Meter, RequiredMark } from "@/components/screening/parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Segmented, pagerOf } from "@/components/settings/parts";
@@ -29,10 +29,10 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, failedLabel, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, NoAbstract, PaperFacts, NOT_A_REVIEWER, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, NoAbstract, PaperFacts, NOT_A_REVIEWER, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -78,7 +78,6 @@ const BAR_COLUMNS = `lg:grid-cols-[19rem_minmax(0,1fr)] ${WIDE}`;
 const QUEUE_FILTER = "h-8 w-full rounded-full px-3.5 text-xs";
 /** What helps with a criterion's answer, named under its question: a word with its sign that opens it in place and closes it again. */
 const AID = "flex h-5 items-center gap-1 rounded text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50";
-const inQuotes = (text: string) => `"${text}"`;
 const NO_PACE = { sum: 0, n: 0 };
 /** Among the answers reviewers gave to one criterion, in their order, the place of the first that stands apart from the answer most of them gave. */
 const apartAt = (given: Array<Answer | undefined>) => {
@@ -515,7 +514,7 @@ function Screen({ open }: { open: Open }) {
                             {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">from {waitsOn.slice(0, 2).join(" and ")}{waitsOn.length > 2 ? ` and ${waitsOn.length - 2} more` : ""}</span> : null}
                             {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">Settled by {state.resolvedBy === open.me ? "you" : (personOf(state.resolvedBy)?.name ?? "a reviewer")}</span> : null}
                             {/* What the reviewers said about it is further down the pane: this goes there. */}
-                            {discussion ? <Button variant="ghost" size="xs" className="h-6 gap-1 px-1.5 text-xs" onClick={toDiscussion}><MessagesSquare />{said ? `${said} ${said === 1 ? "message" : "messages"}` : "Discuss"}</Button> : null}
+                            {discussion ? <DiscussionLink count={said} onClick={toDiscussion} /> : null}
                             {!state.resolvedBy && state.result === "exclude" && cast.some((one) => one.vote?.reason) ? <ReasonChip reason={cast.find((one) => one.vote?.reason)!.vote!.reason!} criteria={criteria} /> : null}
                           </>
                         ) : null
@@ -654,7 +653,7 @@ function Screen({ open }: { open: Open }) {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: `See the ${fromSource} papers from ${source.name}` } : undefined} added={paper.batch !== undefined ? { at: paper.batch, href: papersHref(id, { added: String(paper.batch) }) } : undefined} />
                         {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
-                        {discussion && said ? <button type="button" onClick={toDiscussion} className="flex h-6 items-center gap-1 rounded-full bg-primary/10 px-2 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50"><MessagesSquare aria-hidden className="size-3.5" />{said} {said === 1 ? "message" : "messages"}</button> : null}
+                        {discussion && said ? <DiscussionLink count={said} onClick={toDiscussion} /> : null}
                       </div>
                       {!paper.sentences.length ? (
                         <NoAbstract />
@@ -795,11 +794,10 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" || !mayDecide ? `${at + 1} of ${items.length}` : `${left.toLocaleString("en-GB")} left`}</span>
+                <span className="font-medium">{queue === "done" || !mayDecide ? `${num(at + 1)} of ${num(items.length)}` : `${left.toLocaleString("en-GB")} left`}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
-              <TooltipHint label="Previous paper"><Button variant="ghost" size="icon" className="size-7" aria-label="Previous paper" disabled={at <= 0} onClick={() => go(at - 1)}><ChevronLeft /></Button></TooltipHint>
-              <TooltipHint label="Next paper"><Button variant="ghost" size="icon" className="size-7" aria-label="Next paper" disabled={at >= items.length - 1} onClick={() => go(at + 1)}><ChevronRight /></Button></TooltipHint>
+              <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0} canNext={at < items.length - 1} />
               {/* Under 1400px the last vote has no part of the bar to itself, so its way back sits here. */}
               {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
               {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label="Undo the last vote"><Button variant="ghost" size="icon" className="size-8" aria-label="Undo the last vote" onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? "Settled as" : "Your last vote"} />{last.noted ? <PenLine role="img" aria-label="Saved with a note" className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
@@ -1000,7 +998,7 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
     : queue === "todo"
       ? open.gathering
         ? [Hourglass, "Its papers are on their way", `${open.gathering.done.toLocaleString("en-GB")} of ${open.gathering.of.toLocaleString("en-GB")} are in`]
-        : open.yours.length ? [CircleCheck, "You have voted on all your papers", null] : [ListChecks, "No paper has been dealt to you", null]
+        : open.yours.length ? [CircleCheck, "You have voted on all your papers", null] : [ListChecks, "No paper has come to you yet", null]
       : queue === "conflicts"
         ? [GitCompare, "No conflict to settle", null]
         : [ListChecks, "You haven't voted on a paper yet", null];
@@ -1018,11 +1016,6 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
       </div>
     </div>
   );
-}
-
-/** Why a paper was excluded, as a chip that shows the criterion's question when pointed at. */
-function ReasonChip({ reason, criteria }: { reason: string; criteria: Criterion[] }) {
-  return <QuestionName question={questionOf(reason, criteria)} label={failedLabel(reason, criteria)} className="inline-flex"><Chip><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
 
 /** A sentence of the abstract, with the criteria's words marked, and the whole of it marked where it is the passage being looked at. */

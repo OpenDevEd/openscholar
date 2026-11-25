@@ -15,7 +15,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
-import { PEOPLE, type Person } from "./data";
+import { PEOPLE, PERSON_SAYS, type Person } from "./data";
 
 /** Picks a person: the workspace's members first, then people outside it, or an email address to invite. */
 export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
@@ -51,8 +51,8 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
           <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
           <CommandList className="max-h-72">
             <CommandEmpty>{email ? null : "Nobody by that name. Type an email address to invite someone."}</CommandEmpty>
-            {group("In this workspace", left.filter((person) => !person.guest))}
-            {group("Outside this workspace", left.filter((person) => person.guest))}
+            {group(PERSON_SAYS.member, left.filter((person) => !person.guest))}
+            {group(PERSON_SAYS.guest, left.filter((person) => person.guest))}
             {email ? (
               <CommandGroup heading="Invite">
                 <CommandItem value={email} onSelect={() => pick({ email })} className="gap-3">
