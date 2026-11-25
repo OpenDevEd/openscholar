@@ -24,7 +24,7 @@ function ScrollArea({
 }) {
   const viewport = React.useRef<HTMLDivElement>(null)
   const content = React.useRef<HTMLDivElement>(null)
-  const [edges, setEdges] = React.useState({ top: false, bottom: false, start: false, end: false })
+  const [edges, setEdges] = React.useState({ top: false, bottom: false, start: false, end: false, rtl: false })
   const measure = React.useCallback(() => {
     const el = viewport.current
     if (!el) return
@@ -34,7 +34,9 @@ function ScrollArea({
     const along = Math.abs(el.scrollLeft)
     const start = along > 1
     const end = along + el.clientWidth < el.scrollWidth - 1
-    setEdges((e) => (e.top === top && e.bottom === bottom && e.start === start && e.end === end ? e : { top, bottom, start, end }))
+    // The start is the right-hand edge on a right-to-left page, and the fade is drawn from there.
+    const rtl = getComputedStyle(el).direction === "rtl"
+    setEdges((e) => (e.top === top && e.bottom === bottom && e.start === start && e.end === end && e.rtl === rtl ? e : { top, bottom, start, end, rtl }))
   }, [])
   const fade = (to: string, from: boolean, until: boolean) =>
     `linear-gradient(${to}, transparent, black ${from ? EDGE_FADE : 0}px, black calc(100% - ${until ? EDGE_FADE : 0}px), transparent)`
@@ -65,7 +67,7 @@ function ScrollArea({
           shades
             ? {
                 // One fade for each way it scrolls: where it scrolls both ways, what shows is what both let through.
-                maskImage: [axis !== "x" ? fade("to bottom", edges.top, edges.bottom) : "", axis !== "y" ? fade("to right", edges.start, edges.end) : ""].filter(Boolean).join(", "),
+                maskImage: [axis !== "x" ? fade("to bottom", edges.top, edges.bottom) : "", axis !== "y" ? fade(edges.rtl ? "to left" : "to right", edges.start, edges.end) : ""].filter(Boolean).join(", "),
                 maskComposite: "intersect",
               }
             : undefined

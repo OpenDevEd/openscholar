@@ -178,7 +178,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
         (!reason || reasonKey(paper) === reason) &&
         (!words || `${paper.title} ${paper.authors.join(" ")} ${paper.sentences.join(" ")}`.toLowerCase().includes(words)),
     );
-  }, [papers, votes, settled, from, added, who, voted, alsoKey, reason, reasonKey, query]); // eslint-disable-line react-hooks/exhaustive-deps -- the others by their ids, since the list is a new one on every draw
+  }, [papers, votes, settled, from, added, who, voted, alsoKey, reason, reasonKey, query, open.me]); // eslint-disable-line react-hooks/exhaustive-deps -- the others by their ids, since the list is a new one on every draw
   const tabCounts = useMemo(() => Object.fromEntries(RESULTS.map((result) => [result, narrowed.filter((paper) => settled[paper.id]!.result === result).length])) as Record<(typeof RESULTS)[number], number>, [narrowed, settled]);
   const rows = useMemo(() => {
     const list = filter === "all" ? narrowed : narrowed.filter((paper) => settled[paper.id]!.result === filter);
@@ -192,7 +192,7 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     if (sort === "split") return [...list].sort((a, b) => split(b) - split(a));
     if (sort === "points") return [...list].sort((a, b) => points(b) - points(a));
     return list;
-  }, [narrowed, filter, settled, votes, sort, screening]);
+  }, [narrowed, filter, settled, votes, sort, screening, open.me, everyone.join()]); // eslint-disable-line react-hooks/exhaustive-deps -- the reviewers by their ids, and what the person looking may see by who they are
   // When papers joined after the start: each check that brought some, and each source added later.
   const arrivals = [...new Set(papers.flatMap((paper) => paper.batch ?? []))].sort((a, b) => b - a);
   const newest = arrivals[0];

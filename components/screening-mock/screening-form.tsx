@@ -41,7 +41,7 @@ import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, UPLOAD_ACCEPT, UPLOAD_FORMATS, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./parts";
-import { paid, walletOf, credits, isReading, paperCredits, useMock, toppedUp, spentOf, perPaper } from "./store";
+import { paid, walletOf, credits, isReading, paperCredits, useMock, toppedUp, spentOf, perPaper, settingsOf } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -229,7 +229,7 @@ export function ScreeningForm({ id }: { id?: string }) {
     // An edit taken back leaves nothing unsaved: a draft that says what is saved is no draft.
     store.draft(key, (now) => {
       const made = typeof next === "function" ? next(now ?? origin) : next;
-      return saved && !changesOf(saved, made).length ? undefined : made;
+      return saved && settingsOf(saved) === settingsOf(made) ? undefined : made;
     });
   };
   // A link to a part of the form lands on it with a short tint, so the eye finds where it landed. The window's address and its hash changes are the outside system.
@@ -495,6 +495,8 @@ export function ScreeningForm({ id }: { id?: string }) {
         ...(draft.destination.collection === ANOTHER_COLLECTION ? { destination: { ...draft.destination, name: collectionName(draft)!, collection: undefined } } : {}),
         ...live(draft, now),
         changes: now.changes,
+        // Who it is shared with is set from Share, not here: a draft opened before a change there must not put the old list back.
+        viewers: now.viewers,
         spent: { ...now.spent, ...Object.fromEntries(again.map((one) => [one.id, (now.spent?.[one.id] ?? 0) + one.cost])) },
         updates: now.updates,
         // Made living: it checks its sources at once, and is open again.
@@ -568,8 +570,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   ];
   const fromCollection = draft.sources.find((source) => source.kind === "collection");
   // The lookup is made up: about one pasted DOI in eight isn't in the index, and the source says how many were left out.
-  const doiMissing = Math.floor(dois.split(/[\s,;]+/).filter(Boolean).length / 8);
   const doiCount = dois.split(/[\s,;]+/).filter((word) => /^10\.\d{4,}\//.test(word.replace(/^https?:\/\/(dx\.)?doi\.org\//, ""))).length;
+  const doiMissing = Math.floor(doiCount / 8);
 
   // The summary beside the form: one line for each part, which opens it.
   const resolver = joined.find((person) => person.id === draft.rule.resolver) ?? joined[0];

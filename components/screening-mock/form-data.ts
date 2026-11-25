@@ -1,7 +1,7 @@
 // What the screening form offers to pick from, made up: places papers can come from, the
 // collections included papers can go to, and the questions a search already asks.
 
-import type { SourceKind } from "./data";
+import { NOW, day, includedIn, type Screening, type SourceKind } from "./data";
 
 export type Offer = { name: string; detail: string; total: number; questions?: string[]; /** A search's filters. */ filters?: string[]; /** The kind it is added as, where that is not its tab's: the whole library sits above its collections. */ kind?: SourceKind };
 
@@ -101,3 +101,14 @@ export const REFERENCE_FILES = new RegExp(`\\.(${REFERENCE_ENDINGS.join("|")})$`
 export const PDF_FILES = /\.pdf$/i;
 export const UPLOAD_ACCEPT = [...REFERENCE_ENDINGS, "pdf"].map((ending) => `.${ending}`).join(",");
 export const UPLOAD_FORMATS = "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF";
+
+/** The settings' own collection on a running screening is kind "new" with no `collection`; a second one started from the settings carries this mark until it is saved. */
+export const ANOTHER_COLLECTION = "another";
+
+/** Where a screening's included papers are saved, by name, or null where they stay in it. The pages and the files both read this. */
+export function collectionName(screening: Pick<Screening, "destination" | "name">) {
+  const to = screening.destination;
+  if (to.kind === "none") return null;
+  if (to.kind === "new") return to.name || `${includedIn(screening.name)}${to.collection === ANOTHER_COLLECTION ? `, from ${day(NOW)}` : ""}`;
+  return [...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? null;
+}

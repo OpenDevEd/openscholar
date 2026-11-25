@@ -61,7 +61,9 @@ export const perPaper = (model: MapModel) => `${credits(paperCredits(model))} cr
 export const KEPT = "screening-mock:9";
 
 /** What a screening is set up as: a change here is a change to its settings, which a vote is not. */
-const settingsOf = (screening: Screening) => JSON.stringify([screening.name, screening.question, screening.sources, screening.criteria, screening.reviewers, screening.rule, screening.scoring, screening.destination, screening.living?.every]);
+const SETTINGS = ["name", "question", "sources", "criteria", "reviewers", "rule", "scoring", "destination", "living"] as const;
+const settingOf = (screening: Screening, field: (typeof SETTINGS)[number]) => JSON.stringify(field === "living" ? screening.living?.every : screening[field]);
+export const settingsOf = (screening: Screening) => SETTINGS.map((field) => settingOf(screening, field)).join();
 
 /** What decides where a paper stands, apart from the votes: its papers, its criteria, who is on it and its rule. A change to any of these holds the settled papers' results. */
 const rulesOf = (screening: Screening) => JSON.stringify([screening.sources, screening.criteria, screening.reviewers.map((one) => [one.id, one.left, one.discarded]), screening.rule.each, screening.rule.settle]);
@@ -122,13 +124,15 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
       update: (id: string, fn: (screening: Screening) => Screening, log?: Omit<Change, "at" | "by">) =>
         setState((s) => ({
           ...s,
-          // Settings changed here, from the open screening or by a save. A draft keeps the edits that are still its own: the same change is made to it, and it goes once nothing in it differs from what is saved.
+          // Settings changed here, from the open screening or by a save. A draft keeps the edits that are still its own: each part the change touched takes what was saved, the parts it left alone stay as the draft has them, and the draft goes once nothing in it differs from what is saved.
           drafts: (() => {
             const [draft, one] = [s.drafts[id], s.screenings.find((each) => each.id === id)];
-            if (!draft || !one || settingsOf(fn(one)) === settingsOf(one)) return s.drafts;
+            if (!draft || !one) return s.drafts;
+            const made = fn(one);
+            if (settingsOf(made) === settingsOf(one)) return s.drafts;
             const { [id]: _saved, ...rest } = s.drafts;
-            const mine = fn(draft);
-            return settingsOf(mine) === settingsOf(fn(one)) ? rest : { ...rest, [id]: mine };
+            const mine: Screening = { ...draft, ...Object.fromEntries(SETTINGS.filter((field) => settingOf(made, field) !== settingOf(one, field)).map((field) => [field, made[field]])) };
+            return settingsOf(mine) === settingsOf(made) ? rest : { ...rest, [id]: mine };
           })(),
           screenings: s.screenings.map((one) => {
             if (one.id !== id) return one;

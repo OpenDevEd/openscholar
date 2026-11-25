@@ -12,8 +12,8 @@ import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Chip } from "@/components/screening/parts";
 import { cn } from "@/lib/utils";
-import { num, listed, plural, readersOf, firstName, EVERY_LABEL, NOW, RESULT_LABEL, activeReviewers, day, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening, includedIn, inQuotes, type Paper } from "./data";
-import { COLLECTIONS, COMMUNITY_COLLECTIONS } from "./form-data";
+import { num, listed, plural, readersOf, firstName, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, dealtTo, effectOf, growing, modelsOf, personOf, projected, readNext, standing, type Criterion, type Move, type Reviewer, type Screening, inQuotes, type Paper } from "./data";
+import { ANOTHER_COLLECTION, collectionName } from "./form-data";
 import { papersHref } from "./links";
 import { ResultChip, INLINE_LINK, ShutNote } from "./parts";
 import { credits, paperCredits } from "./store";
@@ -39,16 +39,7 @@ export const criterionName = (criterion: Pick<Criterion, "text">) => {
   return inQuotes(text.length > 60 ? `${text.slice(0, 60).replace(/\s+\S*$/, "")}…` : text);
 };
 
-/** The settings' own collection on a running screening is kind "new" with no `collection`; a second one started from the settings carries this mark until it is saved. */
-export const ANOTHER_COLLECTION = "another";
-
-/** Where a screening's included papers are saved, by name, or null where they stay in it. */
-export function collectionName(screening: Screening) {
-  const to = screening.destination;
-  if (to.kind === "none") return null;
-  if (to.kind === "new") return to.name || `${includedIn(screening.name)}${to.collection === ANOTHER_COLLECTION ? `, from ${day(NOW)}` : ""}`;
-  return [...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? null;
-}
+export { ANOTHER_COLLECTION, collectionName };
 
 /** A part of a page a link landed on: a tint that fades into its own surface over a second. Nothing under reduced motion. */
 export function landOn(target: HTMLElement | null) {
@@ -243,6 +234,7 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
   const [open, setOpen] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const items = (lines.length ? lines : moves.length ? [] : [none]).map((line) => (typeof line === "string" ? { text: line } : line));
+  const hidden = unseen ? moves.reduce((sum, move) => sum + move.papers.filter(unseen).length, 0) : 0;
   return (
     <div className="space-y-2.5">
       {items.length ? (
@@ -268,20 +260,23 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
           })}
         </ul>
       ) : null}
+      {/* The papers whose votes are hidden from the person are counted together and under no result: which way each goes would say how the others voted on it. */}
+      {hidden ? <ShutNote by="vote">{plural(hidden, "paper you have yet to vote on changes", "papers you have yet to vote on change")} result too. Which way stays hidden until you vote on {hidden === 1 ? "it" : "them"}.</ShutNote> : null}
       {moves.length ? (
         <ul className="@container divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle bg-card">
           {moves.map((move) => {
             const key = `${move.from}>${move.to}`;
             const shown = open === key;
             const named = unseen ? move.papers.filter((paper) => !unseen(paper)) : move.papers;
-            const kept = move.papers.length - named.length;
+            // A move made only of papers whose votes are hidden isn't drawn: its count alone would say how one of them was voted on.
+            if (!named.length) return null;
             const pages = Math.ceil(named.length / PAPERS_PAGE);
             const at = Math.min(page, pages);
             return (
               <li key={key}>
                 {/* The count opens the papers it stands for, so a change is never taken on trust. */}
                 <button type="button" aria-expanded={shown} onClick={() => { setOpen(shown ? null : key); setPage(1); }} className="flex w-full items-center gap-2 px-2.5 py-2 text-start transition-colors hover:bg-muted">
-                  <span className="w-7 shrink-0 text-end text-sm font-semibold tabular-nums">{move.papers.length}</span>
+                  <span className="w-7 shrink-0 text-end text-sm font-semibold tabular-nums">{named.length}</span>
                   {/* A move is one line, or where that doesn't fit, a column with the arrow pointing down: the arrow never ends a line with nothing after it. */}
                   <span className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 @max-[19rem]:flex-col @max-[19rem]:items-start @max-[19rem]:gap-0.5">
                     <ResultChip result={move.from} />
@@ -308,7 +303,6 @@ export function EffectList({ lines, moves = [], none = "No paper's result change
                       ))}
                     </ul>
                     {pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={at} totalPages={pages} onPageChange={setPage} totalItems={named.length} itemsPerPage={PAPERS_PAGE} itemLabel="papers" /> : null}
-                    {kept ? <ShutNote by="vote">{named.length ? plural(kept, "more is", "more are") : plural(kept, "paper is", "papers are")} not named here: you have yet to vote on {kept === 1 ? "it" : "them"}.</ShutNote> : null}
                   </div>
                     </motion.div>
                   ) : null}

@@ -283,7 +283,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const waiting = counts.waiting + (kept - papers.length);
   const openNow = counts.conflict + waiting;
   const flow = flowOf(out);
-  const svg = () => flowSvg(out, NOW);
+  const svg = () => flowSvg(out, Date.now());
 
   // The same diagram as a picture, drawn from the drawing: what a word processor takes.
   const png = () => {
@@ -296,7 +296,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
-      link.download = fileName(out, "flow", "png", NOW);
+      link.download = fileName(out, "flow", "png", Date.now());
       link.click();
     };
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg())}`;
@@ -503,19 +503,19 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
           <p className="me-auto min-w-0 text-xs text-muted-foreground max-sm:basis-full">{{ papers: "BibTeX and RIS go into a reference manager. CSV adds each paper's result, reason and votes.", votes: "One row for each reviewer on each paper. Opens in Excel, Google Sheets or R.", flow: "PNG goes into a document. SVG can be edited.", record: "For keeping, and for code. Opens in any text editor.", methods: "It changes as votes come in: copy it when the screening is done." }[tab]}</p>
           {(tab === "papers"
             ? [
-                { key: `papers-csv:${group}`, label: "Download CSV", run: () => save(fileName(out, GROUP_FILE[group], "csv", NOW), "text/csv", papersCsv(out, included)), off: !included.length },
-                { key: `bib:${group}`, label: "Download BibTeX", run: () => save(fileName(out, GROUP_FILE[group], "bib", NOW), "application/x-bibtex", bibOf(included, papers)), off: !included.length },
-                { key: `ris:${group}`, label: "Download RIS", run: () => save(fileName(out, GROUP_FILE[group], "ris", NOW), "application/x-research-info-systems", risOf(included)), off: !included.length },
+                { key: `papers-csv:${group}`, label: "Download CSV", run: () => save(fileName(out, GROUP_FILE[group], "csv", Date.now()), "text/csv", papersCsv(out, included)), off: !included.length },
+                { key: `bib:${group}`, label: "Download BibTeX", run: () => save(fileName(out, GROUP_FILE[group], "bib", Date.now()), "application/x-bibtex", bibOf(included, papers)), off: !included.length },
+                { key: `ris:${group}`, label: "Download RIS", run: () => save(fileName(out, GROUP_FILE[group], "ris", Date.now()), "application/x-research-info-systems", risOf(included)), off: !included.length },
               ]
             : tab === "votes"
-              ? [{ key: `csv:${whose}`, label: "Download CSV", run: () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(screening, whose))}`, "csv", NOW), "text/csv", votesCsv(out, papers, whose === "all" ? undefined : whose)), off: !lines.length }]
+              ? [{ key: `csv:${whose}`, label: "Download CSV", run: () => save(fileName(out, whose === "all" ? "votes" : `votes-${slug(nameOn(screening, whose))}`, "csv", Date.now()), "text/csv", votesCsv(out, papers, whose === "all" ? undefined : whose)), off: !lines.length }]
               : tab === "flow"
                 ? [
-                    { key: "svg", label: "Download SVG", run: () => save(fileName(out, "flow", "svg", NOW), "image/svg+xml", svg()), off: false },
+                    { key: "svg", label: "Download SVG", run: () => save(fileName(out, "flow", "svg", Date.now()), "image/svg+xml", svg()), off: false },
                     { key: "png", label: "Download PNG", run: png, off: false },
                   ]
                 : tab === "record"
-                  ? [{ key: "json", label: "Download JSON", run: () => save(fileName(out, "record", "json", NOW), "application/json", JSON.stringify(recordOf(out, NOW), null, 2)), off: false }]
+                  ? [{ key: "json", label: "Download JSON", run: () => save(fileName(out, "record", "json", Date.now()), "application/json", JSON.stringify(recordOf(out, Date.now()), null, 2)), off: false }]
                   : [{ key: "copy", label: "Copy", run: () => void navigator.clipboard.writeText(methods), off: false }]
           ).map((button, i, all) => (
             <Button key={button.key} size="sm" variant={i === all.length - 1 ? "default" : "outline"} disabled={button.off} onClick={() => { button.run(); setDone((all) => [...new Set([...all, button.key])]); }}>

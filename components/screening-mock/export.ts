@@ -40,6 +40,7 @@ import {
   type Screening,
   type Standing,
 } from "./data";
+import { collectionName } from "./form-data";
 
 /** A screening as it stands, and the person taking a file out of it. */
 export type Taken = { screening: Screening; state: Pick<Standing, "papers" | "votes" | "settled" | "counts">; me: string };
@@ -151,6 +152,8 @@ export const risOf = (papers: Paper[]) =>
       ].join("\n");
     })
     .join("\n\n");
+/** Text as a BibTeX field holds it: the signs BibTeX reads as its own are escaped, so an "&" in a journal's name or a brace in a title can't break the file. */
+const bibText = (text: string) => text.replace(/\\/g, "\\textbackslash{}").replace(/([&%$#_{}])/g, "\\$1");
 /** The same as BibTeX. A paper's key is worked out over every paper of the screening, so it is the same key in a file of some of them. */
 export const bibOf = (papers: Paper[], every: Paper[] = papers) => {
   // Papers by the same first author in the same year take a, b, c, and after z the letters double.
@@ -166,7 +169,10 @@ export const bibOf = (papers: Paper[], every: Paper[] = papers) => {
     .map((paper) => {
       const doi = doiOf(paper);
       // "and others" is BibTeX's own way to end a list it doesn't have all of.
-      const fields = [["title", paper.title], ["author", paper.authors.join(" and ")], ["year", String(paper.year)], ["journal", paper.venue], ...(doi ? [["doi", doi]] : []), ...(paper.sentences.length ? [["abstract", paper.sentences.join(" ")]] : []), ...(paper.original ? [["language", paper.original.language]] : []), ["paperid", paper.id]];
+      const authors = [...authorsOf(paper), ...(cutShort(paper) ? ["others"] : [])].join(" and ");
+      const words = [["title", paper.title], ["author", authors], ["journal", paper.venue], ...(paper.sentences.length ? [["abstract", paper.sentences.join(" ")]] : []), ...(paper.original ? [["language", paper.original.language]] : [])].map(([name, value]) => [name, bibText(value!)]);
+      // An identifier is written as it is: a DOI's own signs are not text.
+      const fields = [...words.slice(0, 2), ["year", String(paper.year)], ...words.slice(2, 3), ...(doi ? [["doi", doi]] : []), ...words.slice(3), ["paperid", paper.id]];
       return `@article{${keys.get(paper.id)},\n${fields.map(([name, value]) => `  ${name} = {${value}}`).join(",\n")}\n}`;
     })
     .join("\n\n");
@@ -354,7 +360,7 @@ export function recordOf(out: Taken, at: number) {
       checks_for_new_papers: screening.living ? { how_often: EVERY_LABEL[screening.living.every], next: iso(screening.living.next) } : null,
       rule: { people_on_each_paper: rule.each === "all" ? "Everyone" : Number(rule.each), settled_when: SETTLE_LABEL[rule.settle], conflicts_settled_by: rule.settle === "one" ? null : nameOn(screening, rule.resolver), other_votes_seen: rule.blind === "after" ? "After you vote" : "At any time" },
       scoring: { points_needed_for_each_star: scoring.stars },
-      included_papers_go_to: destination.kind === "none" ? null : { kind: destination.kind, name: destination.name || null, excluded_papers_removed_from_it: destination.prune },
+      included_papers_go_to: destination.kind === "none" ? null : { kind: destination.kind, name: collectionName(screening), collection_id: destination.kind === "new" ? null : (destination.collection ?? null), excluded_papers_removed_from_it: destination.prune },
       shared_with: (screening.viewers ?? []).map((viewer) => ({ name: viewer.name, role: "Viewer", since: iso(viewer.addedAt) })),
       counts: state.counts,
     },
