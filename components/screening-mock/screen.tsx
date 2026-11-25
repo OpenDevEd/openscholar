@@ -29,7 +29,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { firstName, plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, NoAbstract, PaperFacts, NOT_A_REVIEWER, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone } from "./parts";
@@ -1042,7 +1042,7 @@ function Face({ reviewer, vote, failed, you, kept, criteria, named }: { reviewer
             <span className={cn("flex", reviewer.left && "opacity-55")}><ReviewerMark reviewer={reviewer} you={you} /></span>
             {/* A person by their first name, a model by its own, on two lines at most. */}
             {/* The clamp sets its own display, so what hides the name is a box around it. */}
-            <span aria-hidden className={cn("hidden max-w-full", named)}><span className={cn("text-center text-2xs leading-3 text-muted-foreground line-clamp-2", you && "font-medium text-foreground")}>{you ? "You" : reviewer.kind === "person" && !reviewer.email ? reviewer.name.split(" ")[0] : reviewer.name}</span></span>
+            <span aria-hidden className={cn("hidden max-w-full", named)}><span className={cn("text-center text-2xs leading-3 text-muted-foreground line-clamp-2", you && "font-medium text-foreground")}>{you ? "You" : reviewer.kind === "person" && !reviewer.email ? firstName(reviewer.name) : reviewer.name}</span></span>
           </button>
         </PopoverTrigger>
       </TooltipHint>

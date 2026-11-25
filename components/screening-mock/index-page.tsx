@@ -94,7 +94,7 @@ export function ScreeningsIndex() {
         const conflicts = resolves(screening, me) ? state.counts.conflict : 0;
         const ahead = screening.after ? store.screenings.find((one) => one.id === screening.after) : undefined;
         // What its models are doing: the same answer the open screening's own pages give.
-        const held = modelsState(screening, store.screenings, store.wallet);
+        const held = modelsState(screening, store.screenings, store);
         // The last time anything happened in it: a vote, a change, a check, or its start.
         const votes = Object.values(state.votes).flatMap((cast) => cast.flatMap((one) => one.vote?.at ?? []));
         const active = Math.max(screening.createdAt, screening.finishedAt ?? 0, ...screening.changes.map((change) => change.at), ...(screening.updates ?? []).map((update) => update.at), ...votes);

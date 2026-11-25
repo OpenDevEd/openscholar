@@ -18,6 +18,8 @@ type State = {
   viewer: string;
   /** The workspace's credits. */
   wallet: number;
+  /** What another workspace's screenings have spent of that workspace's credits since the mock opened, by workspace. Its credits are what it had less this: the balance a reading is checked against is the one it is taken from. */
+  away?: Record<string, number>;
   /** A workspace that started with nothing screened, to see the first-time pages. */
   firstTime: boolean;
   /** Changes to a screening's settings that aren't saved yet, and a new screening being filled in, by where they are made. */
@@ -171,8 +173,8 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
           const waits = ahead && isReading(ahead);
           if (open.after && !waits) return { ...s, screenings: s.screenings.map((one) => (one.id === id ? { ...one, after: undefined } : one)) };
           const screening = waits ? ahead : open;
-          const home = workspaceOf(screening) === HOME;
-          let wallet = walletOf(screening, s.wallet);
+          let wallet = walletOf(screening, s);
+          let cost = 0;
           const reached = { ...screening.reached };
           const spent = { ...screening.spent };
           let moved = false;
@@ -184,10 +186,11 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
             if (next.reached === (reached[reviewer.id] ?? 0)) continue;
             reached[reviewer.id] = next.reached;
             wallet -= next.read * each;
+            cost += next.read * each;
             spent[reviewer.id] = (spent[reviewer.id] ?? 0) + next.read * each;
             moved = true;
           }
-          return moved ? { ...s, wallet: home ? wallet : s.wallet, screenings: s.screenings.map((one) => (one.id === screening.id ? { ...one, reached, spent } : one)) } : s;
+          return moved ? { ...s, ...paid(screening, s, cost), screenings: s.screenings.map((one) => (one.id === screening.id ? { ...one, reached, spent } : one)) } : s;
         }),
     }),
     [],
@@ -200,23 +203,28 @@ export function ScreeningMockProvider({ children }: { children: ReactNode }) {
   return <Context value={store}>{children}</Context>;
 }
 
-/** The credits a screening's models are paid from: its own workspace's. The mock's wallet is the home workspace's; another workspace has what it has. */
-export const walletOf = (screening: Screening, wallet: number) => (workspaceOf(screening) === HOME ? wallet : workspaceOf(screening).credits);
+/** The credits a screening's models are paid from: its own workspace's. The mock's wallet is the home workspace's; another workspace has what it had, less what its screenings have spent since. */
+export type Purse = Pick<State, "wallet" | "away">;
+export const walletOf = (screening: Screening, purse: Purse) => (workspaceOf(screening) === HOME ? purse.wallet : Math.max(0, workspaceOf(screening).credits - (purse.away?.[workspaceOf(screening).id] ?? 0)));
+/** The purse after a screening has paid so many credits: taken from the workspace whose balance let it. */
+export const paid = (screening: Screening, purse: Purse, cost: number): Purse => (workspaceOf(screening) === HOME ? { wallet: Math.max(0, purse.wallet - cost), away: purse.away } : { wallet: purse.wallet, away: { ...purse.away, [workspaceOf(screening).id]: (purse.away?.[workspaceOf(screening).id] ?? 0) + cost } });
 
 /**
  * What a screening's models are doing, worked out in one place, so the list's row, the frame's notice, the Overview's
  * chip and each model's row never say different things. Nothing where its models have no paper left to read.
  */
 export type ModelsState = "checking" | "gathering" | "paused" | "credits" | "waiting" | "reading";
-export const modelsState = (screening: Screening, screenings: Screening[], wallet: number): ModelsState | null => {
-  if (screening.checking) return "checking";
+export const modelsState = (screening: Screening, screenings: Screening[], purse: Purse): ModelsState | null => {
   if (screening.gathered !== undefined) return "gathering";
+  if (screening.checking) return "checking";
   if (screening.finishedAt) return null;
-  const reading = modelsOf(screening).filter((model) => stillReading(screening, model));
+  const models = modelsOf(screening);
+  // Paused models are paused whether or not a paper waits for them: the next one that arrives will.
+  if (screening.paused && models.length) return "paused";
+  const reading = models.filter((model) => stillReading(screening, model));
   if (!reading.length) return null;
-  if (screening.paused) return "paused";
   // Out of credits is the models that still have papers being unable to pay for one: a model that is done changes nothing.
-  if (reading.every((model) => paperCredits(model.model!) > walletOf(screening, wallet))) return "credits";
+  if (reading.every((model) => paperCredits(model.model!) > walletOf(screening, purse))) return "credits";
   const ahead = screening.after ? screenings.find((one) => one.id === screening.after) : undefined;
   return ahead && isReading(ahead) ? "waiting" : "reading";
 };
@@ -257,7 +265,7 @@ export function useOpenScreening(id: string) {
   const models = modelsOf(screening);
   // A model still has papers to read, and the credits to read them with or not.
   const reading = models.filter((model) => stillReading(screening, model));
-  const modelsNow = modelsState(screening, store.screenings, store.wallet);
+  const modelsNow = modelsState(screening, store.screenings, store);
   const outOfCredits = modelsNow === "credits";
   const spent = (model: Reviewer) => screening.spent?.[model.id] ?? 0;
   const movable = (fromId: string, toId: string) =>
@@ -300,15 +308,15 @@ export function useOpenScreening(id: string) {
       const papers = state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.failed)).length;
       // Asked of every row of the reviewers' table: a person has no reading to pay for.
       const cost = model.model ? papers * paperCredits(model.model) : 0;
-      return { papers, cost, short: Math.max(0, cost - walletOf(screening, store.wallet)) };
+      return { papers, cost, short: Math.max(0, cost - walletOf(screening, store)) };
     },
     retry: (model: Reviewer) => {
       const papers = state.papers.filter((paper) => state.votes[paper.id]!.some((one) => one.reviewer.id === model.id && one.failed)).length;
       const cost = papers * paperCredits(model.model!);
       // With too few credits it is not sent: the control says how many are missing.
-      if (cost > walletOf(screening, store.wallet)) return;
+      if (cost > walletOf(screening, store)) return;
       store.update(id, (s) => ({ ...s, retried: [...(s.retried ?? []), model.id], spent: { ...s.spent, [model.id]: (s.spent?.[model.id] ?? 0) + cost } }), { what: `Sent ${model.name} back to ${papers} ${papers === 1 ? "paper" : "papers"} it couldn't read`, effect: `${credits(cost)} credits` });
-      store.set({ wallet: Math.max(0, store.wallet - cost) });
+      store.set(paid(screening, store, cost));
     },
     /** A member who isn't one of its reviewers takes a share of the papers nobody has got to. */
     join: () => store.update(id, (s) => ({ ...s, ...withReviewer(s, personReviewer(store.me, Date.now())), viewers: s.viewers?.filter((one) => one.id !== me) }), { what: "Joined as a reviewer" }),

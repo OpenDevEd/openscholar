@@ -41,7 +41,7 @@ import { useWorkspace } from "./workspace";
 import { COLLECTIONS, COMMUNITIES, COMMUNITY_COLLECTIONS, OFFERS, PDF_FILES, REFERENCE_FILES, WRITTEN, type CommunityRow, type Offer } from "./form-data";
 import { MockStates } from "./mock-states";
 import { youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE } from "./parts";
-import { walletOf, credits, isReading, paperCredits, useMock } from "./store";
+import { paid, walletOf, credits, isReading, paperCredits, useMock } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
 
 // The whole library and its collections are one place to a person, so they share a tab.
@@ -272,7 +272,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   const outsider = Boolean(personOf(store.viewer)?.guest);
   const workspace = saved ? workspaceOf(saved) : outsider ? WORKSPACES.find((one) => one.id === "theirs")! : HOME;
   // The credits its models are paid from: its own workspace's.
-  const wallet = saved ? walletOf(saved, store.wallet) : workspace === HOME ? store.wallet : workspace.credits;
+  const wallet = saved ? walletOf(saved, store) : workspace === HOME ? store.wallet : workspace.credits;
   // The workspace's models read so many papers at once: a screening started while another's are reading waits its turn.
   const busy = fresh ? store.screenings.find(isReading) : undefined;
   const set = (patch: Partial<Screening>) => setDraft((d) => ({ ...d, ...patch }));
@@ -496,7 +496,7 @@ export function ScreeningForm({ id }: { id?: string }) {
       }),
       { what: describe(saved, draft), effect: [...lines.map(lineText), movesText(moves)].filter(Boolean).join(". ") || undefined },
     );
-    if (again.length) store.set({ wallet: Math.max(0, store.wallet - again.reduce((sum, one) => sum + one.cost, 0)) });
+    if (again.length) store.set(paid(saved, store, again.reduce((sum, one) => sum + one.cost, 0)));
     // The page stays where it is: Changes keeps what the save did until the next edit.
     setLastSave({ edits, lines, moves });
     // What the save did to the papers is said with it, so a count that changed elsewhere is no surprise.
@@ -583,7 +583,7 @@ export function ScreeningForm({ id }: { id?: string }) {
         </span>
       ) : null,
     },
-    { id: "decided", label: "How a paper is decided", value: `${SETTLE_LABEL[draft.rule.settle]}${draft.rule.settle === "one" ? "" : `, conflicts to ${!resolver || resolver.id === store.viewer ? "you" : resolver.name.split(" ")[0]}`}`, problem: false },
+    { id: "decided", label: "How a paper is decided", value: `${SETTLE_LABEL[draft.rule.settle]}${draft.rule.settle === "one" ? "" : `, conflicts to ${!resolver || resolver.id === store.viewer ? "you" : firstName(resolver.name)}`}`, problem: false },
     { id: "goes-to", label: "Where included papers go", value: destinationName, problem: false },
   ];
 
@@ -869,7 +869,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                         ) : null}
                         <div className="divide-y divide-border-subtle" style={{ minHeight: offerPager.pages > 1 ? OFFER_PAGE * 57 : undefined }}>
                           {offers.slice((offerPager.page - 1) * OFFER_PAGE, offerPager.page * OFFER_PAGE).map((offer) => { const as = offer.kind ?? kind; return <OfferRow key={offer.name} offer={offer} icon={kindIcon(as)} added={draft.sources.some((source) => source.kind === as && source.name === offer.name)} onAdd={() => { openAdded(offer.name, offer.total); addSource(as, offer.name, offer.detail, offer.total); if (offer.filters) setDraft((d) => ({ ...d, sources: d.sources.map((source) => (source.kind === as && source.name === offer.name ? { ...source, filters: offer.filters } : source)) })); }} />; })}
-                          {!offers.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">Nothing by that name.</p> : null}
+                          {!offers.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{find.trim() ? "Nothing by that name." : kind === "screening" ? "No other screening has included a paper yet." : "Nothing here yet."}</p> : null}
                         </div>
                         {offerPager.pages > 1 ? <CommandCenterPagination className="pt-1" currentPage={offerPager.page} totalPages={offerPager.pages} onPageChange={setOfferPage} totalItems={offers.length} itemsPerPage={OFFER_PAGE} itemLabel="sources" /> : null}
                       </div>

@@ -471,7 +471,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
   const unread = unreadPapers.length;
   const reading = reviewer.kind === "model" && done + unread < assigned && !screening.finishedAt;
   const retry = open.retryOf(reviewer);
-  const held = open.modelsNow === "credits" ? { icon: Coins, text: "Stopped, out of credits", stop: true } : open.modelsNow === "paused" ? { icon: CirclePause, text: "Paused", stop: true } : open.modelsNow === "waiting" ? { icon: Clock, text: "Waiting its turn", stop: false } : null;
+  const held = open.modelsNow === "credits" ? { icon: Coins, text: "Stopped, out of credits", stop: true } : open.modelsNow === "paused" ? { icon: CirclePause, text: "Paused", stop: true } : open.modelsNow === "waiting" ? { icon: Clock, text: "Waiting its turn", stop: false } : open.modelsNow === "gathering" ? { icon: Clock, text: "Waiting for its papers", stop: false } : open.modelsNow === "checking" ? { icon: RefreshCw, text: "Waiting for the check", stop: false } : null;
   const mine = reviewer.id === open.me;
   // Above the row's own link, so a count or a menu opens itself and not the row.
   const above = "relative z-[1]";
@@ -706,7 +706,7 @@ function Facts({ open }: { open: Open }) {
   const most = models.reduce((sum, model) => sum + open.most(model), 0);
   // The papers a model got to and couldn't read: the line under what was spent says so, as each model's row does. A paper two models failed on is one paper.
   const unread = new Set(models.flatMap((model) => open.unread(model).map((paper) => paper.id))).size;
-  const left = walletOf(screening, store.wallet);
+  const left = walletOf(screening, store);
   const to = screening.destination;
   const collection = to.kind === "none" ? null : to.kind === "new" ? to.name || `Included in ${screening.name}` : ([...COLLECTIONS, ...COMMUNITY_COLLECTIONS].find((one) => one.id === to.collection)?.name ?? "A collection");
   return (

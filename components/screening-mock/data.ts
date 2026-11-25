@@ -34,7 +34,7 @@ export const PEOPLE: Person[] = [
 ];
 export const personOf = (id: string) => PEOPLE.find((person) => person.id === id);
 /** Who a person is to a screening, in the words every list of its people uses. `sent` is an invitation that goes out with the save it waits for. */
-export const PERSON_SAYS = { invited: "Invited by email, votes once they join", sent: "Invited by email once you save", guest: "From outside this workspace", member: "In this workspace", settles: "Settles conflicts" } as const;
+export const PERSON_SAYS = { invited: "Invited by email, votes once they join", invitedToLook: "Invited by email, sees it once they join", sent: "Invited by email once you save", guest: "From outside this workspace", member: "In this workspace", settles: "Settles conflicts" } as const;
 /** The name someone is called by in a line of text or a narrow column. */
 export const firstName = (name: string) => name.split(" ")[0]!;
 /** A name as part of a file's name or an address. */

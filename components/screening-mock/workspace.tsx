@@ -429,15 +429,14 @@ function Faces({ reviewers, me, more, shown, hrefOf, max = 7 }: { reviewers: Rev
 type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "arrived" | "waiting" | "reading" | "nothing";
 /** Which one thing the row under the bar says. `quiet` leaves out what comes and goes as models read and papers arrive: on Screen and in the settings that row would move what is being read or changed. */
 function bannerKind(open: Open, quiet: boolean): BannerKind | null {
-  const { screening, reading } = open;
-  if (open.gathering) return "gathering";
-  if (screening.checking) return "checking";
-  if (open.outOfCredits) return "credits";
+  // What the models are doing is the one answer the list's row and the Overview read too.
+  const { screening, modelsNow } = open;
+  if (modelsNow === "gathering" || modelsNow === "checking" || modelsNow === "credits") return modelsNow;
   if (screening.finishedAt) return "finished";
-  if (screening.paused && modelsOf(screening).length) return "paused";
+  if (modelsNow === "paused") return "paused";
   if (quiet) return null;
   if (open.latest?.mine) return "arrived";
-  if (reading.length) return open.waitingFor ? "waiting" : "reading";
+  if (modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
   // A check that found nothing says so, where nothing else has to be said.
   if (screening.updates?.at(-1)?.added === 0 && screening.updates.at(-1)!.at > NOW) return "nothing";
   return null;

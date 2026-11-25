@@ -161,6 +161,8 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
     if (!theirs) return false;
     if (kind === "failed") return Boolean(theirs.failed);
     if (kind === "none") return !theirs.vote && !theirs.failed && !settled[paper.id]!.final;
+    // Which way someone else voted on a paper whose votes are hidden from the person looking is hidden here too: a filter that kept it would say what the locked mark doesn't.
+    if (kind !== "any" && reviewerId !== open.me && !open.canSee(paper)) return false;
     return kind === "any" ? Boolean(theirs.vote) : theirs.vote?.decision === kind;
   };
   // Every paper the filters and the search leave, whatever its result: the tabs count these.
@@ -799,6 +801,9 @@ function Why({ paper, open, visible, reasonKey }: { paper: Paper; open: Open; vi
 }
 
 /** The reasons a paper is excluded for, with a note. "Another reason" needs the note written. */
+/** The drawer's own scroll is the outside system: a step that opens low in it is brought into view once, as it is first drawn. Kept outside the panel so it is the same function on every draw: one made anew each draw would be called again whenever a model reads on, and pull the drawer back. */
+const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
 function ReasonPicker({ criteria, note: given, onNote, onPick, onBack }: { criteria: Criterion[]; /** The note the step before already holds: it is shown here as it was written, and never looks lost. Left out, the picker keeps its own. */ note?: string; onNote?: (note: string) => void; onPick: (reason: string, note?: string) => void; onBack?: () => void }) {
   const [own, setOwn] = useState("");
   const [missing, setMissing] = useState(false);
@@ -851,8 +856,6 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const score = state.result === "include" && visible && screening.criteria.length ? scoreOf(screening, cast) : null;
   // The reviewers the paper still waits for: who an override settles it without.
   const awaited = cast.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer);
-  // The drawer's own scroll is the outside system: a step that opens low in it is brought into view as it is drawn.
-  const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
     const said = withNote ?? (note.trim() || undefined);
     if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers }, reason, note: said, at: Date.now() });

@@ -9,7 +9,7 @@ import NextLink from "next/link";
 import { Coins, GitCompare, Hourglass } from "@/components/icons";
 import { NodeCard, type MapModel } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
-import { projected, readNext, withReviewer, type Reviewer, type Screening } from "./data";
+import { num, plural, projected, readNext, withReviewer, type Reviewer, type Screening } from "./data";
 import { ActivitySheet, ExportDialog, MoveDialog, ShareDialog, type ExportTab } from "./dialogs";
 import { EffectList, collectionName, effectLines, effectMoves, movesText } from "./effects";
 import { papersHref, settingsHref } from "./links";
@@ -65,7 +65,7 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
       >
         <EffectList
           lines={[
-            ...(unsettled ? [`${unsettled} ${unsettled === 1 ? "paper is" : "papers are"} not settled, and ${unsettled === 1 ? "stays" : "stay"} as ${unsettled === 1 ? "it is" : "they are"}`] : []),
+            ...(unsettled ? [`${plural(unsettled, "paper is", "papers are")} not settled, and ${unsettled === 1 ? "stays" : "stay"} as ${unsettled === 1 ? "it is" : "they are"}`] : []),
             ...(state.reading.length ? ["The models stop reading"] : []),
             ...(screening.living ? ["It stops checking for new papers"] : []),
             "It moves to Finished in the list, and can be reopened or changed at any time",
@@ -74,8 +74,8 @@ export function useScreeningOverlays(state: Open | null, { start = null, onClose
         {/* The papers that would be left unsettled, one press away. */}
         {unsettled ? (
           <div className="flex flex-wrap gap-1.5">
-            {state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={close}>{state.counts.conflict} in conflict</LinkChip> : null}
-            {state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={close}>{state.counts.waiting} waiting for votes</LinkChip> : null}
+            {state.counts.conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={close}>{num(state.counts.conflict)} in conflict</LinkChip> : null}
+            {state.counts.waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={close}>{num(state.counts.waiting)} waiting for votes</LinkChip> : null}
           </div>
         ) : null}
       </ConfirmChange>

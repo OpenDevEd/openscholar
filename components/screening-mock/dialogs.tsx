@@ -139,7 +139,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
   const on = [...people, ...viewers];
   const words = query.trim().toLowerCase();
   // Someone added in this sitting is told so: the row says how they hear of it.
-  const detail = (one: Reviewer) => (one.id === screening.createdBy ? "Started it" : one.email ? PERSON_SAYS.invited : one.addedAt > NOW ? "Told by email just now, with a link" : personOf(one.id)?.guest ? PERSON_SAYS.guest : `In ${workspace.name}`);
+  const detail = (one: Reviewer, votes = true) => (one.id === screening.createdBy ? "Started it" : one.email ? (votes ? PERSON_SAYS.invited : PERSON_SAYS.invitedToLook) : one.addedAt > NOW ? "Told by email just now, with a link" : personOf(one.id)?.guest ? PERSON_SAYS.guest : `In ${workspace.name}`);
   const share = (viewer: Reviewer) => state.update((s) => ({ ...s, viewers: [...(s.viewers ?? []), viewer] }), { what: `Shared it with ${viewer.name}`, effect: "They see every paper and every vote, and get no papers to vote on" });
   const add = (one: Reviewer) => (addAs === "reviewer" ? onPromote(one) : share(one));
   return (
@@ -185,7 +185,7 @@ export function ShareDialog({ open, onClose, state, onPromote, onDemote }: { ope
           entries={[
             { key: "workspace", avatar: <WorkspaceTile workspace={lookOf(workspace, screening.createdBy)} size="row" />, name: workspace.name, detail: workspace.members, role: { kind: "member", label: "See it and can change it" } },
             ...people.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one), role: "reviewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "viewer" && onDemote(one) : undefined })),
-            ...viewers.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one), role: "viewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "reviewer" && onPromote(one) : undefined, onRemove: state.canChange ? () => state.update((s) => ({ ...s, viewers: s.viewers?.filter((viewer) => viewer.id !== one.id) }), { what: `Stopped sharing it with ${one.name}` }) : undefined })),
+            ...viewers.map((one) => ({ key: one.id, avatar: <ReviewerMark reviewer={one} className="size-9" />, name: one.name, you: one.id === state.me, detail: detail(one, false), role: "viewer" as const, onRole: state.canChange ? (role: "reviewer" | "viewer") => role === "reviewer" && onPromote(one) : undefined, onRemove: state.canChange ? () => state.update((s) => ({ ...s, viewers: s.viewers?.filter((viewer) => viewer.id !== one.id) }), { what: `Stopped sharing it with ${one.name}` }) : undefined })),
           ]}
           onCopy={() => navigator.clipboard.writeText(window.location.href)}
         />
@@ -316,7 +316,9 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
   const later = looks.reduce((sum, look) => sum + look.found, 0);
   const reasons = excludedBy(state).map(([key, n]) => ({ label: failedLabel(key, screening.criteria), n }));
   // What a researcher takes away: the papers settled as included.
-  const settledIn: Paper[] = papers.filter((paper) => settled[paper.id]!.final === "include");
+  // A paper settled as included before the person looking has voted on it is one whose result is hidden from them: it stays out of the list and both files until they vote.
+  const settledIn: Paper[] = seen.filter((paper) => settled[paper.id]!.final === "include");
+  const hiddenIn = unseen.filter((paper) => settled[paper.id]!.final === "include").length;
   // Your own includes: there before the others have voted too.
   const mine: Paper[] = papers.filter((paper) => state.myVote(paper)?.decision === "include");
   const which = picked ?? (settledIn.length || !mine.length ? "settled" : "mine");
@@ -452,6 +454,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
             {tab === "papers" ? (
               included.length ? (
                 <div className="space-y-3">
+                  {which === "settled" && hiddenIn ? <ShutNote by="vote">{plural(hiddenIn, "included paper is", "included papers are")} left out: {hiddenIn === 1 ? "it was" : "they were"} settled before you voted on {hiddenIn === 1 ? "it" : "them"}, and {hiddenIn === 1 ? "its" : "their"} result shows once you have.</ShutNote> : null}
                   <ul className={LIST}>
                     {included.slice(0, 8).map((paper) => (
                       <li key={paper.id}>
