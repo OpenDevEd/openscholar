@@ -271,7 +271,6 @@ function LimitRow({ limit, used, full, startsAgain, dates, when, onChange, onRem
           </Select>
           {limit.period === "window" ? null : (
             <Segmented
-              wraps
               label={t("resetLabel")}
               value={limit.reset}
               onChange={(reset) => onChange({ reset })}
