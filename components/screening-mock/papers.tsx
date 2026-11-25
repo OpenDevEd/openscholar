@@ -30,7 +30,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { inQuotes, inOrder, type Criterion, firstName, listed, nameOn, resolves, unclearLabel, DECISIONS, DECISION_LABEL, RESULTS, RESULT_LABEL, ago, failedLabel, keptOf, personOf, questionOf, reasonOf, scoreOf, taken, votingReviewers, type Decision, type Paper, type Result, type Reviewer } from "./data";
 import { papersHref, screenHref } from "./links";
-import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, PaperStepper, ReasonChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
+import { AnswerMark, FILTER_ON, FilterMenu, Help, Kbd, LinkChip, Note, PaperStepper, ReasonChip, NoAbstract, PaperFacts, ReasonRows, VoteButton, RetryRead, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, Named, Panel, QuestionHint, QuestionName, RESULT_ICON, RESULT_STYLE, Reason, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, Tally, VoteMark, BELOW_HEADER, UNDER_FRAME, kindIcon } from "./parts";
 import { Evidence, Matrix, Said } from "./screen";
 import { credits, type Open } from "./store";
 import type { ExportTab } from "./dialogs";
@@ -849,6 +849,10 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   const from = source ? narrow({ source: source.id }) : null;
   const failed = cast.filter((one) => one.failed);
   const score = state.result === "include" && visible && screening.criteria.length ? scoreOf(screening, cast) : null;
+  // The reviewers the paper still waits for: who an override settles it without.
+  const awaited = cast.filter((one) => !one.vote && !one.failed).map((one) => one.reviewer);
+  // The drawer's own scroll is the outside system: a step that opens low in it is brought into view as it is drawn.
+  const intoView = (part: HTMLElement | null) => part?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   const settle = (kind: "vote" | "result", decision: Decision, reason?: string, withNote?: string) => {
     const said = withNote ?? (note.trim() || undefined);
     if (kind === "vote") open.vote(paper, { decision, answers: { ...mine?.answers }, reason, note: said, at: Date.now() });
@@ -859,7 +863,7 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
   };
   const buttons = (kind: "vote" | "result") =>
     reasonFor === kind ? (
-      <ReasonPicker criteria={screening.criteria} note={note} onNote={setNote} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} />
+      <div ref={intoView}><ReasonPicker criteria={screening.criteria} note={note} onNote={setNote} onPick={(reason, withNote) => settle(kind, "exclude", reason, withNote)} onBack={() => setReasonFor(null)} /></div>
     ) : (
       <div className="space-y-2">
         <Input value={note} onChange={(event) => setNote(event.target.value)} placeholder={kind === "vote" ? "Note for the others (optional)" : "Note for the record (optional)"} aria-label="Note" className="h-8 bg-card text-sm" />
@@ -911,6 +915,14 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
         )
       ) : null}
 
+      {/* A conflict that is the person looking's to settle stands here, over the votes it settles: it is what the paper needs from them, and under the votes and the discussion it was a screen away. */}
+      {!state.resolvedBy && open.canResolve && state.result === "conflict" ? (
+        <Panel tone="info" className="space-y-2 p-3 ring-1 ring-info/25">
+          <h3 className="text-sm font-medium">Final decision</h3>
+          {buttons("result")}
+        </Panel>
+      ) : null}
+
       {/* While the rule hides the others' votes, the table is the one Screen draws: a lock where a vote is cast, the rule's chip beside the title and its reason under the table. */}
       <Section title="Votes" help={<VotesHelp blind={screening.rule.blind === "after"} side="left" />} aside={visible ? undefined : <ShutChip by="vote" />}>
           <div className="overflow-x-auto rounded-2xl border border-border-subtle p-3"><Matrix criteria={screening.criteria} cast={cast} me={open.me} hidden={!visible} shown={shown} onShow={setShown} passage={visible && quoting?.vote && shown ? (quoting.reviewer.kind === "model" ? <Evidence paper={paper} reviewer={quoting.reviewer} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} answer={quoting.vote.answers[shown.criterion]} /> : <Said reviewer={quoting.reviewer} vote={quoting.vote} criterion={screening.criteria.find((c) => c.key === shown.criterion)!} criteria={screening.criteria} you={quoting.reviewer.id === open.me} />) : undefined} /></div>
@@ -960,19 +972,17 @@ function PaperPanel({ paper, open, onClose, onStep, place }: { paper: Paper; ope
             <LinkChip href={papersHref(id, { result: "conflict" })} tone="info">Every conflict</LinkChip>
           </Panel>
         ) : null
-      ) : state.result === "conflict" ? (
-        <Panel tone="info" className="space-y-2 p-3 ring-1 ring-info/25">
-          <h3 className="text-sm font-medium">Final decision</h3>
-          {buttons("result")}
-        </Panel>
-      ) : deciding === "result" ? (
-        <section className="space-y-2">
+      ) : state.result === "conflict" ? null : deciding === "result" ? (
+        // Opened from a button at the foot of the drawer, it is brought into view: its three buttons would otherwise open under the fold.
+        <section ref={intoView} className="space-y-2">
           <h3 className="flex items-center gap-1 text-sm font-medium">
             Override result
             <Help title="Overriding a result" side="left" facts={<><HelpFact>Votes kept</HelpFact><HelpFact icon={Undo2}>Can be reopened</HelpFact></>}>
               <p>Your decision replaces the result the votes gave. The votes stay on record. Reopen puts the paper back under the screening&apos;s rule.</p>
             </Help>
           </h3>
+          {/* Settling it now ends the wait for whoever has yet to vote: said before it is done (it was only seen afterwards, as their column going). */}
+          {awaited.length ? <Note icon={Hourglass}>{listed(awaited.map((one) => (one.id === open.me ? "You" : one.name)))} {awaited.length === 1 && awaited[0]!.id !== open.me ? "has" : "have"} yet to vote. Your decision settles the paper without {awaited.length === 1 ? "that vote" : "those votes"}, and takes it off {awaited.length === 1 ? (awaited[0]!.id === open.me ? "your" : "their") : "their"} list.</Note> : null}
           {buttons("result")}
           <Button variant="ghost" size="sm" className="w-full" onClick={() => setDeciding(null)}>Cancel</Button>
         </section>

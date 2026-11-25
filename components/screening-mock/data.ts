@@ -1172,7 +1172,7 @@ export function startingScreenings(): Screening[] {
   const talked = state.papers.find((paper) => paper.sentences.length > 0 && state.settled[paper.id]!.result === "conflict" && !edtech.resolved[paper.id] && state.votes[paper.id]!.some((one) => one.reviewer.id === "thandiwe" && one.vote));
   if (talked) {
     const theirs = state.votes[talked.id]!.find((one) => one.reviewer.id === "thandiwe")!.vote;
-    edtech.threads = { [talked.id]: [{ by: "amina", to: "thandiwe", at: NOW - 3 * 60 * 60_000, text: "Thandiwe, what made you vote the way you did here? I read the design differently." }, { by: "thandiwe", at: NOW - 2 * 60 * 60_000, text: madeUpReply(theirs, edtech.criteria) }] };
+    edtech.threads = { [talked.id]: [{ by: "amina", to: "thandiwe", at: NOW - 3 * 60 * 60_000, text: "Thandiwe, what made you vote the way you did here? I read this one differently." }, { by: "thandiwe", at: NOW - 2 * 60 * 60_000, text: madeUpReply(theirs, edtech.criteria) }] };
   }
   const tvet = made("tvet", "TVET and youth employment", "tvet", 2, [source("t1", "search", "TVET AND youth employment AND Africa", "Openscholar search", 412, 0), source("t2", "collection", "Skills and work, shared reading", "Collection", 148, 31)], ["thandiwe", "amina", "kwame"], 2, { person: 0.55, model: 1 }, { createdAt: NOW - 12 * DAY });
   // On another screening a question waits for the person the mock starts as.

@@ -29,10 +29,10 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsTablet } from "@/lib/hooks";
 import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { cn } from "@/lib/utils";
-import { num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
+import { plural, num, inQuotes, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, confidenceOf, decide, evidence, personOf, questionOf, waitingQuestions, type Criterion, type Decision, type Paper, type Reviewer, type Vote } from "./data";
 import { Discussion, DiscussionShut, discussed } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
-import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, NoAbstract, PaperFacts, NOT_A_REVIEWER, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, Reason, type Tone } from "./parts";
+import { ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, NoAbstract, PaperFacts, NOT_A_REVIEWER, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, SHUT, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone } from "./parts";
 import { useMock, type Open } from "./store";
 import { useWorkspace } from "./workspace";
 
@@ -354,6 +354,8 @@ function Screen({ open }: { open: Open }) {
   const madeConflict = last && !last.resolved && settled[last.paper.id]?.result === "conflict";
   const differ = last && !last.resolved && open.canSee(last.paper) ? votes[last.paper.id]!.filter((one) => one.reviewer.id !== open.me && one.vote && one.vote.decision !== last.decision).length : 0;
   // The other must-haves the last Exclude's answers failed, beside the one it gave as its reason.
+  // The must-have the last vote excluded for, where it was one.
+  const lastReason = last && last.decision === "exclude" && last.reason && criteria.some((criterion) => criterion.key === last.reason) ? last.reason : null;
   const alsoFailed = last && !last.resolved && last.decision === "exclude" && last.reason ? criteria.filter((criterion) => criterion.must && criterion.key !== last.reason && open.myVote(last.paper)?.answers[criterion.key] === "no").length : 0;
   // Everything in this queue is voted on: say so, where the buttons are.
   const through = queue !== "done" && items.length > 0 && items.every((one) => (resolving ? settled[one.id]!.result !== "conflict" : Boolean(open.myVote(one))));
@@ -687,6 +689,8 @@ function Screen({ open }: { open: Open }) {
               <div className={cn("p-5", BESIDE)}>
                 <Section
                   title={answering ? "Your answers" : "Criteria"}
+                  // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
+                  aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? `${num(criteria.filter((criterion) => given[criterion.key] !== undefined).length)} of ${num(criteria.length)} answered` : plural(criteria.length, "criterion", "criteria")}</span> : undefined}
                   help={
                     <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={FileSearch}>Passage: the sentence of this paper that speaks to it</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>Words the criteria look for</HelpFact></>}>
                       {answering ? "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude."}
@@ -941,16 +945,13 @@ function Screen({ open }: { open: Open }) {
                 <>
                   <div className="flex min-w-0 items-center gap-2">
                     {/* Named as the last one: it is about the paper before, not the one open. */}
-                    <span className="shrink-0">{last.resolved ? "Last settled as" : "Your last vote:"} <span className="font-medium text-foreground">{last.resolved ? RESULT_LABEL[last.decision] : DECISION_LABEL[last.decision]}</span>{last.noted ? ", with a note" : ""}</span>
-                    {/* Exclude takes its reason from your answers where they say it: the reason it took shows here, cut short before the vote's own words are. Where the answers failed more must-haves than the one, they are counted: each is kept with the vote's answers. */}
-                    <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                      {last.decision === "exclude" && last.reason && criteria.some((criterion) => criterion.key === last.reason) ? <Reason reason={last.reason} criteria={criteria} className="min-w-0 shrink text-foreground" /> : null}
-                      {alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={`and ${alsoFailed} more`}>+{alsoFailed}</span> : null}
-                    </span>
-                    <Button variant="ghost" size="xs" className="shrink-0" onClick={undo}><Undo2 />Undo<Kbd>Z</Kbd></Button>
+                    <span className="flex shrink-0 items-center gap-1.5"><Named name={last.resolved ? "Last settled as" : "Your last vote"}><span className="font-medium text-foreground">{last.resolved ? RESULT_LABEL[last.decision] : DECISION_LABEL[last.decision]}</span></Named>{last.noted ? <Chip icon={PenLine} className="h-5 px-1.5">Note</Chip> : null}</span>
+                    <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />Undo<Kbd>Z</Kbd></Button>
                   </div>
-                  {last.paper.id !== paper.id || madeConflict || differ ? (
+                  {lastReason || last.paper.id !== paper.id || madeConflict || differ ? (
                     <div className="flex min-w-0 items-center gap-2">
+                      {/* Exclude takes its reason from your answers where they say it: the reason it took is named whole, at the head of the second line, and the paper's title after it gives up the room. Where the answers failed more must-haves than the one, they are counted. */}
+                      {lastReason ? <span className="flex shrink-0 items-center gap-1.5"><ReasonChip reason={lastReason} criteria={criteria} />{alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={`and ${alsoFailed} more`}>+{alsoFailed}</span> : null}</span> : null}
                       {last.paper.id !== paper.id ? (
                         <TooltipHint label={last.paper.title} onlyWhenClipped>
                           <button type="button" onClick={() => openIt(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline">{inQuotes(last.paper.title)}</button>

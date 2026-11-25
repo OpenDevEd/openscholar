@@ -7,7 +7,7 @@ import { createContext, use, useLayoutEffect, useRef, type ComponentProps, type 
 import { MotionConfig, motion } from "motion/react";
 import NextLink from "next/link";
 import { useParams, useRouter, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
-import { AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
+import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Copy, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Move, Play, RefreshCw, RotateCcw, Search, Settings2, Share2, Table2, Trash2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -29,7 +29,7 @@ import type { ExportTab } from "./dialogs";
 import { SCREENINGS, SCREENINGS_CRUMB, newHref, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { MockStates } from "./mock-states";
 import { useScreeningOverlays } from "./overlays";
-import { Help, LinkChip, ReviewerMark, SHUT, TONE, TabCount, type Tone } from "./parts";
+import { StateChip, Help, LinkChip, ReviewerMark, SHUT, TONE, TabCount, type Tone } from "./parts";
 import { credits, paperCredits, useMock, useModelsReading, useOpenScreening, type Open } from "./store";
 import { AddModel, AddPerson } from "./team";
 
@@ -178,7 +178,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo.length ? <TabCount value={open.toDo.length} tone="primary" /> : undefined },
         { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{num(total)}</span> },
         // Only someone who may change it has its settings.
-        ...(open.canChange ? [{ id: "settings" as const, label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <span className="rounded-full bg-warning/20 px-1.5 text-2xs ink-warning">Unsaved</span> : undefined }] : []),
+        ...(open.canChange ? [{ id: "settings" as const, label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">Unsaved</StateChip> : undefined }] : []),
       ]}
     />
   );

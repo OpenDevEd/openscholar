@@ -135,7 +135,11 @@ export function ShutChip({ by, children }: { by: Shut; children?: ReactNode }) {
 
 /** In the place of a part a rule shuts: what is there and why it is shut, in a line that never repeats the chip. */
 export function ShutNote({ by, children }: { by: Shut; children: ReactNode }) {
-  const Icon = SHUT[by].icon;
+  return <Note icon={SHUT[by].icon}>{children}</Note>;
+}
+
+/** A line that says how something stands, with its sign: the one grey box for it, whatever it is about. */
+export function Note({ icon: Icon, children }: { icon: AppIcon; children: ReactNode }) {
   return (
     <p className="flex items-start gap-2 rounded-2xl bg-inset px-3 py-3 text-sm text-muted-foreground">
       <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -288,14 +292,16 @@ export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
   return <div {...rest} className={cn("sticky bottom-0 z-20 border-t border-border-subtle bg-card shadow-[0_-10px_30px_-22px_rgb(0_0_0/0.3)]", className)} />;
 }
 
+/** A small tag after a name, as "You" is drawn: what kind of reviewer it is, or that they were taken off. */
+const NAME_TAG = "shrink-0 rounded-full bg-foreground/[0.07] px-2 text-2xs font-normal leading-5 text-muted-foreground";
 /** A reviewer's name with what kind of reviewer it is: You after your own, AI after a model's. One marker, the same on every page. */
 export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name"> & { left?: number }; you?: boolean; className?: string }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       <span className="truncate">{reviewer.name}</span>
-      {you ? <YouTag /> : reviewer.kind === "model" ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">AI</span> : null}
+      {you ? <YouTag /> : reviewer.kind === "model" ? <span className={NAME_TAG}>AI</span> : null}
       {/* Someone taken off the screening whose vote still stands on this paper: said beside their name, so nobody looks for them among the reviewers. */}
-      {reviewer.left ? <span className="shrink-0 rounded-full bg-foreground/[0.07] px-1.5 text-2xs font-normal leading-5 text-muted-foreground">Taken off</span> : null}
+      {reviewer.left ? <span className={NAME_TAG}>Taken off</span> : null}
     </span>
   );
 }

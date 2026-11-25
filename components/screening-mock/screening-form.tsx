@@ -48,11 +48,12 @@ import { AddModel, AddPerson, ConfirmChange } from "./team";
 type Kind = Exclude<SourceKind, "pdf" | "saved">;
 const KINDS: Array<{ id: Kind; label: string; icon: AppIcon; find?: string }> = [
   { id: "search", label: "Search", icon: SOURCE_ICON.search },
+  // A file follows a search: the two ways most people bring papers. On a phone the row shows its first three or four, and someone who came with a file looked for it and didn't find it.
+  { id: "upload", label: "Upload", icon: Upload },
   { id: "collection", label: "Library", icon: SOURCE_ICON.saved, find: "Find a collection" },
   { id: "screening", label: "Screening", icon: SOURCE_ICON.screening },
   { id: "evidenceLibrary", label: "Community", icon: SOURCE_ICON.evidenceLibrary },
   { id: "zotero", label: "Zotero", icon: SOURCE_ICON.zotero },
-  { id: "upload", label: "Upload", icon: Upload },
   { id: "dois", label: "DOIs", icon: Hash },
 ];
 const OFFER_PAGE = 5;
@@ -1018,7 +1019,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 {!criterionRows.length ? <motion.div key="none" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className={cn("overflow-hidden", DIVIDED_ROW)}><p className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">{writing ? <><AiIcon working className="size-4" />Writing criteria from the question</> : "No criteria yet"}</p></motion.div> : null}
               </AnimatePresence>
               <form className="flex items-center gap-2 px-4 py-2.5" onSubmit={(event) => { event.preventDefault(); addCriterion(text); setText(""); }}>
-                <Input id="new-criterion" value={text} onChange={(event) => setText(event.target.value)} placeholder="Add a criterion with a yes or no answer" aria-label="New criterion" className="h-9 flex-1" />
+                <Input id="new-criterion" value={text} onChange={(event) => setText(event.target.value)} placeholder="A yes or no question" aria-label="New criterion" className="h-9 flex-1" />
                 <Button type="submit" variant="outline" size="sm" className="h-9" disabled={!text.trim()}><Plus />Add</Button>
               </form>
               <div>

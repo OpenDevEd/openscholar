@@ -333,7 +333,7 @@ export function ExportDialog({ open, onClose, state, tab, onTab }: { open: boole
       side: [{ title: "Records removed before screening", n: found - kept, lines: [{ label: "Duplicates", n: found - kept }] }],
     },
     {
-      main: { title: "Records screened on title and abstract", n: kept },
+      main: { title: openNow ? "Records in screening on title and abstract" : "Records screened on title and abstract", n: kept },
       side: [
         { title: "Records excluded", n: counts.exclude, lines: reasons },
         ...(counts.maybe || openNow ? [{ title: "Not yet included or excluded", n: counts.maybe + openNow, lines: [...(counts.maybe ? [{ label: "Left as maybe", n: counts.maybe }] : []), ...(openNow ? [{ label: "Still open", n: openNow }] : [])] }] : []),
