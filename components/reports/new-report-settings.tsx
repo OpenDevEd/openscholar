@@ -74,6 +74,7 @@ export function NewReportSettings({ data: { intake, uses }, minute, now }: { dat
             <span className="block text-xs text-muted-foreground">{t(`hint.${intake.mode}`)}</span>
           </span>
           <Segmented
+            wraps
             label={t("when")}
             value={intake.mode}
             onChange={(mode) => set({ mode })}

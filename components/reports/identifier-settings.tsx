@@ -29,7 +29,6 @@ import { cn } from "@/lib/utils";
  * a second line, rather than widening the page. Where they fit, nothing changes.
  */
 const CONTROLS = "flex shrink-0 items-center gap-3 max-sm:min-w-0 max-sm:shrink max-sm:flex-wrap";
-const WRAPS = "max-sm:max-w-full max-sm:flex-wrap max-sm:rounded-[1.375rem]";
 
 /** What can't be changed here, drawn as the app draws a locked control: a lock, faded, with why on hover. */
 function Locked({ why, children }: { why: string; children: React.ReactNode }) {
@@ -136,7 +135,8 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
           return (
             <li key={id} className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5">
               <span className="min-w-0 flex-1 basis-52">
-                <span className="flex h-6 items-center gap-2">
+                {/* On a phone at large text the identifier's name goes under the service's mark. */}
+                <span className="flex h-6 items-center gap-x-2 max-sm:h-auto max-sm:min-h-6 max-sm:flex-wrap">
                   <ServiceMark id={id} />
                   <span className="rounded bg-inset px-1.5 text-2xs text-muted-foreground">{SERVICES[id].identifier}</span>
                 </span>
@@ -145,14 +145,14 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
               {why ? (
                 <span className={CONTROLS}>
                   <Locked why={why}>
-                    <Segmented label={t("when", { service: SERVICES[id].name })} value={tied ? "required" : "off"} onChange={() => undefined} options={modes} className={WRAPS} />
+                    <Segmented label={t("when", { service: SERVICES[id].name })} value={tied ? "required" : "off"} onChange={() => undefined} options={modes} wraps />
                   </Locked>
                   {/* Only its mode is locked: Zenodo with Crossref still adds what its price says. */}
                   {tied ? <AddOn id={id} price={s.price} onSave={(price) => service(id, { price })} /> : null}
                 </span>
               ) : (
                 <span className={CONTROLS}>
-                  <Segmented label={t("when", { service: SERVICES[id].name })} value={s.mode} onChange={(mode) => void service(id, { mode })} options={modes} className={WRAPS} />
+                  <Segmented label={t("when", { service: SERVICES[id].name })} value={s.mode} onChange={(mode) => void service(id, { mode })} options={modes} wraps />
                   <span className={cn("transition-opacity", s.mode === "off" && "pointer-events-none opacity-40")}>
                     <AddOn id={id} price={s.price} onSave={(price) => service(id, { price })} />
                   </span>
@@ -170,7 +170,7 @@ export function IdentifierSettings({ identifiers: ids, connected }: { identifier
                   <span className="block text-xs text-muted-foreground">{t("pickHint", { services: optional.map((id) => SERVICES[id].name).join(" + ") })}</span>
                 </span>
                 <Segmented
-                  className={WRAPS}
+                  wraps
                   label={t("pick")}
                   value={rule}
                   onChange={(picked) => {
