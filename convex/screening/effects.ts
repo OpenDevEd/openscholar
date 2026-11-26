@@ -79,14 +79,14 @@ export const step = internalQuery({
       // A settled paper keeps its result through the change, unless it is checked again or votes on it are thrown out.
       const held = isFinal(was) && !paper.resolved && !recheck && !thrown;
       const onIt = teamFor(team, paper, reads);
-      // A paper whose votes the person asking can't see yet. Nothing that depends on how the others voted on it is worked out: where the change leaves it, whether it stays open, what is left of anyone's papers on it. Any of those, even as a count, would say whether the others agree. Who is on it shows, so the places are counted as the change gives them out before a vote is read, with every model that joins taken to read it: a cost is never under what is charged. Where the change can move a result, the paper is counted once, under no result, whether or not it would move.
-      const kept = !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
+      // A paper someone else has voted on, whose votes the person asking can't see yet: that they voted shows already (./paperViews.ts `hidden`), how doesn't. Nothing that depends on how the others voted on it is worked out: where the change leaves it, whether it stays open, what is left of anyone's papers on it. Any of those, even as a count, would say whether the others agree. Who is on it shows, so the places are counted as the change gives them out before a vote is read, with every model that joins taken to read it: a cost is never under what is charged. Where the change can move a result, the paper is counted once, under no result, whether or not it would move.
+      const kept = before.some((place) => place.reviewer !== mine && place.status === "cast") && !seesVotes(job.rule!.blind, was, before.some((place) => place.reviewer === mine && place.status === "waiting") ? "waiting" : undefined, job.finishedAt !== undefined);
       const after = kept ? null : project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision as Decision } : {}), held, away: (paper.away ?? []) as string[] }, places, onIt, plan.rule, plan.criteria, { models: recheck || !isFinal(was) });
       const now = after?.result ?? was;
       const open = after ? !isFinal(now) : true;
       const ends: Place[] = after?.places ?? [...places, ...newModels.filter((key) => onIt.models.includes(key)).map((key): Place => ({ reviewer: key, kind: "model", status: "waiting" }))];
 
-      if (kept ? plan.decides || discards.size > 0 : now !== was) {
+      if (kept ? plan.moves : now !== was) {
         const [from, to] = kept ? (["waiting", "waiting"] as const) : [was, now];
         const move = moves.get(`${from}>${to}`) ?? { from, to, count: 0, papers: [], hidden: 0 };
         move.count++;

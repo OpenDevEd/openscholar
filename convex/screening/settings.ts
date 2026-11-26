@@ -72,6 +72,8 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
   const settles = resolverLeft ? nextResolver(job.createdBy, people.flatMap((one) => one.userId ?? [])) : rule.resolver;
   const was = new Map(before.map((criterion) => [criterion.key, criterion]));
   const keys = new Set(criteria.map((criterion) => criterion.key));
+  // Whether the change can move a paper the screening already has: who is on it, its rule, or what of its criteria decides. Papers a source adds move none of them.
+  const moves = Boolean(leaving.length || joining.length || change.addModels?.length || rule.each !== job.rule!.each || rule.settle !== job.rule!.settle || settling(criteria) !== settling(before));
   return {
     reviewers,
     criteria,
@@ -84,8 +86,9 @@ export async function planned(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs
     added: criteria.filter((criterion) => !was.has(criterion.key)),
     dropped: before.filter((criterion) => !keys.has(criterion.key)),
     stricter: criteria.filter((criterion) => criterion.must && was.get(criterion.key)?.must === false).map((criterion) => criterion.key),
-    // Whether the change touches what decides where a paper stands: its papers, its criteria, who is on it and its rule.
-    decides: Boolean(change.addSources?.length || change.removeSources?.length || change.ranges?.length || leaving.length || joining.length || change.addModels?.length || rule.each !== job.rule!.each || rule.settle !== job.rule!.settle || settling(criteria) !== settling(before)),
+    moves,
+    // Whether the change touches what decides where a paper stands: its papers as well.
+    decides: moves || Boolean(change.addSources?.length || change.removeSources?.length || change.ranges?.length),
   };
 }
 /** What of its criteria decides a model's vote: which there are, and which a paper must meet. */

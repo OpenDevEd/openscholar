@@ -107,3 +107,18 @@ it("tells a reviewer the same thing whichever way the votes kept from them went"
   };
   expect(await seen("include")).toEqual(await seen("exclude"));
 });
+
+it("keeps from a reviewer only what could give a vote away: a paper nobody else voted on is worked out, and a change that only adds papers moves none", async () => {
+  const made = await team(["ann", "ben", "cat"]);
+  const { workspaceId } = made;
+  // Three papers Ben has yet to vote on. Ann has voted on the first only.
+  const { jobId, papers } = await started(made, ["ann", "ben", "cat"], 3, { rule: { each: "all", settle: "all", blind: "after" } });
+  await made.as.ann!.mutation(api.screening.voting.vote, { workspaceId, jobId, paperId: papers[0]!._id, decision: "include" });
+  await settleAll(made.t);
+  const sourceId = (await made.t.run((ctx) => ctx.db.query("screeningSources").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()))!._id;
+  const moves = async (change: (typeof api.screening.effects.preview)["_args"]["change"]) => (await made.as.ben!.action(api.screening.effects.preview, { workspaceId, jobId, change })).moves.map(({ from, to, count, hidden }) => ({ from, to, count, hidden }));
+  // Another rule can move the one paper Ann voted on: it is counted, under no result. The two nobody voted on stay where they are, and are not counted as his to wait for.
+  expect(await moves({ rule: { each: "all", settle: "one", blind: "after" } })).toEqual([{ from: "waiting", to: "waiting", count: 1, hidden: 1 }]);
+  // More papers from a source move none of the papers the screening has.
+  expect(await moves({ ranges: [{ sourceId, first: 1, last: 10 }] })).toEqual([]);
+});

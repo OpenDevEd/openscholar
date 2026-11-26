@@ -560,7 +560,7 @@ export function ScreeningForm({ id }: { id?: string }) {
   // Paused models read nothing until someone resumes them: their rows and the cost say so.
   const paused = Boolean(saved?.paused && !saved.finishedAt && models.length);
   const unsaved = t("unsaved", { count: edits.length });
-  const moved = moves.reduce((sum, move) => sum + move.count, 0);
+  const moved = moves.reduce((sum, move) => sum + move.count - move.hidden, 0);
   // Beside a part's title while it holds an edit that isn't saved.
   const changed = (...sections: EffectSection[]) => (edits.some((edit) => sections.includes(edit.section)) ? <StateChip tone="warning" icon={PenLine} className="ms-1.5 h-5 px-1.5">{t("changed")}</StateChip> : null);
   // A criterion whose question was deleted asks nothing, and leaves its short name no words to fall back to.
