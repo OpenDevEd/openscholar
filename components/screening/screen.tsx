@@ -804,7 +804,7 @@ function Screen({ open }: { open: Open }) {
                               ) : null}
                             </AnimatePresence>
                             {answering ? (
-                              <div role="radiogroup" aria-label={t("criteria.answerTo", { n: i + 1 })} className="mt-2.5 grid grid-cols-3 gap-1.5 ps-6.5">
+                              <div role="radiogroup" aria-label={t("criteria.answerTo", { n: i + 1 })} className="mt-2.5 grid grid-cols-[repeat(3,minmax(max-content,1fr))] gap-1.5 ps-6.5">{/* Three of one width, unless a language's word for an answer is longer than its third: then that one takes what it needs. */}
                                 {ANSWERS.map((answer) => {
                                   const { icon: Icon, tone } = ANSWER_SIGN[answer];
                                   const label = pieces(`answer.${answer}`);

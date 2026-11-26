@@ -230,8 +230,17 @@ function Yours({ open }: { open: Open }) {
 // ── Reviewers ────────────────────────────────────────────────────────────────────────────────────
 
 
-/** The columns of the Reviewers table: on a phone a row is two lines, the name alone on the first. */
-const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,3.25rem)_10.5rem_2rem]";
+/**
+ * The columns of the Reviewers table. On a phone a row is two lines of its own, the name alone on the first. Wider,
+ * the table holds the columns and every row takes them from it, so a column is as wide as its heading needs in
+ * whichever language: "Include" and "Agrees with people" are longer words in most. A name the wider headings
+ * leave less room for runs onto a second line.
+ */
+const TABLE = "@2xl/reviewers:grid @2xl/reviewers:gap-x-3 @2xl/reviewers:grid-cols-[minmax(0,1.2fr)_minmax(8.75rem,0.7fr)_repeat(3,minmax(3.25rem,max-content))_fit-content(10.5rem)_2rem]";
+/** A part of the table that spans it: a group of rows, or a line that isn't cut into the columns. */
+const ACROSS = "@2xl/reviewers:col-span-full";
+const SHARED = "@2xl/reviewers:col-span-full @2xl/reviewers:grid @2xl/reviewers:grid-cols-subgrid";
+const COLUMNS = "grid grid-cols-[minmax(0,1fr)_auto_2rem] items-center gap-x-4 gap-y-2 px-4 @2xl/reviewers:col-span-full @2xl/reviewers:grid-cols-subgrid @2xl/reviewers:gap-x-3";
 
 function Reviewers({ open, figures, now }: { open: Open; figures: Figures | undefined; now: number }) {
   const { screening, counts } = open;
@@ -329,11 +338,12 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
       }
     >
       {rows.length ? (
-        <div role="table" aria-label={t("reviewers.title")} className={cn(LIST, "@container/reviewers overflow-clip")}>
+        <div className="@container/reviewers">
+        <div role="table" aria-label={t("reviewers.title")} className={cn(LIST, TABLE, "overflow-clip")}>
           <div role="row" className={cn(COLUMNS, "sticky top-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] z-10 whitespace-nowrap bg-card py-2 text-xs text-muted-foreground @max-2xl/reviewers:hidden")}>
             <span role="columnheader">{t("reviewers.reviewer")}</span>
             <span role="columnheader" aria-sort={sort === "voted" ? "descending" : "none"}>{sortable("voted", t("reviewers.votedOn"))}</span>
-            {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex items-center justify-end gap-1"><Icon className="size-3.5 shrink-0" />{words.decision(decision)}</span>; })}
+            {DECISIONS.map((decision) => { const Icon = RESULT_ICON[decision]; return <span key={decision} role="columnheader" className="flex justify-end">{/* A word may reach a little into the space before its column, as "Include" does: a longer one widens the column. */}<span className="-ms-2 flex items-center gap-1"><Icon className="size-3.5 shrink-0" />{words.decision(decision)}</span></span>; })}
             <span role="columnheader" aria-sort={sort === "agrees" ? "descending" : "none"} className="flex items-center justify-end gap-0.5">
               {sortable("agrees", t("reviewers.agrees"))}
               <Help title={t("reviewers.agrees")} side="bottom" facts={<><HelpFact>{t("reviewers.agreesPerson")}</HelpFact><HelpFact>{t("reviewers.agreesModel")}</HelpFact></>}>
@@ -344,8 +354,8 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
             <span role="columnheader"><span className="sr-only">{t("reviewers.actions")}</span></span>
           </div>
           {groups.map((group) => (
-            <div key={group.label} role="rowgroup" className="divide-y divide-border-subtle border-t border-border-subtle first:border-t-0">
-              <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
+            <div key={group.label} role="rowgroup" className={cn(SHARED, "divide-y divide-border-subtle border-t border-border-subtle first:border-t-0")}>
+              <div role="row" className={cn(ACROSS, "flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium")}>
                 <span role="cell">{group.label} <span className="font-normal tabular-nums text-muted-foreground">{group.rows.length}</span></span>
               </div>
               {group.rows.map((row) => <ReviewerRow key={row.reviewer.id} open={open} row={row} onLeave={setLeaving} onMove={givers.includes(row) ? () => setMoving(row.reviewer.id) : undefined} />)}
@@ -353,7 +363,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
           ))}
           {/* Whoever was taken off, and what became of their votes: results can rest on votes from someone no longer in the lists above. */}
           {gone.length ? (
-            <div role="rowgroup" className="divide-y divide-border-subtle border-t border-border-subtle">
+            <div role="rowgroup" className={cn(ACROSS, "divide-y divide-border-subtle border-t border-border-subtle")}>
               <div role="row" className="flex items-center gap-2 bg-inset px-4 py-1.5 text-xs font-medium">
                 <span role="cell">{t("reviewers.takenOff")} <span className="font-normal tabular-nums text-muted-foreground">{gone.length}</span></span>
               </div>
@@ -368,6 +378,7 @@ function Reviewers({ open, figures, now }: { open: Open; figures: Figures | unde
               ))}
             </div>
           ) : null}
+        </div>
         </div>
       ) : (
         <EmptyNote>{t("reviewers.nobody", { change: String(open.canChange) })}</EmptyNote>
@@ -481,7 +492,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
         <ReviewerMark reviewer={reviewer} className="size-8" />
         <div className="min-w-0">
           <NextLink href={papersHref(id, { reviewer: reviewer.id })} className="flex min-w-0 text-sm font-medium outline-none after:absolute after:inset-0 after:content-[''] focus-visible:underline">
-            <ReviewerName reviewer={reviewer} you={mine} />
+            <ReviewerName reviewer={reviewer} you={mine} wrap />
           </NextLink>
           {reviewer.kind === "model" ? (
             <p className={cn("flex min-w-0 items-center gap-1 text-xs tabular-nums", reading && held?.stop ? "ink-warning" : "text-muted-foreground")}>

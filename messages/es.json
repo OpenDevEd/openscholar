@@ -7770,5 +7770,1826 @@
       "archive": "Archivo",
       "other": "Otro"
     }
+  },
+  "screening": {
+    "effects": {
+      "criterionUnwritten": "el criterio que aún no tiene pregunta",
+      "reopens": "El cribado se vuelve a abrir para {count, plural, one {# artículo} other {# artículos}}",
+      "model": {
+        "startsLater": "{name} empieza cuando lleguen los artículos",
+        "nothingToRead": "A {name} no le quedan artículos que leer",
+        "reads": "{name} lee {all, select, true {{count, plural, one {el # artículo} other {los # artículos}}} other {{count, plural, one {el # artículo aún sin resolver} other {los # artículos aún sin resolver}}}}{when, select, gathered { cuando lleguen todos sus artículos} finished { cuando se reabra el cribado} paused { cuando se reanuden los modelos} credits { cuando el espacio de trabajo tenga créditos suficientes para su siguiente artículo} waiting { cuando llegue el turno de sus modelos} save { en cuanto se guarde esto} other {}}"
+      },
+      "person": {
+        "invited": "{name} recibe una invitación por correo, y artículos cuando se una",
+        "invitedNoneOpen": "{name} recibe una invitación por correo, y los artículos que lleguen después de que se una. Todos los artículos que tiene ahora están resueltos, así que no recibe ninguno de ellos",
+        "dealt": "{name} recibe {count, plural, one {# artículo abierto} other {# artículos abiertos}}, una parte igual, y un correo que lo avisa",
+        "joinsWithNone": "{name} se une y recibe un correo que lo avisa. Todos los artículos abiertos ya tienen sus revisores, así que todavía no recibe ninguno"
+      },
+      "votesStay": "Los votos ya emitidos se quedan como están",
+      "conflict": {
+        "all": "Cuando están todos los votos de un artículo, si difieren queda en conflicto",
+        "most": "Cuando están todos los votos de un artículo, un empate lo deja en conflicto"
+      },
+      "leaving": {
+        "noVote": "{you, select, true {No ha emitido ningún voto} other {{name} no ha emitido ningún voto}}",
+        "votesStop": "{you, select, true {{count, plural, one {Su # voto queda registrado y deja de contar} other {Sus # votos quedan registrados y dejan de contar}}} other {{count, plural, one {El # voto de {name} queda registrado y deja de contar} other {Los # votos de {name} quedan registrados y dejan de contar}}}}",
+        "votesKept": "{you, select, true {{count, plural, one {Su # voto sigue contando} other {Sus # votos siguen contando}}} other {{count, plural, one {El # voto de {name} sigue contando} other {Los # votos de {name} siguen contando}}}}",
+        "papersGo": "{count, plural, one {# artículo pasa} other {# artículos pasan}} a {takers}: {unvoted, plural, =0 {} other {# que {you, select, true {usted no había votado} other {{name} no había votado}}, y }}{voted, number} que {you, select, true {usted votó} other {{name} votó}}, donde ese voto {thrown, select, true {deja de contar} other {sigue contando}}",
+        "unvotedGo": "{count, plural, one {El # artículo que {you, select, true {usted} other {{name}}} no había votado pasa} other {Los # artículos que {you, select, true {usted} other {{name}}} no había votado pasan}} a {takers}",
+        "settled": "{count, plural, one {# artículo que {you, select, true {usted} other {{name}}} no había votado se resuelve} other {# artículos que {you, select, true {usted} other {{name}}} no había votado se resuelven}} con los demás votos",
+        "waiting": "{count, plural, one {# artículo que {you, select, true {usted} other {{name}}} no había votado espera} other {# artículos que {you, select, true {usted} other {{name}}} no había votado esperan}} los votos de los demás"
+      },
+      "settler": {
+        "youLeave": "Los conflictos pasan a {you, select, true {usted} other {{name}}} cuando usted se vaya",
+        "leaves": "{was} resolvía los conflictos. Desde ahora pasan a {you, select, true {usted} other {{name}}}",
+        "changes": "Desde ahora los conflictos pasan a {you, select, true {usted} other {{name}}}"
+      },
+      "each": {
+        "changes": "Desde ahora cada artículo va a {all, select, true {todos los del cribado, {each, plural, one {# persona} other {# personas}} hoy} other {{each, plural, one {# persona} other {# personas}}}}{changed, plural, =0 {} one {. # artículo aún abierto {more, select, true {recibe {diff, plural, =1 {una persona más} other {hasta # personas más}}} other {necesita menos votos}}} other {. # artículos aún abiertos {more, select, true {reciben {diff, plural, =1 {una persona más} other {hasta # personas más}}} other {necesitan menos votos}}}}. Los votos ya emitidos se quedan como están",
+        "stillAll": "Hoy cada artículo sigue yendo a {each, plural, one {# persona} other {# personas}}. Quien se añada después entra en todos los artículos aún abiertos",
+        "stillShare": "Cada artículo sigue yendo a {each, plural, one {# persona} other {# personas}}. Quien se añada después recibe una parte igual de los artículos abiertos, no todos"
+      },
+      "blind": {
+        "never": "Todos ven cada voto en cuanto se emite",
+        "untilVoted": "Un revisor ve los demás votos de un artículo cuando lo vota o cuando queda resuelto"
+      },
+      "criteria": {
+        "modelsAnswerNew": "Los modelos responden {count, plural, one {el nuevo criterio} other {los nuevos criterios}} en los artículos abiertos que han leído",
+        "votesStand": "Los votos de las personas se quedan como están: se emitieron antes de {count, plural, one {este criterio} other {estos criterios}}",
+        "modelsStop": "Los modelos dejan de responder {name}. Los votos ya emitidos se quedan como se emitieron",
+        "noLongerAsked": "{name} ya no se pregunta. Los votos ya emitidos se quedan como se emitieron",
+        "becomesMust": "{name} pasa a ser un requisito: desde ahora un no en él apunta a Excluir. Los votos de las personas en los artículos aún abiertos se quedan, y se marcan para un nuevo voto",
+        "becomesNice": "{name} pasa a ser deseable: desde ahora un no en él ya no apunta a Excluir. Los votos ya emitidos se quedan como se emitieron",
+        "writeQuestion": "Escriba la pregunta del criterio antes de guardar",
+        "modelsReworded": "Los modelos responden {name} con su nueva redacción en los artículos que lean desde ahora",
+        "reviewersReworded": "Los revisores responden {name} con su nueva redacción desde ahora. Los votos ya emitidos se quedan como se emitieron",
+        "guidance": "Desde ahora {models, select, true {los revisores y los modelos leen} other {los revisores leen}} {name} con su {fresh, select, true {nueva } other {}}orientación. Las respuestas ya dadas se quedan",
+        "guidanceRemoved": "Se quita la orientación de {name}. Las respuestas ya dadas se quedan",
+        "termsMarked": "Desde ahora los revisores ven en cada resumen las palabras marcadas para {name}",
+        "termsRemoved": "Ya no se marca ninguna palabra para {name}",
+        "scoring": "Se vuelven a calcular los puntos y las estrellas de los artículos incluidos"
+      },
+      "living": {
+        "checks": "El cribado comprueba {which, select, all {{all, plural, one {su fuente} other {sus # fuentes}}} other {{sources, number} de sus {all, number} fuentes}} en busca de artículos nuevos{when, select, save { en cuanto se guarde esto, y después} other {}} {every, select, day {cada día} week {cada semana} other {cada mes}}",
+        "nothingToCheck": "El cribado no tiene ninguna fuente que añada artículos, así que todavía no hay nada que comprobar",
+        "modelsRead": "Cada artículo nuevo va a sus revisores{people, select, true {, y las personas entre ellos reciben un correo} other {}}. Los modelos lo leen cuando pueden{pdfs, select, true {. Uno leído como su PDF cuesta más} other {}}",
+        "peopleGetEmail": "Cada artículo nuevo va a sus revisores, que reciben un correo",
+        "waitsForReviewer": "Cada artículo nuevo entra en el cribado, donde espera a un revisor",
+        "reopens": "El cribado vuelve a estar abierto, y sigue abierto a artículos nuevos",
+        "stops": "El cribado deja de comprobar si hay artículos nuevos. Los que tiene se quedan",
+        "every": "Desde ahora el cribado comprueba si hay artículos nuevos {every, select, day {cada día} week {cada semana} other {cada mes}}"
+      },
+      "sources": {
+        "promised": "Hasta {count, plural, one {# artículo nuevo entra en el cribado y pasa} other {# artículos nuevos entran en el cribado y pasan}} a sus revisores. Son menos si otra fuente ya los tiene o no tienen resumen{pdfs, select, true {. Los modelos cobran más por uno leído como su PDF} other {}}",
+        "removed": "{count, plural, one {# artículo sale del cribado, y sus votos quedan registrados} other {# artículos salen del cribado, y sus votos quedan registrados}}"
+      },
+      "collection": {
+        "renamed": "Su colección pasa a llamarse {name}, con los artículos que contiene",
+        "stopsSaving": "Los artículos incluidos dejan de guardarse en una colección{kept, select, true {. {count, plural, one {El que está en {from} se queda ahí} other {Los # que están en {from} se quedan ahí}}} other {}}",
+        "added": "{count, plural, one {El # artículo incluido hasta ahora se añade} other {Los # artículos incluidos hasta ahora se añaden}} a {to}{was, select, true {. Siguen en {from}} other {}}",
+        "prune": "Los artículos excluidos se quitan de la colección de la que vinieron",
+        "keep": "Los artículos excluidos se quedan en la colección de la que vinieron"
+      },
+      "withCredits": "{text}, por hasta {credits} créditos{each, select, true { cada uno} other {}}",
+      "creditsChip": "{credits}{each, select, true { cada uno} other {}}",
+      "moved": "{count, plural, one {# artículo movido} other {# artículos movidos}} de {from} a {to}",
+      "noChange": "No cambia el resultado de ningún artículo",
+      "hidden": "{count, plural, one {# artículo que usted aún no ha votado también cambia} other {# artículos que usted aún no ha votado también cambian}} de resultado. {done, select, true {Sus votos siguen ocultos mientras esperan el suyo.} other {El sentido del cambio se verá cuando se haga.}}",
+      "papersLabel": "artículos",
+      "more": "{count, number} más",
+      "activity": {
+        "started": "Empezó el cribado",
+        "startedWith": "{sources, plural, one {# fuente} other {# fuentes}}, para {who}",
+        "renamed": "Lo renombró como {name}",
+        "finished": "Marcó el cribado como terminado",
+        "unsettled": "{count, plural, one {# artículo no estaba resuelto} other {# artículos no estaban resueltos}}",
+        "checksStopped": "Dejó de comprobar si había artículos nuevos",
+        "reopened": "Reabrió el cribado",
+        "paused": "Pausó los modelos",
+        "resumed": "Reanudó los modelos",
+        "movedTo": "Lo movió a {to}",
+        "movedAway": "Lo movió a otro espacio de trabajo",
+        "movedFrom": "Lo movió desde {from}",
+        "reviewerAdded": "Añadió a {name} como revisor",
+        "reviewerJoined": "Se unió como revisor",
+        "reviewerRemoved": "Retiró a {name} del cribado",
+        "madeViewer": "Hizo lector a {name}",
+        "reminded": "Envió un recordatorio a {name}",
+        "retried": "Volvió a enviar a {name} {count, plural, =0 {los artículos} one {el # artículo} other {los # artículos}} que no pudo leer",
+        "papersMoved": "Movió {count, plural, one {# artículo} other {# artículos}} de {from} a {known, select, true {{to}} other {otra persona}}",
+        "papersMovedVotes": "Ahora {known, select, true {{to}} other {otra persona}} {count, plural, one {lo vota} other {los vota}}",
+        "asked": "Preguntó a {name} sobre {paper}",
+        "aPaper": "un artículo",
+        "checkedFound": "Comprobó si había artículos nuevos y encontró {count, plural, one {# artículo} other {# artículos}}{allNew, select, true {} other {, {added, number} de ellos nuevos}}",
+        "checkedNone": "Comprobó si había artículos nuevos y no encontró ninguno",
+        "scheduledFound": "La comprobación programada encontró {count, plural, one {# artículo} other {# artículos}}{allNew, select, true {} other {, {added, number} de ellos nuevos}}",
+        "scheduledNone": "La comprobación programada no encontró artículos nuevos",
+        "known": "{count, plural, one {# ya estaba} other {# ya estaban}} en el cribado",
+        "joined": "{count, plural, one {# artículo entró} other {# artículos entraron}} en el cribado",
+        "reopenedByCheck": "El cribado vuelve a estar abierto",
+        "changed": "Cambió {parts}",
+        "changedSettings": "Cambió sus ajustes",
+        "setting": {
+          "name": "su nombre",
+          "question": "la pregunta de investigación",
+          "papers": "sus fuentes",
+          "newPapers": "cómo busca artículos nuevos",
+          "criteria": "sus criterios",
+          "reviewers": "sus revisores",
+          "decided": "cómo se decide un artículo",
+          "goesTo": "adónde van los artículos incluidos"
+        },
+        "changedIt": "Lo cambió",
+        "added": "Añadió {what}",
+        "addedPapers": "Añadió artículos",
+        "removed": "Quitó {what}",
+        "removedPapers": "Quitó artículos",
+        "screened": "Cribó {count, plural, one {# artículo} other {# artículos}}",
+        "readAgain": "Volvió a leer algunos artículos",
+        "stopped": "Detuvo el cribado",
+        "shared": "Lo compartió con {who}",
+        "sharedSomeone": "Lo compartió con alguien",
+        "votesDiscarded": "Sus votos quedan registrados y dejan de contar",
+        "votesKept": "{count, plural, one {# voto sigue contando} other {# votos siguen contando}}",
+        "dealt": "{count, plural, one {Recibió # artículo abierto} other {Recibió # artículos abiertos}}",
+        "reads": "Lee {count, plural, one {# artículo} other {# artículos}}",
+        "papersMovedBy": "{count, plural, one {# artículo movido} other {# artículos movidos}} {detail}",
+        "left": "{count, plural, one {# artículo salió} other {# artículos salieron}} del cribado",
+        "rechecked": "{count, plural, one {# artículo resuelto se volvió a comprobar} other {# artículos resueltos se volvieron a comprobar}}"
+      }
+    },
+    "files": {
+      "title": "Exportar",
+      "description": "Los artículos, todos los votos, el diagrama PRISMA, un párrafo de métodos y el registro completo",
+      "tabsLabel": "Qué exportar",
+      "tab": {
+        "papers": "Artículos",
+        "votes": "Todos los votos",
+        "flow": "PRISMA",
+        "methods": "Párrafo de métodos",
+        "record": "Registro completo"
+      },
+      "openFinished": "Se marcó como terminado con artículos aún abiertos, así que estos archivos dejan esos artículos sin resolver",
+      "openRunning": "Todavía no ha terminado, así que estos archivos contienen los resultados hasta ahora",
+      "facts": {
+        "bibtex": "BibTeX va a Zotero o JabRef",
+        "ris": "RIS va a EndNote o Mendeley",
+        "csv": "CSV se abre en Excel o Google Sheets",
+        "columns": "Una columna por criterio",
+        "ids": "Cada artículo con su id y su DOI",
+        "svg": "SVG se abre en Inkscape o Illustrator",
+        "png": "PNG va a Word o Google Docs",
+        "keeping": "Para analizar y para conservar"
+      },
+      "papers": {
+        "title": {
+          "include": "{count, plural, one {# artículo incluido} other {# artículos incluidos}}",
+          "maybe": "{count, plural, one {# artículo} other {# artículos}} en Quizá",
+          "exclude": "{count, plural, one {# artículo excluido} other {# artículos excluidos}}",
+          "conflict": "{count, plural, one {# artículo} other {# artículos}} en conflicto",
+          "waiting": "{count, plural, one {# artículo} other {# artículos}} esperando votos",
+          "mine": "{count, plural, one {# artículo} other {# artículos}} que usted votó Incluir"
+        },
+        "help": "Los artículos de un resultado, o todos. BibTeX y RIS llevan el id de cada artículo aquí, su título, autores, año, revista, DOI y resumen, para un gestor de referencias. El CSV añade de dónde vino cada uno, en qué punto está, por qué se excluyó, quién lo resolvió, cómo votaron sus revisores y sus puntos: lo que suman las respuestas de sus revisores según la puntuación de este cribado, que ordena los artículos incluidos y no decide nada.",
+        "which": "Qué artículos",
+        "every": "Todos los artículos",
+        "allOfThem": "Todos",
+        "votedInclude": "Usted votó Incluir",
+        "yourOwn": "Los suyos",
+        "seeAll": "Ver los {count} en Artículos",
+        "noneMine": "Todavía no ha votado Incluir en ningún artículo."
+      },
+      "votes": {
+        "title": "{votes, plural, one {# voto} other {# votos}} de {voters, plural, one {# revisor} other {# revisores}}{hidden, select, true {, algunos ocultos para usted} other {}}",
+        "help": "Una fila por cada revisor en cada artículo: su voto con su motivo, su nota y la respuesta a cada criterio, y en qué punto está ahora el artículo. Un revisor que aún no ha votado también tiene fila, y también un modelo que no pudo leer el artículo.",
+        "leftOut": "Cómo votaron los demás en {count, plural, one {el # artículo} other {los # artículos}} que usted aún no ha votado queda fuera, para que no influya en su voto.",
+        "whose": "Votos de quién",
+        "everyone": "Todos",
+        "oneReviewer": "Un revisor",
+        "column": {
+          "paper": "Artículo",
+          "reviewer": "Revisor",
+          "vote": "Voto",
+          "reason": "Motivo",
+          "note": "Nota",
+          "result": "Resultado",
+          "voted": "Votado"
+        },
+        "none": "Ninguno",
+        "shown": "Estos son {shown} de los {votes, plural, one {# voto emitido} other {# votos emitidos}}.",
+        "hiddenRows": "El archivo tiene una fila por cada voto oculto para usted, sin el voto.",
+        "emptyRows": "El archivo también tiene {count, plural, one {# fila} other {# filas}} sin voto que mostrar: {why}.",
+        "emptyWhy": {
+          "yet": "revisores que aún no han votado",
+          "none": "artículos resueltos sin el voto de un revisor",
+          "failed": "artículos que un modelo no pudo leer"
+        },
+        "seeEvery": "Ver todos los votos en Artículos"
+      },
+      "flow": {
+        "title": "Diagrama de flujo PRISMA 2020",
+        "help": "Los recuentos rellenan las casillas de identificación y cribado de PRISMA 2020, tomados de este cribado tal como está ahora.",
+        "alt": "Diagrama PRISMA: {boxes}"
+      },
+      "record": {
+        "title": "El registro completo",
+        "help": "Un archivo JSON con todo el cribado: sus artículos, votos, criterios, revisores, fuentes, conversación y cambios, con una guía de cada columna. Las respuestas de un modelo vienen con los pasajes que señaló. Lo que costó el cribado queda fuera.",
+        "part": {
+          "papers": {
+            "name": "Artículos",
+            "what": "Cada uno con su DOI, su resumen, de dónde vino y en qué punto está"
+          },
+          "votes": {
+            "name": "Votos",
+            "what": "{hidden, select, true {Cada uno con su motivo, su nota, sus respuestas y la frase que señaló un modelo. Los ocultos para usted aparecen sin ellos} other {Cada uno con su motivo, su nota, sus respuestas y la frase que señaló un modelo}}"
+          },
+          "withoutVote": {
+            "name": "Sin voto",
+            "what": "Por qué un revisor no tiene voto en un artículo"
+          },
+          "criteria": {
+            "name": "Criterios",
+            "what": "Tal como se preguntan, con su orientación, y cuáles son requisitos"
+          },
+          "reviewers": {
+            "name": "Revisores",
+            "what": "Personas y modelos, con cuándo se unió o se retiró cada uno"
+          },
+          "sources": {
+            "name": "Fuentes",
+            "what": "Lo que aportó cada una, antes y después de los duplicados"
+          },
+          "messages": {
+            "name": "Mensajes",
+            "what": "Lo que los revisores se escribieron sobre un artículo"
+          },
+          "changes": {
+            "name": "Cambios",
+            "what": "El registro de actividad: qué se cambió, quién y cuándo"
+          },
+          "columns": {
+            "name": "Columnas",
+            "what": "Qué contiene cada columna de los dos archivos CSV"
+          }
+        }
+      },
+      "methods": {
+        "title": "Párrafo de métodos",
+        "help": "Redactado a partir de las fuentes, los criterios, los revisores y los votos de este cribado tal como están ahora. Cópielo cuando describa los resultados que quiere comunicar."
+      },
+      "hint": {
+        "papers": "BibTeX y RIS van a un gestor de referencias. CSV añade el resultado, el motivo y los votos de cada artículo.",
+        "votes": "Una fila por cada revisor en cada artículo. Se abre en Excel, Google Sheets o R.",
+        "flow": "PNG va a un documento. SVG se puede editar.",
+        "record": "Para conservar y para código. Se abre en cualquier editor de texto.",
+        "methods": "Redactado a partir del cribado tal como está ahora. Cópielo cuando describa los resultados que quiere comunicar."
+      },
+      "download": "<wide>Descargar </wide>{format}",
+      "downloaded": "{format}<sr> descargado</sr>",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copyToast": {
+        "copied": "Se copió el párrafo de métodos",
+        "failed": "Su navegador no dejó que la página copiara",
+        "select": "Seleccione el párrafo y cópielo:"
+      },
+      "notLoaded": "El espacio de trabajo aún no se ha cargado. Inténtelo de nuevo en un momento.",
+      "notMade": "No se pudo crear el archivo. Inténtelo de nuevo."
+    },
+    "form": {
+      "kind": {
+        "search": "Búsqueda",
+        "upload": "Subir",
+        "collection": "Biblioteca",
+        "screening": "Cribado",
+        "evidenceLibrary": "Comunidad",
+        "zotero": "Zotero",
+        "dois": "DOI"
+      },
+      "find": {
+        "search": "Buscar entre las búsquedas",
+        "screening": "Buscar un cribado"
+      },
+      "where": {
+        "open": "{where, select, search {Abrir en la búsqueda} library {Abrir en su biblioteca} collection {Abrir en la colección} screening {Abrir en el cribado} other {Abrir en Zotero}}",
+        "openNewTab": "{where, select, search {Abrir en la búsqueda, en una pestaña nueva} library {Abrir en su biblioteca, en una pestaña nueva} collection {Abrir en la colección, en una pestaña nueva} screening {Abrir en el cribado, en una pestaña nueva} other {Abrir en Zotero, en una pestaña nueva}}",
+        "see": "{where, select, search {Verlo en la búsqueda} library {Verlo en su biblioteca} collection {Verlo en la colección} screening {Verlo en el cribado} other {Verlo en Zotero}}",
+        "seeAll": "{where, select, search {Ver los {count} en la búsqueda} library {Ver los {count} en su biblioteca} collection {Ver los {count} en la colección} screening {Ver los {count} en el cribado} other {Ver los {count} en Zotero}}"
+      },
+      "edit": {
+        "renamed": "Lo renombró como {name}",
+        "question": "Cambió la pregunta de investigación",
+        "addedSources": "{count, plural, =1 {Añadió {names}} =2 {Añadió {names}} other {Añadió # fuentes}}",
+        "removedSources": "{count, plural, =1 {Quitó {names}} =2 {Quitó {names}} other {Quitó # fuentes}}",
+        "rangedSources": "{count, plural, =1 {Cambió qué artículos aporta {names}} =2 {Cambió qué artículos aportan {names}} other {Cambió qué artículos aportan # fuentes}}",
+        "madeLiving": "Lo convirtió en un cribado vivo",
+        "stoppedLiving": "Dejó de comprobar si había artículos nuevos",
+        "livingEvery": "Cambió cada cuánto comprueba si hay artículos nuevos",
+        "addedCriteria": "{count, plural, =1 {Añadió {names}} =2 {Añadió {names}} other {Añadió # criterios}}",
+        "removedCriteria": "{count, plural, =1 {Quitó {names}} =2 {Quitó {names}} other {Quitó # criterios}}",
+        "changedCriteria": "{count, plural, =1 {Cambió {names}} =2 {Cambió {names}} other {Cambió # criterios}}",
+        "guidance": "{count, plural, =1 {Cambió la orientación de {names}} =2 {Cambió la orientación de {names}} other {Cambió la orientación de # criterios}}",
+        "renamedOne": "{was} como {is}",
+        "renamedCriteria": "{count, plural, =1 {Renombró {names}} =2 {Renombró {names}} other {Renombró # criterios}}",
+        "scoring": "Cambió la puntuación",
+        "addedReviewers": "{count, plural, =1 {Añadió a {names}} =2 {Añadió a {names}} other {Añadió # revisores}}",
+        "removedReviewers": "{count, plural, =1 {Quitó a {names}} =2 {Quitó a {names}} other {Quitó # revisores}}",
+        "rule": "Cambió cómo se decide un artículo",
+        "destination": "Cambió adónde van los artículos incluidos",
+        "collectionRenamed": "Renombró su colección como {name}",
+        "goesTo": "Los artículos incluidos van a {name}",
+        "goesNowhere": "Los artículos incluidos no van a ninguna colección"
+      },
+      "untitled": "Cribado sin título",
+      "includedPapers": "Artículos incluidos",
+      "again": "{name}, de nuevo",
+      "inLibrary": "En {name}",
+      "loading": "Cargando el formulario",
+      "onlyMembers": "Solo los miembros de {workspace} pueden cambiar estos ajustes",
+      "goToOverview": "Ir a la Vista general",
+      "thisWorkspace": "este espacio de trabajo",
+      "share": {
+        "readsAll": "{you, select, true {Usted lee todos los artículos} other {{name} lee todos los artículos}}",
+        "about": "{more, select, true {{count, plural, one {Alrededor de # artículo por persona, y una parte de los nuevos} other {Alrededor de # artículos por persona, y una parte de los nuevos}}} other {{count, plural, one {Alrededor de # artículo por persona} other {Alrededor de # artículos por persona}}}}",
+        "range": "{more, select, true {De {least} a {most} artículos por persona, y una parte de los nuevos} other {De {least} a {most} artículos por persona}}"
+      },
+      "unsaved": "{count, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
+      "unsavedCount": "{count, plural, other {# sin guardar}}",
+      "changed": "Cambiado",
+      "block": {
+        "emptyCriterion": "Escriba una pregunta para el criterio vacío",
+        "needsCriterion": "{many, select, true {Añada un criterio para los modelos} other {Añada un criterio para el modelo}}",
+        "overPapers": "{count, plural, one {Su plan criba # artículo a la vez} other {Su plan criba hasta # artículos a la vez}}",
+        "overModels": "{count, plural, one {Un cribado usa # modelo} other {Un cribado usa hasta # modelos}}",
+        "orphaned": "{many, select, true {{count, plural, one {# artículo es solo un PDF, que estos modelos no pueden leer. Añada una persona} other {# artículos son solo un PDF, que estos modelos no pueden leer. Añada una persona}}} other {{count, plural, one {# artículo es solo un PDF, que este modelo no puede leer. Añada una persona} other {# artículos son solo un PDF, que este modelo no puede leer. Añada una persona}}}}",
+        "creditsShort": "Faltan {credits} créditos",
+        "reading": "Leyendo sus artículos",
+        "addPapers": "Añada artículos para empezar",
+        "addReviewer": "Añada un revisor para empezar"
+      },
+      "unread": "{count, plural, one {# no se pudo leer} other {# no se pudieron leer}}",
+      "toast": {
+        "nothingWritten": "No encontró nada que añadir a los criterios de aquí",
+        "notWritten": "No se pudieron redactar los criterios. Inténtelo de nuevo.",
+        "removed": "Se quitó {name}",
+        "undo": "Deshacer",
+        "failed": "No funcionó. Inténtelo de nuevo.",
+        "notAdded": "No se pudo añadir a algunas personas. Vuelva a añadirlas desde Personas.",
+        "notStarted": "No se pudo iniciar. Inténtelo de nuevo.",
+        "saved": "Cambios guardados",
+        "discarded": "Cambios descartados"
+      },
+      "offer": {
+        "allSaved": "Todos los artículos guardados",
+        "library": "La biblioteca de este espacio de trabajo",
+        "finished": "Cribado terminado",
+        "running": "Cribado en curso"
+      },
+      "goes": {
+        "collectionName": "Nombre de la colección",
+        "itsCollection": "Su colección",
+        "newCollection": "Nueva colección",
+        "addTo": "Añadir a {name}",
+        "addToIts": "Añadir a su colección",
+        "nowhere": "Ningún sitio",
+        "kept": "Se quedan en el cribado",
+        "private": "Privada",
+        "keepPrivate": "Mantener privada la nueva colección",
+        "aCollection": "Una colección",
+        "yourLibrary": "Su biblioteca",
+        "aCommunity": "Una comunidad",
+        "readingCommunity": "Leyendo las colecciones de la comunidad",
+        "prune": "Quitar de {name} los artículos excluidos",
+        "excludedLeave": "Los excluidos salen",
+        "othersStay": "Quizá y en conflicto se quedan"
+      },
+      "part": {
+        "papers": "Artículos",
+        "criteria": "Criterios",
+        "reviewers": "Revisores",
+        "decided": "Cómo se decide un artículo",
+        "goesTo": "Adónde van los artículos incluidos"
+      },
+      "summary": {
+        "papers": "{state, select, upTo {Hasta {papers, plural, one {# artículo} other {# artículos}}} soFar {{papers, plural, one {# artículo} other {# artículos}} hasta ahora} other {{papers, plural, one {# artículo} other {# artículos}}}} de {sources, plural, one {# fuente} other {# fuentes}}",
+        "noPapers": "Todavía no hay artículos",
+        "criteria": "{count, plural, one {# criterio} other {# criterios}}, {musts, plural, one {# requisito} other {# requisitos}}",
+        "noCriteria": "Sin criterios",
+        "invited": "{count, plural, one {# invitado} other {# invitados}}",
+        "nobody": "Nadie todavía",
+        "decided": "{you, select, true {{rule}, los conflictos los resuelve usted} other {{rule}, los conflictos los resuelve {name}}}"
+      },
+      "filledFrom": "Rellenado a partir de <b>{name}</b>",
+      "openIt": "Abrirlo",
+      "partsNav": "Ir a una parte del formulario",
+      "neededToStart": "Necesario para empezar",
+      "elsewhere": "{named, select, true {Su cribado sin terminar {name} se guarda en {workspace}, donde se empezó.} other {Su cribado sin terminar se guarda en {workspace}, donde se empezó.}}",
+      "goOnThere": "Continuar allí",
+      "name": {
+        "label": "Nombre",
+        "placeholder": "Por ejemplo, «Comedores escolares y aprendizaje»",
+        "question": "Pregunta de investigación <optional>(opcional)</optional>",
+        "questionTitle": "Pregunta de investigación",
+        "optional": "Opcional",
+        "questionHelp": "La pregunta que responde su revisión. Un modelo puede redactar a partir de ella criterios de sí o no en Criterios.",
+        "questionPlaceholder": "Por ejemplo, «¿Mejoran los comedores escolares el aprendizaje en primaria?»"
+      },
+      "papers": {
+        "upToSources": "{count, plural, other {Hasta # fuentes}}",
+        "helpFrom": "Añada todos los lugares de los que vienen los artículos: búsquedas, colecciones, comunidades, Zotero, archivos o DOI. Un artículo encontrado en dos fuentes se criba una vez.",
+        "helpRead": "Un cribado lee un título y un resumen. Un registro que conoce el índice de Openscholar toma ambos de ahí. Un artículo que llega con su propio PDF y no tiene resumen se lee como el PDF.",
+        "helpLeft": "Lo que no se puede cribar se descarta, y la fila de su fuente lo muestra con el motivo: un artículo sin resumen ni PDF, un registro sin título, un DOI que no se encuentra, un archivo que no se abre.",
+        "stillReading": "Aún leyendo",
+        "found": "{soFar, select, true {<n></n> encontrados hasta ahora} other {<n></n> encontrados}}",
+        "leftOut": "<n></n> descartados",
+        "merged": "<n></n> duplicados fusionados",
+        "link": "{upTo, select, true {Hasta <n></n> {count, plural, one {artículo} other {artículos}}} other {<n></n> {count, plural, one {artículo} other {artículos}}}}",
+        "toScreen": "<n></n> para cribar",
+        "readingIt": "Leyéndolo",
+        "leftOutCount": "{count, plural, one {# descartado} other {# descartados}}",
+        "grew": "{doubled, plural, =0 {{count, plural, other {# más desde que empezó}}} other {{count, plural, other {# más desde que empezó}}, # ya en otra fuente}}",
+        "newTab": "(se abre en una pestaña nueva)",
+        "removedOnSave": "Se quita al guardar",
+        "atStart": "{count, plural, other {# al inicio}}",
+        "allOfIt": "Todo",
+        "all": "{count, plural, other {Los #}}",
+        "inSource": "{count, plural, other {# en la fuente}}",
+        "readAsPdf": "{count, plural, one {# leído como su PDF} other {# leídos como PDF}}",
+        "alreadyElsewhere": "{count, plural, other {# ya en otra fuente}}",
+        "checkedEvery": "{every, select, day {Se comprueba cada día} week {Se comprueba cada semana} other {Se comprueba cada mes}}",
+        "couldntBeRead": "No se pudo leer",
+        "keep": "Conservar",
+        "range": "Artículos {first} a {last}",
+        "choose": "Elegir artículos",
+        "remove": "Quitar {name}",
+        "of": "Artículos de {name}",
+        "everyDeep": "Todos los artículos que contiene y los de las colecciones que tiene debajo.",
+        "everyOne": "{count, plural, one {Su único artículo.} other {Cada uno de sus # artículos.}}",
+        "zoteroOrder": "Primero los añadidos a Zotero hace más tiempo",
+        "handoffGone": "Lo que entregó la comunidad ya no se puede leer. Vuelva a elegir sus registros en Comunidad.",
+        "addFrom": "Añadir artículos de",
+        "findSource": "Buscar una fuente",
+        "noneByName": "Nada con ese nombre.",
+        "noneOwnIncluded": "Ninguno de sus cribados ha incluido todavía un artículo.",
+        "noneIncluded": "Ningún cribado de {workspace} ha incluido todavía un artículo.",
+        "noSearches": "Todavía no hay búsquedas guardadas.",
+        "nothingHere": "Todavía no hay nada aquí.",
+        "pagerSources": "fuentes",
+        "pagerLeftOut": "descartados",
+        "firstPapers": "Los primeros artículos de este intervalo",
+        "titleYear": "{title} ({year})",
+        "andMore": "{count, plural, other {y # más}}"
+      },
+      "living": {
+        "title": "Cribado vivo",
+        "factFixed": "Los archivos subidos y los DOI pegados nunca reciben artículos",
+        "factEmail": "Los revisores reciben un aviso por correo",
+        "factCharge": "Los modelos cobran por cada artículo nuevo",
+        "help": "Openscholar comprueba si hay artículos nuevos en las búsquedas, colecciones y comunidades del cribado según la frecuencia que elija. Solo se añaden los artículos nuevos, que van a los revisores.",
+        "check": "Comprobar si hay artículos nuevos",
+        "off": "Desactivado",
+        "checksAll": "{count, plural, one {Comprueba su fuente} other {Comprueba sus # fuentes}}",
+        "checksSome": "{count, plural, other {Comprueba {growing} de sus # fuentes}}",
+        "nextCheck": "Próxima comprobación {day}",
+        "firstCheck": "Primera comprobación {day}",
+        "firstOnSave": "Primera comprobación en cuanto se guarde esto",
+        "perNew": "{credits} créditos por artículo nuevo{pdf, select, true {, más por uno leído como su PDF} other {}}{last, select, true {, {spent} por los últimos {count}} other {}}",
+        "noneGrow": "Ninguna de estas fuentes añade artículos. Añada una búsqueda, una colección o una comunidad para comprobar.",
+        "addToCheck": "Añada una búsqueda, una colección o una comunidad para comprobar."
+      },
+      "criteria": {
+        "helpTitle": "Requisitos y deseables",
+        "factPeople": "Las personas votan directamente",
+        "factModels": "Las respuestas deciden el voto de los modelos",
+        "help": "Escriba cada criterio como una pregunta de sí o no. Un modelo responde cada una con sí, no o dudoso. Un no en un criterio que es requisito hace que su voto sea excluir, y un dudoso lo hace quizá. Un criterio deseable nunca excluye un artículo. La orientación bajo una pregunta dice qué cuenta: un revisor la abre con «Orientación» bajo la pregunta en Cribar, y un modelo la lee con la pregunta. Las palabras que marque para un criterio aparecen marcadas en cada resumen mientras una persona vota.",
+        "import": "{searches, plural, one {{count, plural, one {Añadir # pregunta de su búsqueda} other {Añadir # preguntas de su búsqueda}}} other {{count, plural, one {Añadir # pregunta de sus búsquedas} other {Añadir # preguntas de sus búsquedas}}}}",
+        "copyFrom": "Copiar de un cribado",
+        "copyAdds": "Añade sus criterios a los de aquí, con sus puntos",
+        "write": "Redactar criterios a partir de la pregunta",
+        "writing": "Redactando criterios a partir de la pregunta",
+        "needQuestion": "Escriba primero una pregunta de investigación",
+        "more": "Más",
+        "actions": "Acciones de criterios",
+        "copyCriteriaFrom": "Copiar criterios de un cribado",
+        "questionColumn": "Pregunta y orientación",
+        "shortName": "Nombre corto",
+        "shortNameOf": "Nombre corto del criterio {n}",
+        "shortNameMax": "{count, plural, other {Hasta # caracteres}}",
+        "shortNameHelp": "El nombre que usa un criterio donde su pregunta no cabe: columnas de tablas, filtros y los motivos por los que se excluyeron artículos. Son las palabras de la propia pregunta hasta que escriba uno.",
+        "criterion": "Criterio {n}",
+        "questionPlaceholder": "Escriba una pregunta de sí o no",
+        "guidanceFor": "Orientación para el criterio {n}",
+        "guidancePlaceholder": "Añada orientación sobre qué cuenta y qué no",
+        "wordsFor": "Palabras que marcar para el criterio {n}",
+        "wordsPlaceholder": "Añada palabras que marcar en el resumen, separadas por comas",
+        "is": "El criterio {n} es",
+        "must": "Requisito",
+        "nice": "Deseable",
+        "none": "Todavía no hay criterios",
+        "newPlaceholder": "Una pregunta de sí o no",
+        "new": "Nuevo criterio",
+        "add": "Añadir"
+      },
+      "scoring": {
+        "title": "Puntuación",
+        "factPoints": "Sí, no y dudoso suman puntos cada uno",
+        "factStars": "Cinco niveles de estrellas",
+        "help": "Los puntos ordenan los artículos incluidos y fijan las estrellas con las que se guardan. Nunca cambian un voto.",
+        "pointsEach": "Puntos por cada respuesta",
+        "criterion": "Criterio",
+        "yes": "Sí",
+        "no": "No",
+        "unclear": "Dudoso",
+        "pointsFor": "{answer, select, yes {Puntos por sí, {name}} no {Puntos por no, {name}} other {Puntos por dudoso, {name}}}",
+        "starsGroup": "Puntos en los que empieza cada estrella",
+        "starsBegin": "Las estrellas empiezan en",
+        "pointsForStars": "{count, plural, one {Puntos para # estrella} other {Puntos para # estrellas}}",
+        "starsRange": "puntos, de una a cinco estrellas"
+      },
+      "reviewers": {
+        "factPeople": "Las personas son gratis",
+        "factModels": "Los modelos cuestan créditos",
+        "help": "Cada revisor vota incluir, quizá o excluir en los artículos que recibe. Una persona lee el título y el resumen y vota. Un modelo responde todos los criterios en cada artículo que lee, y sus respuestas forman su voto.",
+        "aiModel": "Modelo de IA",
+        "votesKeep": "{count, plural, one {# voto sigue contando} other {# votos siguen contando}}",
+        "pdfsMissed": "{why, select, text {{count, plural, one {No puede leer PDF: # artículo no recibe su voto} other {No puede leer PDF: # artículos no reciben su voto}}} other {{count, plural, one {No puede leer los PDF más largos: # artículo no recibe su voto} other {No puede leer los PDF más largos: # artículos no reciben su voto}}}}",
+        "creditsFor": "{credits} créditos por {count, plural, one {# artículo} other {# artículos}}",
+        "allRead": "Todos leídos",
+        "none": "Todavía no hay revisores",
+        "addPerson": "Añadir una persona",
+        "addModel": "Añadir un modelo"
+      },
+      "decided": {
+        "votesAgree": "Los votos coinciden",
+        "settled": "Resuelto",
+        "votesSplit": "Los votos se dividen",
+        "help": "Todos los votos de un artículo entran en esta regla. Cuando los votos coinciden como pide la regla, el artículo queda resuelto. Cuando no, queda en conflicto, y una persona lo resuelve.",
+        "each": "Personas por artículo",
+        "factModels": "Los modelos leen todos los artículos abiertos",
+        "factEveryone": "Todos incluye a quien se una después",
+        "eachHelp": "Cada modelo lee todos los artículos abiertos cuando se une. Esto fija cuántas personas votan cada uno. Los artículos se reparten para que cada persona lea más o menos el mismo número. Un número se mantiene aunque crezca el equipo. Todos significa todas las personas del cribado, ahora y después.",
+        "everyone": "Todos",
+        "addPerson": "Añada una persona para elegir",
+        "settledWhen": "Un artículo queda resuelto cuando",
+        "settlingTitle": "Resolver un artículo",
+        "oneVote": "Cada revisor asignado a un artículo tiene un voto, tanto un modelo como una persona.",
+        "ruleMeans": "<b>{label}.</b> {means}",
+        "settledBy": "Los conflictos los resuelve",
+        "conflictsTitle": "Conflictos",
+        "conflictsHelp": "Esta persona ve todos los votos del artículo, y su decisión es el resultado.",
+        "noConflicts": "Con esta regla no hay conflictos que resolver",
+        "whoSettles": "Quién resuelve un conflicto",
+        "seeVotes": "Los revisores ven los demás votos",
+        "seeingTitle": "Ver los demás votos",
+        "seeingHelp": "Después de votar evita que un revisor se deje influir: cada uno ve los demás votos de un artículo cuando lo ha votado o cuando queda resuelto. Quien no vota un artículo ve sus votos en cualquier momento.",
+        "after": "Después de votar",
+        "always": "En cualquier momento",
+        "withVotes": "{count, plural, one {Con # voto en un artículo, por ejemplo} other {Con # votos en un artículo, por ejemplo}}",
+        "addReviewer": "Añada un revisor para ver cómo se resuelve un artículo.",
+        "modelSettles": "El voto de un modelo puede resolver un artículo antes de que vote ninguna persona."
+      },
+      "goesHelp": "Los artículos cuyo resultado es Incluido se añaden a la colección que elija, en su biblioteca o en una comunidad, con las estrellas de Puntuación. Ningún sitio los deja solo en el cribado.",
+      "summaryLabel": "Resumen del cribado",
+      "changes": {
+        "title": "Cambios",
+        "helpTitle": "Cambiar un cribado en curso",
+        "factVotes": "Los votos ya emitidos se conservan",
+        "factRemoved": "Los revisores retirados quedan registrados",
+        "help": "Puede cambiar cualquier cosa aquí mientras el cribado está en curso y después de que termine. No se guarda nada hasta que elija Guardar cambios, y este bloque muestra antes lo que hará el guardado.",
+        "savedNow": "Guardado ahora mismo",
+        "activity": "Actividad",
+        "willDo": "Qué hace el guardado",
+        "did": "Qué hizo el guardado",
+        "recheck": "Volver a comprobar los artículos resueltos",
+        "recheckOn": "Todos los artículos resueltos se comprueban con los nuevos ajustes. Los que aparecen arriba reciben otro resultado.",
+        "recheckOff": "{count, plural, one {# artículo resuelto recibiría otro resultado con los nuevos ajustes. Conserva su resultado salvo que active esta opción.} other {# artículos resueltos recibirían otro resultado con los nuevos ajustes. Conservan su resultado salvo que active esta opción.}}",
+        "none": "No hay cambios sin guardar",
+        "checking": "Comprobando si hay artículos nuevos",
+        "checked": "{of, plural, one {{done} de # fuente comprobada} other {{done} de # fuentes comprobadas}}",
+        "lastAdded": "{count, plural, one {La última comprobación añadió # artículo nuevo} other {La última comprobación añadió # artículos nuevos}}",
+        "lastNothing": "La última comprobación no encontró nada nuevo",
+        "seePapers": "{count, plural, one {Ver el # artículo} other {Ver los # artículos}}",
+        "partsNav": "Partes del formulario"
+      },
+      "cost": {
+        "title": "Coste",
+        "helpTitle": "Modelos y créditos",
+        "factPeople": "Las personas son gratis",
+        "factAtOnce": "{count, plural, one {# artículo a la vez} other {# artículos a la vez}}",
+        "help": "El coste de cada modelo son sus créditos por artículo multiplicados por los artículos que cribar. Un artículo sin resumen se lee como su PDF, página por página, y cuesta según las páginas. El plan del espacio de trabajo permite a los modelos leer {atOnce, select, none {un número limitado de} other {{atOnce}}} artículos a la vez, así que un cribado iniciado mientras los modelos de otro están leyendo espera su turno. Las personas pueden votar desde el principio.",
+        "helpLiving": "Un cribado vivo también paga por cada artículo nuevo que encuentra una comprobación.",
+        "people": "Personas",
+        "free": "Gratis",
+        "credits": "{credits} créditos",
+        "noPapers": "Todavía no hay artículos",
+        "pdfsRead": "{count, plural, one {# artículo se lee como su PDF} other {# artículos se leen como sus PDF}}, {pages, plural, one {# página} other {# páginas}} en total{capped, select, true {: hasta {credits} de estos créditos.} other {.}}",
+        "firstReading": "{count, plural, one {Primera lectura de # PDF, pagada al añadirlo} other {Primera lectura de # PDF, pagada al añadirlos}}",
+        "upTo": "Hasta {credits} créditos",
+        "answering": "{count, plural, one {Responder el nuevo criterio en artículos ya leídos} other {Responder los nuevos criterios en artículos ya leídos}}",
+        "rereading": "Leer los artículos que esto vuelve a abrir",
+        "atMost": "{still, select, true {{soFar, select, true {Pendiente hasta ahora, como máximo} other {Pendiente, como máximo}}} other {{soFar, select, true {Total hasta ahora, como máximo} other {Total, como máximo}}}}",
+        "resumed": "Pendiente al reanudar",
+        "still": "Pendiente de pago",
+        "nothing": "Nada",
+        "overWallet": "{credits} créditos más de los que tiene el espacio de trabajo",
+        "walletShare": "Parte de los créditos del espacio de trabajo: {share}",
+        "shareOf": "{under, select, true {Menos del {share} de} other {El {share} de}}",
+        "inWorkspace": "{credits} en {workspace}",
+        "leftAfter": "{credits} restantes después",
+        "spent": "{credits} gastados hasta ahora"
+      },
+      "bar": {
+        "toScreen": "<n></n> <m>{soFar, select, true {{count, plural, one {artículo para cribar hasta ahora} other {artículos para cribar hasta ahora}}} other {{count, plural, one {artículo para cribar} other {artículos para cribar}}}}</m>",
+        "cost": "<m>{still, select, true {{soFar, select, true {Pendiente hasta ahora, como máximo} other {Pendiente, como máximo}}} other {{soFar, select, true {Total hasta ahora, como máximo} other {Total, como máximo}}}}</m> <b>{credits} créditos</b>",
+        "peopleOnly": "{handed, select, true {Solo personas, nada más que pagar} other {Solo personas, sin créditos}}",
+        "addCredits": "Añadir créditos",
+        "start": "Iniciar el cribado",
+        "moved": "{count, plural, one {# artículo cambia de resultado} other {# artículos cambian de resultado}}",
+        "review": "Revisar",
+        "discard": "Descartar",
+        "save": "Guardar cambios",
+        "discardTitle": "{count, plural, one {¿Descartar # cambio sin guardar?} other {¿Descartar # cambios sin guardar?}}",
+        "keepEditing": "Seguir editando"
+      },
+      "page": {
+        "title": "Nuevo cribado",
+        "helpTitle": "Cribado",
+        "factRead": "Título y resumen, o el PDF del artículo",
+        "factWho": "Personas y modelos de IA",
+        "help": "Sus revisores votan incluir, quizá o excluir según el título y el resumen de cada artículo. Un artículo que no tiene resumen y llegó con su PDF se vota a partir del PDF. Una regla que usted elige convierte los votos en un resultado, y un artículo en el que los votos se dividen pasa a una persona."
+      }
+    },
+    "frame": {
+      "screening": "Cribado",
+      "loading": "Cargando el cribado",
+      "notFound": "No encontrado",
+      "gone": "Este cribado se eliminó o no se comparte con usted",
+      "more": "Más",
+      "failed": "No funcionó. Inténtelo de nuevo.",
+      "activity": "Actividad",
+      "export": "Exportar",
+      "people": "Personas",
+      "peopleOn": "Personas, {count} en este cribado",
+      "settings": "Ajustes",
+      "change": "Cambiar",
+      "join": "Unirse como revisor",
+      "reopen": "Reabrir",
+      "resumeModels": "Reanudar los modelos",
+      "checkNew": "Comprobar si hay artículos nuevos",
+      "addCredits": "Añadir créditos",
+      "markFinished": "Marcar como terminado",
+      "leaveScreening": "Salir de este cribado",
+      "tabs": {
+        "label": "Páginas de este cribado",
+        "overview": "Vista general",
+        "screen": "Cribar",
+        "papers": "Artículos",
+        "unsaved": "Sin guardar"
+      },
+      "faces": {
+        "every": "Todos los revisores",
+        "takeOut": "{you, select, true {Quitarse del filtro} other {Quitar a {name} del filtro}}",
+        "add": "{you, select, true {Añadirse al filtro} other {Añadir a {name} al filtro}}"
+      },
+      "rule": {
+        "title": "Cómo se decide un artículo",
+        "eachPaper": "Cada artículo: {who, select, both {{people, plural, one {# persona} other {# personas}} y {models, plural, one {# modelo de IA} other {# modelos de IA}}} people {{people, plural, one {# persona} other {# personas}}} other {{models, plural, one {# modelo de IA} other {# modelos de IA}}}}",
+        "noReviewer": "Todavía no hay revisores",
+        "hiddenMine": "Votos ocultos en sus Pendientes",
+        "hiddenTheirs": "Votos ocultos en los Pendientes de los revisores",
+        "visible": "Votos visibles para todos",
+        "conflictsGoTo": "Los conflictos van a {who}",
+        "checks": "{every, select, day {Comprueba cada día si hay artículos nuevos} week {Comprueba cada semana si hay artículos nuevos} other {Comprueba cada mes si hay artículos nuevos}}",
+        "chips": "Cada artículo recibe los votos que indican estas etiquetas y queda resuelto cuando llegan.",
+        "conflictOpen": "{you, select, true {Un artículo en conflicto sigue abierto hasta que usted lo resuelva.} other {Un artículo en conflicto sigue abierto hasta que {name} lo resuelva.}}",
+        "living": "Un cribado vivo comprueba sus fuentes de forma programada en busca de artículos nuevos y criba lo nuevo. Los archivos subidos y las listas pegadas nunca reciben artículos.",
+        "livingChip": "{every, select, day {Vivo<more>, artículos nuevos cada día</more>} week {Vivo<more>, artículos nuevos cada semana</more>} other {Vivo<more>, artículos nuevos cada mes</more>}}"
+      },
+      "role": {
+        "member": "{finished, select, true {Ve todos los artículos y todos los votos. No es uno de sus revisores, así que no recibe artículos que votar.} other {Ve todos los artículos y todos los votos. No es uno de sus revisores, así que no recibe artículos que votar. Únase como revisor para recibirlos.}}",
+        "viewer": "{workspace} lo compartió con usted. Ve todos los artículos y todos los votos, y no recibe artículos que votar.",
+        "guest": "Invitado",
+        "guestSays": "{workspace} lo compartió con usted. Vota los artículos que recibe. Solo los miembros de {workspace} cambian sus ajustes."
+      },
+      "banner": {
+        "checked": "{done, number} de {of, plural, one {# fuente comprobada} other {# fuentes comprobadas}}",
+        "arrived": "{count, plural, one {Llegó <link># artículo nuevo</link>} other {Llegaron <link># artículos nuevos</link>}} {ago}",
+        "screenNew": "Cribe primero sus {count, plural, one {# artículo nuevo} other {# artículos nuevos}}",
+        "nothing": "La última comprobación no encontró artículos nuevos",
+        "counting": "<done></done> de {of, number}",
+        "modelPrice": "{name}, {price}",
+        "creditsHelp": "{you, select, true {Un modelo se detiene cuando el espacio de trabajo no puede pagar su siguiente artículo. Sus votos hasta ese momento se quedan, y sigue donde se detuvo cuando usted añada créditos.} other {Un modelo se detiene cuando el espacio de trabajo no puede pagar su siguiente artículo. Sus votos hasta ese momento se quedan, y sigue donde se detuvo cuando {workspace} añada créditos.}}",
+        "stoppedAt": "<models></models> se detuvo en {done, number} de {of, plural, one {# artículo} other {# artículos}}",
+        "finishedOn": "Terminado el {day}",
+        "finishedAgo": "Terminado {ago}",
+        "finishedTitle": "Cribado terminado",
+        "finishedHelp": "{member, select, true {Sus modelos dejan de leer y deja de comprobar si hay artículos nuevos. Aún puede leerlo, exportarlo y cambiarlo, o reabrirlo.} other {Sus modelos dejan de leer y deja de comprobar si hay artículos nuevos. Aún puede leerlo y exportarlo. Un miembro de {workspace} puede reabrirlo.}}",
+        "pausedTitle": "Modelos en pausa",
+        "pausedHelp": "{member, select, true {Los modelos en pausa no leen nada ni gastan créditos. Las personas pueden seguir votando. Reanude los modelos para que sigan leyendo.} other {Los modelos en pausa no leen nada ni gastan créditos. Las personas pueden seguir votando. Un miembro de {workspace} puede reanudarlos.}}",
+        "papersRead": "{done, number} de {of, plural, one {# artículo leído} other {# artículos leídos}}",
+        "turnsTitle": "Los modelos se turnan",
+        "atATime": "{count, plural, one {# artículo a la vez} other {# artículos a la vez}}",
+        "turnsHelp": "Los modelos de {workspace} leen {count, plural, one {# artículo} other {# artículos}} a la vez, así que un cribado iniciado mientras otro está leyendo lo espera. Mientras tanto, las personas pueden votar.",
+        "modelReading": "<model>{name}</model> leyendo",
+        "modelsReading": "{count, plural, one {# modelo leyendo} other {# modelos leyendo}}",
+        "read": "{done, number} de {of, number}"
+      },
+      "menu": {
+        "emailsOff": "Este cribado ya no le enviará correos",
+        "emailsOn": "Este cribado vuelve a enviarle correos",
+        "stopEmails": "Dejar de recibir sus correos",
+        "emailAgain": "Volver a recibir sus correos",
+        "pauseModels": "Pausar los modelos",
+        "duplicate": "Duplicar como nuevo cribado",
+        "move": "Mover a otro espacio de trabajo",
+        "delete": "Eliminar"
+      },
+      "move": {
+        "modelsPaid": "{own, select, true {{count, plural, one {Desde ahora su modelo se paga con sus propios créditos} other {Desde ahora sus modelos se pagan con sus propios créditos}}} other {{count, plural, one {Desde ahora su modelo se paga con los créditos de {to}} other {Desde ahora sus modelos se pagan con los créditos de {to}}}}}",
+        "reviewersStay": "{own, select, true {Sus demás revisores lo conservan, como invitados} other {Sus demás revisores lo conservan, como invitados si no están en {to}}}",
+        "papersStay": "{own, select, true {Los artículos que ha guardado se quedan donde están, y los que incluya desde ahora se guardan en su propia biblioteca} other {Los artículos que ha guardado se quedan donde están, y los que incluya desde ahora se guardan en la biblioteca de {to}}}",
+        "sourcesStay": "{own, select, true {Sus fuentes se quedan en su propio espacio de trabajo, y las sigue comprobando ahí} other {Sus fuentes se quedan en {from}, y las sigue comprobando ahí}}",
+        "membersLose": "Los miembros de {from} que no son sus revisores dejan de verlo",
+        "nothingElse": "Nada más cambia"
+      },
+      "finish": {
+        "title": "¿Marcar este cribado como terminado?",
+        "unsettled": "{count, plural, one {# artículo no está resuelto y se queda como está} other {# artículos no están resueltos y se quedan como están}}",
+        "modelsStop": "Los modelos dejan de leer",
+        "checksStop": "Deja de comprobar si hay artículos nuevos",
+        "movesToFinished": "Pasa a Terminados en la lista, y se puede reabrir o cambiar en cualquier momento"
+      },
+      "delete": {
+        "title": "¿Eliminar {name}?",
+        "goes": "Sus votos y sus ajustes se eliminan con él",
+        "saved": "{count, plural, one {El # artículo guardado en {collection} se queda ahí} other {Los # artículos guardados en {collection} se quedan ahí}}",
+        "final": "No se puede deshacer"
+      },
+      "leave": {
+        "title": "¿Salir de este cribado?",
+        "confirm": "Salir",
+        "votesCount": "{count, plural, one {Su # voto sigue contando} other {Sus # votos siguen contando}}",
+        "noVotes": "No ha emitido ningún voto",
+        "papersGo": "{count, plural, one {El # artículo que no había votado pasa a los demás revisores} other {Los # artículos que no había votado pasan a los demás revisores}}",
+        "fromList": "Sale de su lista, y solo podrá abrirlo de nuevo cuando se lo vuelvan a compartir"
+      },
+      "add": {
+        "title": "¿Añadir a {name} como revisor?",
+        "confirm": "Añadir como revisor",
+        "noCriteria": "Un modelo vota respondiendo a los criterios, y este cribado todavía no tiene ninguno. Incluiría todos los artículos que lea.",
+        "addCriteria": "Añadir criterios"
+      },
+      "takeOff": {
+        "viewerTitle": "¿Hacer que {name} deje de votar?",
+        "title": "¿Retirar a {name} de este cribado?",
+        "makeViewer": "Hacerlo lector",
+        "confirm": "Retirar",
+        "asViewer": "Como lector ve todos los artículos y todos los votos",
+        "stopCounting": "{me, select, true {Dejar de contar {count, plural, one {su # voto} other {sus # votos}}} other {Dejar de contar {count, plural, one {su # voto} other {sus # votos}}}}",
+        "stopCountingLabel": "{me, select, true {Dejar de contar sus votos} other {Dejar de contar sus votos}}",
+        "discarded": "{me, select, true {Sus votos quedan registrados y dejan de contar.} other {Sus votos quedan registrados y dejan de contar.}}",
+        "kept": "{me, select, true {Sus votos siguen contando.} other {Sus votos siguen contando.}}"
+      },
+      "credits": {
+        "inWorkspace": "{credits} créditos en el espacio de trabajo ahora",
+        "payFor": "{some, select, true {{credits} créditos pagan unos {paid, number} de sus {papers, plural, one {# artículo} other {# artículos}}. Se detiene ahí hasta que se añadan créditos.} other {{credits} créditos no pagan ninguno de sus {papers, plural, one {# artículo} other {# artículos}}. Se detiene ahí hasta que se añadan créditos.}}"
+      },
+      "activitySheet": {
+        "says": "Todos los cambios de este cribado, los más recientes primero",
+        "scheduled": "Comprobación programada",
+        "earlier": "Mostrar cambios anteriores",
+        "yourVotes": "Sus {count, plural, one {# voto} other {# votos}}"
+      },
+      "peopleDialog": {
+        "helpTitle": "Quién participa en un cribado",
+        "personalIn": "{you, select, true {Este cribado está en su propio espacio de trabajo: usted lo ve y puede cambiarlo.} other {Este cribado está en el espacio de trabajo propio de {workspace}, que puede cambiarlo.}}",
+        "personalElse": "Cualquier otra persona solo lo tiene cuando se le comparte: como revisor, que recibe artículos y vota, o como lector, que ve todos los artículos y todos los votos.",
+        "membersSee": "Los miembros de {workspace} ven este cribado y pueden cambiarlo. Los que son sus revisores reciben artículos y los votan.",
+        "outsideHas": "Alguien de fuera de {workspace} solo lo tiene cuando se le comparte: como revisor, que recibe artículos y vota, o como lector, que ve todos los artículos y todos los votos.",
+        "modelToo": "{you, select, true {Un modelo también es un revisor: lee todos los artículos abiertos y vota, y se paga con sus créditos.} other {Un modelo también es un revisor: lee todos los artículos abiertos y vota, y se paga con los créditos de {workspace}.}}",
+        "close": "Cerrar",
+        "addAs": "Añadir personas como",
+        "addModel": "Añadir un modelo",
+        "membersAdd": "Los miembros de {workspace} añaden personas y cambian lo que puede hacer cada una.",
+        "full": "El plan de {workspace} comparte un cribado con {count, plural, one {# persona} other {# personas}} de fuera. Retire a una para añadir a otra.",
+        "ownWorkspace": "Está en su propio espacio de trabajo",
+        "everyMember": "Todos los miembros",
+        "canChange": "Puede verlo y cambiarlo",
+        "startedIt": "Lo empezó",
+        "votedOn": "{detail}, votó {done, number} de {of, number}",
+        "modelRead": "{failed, select, true {{price}, procesó {done, number} de {of, number}} other {{price}, leyó {done, number} de {of, number}}}",
+        "model": "Modelo",
+        "notSent": "No se pudo enviar la invitación",
+        "showMore": "Mostrar más personas",
+        "reviewer": "Revisor",
+        "reviewerCan": "Vota los artículos que recibe",
+        "viewer": "Lector",
+        "viewerCan": "Ve todos los artículos y todos los votos"
+      }
+    },
+    "list": {
+      "title": "Cribado",
+      "newScreening": "Nuevo cribado",
+      "find": "Buscar un cribado",
+      "sort": {
+        "you": "Primero lo que le espera",
+        "active": "Actividad reciente",
+        "newest": "Más recientes",
+        "oldest": "Más antiguos",
+        "name": "Nombre"
+      },
+      "show": {
+        "all": "Todos",
+        "you": "Le esperan",
+        "open": "En curso",
+        "finished": "Terminados"
+      },
+      "showMenu": "Mostrar",
+      "whichScreenings": "Qué cribados",
+      "firstUse": {
+        "title": "Decida qué artículos entran en su revisión",
+        "text": "Traiga artículos de búsquedas, colecciones o sus propios archivos, defina sus criterios y críbelos a mano, con su equipo, con modelos de IA como revisores adicionales, o de las tres formas."
+      },
+      "legend": {
+        "label": "Qué significan los colores de una barra",
+        "settled": "Resuelto",
+        "notYet": "Todavía no"
+      },
+      "column": {
+        "screening": "Cribado",
+        "reviewers": "Revisores",
+        "papers": "Artículos",
+        "status": "Estado",
+        "lastActivity": "Última actividad"
+      },
+      "papersHelp": {
+        "title": "En qué punto están los artículos",
+        "text": "Cada barra reparte los artículos de un cribado según su estado actual. Pulse una parte de la barra para ver esos artículos."
+      },
+      "loadingScreenings": "Cargando cribados",
+      "needsYouNote": "Artículos que cribar, conflictos que resolver y preguntas que le han hecho",
+      "startedBy": "<person>{who}</person> <at>lo empezó {when}</at>",
+      "everyReviewer": "Todos los revisores",
+      "lastActivity": "<label>Última actividad </label>{when}",
+      "includedOf": "{included} incluidos de {total}",
+      "settledOf": "{settled} de {total} resueltos",
+      "forYouToScreen": "{count, plural, other {# para que usted cribe}}",
+      "conflictsToSettle": "{count, plural, one {# conflicto que resolver} other {# conflictos que resolver}}",
+      "questionsForYou": "{count, plural, one {# pregunta para usted} other {# preguntas para usted}}",
+      "finishedIncluded": "{included} incluidos, terminado {when}",
+      "waitingForVotes": "{count} esperando votos",
+      "inConflictFor": "{count} en conflicto, que resuelve {who}",
+      "upToDate": "Al día, próxima comprobación {day}",
+      "allSettled": "Todos los artículos están resueltos",
+      "none": "{show, select, you {Nada le espera.} finished {No hay cribados terminados.} open {No hay cribados en curso.} other {No hay cribados.}}",
+      "noneCalled": "{show, select, you {Nada llamado {name} le espera.} finished {No hay cribados terminados llamados {name}.} open {No hay cribados en curso llamados {name}.} other {No hay cribados llamados {name}.}}",
+      "showEvery": "Mostrar todos los cribados",
+      "pagerItems": "cribados",
+      "elsewhere": "Le espera en otro espacio de trabajo",
+      "inWorkspace": "En {name}",
+      "more": "Más",
+      "moreFor": "Más para {name}",
+      "addPerson": "Añadir una persona",
+      "findPerson": "Busque una persona o escriba un correo",
+      "nobodyByName": "Nadie en este espacio de trabajo tiene ese nombre. Escriba una dirección de correo para invitar a alguien.",
+      "nobodyElse": "No queda nadie más en este espacio de trabajo para añadir. Escriba una dirección de correo para invitar a alguien.",
+      "invite": "Invitar",
+      "onAlready": "{effort, select, true {{name} ya participa con ese esfuerzo} other {{name} ya participa}}",
+      "confirm": {
+        "cancel": "Cancelar",
+        "what": "Qué hace este cambio en el cribado"
+      },
+      "discussion": {
+        "title": "Conversación",
+        "about": "{models, select, true {Aquí los revisores y la persona que resuelve los conflictos comentan un artículo, con todos los que participan o con una sola persona. Un mensaje a una persona es una pregunta: queda en su lista de Cribado hasta que responda. A un modelo no se le puede preguntar: pulse una de sus marcas en la tabla para ver el pasaje que leyó.} other {Aquí los revisores y la persona que resuelve los conflictos comentan un artículo, con todos los que participan o con una sola persona. Un mensaje a una persona es una pregunta: queda en su lista de Cribado hasta que responda.}}",
+        "blind": "Este cribado oculta lo que se escribe sobre un artículo a un revisor solo mientras el artículo aún espera el voto de ese revisor.",
+        "shut": "Aquí los revisores comentan un artículo. Queda oculto para que no influya en su voto.",
+        "notSent": "No se envió. Inténtelo de nuevo.",
+        "askedYou": "{name} le preguntó",
+        "waitingFor": "Esperando la respuesta de {name}",
+        "asked": "preguntó a {who}",
+        "readOnly": "{empty, select, true {Nadie ha escrito todavía sobre este artículo. } other {}}Solo escriben aquí sus revisores y la persona que resuelve los conflictos.{join, select, true { Únase como revisor para escribir.} other {}}",
+        "whoFor": "Para quién es",
+        "to": "Para",
+        "everyone": "Todos",
+        "forOne": "Para que responda {name}. Lo lee todo el que puede ver los votos de este artículo, y queda en la lista de Cribado de {name} hasta entonces.",
+        "forAll": "Lo lee todo el que puede ver los votos de este artículo. Elija un nombre para hacer una pregunta a una persona.",
+        "answerPlaceholder": "Responder a {name}",
+        "askPlaceholder": "Hacer una pregunta a {name}",
+        "allPlaceholder": "Escribir a todos los de este artículo",
+        "answerLabel": "Su respuesta a {name}",
+        "askLabel": "Su pregunta para {name}",
+        "allLabel": "Su mensaje",
+        "send": "Enviar"
+      },
+      "pdf": {
+        "readAs": "{pages, plural, =0 {Leído como su PDF} one {Leído como su PDF, # página} other {Leído como su PDF, # páginas}}",
+        "openTab": "Abrir el PDF en una pestaña nueva",
+        "onItsWay": "El PDF está en camino",
+        "cantShow": "Este PDF no se puede mostrar aquí. Ábralo en una pestaña nueva."
+      },
+      "perPaper": "{credits} créditos por artículo"
+    },
+    "overview": {
+      "notSaved": "No funcionó. Inténtelo de nuevo.",
+      "empty": {
+        "arriving": "Sus artículos están en camino",
+        "arrivingSays": "{reviewer, select, true {Aparecen aquí a medida que llegan de sus fuentes. Puede empezar a cribar en cuanto lleguen los primeros.} other {Aparecen aquí a medida que llegan de sus fuentes.}}",
+        "noPaper": "{sources, select, true {Sus fuentes no tenían ningún artículo que se pueda cribar.} other {Este cribado no tiene ninguna fuente de la que tomar artículos.}}",
+        "toSources": "{sources, select, true {Ver sus fuentes} other {Añadir una fuente}}"
+      },
+      "progress": {
+        "title": "Progreso",
+        "screen": "Cribar <num>{count, number}</num> {count, plural, one {artículo} other {artículos}}",
+        "conflicts": "{settle, select, true {Resolver} other {Ver}} <num>{count, number}</num> {count, plural, one {conflicto} other {conflictos}}",
+        "helpTitle": "En qué punto está un artículo",
+        "maybeMeans": "Quizá significa que no está claro si el artículo entra",
+        "conflictUntil": "{you, select, true {En conflicto hasta que usted lo resuelva} other {En conflicto hasta que {name} lo resuelva}}",
+        "settles": "{means} Quizá es un resultado como los demás, así que un artículo en Quizá cuenta como resuelto.",
+        "maybeStays": "Un artículo en Quizá no se guarda con los artículos incluidos. Queda en Quizá en la página Artículos, y su resultado aún puede cambiar si un revisor cambia su voto.",
+        "exportIncluded": "Exportar los artículos incluidos",
+        "extract": "Extraer de los artículos incluidos",
+        "finish": "Marcar como terminado",
+        "settledOf": "{total, plural, one {de # artículo resuelto} other {de # artículos resueltos}}",
+        "leftOut": "{bare, select, true {{count, number} descartados: sin resumen} other {{count, number} descartados}}",
+        "capped": "Detenido en el límite de artículos de su plan",
+        "pdfsUnread": "{count, plural, one {# PDF no tiene ningún revisor que lo lea} other {# PDF no tienen ningún revisor que los lea}}",
+        "merged": "{count, plural, one {# duplicado fusionado} other {# duplicados fusionados}}"
+      },
+      "yours": {
+        "votes": "Sus {count, plural, one {# voto} other {# votos}}",
+        "voted": "{decision, select, include {{count, number} que votó Incluir} maybe {{count, number} que votó Quizá} other {{count, number} que votó Excluir}}",
+        "stillWait": "Ver cuáles aún esperan otros votos"
+      },
+      "reviewers": {
+        "title": "Revisores",
+        "everyoneDone": "Todos terminan en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}, a este ritmo",
+        "move": "Mover artículos",
+        "agreement": "Acuerdo",
+        "helpTitle": "Cómo se reparten los artículos",
+        "eachOf": "{each, number} de las {people, plural, one {# persona} other {# personas}} votan cada artículo",
+        "everyPerson": "Cada persona vota todos los artículos",
+        "modelsRead": "Los modelos leen todos los artículos abiertos",
+        "sharing": "{share, select, true {Cada persona vota una parte de los artículos.} other {Cada persona vota todos los artículos.}}{models, select, true { Cada modelo lee los artículos aún abiertos y los nuevos a medida que se añaden. Se salta un artículo que se resolvió antes de que se uniera.} other {}}",
+        "pace": "Bajo el recuento de una persona aparece cuándo terminará lo que le queda, si mantiene el ritmo de sus últimos tres días.",
+        "reviewer": "Revisor",
+        "votedOn": "Artículos votados",
+        "agrees": "Coincide con las personas",
+        "agreesPerson": "Una persona con las demás personas del artículo",
+        "agreesModel": "Un modelo con las personas, nunca con un modelo",
+        "agreesMeans": "Con qué frecuencia el voto de este revisor en un artículo coincidió con el voto de una persona en él, sobre todos esos pares de votos. Una cifra baja indica un revisor que lee los criterios de forma distinta al resto.",
+        "agreesMissed": "Bajo un modelo, los artículos que el cribado incluyó y que él votó excluir.",
+        "actions": "Acciones",
+        "people": "Personas",
+        "models": "Modelos",
+        "takenOff": "Retirado",
+        "thrownOut": "Votos anulados",
+        "stillCount": "{count, plural, one {# voto sigue contando} other {# votos siguen contando}}",
+        "castNone": "No emitió ningún voto",
+        "nobody": "{change, select, true {Nadie vota todavía estos artículos. Añada una persona o un modelo desde Personas, arriba en la página.} other {Nadie vota todavía estos artículos.}}"
+      },
+      "move": {
+        "title": "Mover artículos entre revisores",
+        "confirm": "Mover {count, plural, one {# artículo} other {# artículos}}",
+        "confirmBare": "Mover",
+        "from": "De",
+        "to": "A",
+        "left": "Quedan {count, number}",
+        "nothingLeft": "No queda nada",
+        "howMany": "Artículos que mover",
+        "ofMost": "<b>{papers, number}</b> de {most, number} que {you, select, true {usted aún no tiene} other {{name} aún no tiene}}",
+        "doneAfter": "<b>Todos terminan en {afterWeeks, plural, =0 {{afterDays, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}</b>{same, select, true {<muted>, igual que ahora</muted>} other {<muted>, frente a {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}} ahora</muted>}}",
+        "startsAt": "Empieza en el número que deja a los dos con tantos artículos como el otro. Se van los artículos del final de la cola de {you, select, true {usted} other {{name}}}. Los votos ya emitidos se quedan donde están.",
+        "hasAll": "{takerYou, select, true {Usted ya tiene} other {{taker} ya tiene}} todos los artículos de {giverYou, select, true {usted} other {{giver}}}.",
+        "nobodyElse": "No hay nadie más a quien mover artículos.",
+        "doneIn": "Terminado en {weeks, plural, =0 {{days, plural, =1 {un día} other {unos # días}}} one {una semana} other {unas # semanas}}"
+      },
+      "row": {
+        "reading": "Leyendo",
+        "creditsSpent": "{credits} créditos gastados",
+        "done": "Terminado",
+        "reminded": "Recordatorio {ago}",
+        "activeNow": "Activo ahora",
+        "added": "Añadido {ago}",
+        "arriving": "Llegando",
+        "doneOf": "<num>{done, number}</num> de {assigned, number}",
+        "idle": "Sin votos en 3 días",
+        "unreadLabel": "{count, plural, one {# artículo que no pudo leer} other {# artículos que no pudo leer}}",
+        "unread": "{count, number} no se pudieron leer",
+        "unreadSays": "{count, plural, one {No pudo leer este artículo, así que no opina sobre él. Lo resuelven los demás revisores.} other {No pudo leer estos # artículos, así que no opina sobre ellos. Los resuelven los demás revisores.}}",
+        "notGivenText": "{count, plural, one {No recibe el PDF: solo lee texto} other {No recibe los # PDF: solo lee texto}}",
+        "notGivenLong": "{count, plural, one {No recibe # PDF: es más largo de lo que lee de una vez} other {No recibe # PDF: son más largos de lo que lee de una vez}}",
+        "voted": "{decision, select, include {{count, number} votados Incluir} maybe {{count, number} votados Quizá} other {{count, number} votados Excluir}}",
+        "noOtherPerson": "No hay otra persona con quien comparar",
+        "noPeople": "No hay personas con quienes comparar",
+        "nothingYet": "Todavía no hay nada que comparar",
+        "agrees": "{share, number, percent}<muted>{person, select, true { mismo voto que los demás} other { mismo voto que las personas}}</muted>",
+        "missedOf": "Excluyó {missed, number} de {included, number} incluidos",
+        "ofPairs": "de {count, plural, one {# par de votos} other {# pares de votos}}",
+        "more": "Más",
+        "moreFor": "Más para {name}",
+        "seeVotes": "{mine, select, true {Ver sus votos en Artículos} other {Ver sus votos en Artículos}}",
+        "creditsShort": "Faltan {credits} créditos",
+        "remind": "Enviar un recordatorio",
+        "moveAway": "Mover artículos a otra persona",
+        "takeOff": "{mine, select, true {Salir de este cribado} other {Retirar de este cribado}}"
+      },
+      "unread": {
+        "earlier": "Anteriores",
+        "more": "Más"
+      },
+      "agreement": {
+        "title": "Acuerdo entre revisores",
+        "band": {
+          "below": "Menos de {to, number}",
+          "between": "De {from, number} a {to, number}",
+          "above": "{from, number} o más"
+        },
+        "sameOf": "{share, number, percent} iguales de {count, plural, one {# artículo} other {# artículos}}",
+        "kept": "El grado de acuerdo entre revisores aparece cuando haya votado todos sus artículos: antes revelaría cómo votaron los demás.",
+        "none": "El grado de acuerdo entre revisores aparece aquí cuando dos de ellos hayan votado los mismos artículos.",
+        "mean": "Kappa de Cohen media por pares",
+        "across": "0 no es mejor que el azar, 1 es acuerdo total. Entre {pairs, plural, one {# par} other {# pares}} de revisores, {range, select, true {de {min, number} a {max, number} artículos cada uno} other {{min, plural, one {# artículo cada uno} other {# artículos cada uno}}}}",
+        "splitMost": "Los artículos en que más discrepan",
+        "noneYet": "Ninguno todavía",
+        "cell": "{a} y {b}: kappa {kappa}, mismo voto en el {share, number, percent} de {papers, plural, one {# artículo} other {# artículos}}"
+      },
+      "kappa": {
+        "title": "Kappa de Cohen",
+        "full": "1,0 mismo voto siempre",
+        "substantial": "0,6 o más, considerable",
+        "chance": "0 no es mejor que el azar",
+        "worse": "Menos de 0, peor que el azar",
+        "means": "Cuánto coinciden dos revisores más allá del azar, en los artículos que ambos han votado. Se indica en la sección de métodos. La cifra global es la media de todos los pares.",
+        "swings": "Con pocos artículos varía mucho y puede bajar de 0. Se estabiliza a medida que más artículos tienen los dos votos."
+      },
+      "facts": {
+        "startedIt": "lo empezó {ago}"
+      },
+      "included": {
+        "title": "Los artículos incluidos van a",
+        "helpTitle": "Adónde van los artículos incluidos",
+        "savedEach": "Se guarda cada uno al incluirse",
+        "pruned": "Los artículos excluidos se quitan",
+        "toCollection": "Cada artículo se guarda en esta colección cuando se incluye.",
+        "nowhere": "{change, select, true {Los artículos incluidos se quedan en el cribado y no se guardan en ninguna colección. Elija una colección donde guardarlos.} other {Los artículos incluidos se quedan en el cribado y no se guardan en ninguna colección.}}",
+        "change": "Cambiar",
+        "choose": "Elegir una colección",
+        "aCollection": "Una colección",
+        "nowhereYet": "Ningún sitio todavía",
+        "count": "<num>{count, number}</num> {saved, select, true {guardados hasta ahora} other {incluidos}}"
+      },
+      "credits": {
+        "title": "Créditos",
+        "helpTitle": "Cuánto cuesta un cribado",
+        "modelCost": "{name}, {cost}",
+        "peopleOnly": "Solo personas",
+        "free": "Las personas criban gratis. Un modelo se paga por cada artículo que lee, con los créditos de este espacio de trabajo.",
+        "spent": "<num>{count, number}</num> gastados",
+        "onceRead": "{credits} cuando se lean todos los artículos",
+        "failed": "{count, plural, one {# lectura fallida} other {# lecturas fallidas}}",
+        "arriving": "Sus artículos aún están llegando",
+        "allRead": "Todos los artículos están leídos",
+        "leftIn": "Quedan {credits} en {workspace}",
+        "takenOff": "{credits} de modelos retirados",
+        "nothingToPay": "Nada que pagar"
+      },
+      "checks": {
+        "title": "Comprobaciones de artículos nuevos",
+        "shut": "{change, select, true {Una comprobación mira si una búsqueda, una colección o una comunidad tiene artículos que este cribado aún no tiene. Un archivo subido o una lista pegada contiene lo que contenía, así que no hay nada que comprobar. Añada una búsqueda, una colección o una comunidad como fuente para recibir artículos nuevos.} other {Una comprobación mira si una búsqueda, una colección o una comunidad tiene artículos que este cribado aún no tiene. Un archivo subido o una lista pegada contiene lo que contenía, así que no hay nada que comprobar. No se comprueba nada hasta que se añada como fuente una búsqueda, una colección o una comunidad.}}",
+        "helpTitle": "Comprobar si hay artículos nuevos",
+        "next": "Próxima comprobación {day}",
+        "onlyAsked": "Solo cuando se pida",
+        "skips": "{count, plural, one {Omite # fuente fija} other {Omite # fuentes fijas}}",
+        "means": "Una comprobación vuelve a ejecutar la búsqueda de cada fuente y añade los artículos que este cribado aún no tiene. Los archivos subidos y las listas pegadas no cambian nunca, así que las comprobaciones los omiten.",
+        "checkNow": "Comprobar ahora",
+        "every": "{every, select, day {Comprueba cada día} week {Comprueba cada semana} other {Comprueba cada mes}}, próxima comprobación {day}",
+        "onlyWhenAsked": "Solo comprueba cuando se pide",
+        "schedule": "Comprobar de forma programada",
+        "checkedBy": "{you, select, true {Usted comprobó} other {{name} comprobó}}",
+        "scheduled": "Comprobación programada",
+        "failed": "No se pudo terminar",
+        "found": "{count, number} encontrados",
+        "alreadyIn": "{count, number} ya estaban",
+        "added": "{count, number} añadidos",
+        "newFrom": "{count, number} nuevos de {source}",
+        "result": "{result, select, include {{count, number} incluidos} maybe {{count, number} quizá} exclude {{count, number} excluidos} conflict {{count, number} en conflicto} other {{count, number} esperando votos}}",
+        "nothingNew": "Nada nuevo",
+        "showLast": "Mostrar las últimas {count, number}",
+        "seeEvery": "Ver todas las comprobaciones, {count, number} en total",
+        "later": "Posteriores",
+        "earlier": "Anteriores",
+        "atStart": "Al inicio",
+        "startedWith": "{known, select, true {{papers, plural, one {# artículo} other {# artículos}}} other {Artículos}} de {sources, plural, one {# fuente} other {# fuentes}}"
+      },
+      "flow": {
+        "title": "Diagrama de flujo PRISMA",
+        "found": "Encontrados",
+        "removed": "Eliminados antes del cribado",
+        "papers": "Artículos",
+        "included": "Incluidos",
+        "arriving": "Aún llegando",
+        "titleAbstract": "Título y resumen",
+        "means": "Los recuentos con los que se dibuja el diagrama PRISMA de una revisión, desde los artículos que encontraron sus fuentes hasta los que incluyó.",
+        "download": "Descargar diagrama",
+        "none": "Ninguno"
+      }
+    },
+    "papers": {
+      "notSaved": "No se guardó. Inténtelo de nuevo.",
+      "noPapers": {
+        "gathering": "Sus artículos están en camino. Aparecen aquí a medida que llegan.",
+        "none": "Este cribado todavía no tiene artículos."
+      },
+      "sort": {
+        "added": "Según se añadieron",
+        "title": "Título, de la A a la Z",
+        "title-desc": "Título, de la Z a la A",
+        "result": "Resultado",
+        "newest": "Publicación, más recientes primero",
+        "split": "Más desacuerdo",
+        "points": "Más puntos"
+      },
+      "settledBy": "{you, select, true {Resuelto por usted} other {Resuelto por {name}}}",
+      "settledToast": "{count, number} resueltos como {result}",
+      "undo": "Deshacer",
+      "filter": {
+        "source": "Fuente",
+        "reviewer": "Revisor",
+        "reviewers": "Revisores",
+        "reviewersLabel": "{anyone, select, true {Revisores: cualquiera} other {Revisores: {names}}}",
+        "anyone": "Cualquiera",
+        "people": "Personas",
+        "models": "Modelos",
+        "vote": "Voto",
+        "anyVote": "Cualquier voto",
+        "noVote": "Sin voto",
+        "settled": "Resolvió el resultado",
+        "decisions": "Decisiones",
+        "added": "Añadido",
+        "anyTime": "En cualquier momento",
+        "atStart": "Al inicio",
+        "afterStart": "Después del inicio",
+        "order": "Orden",
+        "result": "Resultado",
+        "all": "Todos",
+        "showColumns": "Mostrar columnas",
+        "votes": "Votos",
+        "answers": "Respuestas"
+      },
+      "chip": {
+        "source": "Fuente {name}",
+        "removed": "quitada",
+        "sourceFact": "{kept, plural, one {# artículo} other {# artículos}}, {merged, plural, one {# duplicado fusionado} other {# duplicados fusionados}}",
+        "votedOnBy": "Votado por {names}",
+        "waitingFor": "{you, select, true {Esperando su voto} other {Esperando el voto de {name}}}",
+        "couldNotRead": "{you, select, true {Usted no pudo leerlo} other {{name} no pudo leerlo}}",
+        "voted": "{you, select, true {Usted votó {decision}} other {{name} votó {decision}}}",
+        "alsoVotedOnBy": "También votado por {names}",
+        "added": "Añadido {when}",
+        "earlierCheck": "En una comprobación anterior",
+        "remove": "Quitar el filtro {label}",
+        "clearFilters": "Borrar filtros"
+      },
+      "find": "Buscar por título o autor",
+      "findLabel": "Buscar un artículo",
+      "export": "Exportar",
+      "extractIncluded": "Extraer de los artículos incluidos",
+      "filters": "Filtros",
+      "filtersSays": "Lo que acota la lista de artículos, y su orden",
+      "showPapers": "Mostrar los artículos",
+      "showCount": "{count, plural, one {Mostrar # artículo} other {Mostrar # artículos}}",
+      "marksOnPhone": "Cada artículo muestra una marca por cada revisor al que se asignó, en el orden de los revisores. La suya va rodeada.",
+      "marksInTable": "Cada columna es un revisor. Pulse una cara para ver los artículos que votó.",
+      "hiddenLeftOut": "Sus votos en los artículos que usted aún no ha votado quedan fuera de este filtro, para que no influyan en el suyo.",
+      "selection": {
+        "selected": "{count, plural, one {# seleccionado} other {# seleccionados}}",
+        "everyPage": "Seleccionar todas las páginas",
+        "all": "{count, plural, other {Seleccionar los #}}",
+        "settleAs": "{count, plural, one {Resolver # en conflicto como} other {Resolver # en conflicto como}}",
+        "ris": "Archivo RIS, para un gestor de referencias",
+        "csvSeen": "Archivo CSV, con los votos que usted puede ver",
+        "csvAll": "Archivo CSV, con todos los votos",
+        "clear": "Borrar la selección"
+      },
+      "table": {
+        "loading": "Cargando artículos",
+        "select": "Seleccionar {title}",
+        "selectPage": "Seleccionar todos los artículos de esta página",
+        "paper": "Artículo",
+        "answers": "Respuestas",
+        "votes": "Votos",
+        "reason": "Motivo",
+        "result": "Resultado",
+        "new": "Nuevo",
+        "vote": "Voto",
+        "differOn": "Los revisores difieren en {name}",
+        "noMatch": "Ningún artículo de aquí coincide.",
+        "stillOpen": {
+          "waiting": "{count, plural, other {# esperando votos}}",
+          "conflict": "{count, plural, other {# en conflicto}}"
+        },
+        "pageItems": "artículos"
+      },
+      "answersHelp": {
+        "says": "Cada columna es un criterio, y la marca es la respuesta que dieron sus revisores.",
+        "yes": "Sí",
+        "no": "No",
+        "unclear": "Dudoso",
+        "yesSays": "Sí, lo cumple",
+        "noSays": "No, no lo cumple",
+        "unclearSays": "Dudoso según el resumen",
+        "differ": "Los revisores respondieron distinto"
+      },
+      "reasonHelp": {
+        "includedOnly": "Puntos solo en los artículos incluidos",
+        "mostCommon": "Puntos de la respuesta más común",
+        "stars": "De 1 a {count, number} estrellas según {points} puntos",
+        "says": "Por qué un artículo está donde está: el criterio que lo excluyó, aquel en el que un Quizá es dudoso, cómo se dividió un conflicto o de quién espera el voto.",
+        "points": "Un artículo incluido muestra sus puntos y estrellas. Cada criterio da puntos según la respuesta que dio la mayoría de los revisores: un sí da 1, salvo que {canChange, select, true {los ajustes del cribado digan otra cosa} other {los miembros de {workspace} hayan fijado otra cosa}}. Las estrellas siguen a los puntos."
+      },
+      "menu": {
+        "papersVoted": "{you, select, true {Artículos que usted votó {decision}} other {Artículos que {name} votó {decision}}}",
+        "papersWaiting": "{you, select, true {Artículos que esperan su voto} other {Artículos que esperan el voto de {name}}}",
+        "stopPapersWaiting": "{you, select, true {Dejar de mostrar solo los artículos que esperan su voto} other {Dejar de mostrar solo los artículos que esperan el voto de {name}}}"
+      },
+      "marks": {
+        "title": "Marcas de voto",
+        "aReviewer": "Un revisor",
+        "aModel": "Un modelo",
+        "voted": "Votó {decision}",
+        "hidden": "Votó, oculto mientras el artículo espera el voto del propio revisor",
+        "empty": "Una celda vacía es un artículo que no le toca votar"
+      },
+      "why": {
+        "nobodyCanVote": "Ningún revisor puede votarlo todavía",
+        "waitingOnYou": "Le espera a usted",
+        "waitingOn": "Espera a"
+      },
+      "pointsOf": "{points, number} de {max, plural, one {# punto} other {# puntos}}",
+      "note": {
+        "neededForOther": "Nota, necesaria para otro motivo",
+        "label": "Nota",
+        "writeReason": "Escriba el motivo en la nota",
+        "forOthers": "Nota para los demás (opcional)",
+        "forRecord": "Nota para que conste (opcional)"
+      },
+      "back": "Atrás",
+      "panel": {
+        "placeOf": "{at, number} de {of, number}",
+        "notInList": "No está en esta lista",
+        "close": "Cerrar",
+        "paper": "Artículo",
+        "says": "Su resumen, sus votos y su resultado",
+        "yourVote": "Su voto",
+        "youVoted": "Usted votó {decision}",
+        "changeIt": "Cambiarlo",
+        "changeVote": "Cambiar su voto",
+        "settledWithoutYou": "Resuelto sin su voto",
+        "waitingForYou": "Esperando su voto",
+        "settleConflict": "Resolver este conflicto",
+        "everyonesVotes": "Los votos de todos",
+        "reopen": "Reabrir",
+        "waitingToSettle": "{you, select, true {Esperando a que usted lo resuelva} other {Esperando a que {name} lo resuelva}}",
+        "everyConflict": "Todos los conflictos",
+        "override": "Sustituir el resultado",
+        "overrideTitle": "Sustituir un resultado",
+        "votesKept": "Los votos se conservan",
+        "canReopen": "Se puede reabrir",
+        "overrideSays": "Su decisión sustituye el resultado que dieron los votos. Los votos quedan registrados. Reabrir retira su decisión, y los votos vuelven a decidir el resultado.",
+        "yetToVote": "{who, select, you {Usted aún no ha votado. Su decisión resuelve el artículo sin ese voto y lo quita de su lista.} one {{names} aún no ha votado. Su decisión resuelve el artículo sin ese voto y lo quita de su lista.} withYou {{names} aún no han votado. Su decisión resuelve el artículo sin esos votos y lo quita de sus listas.} other {{names} aún no han votado. Su decisión resuelve el artículo sin esos votos y lo quita de sus listas.}}",
+        "cancel": "Cancelar",
+        "afterYouVote": "Después de que vote"
+      }
+    },
+    "pieces": {
+      "required": "Obligatorio",
+      "starsOf": "{count} de {of} estrellas",
+      "modelsSay": {
+        "checking": {
+          "says": "Comprobando si hay artículos nuevos",
+          "row": "Esperando la comprobación"
+        },
+        "gathering": {
+          "says": "Obteniendo sus artículos",
+          "row": "Esperando a que lleguen los artículos"
+        },
+        "paused": {
+          "says": "Modelos en pausa",
+          "row": "En pausa"
+        },
+        "credits": {
+          "says": "Sin créditos",
+          "row": "Sin créditos"
+        },
+        "waiting": {
+          "says": "Los modelos empiezan después de <link>{name}</link>",
+          "row": "Esperando su turno"
+        }
+      },
+      "modelsReading": "Modelos leyendo",
+      "about": "Sobre {title}",
+      "shut": {
+        "reviewer": "Para sus revisores",
+        "settler": "Para quien resuelve los conflictos",
+        "member": "Para los miembros del espacio de trabajo",
+        "sources": "Ninguna fuente añade artículos"
+      },
+      "notReviewer": {
+        "shared": "Este cribado se comparte con usted para leerlo. Votan sus revisores.",
+        "finished": "Usted no es uno de sus revisores y el cribado ha terminado.",
+        "join": "Usted no es uno de sus revisores. Únase como revisor para votar sus artículos."
+      },
+      "votesShut": "Los demás votos quedan ocultos para que no influyan en el suyo.",
+      "creditsShort": "Faltan {short} créditos",
+      "retry": "{papers, plural, one {Reintentar el artículo por {cost} créditos} other {Reintentar los # artículos por {cost} créditos}}",
+      "votesBy": "{you, select, true {Sus votos} other {Votos de {name}}}",
+      "openPapers": {
+        "conflict": "{count, number} en conflicto",
+        "waiting": "{count, number} esperando votos"
+      },
+      "filterLabel": "{name}: {choice}",
+      "tag": {
+        "ai": "IA",
+        "takenOff": "Retirado"
+      },
+      "voteMark": {
+        "failed": "{who}: no pudo leer el artículo",
+        "hidden": "{who}: votó, oculto hasta que vote",
+        "none": "{who}: sin voto",
+        "yet": "{who}: sin voto todavía",
+        "cast": "{who}: {decision}"
+      },
+      "votedHidden": "Votó, oculto hasta que vote",
+      "reasonSign": {
+        "unclear": "Dudoso en",
+        "no": "No se cumple,"
+      },
+      "resultCount": "{result, select, include {{count, number} incluidos} maybe {{count, number} quizá} exclude {{count, number} excluidos} conflict {{count, number} en conflicto} other {{count, number} esperando votos}}",
+      "tally": "{decision, select, include {{count, number} incluir} maybe {{count, number} quizá} other {{count, number} excluir}}",
+      "reviewerN": "Revisor {n, number}",
+      "answer": {
+        "yes": "Sí",
+        "no": "No",
+        "unclear": "Dudoso"
+      },
+      "answerMark": "{label}: {answer}",
+      "votesHelp": {
+        "title": "Cómo leer los votos",
+        "anAnswer": "Una respuesta",
+        "noAnswer": "Sin respuesta",
+        "answersDiffer": "Las respuestas difieren",
+        "answeredDifferently": "Los revisores respondieron distinto",
+        "opensAnswer": "Abre lo que hay detrás de la respuesta",
+        "body": "Cada columna es un revisor y cada fila un criterio, con su voto en la última fila. Pulse una cara para ver el voto y la nota de ese revisor. Pulse una respuesta para ver lo que hay detrás: el pasaje que leyó un modelo, o el voto y la nota de una persona. Un modelo que no pudo leer un artículo no opina sobre él.",
+        "lock": "Un candado marca dónde hay un voto oculto."
+      },
+      "anotherReason": "Otro motivo…",
+      "paperFacts": {
+        "from": "De {name}",
+        "added": "Añadido {ago}",
+        "cited": "Citado por {count, number}",
+        "fullText": "Buscar el texto completo"
+      },
+      "previousPaper": "Artículo anterior",
+      "nextPaper": "Artículo siguiente",
+      "messages": "{count, plural, one {# mensaje} other {# mensajes}}",
+      "discuss": "Comentar"
+    },
+    "screen": {
+      "notSaved": "No se guardó. Inténtelo de nuevo.",
+      "yourVote": "Su voto",
+      "result": "Resultado",
+      "answersDiffer": "Las respuestas difieren",
+      "nextAfter": "{settling, select, true {Artículo siguiente tras cada decisión} other {Artículo siguiente tras cada voto}}",
+      "settleConflicts": "{settle, select, true {Resolver {count, plural, one {# conflicto} other {# conflictos}}} other {Ver {count, plural, one {# conflicto} other {# conflictos}}}}",
+      "screenPapers": "Cribar {count, plural, one {# artículo} other {# artículos}}",
+      "queue": {
+        "label": "Cola",
+        "todo": "Pendientes",
+        "again": "Votar de nuevo",
+        "done": "Hechos",
+        "conflicts": "Conflictos",
+        "see": "Ver la cola",
+        "hide": "Ocultar la cola",
+        "show": "Mostrar la cola",
+        "everyPaper": "Todos los artículos de esta cola. Pulse uno para abrirlo.",
+        "noMatch": "Nada de esta cola coincide",
+        "showWhole": "Mostrar toda la cola",
+        "find": "Buscar por título o autor",
+        "findLabel": "Buscar en esta cola",
+        "asked": "{count, plural, one {# pregunta para usted} other {# preguntas para usted}}",
+        "loading": "Cargando artículos",
+        "loadingPaper": "Cargando el artículo"
+      },
+      "row": {
+        "new": "Nuevo",
+        "askedYou": "Una pregunta para usted",
+        "messages": "{count, plural, one {# mensaje} other {# mensajes}}"
+      },
+      "filter": {
+        "any": "Cualquiera",
+        "order": "Orden",
+        "dealt": "Según se añadieron",
+        "fresh": "Primero los artículos nuevos",
+        "lean": "Primero los que incluyen los modelos",
+        "leanShut": "Este cribado oculta los votos de los demás revisores en estos artículos, y este orden revelaría los votos de los modelos"
+      },
+      "shortcuts": {
+        "title": "Atajos",
+        "or": "o",
+        "select": "Seleccionar ese criterio",
+        "answer": "Responder sí, no o dudoso",
+        "include": "Incluir",
+        "maybe": "Quizá",
+        "exclude": "Excluir y decir por qué",
+        "next": "Artículo siguiente, sin votar",
+        "previous": "Artículo anterior",
+        "undo": "{settling, select, true {Deshacer la última decisión} other {Deshacer el último voto}}",
+        "queue": "Mostrar u ocultar la cola",
+        "keys": "Mostrar estos atajos"
+      },
+      "votes": {
+        "title": "Los votos de todos",
+        "forSettler": "{you, select, true {Para que usted lo resuelva} other {Para que lo resuelva {name}}}",
+        "waitingFrom": "de {names}",
+        "more": "{count, plural, other {# más}}",
+        "settledBy": "{you, select, true {Resuelto por usted} other {Resuelto por {name}}}"
+      },
+      "hint": {
+        "against": "Votó {voted}, y sus respuestas apuntan a {points}.",
+        "againstWhy": "Votó {voted}, y sus respuestas apuntan a {points}: respondió {answer, select, no {No} other {Dudoso}} a {many, select, true {los criterios {numbers}, que son requisitos} other {el criterio {numbers}, que es un requisito}}.",
+        "pointsWhy": "Sus respuestas apuntan a <b>{points}</b>: respondió {answer, select, no {No} other {Dudoso}} a {many, select, true {los criterios {numbers}, que son requisitos} other {el criterio {numbers}, que es un requisito}}. Su voto aún no está emitido.",
+        "allMet": "Sus respuestas apuntan a <b>{points}</b>: se cumplen todos los requisitos. Su voto aún no está emitido.",
+        "againstLine": "Votó {voted}. Sus respuestas apuntan a <b>{points}</b>.",
+        "pointsLine": "Sus respuestas apuntan a <b>{points}</b>. Aún sin emitir."
+      },
+      "paper": {
+        "label": "Artículo",
+        "fromSource": "{count, plural, =1 {Ver el artículo de {source}} other {Ver los # artículos de {source}}}",
+        "marked": "Las palabras <mark>marcadas</mark> son las que buscan los criterios."
+      },
+      "criteria": {
+        "yours": "Sus respuestas",
+        "title": "Criterios",
+        "answered": "{answered, number} de {count, number} respondidos",
+        "mustHaveFact": "Requisito",
+        "guidanceFact": "Orientación: qué cuenta y qué no",
+        "markedFact": "Palabras marcadas: las palabras que busca un criterio",
+        "showsFact": "<mark>Marcadas</mark>Cómo aparecen en el resumen",
+        "helpAnswering": "Responder es opcional: basta con un voto. Un No en un requisito apunta a Excluir, y Excluir pregunta cuál no se cumplió, salvo que sus respuestas ya lo digan.",
+        "helpReading": "Las preguntas que cada revisor responde sobre un artículo y, debajo de cada una, cómo la respondió. Un No en un requisito apunta a Excluir.",
+        "mustHave": "{answering, select, true {Un requisito: un No en uno apunta a Excluir. Las respuestas son opcionales y no son su voto.} other {Un requisito: un No en uno apunta a Excluir.}}",
+        "guidance": "Orientación",
+        "markedWords": "Palabras marcadas",
+        "markedFor": "Palabras marcadas del criterio {n, number}",
+        "answerTo": "Su respuesta al criterio {n, number}",
+        "differFor": "Criterio {n, number}: mostrar la respuesta que difiere",
+        "none": "Todavía no hay criterios",
+        "add": "Añadir criterios"
+      },
+      "bar": {
+        "atOf": "{at, number} de {count, number}",
+        "left": "{count, plural, one {# restante} other {# restantes}}",
+        "underMinute": "menos de un minuto",
+        "minutes": "unos {minutes, number} min",
+        "hours": "unas {hours, number} h",
+        "settledAs": "Resuelto como",
+        "lastVote": "Su último voto",
+        "lastSettledAs": "Última resolución",
+        "withNote": "Guardado con una nota",
+        "nowInConflicts": "Ahora en Conflictos",
+        "more": "Más para este artículo",
+        "dragRight": "Arrastre el artículo a la derecha para incluirlo",
+        "dragLeft": "Arrástrelo a la izquierda para excluirlo",
+        "undo": "Deshacer",
+        "alsoFailed": "{count, plural, other {y # más}}",
+        "votedDifferently": "{count, plural, one {# votó distinto} other {# votaron distinto}}"
+      },
+      "shut": {
+        "finished": "{canChange, select, true {Este cribado ha terminado, así que ya no se emiten votos. Reábralo para votar de nuevo.} other {Este cribado ha terminado, así que ya no se emiten votos.}}",
+        "settler": "{you, select, true {Usted resuelve los conflictos de este cribado. Puede leerlos aquí.} other {{name} resuelve los conflictos de este cribado. Puede leerlos aquí.}}"
+      },
+      "through": {
+        "conflicts": "Todos los conflictos de aquí están resueltos",
+        "papers": "Ha votado todos los artículos de aquí"
+      },
+      "exclude": {
+        "why": "¿Por qué excluirlo?",
+        "whyLabel": "Por qué excluirlo",
+        "back": "Atrás",
+        "pick": "Elija el motivo por el que se excluye este artículo."
+      },
+      "note": {
+        "label": "Nota",
+        "settling": "Por qué, para que conste (opcional)",
+        "voting": "Una nota para los demás, guardada con su voto"
+      },
+      "settle": {
+        "title": "Resolver este conflicto",
+        "helpTitle": "Resolver un conflicto",
+        "yourVote": "Su voto como revisor",
+        "rule": "Regla",
+        "help": "Los revisores no coinciden en este artículo. Lo que usted elija pasa a ser su resultado, voten lo que voten. Quizá también es un resultado: resuelve el artículo como uno que hay que volver a mirar."
+      },
+      "empty": {
+        "noConflictPaper": "Ningún artículo está en conflicto",
+        "onTheirWay": "Sus artículos están en camino",
+        "arrived": "Han llegado {done, number} de {count, number}",
+        "noneYet": "Todavía no le ha llegado ningún artículo",
+        "noneYours": "No le toca votar ninguno de sus artículos",
+        "allVoted": "Ha votado todos sus artículos",
+        "noneWaits": "Ningún artículo espera su voto",
+        "settledWithout": "{count, plural, one {# de sus artículos se resolvió sin él} other {# de sus artículos se resolvieron sin él}}",
+        "noneAgain": "Ninguno de sus votos necesita uno nuevo",
+        "noConflict": "No hay conflictos que resolver",
+        "noVotes": "Todavía no ha votado ningún artículo",
+        "seeVotes": "{count, plural, =1 {Ver su voto} other {Ver sus # votos}}",
+        "join": "Unirse como revisor",
+        "allPapers": "Ver todos los artículos"
+      },
+      "matrix": {
+        "nameYou": "{name}, usted",
+        "theirVote": "Voto de {name}",
+        "on": "{name}, {criterion}",
+        "differFor": "{criterion}: mostrar la respuesta que difiere",
+        "show": "{who}, {criterion}: {kind, select, model {mostrar el pasaje} you {mostrar su voto y su nota} other {mostrar su voto y su nota}}",
+        "vote": "Voto"
+      },
+      "said": {
+        "noNoteYou": "No dejó ninguna nota con este voto.",
+        "noNote": "Sin nota con este voto."
+      },
+      "evidence": {
+        "helpTitle": "Qué seguridad tiene el modelo",
+        "unsureBelow": "Inseguro por debajo del 65 %",
+        "help": "El modelo puntúa cada una de sus respuestas de 0 a 100 %. Por debajo del 65 %, lea el resumen antes de fiarse de esa respuesta.",
+        "unsure": "Inseguro: {sure, number, percent} de seguridad",
+        "sure": "{sure, number, percent} de seguridad",
+        "noSentence": "No señaló ninguna frase del resumen para esta respuesta."
+      }
+    },
+    "sources": {
+      "add": "Añadir",
+      "added": "Añadida",
+      "empty": "Vacía",
+      "in": "En {name}",
+      "andMore": "{name} y {count, number} más",
+      "remove": "Quitar {name}",
+      "dismiss": "Descartar",
+      "columns": {
+        "needNaming": "Hay que nombrar sus columnas",
+        "pickEach": "Elija la columna que contiene cada parte. Debajo aparece lo que tiene ahí la primera de sus {count, plural, one {# fila} other {# filas}}.",
+        "label": {
+          "title": "Título",
+          "abstract": "Resumen",
+          "doi": "DOI",
+          "year": "Año",
+          "authors": "Autores"
+        },
+        "pick": "Elija una columna",
+        "notInFile": "No está en este archivo",
+        "pickTitle": "Elija la columna que contiene el título",
+        "untitledLeftOut": "{count, plural, one {# fila sin título descartada} other {# filas sin título descartadas}}",
+        "noAbstract": "{count, number} sin resumen",
+        "addRecords": "{count, plural, one {Añadir # registro} other {Añadir # registros}}",
+        "addItsRecords": "Añadir sus registros"
+      },
+      "upload": {
+        "notSent": "No se pudo enviar el archivo. Inténtelo de nuevo.",
+        "table": "Tabla",
+        "referenceFile": "Archivo de referencias",
+        "onePdf": "Un PDF",
+        "uploadedPdfs": "{count, plural, one {# PDF subido} other {# PDF subidos}}",
+        "refused": "<file>{name}</file>: {why}",
+        "why": {
+          "notReadable": "No es un tipo de archivo que lea un cribado",
+          "twice": "Ya es una fuente",
+          "tooBig": "Supera {mb, number} MB: divídalo y añada cada parte",
+          "noTable": "No contiene ninguna tabla de referencias",
+          "noReferences": "No contiene referencias",
+          "unread": "No se pudo leer",
+          "pdfTooBig": "Supera {mb, number} MB",
+          "unsent": "No se pudo enviar",
+          "allUnsent": "No se pudieron enviar"
+        },
+        "drop": "Suelte aquí archivos de referencias o PDF",
+        "helpTitle": "Archivos",
+        "fileLimit": "Archivos de referencias de hasta {mb, number} MB",
+        "pdfLimit": "PDF de hasta {mb, number} MB cada uno",
+        "aboutFiles": "Un archivo de referencias es lo que exporta una base de datos o un gestor de referencias. Cada uno de sus registros con título y resumen es un artículo.",
+        "aboutPdfs": "Un PDF se lee en cuanto se añade, para obtener su título y su DOI. Si el índice de Openscholar tiene ese DOI, el artículo aparece con el título y el resumen del índice. Si no, el artículo es el PDF: la persona que lo criba lee el archivo, y también cada revisor de IA, página por página. Un escaneo se lee igual. Un archivo que no se abre se descarta.",
+        "kinds": "RIS, BibTeX, EndNote, PubMed, Web of Science, CSV y PDF, cualquier cantidad a la vez",
+        "pdfCost": "Un modelo lee las primeras páginas de cada PDF para obtener su título y su DOI: hasta {credits} créditos por PDF, que se pagan al añadirlo",
+        "filesLabel": "Archivos para subir",
+        "choose": "Elegir archivos",
+        "sent": "{sent, number} de {total, number} enviados",
+        "reading": "Leyéndolo"
+      },
+      "pdf": {
+        "read": "{read, number} de {total, number} leídos",
+        "inIndex": "<n>{count, number}</n> en el índice",
+        "knownNoAbstract": "En el índice, sin resumen",
+        "fileWithPages": "Leído como su PDF, {count, plural, one {# página} other {# páginas}}",
+        "list": "Los PDF de esta fuente",
+        "pager": "PDF"
+      },
+      "dois": {
+        "fromFile": "DOI de un archivo",
+        "pasted": "DOI pegados",
+        "notAdded": "No se pudieron añadir los DOI. Inténtelo de nuevo.",
+        "label": "DOI",
+        "helpTitle": "DOI pegados",
+        "forms": "Solos, como direcciones de doi.org o dentro de una lista de referencias",
+        "takenOnce": "Un DOI pegado dos veces se toma una sola vez",
+        "about": "Openscholar busca cada DOI en su índice y después en Crossref y DataCite, y toma de ahí el título y el resumen del artículo. Los que no tienen registro en ninguno, y aquellos cuyo registro no tiene resumen, se descartan y aparecen en la fila de la fuente cuando se haya leído.",
+        "placeholder": "Pegue DOI, o cualquier texto que los contenga",
+        "twice": "{count, plural, one {Este DOI ya es una fuente} other {Estos DOI ya son una fuente}}",
+        "none": "No hay ningún DOI en lo que pegó",
+        "repeats": "{count, number} pegados más de una vez",
+        "addCount": "{count, plural, one {Añadir # DOI} other {Añadir # DOI}}",
+        "add": "Añadir DOI"
+      },
+      "zotero": {
+        "myLibrary": "Mi biblioteca",
+        "loading": "Cargando Zotero",
+        "notConnected": "Zotero no está conectado",
+        "connectWhy": "Conéctelo para elegir de su biblioteca y de los grupos en los que está.",
+        "connect": "Conectar Zotero",
+        "withSubCollections": "Con sus subcolecciones",
+        "aboutUnder": "Unos {count, number} con lo que hay debajo",
+        "library": "Biblioteca de Zotero",
+        "findGroup": "Buscar un grupo",
+        "yours": "Suyas",
+        "groups": "Grupos",
+        "moreGroups": "Más grupos",
+        "connected": "Conectado",
+        "connectedAs": "Conectado como {name}",
+        "connections": "Conexiones",
+        "findCollection": "Buscar una colección",
+        "findCollectionIn": "Buscar una colección en {library}",
+        "includeSub": "Incluir subcolecciones",
+        "subHelpTitle": "Subcolecciones",
+        "subTakenOnce": "Un artículo archivado en dos de ellas se toma una sola vez",
+        "subAbout": "Zotero cuenta solo los elementos archivados directamente en una colección, y el recuento de aquí también. Con esta opción activada, una colección se añade con los artículos de todas las colecciones que hay debajo: lo que contienen juntas es aproximadamente la suma de lo que Zotero cuenta en cada una, y es exacto cuando el cribado las ha leído.",
+        "readingCount": "Leyendo sus colecciones, {read, number} de {total, number}",
+        "reading": "Leyendo sus colecciones",
+        "failed": "No se pudo leer Zotero. Vuelva a abrir la biblioteca.",
+        "everyPaper": "Todos los artículos de {library}",
+        "group": "Grupo de Zotero",
+        "own": "Su biblioteca de Zotero",
+        "wholeLibrary": "Toda la biblioteca",
+        "itemsInZotero": "{count, plural, one {# elemento} other {# elementos}} en Zotero",
+        "noneFound": "Ninguna colección de {library} tiene {text} en su nombre.",
+        "noneHere": "{name} no contiene colecciones.",
+        "noneInLibrary": "{library} no tiene colecciones.",
+        "pager": "colecciones"
+      }
+    },
+    "words": {
+      "decision": {
+        "include": "Incluir",
+        "maybe": "Quizá",
+        "exclude": "Excluir"
+      },
+      "result": {
+        "include": "Incluido",
+        "maybe": "Quizá",
+        "exclude": "Excluido",
+        "conflict": "En conflicto",
+        "waiting": "Esperando votos"
+      },
+      "you": "Usted",
+      "youInline": "usted",
+      "someone": "Alguien que se fue",
+      "modelAtEffort": "{name}, esfuerzo {effort}",
+      "looker": "{member, select, true {No es revisor} other {Lector}}",
+      "person": {
+        "invited": "Invitado por correo, vota cuando se una",
+        "invitedToLook": "Invitado por correo, lo ve cuando se una",
+        "toInvite": "Recibe una invitación al guardar",
+        "toInviteAtStart": "Recibe una invitación al empezar",
+        "invites": "Recibe una invitación por correo",
+        "guest": "De fuera de este espacio de trabajo",
+        "member": "En este espacio de trabajo",
+        "settles": "Resuelve los conflictos"
+      },
+      "settler": "{you, select, true {usted resuelve} other {{name} resuelve}}",
+      "count": {
+        "papers": "{count, plural, one {# artículo} other {# artículos}}",
+        "newPapers": "{count, plural, one {# artículo nuevo} other {# artículos nuevos}}",
+        "openPapers": "{count, plural, one {# artículo abierto} other {# artículos abiertos}}",
+        "sources": "{count, plural, one {# fuente} other {# fuentes}}",
+        "people": "{count, plural, one {# persona} other {# personas}}",
+        "models": "{count, plural, one {# modelo} other {# modelos}}",
+        "reviewers": "{count, plural, one {# revisor} other {# revisores}}",
+        "votes": "{count, plural, one {# voto} other {# votos}}",
+        "criteria": "{count, plural, one {# criterio} other {# criterios}}",
+        "mustHaves": "{count, plural, one {# requisito} other {# requisitos}}",
+        "conflicts": "{count, plural, one {# conflicto} other {# conflictos}}",
+        "questions": "{count, plural, one {# pregunta} other {# preguntas}}",
+        "duplicates": "{count, plural, one {# duplicado} other {# duplicados}}",
+        "pages": "{count, plural, one {# página} other {# páginas}}",
+        "pdfs": "{count, plural, one {# PDF} other {# PDF}}",
+        "dois": "{count, plural, one {# DOI} other {# DOI}}",
+        "collections": "{count, plural, one {# colección} other {# colecciones}}",
+        "subCollections": "{count, plural, one {# subcolección} other {# subcolecciones}}",
+        "items": "{count, plural, one {# elemento} other {# elementos}}",
+        "rows": "{count, plural, one {# fila} other {# filas}}",
+        "readings": "{count, plural, one {# lectura} other {# lecturas}}",
+        "changes": "{count, plural, one {# cambio} other {# cambios}}",
+        "credits": "{count} créditos"
+      },
+      "numberWord": "{n, select, 1 {Uno} 2 {Dos} 3 {Tres} 4 {Cuatro} 5 {Cinco} 6 {Seis} 7 {Siete} 8 {Ocho} 9 {Nueve} 10 {Diez} other {{n}}}",
+      "quoted": "«{text}»",
+      "leftWhy": {
+        "abstract": "Sin resumen",
+        "title": "Sin título",
+        "doi": "Ese DOI no existe",
+        "record": "No hay registro",
+        "broken": "No se abre",
+        "twice": "Aparece dos veces"
+      },
+      "pdf": {
+        "known": "En el índice",
+        "file": "Leído como su PDF",
+        "broken": "No se abre",
+        "waiting": "Leyéndolo",
+        "costsMore": "más por uno leído como su PDF"
+      },
+      "removed": {
+        "merged": "Duplicados fusionados",
+        "bare": "Sin resumen",
+        "unread": "No se pudo leer ni encontrar"
+      },
+      "otherReason": {
+        "duplicate": "Duplicado de otro artículo",
+        "other": "Otro motivo"
+      },
+      "excludeAsk": {
+        "must": "{many, select, true {¿Qué requisito no cumplen estos artículos?} other {¿Qué requisito no cumple?}}",
+        "criterion": "{many, select, true {¿Qué criterio no cumplen estos artículos?} other {¿Qué criterio no cumple?}}",
+        "orCriterion": "U otro criterio",
+        "orReason": "U otro motivo",
+        "why": "{many, select, true {¿Por qué excluirlos?} other {¿Por qué excluirlo?}}"
+      },
+      "notMet": "{name} no se cumple",
+      "notMetInFull": "No se cumple: {name}",
+      "unclearOn": "{name} dudoso",
+      "includedIn": "Incluido en {name}",
+      "every": {
+        "day": "Cada día",
+        "week": "Cada semana",
+        "month": "Cada mes"
+      },
+      "living": "{every, select, day {Vivo, artículos nuevos cada día} week {Vivo, artículos nuevos cada semana} other {Vivo, artículos nuevos cada mes}}",
+      "settle": {
+        "label": {
+          "all": "Todos de acuerdo",
+          "most": "La mayoría de acuerdo",
+          "one": "Decide el primer voto"
+        },
+        "means": {
+          "all": "Un artículo queda resuelto cuando han votado todos los revisores asignados y todos votaron lo mismo. Cualquier división es un conflicto.",
+          "most": "Un artículo queda resuelto cuando han votado todos los revisores asignados y más de la mitad votó lo mismo. Sin esa mayoría, es un conflicto.",
+          "one": "Un artículo queda resuelto con su primer voto, así que nunca hay conflicto."
+        },
+        "says": {
+          "all": "Resuelto si todos están de acuerdo",
+          "most": "Resuelto si la mayoría está de acuerdo",
+          "one": "Resuelto con el primer voto"
+        }
+      },
+      "started": "{papers, plural, one {# artículo} other {# artículos}} de {sources, plural, one {# fuente} other {# fuentes}}, para {who}",
+      "startedNobody": "revisores aún por añadir",
+      "empty": {
+        "all": "Todavía no hay artículos",
+        "include": "{finished, select, true {No se incluyó ningún artículo} other {Todavía no hay nada incluido}}",
+        "maybe": "{finished, select, true {Ningún artículo quedó en Quizá} other {Todavía no hay nada marcado como Quizá}}",
+        "exclude": "{finished, select, true {No se excluyó ningún artículo} other {Todavía no hay nada excluido}}",
+        "conflict": "No hay artículos en conflicto",
+        "waiting": "No hay artículos esperando un voto"
+      },
+      "noVote": {
+        "yet": "Sin voto todavía",
+        "none": "Sin voto",
+        "failed": "No pudo leer el artículo"
+      },
+      "noVoteSays": {
+        "yet": "Sin voto todavía",
+        "none": "Artículo resuelto sin este voto",
+        "failed": "El modelo no pudo leer el artículo"
+      },
+      "hiddenUntilVote": "Oculto hasta que vote",
+      "votesHiddenSays": "Este cribado oculta los demás votos a un revisor solo en los artículos que aún esperan el voto de ese revisor.",
+      "ago": {
+        "now": "ahora mismo",
+        "minutes": "hace {count} min",
+        "hours": "hace {count} h",
+        "yesterday": "ayer",
+        "days": "hace {count} días"
+      }
+    }
   }
 }

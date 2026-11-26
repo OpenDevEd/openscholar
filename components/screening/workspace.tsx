@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { inOrder, readersOf, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
-import { SCREENINGS, SCREENINGS_CRUMB, overviewHref, papersHref, screenHref, settingsHref } from "./links";
+import { SCREENINGS, useScreeningsCrumb, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
 import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
 import { useOpenScreening, type Open, modelsRead, perPaper } from "./store";
@@ -105,6 +105,7 @@ function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, v
 export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("screening.frame");
+  const crumb = useScreeningsCrumb();
   const words = useWords();
   const pieces = useTranslations("screening.pieces");
   const router = useWorkspaceRouter();
@@ -155,7 +156,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   if (read === undefined) {
     return (
       <PageWrapper>
-        <LibraryPageShell wide icon={ListChecks} title={t("screening")} trail={[SCREENINGS_CRUMB]}>
+        <LibraryPageShell wide icon={ListChecks} title={t("screening")} trail={[crumb]}>
           <ListLoading label={t("loading")} />
         </LibraryPageShell>
       </PageWrapper>
@@ -164,7 +165,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   if (!open) {
     return (
       <PageWrapper>
-        <LibraryPageShell wide icon={ListChecks} title={t("notFound")} trail={[SCREENINGS_CRUMB]}>
+        <LibraryPageShell wide icon={ListChecks} title={t("notFound")} trail={[crumb]}>
           <ListEmpty icon={Unlink}>{t("gone")}</ListEmpty>
         </LibraryPageShell>
       </PageWrapper>
@@ -311,7 +312,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             fill={view === "screen"}
             icon={ListChecks}
             title={screening.name}
-            trail={[SCREENINGS_CRUMB]}
+            trail={[crumb]}
             titleAside={
               <>
                 {/* The chip keeps its word at every width: a sign alone, a group of people for a guest, was taken for a button that opens the team. */}

@@ -3,6 +3,7 @@
 // in the person's own workspace: a link takes the organization's prefix where the page is one of its
 // (components/workspaces/link.tsx).
 
+import { useTranslations } from "next-intl";
 import { SCREENINGS_PATH, screeningPath } from "@/lib/screening/links";
 
 const BASE = SCREENINGS_PATH;
@@ -17,8 +18,8 @@ const withQuery = (path: string, query?: Query, section?: string) => {
 
 /** The list of screenings. */
 export const SCREENINGS = BASE;
-/** The trail every page under the list starts with. */
-export const SCREENINGS_CRUMB = { label: "Screening", href: BASE };
+/** The trail every page under the list starts with, in the reader's language. */
+export const useScreeningsCrumb = () => ({ label: useTranslations("screening.list")("title"), href: BASE });
 /** The new-screening form: blank, started from another screening's settings (`from`), on a saved search (`search`), or on what a community handed over (`handoff`). */
 export const newHref = (on?: { from?: string; search?: string; handoff?: string }) => withQuery(`${BASE}/new`, on);
 /** An open screening's Overview, at one of its sections: "reviewers", "new-papers", "agreement" or "flow". */

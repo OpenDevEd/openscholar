@@ -7769,5 +7769,1826 @@
       "archive": "档案馆",
       "other": "其他"
     }
+  },
+  "screening": {
+    "effects": {
+      "criterionUnwritten": "尚未写问题的标准",
+      "reopens": "筛选会为 {count, plural, other {# 篇论文}}重新打开",
+      "model": {
+        "startsLater": "{name} 会在论文到达后开始",
+        "nothingToRead": "{name} 没有剩余要读的论文",
+        "reads": "{name} {when, select, gathered {会在所有论文到达后} finished {会在筛选重新打开后} paused {会在模型恢复后} credits {会在工作区有足够积分支付下一篇论文时} waiting {会在轮到它的模型时} save {会在保存后立即} other {}}阅读{all, select, true {全部 {count, plural, other {# 篇论文}}} other {尚未定案的 {count, plural, other {# 篇论文}}}}"
+      },
+      "person": {
+        "invited": "{name} 会通过邮件收到邀请，加入后分到论文",
+        "invitedNoneOpen": "{name} 会通过邮件收到邀请，并分到加入后新进的论文。目前所有论文都已定案，因此不会分给对方",
+        "dealt": "{name} 平均分到 {count, plural, other {# 篇未定案论文}}，并会收到邮件通知",
+        "joinsWithNone": "{name} 加入并会收到邮件通知。每篇未定案的论文都已有审核人，因此暂时不会分给对方"
+      },
+      "votesStay": "已投的票保持不变",
+      "conflict": {
+        "all": "一篇论文的所有投票都到齐后，只要投票不一致就会产生冲突",
+        "most": "一篇论文的所有投票都到齐后，如果票数相当就会产生冲突"
+      },
+      "leaving": {
+        "noVote": "{you, select, true {你还没有投票} other {{name} 还没有投票}}",
+        "votesStop": "{you, select, true {你的} other {{name} 的}} {count, plural, other {# 票保留在记录中，但不再计入}}",
+        "votesKept": "{you, select, true {你的} other {{name} 的}} {count, plural, other {# 票}}仍然计入",
+        "papersGo": "{count, plural, other {# 篇论文}}交给 {takers}：{unvoted, plural, =0 {} other {# 篇{you, select, true {你} other {{name} }}未投票的，以及 }}{voted, number} 篇{you, select, true {你} other {{name} }}已投票的，其投票{thrown, select, true {不再计入} other {仍然计入}}",
+        "unvotedGo": "{you, select, true {你} other {{name} }}未投票的 {count, plural, other {# 篇论文}}交给 {takers}",
+        "settled": "{you, select, true {你} other {{name} }}未投票的 {count, plural, other {# 篇论文}}按其他投票定案",
+        "waiting": "{you, select, true {你} other {{name} }}未投票的 {count, plural, other {# 篇论文}}等待其他人投票"
+      },
+      "settler": {
+        "youLeave": "你退出后，冲突交由{you, select, true {你} other { {name} }}裁决",
+        "leaves": "{was} 曾负责裁决冲突。从现在起交由{you, select, true {你} other { {name} }}裁决",
+        "changes": "从现在起，冲突交由{you, select, true {你} other { {name} }}裁决"
+      },
+      "each": {
+        "changes": "从现在起，每篇论文分配给{all, select, true {筛选中的所有人，目前 {each, plural, other {# 人}}} other {{each, plural, other {# 人}}}}{changed, plural, =0 {} other {。# 篇未定案的论文{more, select, true {{diff, plural, =1 {再增加一人} other {最多再增加 # 人}}} other {需要的票数减少}}}}。已投的票保持不变",
+        "stillAll": "目前每篇论文仍分配给 {each, plural, other {# 人}}。之后加入的人会参与每篇仍未定案的论文",
+        "stillShare": "每篇论文仍分配给 {each, plural, other {# 人}}。之后加入的人会平均分到一部分未定案的论文，而不是全部"
+      },
+      "blind": {
+        "never": "所有人都能在投票时看到每一票",
+        "untilVoted": "审核人对论文投票后或论文定案后，才能看到其他人的投票"
+      },
+      "criteria": {
+        "modelsAnswerNew": "模型会在已读过的未定案论文上回答新的{count, plural, other {标准}}",
+        "votesStand": "人员的投票保持不变：它们是在{count, plural, =1 {这条标准} other {这些标准}}之前投的",
+        "modelsStop": "模型不再回答 {name}。已投的票保持原样",
+        "noLongerAsked": "不再询问 {name}。已投的票保持原样",
+        "becomesMust": "{name} 变为必要条件：从现在起，对它答“否”会指向排除。人员对仍未定案论文的投票保留，并标记为需要重新投票",
+        "becomesNice": "{name} 变为加分项：从现在起，对它答“否”不再指向排除。已投的票保持原样",
+        "writeQuestion": "保存前请写好标准的问题",
+        "modelsReworded": "从现在起，模型在阅读论文时回答改写后的 {name}",
+        "reviewersReworded": "从现在起，审核人回答改写后的 {name}。已投的票保持原样",
+        "guidance": "从现在起，{models, select, true {审核人和模型} other {审核人}}阅读 {name} 时会看到其{fresh, select, true {新} other {}}说明。已给出的答案保持不变",
+        "guidanceRemoved": "已移除 {name} 的说明。已给出的答案保持不变",
+        "termsMarked": "从现在起，审核人会在每篇摘要中看到 {name} 的标记词",
+        "termsRemoved": "{name} 不再有标记词",
+        "scoring": "重新计算入选论文的分数和星级"
+      },
+      "living": {
+        "checks": "筛选{when, select, save {会在保存后立即检查，之后} other {}}{every, select, day {每天} week {每周} other {每月}}检查{which, select, all {{all, plural, =1 {它的来源} other {它的全部 # 个来源}}} other {它 {all, number} 个来源中的 {sources, number} 个}}是否有新论文",
+        "nothingToCheck": "筛选没有会增加论文的来源，因此暂时无需检查",
+        "modelsRead": "每篇新论文都会分配给审核人{people, select, true {，其中的人员会收到邮件} other {}}。模型会在可以时阅读它{pdfs, select, true {。按 PDF 读取的论文费用更高} other {}}",
+        "peopleGetEmail": "每篇新论文都会分配给审核人，他们会收到邮件",
+        "waitsForReviewer": "每篇新论文都会加入筛选，等待审核人",
+        "reopens": "筛选重新打开，并继续接收新论文",
+        "stops": "筛选停止检查新论文。已有的论文保留",
+        "every": "从现在起，筛选{every, select, day {每天} week {每周} other {每月}}检查新论文"
+      },
+      "sources": {
+        "promised": "最多 {count, plural, other {# 篇新论文}}加入筛选并分配给审核人。如果另一个来源已有这些论文或它们没有摘要，实际数量会更少{pdfs, select, true {。按 PDF 读取的论文，模型收费更高} other {}}",
+        "removed": "{count, plural, other {# 篇论文离开筛选，其投票保留在记录中}}"
+      },
+      "collection": {
+        "renamed": "其合集重命名为 {name}，其中的论文保持不变",
+        "stopsSaving": "入选论文不再保存到合集{kept, select, true {。{count, plural, =1 {{from} 中的那一篇留在那里} other {{from} 中的 # 篇留在那里}}} other {}}",
+        "added": "目前已入选的 {count, plural, other {# 篇论文}}会添加到 {to}{was, select, true {。它们也留在 {from} 中} other {}}",
+        "prune": "排除的论文会从其来源合集中移出",
+        "keep": "排除的论文留在其来源合集中"
+      },
+      "withCredits": "{text}，{each, select, true {每篇} other {}}最多 {credits} 积分",
+      "creditsChip": "{credits}{each, select, true {/篇} other {}}",
+      "moved": "{count, plural, other {# 篇论文}}已从 {from} 转给 {to}",
+      "noChange": "没有论文的结果改变",
+      "hidden": "你还没投票的 {count, plural, other {# 篇论文}}的结果也会改变。{done, select, true {在等待你投票期间，其他人的投票仍然隐藏。} other {改变的方向在更改生效后才会显示。}}",
+      "papersLabel": "篇论文",
+      "more": "另外 {count, number} 项",
+      "activity": {
+        "started": "发起了筛选",
+        "startedWith": "{sources, plural, other {# 个来源}}，审核人：{who}",
+        "renamed": "将其重命名为 {name}",
+        "finished": "将筛选标记为已完成",
+        "unsettled": "{count, plural, other {# 篇论文}}尚未定案",
+        "checksStopped": "已停止检查新论文",
+        "reopened": "重新打开了筛选",
+        "paused": "暂停了模型",
+        "resumed": "恢复了模型",
+        "movedTo": "将其移至 {to}",
+        "movedAway": "将其移至另一个工作区",
+        "movedFrom": "将其从 {from} 移入",
+        "reviewerAdded": "将 {name} 添加为审核人",
+        "reviewerJoined": "以审核人身份加入",
+        "reviewerRemoved": "将 {name} 移出筛选",
+        "madeViewer": "将 {name} 改为查看者",
+        "reminded": "向 {name} 发送了提醒",
+        "retried": "让 {name} 重新读取它无法读取的{count, plural, =0 {论文} other { # 篇论文}}",
+        "papersMoved": "将 {count, plural, other {# 篇论文}}从 {from} 转给{known, select, true { {to}} other {其他人}}",
+        "papersMovedVotes": "现在由{known, select, true { {to} } other {其他人}}对{count, plural, =1 {它} other {它们}}投票",
+        "asked": "就 {paper} 向 {name} 提问",
+        "aPaper": "一篇论文",
+        "checkedFound": "检查了新论文，找到 {count, plural, other {# 篇论文}}{allNew, select, true {} other {，其中 {added, number} 篇是新的}}",
+        "checkedNone": "检查了新论文，没有找到",
+        "scheduledFound": "定期检查找到 {count, plural, other {# 篇论文}}{allNew, select, true {} other {，其中 {added, number} 篇是新的}}",
+        "scheduledNone": "定期检查没有发现新论文",
+        "known": "{count, plural, other {# 篇}}已在筛选中",
+        "joined": "{count, plural, other {# 篇论文}}加入了筛选",
+        "reopenedByCheck": "筛选已重新打开",
+        "changed": "更改了{parts}",
+        "changedSettings": "更改了设置",
+        "setting": {
+          "name": "名称",
+          "question": "研究问题",
+          "papers": "来源",
+          "newPapers": "查找新论文的方式",
+          "criteria": "标准",
+          "reviewers": "审核人",
+          "decided": "论文的定案方式",
+          "goesTo": "入选论文的去向"
+        },
+        "changedIt": "做了更改",
+        "added": "添加了{what}",
+        "addedPapers": "添加了论文",
+        "removed": "移出了{what}",
+        "removedPapers": "移除了论文",
+        "screened": "筛选了 {count, plural, other {# 篇论文}}",
+        "readAgain": "重新读取了部分论文",
+        "stopped": "停止了筛选",
+        "shared": "共享给了 {who}",
+        "sharedSomeone": "共享给了某人",
+        "votesDiscarded": "其投票保留在记录中，但不再计入",
+        "votesKept": "{count, plural, other {# 票}}仍然计入",
+        "dealt": "{count, plural, other {# 篇未定案论文}}分给了对方",
+        "reads": "它阅读 {count, plural, other {# 篇论文}}",
+        "papersMovedBy": "{count, plural, other {# 篇论文}}{detail}",
+        "left": "{count, plural, other {# 篇论文}}离开了筛选",
+        "rechecked": "{count, plural, other {# 篇已定案论文}}被重新检查"
+      }
+    },
+    "files": {
+      "title": "导出",
+      "description": "论文、所有投票、PRISMA 流程图、方法段落和完整记录",
+      "tabsLabel": "要导出的内容",
+      "tab": {
+        "papers": "论文",
+        "votes": "所有投票",
+        "flow": "PRISMA",
+        "methods": "方法段落",
+        "record": "完整记录"
+      },
+      "openFinished": "标记为已完成时仍有未定案的论文，因此这些文件中的那些论文没有结果",
+      "openRunning": "尚未完成，因此这些文件包含目前为止的结果",
+      "facts": {
+        "bibtex": "BibTeX 可导入 Zotero 或 JabRef",
+        "ris": "RIS 可导入 EndNote 或 Mendeley",
+        "csv": "CSV 可在 Excel 或 Google 表格中打开",
+        "columns": "每条标准一列",
+        "ids": "每篇论文附 ID 和 DOI",
+        "svg": "SVG 可在 Inkscape 或 Illustrator 中打开",
+        "png": "PNG 可插入 Word 或 Google 文档",
+        "keeping": "用于分析和存档"
+      },
+      "papers": {
+        "title": {
+          "include": "{count, plural, other {# 篇入选论文}}",
+          "maybe": "{count, plural, other {# 篇待定论文}}",
+          "exclude": "{count, plural, other {# 篇排除的论文}}",
+          "conflict": "{count, plural, other {# 篇有冲突的论文}}",
+          "waiting": "{count, plural, other {# 篇等待投票的论文}}",
+          "mine": "{count, plural, other {# 篇你投了入选的论文}}"
+        },
+        "help": "一种结果的论文，或所有论文。BibTeX 和 RIS 包含每篇论文在这里的 ID、标题、作者、年份、期刊、DOI 和摘要，供文献管理工具使用。CSV 还包括每篇论文的来源、当前状态、排除原因、裁决人、审核人的投票及其分数：即按此筛选的评分规则，审核人答案相加的结果，它用于给入选论文排序，不决定任何结果。",
+        "which": "哪些论文",
+        "every": "所有论文",
+        "allOfThem": "全部",
+        "votedInclude": "你投了入选的",
+        "yourOwn": "你自己的",
+        "seeAll": "在论文中查看全部 {count} 篇",
+        "noneMine": "你还没有对任何论文投入选。"
+      },
+      "votes": {
+        "title": "{voters, plural, other {# 名审核人}}的 {votes, plural, other {# 票}}{hidden, select, true {，部分对你隐藏} other {}}",
+        "help": "每位审核人在每篇论文上占一行：其投票及原因、备注、对每条标准的答案，以及论文当前的状态。还没投票的审核人也有一行，无法读取论文的模型也有。",
+        "leftOut": "对于你还没投票的 {count, plural, other {# 篇论文}}，其他人的投票不包含在内，以免影响你的判断。",
+        "whose": "谁的投票",
+        "everyone": "所有人",
+        "oneReviewer": "一位审核人",
+        "column": {
+          "paper": "论文",
+          "reviewer": "审核人",
+          "vote": "投票",
+          "reason": "原因",
+          "note": "备注",
+          "result": "结果",
+          "voted": "投票时间"
+        },
+        "none": "无",
+        "shown": "这是已投的 {votes, plural, other {# 票}}中的 {shown} 票。",
+        "hiddenRows": "文件中每个对你隐藏的投票都有一行，但不含投票内容。",
+        "emptyRows": "文件中还有 {count, plural, other {# 行}}没有可显示的投票：{why}。",
+        "emptyWhy": {
+          "yet": "还没投票的审核人",
+          "none": "未等某位审核人投票就已定案的论文",
+          "failed": "模型无法读取的论文"
+        },
+        "seeEvery": "在论文中查看所有投票"
+      },
+      "flow": {
+        "title": "PRISMA 2020 流程图",
+        "help": "这些数量填入 PRISMA 2020 的识别和筛选框，取自此筛选的当前状态。",
+        "alt": "PRISMA 流程图：{boxes}"
+      },
+      "record": {
+        "title": "完整记录",
+        "help": "整个筛选的一个 JSON 文件：论文、投票、标准、审核人、来源、讨论和更改，并附有每列的说明。模型的答案附带它指出的段落。不包含筛选的费用。",
+        "part": {
+          "papers": {
+            "name": "论文",
+            "what": "每篇附 DOI、摘要、来源和当前状态"
+          },
+          "votes": {
+            "name": "投票",
+            "what": "{hidden, select, true {每票附原因、备注、答案，以及模型指出的句子。对你隐藏的投票列出时不含这些内容} other {每票附原因、备注、答案，以及模型指出的句子}}"
+          },
+          "withoutVote": {
+            "name": "未投票",
+            "what": "每位审核人为何没有对某篇论文投票"
+          },
+          "criteria": {
+            "name": "标准",
+            "what": "按提问的原样，附说明，并标明哪些是必要条件"
+          },
+          "reviewers": {
+            "name": "审核人",
+            "what": "人员和模型，以及各自加入或被移出的时间"
+          },
+          "sources": {
+            "name": "来源",
+            "what": "每个来源带来的论文，去重前后"
+          },
+          "messages": {
+            "name": "消息",
+            "what": "审核人之间关于论文的讨论"
+          },
+          "changes": {
+            "name": "更改",
+            "what": "动态记录：改了什么、谁改的、何时改的"
+          },
+          "columns": {
+            "name": "列",
+            "what": "两个 CSV 文件中每列的内容"
+          }
+        }
+      },
+      "methods": {
+        "title": "方法段落",
+        "help": "根据此筛选当前的来源、标准、审核人和投票撰写。当它描述的是你要报告的结果时再复制。"
+      },
+      "hint": {
+        "papers": "BibTeX 和 RIS 可导入文献管理工具。CSV 还包括每篇论文的结果、原因和投票。",
+        "votes": "每位审核人在每篇论文上占一行。可在 Excel、Google 表格或 R 中打开。",
+        "flow": "PNG 可插入文档。SVG 可编辑。",
+        "record": "用于存档和编程。可在任何文本编辑器中打开。",
+        "methods": "根据筛选的当前状态撰写。当它描述的是你要报告的结果时再复制。"
+      },
+      "download": "<wide>下载 </wide>{format}",
+      "downloaded": "{format}<sr> 已下载</sr>",
+      "copy": "复制",
+      "copied": "已复制",
+      "copyToast": {
+        "copied": "已复制方法段落",
+        "failed": "你的浏览器不允许页面复制",
+        "select": "请选中段落并复制："
+      },
+      "notLoaded": "工作区尚未加载完成。请稍后再试。",
+      "notMade": "文件未能生成，请重试。"
+    },
+    "form": {
+      "kind": {
+        "search": "搜索",
+        "upload": "上传",
+        "collection": "文库",
+        "screening": "筛选",
+        "evidenceLibrary": "社区",
+        "zotero": "Zotero",
+        "dois": "DOI"
+      },
+      "find": {
+        "search": "查找搜索",
+        "screening": "查找筛选"
+      },
+      "where": {
+        "open": "{where, select, search {在搜索中打开} library {在你的文库中打开} collection {在合集中打开} screening {在筛选中打开} other {在 Zotero 中打开}}",
+        "openNewTab": "{where, select, search {在新标签页中打开搜索} library {在新标签页中打开你的文库} collection {在新标签页中打开合集} screening {在新标签页中打开筛选} other {在新标签页中打开 Zotero}}",
+        "see": "{where, select, search {在搜索中查看} library {在你的文库中查看} collection {在合集中查看} screening {在筛选中查看} other {在 Zotero 中查看}}",
+        "seeAll": "{where, select, search {在搜索中查看全部 {count} 篇} library {在你的文库中查看全部 {count} 篇} collection {在合集中查看全部 {count} 篇} screening {在筛选中查看全部 {count} 篇} other {在 Zotero 中查看全部 {count} 篇}}"
+      },
+      "edit": {
+        "renamed": "将其重命名为 {name}",
+        "question": "更改了研究问题",
+        "addedSources": "{count, plural, =1 {添加了 {names}} =2 {添加了 {names}} other {添加了 # 个来源}}",
+        "removedSources": "{count, plural, =1 {移除了 {names}} =2 {移除了 {names}} other {移除了 # 个来源}}",
+        "rangedSources": "{count, plural, =1 {更改了 {names} 带来的论文} =2 {更改了 {names} 带来的论文} other {更改了 # 个来源带来的论文}}",
+        "madeLiving": "将其设为持续更新的筛选",
+        "stoppedLiving": "停止检查新论文",
+        "livingEvery": "更改了检查新论文的频率",
+        "addedCriteria": "{count, plural, =1 {添加了 {names}} =2 {添加了 {names}} other {添加了 # 条标准}}",
+        "removedCriteria": "{count, plural, =1 {移除了 {names}} =2 {移除了 {names}} other {移除了 # 条标准}}",
+        "changedCriteria": "{count, plural, =1 {更改了 {names}} =2 {更改了 {names}} other {更改了 # 条标准}}",
+        "guidance": "{count, plural, =1 {更改了 {names} 的说明} =2 {更改了 {names} 的说明} other {更改了 # 条标准的说明}}",
+        "renamedOne": "{was} 改为 {is}",
+        "renamedCriteria": "{count, plural, =1 {重命名了 {names}} =2 {重命名了 {names}} other {重命名了 # 条标准}}",
+        "scoring": "更改了评分",
+        "addedReviewers": "{count, plural, =1 {添加了 {names}} =2 {添加了 {names}} other {添加了 # 名审核人}}",
+        "removedReviewers": "{count, plural, =1 {移除了 {names}} =2 {移除了 {names}} other {移除了 # 名审核人}}",
+        "rule": "更改了论文的定案方式",
+        "destination": "更改了入选论文的去向",
+        "collectionRenamed": "将其合集重命名为 {name}",
+        "goesTo": "入选论文保存到 {name}",
+        "goesNowhere": "入选论文不保存到任何合集"
+      },
+      "untitled": "未命名的筛选",
+      "includedPapers": "入选论文",
+      "again": "{name}（再次）",
+      "inLibrary": "在 {name} 中",
+      "loading": "正在加载表单",
+      "onlyMembers": "只有 {workspace} 的成员可以更改这些设置",
+      "goToOverview": "前往概览",
+      "thisWorkspace": "此工作区",
+      "share": {
+        "readsAll": "{you, select, true {你阅读每篇论文} other {{name} 阅读每篇论文}}",
+        "about": "{more, select, true {{count, plural, other {每人约 # 篇论文，外加部分新论文}}} other {{count, plural, other {每人约 # 篇论文}}}}",
+        "range": "{more, select, true {每人 {least} 至 {most} 篇论文，外加部分新论文} other {每人 {least} 至 {most} 篇论文}}"
+      },
+      "unsaved": "{count, plural, other {# 处未保存的更改}}",
+      "unsavedCount": "{count, plural, other {# 处未保存}}",
+      "changed": "已更改",
+      "block": {
+        "emptyCriterion": "为空白标准写一个问题",
+        "needsCriterion": "{many, select, true {为模型添加一条标准} other {为模型添加一条标准}}",
+        "overPapers": "{count, plural, other {你的套餐一次最多筛选 # 篇论文}}",
+        "overModels": "{count, plural, other {一个筛选最多运行 # 个模型}}",
+        "orphaned": "{many, select, true {{count, plural, other {# 篇论文只有 PDF，这些模型无法读取。请添加一位人员}}} other {{count, plural, other {# 篇论文只有 PDF，此模型无法读取。请添加一位人员}}}}",
+        "creditsShort": "还差 {credits} 积分",
+        "reading": "正在读取论文",
+        "addPapers": "添加论文后开始",
+        "addReviewer": "添加审核人后开始"
+      },
+      "unread": "{count, plural, other {# 篇无法读取}}",
+      "toast": {
+        "nothingWritten": "没有找到可以加入这里的标准",
+        "notWritten": "未能写出标准，请重试。",
+        "removed": "已移除 {name}",
+        "undo": "撤销",
+        "failed": "操作失败，请重试。",
+        "notAdded": "部分人员未能添加。请在人员中重新添加。",
+        "notStarted": "未能开始，请重试。",
+        "saved": "更改已保存",
+        "discarded": "已放弃更改"
+      },
+      "offer": {
+        "allSaved": "所有已保存的论文",
+        "library": "此工作区的文库",
+        "finished": "已完成的筛选",
+        "running": "进行中的筛选"
+      },
+      "goes": {
+        "collectionName": "合集名称",
+        "itsCollection": "其合集",
+        "newCollection": "新合集",
+        "addTo": "添加到 {name}",
+        "addToIts": "添加到其合集",
+        "nowhere": "不保存",
+        "kept": "留在筛选中",
+        "private": "私密",
+        "keepPrivate": "将新合集设为私密",
+        "aCollection": "一个合集",
+        "yourLibrary": "你的文库",
+        "aCommunity": "一个社区",
+        "readingCommunity": "正在读取社区的合集",
+        "prune": "从 {name} 中移除排除的论文",
+        "excludedLeave": "排除的移出",
+        "othersStay": "待定和有冲突的保留"
+      },
+      "part": {
+        "papers": "论文",
+        "criteria": "标准",
+        "reviewers": "审核人",
+        "decided": "论文如何定案",
+        "goesTo": "入选论文的去向"
+      },
+      "summary": {
+        "papers": "{state, select, upTo {最多 {papers, plural, other {# 篇论文}}} soFar {目前 {papers, plural, other {# 篇论文}}} other {{papers, plural, other {# 篇论文}}}}，来自 {sources, plural, other {# 个来源}}",
+        "noPapers": "还没有论文",
+        "criteria": "{count, plural, other {# 条标准}}，{musts, plural, other {# 条必要条件}}",
+        "noCriteria": "没有标准",
+        "invited": "{count, plural, other {已邀请 # 人}}",
+        "nobody": "还没有人",
+        "decided": "{you, select, true {{rule}，冲突由你裁决} other {{rule}，冲突由 {name} 裁决}}"
+      },
+      "filledFrom": "已从 <b>{name}</b> 填入",
+      "openIt": "打开",
+      "partsNav": "前往表单的某一部分",
+      "neededToStart": "开始前需要",
+      "elsewhere": "{named, select, true {你未完成的筛选 {name} 保存在开始它的 {workspace} 中。} other {你未完成的筛选保存在开始它的 {workspace} 中。}}",
+      "goOnThere": "前往继续",
+      "name": {
+        "label": "名称",
+        "placeholder": "例如“学校供餐与学习”",
+        "question": "研究问题<optional>（可选）</optional>",
+        "questionTitle": "研究问题",
+        "optional": "可选",
+        "questionHelp": "你的综述要回答的问题。模型可以据此在标准中写出是非题。",
+        "questionPlaceholder": "例如“学校供餐能否改善小学生的学习？”"
+      },
+      "papers": {
+        "upToSources": "{count, plural, other {最多 # 个来源}}",
+        "helpFrom": "添加论文的所有来源：搜索、合集、社区、Zotero、文件或 DOI。在两个来源中都出现的论文只筛选一次。",
+        "helpRead": "筛选读取标题和摘要。Openscholar 索引中已有的记录会从索引获取这两项。自带 PDF 但没有摘要的论文会按 PDF 读取。",
+        "helpLeft": "无法筛选的内容会被排除在外，并在其来源的行中列出原因：没有摘要也没有 PDF 的论文、没有标题的记录、找不到的 DOI、无法打开的文件。",
+        "stillReading": "仍在读取",
+        "found": "{soFar, select, true {目前找到 <n></n> 篇} other {找到 <n></n> 篇}}",
+        "leftOut": "<n></n> 篇被排除在外",
+        "merged": "已合并 <n></n> 个重复项",
+        "link": "{upTo, select, true {最多 <n></n> {count, plural, other {篇论文}}} other {<n></n> {count, plural, other {篇论文}}}}",
+        "toScreen": "<n></n> 篇待筛选",
+        "readingIt": "正在读取",
+        "leftOutCount": "{count, plural, other {# 篇被排除在外}}",
+        "grew": "{doubled, plural, =0 {{count, plural, other {开始后新增 # 篇}}} other {{count, plural, other {开始后新增 # 篇}}，# 篇已在另一个来源中}}",
+        "newTab": "（在新标签页中打开）",
+        "removedOnSave": "保存时移除",
+        "atStart": "{count, plural, other {开始时 # 篇}}",
+        "allOfIt": "全部",
+        "all": "{count, plural, other {全部 # 篇}}",
+        "inSource": "{count, plural, other {来源中有 # 篇}}",
+        "readAsPdf": "{count, plural, other {# 篇按 PDF 读取}}",
+        "alreadyElsewhere": "{count, plural, other {# 篇已在另一个来源中}}",
+        "checkedEvery": "{every, select, day {每天检查} week {每周检查} other {每月检查}}",
+        "couldntBeRead": "无法读取",
+        "keep": "保留",
+        "range": "第 {first} 至 {last} 篇论文",
+        "choose": "选择论文",
+        "remove": "移除 {name}",
+        "of": "{name} 的论文",
+        "everyDeep": "其中及其下所有合集中的每篇论文。",
+        "everyOne": "{count, plural, =1 {它的唯一一篇论文。} other {它的全部 # 篇论文。}}",
+        "zoteroOrder": "最早添加到 Zotero 的优先",
+        "handoffGone": "社区移交的内容已无法读取。请在社区下重新选择其记录。",
+        "addFrom": "添加论文，来自",
+        "findSource": "查找来源",
+        "noneByName": "没有这个名称的项目。",
+        "noneOwnIncluded": "你自己的筛选还没有入选任何论文。",
+        "noneIncluded": "{workspace} 中还没有筛选入选任何论文。",
+        "noSearches": "还没有保存的搜索。",
+        "nothingHere": "这里还没有内容。",
+        "pagerSources": "个来源",
+        "pagerLeftOut": "篇被排除在外",
+        "firstPapers": "此范围的前几篇论文",
+        "titleYear": "{title}（{year}）",
+        "andMore": "{count, plural, other {另外 # 篇}}"
+      },
+      "living": {
+        "title": "持续更新的筛选",
+        "factFixed": "上传的文件和粘贴的 DOI 不会增加论文",
+        "factEmail": "审核人会收到邮件通知",
+        "factCharge": "模型对每篇新论文收费",
+        "help": "Openscholar 会按你选择的频率检查筛选的搜索、合集和社区中是否有新论文。只有新论文才会加入并分配给审核人。",
+        "check": "检查新论文",
+        "off": "关闭",
+        "checksAll": "{count, plural, =1 {检查其来源} other {检查其 # 个来源}}",
+        "checksSome": "{count, plural, other {检查其 # 个来源中的 {growing} 个}}",
+        "nextCheck": "下次检查：{day}",
+        "firstCheck": "首次检查：{day}",
+        "firstOnSave": "保存后立即进行首次检查",
+        "perNew": "每篇新论文 {credits} 积分{pdf, select, true {，按 PDF 读取的更多} other {}}{last, select, true {，最近 {count} 篇用了 {spent}} other {}}",
+        "noneGrow": "这些来源都不会增加论文。添加搜索、合集或社区以供检查。",
+        "addToCheck": "添加搜索、合集或社区以供检查。"
+      },
+      "criteria": {
+        "helpTitle": "必要条件和加分项",
+        "factPeople": "人员直接投票",
+        "factModels": "答案决定模型的投票",
+        "help": "把每条标准写成是非题。模型对每条标准回答是、否或不确定。必要条件答“否”会让它投排除，答“不确定”会让它投待定。加分项永远不会排除论文。问题下方的说明写明哪些算数：审核人在筛选页的问题下方点“说明”即可打开，模型会连同问题一起阅读。你为标准标记的词会在人员投票时在每篇摘要中标出。",
+        "import": "{searches, plural, other {{count, plural, other {从你的搜索中添加 # 个问题}}}}",
+        "copyFrom": "从筛选中复制",
+        "copyAdds": "把它的标准连同分数加到这里的标准中",
+        "write": "根据研究问题写出标准",
+        "writing": "正在根据研究问题写出标准",
+        "needQuestion": "请先写研究问题",
+        "more": "更多",
+        "actions": "标准操作",
+        "copyCriteriaFrom": "从筛选中复制标准",
+        "questionColumn": "问题和说明",
+        "shortName": "简称",
+        "shortNameOf": "标准 {n} 的简称",
+        "shortNameMax": "{count, plural, other {最多 # 个字符}}",
+        "shortNameHelp": "问题放不下时标准所用的名称：表格列、筛选条件和论文的排除原因。在你写简称之前，它就是问题本身的文字。",
+        "criterion": "标准 {n}",
+        "questionPlaceholder": "写一个是非题",
+        "guidanceFor": "标准 {n} 的说明",
+        "guidancePlaceholder": "添加说明：哪些算、哪些不算",
+        "wordsFor": "标准 {n} 的标记词",
+        "wordsPlaceholder": "添加要在摘要中标记的词，用逗号分隔",
+        "is": "标准 {n} 是",
+        "must": "必要条件",
+        "nice": "加分项",
+        "none": "还没有标准",
+        "newPlaceholder": "一个是非题",
+        "new": "新标准",
+        "add": "添加"
+      },
+      "scoring": {
+        "title": "评分",
+        "factPoints": "是、否和不确定各有分数",
+        "factStars": "五个星级",
+        "help": "分数用于给入选论文排序，并决定它们保存时的星级。分数永远不会改变投票。",
+        "pointsEach": "每个答案的分数",
+        "criterion": "标准",
+        "yes": "是",
+        "no": "否",
+        "unclear": "不确定",
+        "pointsFor": "{answer, select, yes {答“是”的分数，{name}} no {答“否”的分数，{name}} other {答“不确定”的分数，{name}}}",
+        "starsGroup": "每个星级的起始分数",
+        "starsBegin": "星级起始分数",
+        "pointsForStars": "{count, plural, other {# 星的分数}}",
+        "starsRange": "分，一到五星"
+      },
+      "reviewers": {
+        "factPeople": "人员免费",
+        "factModels": "模型消耗积分",
+        "help": "每位审核人对分到的论文投入选、待定或排除。人员阅读标题和摘要后投票。模型回答其读取的每篇论文的每条标准，由答案得出投票。",
+        "aiModel": "AI 模型",
+        "votesKeep": "{count, plural, other {# 票仍然计入}}",
+        "pdfsMissed": "{why, select, text {{count, plural, other {无法读取 PDF：# 篇论文得不到它的投票}}} other {{count, plural, other {无法读取最长的 PDF：# 篇论文得不到它的投票}}}}",
+        "creditsFor": "{count, plural, other {# 篇论文}} {credits} 积分",
+        "allRead": "已全部读取",
+        "none": "还没有审核人",
+        "addPerson": "添加人员",
+        "addModel": "添加模型"
+      },
+      "decided": {
+        "votesAgree": "投票一致",
+        "settled": "定案",
+        "votesSplit": "投票分歧",
+        "help": "一篇论文的每一票都按此规则计算。投票符合规则要求的一致程度时，论文定案。不符合时就是冲突，由一个人裁决。",
+        "each": "每篇论文的人数",
+        "factModels": "模型阅读每篇未定案的论文",
+        "factEveryone": "“所有人”包括之后加入的人",
+        "eachHelp": "每个模型都会阅读它加入时所有未定案的论文。这里设定每篇论文由几个人投票。论文会平均分配，每人阅读的数量大致相同。团队扩大时，设定的数字保持不变。“所有人”指筛选中现在和以后的每个人。",
+        "everyone": "所有人",
+        "addPerson": "添加人员后可选择",
+        "settledWhen": "论文定案的条件",
+        "settlingTitle": "论文定案",
+        "oneVote": "分配到论文的每位审核人各有一票，模型和人员一样。",
+        "ruleMeans": "<b>{label}。</b>{means}",
+        "settledBy": "冲突裁决人",
+        "conflictsTitle": "冲突",
+        "conflictsHelp": "此人能看到论文的每一票，其裁决就是论文的结果。",
+        "noConflicts": "此规则下没有需要裁决的冲突",
+        "whoSettles": "谁裁决冲突",
+        "seeVotes": "审核人何时能看到其他人的投票",
+        "seeingTitle": "查看其他人的投票",
+        "seeingHelp": "“投票后”可以避免审核人受到影响：每人在对论文投票后或论文定案后，才能看到其他人对它的投票。不对某篇论文投票的人随时都能看到其投票。",
+        "after": "投票后",
+        "always": "随时",
+        "withVotes": "{count, plural, other {例如，一篇论文有 # 票时}}",
+        "addReviewer": "添加审核人即可查看论文如何定案。",
+        "modelSettles": "模型的投票可能在任何人投票之前就让论文定案。"
+      },
+      "goesHelp": "结果为入选的论文会添加到你选择的合集中（在你的文库或社区中），并带有评分得出的星级。选择“不保存”则只留在筛选中。",
+      "summaryLabel": "摘要",
+      "changes": {
+        "title": "更改",
+        "helpTitle": "更改进行中的筛选",
+        "factVotes": "已投的票保留",
+        "factRemoved": "被移出的审核人保留在记录中",
+        "help": "筛选进行中和完成后，你都可以更改这里的任何内容。在你选择保存更改之前不会保存任何内容，此区域会先显示保存后的影响。",
+        "savedNow": "刚刚保存",
+        "activity": "动态",
+        "willDo": "保存后的影响",
+        "did": "此次保存的结果",
+        "recheck": "重新检查已定案的论文",
+        "recheckOn": "每篇已定案的论文都会按新设置重新检查。上面列出的论文会得到另一个结果。",
+        "recheckOff": "{count, plural, other {按新设置，# 篇已定案论文会得到另一个结果。除非你开启此项，它们会保留原结果。}}",
+        "none": "没有未保存的更改",
+        "checking": "正在检查新论文",
+        "checked": "{of, plural, other {已检查 {done} / # 个来源}}",
+        "lastAdded": "{count, plural, other {上次检查加入了 # 篇新论文}}",
+        "lastNothing": "上次检查没有发现新内容",
+        "seePapers": "{count, plural, =1 {查看这篇论文} other {查看这 # 篇论文}}",
+        "partsNav": "表单的各部分"
+      },
+      "cost": {
+        "title": "费用",
+        "helpTitle": "模型和积分",
+        "factPeople": "人员免费",
+        "factAtOnce": "{count, plural, other {每次 # 篇论文}}",
+        "help": "每个模型的费用等于一篇论文所需积分乘以待筛选的论文数。没有摘要的论文按 PDF 读取全部页面，按页计费。工作区的套餐允许模型同时读取{atOnce, select, none {一定数量的} other { {atOnce} 篇}}论文，因此在另一个筛选的模型正在阅读时开始的筛选需要排队。人员从一开始就可以投票。",
+        "helpLiving": "持续更新的筛选还要为每次检查找到的新论文付费。",
+        "people": "人员",
+        "free": "免费",
+        "credits": "{credits} 积分",
+        "noPapers": "还没有论文",
+        "pdfsRead": "{count, plural, other {# 篇论文按 PDF 读取}}，共 {pages, plural, other {# 页}}{capped, select, true {：最多占其中 {credits} 积分。} other {。}}",
+        "firstReading": "{count, plural, other {首次读取 # 个 PDF，添加时已支付}}",
+        "upTo": "最多 {credits} 积分",
+        "answering": "{count, plural, other {在已读论文上回答新标准}}",
+        "rereading": "重新读取因此重新打开的论文",
+        "atMost": "{still, select, true {{soFar, select, true {目前尚需支付，最多} other {尚需支付，最多}}} other {{soFar, select, true {目前合计，最多} other {合计，最多}}}}",
+        "resumed": "恢复后尚需支付",
+        "still": "尚需支付",
+        "nothing": "无",
+        "overWallet": "比工作区现有积分多 {credits}",
+        "walletShare": "占工作区积分的比例：{share}",
+        "shareOf": "{under, select, true {不到 {share}，总额} other {{share}，总额}}",
+        "inWorkspace": "{workspace} 中有 {credits}",
+        "leftAfter": "之后剩余 {credits}",
+        "spent": "目前已用 {credits}"
+      },
+      "bar": {
+        "toScreen": "<n></n> <m>{soFar, select, true {{count, plural, other {篇论文待筛选（截至目前）}}} other {{count, plural, other {篇论文待筛选}}}}</m>",
+        "cost": "<m>{still, select, true {{soFar, select, true {目前尚需支付，最多} other {尚需支付，最多}}} other {{soFar, select, true {目前合计，最多} other {合计，最多}}}}</m> <b>{credits} 积分</b>",
+        "peopleOnly": "{handed, select, true {仅人员，无需再付费} other {仅人员，不消耗积分}}",
+        "addCredits": "添加积分",
+        "start": "开始筛选",
+        "moved": "{count, plural, other {# 篇论文的结果改变}}",
+        "review": "查看",
+        "discard": "放弃",
+        "save": "保存更改",
+        "discardTitle": "{count, plural, other {放弃 # 处未保存的更改？}}",
+        "keepEditing": "继续编辑"
+      },
+      "page": {
+        "title": "新建筛选",
+        "helpTitle": "筛选",
+        "factRead": "标题和摘要，或论文的 PDF",
+        "factWho": "人员和 AI 模型",
+        "help": "你的审核人根据每篇论文的标题和摘要投入选、待定或排除。没有摘要但附带 PDF 的论文根据 PDF 投票。你选择的规则把投票转为结果，投票有分歧的论文交由一个人裁决。"
+      }
+    },
+    "frame": {
+      "screening": "筛选",
+      "loading": "正在加载筛选",
+      "notFound": "未找到",
+      "gone": "此筛选已被删除，或未共享给你",
+      "more": "更多",
+      "failed": "操作失败，请重试。",
+      "activity": "动态",
+      "export": "导出",
+      "people": "人员",
+      "peopleOn": "人员，此筛选中有 {count} 人",
+      "settings": "设置",
+      "change": "更改",
+      "join": "以审核人身份加入",
+      "reopen": "重新打开",
+      "resumeModels": "恢复模型",
+      "checkNew": "检查新论文",
+      "addCredits": "添加积分",
+      "markFinished": "标记为已完成",
+      "leaveScreening": "退出此筛选",
+      "tabs": {
+        "label": "此筛选的页面",
+        "overview": "概览",
+        "screen": "筛选",
+        "papers": "论文",
+        "unsaved": "未保存"
+      },
+      "faces": {
+        "every": "所有审核人",
+        "takeOut": "{you, select, true {把自己从筛选条件中移除} other {把 {name} 从筛选条件中移除}}",
+        "add": "{you, select, true {把自己加入筛选条件} other {把 {name} 加入筛选条件}}"
+      },
+      "rule": {
+        "title": "论文如何定案",
+        "eachPaper": "每篇论文：{who, select, both {{people, plural, other {# 人}}和{models, plural, other {# 个 AI 模型}}} people {{people, plural, other {# 人}}} other {{models, plural, other {# 个 AI 模型}}}}",
+        "noReviewer": "还没有审核人",
+        "hiddenMine": "你的待处理中隐藏投票",
+        "hiddenTheirs": "审核人的待处理中隐藏投票",
+        "visible": "投票对所有人可见",
+        "conflictsGoTo": "冲突交由 {who} 裁决",
+        "checks": "{every, select, day {每天检查新论文} week {每周检查新论文} other {每月检查新论文}}",
+        "chips": "每篇论文会获得这些标签中列出的投票，投票齐全后即定案。",
+        "conflictOpen": "{you, select, true {有冲突的论文在你裁决之前保持未定案。} other {有冲突的论文在 {name} 裁决之前保持未定案。}}",
+        "living": "持续更新的筛选会定期检查来源中的新论文并筛选新加入的论文。上传的文件和粘贴的列表不会增加论文。",
+        "livingChip": "{every, select, day {持续更新<more>，每天加入新论文</more>} week {持续更新<more>，每周加入新论文</more>} other {持续更新<more>，每月加入新论文</more>}}"
+      },
+      "role": {
+        "member": "{finished, select, true {你能看到所有论文和所有投票。你不是它的审核人，因此不会分到需要投票的论文。} other {你能看到所有论文和所有投票。你不是它的审核人，因此不会分到需要投票的论文。以审核人身份加入即可分到论文。}}",
+        "viewer": "{workspace} 将它共享给了你。你能看到所有论文和所有投票，但不会分到需要投票的论文。",
+        "guest": "访客",
+        "guestSays": "{workspace} 将它共享给了你。你对分到的论文投票。只有 {workspace} 的成员可以更改其设置。"
+      },
+      "banner": {
+        "checked": "已检查 {done, number} / {of, plural, other {# 个来源}}",
+        "arrived": "{ago}加入了 <link>{count, plural, other {# 篇新论文}}</link>",
+        "screenNew": "先筛选你的 {count, plural, other {# 篇新论文}}",
+        "nothing": "上次检查没有发现新论文",
+        "counting": "<done></done> / {of, number}",
+        "modelPrice": "{name}，{price}",
+        "creditsHelp": "{you, select, true {当工作区无法支付下一篇论文时，模型会停止。已投的票保留，你添加积分后它会从停下的地方继续。} other {当工作区无法支付下一篇论文时，模型会停止。已投的票保留，{workspace} 添加积分后它会从停下的地方继续。}}",
+        "stoppedAt": "<models></models>停在 {done, number} / {of, plural, other {# 篇论文}}",
+        "finishedOn": "完成于 {day}",
+        "finishedAgo": "{ago}完成",
+        "finishedTitle": "已完成的筛选",
+        "finishedHelp": "{member, select, true {它的模型停止阅读，也不再检查新论文。你仍可以阅读、导出和更改它，或重新打开它。} other {它的模型停止阅读，也不再检查新论文。你仍可以阅读和导出它。{workspace} 的成员可以重新打开它。}}",
+        "pausedTitle": "已暂停的模型",
+        "pausedHelp": "{member, select, true {暂停的模型不阅读，也不消耗积分。人员可以继续投票。恢复模型即可让它们继续阅读。} other {暂停的模型不阅读，也不消耗积分。人员可以继续投票。{workspace} 的成员可以恢复它们。}}",
+        "papersRead": "已读取 {done, number} / {of, plural, other {# 篇论文}}",
+        "turnsTitle": "模型轮流阅读",
+        "atATime": "{count, plural, other {每次 # 篇论文}}",
+        "turnsHelp": "{workspace} 的模型每次读取 {count, plural, other {# 篇论文}}，因此在另一个筛选正在阅读时开始的筛选需要等待。在此期间人员可以投票。",
+        "modelReading": "<model>{name}</model> 正在阅读",
+        "modelsReading": "{count, plural, other {# 个模型正在阅读}}",
+        "read": "{done, number} / {of, number}"
+      },
+      "menu": {
+        "emailsOff": "此筛选不会再给你发邮件",
+        "emailsOn": "此筛选会重新给你发邮件",
+        "stopEmails": "停止给我发邮件",
+        "emailAgain": "重新给我发邮件",
+        "pauseModels": "暂停模型",
+        "duplicate": "复制为新筛选",
+        "move": "移至另一个工作区",
+        "delete": "删除"
+      },
+      "move": {
+        "modelsPaid": "{own, select, true {{count, plural, other {从现在起，它的模型用你自己的积分付费}}} other {{count, plural, other {从现在起，它的模型用 {to} 的积分付费}}}}",
+        "reviewersStay": "{own, select, true {它的其他审核人以访客身份保留访问} other {它的其他审核人保留访问，不在 {to} 中的以访客身份}}",
+        "papersStay": "{own, select, true {它已保存的论文留在原处，从现在起入选的论文保存到你自己的文库} other {它已保存的论文留在原处，从现在起入选的论文保存到 {to} 的文库}}",
+        "sourcesStay": "{own, select, true {它的来源留在你自己的工作区，并继续在那里检查} other {它的来源留在 {from}，并继续在那里检查}}",
+        "membersLose": "{from} 中不是其审核人的成员将无法再看到它",
+        "nothingElse": "其他一切不变"
+      },
+      "finish": {
+        "title": "将此筛选标记为已完成？",
+        "unsettled": "{count, plural, other {# 篇论文尚未定案，将保持现状}}",
+        "modelsStop": "模型停止阅读",
+        "checksStop": "停止检查新论文",
+        "movesToFinished": "它会移至列表中的已完成，随时可以重新打开或更改"
+      },
+      "delete": {
+        "title": "删除 {name}？",
+        "goes": "它的投票和设置会一并删除",
+        "saved": "{count, plural, other {已保存到 {collection} 的 # 篇论文会留在那里}}",
+        "final": "此操作无法撤销"
+      },
+      "leave": {
+        "title": "退出此筛选？",
+        "confirm": "退出",
+        "votesCount": "{count, plural, other {你的 # 票仍然有效}}",
+        "noVotes": "你还没有投票",
+        "papersGo": "{count, plural, other {你未投票的 # 篇论文会交给其他审核人}}",
+        "fromList": "它会从你的列表中移除，只有再次共享给你后你才能打开它"
+      },
+      "add": {
+        "title": "将 {name} 添加为审核人？",
+        "confirm": "添加为审核人",
+        "noCriteria": "模型通过回答标准来投票，而此筛选还没有标准。它会让读到的每篇论文入选。",
+        "addCriteria": "添加标准"
+      },
+      "takeOff": {
+        "viewerTitle": "停止 {name} 投票？",
+        "title": "将 {name} 从此筛选中移出？",
+        "makeViewer": "改为查看者",
+        "confirm": "移出",
+        "asViewer": "作为查看者，他们能看到所有论文和所有投票",
+        "stopCounting": "{me, select, true {不再计入你的 {count, plural, other {# 票}}} other {不再计入其 {count, plural, other {# 票}}}}",
+        "stopCountingLabel": "{me, select, true {不再计入你的投票} other {不再计入其投票}}",
+        "discarded": "{me, select, true {你的投票保留在记录中，但不再计入。} other {其投票保留在记录中，但不再计入。}}",
+        "kept": "{me, select, true {你的投票仍然计入。} other {其投票仍然计入。}}"
+      },
+      "credits": {
+        "inWorkspace": "工作区现有 {credits} 积分",
+        "payFor": "{some, select, true {{credits} 积分约可支付其 {papers, plural, other {# 篇论文}}中的 {paid, number} 篇。之后会停止，直到添加积分。} other {{credits} 积分不足以支付其 {papers, plural, other {# 篇论文}}中的任何一篇。它会停在这里，直到添加积分。}}"
+      },
+      "activitySheet": {
+        "says": "此筛选的所有更改，最新的在前",
+        "scheduled": "定期检查",
+        "earlier": "显示更早的更改",
+        "yourVotes": "你的 {count, plural, other {# 票}}"
+      },
+      "peopleDialog": {
+        "helpTitle": "谁参与了筛选",
+        "personalIn": "{you, select, true {此筛选在你自己的工作区中：你能看到并更改它。} other {此筛选在 {workspace} 自己的工作区中，他们可以更改它。}}",
+        "personalElse": "其他人只有在共享给他们后才能访问：作为审核人，分到论文并投票；或作为查看者，能看到所有论文和所有投票。",
+        "membersSee": "{workspace} 的成员能看到并更改此筛选。其中担任审核人的会分到论文并投票。",
+        "outsideHas": "{workspace} 以外的人只有在共享给他们后才能访问：作为审核人，分到论文并投票；或作为查看者，能看到所有论文和所有投票。",
+        "modelToo": "{you, select, true {模型也是审核人：它阅读每篇未定案的论文并投票，用你的积分付费。} other {模型也是审核人：它阅读每篇未定案的论文并投票，用 {workspace} 的积分付费。}}",
+        "close": "关闭",
+        "addAs": "添加人员为",
+        "addModel": "添加模型",
+        "membersAdd": "{workspace} 的成员可以添加人员并更改每个人的权限。",
+        "full": "{workspace} 的套餐可将一个筛选共享给 {count, plural, other {# 名}}外部人员。移出一人才能再添加。",
+        "ownWorkspace": "它在他们自己的工作区中",
+        "everyMember": "所有成员",
+        "canChange": "可查看和更改",
+        "startedIt": "发起人",
+        "votedOn": "{detail}，已投票 {done, number} / {of, number}",
+        "modelRead": "{failed, select, true {{price}，处理了 {done, number} / {of, number}} other {{price}，已读取 {done, number} / {of, number}}}",
+        "model": "模型",
+        "notSent": "邀请未能发送",
+        "showMore": "显示更多人员",
+        "reviewer": "审核人",
+        "reviewerCan": "对分到的论文投票",
+        "viewer": "查看者",
+        "viewerCan": "能看到所有论文和所有投票"
+      }
+    },
+    "list": {
+      "title": "筛选",
+      "newScreening": "新建筛选",
+      "find": "查找筛选",
+      "sort": {
+        "you": "需要你的优先",
+        "active": "最近活动",
+        "newest": "最新",
+        "oldest": "最早",
+        "name": "名称"
+      },
+      "show": {
+        "all": "全部",
+        "you": "需要你",
+        "open": "进行中",
+        "finished": "已完成"
+      },
+      "showMenu": "显示",
+      "whichScreenings": "哪些筛选",
+      "firstUse": {
+        "title": "决定哪些论文纳入你的综述",
+        "text": "从搜索、合集或你自己的文件中导入论文，设定标准，然后手动筛选：独自、与团队一起、以 AI 模型作为额外的审核人，或三者结合。"
+      },
+      "legend": {
+        "label": "进度条颜色的含义",
+        "settled": "已定案",
+        "notYet": "未定案"
+      },
+      "column": {
+        "screening": "筛选",
+        "reviewers": "审核人",
+        "papers": "论文",
+        "status": "状态",
+        "lastActivity": "最近活动"
+      },
+      "papersHelp": {
+        "title": "论文的进展",
+        "text": "每个进度条按当前进展划分筛选中的论文。点按进度条的某一段即可查看那些论文。"
+      },
+      "loadingScreenings": "正在加载筛选",
+      "needsYouNote": "待你筛选的论文、待你裁决的冲突和问你的问题",
+      "startedBy": "<person>{who}</person> <at>{when}开始</at>",
+      "everyReviewer": "所有审核人",
+      "lastActivity": "<label>最近活动 </label>{when}",
+      "includedOf": "{total} 篇中 {included} 篇入选",
+      "settledOf": "已定案 {settled} / {total}",
+      "forYouToScreen": "{count, plural, other {# 篇待你筛选}}",
+      "conflictsToSettle": "{count, plural, other {# 个冲突待裁决}}",
+      "questionsForYou": "{count, plural, other {# 个问你的问题}}",
+      "finishedIncluded": "{included} 篇入选，{when}完成",
+      "waitingForVotes": "{count} 篇等待投票",
+      "inConflictFor": "{count} 篇有冲突，由 {who} 裁决",
+      "upToDate": "已是最新，下次检查：{day}",
+      "allSettled": "所有论文均已定案",
+      "none": "{show, select, you {没有需要你处理的。} finished {没有已完成的筛选。} open {没有进行中的筛选。} other {没有筛选。}}",
+      "noneCalled": "{show, select, you {没有名为 {name} 且需要你处理的筛选。} finished {没有名为 {name} 的已完成筛选。} open {没有名为 {name} 的进行中筛选。} other {没有名为 {name} 的筛选。}}",
+      "showEvery": "显示所有筛选",
+      "pagerItems": "个筛选",
+      "elsewhere": "在另一个工作区等你处理",
+      "inWorkspace": "在 {name} 中",
+      "more": "更多",
+      "moreFor": "{name} 的更多操作",
+      "addPerson": "添加人员",
+      "findPerson": "查找人员，或输入邮箱",
+      "nobodyByName": "此工作区中没有这个名字的人。输入邮箱地址即可邀请。",
+      "nobodyElse": "此工作区中没有其他可添加的人。输入邮箱地址即可邀请。",
+      "invite": "邀请",
+      "onAlready": "{effort, select, true {{name} 已以该推理强度参与} other {{name} 已参与}}",
+      "confirm": {
+        "cancel": "取消",
+        "what": "此更改对筛选的影响"
+      },
+      "discussion": {
+        "title": "讨论",
+        "about": "{models, select, true {审核人和裁决冲突的人在这里讨论论文，可以面向所有相关的人，也可以只对一个人。写给某个人的话就是一个问题：在对方回答之前，它会一直留在对方的筛选列表上。模型不能被提问：点按表格中它的标记即可查看它读到的段落。} other {审核人和裁决冲突的人在这里讨论论文，可以面向所有相关的人，也可以只对一个人。写给某个人的话就是一个问题：在对方回答之前，它会一直留在对方的筛选列表上。}}",
+        "blind": "对于仍在等待某位审核人投票的论文，此筛选会向该审核人隐藏关于这篇论文的讨论。",
+        "shut": "审核人在这里讨论论文。讨论不予显示，以免影响你的投票。",
+        "notSent": "未能发送，请重试。",
+        "askedYou": "{name} 问你",
+        "waitingFor": "等待 {name} 回答",
+        "asked": "问了 {who}",
+        "readOnly": "{empty, select, true {还没有人讨论这篇论文。} other {}}只有它的审核人和裁决冲突的人可以在这里发言。{join, select, true {以审核人身份加入即可发言。} other {}}",
+        "whoFor": "发给谁",
+        "to": "发给",
+        "everyone": "所有人",
+        "forOne": "请 {name} 回答。能看到这篇论文投票的人都能读到，在 {name} 回答之前它会一直留在其筛选列表上。",
+        "forAll": "能看到这篇论文投票的人都能读到。选择一个名字即可向某个人提问。",
+        "answerPlaceholder": "回答 {name}",
+        "askPlaceholder": "向 {name} 提问",
+        "allPlaceholder": "写给这篇论文的所有相关人员",
+        "answerLabel": "你给 {name} 的回答",
+        "askLabel": "你向 {name} 提的问题",
+        "allLabel": "你的消息",
+        "send": "发送"
+      },
+      "pdf": {
+        "readAs": "{pages, plural, =0 {按 PDF 读取} other {按 PDF 读取，# 页}}",
+        "openTab": "在新标签页中打开 PDF",
+        "onItsWay": "PDF 正在路上",
+        "cantShow": "此 PDF 无法在这里显示。请在新标签页中打开。"
+      },
+      "perPaper": "每篇论文 {credits} 积分"
+    },
+    "overview": {
+      "notSaved": "操作失败，请重试。",
+      "empty": {
+        "arriving": "论文正在路上",
+        "arrivingSays": "{reviewer, select, true {论文从来源到达后会显示在这里。第一批到达后你就可以开始筛选。} other {论文从来源到达后会显示在这里。}}",
+        "noPaper": "{sources, select, true {它的来源中没有可筛选的论文。} other {此筛选没有可获取论文的来源。}}",
+        "toSources": "{sources, select, true {查看来源} other {添加来源}}"
+      },
+      "progress": {
+        "title": "进度",
+        "screen": "筛选 <num>{count, number}</num> {count, plural, other {篇论文}}",
+        "conflicts": "{settle, select, true {裁决} other {查看}} <num>{count, number}</num> {count, plural, other {个冲突}}",
+        "helpTitle": "论文的进展",
+        "maybeMeans": "待定表示尚不清楚论文是否应纳入",
+        "conflictUntil": "{you, select, true {有冲突，直到你裁决} other {有冲突，直到 {name} 裁决}}",
+        "settles": "{means}待定和其他结果一样是一种结果，因此待定的论文算作已定案。",
+        "maybeStays": "待定的论文不会与入选论文一起保存。它留在论文页的待定下，若有审核人更改投票，它的结果仍可能改变。",
+        "exportIncluded": "导出入选论文",
+        "extract": "从入选论文中提取",
+        "finish": "标记为已完成",
+        "settledOf": "{total, plural, other {/ # 篇论文已定案}}",
+        "leftOut": "{bare, select, true {{count, number} 篇被排除在外：无摘要} other {{count, number} 篇被排除在外}}",
+        "capped": "已在你套餐的论文上限处停止",
+        "pdfsUnread": "{count, plural, other {# 个 PDF 没有能读取它的审核人}}",
+        "merged": "{count, plural, other {已合并 # 个重复项}}"
+      },
+      "yours": {
+        "votes": "你的 {count, plural, other {# 票}}",
+        "voted": "{decision, select, include {你投了入选：{count, number}} maybe {你投了待定：{count, number}} other {你投了排除：{count, number}}}",
+        "stillWait": "查看其中哪些仍在等待其他人投票"
+      },
+      "reviewers": {
+        "title": "审核人",
+        "everyoneDone": "按目前的速度，大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后全部完成",
+        "move": "转移论文",
+        "agreement": "一致性",
+        "helpTitle": "论文如何分配",
+        "eachOf": "{people, plural, other {# 人}}中有 {each, number} 人对每篇论文投票",
+        "everyPerson": "每个人对每篇论文投票",
+        "modelsRead": "模型阅读每篇未定案的论文",
+        "sharing": "{share, select, true {每个人对一部分论文投票。} other {每个人对每篇论文投票。}}{models, select, true {每个模型阅读仍未定案的论文，以及新加入的论文。在它加入之前已定案的论文会被跳过。} other {}}",
+        "pace": "每个人的数字下方显示的是：如果保持最近三天的速度，他们完成剩余论文的时间。",
+        "reviewer": "审核人",
+        "votedOn": "已投票的论文",
+        "agrees": "与人的一致率",
+        "agreesPerson": "人与这篇论文上的其他人相比",
+        "agreesModel": "模型与人相比，从不与模型相比",
+        "agreesMeans": "在所有这样的投票对中，此审核人对一篇论文的投票与某人对同一论文的投票相同的比例。数值低说明这位审核人对标准的理解与其他人不同。",
+        "agreesMissed": "模型下方显示：筛选入选了但它投了排除的论文。",
+        "actions": "操作",
+        "people": "人员",
+        "models": "模型",
+        "takenOff": "已移出",
+        "thrownOut": "已作废的投票",
+        "stillCount": "{count, plural, other {# 票仍然有效}}",
+        "castNone": "未投任何票",
+        "nobody": "{change, select, true {还没有人对这些论文投票。在页面顶部的人员中添加人员或模型。} other {还没有人对这些论文投票。}}"
+      },
+      "move": {
+        "title": "在审核人之间转移论文",
+        "confirm": "转移 {count, plural, other {# 篇论文}}",
+        "confirmBare": "转移",
+        "from": "从",
+        "to": "到",
+        "left": "还剩 {count, number} 篇",
+        "nothingLeft": "没有剩余",
+        "howMany": "要转移的论文",
+        "ofMost": "<b>{papers, number}</b> / {most, number} 篇{you, select, true {你} other {{name}}}还没有的论文",
+        "doneAfter": "<b>大约 {afterWeeks, plural, =0 {{afterDays, plural, =1 {一天} other {# 天}}} other {# 周}}后全部完成</b>{same, select, true {<muted>，与现在相同</muted>} other {<muted>，现在大约是 {beforeWeeks, plural, =0 {{beforeDays, plural, =1 {一天} other {# 天}}} other {# 周}}</muted>}}",
+        "startsAt": "初始数量会让两人的论文数相同。转走的是{you, select, true {你} other {{name} }}的队列中最靠后的论文。已投的票保持不变。",
+        "hasAll": "{takerYou, select, true {你} other {{taker} }}已经有{giverYou, select, true {你} other {{giver} }}的全部论文。",
+        "nobodyElse": "没有其他人可以接收论文。",
+        "doneIn": "大约 {weeks, plural, =0 {{days, plural, =1 {一天} other {# 天}}} other {# 周}}后完成"
+      },
+      "row": {
+        "reading": "正在阅读",
+        "creditsSpent": "已用 {credits} 积分",
+        "done": "已完成",
+        "reminded": "{ago}已提醒",
+        "activeNow": "当前在线",
+        "added": "{ago}添加",
+        "arriving": "正在到达",
+        "doneOf": "<num>{done, number}</num> / {assigned, number}",
+        "idle": "3 天内没有投票",
+        "unreadLabel": "{count, plural, other {# 篇它无法读取的论文}}",
+        "unread": "{count, number} 篇无法读取",
+        "unreadSays": "{count, plural, other {它无法读取这 # 篇论文，因此对其没有发言权。由其他审核人定案。}}",
+        "notGivenText": "{count, plural, other {未分配 # 个 PDF：它只读取文本}}",
+        "notGivenLong": "{count, plural, other {未分配 # 个 PDF：超出它一次能读取的长度}}",
+        "voted": "{decision, select, include {投了入选：{count, number}} maybe {投了待定：{count, number}} other {投了排除：{count, number}}}",
+        "noOtherPerson": "没有其他人可比较",
+        "noPeople": "没有人可比较",
+        "nothingYet": "暂无可比较的内容",
+        "agrees": "{share, number, percent}<muted>{person, select, true {与其他人投票相同} other {与人的投票相同}}</muted>",
+        "missedOf": "{included, number} 篇入选中排除了 {missed, number} 篇",
+        "ofPairs": "共 {count, plural, other {# 对投票}}",
+        "more": "更多",
+        "moreFor": "{name} 的更多操作",
+        "seeVotes": "{mine, select, true {在论文中查看你的投票} other {在论文中查看其投票}}",
+        "creditsShort": "还差 {credits} 积分",
+        "remind": "发送提醒",
+        "moveAway": "把论文转给其他人",
+        "takeOff": "{mine, select, true {退出此筛选} other {从此筛选中移出}}"
+      },
+      "unread": {
+        "earlier": "更早",
+        "more": "更多"
+      },
+      "agreement": {
+        "title": "审核人之间的一致性",
+        "band": {
+          "below": "低于 {to, number}",
+          "between": "{from, number} 至 {to, number}",
+          "above": "{from, number} 及以上"
+        },
+        "sameOf": "{count, plural, other {# 篇论文}}中 {share, number, percent} 相同",
+        "kept": "你对自己的所有论文投票后才会显示审核人的一致程度，否则会暴露其他人的投票。",
+        "none": "有两位审核人对同样的论文投票后，这里会显示他们的一致程度。",
+        "mean": "两两 Cohen's kappa 的平均值",
+        "across": "0 表示不比随机好，1 表示完全一致。共 {pairs, plural, other {# 对}}审核人，{range, select, true {每对 {min, number} 至 {max, number} 篇论文} other {{min, plural, other {每对 # 篇论文}}}}",
+        "splitMost": "分歧最大的论文",
+        "noneYet": "暂无",
+        "cell": "{a} 与 {b}：kappa {kappa}，{papers, plural, other {# 篇论文}}中 {share, number, percent} 投票相同"
+      },
+      "kappa": {
+        "title": "Cohen's kappa",
+        "full": "1.0 每次投票都相同",
+        "substantial": "0.6 及以上 高度一致",
+        "chance": "0 不比随机好",
+        "worse": "低于 0 比随机还差",
+        "means": "两位审核人在双方都投票的论文上，超出随机水平的一致程度。方法部分会报告这一数值。总体数值是所有两两组合的平均值。",
+        "swings": "只有少量论文时它波动很大，可能低于 0。双方都投票的论文越多，它越稳定。"
+      },
+      "facts": {
+        "startedIt": "{ago}开始"
+      },
+      "included": {
+        "title": "入选论文保存到",
+        "helpTitle": "入选论文去向",
+        "savedEach": "每篇入选时即保存",
+        "pruned": "排除的论文会被移出",
+        "toCollection": "每篇论文入选时都会保存到此合集。",
+        "nowhere": "{change, select, true {入选论文留在筛选中，不保存到任何合集。选择一个合集来保存它们。} other {入选论文留在筛选中，不保存到任何合集。}}",
+        "change": "更改",
+        "choose": "选择合集",
+        "aCollection": "一个合集",
+        "nowhereYet": "尚未指定",
+        "count": "<num>{count, number}</num> {saved, select, true {篇已保存} other {篇入选}}"
+      },
+      "credits": {
+        "title": "积分",
+        "helpTitle": "筛选的费用",
+        "modelCost": "{name}，{cost}",
+        "peopleOnly": "仅人员",
+        "free": "人员筛选免费。模型每读一篇论文都要付费，从此工作区的积分中扣除。",
+        "spent": "已用 <num>{count, number}</num>",
+        "onceRead": "读完所有论文时共 {credits}",
+        "failed": "{count, plural, other {# 次读取失败}}",
+        "arriving": "论文仍在到达",
+        "allRead": "所有论文均已读取",
+        "leftIn": "{workspace} 剩余 {credits}",
+        "takenOff": "已移出的模型用了 {credits}",
+        "nothingToPay": "无需付费"
+      },
+      "checks": {
+        "title": "检查新论文",
+        "shut": "{change, select, true {检查会在搜索、合集或社区中查找此筛选还没有的论文。上传的文件或粘贴的列表内容不会变，因此无需检查。添加搜索、合集或社区作为来源即可获得新论文。} other {检查会在搜索、合集或社区中查找此筛选还没有的论文。上传的文件或粘贴的列表内容不会变，因此无需检查。在添加搜索、合集或社区作为来源之前不会进行检查。}}",
+        "helpTitle": "检查新论文",
+        "next": "下次检查：{day}",
+        "onlyAsked": "仅在手动时",
+        "skips": "{count, plural, other {跳过 # 个固定来源}}",
+        "means": "检查会重新运行每个来源的搜索，并加入此筛选还没有的论文。上传的文件和粘贴的列表永远不变，因此检查会跳过它们。",
+        "checkNow": "立即检查",
+        "every": "{every, select, day {每天检查} week {每周检查} other {每月检查}}，下次检查：{day}",
+        "onlyWhenAsked": "仅在手动时检查",
+        "schedule": "定期检查",
+        "checkedBy": "{you, select, true {你进行了检查} other {{name} 进行了检查}}",
+        "scheduled": "定期检查",
+        "failed": "未能完成",
+        "found": "找到 {count, number} 篇",
+        "alreadyIn": "{count, number} 篇已在其中",
+        "added": "加入 {count, number} 篇",
+        "newFrom": "来自 {source} 的 {count, number} 篇新论文",
+        "result": "{result, select, include {{count, number} 篇入选} maybe {{count, number} 篇待定} exclude {{count, number} 篇排除} conflict {{count, number} 篇有冲突} other {{count, number} 篇等待投票}}",
+        "nothingNew": "没有新论文",
+        "showLast": "显示最近 {count, number} 次",
+        "seeEvery": "查看全部 {count, number} 次检查",
+        "later": "较新的",
+        "earlier": "较早的",
+        "atStart": "开始时",
+        "startedWith": "{known, select, true {{papers, plural, other {# 篇论文}}} other {论文}}，来自 {sources, plural, other {# 个来源}}"
+      },
+      "flow": {
+        "title": "PRISMA 流程",
+        "found": "检索到",
+        "removed": "筛选前移除",
+        "papers": "论文",
+        "included": "入选",
+        "arriving": "仍在到达",
+        "titleAbstract": "标题和摘要",
+        "means": "绘制综述 PRISMA 流程图所需的数量，从来源检索到的论文到最终入选的论文。",
+        "download": "下载流程图",
+        "none": "无"
+      }
+    },
+    "papers": {
+      "notSaved": "未能保存，请重试。",
+      "noPapers": {
+        "gathering": "论文正在路上，到达后会显示在这里。",
+        "none": "此筛选还没有论文。"
+      },
+      "sort": {
+        "added": "按添加顺序",
+        "title": "标题，A 到 Z",
+        "title-desc": "标题，Z 到 A",
+        "result": "结果",
+        "newest": "发表时间，最新优先",
+        "split": "分歧最大",
+        "points": "分数最高"
+      },
+      "settledBy": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
+      "settledToast": "已将 {count, number} 篇定为{result}",
+      "undo": "撤销",
+      "filter": {
+        "source": "来源",
+        "reviewer": "审核人",
+        "reviewers": "审核人",
+        "reviewersLabel": "{anyone, select, true {审核人：任何人} other {审核人：{names}}}",
+        "anyone": "任何人",
+        "people": "人员",
+        "models": "模型",
+        "vote": "投票",
+        "anyVote": "任何投票",
+        "noVote": "未投票",
+        "settled": "裁决了结果",
+        "decisions": "裁决",
+        "added": "添加时间",
+        "anyTime": "任何时间",
+        "atStart": "开始时",
+        "afterStart": "开始后",
+        "order": "排序",
+        "result": "结果",
+        "all": "全部",
+        "showColumns": "显示列",
+        "votes": "投票",
+        "answers": "答案"
+      },
+      "chip": {
+        "source": "来源 {name}",
+        "removed": "已移除",
+        "sourceFact": "{kept, plural, other {# 篇论文}}，已合并 {merged, plural, other {# 个重复项}}",
+        "votedOnBy": "{names} 已投票",
+        "waitingFor": "{you, select, true {等待你投票} other {等待 {name} 投票}}",
+        "couldNotRead": "{you, select, true {你无法读取它} other {{name} 无法读取它}}",
+        "voted": "{you, select, true {你投了{decision}} other {{name} 投了{decision}}}",
+        "alsoVotedOnBy": "{names} 也已投票",
+        "added": "{when}添加",
+        "earlierCheck": "由之前的检查加入",
+        "remove": "移除筛选条件 {label}",
+        "clearFilters": "清除筛选条件"
+      },
+      "find": "按标题或作者查找",
+      "findLabel": "查找论文",
+      "export": "导出",
+      "extractIncluded": "从入选论文中提取",
+      "filters": "筛选条件",
+      "filtersSays": "限定论文列表的条件及其排序",
+      "showPapers": "显示论文",
+      "showCount": "{count, plural, other {显示 # 篇论文}}",
+      "marksOnPhone": "每篇论文为分配到的每位审核人显示一个标记，按审核人的顺序排列。你的标记带圆圈。",
+      "marksInTable": "每列是一位审核人。点按头像即可查看其投过票的论文。",
+      "hiddenLeftOut": "对于你还没投票的论文，他们的投票不计入此筛选条件，以免影响你的判断。",
+      "selection": {
+        "selected": "{count, plural, other {已选择 # 篇}}",
+        "everyPage": "选择所有页",
+        "all": "{count, plural, other {全选 # 篇}}",
+        "settleAs": "{count, plural, other {将 # 篇有冲突的论文定为}}",
+        "ris": "RIS 文件，用于文献管理工具",
+        "csvSeen": "CSV 文件，含你能看到的投票",
+        "csvAll": "CSV 文件，含所有投票",
+        "clear": "清除选择"
+      },
+      "table": {
+        "loading": "正在加载论文",
+        "select": "选择 {title}",
+        "selectPage": "选择本页所有论文",
+        "paper": "论文",
+        "answers": "答案",
+        "votes": "投票",
+        "reason": "原因",
+        "result": "结果",
+        "new": "新",
+        "vote": "投票",
+        "differOn": "审核人在{name}上意见不一",
+        "noMatch": "这里没有匹配的论文。",
+        "stillOpen": {
+          "waiting": "{count, plural, other {# 篇等待投票}}",
+          "conflict": "{count, plural, other {# 篇有冲突}}"
+        },
+        "pageItems": "篇论文"
+      },
+      "answersHelp": {
+        "says": "每列是一条标准，标记是其审核人给出的答案。",
+        "yes": "是",
+        "no": "否",
+        "unclear": "不确定",
+        "yesSays": "是，满足",
+        "noSays": "否，不满足",
+        "unclearSays": "从摘要中无法确定",
+        "differ": "审核人的答案不一致"
+      },
+      "reasonHelp": {
+        "includedOnly": "仅入选论文有分数",
+        "mostCommon": "分数取自最常见的答案",
+        "stars": "{points} 分对应 1 到 {count, number} 星",
+        "says": "论文为何处于当前状态：排除它的标准、待定论文不确定的标准、冲突如何分歧，或它在等谁的投票。",
+        "points": "入选论文显示其分数和星级。每条标准按多数审核人给出的答案计分：答“是”得 1 分，除非{canChange, select, true {筛选的设置另有规定} other {{workspace} 的成员另有设定}}。星级随分数而定。"
+      },
+      "menu": {
+        "papersVoted": "{you, select, true {你投了{decision}的论文} other {{name} 投了{decision}的论文}}",
+        "papersWaiting": "{you, select, true {等待你投票的论文} other {等待 {name} 投票的论文}}",
+        "stopPapersWaiting": "{you, select, true {不再只显示等待你投票的论文} other {不再只显示等待 {name} 投票的论文}}"
+      },
+      "marks": {
+        "title": "投票标记",
+        "aReviewer": "审核人",
+        "aModel": "模型",
+        "voted": "投了{decision}",
+        "hidden": "已投票，在论文等待该审核人自己投票期间隐藏",
+        "empty": "空白格表示这篇论文不需要他们投票"
+      },
+      "why": {
+        "nobodyCanVote": "还没有审核人能对它投票",
+        "waitingOnYou": "等待你",
+        "waitingOn": "等待"
+      },
+      "pointsOf": "{points, number} / {max, plural, other {# 分}}",
+      "note": {
+        "neededForOther": "备注，选择其他原因时必填",
+        "label": "备注",
+        "writeReason": "在备注中写明原因",
+        "forOthers": "写给其他人的备注（可选）",
+        "forRecord": "供记录的备注（可选）"
+      },
+      "back": "返回",
+      "panel": {
+        "placeOf": "{at, number} / {of, number}",
+        "notInList": "不在此列表中",
+        "close": "关闭",
+        "paper": "论文",
+        "says": "摘要、投票和结果",
+        "yourVote": "你的投票",
+        "youVoted": "你投了{decision}",
+        "changeIt": "更改",
+        "changeVote": "更改你的投票",
+        "settledWithoutYou": "未等你的投票就已定案",
+        "waitingForYou": "等待你投票",
+        "settleConflict": "裁决此冲突",
+        "everyonesVotes": "所有人的投票",
+        "reopen": "重新打开",
+        "waitingToSettle": "{you, select, true {等待你裁决} other {等待 {name} 裁决}}",
+        "everyConflict": "所有冲突",
+        "override": "改写结果",
+        "overrideTitle": "改写结果",
+        "votesKept": "投票保留",
+        "canReopen": "可重新打开",
+        "overrideSays": "你的裁决会取代投票得出的结果。投票仍保留在记录中。重新打开会撤销你的裁决，结果再次由投票决定。",
+        "yetToVote": "{who, select, you {你还没有投票。你的裁决会在没有这一票的情况下为论文定案，并把它从你的列表中移除。} one {{names} 还没有投票。你的裁决会在没有这一票的情况下为论文定案，并把它从其列表中移除。} withYou {{names} 还没有投票。你的裁决会在没有这些票的情况下为论文定案，并把它从你们的列表中移除。} other {{names} 还没有投票。你的裁决会在没有这些票的情况下为论文定案，并把它从他们的列表中移除。}}",
+        "cancel": "取消",
+        "afterYouVote": "你投票之后"
+      }
+    },
+    "pieces": {
+      "required": "必填",
+      "starsOf": "{count} / {of} 星",
+      "modelsSay": {
+        "checking": {
+          "says": "正在检查新论文",
+          "row": "等待检查"
+        },
+        "gathering": {
+          "says": "正在获取论文",
+          "row": "等待论文到达"
+        },
+        "paused": {
+          "says": "模型已暂停",
+          "row": "已暂停"
+        },
+        "credits": {
+          "says": "积分用尽",
+          "row": "积分用尽"
+        },
+        "waiting": {
+          "says": "模型在 <link>{name}</link> 之后开始",
+          "row": "排队等待"
+        }
+      },
+      "modelsReading": "模型正在阅读",
+      "about": "关于{title}",
+      "shut": {
+        "reviewer": "仅限审核人",
+        "settler": "仅限裁决冲突的人",
+        "member": "仅限工作区成员",
+        "sources": "没有来源会加入论文"
+      },
+      "notReviewer": {
+        "shared": "此筛选已共享给你阅读。由审核人投票。",
+        "finished": "你不是此筛选的审核人，且筛选已完成。",
+        "join": "你不是此筛选的审核人。以审核人身份加入即可对论文投票。"
+      },
+      "votesShut": "其他人的投票不予显示，以免影响你的判断。",
+      "creditsShort": "还差 {short} 积分",
+      "retry": "{papers, plural, other {重试 # 篇论文，需 {cost} 积分}}",
+      "votesBy": "{you, select, true {你的投票} other {{name} 的投票}}",
+      "openPapers": {
+        "conflict": "{count, number} 篇有冲突",
+        "waiting": "{count, number} 篇等待投票"
+      },
+      "filterLabel": "{name}：{choice}",
+      "tag": {
+        "ai": "AI",
+        "takenOff": "已移出"
+      },
+      "voteMark": {
+        "failed": "{who}：无法读取论文",
+        "hidden": "{who}：已投票，你投票后才显示",
+        "none": "{who}：未投票",
+        "yet": "{who}：尚未投票",
+        "cast": "{who}：{decision}"
+      },
+      "votedHidden": "已投票，你投票后才显示",
+      "reasonSign": {
+        "unclear": "不确定：",
+        "no": "未满足："
+      },
+      "resultCount": "{result, select, include {{count, number} 篇入选} maybe {{count, number} 篇待定} exclude {{count, number} 篇排除} conflict {{count, number} 篇有冲突} other {{count, number} 篇等待投票}}",
+      "tally": "{decision, select, include {入选 {count, number}} maybe {待定 {count, number}} other {排除 {count, number}}}",
+      "reviewerN": "审核人 {n, number}",
+      "answer": {
+        "yes": "是",
+        "no": "否",
+        "unclear": "不确定"
+      },
+      "answerMark": "{label}：{answer}",
+      "votesHelp": {
+        "title": "如何看投票",
+        "anAnswer": "一个答案",
+        "noAnswer": "无答案",
+        "answersDiffer": "答案不一致",
+        "answeredDifferently": "审核人的答案不一致",
+        "opensAnswer": "打开答案的依据",
+        "body": "每列是一位审核人，每行是一条标准，最后一行是其投票。点按头像查看该审核人的投票和备注。点按答案查看其依据：模型读到的段落，或某人的投票和备注。无法读取论文的模型对该论文没有发言权。",
+        "lock": "锁图标表示该处投票已隐藏。"
+      },
+      "anotherReason": "其他原因…",
+      "paperFacts": {
+        "from": "来自 {name}",
+        "added": "{ago}添加",
+        "cited": "被引 {count, number} 次",
+        "fullText": "查找全文"
+      },
+      "previousPaper": "上一篇论文",
+      "nextPaper": "下一篇论文",
+      "messages": "{count, plural, other {# 条消息}}",
+      "discuss": "讨论"
+    },
+    "screen": {
+      "notSaved": "未能保存，请重试。",
+      "yourVote": "你的投票",
+      "result": "结果",
+      "answersDiffer": "答案不一致",
+      "nextAfter": "{settling, select, true {每次裁决后转到下一篇} other {每次投票后转到下一篇}}",
+      "settleConflicts": "{settle, select, true {裁决 {count, plural, other {# 个冲突}}} other {查看 {count, plural, other {# 个冲突}}}}",
+      "screenPapers": "筛选 {count, plural, other {# 篇论文}}",
+      "queue": {
+        "label": "队列",
+        "todo": "待处理",
+        "again": "重新投票",
+        "done": "已完成",
+        "conflicts": "冲突",
+        "see": "查看队列",
+        "hide": "隐藏队列",
+        "show": "显示队列",
+        "everyPaper": "此队列中的所有论文。点按一篇即可打开。",
+        "noMatch": "此队列中没有匹配项",
+        "showWhole": "显示整个队列",
+        "find": "按标题或作者查找",
+        "findLabel": "在此队列中查找",
+        "asked": "{count, plural, other {# 个问你的问题}}",
+        "loading": "正在加载论文",
+        "loadingPaper": "正在加载论文"
+      },
+      "row": {
+        "new": "新",
+        "askedYou": "有问你的问题",
+        "messages": "{count, plural, other {# 条消息}}"
+      },
+      "filter": {
+        "any": "全部",
+        "order": "排序",
+        "dealt": "按添加顺序",
+        "fresh": "新论文优先",
+        "lean": "模型入选的优先",
+        "leanShut": "此筛选会向审核人隐藏其他审核人对这些论文的投票，而这种排序会暴露模型的投票"
+      },
+      "shortcuts": {
+        "title": "快捷键",
+        "or": "或",
+        "select": "选择该标准",
+        "answer": "回答是、否或不确定",
+        "include": "入选",
+        "maybe": "待定",
+        "exclude": "排除，然后说明原因",
+        "next": "下一篇论文，不投票",
+        "previous": "上一篇论文",
+        "undo": "{settling, select, true {撤销上一次裁决} other {撤销上一次投票}}",
+        "queue": "显示或隐藏队列",
+        "keys": "显示这些快捷键"
+      },
+      "votes": {
+        "title": "所有人的投票",
+        "forSettler": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
+        "waitingFrom": "等待 {names}",
+        "more": "{count, plural, other {另外 # 人}}",
+        "settledBy": "{you, select, true {由你裁决} other {由 {name} 裁决}}"
+      },
+      "hint": {
+        "against": "你投了{voted}，而你的答案指向{points}。",
+        "againstWhy": "你投了{voted}，而你的答案指向{points}：你对{many, select, true {标准 {numbers}（均为必要条件）} other {标准 {numbers}（必要条件）}}回答了{answer, select, no {否} other {不确定}}。",
+        "pointsWhy": "你的答案指向<b>{points}</b>：你对{many, select, true {标准 {numbers}（均为必要条件）} other {标准 {numbers}（必要条件）}}回答了{answer, select, no {否} other {不确定}}。你还没有投票。",
+        "allMet": "你的答案指向<b>{points}</b>：所有必要条件都已满足。你还没有投票。",
+        "againstLine": "你投了{voted}。你的答案指向<b>{points}</b>。",
+        "pointsLine": "你的答案指向<b>{points}</b>。尚未投票。"
+      },
+      "paper": {
+        "label": "论文",
+        "fromSource": "{count, plural, =1 {查看来自 {source} 的论文} other {查看来自 {source} 的 # 篇论文}}",
+        "marked": "<mark>标记的</mark>词是标准要查找的词。"
+      },
+      "criteria": {
+        "yours": "你的答案",
+        "title": "标准",
+        "answered": "已回答 {answered, number} / {count, number}",
+        "mustHaveFact": "必要条件",
+        "guidanceFact": "说明：哪些算、哪些不算",
+        "markedFact": "标记词：标准要查找的词",
+        "showsFact": "<mark>标记的</mark>词在摘要中的样子",
+        "helpAnswering": "回答是可选的：投一票就够了。对必要条件答“否”会指向排除，选择排除时会问你不满足哪一条，除非你的答案已经说明。",
+        "helpReading": "每位审核人对一篇论文回答的问题，以及每个问题下他们的答案。对必要条件答“否”会指向排除。",
+        "mustHave": "{answering, select, true {必要条件：答“否”会指向排除。回答是可选的，不算作你的投票。} other {必要条件：答“否”会指向排除。}}",
+        "guidance": "说明",
+        "markedWords": "标记词",
+        "markedFor": "标准 {n, number} 的标记词",
+        "answerTo": "你对标准 {n, number} 的答案",
+        "differFor": "标准 {n, number}：显示不一致的答案",
+        "none": "还没有标准",
+        "add": "添加标准"
+      },
+      "bar": {
+        "atOf": "{at, number} / {count, number}",
+        "left": "{count, plural, other {还剩 # 篇}}",
+        "underMinute": "不到一分钟",
+        "minutes": "约 {minutes, number} 分钟",
+        "hours": "约 {hours, number} 小时",
+        "settledAs": "定案为",
+        "lastVote": "你的上一票",
+        "lastSettledAs": "上次定案为",
+        "withNote": "已连同备注保存",
+        "nowInConflicts": "已移至冲突",
+        "more": "此论文的更多操作",
+        "dragRight": "向右拖动论文即可入选",
+        "dragLeft": "向左拖动即可排除",
+        "undo": "撤销",
+        "alsoFailed": "{count, plural, other {另有 # 条}}",
+        "votedDifferently": "{count, plural, other {# 人投法不同}}"
+      },
+      "shut": {
+        "finished": "{canChange, select, true {此筛选已完成，不再接受投票。重新打开即可再次投票。} other {此筛选已完成，不再接受投票。}}",
+        "settler": "{you, select, true {你负责裁决此筛选的冲突。你可以在这里阅读它们。} other {{name} 负责裁决此筛选的冲突。你可以在这里阅读它们。}}"
+      },
+      "through": {
+        "conflicts": "这里的冲突都已裁决",
+        "papers": "你已对这里的每篇论文投票"
+      },
+      "exclude": {
+        "why": "为什么排除它？",
+        "whyLabel": "为什么排除它",
+        "back": "返回",
+        "pick": "选择排除这篇论文的原因。"
+      },
+      "note": {
+        "label": "备注",
+        "settling": "原因，供记录（可选）",
+        "voting": "写给其他人的备注，随你的投票保存"
+      },
+      "settle": {
+        "title": "裁决此冲突",
+        "helpTitle": "裁决冲突",
+        "yourVote": "你作为审核人的投票",
+        "rule": "规则",
+        "help": "审核人对这篇论文意见不一。无论他们怎么投，你的选择就是它的结果。待定也是一种结果：它把论文定为需要再看的论文。"
+      },
+      "empty": {
+        "noConflictPaper": "没有有冲突的论文",
+        "onTheirWay": "论文正在路上",
+        "arrived": "已到达 {done, number} / {count, number}",
+        "noneYet": "还没有分给你的论文",
+        "noneYours": "其中没有需要你投票的论文",
+        "allVoted": "你已对你的所有论文投票",
+        "noneWaits": "没有等待你投票的论文",
+        "settledWithout": "{count, plural, other {你的论文中有 # 篇未等你的投票就已定案}}",
+        "noneAgain": "你的投票都不需要重投",
+        "noConflict": "没有需要裁决的冲突",
+        "noVotes": "你还没有对任何论文投票",
+        "seeVotes": "{count, plural, =1 {查看你的投票} other {查看你的 # 次投票}}",
+        "join": "以审核人身份加入",
+        "allPapers": "查看所有论文"
+      },
+      "matrix": {
+        "nameYou": "{name}（你）",
+        "theirVote": "{name} 的投票",
+        "on": "{name}，{criterion}",
+        "differFor": "{criterion}：显示不一致的答案",
+        "show": "{who}，{criterion}：{kind, select, model {显示段落} you {显示你的投票和备注} other {显示其投票和备注}}",
+        "vote": "投票"
+      },
+      "said": {
+        "noNoteYou": "你这次投票没有留备注。",
+        "noNote": "这次投票没有备注。"
+      },
+      "evidence": {
+        "helpTitle": "模型有多确定",
+        "unsureBelow": "低于 65% 为不确定",
+        "help": "模型为每个答案给出 0 到 100% 的把握度。低于 65% 时，请先阅读摘要再依赖该答案。",
+        "unsure": "不确定：把握度 {sure, number, percent}",
+        "sure": "把握度 {sure, number, percent}",
+        "noSentence": "对这个答案，它没有指出摘要中的任何句子。"
+      }
+    },
+    "sources": {
+      "add": "添加",
+      "added": "已添加",
+      "empty": "空",
+      "in": "在 {name} 中",
+      "andMore": "{name} 及另外 {count, number} 个",
+      "remove": "移除 {name}",
+      "dismiss": "关闭",
+      "columns": {
+        "needNaming": "需要为列命名",
+        "pickEach": "为每个部分选择对应的列。下方显示 {count, plural, other {# 行}}中第一行在该列的内容。",
+        "label": {
+          "title": "标题",
+          "abstract": "摘要",
+          "doi": "DOI",
+          "year": "年份",
+          "authors": "作者"
+        },
+        "pick": "选择列",
+        "notInFile": "此文件中没有",
+        "pickTitle": "选择包含标题的列",
+        "untitledLeftOut": "{count, plural, other {# 行}}没有标题，已排除在外",
+        "noAbstract": "{count, number} 行没有摘要",
+        "addRecords": "{count, plural, other {添加 # 条记录}}",
+        "addItsRecords": "添加其记录"
+      },
+      "upload": {
+        "notSent": "文件未能发送，请重试。",
+        "table": "表格",
+        "referenceFile": "文献文件",
+        "onePdf": "一个 PDF",
+        "uploadedPdfs": "{count, plural, other {# 个已上传的 PDF}}",
+        "refused": "<file>{name}</file>：{why}",
+        "why": {
+          "notReadable": "筛选无法读取这种文件",
+          "twice": "已经是来源",
+          "tooBig": "超过 {mb, number} MB：请拆分后逐个添加",
+          "noTable": "其中没有文献表格",
+          "noReferences": "其中没有文献",
+          "unread": "无法读取",
+          "pdfTooBig": "超过 {mb, number} MB",
+          "unsent": "未能发送",
+          "allUnsent": "未能发送"
+        },
+        "drop": "将文献文件或 PDF 拖放到这里",
+        "helpTitle": "文件",
+        "fileLimit": "文献文件最大 {mb, number} MB",
+        "pdfLimit": "每个 PDF 最大 {mb, number} MB",
+        "aboutFiles": "文献文件是数据库或文献管理工具导出的文件。其中每条有标题和摘要的记录就是一篇论文。",
+        "aboutPdfs": "PDF 添加后会立即读取其标题和 DOI。如果 Openscholar 的索引中有该 DOI，论文会显示索引中的标题和摘要。否则论文就是这个 PDF：筛选它的人阅读该文件，每位 AI 审核人也会阅读它的每一页。扫描件也按同样方式读取。无法打开的文件会被排除在外。",
+        "kinds": "RIS、BibTeX、EndNote、PubMed、Web of Science、CSV 和 PDF，可一次添加任意数量",
+        "pdfCost": "模型会读取每个 PDF 的前几页以获取标题和 DOI：每个 PDF 最多 {credits} 积分，添加时扣除",
+        "filesLabel": "要上传的文件",
+        "choose": "选择文件",
+        "sent": "已发送 {sent, number} / {total, number}",
+        "reading": "正在读取"
+      },
+      "pdf": {
+        "read": "已读取 {read, number} / {total, number}",
+        "inIndex": "<n>{count, number}</n> 个在索引中",
+        "knownNoAbstract": "在索引中，无摘要",
+        "fileWithPages": "按 PDF 读取，{count, plural, other {# 页}}",
+        "list": "此来源的 PDF",
+        "pager": "个 PDF"
+      },
+      "dois": {
+        "fromFile": "文件中的 DOI",
+        "pasted": "粘贴的 DOI",
+        "notAdded": "DOI 未能添加，请重试。",
+        "label": "DOI",
+        "helpTitle": "粘贴的 DOI",
+        "forms": "可以是单独的 DOI、doi.org 地址，或在参考文献列表中",
+        "takenOnce": "重复粘贴的 DOI 只计一次",
+        "about": "Openscholar 会先在自己的索引中查找每个 DOI，再查 Crossref 和 DataCite，并从中获取论文的标题和摘要。都找不到记录的，以及记录中没有摘要的，会被排除在外，读取完成后列在该来源的行中。",
+        "placeholder": "粘贴 DOI，或任何包含 DOI 的文本",
+        "twice": "{count, plural, other {这些 DOI 已经是来源}}",
+        "none": "粘贴的内容中没有 DOI",
+        "repeats": "{count, number} 个粘贴了不止一次",
+        "addCount": "{count, plural, other {添加 # 个 DOI}}",
+        "add": "添加 DOI"
+      },
+      "zotero": {
+        "myLibrary": "我的文库",
+        "loading": "正在加载 Zotero",
+        "notConnected": "Zotero 未连接",
+        "connectWhy": "连接后即可从你的文库和你所在的群组中选择。",
+        "connect": "连接 Zotero",
+        "withSubCollections": "包括其子合集",
+        "aboutUnder": "连同其下内容约 {count, number} 个",
+        "library": "Zotero 文库",
+        "findGroup": "查找群组",
+        "yours": "你的",
+        "groups": "群组",
+        "moreGroups": "更多群组",
+        "connected": "已连接",
+        "connectedAs": "已以 {name} 身份连接",
+        "connections": "连接",
+        "findCollection": "查找合集",
+        "findCollectionIn": "在 {library} 中查找合集",
+        "includeSub": "包括子合集",
+        "subHelpTitle": "子合集",
+        "subTakenOnce": "归入其中两个合集的论文只计一次",
+        "subAbout": "Zotero 只计算直接归入某个合集的条目，这里的数量也一样。开启后，添加合集时会连同其下所有合集的论文一起添加：总数约等于 Zotero 中各合集数量之和，筛选读取完成后才是准确数字。",
+        "readingCount": "正在读取其合集，{read, number} / {total, number}",
+        "reading": "正在读取其合集",
+        "failed": "无法读取 Zotero。请重新打开文库。",
+        "everyPaper": "{library} 中的所有论文",
+        "group": "Zotero 群组",
+        "own": "你的 Zotero 文库",
+        "wholeLibrary": "整个文库",
+        "itemsInZotero": "Zotero 中有 {count, plural, other {# 个条目}}",
+        "noneFound": "{library} 中没有名称包含 {text} 的合集。",
+        "noneHere": "{name} 中没有合集。",
+        "noneInLibrary": "{library} 没有合集。",
+        "pager": "个合集"
+      }
+    },
+    "words": {
+      "decision": {
+        "include": "入选",
+        "maybe": "待定",
+        "exclude": "排除"
+      },
+      "result": {
+        "include": "已入选",
+        "maybe": "待定",
+        "exclude": "已排除",
+        "conflict": "有冲突",
+        "waiting": "等待投票"
+      },
+      "you": "你",
+      "youInline": "你",
+      "someone": "已离开的人",
+      "modelAtEffort": "{name}，{effort}推理强度",
+      "looker": "{member, select, true {不是审核人} other {查看者}}",
+      "person": {
+        "invited": "已通过邮件邀请，加入后即可投票",
+        "invitedToLook": "已通过邮件邀请，加入后即可查看",
+        "toInvite": "保存时会收到邀请",
+        "toInviteAtStart": "开始时会收到邀请",
+        "invites": "会通过邮件收到邀请",
+        "guest": "来自此工作区之外",
+        "member": "在此工作区中",
+        "settles": "裁决冲突"
+      },
+      "settler": "{you, select, true {由你裁决} other {由 {name} 裁决}}",
+      "count": {
+        "papers": "{count, plural, other {# 篇论文}}",
+        "newPapers": "{count, plural, other {# 篇新论文}}",
+        "openPapers": "{count, plural, other {# 篇未定论文}}",
+        "sources": "{count, plural, other {# 个来源}}",
+        "people": "{count, plural, other {# 人}}",
+        "models": "{count, plural, other {# 个模型}}",
+        "reviewers": "{count, plural, other {# 名审核人}}",
+        "votes": "{count, plural, other {# 票}}",
+        "criteria": "{count, plural, other {# 条标准}}",
+        "mustHaves": "{count, plural, other {# 条必要条件}}",
+        "conflicts": "{count, plural, other {# 个冲突}}",
+        "questions": "{count, plural, other {# 个问题}}",
+        "duplicates": "{count, plural, other {# 个重复项}}",
+        "pages": "{count, plural, other {# 页}}",
+        "pdfs": "{count, plural, other {# 个 PDF}}",
+        "dois": "{count, plural, other {# 个 DOI}}",
+        "collections": "{count, plural, other {# 个合集}}",
+        "subCollections": "{count, plural, other {# 个子合集}}",
+        "items": "{count, plural, other {# 个条目}}",
+        "rows": "{count, plural, other {# 行}}",
+        "readings": "{count, plural, other {# 次读取}}",
+        "changes": "{count, plural, other {# 处更改}}",
+        "credits": "{count} 积分"
+      },
+      "numberWord": "{n, select, 1 {一} 2 {二} 3 {三} 4 {四} 5 {五} 6 {六} 7 {七} 8 {八} 9 {九} 10 {十} other {{n}}}",
+      "quoted": "“{text}”",
+      "leftWhy": {
+        "abstract": "无摘要",
+        "title": "无标题",
+        "doi": "DOI 不存在",
+        "record": "找不到记录",
+        "broken": "无法打开",
+        "twice": "列出了两次"
+      },
+      "pdf": {
+        "known": "在索引中",
+        "file": "按 PDF 读取",
+        "broken": "无法打开",
+        "waiting": "正在读取",
+        "costsMore": "按 PDF 读取一篇需额外支付"
+      },
+      "removed": {
+        "merged": "已合并重复项",
+        "bare": "无摘要",
+        "unread": "无法读取或找不到"
+      },
+      "otherReason": {
+        "duplicate": "与另一篇论文重复",
+        "other": "其他原因"
+      },
+      "excludeAsk": {
+        "must": "{many, select, true {这些论文不满足哪条必要条件？} other {它不满足哪条必要条件？}}",
+        "criterion": "{many, select, true {这些论文不满足哪条标准？} other {它不满足哪条标准？}}",
+        "orCriterion": "或其他标准",
+        "orReason": "或其他原因",
+        "why": "{many, select, true {为什么排除它们？} other {为什么排除它？}}"
+      },
+      "notMet": "未满足{name}",
+      "notMetInFull": "未满足：{name}",
+      "unclearOn": "{name}不确定",
+      "includedIn": "入选 {name}",
+      "every": {
+        "day": "每天",
+        "week": "每周",
+        "month": "每月"
+      },
+      "living": "{every, select, day {持续更新，每天加入新论文} week {持续更新，每周加入新论文} other {持续更新，每月加入新论文}}",
+      "settle": {
+        "label": {
+          "all": "全体一致",
+          "most": "多数一致",
+          "one": "首票决定"
+        },
+        "means": {
+          "all": "分配到这篇论文的每位审核人都投票且投法全部相同时，论文即定案。只要有分歧就是冲突。",
+          "most": "分配到这篇论文的每位审核人都投票且超过半数投法相同时，论文即定案。没有这样的多数就是冲突。",
+          "one": "论文由第一票定案，因此不会出现冲突。"
+        },
+        "says": {
+          "all": "全体一致时定案",
+          "most": "多数一致时定案",
+          "one": "由第一票定案"
+        }
+      },
+      "started": "{papers, plural, other {# 篇论文}}，来自 {sources, plural, other {# 个来源}}，审核人：{who}",
+      "startedNobody": "尚未添加审核人",
+      "empty": {
+        "all": "还没有论文",
+        "include": "{finished, select, true {没有论文入选} other {还没有入选的论文}}",
+        "maybe": "{finished, select, true {没有论文停留在待定} other {还没有标为待定的论文}}",
+        "exclude": "{finished, select, true {没有论文被排除} other {还没有排除的论文}}",
+        "conflict": "没有有冲突的论文",
+        "waiting": "没有等待投票的论文"
+      },
+      "noVote": {
+        "yet": "尚未投票",
+        "none": "未投票",
+        "failed": "无法读取论文"
+      },
+      "noVoteSays": {
+        "yet": "尚未投票",
+        "none": "论文未等这一票就已定案",
+        "failed": "模型无法读取论文"
+      },
+      "hiddenUntilVote": "你投票后才显示",
+      "votesHiddenSays": "对于仍在等待某位审核人投票的论文，此筛选会向该审核人隐藏其他人的投票。",
+      "ago": {
+        "now": "刚刚",
+        "minutes": "{count} 分钟前",
+        "hours": "{count} 小时前",
+        "yesterday": "昨天",
+        "days": "{count} 天前"
+      }
+    }
   }
 }

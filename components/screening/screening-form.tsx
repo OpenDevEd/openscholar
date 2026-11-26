@@ -59,7 +59,7 @@ import { bringsPdfs, leftOf, leftTotal, personIn, foundTotal, grown, hash, reade
 import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, pdfsPromised, promisedBy, scoringChanged, widenedBy, type EffectLine, type EffectSection, type EffectsSay, type Move, type Preview } from "./effects";
-import { SCREENINGS_CRUMB, overviewHref, papersHref, newHref } from "./links";
+import { useScreeningsCrumb, overviewHref, papersHref, newHref } from "./links";
 import { workspaceHref } from "@/lib/workspaces/paths";
 import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
@@ -313,6 +313,7 @@ function ShortName({ criterion, n, help, onChange }: { criterion: Criterion; n: 
 
 export function ScreeningForm({ id }: { id?: string }) {
   const t = useTranslations("screening.form");
+  const crumb = useScreeningsCrumb();
   const pieces = useTranslations("screening.pieces");
   const list = useTranslations("screening.list");
   const words = useWords();
@@ -1579,7 +1580,7 @@ export function ScreeningForm({ id }: { id?: string }) {
             wide
             icon={ListChecks}
             title={t("page.title")}
-            trail={[SCREENINGS_CRUMB]}
+            trail={[crumb]}
             titleAside={<Help title={t("page.helpTitle")} side="bottom" facts={<><HelpFact>{t("page.factRead")}</HelpFact><HelpFact>{t("page.factWho")}</HelpFact></>}>{t("page.help")}</Help>}
           >
             {body}
