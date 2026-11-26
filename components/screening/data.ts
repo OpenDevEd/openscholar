@@ -96,7 +96,7 @@ export type SourceSet =
   | { kind: "evidenceLibrary"; libraryId: Id<"evidenceLibraries">; source: unknown }
   | { kind: "zotero"; collectionKey?: string; groupId?: string; deep?: boolean }
   | { kind: "upload"; file: Id<"_storage">; columns?: Record<string, string> }
-  | { kind: "pdf"; files: Array<{ file: Id<"_storage">; name: string }> }
+  | { kind: "pdf"; batch: string }
   | { kind: "dois"; file: Id<"_storage"> };
 /** What tells one source from another where two share a name: the thing it reads. A source the form offers and one the screening already has are the same source where this is the same. */
 export const refOf = (set: SourceSet) =>
@@ -132,31 +132,28 @@ export type Source = {
   ref?: string;
   /** What it held and the screening doesn't take, each with why, where the form itself read them. */
   left?: LeftOut[];
-  /** A PDF source's files, each as it was told or why it can't be screened. `total` counts the ones taken. */
-  files?: PdfFile[];
   /** How many of the papers it held have no abstract, where they aren't named in `left`. `total` counts none of them. */
   bare?: number;
 };
+/** What finds the words the criteria mark in a text, each with whatever ending the text gives it ("programme" marks "programmes" too). Splitting a text by it leaves the marked words at the odd places. Null with no word to find. */
+export function termsPattern(terms: string[]) {
+  const words = [...new Set(terms)].filter(Boolean).sort((a, b) => b.length - a.length);
+  return words.length ? new RegExp(`\\b((?:${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\w*)`, "gi") : null;
+}
+
 /** Why a paper that was found isn't screened. */
 export const NO_ABSTRACT = "No abstract";
 /** Why something a source held isn't screened, in words, by the reason the server kept. */
-export const LEFT_WHY = { abstract: NO_ABSTRACT, title: "No title", doi: "No such DOI", record: "No record of it", scan: "A scan with no text", broken: "Doesn't open", wrong: "Not this paper" } as const;
+export const LEFT_WHY = { abstract: NO_ABSTRACT, title: "No title", doi: "No such DOI", record: "No record of it", broken: "Doesn't open" } as const;
 /** How many things a source held that the screening doesn't take. */
-export const leftOf = (source: Source) => source.read?.left ?? (source.files ? source.files.filter((file) => !pdfAdded(file)).length : (source.left?.length ?? 0)) + (source.bare ?? 0);
+export const leftOf = (source: Source) => source.read?.left ?? (source.left?.length ?? 0) + (source.bare ?? 0);
 /** How many of those are papers with no abstract. */
-export const bareOf = (source: Source) => source.read?.bare ?? (source.bare ?? 0) + (source.left ?? []).filter((one) => one.why === NO_ABSTRACT).length + (source.files ?? []).filter((file) => pdfStands(file) === "abstract").length;
+export const bareOf = (source: Source) => source.read?.bare ?? (source.bare ?? 0) + (source.left ?? []).filter((one) => one.why === NO_ABSTRACT).length;
 export const leftTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + leftOf(source), 0);
 /** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
 export type LeftOut = { name: string; why: string };
-/** How a PDF's paper was told. */
-export const PDF_HOW = { doi: "By the DOI in the file", title: "By its title", file: "Read from the file" } as const;
-/** Why a PDF isn't screened: a screening reads a title and an abstract, and these files give none. */
-export const PDF_LEFT = { abstract: "No abstract found", scan: "A scan with no text", broken: "Doesn't open" } as const;
-/** One uploaded PDF, as it was told or why it can't be screened. */
-export type PdfFile = { name: string; how: keyof typeof PDF_HOW | keyof typeof PDF_LEFT; paper: number; /** Whether the file prints an abstract of its own: what it falls back to when its match is the wrong paper. */ own: boolean; /** Someone said the paper it was matched to isn't this one. */ wrong?: boolean; /** Another source already holds its paper. */ twin?: boolean };
-/** Where a file stands once a wrong match is set aside: screened from its own abstract, or left out for having none. */
-export const pdfStands = (file: PdfFile): PdfFile["how"] => (file.wrong ? (file.own ? "file" : "abstract") : file.how);
-export const pdfAdded = (file: PdfFile) => pdfStands(file) in PDF_HOW;
+/** How a PDF handed to a screening stands, in words: the index holds its paper, it is screened as the file it is, or it doesn't open. */
+export const PDF_STANDS = { known: "In the index", file: "Screened as the PDF", broken: LEFT_WHY.broken, waiting: "Reading it" } as const;
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
 export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);

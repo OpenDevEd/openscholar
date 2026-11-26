@@ -5,6 +5,8 @@
  * - Server action: Used when routing resolves to credits execution.
  */
 
+import type { PromptFile } from './types'
+
 // ═══════════════════════════════════════════════════════════════
 // COMMON BATCH TYPES
 // ═══════════════════════════════════════════════════════════════
@@ -13,6 +15,8 @@ export interface BatchPaper {
   id: string
   title: string
   abstract: string
+  /** The paper itself, where it has no abstract. */
+  file?: PromptFile
 }
 
 export interface BatchError {

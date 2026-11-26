@@ -58,7 +58,7 @@ import { useSharing } from "./dialogs";
 import { useKept } from "./drafts";
 import { EffectList, JumpLink, NO_PREVIEW, criterionName, effectItems, landOn, movesText, scoringChanged, type EffectLine, type EffectSection, type Move, type Preview } from "./effects";
 import { SCREENINGS_CRUMB, overviewHref, papersHref } from "./links";
-import { CommunityTab, DoiTab, OfferRow, UploadTab, ZoteroTab } from "./sources";
+import { CommunityTab, DoiTab, OfferRow, PdfFacts, PdfFiles, UploadTab, ZoteroTab } from "./sources";
 import { Faces, youFirst, EmptyNote, ActionBar, BELOW_HEADER, DIVIDED_ROW, Help, kindIcon, LinkChip, Named, Panel, ReviewerMark, ReviewerName, Section, StateChip, StickyColumn, RuleExamples, TONE, MODELS_SAY, INLINE_LINK } from "./pieces";
 import { credits, paperCredits, perPaper, useOpenScreening } from "./store";
 import { AddModel, AddPerson, ConfirmChange } from "./team";
@@ -757,7 +757,7 @@ export function ScreeningForm({ id }: { id?: string }) {
           <Section
             id="papers"
             title="Papers"
-            help={<><Help title="Papers" facts={<><HelpFact>Up to {MAX_SOURCES} sources</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A screening reads a title and an abstract. A record that Openscholar&apos;s index knows takes both from there.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a paper with no abstract, a scan, a record with no title, a DOI that isn&apos;t found.</p></Help>{changed("papers")}</>}
+            help={<><Help title="Papers" facts={<><HelpFact>Up to {MAX_SOURCES} sources</HelpFact><HelpFact>Duplicates merged</HelpFact></>}><p>Add every place the papers come from: searches, collections, communities, Zotero, files or DOIs. A paper found in two sources is screened once.</p><p>A screening reads a title and an abstract. A record that Openscholar&apos;s index knows takes both from there. A paper that comes with its own PDF and has no abstract is read as the PDF.</p><p>What can&apos;t be screened is left out, and its source&apos;s row lists it with the reason: a paper with no abstract and no PDF, a record with no title, a DOI that isn&apos;t found, a file that doesn&apos;t open.</p></Help>{changed("papers")}</>}
             aside={
               <>
                 {/* What the sources held, what of that can't be screened, what two of them both held, and what is left. */}
@@ -836,6 +836,8 @@ export function ScreeningForm({ id }: { id?: string }) {
                                         <StateChip tone="primary" icon={RefreshCw}>{grewText}</StateChip>
                                       ) : draft.living && GROWS.includes(source.kind) ? <Chip icon={RefreshCw}>Checked {EVERY_LABEL[draft.living.every].toLowerCase()}</Chip> : null}
                                       {source.read?.state === "failed" ? <StateChip tone="destructive" icon={TriangleAlert}>{source.read.failure ?? "Couldn't be read"}</StateChip> : null}
+                                      {/* PDFs not yet in a screening: how their first reading stands, as it arrives. */}
+                                      {source.set?.kind === "pdf" && !own ? <PdfFacts batch={source.set.batch} /> : null}
                                       {source.filters?.map((filter) => <Chip key={filter}>{filter}</Chip>)}
                                       {source.facts?.map((fact) => (/not in the index/.test(fact) ? <Chip key={fact}>{fact}</Chip> : <Chip key={fact} icon={Check}>{fact}</Chip>))}
                                     </>
@@ -887,6 +889,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                                       summary={<p className="text-xs text-muted-foreground">Every one of its {num(baseTotal(source))} papers.</p>}
                                     />
                                     {SAMPLED.has(source.kind) && source.set && taken(source) ? <SampleTitles set={source.set} sourceId={saved?.sources.some((one) => one.id === source.id) ? (source.id as Id<"screeningSources">) : undefined} first={source.scope === "range" ? source.range[0] : 1} taken={taken(source)} /> : null}
+                                    {source.set?.kind === "pdf" && !own ? <div className="border-t border-border-subtle pt-3"><PdfFiles batch={source.set.batch} total={baseTotal(source)} /></div> : null}
                                     {link && taken(source) ? (
                                       <p className="border-t border-border-subtle pt-3 text-xs">
                                         <a href={link.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded font-medium text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">See all {num(taken(source))} {link.where}<ExternalLink aria-hidden className="size-3" /></a>

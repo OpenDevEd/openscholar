@@ -27,16 +27,25 @@ Agreed by the user between 23 and 26 November 2026.
 7. The workspace that holds the screening pays for every model's reading, whoever added the model.
    Nothing tracks what each person spent. Hand screening is free.
 8. One pass on title and abstract. No full-text stage. Maybe is a result a paper can end on.
-9. A paper with no abstract is not screened. Its source leaves it out and lists it with the reason.
-   So does a PDF that is a scan or doesn't open, a record with no title, and a DOI that isn't found.
+9. A paper with no abstract is not screened, unless it comes with its own PDF. Its source leaves it out
+   and lists it with the reason. So does a file that doesn't open, a record with no title, and a DOI that
+   isn't found. A paper with its own PDF and no abstract is screened as the PDF: people read it in
+   the page, and each AI reviewer is sent the whole file, which the workspace pays for. A scan is read
+   the same way. Nothing is written by a model in place of an abstract. (Changed on 26 November: before,
+   such a PDF was left out.)
 10. Sources: a search, the library or a collection, another screening's included papers, a
     community, Zotero (a library or group, all of it or a collection, with or without its
     sub-collections, a range), reference files and tables, PDFs, pasted DOIs. Several a screening.
 11. Duplicates across sources: the same index ID, then the same DOI, then title and year only where
     one side has no DOI. The first source added keeps the paper.
 12. A record no index knows is saved to the library when it is included, with what its source gave.
-13. An uploaded PDF is kept through the paper PDF workflow (`convex/lib/paperPdfs.ts`). A person's
-    own file never goes into the copies other accounts read.
+13. An uploaded PDF is its adder's own file. It never goes into the copies other accounts read
+    (`convex/lib/paperPdfs.ts`), and it is shown to the people on its screening only. A cheap model
+    reads its first two pages once, as the file, for its title and its DOI. Where the index holds that
+    DOI under that title, the paper shows the index's title and abstract. PDFs are added in any number:
+    each is a row of `screeningFiles`, read as work in the pool.
+    A model is given a file the way the assistant gives one (`convex/assistant/`). The PDF code on the
+    extraction side is not used: it is to be replaced.
 14. Living screening: the growing sources are checked again every day, week or month, or by hand.
     A check asks the same index its search ran on. Only new papers join, at the end of the list.
 15. Limits per plan, set in Autumn beside `collections`, `concurrency` and `guests`: papers a
@@ -61,9 +70,6 @@ Agreed by the user between 23 and 26 November 2026.
     (Proposed on 25 November. On 26 November the user said what was going to be mocked "should be
     part of the final version".)
 
-Open, not built until answered: writing a summary for an uploaded PDF that prints no abstract
-(today such a PDF is left out, decision 9).
-
 ## What is reused
 
 - Reading a set a page at a time: `convex/screening/start.ts`, `convex/paperSets/`.
@@ -80,7 +86,7 @@ Open, not built until answered: writing a summary for an uploaded PDF that print
 - Zotero groups, collections and items: `convex/zotero/`. Community sources:
   `components/screening/library-sources.tsx`, `lib/evidence-libraries/source-address.ts`.
 - Reference files: Zotero's translation server, the address communities already use
-  (`services.zotero.translationUrl`). PDF text: `convex/extraction/pdfjs_extract.ts`.
+  (`services.zotero.translationUrl`). A PDF goes to a model as a file, as in `convex/assistant/pdf.ts`.
 - Criteria from a research question: `screeningQuestionsSchema` in `lib/ai/core/schemas.ts`.
 - The pages: the mock's components, moved from `components/screening-mock/` and fed real data.
 

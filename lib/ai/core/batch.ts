@@ -186,7 +186,9 @@ export async function processScreeningBatch(
         title: paper.title,
         abstract: paper.abstract,
         questions,
-        ...(passages ? { passages } : {}),
+        ...(paper.file ? { file: paper.file } : {}),
+        // A sentence number names a sentence of the abstract: a paper read as its PDF has none.
+        ...(passages && !paper.file ? { passages } : {}),
       }),
       getOperationConfig: getScreeningResponsesConfig,
       formatResult: (output) => ({ ...screeningResult(output.responses, output.confidences), ...(output.passages ? { passages: output.passages } : {}) }),

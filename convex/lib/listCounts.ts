@@ -38,6 +38,11 @@ export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperatio
 export const screeningsOf = (workspaceId: Id<"workspaces">, finished: boolean) => `screenings:${workspaceId}:${finished ? "finished" : "open"}`;
 export const screeningList = (job: Doc<"screeningJobs">) => (job.shape === 2 ? screeningsOf(job.workspaceId, job.finishedAt !== undefined) : null);
 
+/** A drop of PDFs handed to a screening, by where each stands: still to be read, a paper the index holds, screened as the file it is, or a file that doesn't open. */
+export type PdfStanding = "waiting" | "known" | "file" | "broken";
+export const screeningFilesOf = (batch: string, standing: PdfStanding) => `screeningFiles:${batch}:${standing}`;
+export const screeningFileList = (file: Doc<"screeningFiles">) => screeningFilesOf(file.batch, file.state === "read" ? (file.known ? "known" : "file") : file.state);
+
 /** The trigger that keeps a table's rows counted, each under the list `listOf` puts it in, if any. */
 export const countList =
   <Table extends TableNames>(listOf: (row: Doc<Table>) => string | null) =>

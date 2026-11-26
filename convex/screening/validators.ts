@@ -71,6 +71,9 @@ export const screeningPaperInputValidator = v.object({
   crossRefs: v.optional(crossRefsValidator),
   title: v.string(),
   abstract: v.optional(v.string()),
+  /** The paper's own PDF, handed over by whoever added it, and how many pages it has: what a paper with no abstract is screened on. */
+  file: v.optional(v.id("_storage")),
+  pages: v.optional(v.number()),
   authors: screeningAuthorsValidator,
   publicationYear: v.optional(v.number()),
   doi: v.optional(v.string()),
@@ -241,7 +244,8 @@ export const sourceSetValidator = v.union(
   v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()), deep: v.optional(v.boolean()) }),
   // `columns`: which of a table's columns is the title, the abstract and so on, where its headings didn't say.
   v.object({ kind: v.literal("upload"), file: v.id("_storage"), columns: capped(v.optional(v.record(v.string(), v.string())), 20) }),
-  v.object({ kind: v.literal("pdf"), files: capped(v.array(v.object({ file: v.id("_storage"), name: v.string() })), 200) }),
+  // `batch`: the PDFs of one drop in the form, each a row of `screeningFiles` (./files.ts).
+  v.object({ kind: v.literal("pdf"), batch: v.string() }),
   v.object({ kind: v.literal("dois"), file: v.id("_storage") }),
 );
 
@@ -265,7 +269,24 @@ export const fileLookValidator = v.object({
 });
 
 /** Why something a source held isn't screened. */
-export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("scan"), v.literal("broken"), v.literal("wrong"));
+export const leftOutWhyValidator = v.union(v.literal("abstract"), v.literal("title"), v.literal("doi"), v.literal("record"), v.literal("broken"));
+
+/** Where a PDF handed to a screening stands: still to be read, read, or a file that doesn't open. */
+export const pdfStateValidator = v.union(v.literal("waiting"), v.literal("read"), v.literal("broken"));
+/** What the first reading of a PDF found (./heldPdfs.ts `look`): its pages, and the title, authors, year and DOI it prints. `known`: the index holds the paper its DOI names, under the title it prints. */
+export const pdfReadValidator = v.object({
+  state: v.union(v.literal("read"), v.literal("broken")),
+  pages: v.optional(v.number()),
+  title: v.optional(v.string()),
+  authors: screeningAuthorsValidator,
+  year: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  known: v.optional(v.boolean()),
+});
+/** PDFs one call adds to a drop, and the rows of a drop a page of its list shows. */
+export const PDFS_A_CALL = 50;
+/** How a drop of PDFs stands, for the form: how many it holds, how many are still to be read, how many are papers the index holds, how many are screened as the file they are, and how many don't open. */
+export const pdfDropValidator = v.object({ total: v.number(), waiting: v.number(), known: v.number(), file: v.number(), broken: v.number() });
 
 /** What a reviewer's votes come to, kept by the bookkeeping worker alone. */
 /** What a reviewer's votes come to. `missed`: the papers the screening included that they voted to exclude. */
@@ -377,6 +398,8 @@ export const paperViewValidator = v.object({
   cited: v.optional(v.number()),
   doi: v.optional(v.string()),
   abstract: v.string(),
+  // It has no abstract and is screened as its own PDF, of this many pages (./paperViews.ts `pdf` gives the file).
+  pdf: v.optional(v.object({ pages: v.optional(v.number()) })),
   source: v.optional(v.id("screeningSources")),
   batch: v.optional(v.id("screeningChecks")),
   // When a later check brought it, for a paper that wasn't there from the start.

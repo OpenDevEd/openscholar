@@ -704,7 +704,7 @@ export function EmptyNote({ className, ...rest }: ComponentProps<"p">) {
  * share them, and are tinted while the table is narrowed to them.
  */
 export function PaperFacts({ paper, source, added }: {
-  paper: Pick<Paper, "title" | "cited" | "doi">;
+  paper: Pick<Paper, "title" | "cited" | "doi" | "pdf">;
   source?: { name: string; kind: string; href: string; on?: boolean; current?: "true"; label?: string };
   added?: { at: number; href: string; on?: boolean; current?: "true" };
 }) {
@@ -714,8 +714,8 @@ export function PaperFacts({ paper, source, added }: {
       {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">From {source.name}</LinkChip> : null}
       {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(added.at)}</LinkChip> : null}
       {paper.cited === undefined ? null : <Chip icon={Quote}>Cited by {num(paper.cited)}</Chip>}
-      {/* Its DOI opens the paper where it is published; without one, a search for its title finds it. In a new tab, so the place in the list is kept. */}
-      <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>
+      {/* Its DOI opens the paper where it is published; without one, a search for its title finds it. In a new tab, so the place in the list is kept. A paper screened as its PDF has its full text on the page already. */}
+      {paper.pdf ? null : <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>}
     </>
   );
 }

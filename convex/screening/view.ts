@@ -490,7 +490,7 @@ export const figuresForAssistant = assistantQuery(figuresAction);
 /** What a source held that the screening doesn't take, a page at a time. */
 export const leftOutAction = defineUserQuery({
   path: "screening/view:leftOut",
-  description: "Lists what one of a screening's sources held and the screening doesn't take, a page at a time, each with why: no abstract, no title, a DOI that wasn't found, a scan with no text, or a file that doesn't open.",
+  description: "Lists what one of a screening's sources held and the screening doesn't take, a page at a time, each with why: no abstract and no PDF of its own, no title, a DOI that wasn't found, or a file that doesn't open.",
   args: { jobId: v.id("screeningJobs"), sourceId: v.id("screeningSources"), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ id: v.id("screeningLeftOut"), name: v.string(), why: leftOutWhyValidator })),
   run: async (ctx, actor, { jobId, sourceId, paginationOpts }) => {

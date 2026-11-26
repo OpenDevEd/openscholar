@@ -8,7 +8,7 @@ import { stream } from "convex-helpers/server/stream";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { ballotOf } from "../../lib/screening/project";
@@ -75,6 +75,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
     ...(paper.citedByCount === undefined ? {} : { cited: paper.citedByCount }),
     ...(paper.doi ? { doi: paper.doi } : {}),
     abstract: paper.abstract ?? "",
+    ...(!paper.abstract && paper.file ? { pdf: paper.pages === undefined ? {} : { pages: paper.pages } } : {}),
     ...(paper.sourceId ? { source: paper.sourceId } : {}),
     ...(paper.checkId && paper.checkId !== first ? { batch: paper.checkId, addedAt: paper._creationTime } : {}),
     place: paper.place ?? 0,
@@ -111,6 +112,17 @@ export const paperAction = defineUserQuery({
 });
 export const paper = userQuery(paperAction);
 export const paperForAssistant = assistantQuery(paperAction);
+
+/** Where a paper's own PDF is read from, for whoever may see the paper: what one with no abstract is screened on. The file is its adder's, and is given to this screening's people only. */
+export const pdf = workspaceQuery({
+  args: { ...byJob, paperId: v.id("screeningResults") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, actor, { jobId, paperId }) => {
+    const looking = await lookingAt(ctx, actor, jobId);
+    const paper = looking ? await ctx.db.get("screeningResults", paperId) : null;
+    return paper?.jobId === jobId && paper.file ? await ctx.storage.getUrl(paper.file) : null;
+  },
+});
 
 /** Pages a reviewer's rows of votes into the papers they are on, in the rows' order. */
 async function papersOfVotes(ctx: Pick<QueryCtx, "db">, looking: Looking, read: PaginationResult<Vote>) {

@@ -27,12 +27,12 @@ import {
   GenerateScreeningResponsesInput,
   SuggestSearchesInput,
 } from './types'
-import type { RepairStrategy } from './execute'
+import type { Prompts, RepairStrategy } from './execute'
 
 // Define the partial config type (everything except 'model')
 export interface OperationConfig<TInput, TOutput> {
   schema: z.ZodSchema<TOutput> | z.ZodType<TOutput>
-  buildPrompts: (input: TInput, retryCount: number) => { system: string; prompt: string }
+  buildPrompts: (input: TInput, retryCount: number) => Prompts
   input: TInput
   repairStrategy: RepairStrategy
   temperature: number

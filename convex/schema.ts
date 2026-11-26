@@ -9,7 +9,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS, MAX_STARS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
+import { answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, pdfStateValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { appKindValidator, redirectUrisValidator } from "./developerApps/validators";
@@ -1459,6 +1459,9 @@ export default defineSchema({
     sourceId: v.optional(v.id("screeningSources")),
     checkId: v.optional(v.id("screeningChecks")),
     place: v.optional(v.number()),
+    // Its own PDF, handed over by whoever added it, and how many pages it has: a paper with no abstract is screened on it.
+    file: v.optional(v.id("_storage")),
+    pages: v.optional(v.number()),
     // Where it stands, written by the bookkeeping worker alone, and when it came to be settled.
     result: v.optional(paperResultValidator),
     settledAt: v.optional(v.number()),
@@ -1659,6 +1662,30 @@ export default defineSchema({
     // Where a living check goes on from: when it last looked.
     checkedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
+
+  // A PDF handed to a screening, one of a drop of them in the form. A cheap model reads its first pages once, when it
+  // is added (./screening/heldPdfs.ts), and what it found is kept here for the screening's source to take.
+  screeningFiles: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+    batch: v.string(),
+    // Its place in the drop, from 0.
+    at: v.number(),
+    file: v.id("_storage"),
+    name: v.string(),
+    bytes: v.number(),
+    state: pdfStateValidator,
+    pages: v.optional(v.number()),
+    title: v.optional(v.string()),
+    authors: screeningAuthorsValidator,
+    year: v.optional(v.number()),
+    doi: v.optional(v.string()),
+    // The index holds the paper its DOI names, under the title it prints: the screening shows that paper.
+    known: v.optional(v.boolean()),
+    workId: v.optional(v.string()),
+  })
+    .index("by_batch_and_at", ["batch", "at"])
+    .index("by_workId", ["workId"]),
 
   // What a source held that the screening doesn't take, each with why.
   screeningLeftOut: defineTable({

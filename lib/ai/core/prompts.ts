@@ -248,7 +248,10 @@ Provide the ${targetLanguageName} translation of the title and abstract, maintai
 }
 
 export function buildScreeningResponsesPrompts(input: GenerateScreeningResponsesInput) {
+  // A paper with no abstract is read as the PDF it is.
+  const basis = input.file ? 'the attached PDF of the paper' : 'the title and abstract'
   return {
+    ...(input.file ? { files: [input.file] } : {}),
     system: `You are an expert systematic review researcher conducting literature screening.
 
 CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" and "confidences" objects${input.passages ? ', and a "passages" object' : ''}.
@@ -256,7 +259,7 @@ CRITICAL: You MUST respond with valid JSON matching the required schema with "re
 Your task is to carefully analyze academic papers and provide YES/NO answers to specific screening questions based on the paper's content.
 
 CRITICAL INSTRUCTIONS:
-1. Answer each question based ONLY on the information provided in the title and abstract
+1. Answer each question based ONLY on the information provided in ${basis}
 2. Use boolean values: true for YES, false for NO, null for UNCLEAR/INSUFFICIENT_INFORMATION
 3. Be conservative - if information is ambiguous or missing, use null
 4. Base decisions on explicit evidence, not assumptions or implications
@@ -272,16 +275,18 @@ Return a JSON object with:
 
 PAPER TITLE: "${input.title}"
 
-${input.passages
-  ? `ABSTRACT, a sentence a line, each after its number:\n${sentencesOf(input.abstract || 'No abstract available').map((sentence, i) => `[${i}] ${sentence}`).join('\n')}`
-  : `ABSTRACT: "${input.abstract || 'No abstract available'}"`}
+${input.file
+  ? 'The paper is the attached PDF.'
+  : input.passages
+    ? `ABSTRACT, a sentence a line, each after its number:\n${sentencesOf(input.abstract || 'No abstract available').map((sentence, i) => `[${i}] ${sentence}`).join('\n')}`
+    : `ABSTRACT: "${input.abstract || 'No abstract available'}"`}
 
 SCREENING QUESTIONS:
 ${input.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
 INSTRUCTIONS:
 - Answer each question as true (YES), false (NO), or null (UNCLEAR/insufficient information)
-- Base your answers ONLY on the title and abstract content above
+- Base your answers ONLY on ${basis}
 - If the information needed to answer a question is not present, use null
 
 Provide your screening decisions:`,

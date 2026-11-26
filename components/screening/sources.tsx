@@ -8,11 +8,11 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
+import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { LibrarySources, useLibrarySources } from "./library-sources";
-import { Chip, RequiredMark } from "./parts";
+import { Chip, Meter, RequiredMark } from "./parts";
 import { pagerOf } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
@@ -33,8 +33,9 @@ import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { COLUMN_KEYS, COLUMN_LABEL, FILE_MAX_BYTES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { hash, num, plural, type Source, type SourceSet } from "./data";
+import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { PDF_STANDS, hash, num, plural, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip } from "./pieces";
 
 const PAGE = 5;
@@ -146,7 +147,9 @@ const REFERENCE_FILES = new RegExp(`\\.(${REFERENCE_ENDINGS.join("|")})$`, "i");
 const PDF_FILES = /\.pdf$/i;
 const UPLOAD_ACCEPT = [...REFERENCE_ENDINGS, "pdf"].map((ending) => `.${ending}`).join(",");
 /** The most PDFs one source holds (convex/screening/validators.ts `sourceSetValidator`). */
-const PDFS_MAX = 200;
+/** PDFs sent at once, and how many one call hands the server (convex/screening/validators.ts `PDFS_A_CALL`). */
+const UPLOADS_AT_ONCE = 6;
+const PDFS_A_CALL = 50;
 const MB = 1024 * 1024;
 
 /** Sends a file to storage and answers with where it is kept. */
@@ -162,7 +165,8 @@ function useUpload() {
 /**
  * Reference files, tables and PDFs, dropped or chosen. A reference file is read by the server, which counts its
  * records. A table is read here, and waits for its columns to be named where its headings don't say. PDFs chosen
- * together are one source: each is read when the screening starts, and one with no abstract is left out then.
+ * together are one source, of any size: they are sent several at once, and each is read as soon as it is in
+ * (convex/screening/files.ts), so what the source holds shows while the rest are still on their way.
  */
 export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
   const upload = useUpload();
@@ -173,6 +177,8 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const [pending, setPending] = useState<Array<PendingTable & { file: File }>>([]);
   const [refused, setRefused] = useState<Array<{ name: string; why: string }>>([]);
   const refuse = (name: string, why: string) => setRefused((now) => [...now.filter((one) => one.name !== name), { name, why }]);
+  const addPdfs = useWorkspaceMutation(api.screening.files.add);
+  const [sending, setSending] = useState<Array<{ batch: string; total: number; sent: number }>>([]);
   const has = (ref: string) => sources.some((source) => source.ref === ref);
   /** A file by its name, size and last change: the same file chosen twice is the same source. */
   const refOf = (file: File) => `upload:${hash(`${file.name}:${file.size}:${file.lastModified}`)}`;
@@ -186,8 +192,9 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
     setRefused([]);
     const [pdfs, references] = [files.filter((file) => PDF_FILES.test(file.name)), files.filter((file) => REFERENCE_FILES.test(file.name))];
     for (const file of files) if (!pdfs.includes(file) && !references.includes(file)) refuse(file.name, "Not a kind of file a screening reads");
-    const reads = [...references.map((file) => file.name), ...(pdfs.length ? [pdfs.length === 1 ? pdfs[0]!.name : `${num(pdfs.length)} PDFs`] : [])];
+    const reads = references.map((file) => file.name);
     setReading((now) => [...now, ...reads]);
+    const sent = sendPdfs(pdfs);
     await Promise.all(references.map(async (file) => {
       try {
         if (has(refOf(file))) return refuse(file.name, "Already a source");
@@ -211,21 +218,50 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
         refuse(file.name, getErrorMessage(error, "It couldn't be read"));
       }
     }));
-    if (pdfs.length) {
-      try {
-        const sized = pdfs.filter((file) => file.size <= MAX_PDF_BYTES).slice(0, PDFS_MAX);
-        for (const file of pdfs) if (!sized.includes(file)) refuse(file.name, file.size > MAX_PDF_BYTES ? `Over ${MAX_PDF_MB} MB` : `One source holds up to ${PDFS_MAX} PDFs: add the rest as another`);
-        const ref = `pdf:${hash(sized.map((file) => `${file.name}:${file.size}`).sort().join("|"))}`;
-        if (has(ref)) for (const file of sized) refuse(file.name, "Already a source");
-        else if (sized.length) {
-          const kept = await Promise.all(sized.map(async (file) => ({ file: await upload(file), name: file.name })));
-          onAdd({ ref, name: `${sized[0]!.name}${sized.length > 1 ? ` and ${num(sized.length - 1)} more` : ""}`, detail: sized.length === 1 ? "A PDF" : "PDFs", total: sized.length, set: { kind: "pdf", files: kept } });
-        }
-      } catch (error) {
-        refuse(pdfs.length === 1 ? pdfs[0]!.name : `${num(pdfs.length)} PDFs`, getErrorMessage(error, "They couldn't be sent"));
-      }
-    }
     setReading((now) => now.filter((name) => !reads.includes(name)));
+    await sent;
+  };
+  /** PDFs chosen together go up several at once as one drop, and are one source once the last is in. */
+  const sendPdfs = async (pdfs: File[]) => {
+    const sized = pdfs.filter((file) => file.size <= MAX_PDF_BYTES);
+    for (const file of pdfs) if (!sized.includes(file)) refuse(file.name, `Over ${MAX_PDF_MB} MB`);
+    const ref = `pdf:${hash(sized.map((file) => `${file.name}:${file.size}`).sort().join("|"))}`;
+    if (!sized.length) return;
+    if (has(ref)) return void sized.forEach((file) => refuse(file.name, "Already a source"));
+    const batch = crypto.randomUUID();
+    setSending((now) => [...now, { batch, total: sized.length, sent: 0 }]);
+    const [queue, kept]: [File[], Array<{ file: Id<"_storage">; name: string; bytes: number }>] = [[...sized], []];
+    let [added, failed] = [0, 0];
+    // One call at a time hands over what has arrived since the last, so the files keep the order they came in.
+    let handing = Promise.resolve();
+    const hand = () => (handing = handing.then(async () => {
+      while (kept.length) {
+        const files = kept.splice(0, PDFS_A_CALL);
+        await addPdfs({ batch, files });
+        added += files.length;
+      }
+    }));
+    await Promise.all(Array.from({ length: UPLOADS_AT_ONCE }, async () => {
+      for (let file = queue.shift(); file; file = queue.shift()) {
+        try {
+          // A file that didn't go through is sent once more before it is given up.
+          kept.push({ file: await upload(file).catch(() => upload(file)), name: file.name, bytes: file.size });
+          setSending((now) => now.map((one) => (one.batch === batch ? { ...one, sent: one.sent + 1 } : one)));
+          void hand().catch(() => {});
+        } catch {
+          failed++;
+          refuse(file.name, "It couldn't be sent");
+        }
+      }
+    }));
+    try {
+      await hand();
+    } catch (error) {
+      refuse(sized.length === 1 ? sized[0]!.name : `${num(sized.length)} PDFs`, getErrorMessage(error, "They couldn't be sent"));
+    }
+    setSending((now) => now.filter((one) => one.batch !== batch));
+    if (added) onAdd({ ref, name: `${sized[0]!.name}${added > 1 ? ` and ${num(added - 1)} more` : ""}`, detail: added === 1 ? "A PDF" : "PDFs", total: added, set: { kind: "pdf", batch } });
+    else if (!failed) refuse(sized.length === 1 ? sized[0]!.name : `${num(sized.length)} PDFs`, "They couldn't be sent");
   };
   const addPending = async (table: PendingTable & { file: File }) => {
     if (!table.picked.title) return setPending((now) => now.map((one) => (one.ref === table.ref ? { ...one, untitled: true } : one)));
@@ -245,15 +281,25 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           Drop reference files or PDFs here
           <Help title="Files" facts={<><HelpFact>Reference files up to {FILE_MAX_BYTES / MB} MB</HelpFact><HelpFact>PDFs up to {MAX_PDF_MB} MB each</HelpFact></>}>
             <p>A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.</p>
-            <p>A PDF is read when the screening starts: its title and its abstract are taken from Openscholar&apos;s index where the file prints its DOI, and from its own first pages otherwise. A PDF that prints no abstract, a scan with no text and a file that doesn&apos;t open are left out, each named with why.</p>
+            <p>A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar&apos;s index holds that DOI, the paper shows with the index&apos;s title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI reviewer, every page of it. A scan is read the same way. A file that doesn&apos;t open is left out.</p>
           </Help>
         </p>
         <p className="text-xs text-muted-foreground">RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF, any number at once</p>
         <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
         <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />Choose files</Button>
       </div>
-      {reading.length || pending.length ? (
+      {reading.length || pending.length || sending.length ? (
         <div className="divide-y divide-border-subtle rounded-2xl bg-card ring-1 ring-border-subtle">
+          {sending.map((one) => (
+            <div key={one.batch} className="flex min-h-14 items-center gap-3 px-4 py-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06]"><Spinner className="size-4" /></span>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <p className="truncate text-sm font-medium">{plural(one.total, "PDF", "PDFs")}</p>
+                <Meter value={one.sent} max={one.total} />
+              </div>
+              <Chip><span className="tabular-nums">{num(one.sent)} of {num(one.total)} sent</span></Chip>
+            </div>
+          ))}
           {reading.map((name) => (
             <div key={name} className="flex min-h-14 items-center gap-3 px-4 py-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06]"><Spinner className="size-4" /></span>
@@ -273,6 +319,45 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRefused([])}><X /></Button></TooltipHint>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** How a drop of PDFs stands, as chips on its source's row, each count arriving as the files are read: the papers the index holds, the ones screened as the PDF they are, the files that don't open. */
+export function PdfFacts({ batch }: { batch: string }) {
+  const drop = useProtectedQuery(api.screening.files.drop, inWorkspace(usePageWorkspace(), { batch })).data;
+  if (!drop) return <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip>;
+  return (
+    <>
+      {drop.waiting ? <Chip><Spinner className="size-3" /><span className="tabular-nums">{num(drop.total - drop.waiting)} of {num(drop.total)} read</span></Chip> : null}
+      {drop.known ? <Chip icon={Check}><span className="tabular-nums">{num(drop.known)}</span> in the index</Chip> : null}
+      {drop.file ? <Chip icon={FileText}><span className="tabular-nums">{num(drop.file)}</span> screened as the PDF</Chip> : null}
+      {drop.broken ? <StateChip tone="warning" icon={FileX}>{num(drop.broken)} {drop.broken === 1 ? "doesn't" : "don't"} open</StateChip> : null}
+    </>
+  );
+}
+
+const FILES_PAGE = 8;
+/** A drop's PDFs a page at a time, each under the title its first pages print, with how it stands. */
+export function PdfFiles({ batch, total }: { batch: string; total: number }) {
+  const rows = useCursorPage(api.screening.files.list, inWorkspace(usePageWorkspace(), { batch }), FILES_PAGE);
+  return (
+    <div className="space-y-2">
+      <ul aria-label="The PDFs of this source" className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, FILES_PAGE) * 45 }}>
+        {rows.items.map((row) => {
+          const stands = row.state === "read" ? (row.known ? "known" : "file") : row.state;
+          return (
+            <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
+              <div className="min-w-0 flex-1 max-sm:basis-full">
+                <p className="truncate text-sm">{row.title ?? row.name}</p>
+                {row.title ? <p className="truncate text-xs text-muted-foreground">{row.name}</p> : null}
+              </div>
+              {stands === "broken" ? <StateChip tone="warning" icon={FileX}>{PDF_STANDS.broken}</StateChip> : stands === "waiting" ? <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip> : <Chip icon={stands === "known" ? Check : FileText}>{PDF_STANDS[stands]}{stands === "file" && row.pages ? `, ${plural(row.pages, "page", "pages")}` : ""}</Chip>}
+            </li>
+          );
+        })}
+      </ul>
+      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel="PDFs" steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total }} /> : null}
     </div>
   );
 }

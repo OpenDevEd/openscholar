@@ -82,6 +82,18 @@ export function screeningPaperCredits(pricing: Pricing): number {
   return estimateCredits(pricing, CALL_TOKENS.paper);
 }
 
+/**
+ * Tokens one page of a PDF takes when a model is sent the file, and what the criteria and its answers add to a
+ * paper read that way. Measured on a 76-page report sent whole: 3,155 a page on Haiku 5.5, 3,998 on GPT-6 Luna.
+ */
+export const SCREENING_PDF_TOKENS = { page: 4_000, asked: 2_000, answer: 800 };
+/** The tokens a paper screened as its PDF takes at most: every page of it, with the criteria. */
+export const screeningPdfTokens = (pages: number) => pages * SCREENING_PDF_TOKENS.page + SCREENING_PDF_TOKENS.asked;
+/** What screening one paper as its PDF costs at most on a model: one call with the whole file. */
+export function screeningPdfCredits(pricing: Pricing, pages: number): number {
+  return estimateCredits(pricing, { input: screeningPdfTokens(pages), output: SCREENING_PDF_TOKENS.answer });
+}
+
 /** Tokens a text takes at most: Claude counts about two characters a token, the fewest of the models measured. */
 export function tokensIn(text: string): number {
   return Math.ceil(text.length / 2);

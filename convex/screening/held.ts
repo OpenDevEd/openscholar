@@ -14,6 +14,7 @@ import { internalQuery } from "../lib/functions";
 import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { readSearchPage, readWork } from "../paperSets/openalex";
 import { SCREENING_FIELDS, spender, toPaper, type SearchPaper, type Work } from "../paperSets/search";
+import { readsPdfs } from "../../lib/assistant/files";
 import { normalDoi, paperKey } from "../../lib/papers/paper-ref";
 import { FILE_MAX_BYTES, REFERENCES, itemRecords, readTable, tableRecords, type FileRecord, type ImportedItem } from "../../lib/screening/files";
 import { DOIS_MAX, doisLookValidator, fileLookValidator, type leftOutWhyValidator } from "./validators";
@@ -21,9 +22,8 @@ import type { Infer } from "convex/values";
 
 /** Zotero's importer, which reads every reference format the databases export: the one live communities are given. */
 const TRANSLATION_URL = process.env.ZOTERO_TRANSLATION_URL ?? "https://bib.opendev.space";
-/** DOIs asked of the index in one request, and PDFs read in one step. */
+/** DOIs asked of the index in one request. */
 const DOIS_A_REQUEST = 50;
-export const PDFS_A_STEP = 10;
 /** The order a lookup by DOI asks for: any the index takes without words to rank by, since every DOI asked for comes back in the one page. */
 const BY_DOI_SORT = "cited_by_count:desc";
 /** Titles a file's preview shows. */
@@ -136,25 +136,25 @@ export const lookDois = workspaceAction({
   },
 });
 
-/** Who a source is read as, and the model that reads a PDF's own first pages, with what it costs and what the workspace has. */
+/** Who a source is read as, and the model that reads a PDF's own first pages, with what it costs, whether it takes a PDF as a file, and what the workspace has. */
 export const reader = internalQuery({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces") },
-  returns: v.union(v.null(), v.object({ clerkId: v.string(), balance: v.number(), model: v.union(v.null(), v.object({ slug: v.string(), input: v.number(), output: v.number() })) })),
+  returns: v.union(v.null(), v.object({ clerkId: v.string(), balance: v.number(), model: v.union(v.null(), v.object({ slug: v.string(), input: v.number(), output: v.number(), files: v.boolean() })) })),
   handler: async (ctx, working) => {
     const user = await ctx.db.get("users", working.userId);
     if (!user) return null;
     const pick = await resolveTaskPick(ctx, working, "overview");
     const model = pick ? await ctx.db.get("models", pick.modelId) : null;
     const pricing = model ? await pricingOf(ctx, model._id) : null;
-    return { clerkId: user.clerkId, balance: await availableCredits(ctx, working.workspaceId), model: model && pricing ? { slug: model.modelId, ...pricing } : null };
+    return { clerkId: user.clerkId, balance: await availableCredits(ctx, working.workspaceId), model: model && pricing ? { slug: model.modelId, ...pricing, files: readsPdfs(model.inputModalities) } : null };
   },
 });
 
-type Held = { sourceId: Id<"screeningSources">; set: { kind: "upload"; file: Id<"_storage">; columns?: Record<string, string> } | { kind: "dois"; file: Id<"_storage"> } | { kind: "pdf"; files: Array<{ file: Id<"_storage">; name: string }> }; state: "waiting" | "reading"; resume?: string; userId: Id<"users">; workspaceId: Id<"workspaces"> };
+type Held = { sourceId: Id<"screeningSources">; set: { kind: "upload"; file: Id<"_storage">; columns?: Record<string, string> } | { kind: "dois"; file: Id<"_storage"> } | { kind: "pdf"; batch: string }; state: "waiting" | "reading"; resume?: string; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
 /** What a held source holds, counted before its first record: a file's records are read once and kept as a file of their own, which every step then reads. */
 export async function handedStart(ctx: ActionCtx, { set }: Held): Promise<{ total: number; resume?: string }> {
-  if (set.kind === "pdf") return { total: set.files.length };
+  if (set.kind === "pdf") return { total: await ctx.runQuery(internal.screening.files.total, { batch: set.batch }) };
   if (set.kind === "dois") return { total: (await textOf(ctx, set.file)).split("\n").filter(Boolean).length };
   const { records, table } = await recordsIn(ctx, set.file, set.columns);
   if (table?.ask) throw createError("VALIDATION_ERROR", "Say which of this table's columns is the title, then add it again.");
@@ -162,13 +162,27 @@ export async function handedStart(ctx: ActionCtx, { set }: Held): Promise<{ tota
   return { total: records.length, resume: parsed };
 }
 
-/** Records `from` to `to` of a held source (from 1), as papers and as what is left out with why. */
-export async function handedPapers(ctx: ActionCtx, source: Held, from: number, to: number): Promise<{ papers: SearchPaper[]; left: LeftOut[] }> {
+/** Records `from` to `to` of a held source (from 1), as papers and as what is left out with why. "wait" while one of its PDFs is still being read for the first time (./files.ts). */
+export async function handedPapers(ctx: ActionCtx, source: Held, from: number, to: number): Promise<{ papers: SearchPaper[]; left: LeftOut[] } | "wait"> {
   const { set } = source;
   const who: { clerkId: string } | null = await ctx.runQuery(internal.screening.held.reader, { userId: source.userId, workspaceId: source.workspaceId });
   if (!who) throw createError("NOT_FOUND", "Whoever added this source has no account any more.");
   const spend = spender(ctx, who.clerkId);
-  if (set.kind === "pdf") return await ctx.runAction(internal.screening.heldPdfs.read, { userId: source.userId, workspaceId: source.workspaceId, files: set.files.slice(from - 1, to) });
+  if (set.kind === "pdf") {
+    const files = await ctx.runQuery(internal.screening.files.slice, { batch: set.batch, from, to });
+    if (files.some((file) => file.state === "waiting")) return "wait";
+    const known = await byDois(files.flatMap((file) => (file.known && file.doi ? [file.doi] : [])), spend).catch(() => new Map<string, SearchPaper>());
+    const [papers, left]: [SearchPaper[], LeftOut[]] = [[], []];
+    for (const file of files) {
+      const key = paperKey({ source: "upload", file: file.file });
+      if (file.state === "broken") { left.push({ name: file.name, why: "broken", key }); continue; }
+      // Its own PDF goes with the paper either way: the index's paper is screened on its abstract where it has one, and on the file where it has none.
+      const own = { file: file.file, ...(file.pages === undefined ? {} : { pages: file.pages }) };
+      const paper = file.known && file.doi ? known.get(file.doi) : undefined;
+      papers.push(paper ? { ...paper, ...own } : { paper: key, title: file.title ?? file.name.replace(/\.pdf$/i, ""), ...(file.authors?.length ? { authors: file.authors } : {}), ...(file.year === undefined ? {} : { publicationYear: file.year }), ...own });
+    }
+    return { papers, left };
+  }
   if (set.kind === "dois") {
     const dois = (await textOf(ctx, set.file)).split("\n").filter(Boolean).slice(from - 1, to);
     const found = await byDois(dois, spend);

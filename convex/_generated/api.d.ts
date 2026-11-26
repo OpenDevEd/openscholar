@@ -455,6 +455,7 @@ import type * as screening_discussion from "../screening/discussion.js";
 import type * as screening_drain from "../screening/drain.js";
 import type * as screening_effects from "../screening/effects.js";
 import type * as screening_estimate from "../screening/estimate.js";
+import type * as screening_files from "../screening/files.js";
 import type * as screening_gathering from "../screening/gathering.js";
 import type * as screening_held from "../screening/held.js";
 import type * as screening_heldPdfs from "../screening/heldPdfs.js";
@@ -1004,6 +1005,7 @@ declare const fullApi: ApiFromModules<{
   "screening/drain": typeof screening_drain;
   "screening/effects": typeof screening_effects;
   "screening/estimate": typeof screening_estimate;
+  "screening/files": typeof screening_files;
   "screening/gathering": typeof screening_gathering;
   "screening/held": typeof screening_held;
   "screening/heldPdfs": typeof screening_heldPdfs;

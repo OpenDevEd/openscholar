@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 // The open screening's Screen page: your queue on the left, the paper with everyone's votes in the
 // middle, your answers to the criteria on the right, and the vote at the foot of the window. One paper
 // at a time, answered and voted on with keys. Conflicts are settled in the same place, with what the
@@ -41,13 +43,16 @@ import { ANSWERS, type Answer } from "@/lib/screening/setup";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { plural, num, inQuotes, youOr, bylineOf, awaitedOn, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, shortName } from "./data";
+import { termsPattern, plural, num, inQuotes, youOr, bylineOf, awaitedOn, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
+
+// pdf.js is loaded only for a paper screened as its PDF.
+const PaperPdf = dynamic(() => import("./paper-pdf"), { ssr: false });
 
 type Queue = "todo" | "again" | "done" | "conflicts";
 const QUEUE_PAGE = 12;
@@ -691,9 +696,12 @@ function Screen({ open }: { open: Open }) {
                         {discussion && said ? <DiscussionLink count={said} onClick={toDiscussion} /> : null}
                       </div>
                       <div className="space-y-3">
+                        {/* A paper with no abstract is read as the PDF it is. */}
+                        {paper.pdf ? <PaperPdf id={id} paper={paper} terms={criteria.flatMap((c) => c.terms)} /> : (
                         <p className="text-[0.95rem] leading-7">
                           {sentences.map((sentence, i) => <Sentence key={i} at={i} text={sentence} quoted={quotedSentence === i} terms={criteria.flatMap((c) => c.terms)} lit={current?.terms ?? []} />)}
                         </p>
+                        )}
                         {/* What the marked words are, under the text they are in: they were taken for evidence someone had picked. */}
                         {criteria.some((criterion) => criterion.terms.length) ? <p className="text-xs text-muted-foreground"><mark className="rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark> words are ones the criteria look for.</p> : null}
                       </div>
@@ -1055,10 +1063,9 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
 
 /** A sentence of the abstract, with the criteria's words marked, the picked criterion's standing out, and the whole of it marked where it is the sentence a model named. */
 function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; quoted: boolean; terms: string[]; /** The words of the criterion being looked at. */ lit: string[] }) {
-  const words = [...new Set(terms)].sort((a, b) => b.length - a.length);
   const strong = lit.map((term) => term.toLowerCase());
-  // A marked word is found with whatever ending the abstract gives it: "programme" marks "programmes" too.
-  const parts = words.length ? text.split(new RegExp(`\\b((?:${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\w*)`, "gi")) : [text];
+  const pattern = termsPattern(terms);
+  const parts = pattern ? text.split(pattern) : [text];
   return (
     <span data-sentence={at} className={cn("scroll-my-6 rounded box-decoration-clone transition-colors duration-300", quoted && "bg-warning/20")}>
       {parts.map((part, i) => (i % 2 ? <mark key={i} className={cn("rounded-sm text-foreground transition-colors duration-200", strong.some((term) => part.toLowerCase().startsWith(term)) ? "bg-warning/40" : "bg-primary/15")}>{part}</mark> : part))}{" "}

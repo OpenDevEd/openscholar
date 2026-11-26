@@ -28,7 +28,8 @@ import { checked } from "./living";
 import { unglued } from "../../lib/papers/abstract-sections";
 import { planLimit } from "../billing/accounts";
 import { papersIn } from "./estimate";
-import { handedPapers, handedStart, PDFS_A_STEP, type LeftOut } from "./held";
+import { plainTitle } from "../../lib/screening/files";
+import { handedPapers, handedStart, type LeftOut } from "./held";
 import { searchTextOf } from "./mutations";
 import { startWaitingVotes } from "./slots";
 import { leftOutWhyValidator, screeningPaperInputValidator, sourceSetValidator } from "./validators";
@@ -43,6 +44,8 @@ const READ_ACTION_MS = 4 * 60_000;
 /** How long a check may go without a step before its reading is set off again, and how often that is tried before it is left as failed. */
 const QUIET_MS = 15 * 60_000;
 const RESTARTS = 3;
+/** How long a check waits before it looks again at PDFs whose first reading hasn't ended. */
+const PDFS_WAIT_MS = 3_000;
 /** Collections read for one Zotero source that takes the ones under a collection too. ponytail: past this many, and past the first hundred inside any one collection, the rest are not read; page the walk if a tree that large is ever added whole. */
 const DEEP_COLLECTIONS = 500;
 /** How much of why a source couldn't be read is kept. */
@@ -50,7 +53,7 @@ const FAILURE_SHOWN = 600;
 
 /** What makes two records one paper where their sources name them differently: the DOI, then the title with the year. */
 export const doiKeyOf = (doi: string | undefined | null) => normalDoi(doi) ?? undefined;
-export const titleKeyOf = (title: string, year: number | undefined) => `${title.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "")}|${year ?? ""}`;
+export const titleKeyOf = (title: string, year: number | undefined) => `${plainTitle(title)}|${year ?? ""}`;
 
 type Reading = { gone?: true; sourceId: Id<"screeningSources">; part: number; set: SourceSet; first: number; last?: number; read: number; resume?: string; snapshot?: SearchSnapshot; state: "waiting" | "reading"; total?: number; userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
@@ -118,7 +121,11 @@ export const gather = internalAction({
       if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId }));
       try {
         if (source.gone) throw createError("FORBIDDEN", "Whoever added this source is no longer in the workspace it is in. Add it again from this workspace.");
-        await step(ctx, checkId, source);
+        // Its next PDFs are still being read for the first time: the check comes back for them, and is not taken for one gone quiet.
+        if ((await step(ctx, checkId, source)) === "wait") {
+          await ctx.runMutation(internal.screening.gathering.beat, { checkId });
+          return void (await ctx.scheduler.runAfter(PDFS_WAIT_MS, internal.screening.gathering.gather, { checkId }));
+        }
       } catch (error) {
         console.error(`[screening] Source ${source.sourceId} couldn't be read`, error);
         await ctx.runMutation(internal.screening.gathering.fail, { sourceId: source.sourceId, reason: readConvexErrorData(error)?.message ?? "Its papers couldn't be read." });
@@ -127,8 +134,19 @@ export const gather = internalAction({
   },
 });
 
-/** One step of one source: the next papers of it, given to `fill`. */
-async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Reading) {
+/** A check is still at work: its watch (`watch`) leaves it be. */
+export const beat = internalMutation({
+  args: { checkId: v.id("screeningChecks") },
+  returns: v.null(),
+  handler: async (ctx, { checkId }) => {
+    const check = await ctx.db.get("screeningChecks", checkId);
+    if (check?.state === "running") await ctx.db.patch("screeningChecks", checkId, { beat: Date.now() });
+    return null;
+  },
+});
+
+/** One step of one source: the next papers of it, given to `fill`. "wait" where they can't be read yet. */
+async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Reading): Promise<"wait" | void> {
   const { sourceId, set } = source;
   const reader = { userId: source.userId, workspaceId: source.workspaceId };
   const give = (papers: SearchPaper[], read: number, ended: boolean, resume?: string, leftOut?: LeftOut[]) => ctx.runMutation(internal.screening.gathering.fill, { checkId, sourceId, papers, read, ended, ...(resume ? { resume } : {}), ...(leftOut?.length ? { leftOut } : {}) });
@@ -157,10 +175,9 @@ async function step(ctx: ActionCtx, checkId: Id<"screeningChecks">, source: Read
   if (from > last) return void (await give([], 0, true));
   const to = Math.min(last, Math.ceil(from / READ_STEP) * READ_STEP);
   if (held) {
-    // PDFs are opened and read one by one, so a step takes a few.
-    const through = held.set.kind === "pdf" ? Math.min(to, from + PDFS_A_STEP - 1) : to;
-    const { papers, left } = await handedPapers(ctx, held, from, through);
-    return void (await give(papers, through - from + 1, through >= last, source.resume, left));
+    const handed = await handedPapers(ctx, held, from, to);
+    if (handed === "wait") return "wait";
+    return void (await give(handed.papers, to - from + 1, to >= last, source.resume, handed.left));
   }
   if (set.kind === "search") {
     // Numbered pages when the search's order has them as far as the source goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
@@ -224,13 +241,14 @@ async function twinOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">, 
 
 /**
  * Gives a check a step of one source's papers: `read` of the source's papers, and where it goes on after them. A
- * record with no title or no abstract is left out, with why: a screening reads a title and an abstract. A paper
+ * record with no title is left out, with why, and so is one with no abstract unless it comes with its own PDF: a
+ * screening reads a title and an abstract, or the paper itself. A paper
  * another source already brought is counted as merged, and one this source brought before is passed over. One whose
  * source was since taken out comes back as this source's. The rest take the next places in the round and go to their
  * reviewers.
  */
 export const fill = internalMutation({
-  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean(), /** What the source's own reading left out before any paper was made of it: a DOI nothing is known of, a scan, a file that doesn't open. */ leftOut: v.optional(v.array(v.object({ name: v.string(), why: leftOutWhyValidator, key: v.optional(v.string()) }))) },
+  args: { checkId: v.id("screeningChecks"), sourceId: v.id("screeningSources"), papers: v.array(screeningPaperInputValidator), read: v.number(), resume: v.optional(v.string()), ended: v.boolean(), /** What the source's own reading left out before any paper was made of it: a DOI nothing is known of, a file that doesn't open. */ leftOut: v.optional(v.array(v.object({ name: v.string(), why: leftOutWhyValidator, key: v.optional(v.string()) }))) },
   returns: v.null(),
   handler: async (ctx, { checkId, sourceId, papers, read, resume, ended, leftOut }) => {
     const [check, source] = await Promise.all([ctx.db.get("screeningChecks", checkId), ctx.db.get("screeningSources", sourceId)]);
@@ -255,8 +273,8 @@ export const fill = internalMutation({
       const paper: PaperInput = { ...sent, paper: requirePaperKey(sent.paper) };
       const title = paper.title.trim();
       if (!title) { await leave(paper.doi ?? "A record with no title", "title", paper.paper); continue; }
-      if (!paper.abstract?.trim()) { await leave(title, "abstract", paper.paper); continue; }
-      const abstract = unglued(paper.abstract);
+      if (!paper.abstract?.trim() && !paper.file) { await leave(title, "abstract", paper.paper); continue; }
+      const abstract = paper.abstract?.trim() ? unglued(paper.abstract) : undefined;
       const identity = identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi });
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
       // It finds the papers this step already took too: a mutation reads what it wrote.
@@ -279,7 +297,8 @@ export const fill = internalMutation({
         jobId: job._id,
         ...identity,
         title,
-        abstract,
+        ...(abstract ? { abstract } : {}),
+        ...(paper.file ? { file: paper.file, ...(paper.pages === undefined ? {} : { pages: paper.pages }) } : {}),
         // An index can list one author once for each of their affiliations.
         authors: paper.authors && [...new Set(paper.authors)].slice(0, MAX_AUTHORS),
         publicationYear: paper.publicationYear,

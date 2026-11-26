@@ -14,6 +14,7 @@ import type { ScreeningReadData } from "../../lib/ai/core/batch-types";
 import { sentencesOf } from "../../lib/screening/passages";
 import { answerOf } from "../../lib/screening/setup";
 import { screeningPaperCredits } from "../../lib/pricing";
+import { screeningPdfCredits, screeningPdfTokens } from "../../lib/pricing/estimate";
 import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { withUserCredits } from "../ai/helpers";
 import { openRouterModel } from "../ai/provider";
@@ -35,13 +36,19 @@ export const readPaper = internalAction({
     if (!context.model.available) throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
     const pricing = { input: context.model.input, output: context.model.output };
     const questions = context.criteria.map(asked);
+    // A paper with no abstract is read as the PDF it is, every page of it, the way the assistant gives a model a file.
+    const { file, pages = 0 } = context.paper.abstract ? { file: undefined } : context.paper;
+    if (file && !context.model.files) return { read: false, why: "unreadable", error: `${context.model.name} can't read a PDF. It reads papers that have an abstract.` };
+    if (file && context.model.room !== undefined && screeningPdfTokens(pages) > context.model.room) return { read: false, why: "unreadable", error: `This PDF has ${pages.toLocaleString("en-GB")} pages, more than ${context.model.name} reads at once.` };
+    const address = file ? await ctx.storage.getUrl(file) : null;
+    if (file && !address) return { read: false, why: "unreadable", error: "This paper's PDF is gone." };
     try {
       const { result, credits } = await withUserCredits<ScreeningReadData>(
         ctx,
-        { userId: context.userId, workspaceId: context.workspaceId, chargeId: `screening:${voteId}:${crypto.randomUUID()}`, estimate: screeningPaperCredits(pricing), hold: false, balance: context.balance, clerkId: context.clerkId, kind: "screening", description: "Screening", model: context.model.slug },
+        { userId: context.userId, workspaceId: context.workspaceId, chargeId: `screening:${voteId}:${crypto.randomUUID()}`, estimate: file ? screeningPdfCredits(pricing, pages) : screeningPaperCredits(pricing), hold: false, balance: context.balance, clerkId: context.clerkId, kind: "screening", description: "Screening", model: context.model.slug },
         pricing,
         async () => {
-          const batch = await processScreeningBatch({ model: await openRouterModel(context.model.slug), effort: context.effort, decisionsKey: process.env.OPENROUTER_API_KEY, sessionId: String(context.jobId), papers: [{ id: voteId, title: context.paper.title, abstract: context.paper.abstract ?? "" }], questions, passages: true });
+          const batch = await processScreeningBatch({ model: await openRouterModel(context.model.slug), effort: context.effort, decisionsKey: process.env.OPENROUTER_API_KEY, sessionId: String(context.jobId), papers: [{ id: voteId, title: context.paper.title, abstract: context.paper.abstract ?? "", ...(address ? { file: { data: new URL(address), filename: "paper.pdf" } } : {}) }], questions, passages: true });
           const totalUsage = batch.usages[0] ?? { inputTokens: 0, outputTokens: 0 };
           const tracking = batch.trackingByItemId[voteId];
           const trackingEntries: AITrackingEntry[] = tracking ? [{ feature: "workpool_screening", usage: { inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0, outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0 }, latencyMs: tracking.latencyMs, temperature: tracking.temperature }] : [];

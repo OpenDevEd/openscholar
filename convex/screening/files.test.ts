@@ -1,0 +1,60 @@
+// PDFs handed to a screening (plans/screening-reviewers): a drop of any size is read in lanes, and a paper with its own PDF is screened without an abstract.
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { api, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import { give, paper, started, team, type Team } from "./reviewers.test-support";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
+
+const stored = ({ t }: Team, count: number, from = 0) =>
+  t.run(async (ctx) => Promise.all(Array.from({ length: count }, async (_, i) => ({ file: await ctx.storage.store(new Blob([`pdf ${from + i}`])), name: `paper-${from + i}.pdf`, bytes: 10 }))));
+const rowsOf = ({ t }: Team, batch: string) => t.run((ctx) => ctx.db.query("screeningFiles").withIndex("by_batch_and_at", (q) => q.eq("batch", batch)).collect());
+
+describe("a drop of PDFs", () => {
+  it("reads twenty at a time, each landing starting the one twenty after it, and counts how each stands", async () => {
+    const made = await team(["ann", "ben"]);
+    const { workspaceId } = made;
+    const batch = "drop-1";
+    await made.as.ann!.mutation(api.screening.files.add, { workspaceId, batch, files: await stored(made, 25) });
+    let rows = await rowsOf(made, batch);
+    expect(rows.map((row) => row.workId !== undefined)).toEqual([...Array(20).fill(true), ...Array(5).fill(false)]);
+
+    // The first lands as a paper the index holds: the one twenty after it starts, and no other.
+    await made.t.mutation(internal.screening.files.landed, { workId: rows[0]!.workId!, read: { state: "read", pages: 12, title: "Tutoring at scale", doi: "10.1000/a", known: true } });
+    // The sixth doesn't open, and nothing is twenty after it yet.
+    await made.t.mutation(internal.screening.files.landed, { workId: rows[5]!.workId!, read: { state: "broken" } });
+    // The seventh's reading failed every try: it is screened as the file it is.
+    await made.t.mutation(internal.screening.files.landed, { workId: rows[6]!.workId!, read: null });
+    rows = await rowsOf(made, batch);
+    expect(rows[20]!.workId).toBeDefined();
+    expect(rows.slice(21).every((row) => row.workId === undefined)).toBe(true);
+    expect(await made.as.ann!.query(api.screening.files.drop, { workspaceId, batch })).toEqual({ total: 25, waiting: 22, known: 1, file: 1, broken: 1 });
+
+    // Files that arrive later: the one whose lane is free starts at once, the one behind a file still being read waits for it.
+    await made.as.ann!.mutation(api.screening.files.add, { workspaceId, batch, files: await stored(made, 3, 25) });
+    rows = await rowsOf(made, batch);
+    expect([rows[25]!.workId !== undefined, rows[26]!.workId !== undefined, rows[27]!.workId !== undefined]).toEqual([true, true, false]);
+
+    // A drop is its adder's: nobody else reads it or adds to it.
+    await expect(made.as.ben!.query(api.screening.files.drop, { workspaceId, batch })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+    await expect(made.as.ben!.mutation(api.screening.files.add, { workspaceId, batch, files: await stored(made, 1, 99) })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  });
+});
+
+describe("a paper with its own PDF", () => {
+  it("is screened as the file where it has no abstract, and one with neither is left out", async () => {
+    const made = await team(["ann"]);
+    const { jobId } = await started(made, ["ann"], 0);
+    const file: Id<"_storage"> = (await stored(made, 1))[0]!.file;
+    const { papers, sourceId } = await give(made.t, jobId, 0, [paper(1), { ...paper(2), abstract: undefined, file, pages: 40 }, { ...paper(3), abstract: undefined }]);
+    expect(papers.map((one) => [one.title, one.abstract !== undefined, one.pages])).toEqual([["Paper 1", true, undefined], ["Paper 2", false, 40]]);
+    expect(await made.t.run((ctx) => ctx.db.query("screeningLeftOut").collect())).toMatchObject([{ sourceId, name: "Paper 3", why: "abstract" }]);
+
+    const seen = await made.as.ann!.query(api.screening.paperViews.paper, { workspaceId: made.workspaceId, jobId, paperId: papers[1]!._id });
+    expect(seen).toMatchObject({ abstract: "", pdf: { pages: 40 } });
+    expect(await made.as.ann!.query(api.screening.paperViews.pdf, { workspaceId: made.workspaceId, jobId, paperId: papers[1]!._id })).toEqual(expect.any(String));
+    // A paper screened on its abstract has no PDF of its own to show.
+    expect(await made.as.ann!.query(api.screening.paperViews.pdf, { workspaceId: made.workspaceId, jobId, paperId: papers[0]!._id })).toBeNull();
+  });
+});

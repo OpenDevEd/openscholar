@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 // The open screening's Papers page: every paper as a row, a column of votes per reviewer, and where
 // the paper stands. A row opens the paper in a drawer at the window's side, with who voted what and when.
 
@@ -47,6 +49,9 @@ import { risOf, save, votesCsv } from "./export";
 import { Discussion, DiscussionShut } from "./discussion";
 import { useWorkspace } from "./workspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+// pdf.js is loaded only for a paper screened as its PDF.
+const PaperPdf = dynamic(() => import("./paper-pdf"), { ssr: false });
 
 const PAGE = 20;
 const ROW = 57;
@@ -897,7 +902,7 @@ function PaperPanel({ paper, open, onClose, onStep, canStep, place }: { paper: P
         {score ? <Chip><Stars count={score.stars} />{score.points} of {score.of} points</Chip> : null}
         <PaperFacts paper={paper} source={from && source ? { name: source.name, kind: source.kind, href: from.href, on: from.on, current: from["aria-current"] } : undefined} added={added && paper.addedAt !== undefined ? { at: paper.addedAt, href: added.href, on: added.on, current: added["aria-current"] } : undefined} />
       </div>
-      <p className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>
+      {paper.pdf ? <PaperPdf id={open.screening.id} paper={paper} terms={[]} /> : <p className="text-sm leading-6">{sentences.map((sentence, i) => <span key={i} className={cn("rounded-sm box-decoration-clone transition-colors duration-300", quoted === i && "bg-warning/20")}>{sentence} </span>)}</p>}
 
       {/* Your own vote, where the paper is yours to vote on. While it waits for you, it is the one thing here that needs you. */}
       {isMine && open.isReviewer ? (

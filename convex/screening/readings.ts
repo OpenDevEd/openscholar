@@ -11,6 +11,7 @@ import type { MutationCtx } from "../_generated/server";
 import { availableCredits } from "../billing/accounts";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { screeningPool } from "../workpool";
+import { readsPdfs } from "../../lib/assistant/files";
 import { effortValidator } from "../aiModelConfig/validators";
 import { bookkeepLater } from "./bookkeeping";
 import { modelsFree, reviewersOf, touched } from "./dealing";
@@ -31,10 +32,11 @@ export const context = internalQuery({
       clerkId: v.string(),
       balance: v.number(),
       criteria: criteriaValidator,
-      paper: v.object({ title: v.string(), abstract: v.optional(v.string()) }),
+      // `file`: its own PDF, which is what the model reads where the paper has no abstract.
+      paper: v.object({ title: v.string(), abstract: v.optional(v.string()), file: v.optional(v.id("_storage")), pages: v.optional(v.number()) }),
       effort: v.optional(effortValidator),
-      // `available: false` when the model was hidden or retired since it was put on the screening.
-      model: v.object({ slug: v.string(), input: v.number(), output: v.number(), available: v.boolean() }),
+      // `available: false` when the model was hidden or retired since it was put on the screening. `files`: it takes a PDF as a file. `room`: the tokens one call to it holds.
+      model: v.object({ slug: v.string(), name: v.string(), input: v.number(), output: v.number(), available: v.boolean(), files: v.boolean(), room: v.optional(v.number()) }),
     }),
   ),
   handler: async (ctx, { voteId }) => {
@@ -52,16 +54,17 @@ export const context = internalQuery({
       clerkId: user.clerkId,
       balance: await availableCredits(ctx, job.workspaceId),
       criteria: job.criteria ?? [],
-      paper: { title: paper.title, ...(paper.abstract ? { abstract: paper.abstract } : {}) },
+      paper: { title: paper.title, ...(paper.abstract ? { abstract: paper.abstract } : {}), ...(paper.file ? { file: paper.file } : {}), ...(paper.pages === undefined ? {} : { pages: paper.pages }) },
       ...(reviewer.effort ? { effort: reviewer.effort } : {}),
-      model: { slug: model.modelId, input: model.inputPricePerMillion, output: model.outputPricePerMillion, available: model.retiredAt === undefined && !model.hidden },
+      model: { slug: model.modelId, name: model.name, input: model.inputPricePerMillion, output: model.outputPricePerMillion, available: model.retiredAt === undefined && !model.hidden, files: readsPdfs(model.inputModalities), ...(model.contextLength === undefined ? {} : { room: model.contextLength }) },
     };
   },
 });
 
-/** What a reading returns to the pool: the model's answers by criterion, or that it didn't read the paper. */
+/** What a reading returns to the pool: the model's answers by criterion, that it didn't read the paper for now, or that it can't read this paper at all, with why in words for whoever looks. */
 export const readingValidator = v.union(
   v.object({ read: v.literal(false), why: v.union(v.literal("held"), v.literal("credits")) }),
+  v.object({ read: v.literal(false), why: v.literal("unreadable"), error: v.string() }),
   v.object({ read: v.literal(true), answers: voteAnswersValidator, confidences: v.record(v.string(), v.number()), passages: v.optional(votePassagesValidator), credits: v.number() }),
 );
 
@@ -84,8 +87,8 @@ export const done = screeningPool.defineOnComplete({
     if (reading?.read && vote.status === "waiting") {
       // Its decision follows its answers: the worker reads it from them as it settles the paper (lib/screening/project.ts `ballotOf`).
       await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
-    } else if (result.kind === "failed" && vote.status === "waiting") {
-      await ctx.db.patch("screeningVotes", vote._id, { status: "failed", error: result.error.slice(0, ERROR_SHOWN), workId: undefined });
+    } else if ((result.kind === "failed" || (reading && !reading.read && reading.why === "unreadable")) && vote.status === "waiting") {
+      await ctx.db.patch("screeningVotes", vote._id, { status: "failed", error: (result.kind === "failed" ? result.error : (reading as { error: string }).error).slice(0, ERROR_SHOWN), workId: undefined });
     } else {
       await ctx.db.patch("screeningVotes", vote._id, { workId: undefined });
     }
