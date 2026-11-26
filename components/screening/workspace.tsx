@@ -4,7 +4,8 @@
 // and Settings, each at its own address). Its reviewers, its settings and its state can change at any time from here.
 
 import { createContext, use, useLayoutEffect, useRef, type ReactNode } from "react";
-import { MotionConfig, motion } from "motion/react";
+import { useFormatter, useTranslations } from "next-intl";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useParams, useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { PenLine, AiIcon, BarChart3, Check, CircleCheck, CirclePause, Clock, Coins, Download, Eye, History, ListChecks, Lock, MoreHorizontal, Play, RefreshCw, RotateCcw, Search, Settings2, Table2, Unlink, UserPlus, Users } from "@/components/icons";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -13,6 +14,7 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { PageWrapper } from "@/components/PageWrapper";
 import { AnimatedNumber, Chip, Meter } from "./parts";
 import { EASE } from "@/components/settings/model-map";
+import { Opening } from "@/components/ui/opening";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
@@ -27,13 +29,17 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { plural, inOrder, num, SETTLE_MEANS, SETTLE_SAYS, readersOf, EVERY_LABEL, livingSays, day, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf, ago, whoIs, settlerSettles, lookerLabel, VOTES_HIDDEN_SAYS } from "./data";
+import { inOrder, readersOf, growing, activeReviewers, modelsOf, type Reviewer, type Screening, lookOf } from "./data";
 import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
-import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./pieces";
+import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, INLINE_LINK } from "./pieces";
 import { useOpenScreening, type Open, modelsRead, perPaper } from "./store";
+import { useWords, type Words } from "./words";
+
+/** This part's messages, for a function that is handed them. */
+type T = ReturnType<typeof useTranslations<"screening.frame">>;
 
 type View = "overview" | "screen" | "papers" | "settings";
 
@@ -84,21 +90,23 @@ export const useFrame = () => use(Workspace);
 /** A name or a count inside a sentence that opens what it stands for. */
 
 /** The rule in three chips, each a sentence of its own: who votes on a paper, what settles it, and who sees the votes. Said from the paper's side ("each paper"), so a chip never reads as how one paper stands. */
-function ruleFacts(screening: Screening, voter: boolean) {
+function ruleFacts({ words, t }: { words: Words; t: T }, screening: Screening, voter: boolean) {
   const [{ each }, models] = [readersOf(screening), modelsOf(screening).length];
-  const readers = [each ? `${plural(each, "person", "people")}` : null, models ? `${models} AI ${models === 1 ? "model" : "models"}` : null].filter(Boolean).join(" and ");
   return {
-    who: readers ? `Each paper: ${readers}` : "No reviewer yet",
+    who: each || models ? t("rule.eachPaper", { who: each && models ? "both" : each ? "people" : "models", people: each, models }) : t("rule.noReviewer"),
     whoIcon: each ? Users : AiIcon,
-    when: SETTLE_SAYS[screening.rule.settle],
+    when: words.t(`settle.says.${screening.rule.settle}`),
     // Votes are hidden on the papers that wait for a reviewer's own vote, which is their To do: the chip names that queue, a word the page shows, and promises nothing. Someone who doesn't vote here sees every vote: their chip says what holds for the reviewers.
-    see: screening.rule.blind === "after" ? (voter ? "Votes hidden in your To do" : "Votes hidden in reviewers' To do") : "Votes visible to all",
+    see: screening.rule.blind === "after" ? (voter ? t("rule.hiddenMine") : t("rule.hiddenTheirs")) : t("rule.visible"),
     seeIcon: screening.rule.blind === "after" ? Lock : Eye,
   };
 }
 
 export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations("screening.frame");
+  const words = useWords();
+  const pieces = useTranslations("screening.pieces");
   const router = useWorkspaceRouter();
   const here = usePageWorkspace();
   // Which of its pages is open: each has its own address, so Back returns to the one before.
@@ -147,8 +155,8 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   if (read === undefined) {
     return (
       <PageWrapper>
-        <LibraryPageShell wide icon={ListChecks} title="Screening" trail={[SCREENINGS_CRUMB]}>
-          <ListLoading label="Loading the screening" />
+        <LibraryPageShell wide icon={ListChecks} title={t("screening")} trail={[SCREENINGS_CRUMB]}>
+          <ListLoading label={t("loading")} />
         </LibraryPageShell>
       </PageWrapper>
     );
@@ -156,20 +164,23 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   if (!open) {
     return (
       <PageWrapper>
-        <LibraryPageShell wide icon={ListChecks} title="Not found" trail={[SCREENINGS_CRUMB]}>
-          <ListEmpty icon={Unlink}>This screening was deleted, or isn&apos;t shared with you</ListEmpty>
+        <LibraryPageShell wide icon={ListChecks} title={t("notFound")} trail={[SCREENINGS_CRUMB]}>
+          <ListEmpty icon={Unlink}>{t("gone")}</ListEmpty>
         </LibraryPageShell>
       </PageWrapper>
     );
   }
 
   const { screening } = open;
-  const facts = ruleFacts(screening, open.isReviewer);
+  const facts = ruleFacts({ words, t }, screening, open.isReviewer);
   const reviewers = inOrder(activeReviewers(screening), open.me);
   const total = open.total;
   const workspace = screening.workspace;
   // On Screen a row that came and went would move the paper being read.
   const banner = bannerKind(open, view === "screen");
+  const now = passingKind(open);
+  // It opens its place in the tabs' row by its width, and closes it as it goes.
+  const passing = <AnimatePresence initial={false}>{now ? <Opening across key="now"><Passing kind={now} open={open} workspace={workspace.name} /></Opening> : null}</AnimatePresence>;
   // The people on it: its workspace's people who review it, and whoever it is shared with from outside, to vote or to look. Its models are not people, and are counted with the reviewers on the Overview.
   const on = open.guests + activeReviewers(screening).filter((one) => !one.guest && one.kind === "person").length;
   // A member who isn't one of its reviewers can join it.
@@ -180,17 +191,17 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The pages. Beside the rule they are a compact group; where the card is too narrow for both they take a line of their own, each as wide as its share.
   const pages = (fill: boolean) => (
     <Segmented
-      label="Pages of this screening"
+      label={t("tabs.label")}
       value={view}
       fill={fill ? "labels" : false}
       // On a phone the labels go without their icons and the four stay on one line. Where large counts or an unsaved mark make that line longer than the screen, it scrolls sideways.
       className={fill ? "@max-[30rem]:w-max @max-[30rem]:min-w-full @max-[30rem]:flex-nowrap @max-[30rem]:*:gap-1.5 @max-[30rem]:*:px-2 @max-[30rem]:[&_svg]:hidden" : undefined}
       options={[
-        { id: "overview", label: "Overview", icon: BarChart3, href: overviewHref(id) },
-        { id: "screen", label: "Screen", icon: ListChecks, href: screenHref(id), detail: open.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
-        { id: "papers", label: "Papers", icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{num(total)}</span> },
+        { id: "overview", label: t("tabs.overview"), icon: BarChart3, href: overviewHref(id) },
+        { id: "screen", label: t("tabs.screen"), icon: ListChecks, href: screenHref(id), detail: open.toDo ? <TabCount value={open.toDo} tone="primary" /> : undefined },
+        { id: "papers", label: t("tabs.papers"), icon: Table2, href: papersHref(id), detail: <span className="tabular-nums text-muted-foreground">{words.num(total)}</span> },
         // Only someone who may change it has its settings.
-        ...(open.canChange ? [{ id: "settings" as const, label: "Settings", icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">Unsaved</StateChip> : undefined }] : []),
+        ...(open.canChange ? [{ id: "settings" as const, label: t("settings"), icon: Settings2, href: settingsHref(id), detail: unsaved ? <StateChip tone="warning" icon={PenLine} className="h-5 px-1.5 text-2xs">{t("tabs.unsaved")}</StateChip> : undefined }] : []),
       ]}
     />
   );
@@ -198,9 +209,9 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
   // The screening's menu. It also holds what the bar has no room for: the activity and the export below a wide window, and sharing on a phone, where the bar keeps the title and this menu.
   const more = (
     <DropdownMenu>
-      <TooltipHint label="More">
+      <TooltipHint label={t("more")}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label="More"><MoreHorizontal /></Button>
+          <Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground" aria-label={t("more")}><MoreHorizontal /></Button>
         </DropdownMenuTrigger>
       </TooltipHint>
       <DropdownMenuContent align="end" className="w-72 [&_[role=menuitem]]:whitespace-nowrap">
@@ -233,15 +244,15 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
       <Faces
         reviewers={reviewers}
         me={open.me}
-        more={{ href: overviewHref(id, "reviewers"), says: "Every reviewer" }}
+        more={{ href: overviewHref(id, "reviewers"), says: t("faces.every") }}
         linkOf={(reviewer) => {
           const on = narrowedTo.includes(reviewer.id);
-          const who = reviewer.id === open.me ? "yourself" : reviewer.name;
-          return { href: faceHref(reviewer), on, says: on ? `Take ${who} out of the filter` : narrowedTo.length ? `Add ${who} to the filter` : votesBy(reviewer, open.me) };
+          const who = { you: String(reviewer.id === open.me), name: reviewer.name };
+          return { href: faceHref(reviewer), on, says: on ? t("faces.takeOut", who) : narrowedTo.length ? t("faces.add", who) : votesBy(pieces, reviewer, open.me) };
         }}
       />
       {/* In the bar only in a window wide enough to keep a long name whole beside it: the menu has it at every width. */}
-      {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={() => void open.join()}><UserPlus />Join as a reviewer</Button> : null}
+      {canJoin ? <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs max-2xl:hidden" onClick={() => void open.join()}><UserPlus />{t("join")}</Button> : null}
     </>
   );
 
@@ -250,21 +261,21 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
     <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
       <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
         {/* Its name shows where the line has room for it: on a line of its own from a tablet up, and beside the pages in a wide window. */}
-        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only @[76rem]/strip:sr-only @[92rem]/strip:not-sr-only">How a paper is decided</span>
+        <span className="sr-only max-sm:not-sr-only @[48rem]/strip:not-sr-only @[76rem]/strip:sr-only @[92rem]/strip:not-sr-only">{t("rule.title")}</span>
         <Help
-          title="How a paper is decided"
+          title={t("rule.title")}
           facts={
             <>
-              {screening.rule.settle !== "one" ? <HelpFact icon={Users}>Conflicts go to {whoIs(screening, screening.rule.resolver, open.me)}</HelpFact> : null}
-              {screening.living ? <HelpFact icon={RefreshCw}>Checks for new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</HelpFact> : null}
+              {screening.rule.settle !== "one" ? <HelpFact icon={Users}>{t("rule.conflictsGoTo", { who: words.whoIs(screening, screening.rule.resolver, open.me) })}</HelpFact> : null}
+              {screening.living ? <HelpFact icon={RefreshCw}>{t("rule.checks", { every: screening.living.every })}</HelpFact> : null}
             </>
           }
         >
-          <p>Each paper gets the votes named in these chips, and is settled once they are in.</p>
-          <p>{SETTLE_MEANS[screening.rule.settle]}</p>{screening.rule.settle === "one" ? null : <p>A paper in conflict stays open until {settlerSettles(screening, open.me)} it.</p>}
+          <p>{t("rule.chips")}</p>
+          <p>{words.t(`settle.means.${screening.rule.settle}`)}</p>{screening.rule.settle === "one" ? null : <p>{t("rule.conflictOpen", { you: String(screening.rule.resolver === open.me), name: words.nameOn(screening, screening.rule.resolver) })}</p>}
           {/* What the third chip stands for, in full, for whoever reads it. */}
-          {screening.rule.blind === "after" ? <p>{VOTES_HIDDEN_SAYS}</p> : null}
-          {screening.living ? <p>A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.</p> : null}
+          {screening.rule.blind === "after" ? <p>{words.t("votesHiddenSays")}</p> : null}
+          {screening.living ? <p>{t("rule.living")}</p> : null}
         </Help>
       </span>
       {/* On a phone the chips are four lines: the Overview shows them, and the other pages keep the one line with the "?" that says the same. */}
@@ -274,18 +285,18 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
         <Chip icon={Check}>{facts.when}</Chip>
         <Chip icon={facts.seeIcon}>{facts.see}</Chip>
         {/* Below a laptop's width the bar keeps its room for the name, so "Living" joins these. */}
-        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{livingSays(screening.living.every)}</LinkChip> : null}
+        {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="shrink-0 lg:hidden">{words.living(screening.living.every)}</LinkChip> : null}
       </FadeRow>
       </div>
-      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs max-sm:ms-auto"><NextLink href={settingsHref(id, "decided")}>Change</NextLink></Button> : null}
+      {open.canChange ? <Button asChild variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs max-sm:ms-auto"><NextLink href={settingsHref(id, "decided")}>{t("change")}</NextLink></Button> : null}
     </div>
   );
 
   // Who the person looking is to it, where that is less than a reviewer who can change it.
   const role = !open.isReviewer
-    ? { label: lookerLabel(open.canChange), icon: Eye, text: open.canChange ? `You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.${screening.finishedAt ? "" : " Join as a reviewer to get some."}` : `${workspace.name} shared it with you. You see every paper and every vote, and you get no papers to vote on.` }
+    ? { label: words.looker(open.canChange), icon: Eye, text: open.canChange ? t("role.member", { finished: String(Boolean(screening.finishedAt)) }) : t("role.viewer", { workspace: workspace.name }) }
     : !open.canChange
-      ? { label: "Guest", icon: Users, text: `${workspace.name} shared it with you. You vote on the papers you get. Only ${workspace.name}'s members change its settings.` }
+      ? { label: t("role.guest"), icon: Users, text: t("role.guestSays", { workspace: workspace.name }) }
       : null;
 
   return (
@@ -311,7 +322,7 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                   </span>
                 ) : null}
                 {/* A living screening says so beside its name, as its row in the list does, and opens its checks. Below a laptop's width the chip is with the rule's. */}
-                {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">Living{/* Beside the name, what it means is said where the bar has the room for both. */}<span className="max-[87.5rem]:hidden">, new papers {EVERY_LABEL[screening.living.every].toLowerCase()}</span></LinkChip> : null}
+                {screening.living ? <LinkChip href={overviewHref(id, "new-papers")} icon={RefreshCw} className="max-lg:hidden">{/* Beside the name, what it means is said where the bar has the room for both. */}{t.rich("rule.livingChip", { every: screening.living.every, more: (chunks) => <span className="max-[87.5rem]:hidden">{chunks}</span> })}</LinkChip> : null}
                 {/* On a phone the menu ends the title's row, as an app bar's does. */}
                 <span className="flex sm:hidden">{more}</span>
               </>
@@ -321,12 +332,12 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
                 {/* On Screen a narrow window keeps the bar for the name: the paper is what is being read. */}
                 <div className={cn("flex items-center gap-2 border-e border-border-subtle pe-3 max-sm:hidden", view === "screen" && "max-lg:hidden")}>{team}</div>
                 {/* Below a wide window these two are in the menu, so the name keeps its room. */}
-                <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("activity")}><History />Activity</Button>
-                <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("export")}><Download />Export</Button>
+                <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("activity")}><History />{t("activity")}</Button>
+                <Button variant="outline" size="sm" className="max-xl:hidden" onClick={() => overlays.show("export")}><Download />{t("export")}</Button>
                 {/* Everyone on it, and where anyone is added: a reviewer, a model, or someone it is shared with. Icon-only, it keeps its count, so it is as wide as both. */}
-                <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={`People, ${num(on)} on this screening`} onClick={() => overlays.show("people")}>
-                  <Users /><span className={BAR_LABEL}>People</span>
-                  {on ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{on}</span> : null}
+                <Button variant="outline" size="sm" className="max-sm:hidden @max-3xl:px-2" aria-label={t("peopleOn", { count: words.num(on) })} onClick={() => overlays.show("people")}>
+                  <Users /><span className={BAR_LABEL}>{t("people")}</span>
+                  {on ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{words.num(on)}</span> : null}
                 </Button>
                 <span className="flex max-sm:hidden">{more}</span>
               </>
@@ -335,14 +346,15 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
             intro={
               <div ref={strip} className="@container/strip">
                 {/* One strip under the bar: the pages, then how a paper is decided. Where the card is too narrow for both on a line, the pages take the first and the rule the second. */}
-                <div className="border-b border-border-subtle px-4 py-3 sm:px-6 @[76rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]">{pages(true)}</FadeRow></div>
+                <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 sm:px-6 @[76rem]/strip:hidden"><FadeRow scrolls scrollbar="none" keepInView="[aria-current=page]" className="min-w-0 flex-1">{pages(true)}</FadeRow>{passing}</div>
                 {/* On Screen from a laptop's width the window's height goes to the paper: the rule shows only where it shares the pages' line. */}
                 <div className={cn("flex items-center gap-x-6 px-4 py-3 sm:px-6", view === "settings" && "@max-[76rem]/strip:hidden", view === "screen" && "max-sm:hidden lg:@max-[76rem]/strip:hidden")}>
                   <div className="shrink-0 @max-[76rem]/strip:hidden">{pages(false)}</div>
+                  <div className="flex min-w-0 @max-[76rem]/strip:hidden">{passing}</div>
                   {view === "settings" ? null : <div className="min-w-0 @[76rem]/strip:ms-auto">{rule}</div>}
                 </div>
                 {view === "settings" || view === "screen" ? null : <div className="flex items-center gap-2 px-4 pb-3 sm:hidden">{team}</div>}
-                {/* The row comes and goes as the models start and finish: it slides, so nothing under it jumps. */}
+                {/* The row is for what asks something of the person: it slides in and out, and changes only when the screening's state does. What passes by itself is the chip in the tabs' row. */}
                 <AutoHeight>
                   <Banner kind={banner} open={open} workspace={workspace.name} onReopen={reopen} onResume={resume} />
                 </AutoHeight>
@@ -363,18 +375,30 @@ export function ScreeningWorkspace({ children }: { children: ReactNode }) {
 }
 
 
-/** What the screening is doing now, which a person may need to act on. Who the person is to it is a chip beside its title, not one of these. */
-type BannerKind = "gathering" | "checking" | "credits" | "finished" | "paused" | "arrived" | "waiting" | "reading" | "nothing";
-/** Which one thing the row under the bar says. `quiet` leaves out what comes and goes as models read and papers arrive: on Screen and in the settings that row would move what is being read or changed. */
+/**
+ * What the screening asks of the person looking: it is out of credits, paused or finished, or new papers of theirs
+ * came in. Each has the row under the tabs, with what to do about it. Who the person is to it is a chip beside its
+ * title, not one of these.
+ */
+type BannerKind = "credits" | "finished" | "paused" | "arrived";
+/** Which one thing the row under the tabs says. `quiet`, on Screen, leaves out the papers that came in: a row arriving there would move the paper being read. */
 function bannerKind(open: Open, quiet: boolean): BannerKind | null {
   // What the models are doing is the one answer the list's row and the Overview read too.
   const { screening, modelsNow } = open;
-  if (modelsNow === "gathering" || modelsNow === "checking" || modelsNow === "credits") return modelsNow;
+  if (modelsNow === "credits") return "credits";
   if (screening.finishedAt) return "finished";
   if (modelsNow === "paused") return "paused";
-  if (quiet) return null;
-  if (open.latest?.mine) return "arrived";
-  if (modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
+  if (!quiet && open.latest?.mine) return "arrived";
+  return null;
+}
+/**
+ * What comes and goes by itself as papers arrive and models read: nobody has to do anything about it. It is a chip
+ * at the end of the tabs' row, which takes no row of its own, so nothing under the tabs moves when it comes or goes.
+ */
+type PassingKind = "gathering" | "checking" | "waiting" | "reading" | "nothing";
+function passingKind(open: Open): PassingKind | null {
+  const { modelsNow } = open;
+  if (modelsNow === "gathering" || modelsNow === "checking" || modelsNow === "waiting" || modelsNow === "reading") return modelsNow;
   // A check that found nothing says so, where nothing else has to be said.
   if (open.lastCheck?.added === 0 && Date.now() - open.lastCheck.at < NOTHING_SHOWN_MS) return "nothing";
   return null;
@@ -384,53 +408,30 @@ function bannerKind(open: Open, quiet: boolean): BannerKind | null {
 const NOTHING_SHOWN_MS = 60_000;
 
 /** Each kind of notice in the colour of what it is about: what waits for you is primary, a stop is warning, the rest are facts. */
-const BANNER_TONE: Record<BannerKind, Tone> = { gathering: "neutral", checking: "neutral", credits: "warning", finished: "neutral", paused: "warning", arrived: "primary", waiting: "neutral", reading: "neutral", nothing: "neutral" };
+const BANNER_TONE: Record<BannerKind, Tone> = { credits: "warning", finished: "neutral", paused: "warning", arrived: "primary" };
 
 function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKind | null; open: Open; workspace: string; onReopen: () => void; onResume: () => void }) {
   const { screening, reading, total } = open;
   const id = screening.id;
+  const t = useTranslations("screening.frame");
+  const pieces = useTranslations("screening.pieces");
+  const list = useTranslations("screening.list");
+  const words = useWords();
+  const format = useFormatter();
   if (!kind) return null;
   const tone = TONE[BANNER_TONE[kind]];
   // Every kind of row is as tall as the tallest, the one with a button: one giving way to another moves nothing under it.
   const row = cn("flex min-h-[3.25rem] flex-wrap items-center gap-x-3 gap-y-2 border-t border-border-subtle px-4 py-2.5 text-sm sm:px-6", tone.panel);
   const icon = cn("size-4 shrink-0", tone.ink);
   const modelLink = (model: Reviewer) => <NextLink key={model.id} href={papersHref(id, { reviewer: model.id })} className={INLINE_LINK}>{model.name}</NextLink>;
-  const models = (list: Reviewer[]) => list.map((model, i) => <span key={model.id}>{i ? (i === list.length - 1 ? " and " : ", ") : null}{modelLink(model)}</span>);
-  if (kind === "checking" && screening.checking) {
-    return (
-      <div className={row}>
-        <RefreshCw className={icon} />
-        <span className="font-medium">{MODELS_SAY.checking.says}</span>
-        <Meter value={screening.checking.done} max={screening.checking.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground">{screening.checking.done} of {plural(screening.checking.of, "source", "sources")} checked</span>
-      </div>
-    );
-  }
+  // Their names as a list, each a link.
+  const models = (list: Reviewer[]) => format.list(list.map(modelLink), { type: "conjunction" });
   if (kind === "arrived" && open.latest) {
     return (
       <div className={row}>
         <RefreshCw className={icon} />
-        <span><NextLink href={papersHref(id, { added: open.latest.id })} className={INLINE_LINK}>{open.latest.added} new {open.latest.added === 1 ? "paper" : "papers"}</NextLink> came in {ago(open.latest.at)}</span>
-        <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />Screen your {open.latest.mine} new {open.latest.mine === 1 ? "paper" : "papers"} first</NextLink></Button>
-      </div>
-    );
-  }
-  if (kind === "nothing") {
-    return (
-      <div className={row}>
-        <RefreshCw className={icon} />
-        <span className="font-medium">The last check found no new papers</span>
-      </div>
-    );
-  }
-  if (kind === "gathering" && open.gathering) {
-    return (
-      <div className={row}>
-        <Search className={icon} />
-        <span className="font-medium">{MODELS_SAY.gathering.says}</span>
-        <Meter value={open.gathering.done} max={open.gathering.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.gathering.done} /> of {num(open.gathering.of)}</span>
-        {/* Offered once one of the papers that are in is theirs to vote on. */}{open.isReviewer && open.toDo ? <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen the papers that are in</NextLink></Button> : null}
+        <span>{t.rich("banner.arrived", { count: open.latest.added, ago: words.ago(open.latest.at), link: (chunks) => <NextLink href={papersHref(id, { added: open.latest!.id })} className={INLINE_LINK}>{chunks}</NextLink> })}</span>
+        <Button asChild variant="outline" size="sm"><NextLink href={screenHref(id, { order: "fresh" })}><ListChecks />{t("banner.screenNew", { count: open.latest.mine })}</NextLink></Button>
       </div>
     );
   }
@@ -439,15 +440,15 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
       <div className={row}>
         <Coins className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          {MODELS_SAY.credits.says}
-          <Help title={MODELS_SAY.credits.says} facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{model.name}, {perPaper(model.model!)}</HelpFact>)}>
-            A model stops when the workspace can&apos;t pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {open.canChange ? "you add credits" : `${workspace} adds credits`}.
+          {pieces("modelsSay.credits.says")}
+          <Help title={pieces("modelsSay.credits.says")} facts={reading.map((model) => <HelpFact key={model.id} icon={Coins}>{t("banner.modelPrice", { name: model.name, price: perPaper({ words, t: list }, model.model!) })}</HelpFact>)}>
+            {t("banner.creditsHelp", { you: String(open.canChange), workspace })}
           </Help>
         </span>
-        <span className="text-muted-foreground">{models(reading)} stopped at {num(modelsRead(reading, total).done)} of {num(modelsRead(reading, total).of)} papers</span>
+        <span className="text-muted-foreground">{t.rich("banner.stoppedAt", { done: modelsRead(reading, total).done, of: modelsRead(reading, total).of, models: () => models(reading) })}</span>
         {/* With credits added, the models are let go on from where they stopped. */}
-        {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing"><Coins />Add credits</NextLink></Button> : null}
-        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
+        {open.canChange ? <Button asChild variant="outline" size="sm"><NextLink href="/settings/billing"><Coins />{t("addCredits")}</NextLink></Button> : null}
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />{t("resumeModels")}</Button> : null}
       </div>
     );
   }
@@ -457,11 +458,11 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
       <div className={row}>
         <CircleCheck className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          Finished {ago(at) === day(at) ? `on ${day(at)}` : ago(at)}
-          <Help title="Finished screening">Its models stop reading and it stops checking for new papers. {open.canChange ? "You can still read, export and change it, or reopen it." : `You can still read and export it. A member of ${workspace} can reopen it.`}</Help>
+          {words.ago(at) === words.day(at) ? t("banner.finishedOn", { day: words.day(at) }) : t("banner.finishedAgo", { ago: words.ago(at) })}
+          <Help title={t("banner.finishedTitle")}>{t("banner.finishedHelp", { member: String(open.canChange), workspace })}</Help>
         </span>
-        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={() => void open.check()}><RefreshCw />Check for new papers</Button> : null}
-        {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />Reopen</Button> : null}
+        {open.canChange && growing(screening).length ? <Button variant="outline" size="sm" onClick={() => void open.check()}><RefreshCw />{t("checkNew")}</Button> : null}
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onReopen}><RotateCcw />{t("reopen")}</Button> : null}
       </div>
     );
   }
@@ -471,39 +472,54 @@ function Banner({ kind, open, workspace, onReopen, onResume }: { kind: BannerKin
       <div className={row}>
         <CirclePause className={icon} />
         <span className="flex items-center gap-1 font-medium">
-          {MODELS_SAY.paused.says}
-          <Help title="Paused models">Paused models read nothing and spend no credits. People can keep voting. {open.canChange ? "Resume the models to have them read on." : `A member of ${workspace} can resume them.`}</Help>
+          {pieces("modelsSay.paused.says")}
+          <Help title={t("banner.pausedTitle")}>{t("banner.pausedHelp", { member: String(open.canChange), workspace })}</Help>
         </span>
-        <span className="text-xs tabular-nums text-muted-foreground">{num(read.done)} of {num(read.of)} papers read</span>
-        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />Resume models</Button> : null}
+        <span className="text-xs tabular-nums text-muted-foreground">{t("banner.papersRead", { done: read.done, of: read.of })}</span>
+        {open.canChange ? <Button variant="outline" size="sm" onClick={onResume}><Play />{t("resumeModels")}</Button> : null}
       </div>
     );
   }
+  return null;
+}
+
+/**
+ * What the screening is doing by itself right now, in a chip: its papers are arriving, its sources are being
+ * checked, its models wait their turn or are reading, or the last check found nothing. On a narrow strip the chip
+ * keeps its sign and its figures, and its words are for a screen reader.
+ */
+function Passing({ kind, open, workspace }: { kind: PassingKind; open: Open; workspace: string }) {
+  const { screening, reading, total } = open;
+  const t = useTranslations("screening.frame");
+  const pieces = useTranslations("screening.pieces");
+  const says = "@max-[34rem]/strip:sr-only";
+  const figures = "tabular-nums text-muted-foreground";
+  if (kind === "checking" && screening.checking) {
+    return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.checking.says")}</span><span className={figures}>{t("banner.checked", { done: screening.checking.done, of: screening.checking.of })}</span></Chip>;
+  }
+  if (kind === "gathering" && open.gathering) {
+    return <Chip icon={Search} className="shrink-0 whitespace-nowrap"><span className={says}>{pieces("modelsSay.gathering.says")}</span><span className={figures}>{t.rich("banner.counting", { of: open.gathering.of, done: () => <AnimatedNumber value={open.gathering!.done} /> })}</span></Chip>;
+  }
   if (kind === "waiting" && open.waitingFor) {
     return (
-      <div className={row}>
-        <Clock className={icon} />
-        <span className="flex items-center gap-1">
-          <span className="font-medium">{MODELS_SAY.waiting.says} <NextLink href={overviewHref(open.waitingFor.id)} className={INLINE_LINK}>{open.waitingFor.name}</NextLink></span>
-          <Help title="Models take turns" facts={<HelpFact icon={ListChecks}>{open.atOnce} papers at a time</HelpFact>}>
-            {workspace}&apos;s models read {open.atOnce} papers at a time, so a screening started while another is reading waits for it. People can vote in the meantime.
-          </Help>
-        </span>
-        <Meter value={open.waitingFor.done} max={open.waitingFor.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground"><AnimatedNumber value={open.waitingFor.done} /> of {num(open.waitingFor.of)}</span>
-      </div>
+      <Chip icon={Clock} className="shrink-0 whitespace-nowrap">
+        <span>{pieces.rich("modelsSay.waiting.says", { name: open.waitingFor.name, link: (chunks) => <NextLink href={overviewHref(open.waitingFor!.id)} className={cn(INLINE_LINK, "inline-block max-w-40 truncate align-bottom")}>{chunks}</NextLink> })}</span>
+        <Help title={t("banner.turnsTitle")} facts={<HelpFact icon={ListChecks}>{t("banner.atATime", { count: open.atOnce })}</HelpFact>}>
+          {t("banner.turnsHelp", { workspace, count: open.atOnce })}
+        </Help>
+      </Chip>
     );
   }
   if (kind === "reading") {
     const read = modelsRead(reading, total);
     return (
-      <div className={row}>
-        <AiIcon working className="size-4 shrink-0" />
-        <span className="font-medium">{reading.length === 1 ? modelLink(reading[0]!) : `${reading.length} models`} reading</span>
-        <Meter value={read.done} max={read.of} className="w-40" />
-        <span className="text-xs tabular-nums text-muted-foreground">{num(read.done)} of {num(read.of)}</span>
-      </div>
+      <Chip className="shrink-0 whitespace-nowrap">
+        <AiIcon working className="size-3.5 shrink-0" />
+        <span className={says}>{reading.length === 1 ? t.rich("banner.modelReading", { name: reading[0]!.name, model: () => <NextLink href={papersHref(screening.id, { reviewer: reading[0]!.id })} className={INLINE_LINK}>{reading[0]!.name}</NextLink> }) : t("banner.modelsReading", { count: reading.length })}</span>
+        <span className={figures}>{t("banner.read", { done: read.done, of: read.of })}</span>
+      </Chip>
     );
   }
+  if (kind === "nothing") return <Chip icon={RefreshCw} className="shrink-0 whitespace-nowrap">{t("banner.nothing")}</Chip>;
   return null;
 }

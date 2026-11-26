@@ -19,10 +19,14 @@ import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { toast } from "sonner";
-import { PERSON_SAYS, modelKey, type Person } from "./data";
+import { useTranslations } from "next-intl";
+import { modelKey, type Person } from "./data";
+import { useWords } from "./words";
 
 /** Picks a person: a member of the workspace the page is in, found by name or email, or an email address to invite from outside it. */
 export function AddPerson({ exclude, onPick, children }: { exclude: string[]; onPick: (pick: { person: Person } | { email: string }) => void; children?: ReactNode }) {
+  const t = useTranslations("screening.list");
+  const words = useWords();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const workspaceId = useWorkspace();
@@ -39,16 +43,16 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
   };
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children ?? <Button variant="outline" size="sm"><UserPlus />Add a person</Button>}</PopoverTrigger>
-      <PopoverContent align="start" aria-label="Add a person" className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
-        <p className="px-3 pt-3 text-sm font-semibold">Add a person</p>
+      <PopoverTrigger asChild>{children ?? <Button variant="outline" size="sm"><UserPlus />{t("addPerson")}</Button>}</PopoverTrigger>
+      <PopoverContent align="start" aria-label={t("addPerson")} className={`w-80 p-0 ${AVATARS_FADE_IN}`}>
+        <p className="px-3 pt-3 text-sm font-semibold">{t("addPerson")}</p>
         {/* The server finds the people: the list isn't narrowed again here. */}
         <Command shouldFilter={false}>
-          <CommandInput value={text} onValueChange={setText} placeholder="Find a person, or type an email" />
+          <CommandInput value={text} onValueChange={setText} placeholder={t("findPerson")} />
           <CommandList className="max-h-72">
-            <CommandEmpty>{email || found === undefined ? null : text.trim() ? "Nobody in this workspace by that name. Type an email address to invite someone." : "Nobody else in this workspace to add. Type an email address to invite someone."}</CommandEmpty>
+            <CommandEmpty>{email || found === undefined ? null : text.trim() ? t("nobodyByName") : t("nobodyElse")}</CommandEmpty>
             {left.length ? (
-              <CommandGroup heading={PERSON_SAYS.member}>
+              <CommandGroup heading={words.t("person.member")}>
                 {left.map((person) => (
                   <CommandItem key={person.id} value={person.id} onSelect={() => pick({ person: { id: person.id, name: person.name, ...(person.imageUrl ? { imageUrl: person.imageUrl } : {}) } })} className="gap-3">
                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-7" />
@@ -61,12 +65,12 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
               </CommandGroup>
             ) : null}
             {email && !member ? (
-              <CommandGroup heading="Invite">
+              <CommandGroup heading={t("invite")}>
                 <CommandItem value={email} onSelect={() => pick({ email })} className="gap-3">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Mail className="size-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{email}</span>
-                    <span className="block text-xs text-muted-foreground">{PERSON_SAYS.invites}</span>
+                    <span className="block text-xs text-muted-foreground">{words.t("person.invites")}</span>
                   </span>
                 </CommandItem>
               </CommandGroup>
@@ -85,8 +89,9 @@ export function AddPerson({ exclude, onPick, children }: { exclude: string[]; on
  * same one at the same effort can't be added twice.
  */
 export function AddModel({ taken, onPick, children }: { /** The models on it already, each as its model and effort (./data.ts `modelKey`). */ taken: string[]; onPick: (model: MapModel) => void; children: ReactNode }) {
+  const t = useTranslations("screening.list");
   const presetModel = usePresetModels();
-  const pick = (model: MapModel) => (taken.includes(modelKey(model)) ? void toast(`${stripProviderPrefix(model.name)} is on it already${model.effort ? " at that effort" : ""}`) : onPick({ ...model, name: stripProviderPrefix(model.name) }));
+  const pick = (model: MapModel) => (taken.includes(modelKey(model)) ? void toast(t("onAlready", { name: stripProviderPrefix(model.name), effort: String(Boolean(model.effort)) })) : onPick({ ...model, name: stripProviderPrefix(model.name) }));
   const picks = presetModel ? PRESET_KEYS.flatMap((id) => { const model = presetModel(id, "screenAll"); return model && !taken.includes(modelKey(model)) ? [{ id, model }] : []; }) : undefined;
   const presets = picks?.filter((one, at) => picks.findIndex((other) => modelKey(other.model) === modelKey(one.model)) === at).map(({ id, model }) => ({ id, models: [model], onSelect: () => pick(model) }));
   return (
@@ -95,17 +100,18 @@ export function AddModel({ taken, onPick, children }: { /** The models on it alr
 }
 
 /** Asks before a change to a running screening, saying first what it will do. A change that can't be taken back, such as a deletion, is `destructive`: its button is red. */
-export function ConfirmChange({ open, title, confirm, cancel = "Cancel", disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". */ cancel?: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
+export function ConfirmChange({ open, title, confirm, cancel, disabled = false, variant = "default", onConfirm, onClose, children }: { open: boolean; title: string; confirm: string; /** What the way out says, where "Cancel" would be unclear: "Keep editing". */ cancel?: string; /** The change can't be made as it stands: what is shown says why. */ disabled?: boolean; variant?: "default" | "destructive"; onConfirm: () => void; onClose: () => void; children: ReactNode }) {
+  const t = useTranslations("screening.list");
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent role={variant === "destructive" ? "alertdialog" : "dialog"} className={`max-w-md ${AVATARS_FADE_IN}`}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="sr-only">What this change does to the screening</DialogDescription>
+          <DialogDescription className="sr-only">{t("confirm.what")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">{children}</div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>{cancel}</Button>
+          <Button variant="ghost" onClick={onClose}>{cancel ?? t("confirm.cancel")}</Button>
           <Button variant={variant} disabled={disabled} onClick={() => { onConfirm(); onClose(); }}>{confirm}</Button>
         </DialogFooter>
       </DialogContent>

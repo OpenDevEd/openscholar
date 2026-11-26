@@ -17,23 +17,13 @@ export const RESULT_LABEL: Record<Result, string> = { include: "Included", maybe
 // ── People and models ────────────────────────────────────────────────────────────────────────────
 
 export type Person = { id: string; name: string; imageUrl?: string; guest?: boolean };
-/** What someone who has no vote on a screening is called: a member of its workspace is not a reviewer, someone it is shared with from outside is a viewer. */
-export const lookerLabel = (member: boolean) => (member ? "Not a reviewer" : "Viewer");
-/** `invited` and `invitedToLook` stand once the invitation is sent. Before that, `toInvite` on a row not saved yet, `toInviteAtStart` on a screening not started yet, and `invites` in the list a person is picked from. */
-export const PERSON_SAYS = { invited: "Invited by email, votes once they join", invitedToLook: "Invited by email, sees it once they join", toInvite: "Gets an invitation when you save", toInviteAtStart: "Gets an invitation when you start", invites: "Gets an invitation by email", guest: "From outside this workspace", member: "In this workspace", settles: "Settles conflicts" } as const;
-/** Where a person stands to a screening's workspace, as the line under their name. */
-export const standsTo = (person: Pick<Person, "guest"> | undefined) => (person?.guest ? PERSON_SAYS.guest : PERSON_SAYS.member);
 /** The name someone is called by in a line of text or a narrow column. */
 export const firstName = (name: string) => name.split(" ")[0]!;
 export { SOMEONE };
-/** A person as the one looking reads them at the start of a line: "You" for themselves, their name for anyone else. */
-export const youOr = (person: { id: string; name: string }, me: string | undefined) => (person.id === me ? "You" : person.name);
 /** A reviewer's name where there is little room: a person's first name, and a model's whole name, since its first word alone only names its maker. */
 export const shortName = (reviewer: { kind: "person" | "model"; name: string; email?: string }) => (reviewer.kind === "person" && !reviewer.email ? firstName(reviewer.name) : reviewer.name);
 /** A name as part of a file's name or an address. */
 export const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-/** What someone wrote, quoted: a note with a vote, a paper's title in a line of text. One form everywhere. */
-export const inQuotes = (text: string) => `“${text}”`;
 /** A number as people read it: "1,204". */
 export const num = (n: number) => n.toLocaleString("en-GB");
 /** A small number as a word at the start of a sentence: "Three of the 5 reviewers". */
@@ -145,8 +135,6 @@ export function termsPattern(terms: string[]) {
 
 /** Why a paper that was found isn't screened. */
 export const NO_ABSTRACT = "No abstract";
-/** Why something a source held isn't screened, in words, by the reason the server kept. */
-export const LEFT_WHY = { abstract: NO_ABSTRACT, title: "No title", doi: "No such DOI", record: "No record of it", broken: "Doesn't open", twice: "Listed twice" } as const;
 /** How many things a source held that the screening doesn't take. */
 export const leftOf = (source: Source) => source.read?.left ?? (source.left?.length ?? 0) + (source.bare ?? 0);
 /** How many of those are papers with no abstract. */
@@ -154,16 +142,10 @@ export const bareOf = (source: Source) => source.read?.bare ?? (source.bare ?? 0
 export const leftTotal = (sources: Source[]) => sources.reduce((sum, source) => sum + leftOf(source), 0);
 /** Something a source held that isn't screened: a record with no title, a DOI that isn't found, a file with nothing to read. */
 export type LeftOut = { name: string; why: string };
-/** How a PDF handed to a screening stands, in words: the index holds its paper, it is screened as the file it is, or it doesn't open. */
-/** How a paper with no abstract is read, said the same on a source's row, on a file's and over the paper: its PDF stands in for the abstract. */
-export const AS_PDF = "Read as its PDF";
-export const PDF_STANDS = { known: "In the index", file: AS_PDF, broken: LEFT_WHY.broken, waiting: "Reading it" } as const;
 /** Sources that gain papers over time, which a living screening checks again. A file or a pasted list holds what it held. */
 export const GROWS: SourceKind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", "zotero"];
 /** Sources whose papers can come with no abstract and their PDF, which a model is sent whole and charges for by the page. */
 export const bringsPdfs = (sources: Source[]) => sources.some((source) => (source.kind === "zotero" || source.kind === "pdf") && source.read?.removedAt === undefined);
-/** Said beside a price for papers nobody has read yet, where some may be read as their PDF. */
-export const PDF_COSTS_MORE = "more for one read as its PDF";
 export const grown = (source: Source) => (source.updates ?? []).reduce((sum, update) => sum + update.added, 0);
 /** What a source held when it was added, before any check found more. */
 export const baseTotal = (source: Source) => source.total - grown(source);
@@ -193,22 +175,6 @@ export type Destination = { kind: "none" | "new" | "collection" | "community"; n
 /** Each names its reason on a chip, a count or a file, where no note stands beside it. The row a reason is picked from says where the other reason is written. */
 const OTHER_LABEL: Record<(typeof OTHER_KEYS)[number], string> = { duplicate: "A duplicate of another paper", other: "Another reason" };
 const OTHER_REASONS: Array<{ key: string; label: string }> = OTHER_KEYS.map((key) => ({ key, label: OTHER_LABEL[key] }));
-/**
- * What a paper can be excluded for, in groups, the same wherever Exclude asks why: a must-have it fails, any other
- * criterion it fails, or another reason. Each has a key for the keyboard: a criterion its own number, as far as the
- * digits go, and another reason its first letter.
- */
-export const excludeGroups = (criteria: Criterion[], many = false) => {
-  const keyed = criteria.map((criterion, i) => ({ key: criterion.key, must: criterion.must, hotkey: i < 9 ? String(i + 1) : "" }));
-  const [musts, nice] = [keyed.filter((one) => one.must), keyed.filter((one) => !one.must)];
-  const others = OTHER_REASONS.map((reason) => ({ key: reason.key, hotkey: reason.key[0]!.toUpperCase() }));
-  // Asked of one paper, or of several picked together.
-  return [
-    { name: many ? "Which must-have do these papers fail?" : "Which must-have does it fail?", list: musts },
-    { name: musts.length ? "Or another criterion" : many ? "Which criterion do these papers fail?" : "Which criterion does it fail?", list: nice },
-    { name: criteria.length ? "Or another reason" : many ? "Why exclude them?" : "Why exclude it?", list: others },
-  ].filter((group) => group.list.length);
-};
 /** A reason in words: the criterion's short name, or one of the others. */
 export const reasonLabel = (key: string, criteria: Criterion[]) => criteria.find((criterion) => criterion.key === key)?.short ?? OTHER_REASONS.find((one) => one.key === key)?.label ?? key;
 /** Whether someone wrote a criterion's short name. One nobody wrote is its question cut short, which names nothing: the question stands in for it. */
@@ -223,8 +189,6 @@ export const failedLabel = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
   return criterion ? (isNamed(criterion) ? `${criterion.short} not met` : `Not met: ${criterionLabel(criterion)}`) : reasonLabel(key, criteria);
 };
-/** A criterion nobody could answer, as the reason a paper stands at Maybe, in words. */
-export const unclearLabel = (key: string, criteria: Criterion[]) => `${criteria.find((criterion) => criterion.key === key)?.short ?? key} unclear`;
 /** The question a short name or a reason stands for, where the name isn't already the question's own words. */
 export const questionOf = (key: string, criteria: Criterion[]) => {
   const criterion = criteria.find((one) => one.key === key);
@@ -263,27 +227,12 @@ export type Settled = { result: Result; final?: Decision; resolvedBy?: string; n
 export const settledOf = (paper: Pick<Paper, "result" | "resolved" | "reason">): Settled => ({ result: paper.result, ...(paper.result === "include" || paper.result === "maybe" || paper.result === "exclude" ? { final: paper.result } : {}), ...(paper.resolved ? { resolvedBy: paper.resolved.by, ...(paper.resolved.note ? { note: paper.resolved.note } : {}) } : {}), ...(paper.reason ? { reason: paper.reason } : {}) });
 /** One line of a paper's discussion. `to` names the reviewer it asks, who then has a question waiting (`open`) until they write on the paper. */
 export type Message = FunctionReturnType<typeof api.screening.discussion.thread>["page"][number];
-/** One thing that happened in a screening, as its activity lists it. */
-export type Change = { at: number; /** A person, or SCHEDULE for something that happened by itself. */ by: string; what: string; effect?: string };
 export type Every = "day" | "week" | "month";
 /** The name a screening's own collection of included papers has, unless it is given another. A source made from a screening's included papers carries the same name. */
 export const includedIn = (name: string) => `Included in ${name}`;
 export const EVERY_LABEL: Record<Every, string> = { day: "Every day", week: "Every week", month: "Every month" };
-/** What a living screening is, in a chip: the word and what it means. */
-export const livingSays = (every: Every) => `Living, new papers ${EVERY_LABEL[every].toLowerCase()}`;
 /** The rule that settles a paper: the name its choice has in the settings, and the same rule said of a screening. One place, so the settings, their summary, the frame's chips and a "?" never name it differently. */
 export const SETTLE_LABEL: Record<Rule["settle"], string> = { all: "All agree", most: "Most agree", one: "First vote decides" };
-/** What settles a paper under each rule, said the same wherever it is explained. Under the first two a paper waits until every reviewer given it has voted. */
-export const SETTLE_MEANS: Record<Rule["settle"], string> = {
-  all: "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
-  most: "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
-  one: "A paper is settled by the first vote on it, so there is never a conflict.",
-};
-export const SETTLE_SAYS: Record<Rule["settle"], string> = { all: "Settled when all agree", most: "Settled when most agree", one: "Settled by the first vote" };
-/** A check of a screening's sources: how many papers it found, and how many of those were new to the screening. */
-export type Update = { id?: string; at: number; found: number; added: number; by: string };
-/** Who a scheduled check is by: nobody. */
-export const SCHEDULE = "schedule";
 
 export type Screening = {
   id: Id<"screeningJobs">;
@@ -340,24 +289,12 @@ export const inOrder = <T extends Pick<Reviewer, "id" | "kind">>(reviewers: T[],
 };
 /** Whether someone settles a screening's conflicts: the one person its rule names, as every page says. */
 export const resolves = (screening: Pick<Screening, "rule">, id: string) => screening.rule.resolver === id;
-/** Someone on a screening as the person looking reads them: "you" for themselves, the name for anyone else, or a person's first name where there is little room. */
-export const whoIs = (screening: Pick<Screening, "reviewers" | "people">, id: string, me: string, short = false) => (id === me ? "you" : short ? firstName(nameOn(screening, id)) : nameOn(screening, id));
-/** Who settles a screening's conflicts, as the start of a sentence about it: "you settle" or "Kwame Mensah settles". */
-export const settlerSettles = (screening: Pick<Screening, "reviewers" | "rule" | "people">, me: string) => (screening.rule.resolver === me ? "you settle" : `${nameOn(screening, screening.rule.resolver)} settles`);
 export const nameOn = (screening: Pick<Screening, "reviewers" | "people">, id: string) => screening.reviewers.find((one) => one.id === id)?.name ?? screening.people[id]?.name ?? SOMEONE;
 export const peopleOf = (screening: Pick<Screening, "reviewers">) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "person");
 export const modelsOf = (screening: Pick<Screening, "reviewers">) => activeReviewers(screening).filter((reviewer) => reviewer.kind === "model");
 
-/** What stands where no paper has a result: on a Papers tab and in the Export dialog. "Yet" only while the screening is running. */
-export const emptyResult = (result: Result | "all", finished: boolean) => ({ all: "No papers yet", include: finished ? "No paper was included" : "Nothing included yet", maybe: finished ? "No paper was left at Maybe" : "Nothing marked Maybe yet", exclude: finished ? "No paper was excluded" : "Nothing excluded yet", conflict: "No papers in conflict", waiting: "No papers waiting for a vote" })[result];
 /** What a reviewer's place on a paper says where no vote stands in it: they have yet to vote, the paper was settled without them, or a model couldn't read it. One wording for the marks, the menus, the legends and the files. */
 export const NO_VOTE = { yet: "No vote yet", none: "No vote", failed: "Couldn't read the paper" } as const;
-/** The same three in a legend, where there is room to say what each means. */
-export const NO_VOTE_SAYS = { yet: NO_VOTE.yet, none: "Paper settled without this vote", failed: "Model couldn't read the paper" } as const;
-/** On a lock the person's own vote opens, and nowhere else: a paper that still waits for their vote. */
-export const HIDDEN_UNTIL_VOTE = "Hidden until you vote";
-/** The rule itself, for a "?" or a legend anyone may read, whether or not they vote: it says what this screening does and to whom. */
-export const VOTES_HIDDEN_SAYS = "This screening hides other votes from a reviewer only on papers that still wait for that reviewer's own vote.";
 
 /** The questions on a paper that still wait for their answer: each line put to one reviewer who has written nothing on the paper since. */
 export const waitingQuestions = (said: Message[] | undefined) => (said ?? []).filter((line) => line.to && line.open);
@@ -371,9 +308,6 @@ export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Obj
 /** The sources a check looks in again. */
 export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind) && !source.read?.removedAt);
 
-/** What starting a screening says it began with: its papers and sources, and who screens it. A count of none is left out. */
-export const startedSays = (papers: number, sources: number, people: number, models: number) =>
-  `${plural(papers, "paper", "papers")} from ${plural(sources, "source", "sources")}, for ${listed([people ? plural(people, "person", "people") : "", models ? plural(models, "model", "models") : ""].filter(Boolean)) || "reviewers still to be added"}`;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** A date as "17 Nov", every month in three letters, with its year only when that isn't this year. */

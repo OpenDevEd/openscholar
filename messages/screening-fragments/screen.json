@@ -1,0 +1,173 @@
+{
+  "notSaved": "That wasn't saved. Try again.",
+  "yourVote": "Your vote",
+  "result": "Result",
+  "answersDiffer": "Answers differ",
+  "nextAfter": "{settling, select, true {Next paper after each decision} other {Next paper after each vote}}",
+  "settleConflicts": "{settle, select, true {Settle {count, plural, one {# conflict} other {# conflicts}}} other {See {count, plural, one {# conflict} other {# conflicts}}}}",
+  "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
+  "queue": {
+    "label": "Queue",
+    "todo": "To do",
+    "again": "Vote again",
+    "done": "Done",
+    "conflicts": "Conflicts",
+    "see": "See the queue",
+    "hide": "Hide the queue",
+    "show": "Show the queue",
+    "everyPaper": "Every paper in this queue. Press one to open it.",
+    "noMatch": "Nothing in this queue matches",
+    "showWhole": "Show the whole queue",
+    "find": "Find by title or author",
+    "findLabel": "Find in this queue",
+    "asked": "{count, plural, one {# question for you} other {# questions for you}}",
+    "loading": "Loading papers",
+    "loadingPaper": "Loading the paper"
+  },
+  "row": {
+    "new": "New",
+    "askedYou": "A question for you",
+    "messages": "{count, plural, one {# message} other {# messages}}"
+  },
+  "filter": {
+    "any": "Any",
+    "order": "Order",
+    "dealt": "As added",
+    "fresh": "New papers first",
+    "lean": "Included by the models first",
+    "leanShut": "This screening hides other reviewers' votes on these papers, and this order would give the models' votes away"
+  },
+  "shortcuts": {
+    "title": "Shortcuts",
+    "or": "or",
+    "select": "Select that criterion",
+    "answer": "Answer it yes, no or unclear",
+    "include": "Include",
+    "maybe": "Maybe",
+    "exclude": "Exclude, then say why",
+    "next": "Next paper, without a vote",
+    "previous": "Previous paper",
+    "undo": "{settling, select, true {Undo the last decision} other {Undo the last vote}}",
+    "queue": "Show or hide the queue",
+    "keys": "Show these shortcuts"
+  },
+  "votes": {
+    "title": "Everyone's votes",
+    "forSettler": "{you, select, true {For you to settle} other {For {name} to settle}}",
+    "waitingFrom": "from {names}",
+    "more": "{count, plural, other {# more}}",
+    "settledBy": "{you, select, true {Settled by you} other {Settled by {name}}}"
+  },
+  "hint": {
+    "against": "You voted {voted}, and your answers point to {points}.",
+    "againstWhy": "You voted {voted}, and your answers point to {points}: you answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, must-haves} other {criterion {numbers}, a must-have}}.",
+    "pointsWhy": "Your answers point to <b>{points}</b>: you answered {answer, select, no {No} other {Unclear}} to {many, select, true {criteria {numbers}, must-haves} other {criterion {numbers}, a must-have}}. Your vote is not cast yet.",
+    "allMet": "Your answers point to <b>{points}</b>: every must-have is met. Your vote is not cast yet.",
+    "againstLine": "You voted {voted}. Your answers point to <b>{points}</b>.",
+    "pointsLine": "Your answers point to <b>{points}</b>. Not cast yet."
+  },
+  "paper": {
+    "label": "Paper",
+    "fromSource": "{count, plural, =1 {See the paper from {source}} other {See the # papers from {source}}}",
+    "marked": "<mark>Marked</mark> words are ones the criteria look for."
+  },
+  "criteria": {
+    "yours": "Your answers",
+    "title": "Criteria",
+    "answered": "{answered, number} of {count, number} answered",
+    "mustHaveFact": "Must-have",
+    "guidanceFact": "Guidance: what counts and what doesn't",
+    "markedFact": "Marked words: the words a criterion looks for",
+    "showsFact": "<mark>Marked</mark>How they show in the abstract",
+    "helpAnswering": "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say.",
+    "helpReading": "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude.",
+    "mustHave": "{answering, select, true {A must-have: a No on one points to Exclude. Answers are optional and are not your vote.} other {A must-have: a No on one points to Exclude.}}",
+    "guidance": "Guidance",
+    "markedWords": "Marked words",
+    "markedFor": "Marked words for criterion {n, number}",
+    "answerTo": "Your answer to criterion {n, number}",
+    "differFor": "Criterion {n, number}: show the answer that differs",
+    "none": "No criteria yet",
+    "add": "Add criteria"
+  },
+  "bar": {
+    "atOf": "{at, number} of {count, number}",
+    "left": "{count, plural, other {# left}}",
+    "underMinute": "under a minute",
+    "minutes": "about {minutes, number} min",
+    "hours": "about {hours, number} h",
+    "settledAs": "Settled as",
+    "lastVote": "Your last vote",
+    "lastSettledAs": "Last settled as",
+    "withNote": "Saved with a note",
+    "nowInConflicts": "Now in Conflicts",
+    "more": "More for this paper",
+    "dragRight": "Drag the paper right to include",
+    "dragLeft": "Drag it left to exclude",
+    "undo": "Undo",
+    "alsoFailed": "{count, plural, other {and # more}}",
+    "votedDifferently": "{count, plural, other {# voted differently}}"
+  },
+  "shut": {
+    "finished": "{canChange, select, true {This screening is finished, so no more votes are cast. Reopen it to vote again.} other {This screening is finished, so no more votes are cast.}}",
+    "settler": "{you, select, true {You settle conflicts on this screening. You can read them here.} other {{name} settles conflicts on this screening. You can read them here.}}"
+  },
+  "through": {
+    "conflicts": "Every conflict here is settled",
+    "papers": "You voted on every paper here"
+  },
+  "exclude": {
+    "why": "Why exclude it?",
+    "whyLabel": "Why exclude it",
+    "back": "Back",
+    "pick": "Pick the reason this paper is excluded."
+  },
+  "note": {
+    "label": "Note",
+    "settling": "Why, for the record (optional)",
+    "voting": "A note for the others, saved with your vote"
+  },
+  "settle": {
+    "title": "Settle this conflict",
+    "helpTitle": "Settling a conflict",
+    "yourVote": "Your vote as a reviewer",
+    "rule": "Rule",
+    "help": "The reviewers split on this paper. What you pick becomes its result, whatever they voted. Maybe is a result too: it settles the paper as one to look at again."
+  },
+  "empty": {
+    "noConflictPaper": "No paper is in conflict",
+    "onTheirWay": "Its papers are on their way",
+    "arrived": "{done, number} of {count, number} are in",
+    "noneYet": "No paper has come to you yet",
+    "noneYours": "None of its papers is yours to vote on",
+    "allVoted": "You have voted on all your papers",
+    "noneWaits": "No paper waits for your vote",
+    "settledWithout": "{count, plural, one {# of your papers was settled without it} other {# of your papers were settled without it}}",
+    "noneAgain": "None of your votes needs a new one",
+    "noConflict": "No conflict to settle",
+    "noVotes": "You haven't voted on a paper yet",
+    "seeVotes": "{count, plural, =1 {See your vote} other {See your # votes}}",
+    "join": "Join as a reviewer",
+    "allPapers": "See all the papers"
+  },
+  "matrix": {
+    "nameYou": "{name}, you",
+    "theirVote": "{name}'s vote",
+    "on": "{name}, {criterion}",
+    "differFor": "{criterion}: show the answer that differs",
+    "show": "{who}, {criterion}: {kind, select, model {show the passage} you {show your vote and note} other {show their vote and note}}",
+    "vote": "Vote"
+  },
+  "said": {
+    "noNoteYou": "You left no note with this vote.",
+    "noNote": "No note with this vote."
+  },
+  "evidence": {
+    "helpTitle": "How sure the model is",
+    "unsureBelow": "Unsure below 65%",
+    "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
+    "unsure": "Unsure: {sure, number, percent} sure",
+    "sure": "{sure, number, percent} sure",
+    "noSentence": "It named no sentence of the abstract for this answer."
+  }
+}

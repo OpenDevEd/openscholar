@@ -14,9 +14,19 @@ type Named = { key: string; text: string; short: string; must: boolean };
 type Peopled = { reviewers: Array<{ id: string; name: string }>; people: Record<string, { name: string } | undefined> };
 const DAY = 86_400_000;
 
+/** The shared messages' translator and the formatter of numbers, dates and lists, for whichever language. */
+type Said = { t: ReturnType<typeof useTranslations<"screening.words">>; format: ReturnType<typeof useFormatter> };
+
+/** The shared words of the reader's own language. */
 export function useWords() {
-  const t = useTranslations("screening.words");
-  const format = useFormatter();
+  return wordsOf({ t: useTranslations("screening.words"), format: useFormatter() });
+}
+
+/**
+ * The shared words from a translator and a formatter: what `useWords` hands a page, and what a file is written
+ * with, whose words are English whoever downloads it (./export.ts).
+ */
+export function wordsOf({ t, format }: Said) {
 
   /** A number as people read it: "1,204". */
   const num = (n: number) => format.number(n);
@@ -125,6 +135,6 @@ export function useWords() {
     },
   };
 }
-export type Words = ReturnType<typeof useWords>;
+export type Words = ReturnType<typeof wordsOf>;
 /** The nouns a count is said with (`screening.words.count`). */
 export type CountNoun = "papers" | "newPapers" | "openPapers" | "sources" | "people" | "models" | "reviewers" | "votes" | "criteria" | "mustHaves" | "conflicts" | "questions" | "duplicates" | "pages" | "pdfs" | "dois" | "collections" | "subCollections" | "items" | "rows" | "readings" | "changes" | "credits";

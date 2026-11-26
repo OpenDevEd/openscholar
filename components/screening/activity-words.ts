@@ -1,7 +1,7 @@
 // What a screening's activity says: each change the server logged by its code (convex/screening/log.ts),
 // in a sentence, with what it did under it and where it opens. One place, so the list and a file say it alike.
 
-import { inQuotes, listed, plural } from "./data";
+import type { EffectsSay } from "./effects";
 import { overviewHref, papersHref, screenHref, settingsHref } from "./links";
 
 export type Line = { code: string; count?: number; detail?: string };
@@ -9,56 +9,62 @@ export type Logged = { happened: string; code?: string; count?: number; detail?:
 
 const line = (row: Logged, code: string) => row.more?.find((one) => one.code === code);
 
-/** The parts of a screening's settings, as a change to them is named. */
-const SETTING: Record<string, string> = { name: "its name", question: "the research question", papers: "its sources", "new-papers": "how it looks for new papers", criteria: "its criteria", reviewers: "its reviewers", decided: "how a paper is decided", "goes-to": "where included papers go" };
+/** The parts of a screening's settings, as a change to them is named (`activity.setting`). */
+const SETTING = { name: "name", question: "question", papers: "papers", "new-papers": "newPapers", criteria: "criteria", reviewers: "reviewers", decided: "decided", "goes-to": "goesTo" } as const;
+const isSetting = (part: string): part is keyof typeof SETTING => Object.hasOwn(SETTING, part);
 
 /** What happened, in a sentence, and under it what that did. */
-export function changeSays(row: Logged): { what: string; effect?: string } {
+export function changeSays(say: EffectsSay, row: Logged): { what: string; effect?: string } {
+  const { words, t } = say;
   const { count = 0, detail = "" } = row;
   const effects = (says: Record<string, (one: Line) => string>) => (row.more ?? []).flatMap((one) => (says[one.code] ? [says[one.code]!(one)] : [])).join(". ") || undefined;
+  const EFFECT = effectSays(say);
   switch (row.code) {
     case "started": {
       const [sources, people, models] = [line(row, "sources")?.count ?? 0, line(row, "people")?.count ?? 0, line(row, "models")?.count ?? 0];
-      return { what: "Started the screening", effect: `${plural(sources, "source", "sources")}, for ${listed([people ? plural(people, "person", "people") : "", models ? plural(models, "model", "models") : ""].filter(Boolean)) || "reviewers still to be added"}` };
+      return { what: t("activity.started"), effect: t("activity.startedWith", { sources, who: words.listed([people ? words.count("people", people) : "", models ? words.count("models", models) : ""].filter(Boolean)) || words.t("startedNobody") }) };
     }
-    case "renamed": return { what: `Renamed it ${inQuotes(detail)}` };
-    case "finished": return { what: "Marked the screening as finished", effect: effects({ unsettled: (one) => `${plural(one.count ?? 0, "paper was", "papers were")} not settled`, checksStopped: () => "It stopped checking for new papers" }) };
-    case "reopened": return { what: "Reopened the screening" };
-    case "paused": return { what: "Paused the models" };
-    case "resumed": return { what: "Resumed the models" };
-    case "moved": return { what: `Moved it to ${detail || "another workspace"}` };
-    case "reviewerAdded": return { what: `Added ${detail} as a reviewer`, effect: effects(EFFECT) };
-    case "reviewerJoined": return { what: "Joined as a reviewer", effect: effects(EFFECT) };
-    case "reviewerRemoved": return { what: `Took ${detail} off the screening`, effect: effects(EFFECT) };
-    case "madeViewer": return { what: `Made ${detail} a viewer`, effect: effects(EFFECT) };
-    case "reminded": return { what: `Sent ${detail} a reminder` };
-    case "retried": return { what: `Sent ${detail} back to ${count ? plural(count, "paper", "papers") : "the papers"} it couldn't read` };
-    case "papersMoved": { const to = line(row, "to")?.detail ?? "someone else"; return { what: `Moved ${plural(count, "paper", "papers")} from ${detail} to ${to}`, effect: `${to} votes on ${count === 1 ? "it" : "them"} now` }; }
-    case "asked": return { what: `Asked ${detail} about ${inQuotes(line(row, "paper")?.detail ?? "a paper")}` };
+    case "renamed": return { what: t("activity.renamed", { name: words.quoted(detail) }) };
+    case "finished": return { what: t("activity.finished"), effect: effects({ unsettled: (one) => t("activity.unsettled", { count: one.count ?? 0 }), checksStopped: () => t("activity.checksStopped") }) };
+    case "reopened": return { what: t("activity.reopened") };
+    case "paused": return { what: t("activity.paused") };
+    case "resumed": return { what: t("activity.resumed") };
+    case "moved": return { what: detail ? t("activity.movedTo", { to: detail }) : t("activity.movedAway") };
+    case "reviewerAdded": return { what: t("activity.reviewerAdded", { name: detail }), effect: effects(EFFECT) };
+    case "reviewerJoined": return { what: t("activity.reviewerJoined"), effect: effects(EFFECT) };
+    case "reviewerRemoved": return { what: t("activity.reviewerRemoved", { name: detail }), effect: effects(EFFECT) };
+    case "madeViewer": return { what: t("activity.madeViewer", { name: detail }), effect: effects(EFFECT) };
+    case "reminded": return { what: t("activity.reminded", { name: detail }) };
+    case "retried": return { what: t("activity.retried", { name: detail, count }) };
+    case "papersMoved": { const to = line(row, "to")?.detail; const taker = { known: String(to !== undefined), to: to ?? "", count }; return { what: t("activity.papersMoved", { ...taker, from: detail }), effect: t("activity.papersMovedVotes", taker) }; }
+    case "asked": return { what: t("activity.asked", { name: detail, paper: words.quoted(line(row, "paper")?.detail ?? t("activity.aPaper")) }) };
     case "checked":
     case "scheduledCheck": {
       const added = line(row, "joined")?.count ?? 0;
-      const found = row.code === "checked" ? "Checked for new papers and found" : "The scheduled check found";
-      return { what: count ? `${found} ${plural(count, "paper", "papers")}${added !== count ? `, ${added} of them new` : ""}` : row.code === "checked" ? "Checked for new papers and found none" : "The scheduled check found no new papers", effect: effects({ known: (one) => `${plural(one.count ?? 0, "was", "were")} already in the screening`, joined: (one) => `${plural(one.count ?? 0, "paper", "papers")} joined the screening`, reopened: () => "The screening is open again" }) };
+      const found = { count, added, allNew: String(added === count) };
+      return { what: count ? (row.code === "checked" ? t("activity.checkedFound", found) : t("activity.scheduledFound", found)) : row.code === "checked" ? t("activity.checkedNone") : t("activity.scheduledNone"), effect: effects({ known: (one) => t("activity.known", { count: one.count ?? 0 }), joined: (one) => t("activity.joined", { count: one.count ?? 0 }), reopened: () => t("activity.reopenedByCheck") }) };
     }
-    case "settings": return { what: `Changed ${listed((row.more ?? []).flatMap((one) => (one.code === "part" && one.detail && SETTING[one.detail] ? [SETTING[one.detail]!] : []))) || "its settings"}`, effect: effects(EFFECT) };
+    case "settings": {
+      const parts = (row.more ?? []).flatMap((one) => (one.code === "part" && one.detail && isSetting(one.detail) ? [t(`activity.setting.${SETTING[one.detail]}`)] : []));
+      return { what: parts.length ? t("activity.changed", { parts: words.listed(parts) }) : t("activity.changedSettings"), effect: effects(EFFECT) };
+    }
   }
   // A change from before changes carried a code, or one another page made: said by its kind.
-  const KIND: Record<string, string> = { created: "Started the screening", renamed: `Renamed it ${inQuotes(detail)}`, edited: detail || "Changed it", added: detail ? `Added ${detail}` : "Added papers", removed: detail ? `Took ${detail} off` : "Removed papers", screened: `Screened ${plural(count, "paper", "papers")}`, paused: "Paused the models", resumed: "Resumed the models", retried: "Read some papers again", stopped: "Stopped the screening", moved: detail ? `Moved it from ${detail}` : "Moved it to another workspace", shared: `Shared it with ${detail || "someone"}` };
-  return { what: KIND[row.happened] ?? (detail || "Changed it") };
+  const KIND: Record<string, string> = { created: t("activity.started"), renamed: t("activity.renamed", { name: words.quoted(detail) }), edited: detail || t("activity.changedIt"), added: detail ? t("activity.added", { what: detail }) : t("activity.addedPapers"), removed: detail ? t("activity.removed", { what: detail }) : t("activity.removedPapers"), screened: t("activity.screened", { count }), paused: t("activity.paused"), resumed: t("activity.resumed"), retried: t("activity.readAgain"), stopped: t("activity.stopped"), moved: detail ? t("activity.movedFrom", { from: detail }) : t("activity.movedAway"), shared: detail ? t("activity.shared", { who: detail }) : t("activity.sharedSomeone") };
+  return { what: KIND[row.happened] ?? (detail || t("activity.changedIt")) };
 }
 
 /** What a change did, a line each, as the server counted it when the change was made. */
-const EFFECT: Record<string, (one: Line) => string> = {
-  votesDiscarded: () => "Their votes stay on record and stop counting",
-  votesKept: (one) => `${plural(one.count ?? 0, "vote keeps", "votes keep")} counting`,
-  dealt: (one) => `${plural(one.count ?? 0, "open paper", "open papers")} went to them`,
-  reads: (one) => `It reads ${plural(one.count ?? 0, "paper", "papers")}`,
-  moved: (one) => `${plural(one.count ?? 0, "paper", "papers")} moved ${one.detail ?? ""}`.trim(),
-  joined: (one) => `${plural(one.count ?? 0, "paper", "papers")} joined the screening`,
-  left: (one) => `${plural(one.count ?? 0, "paper", "papers")} left the screening`,
-  rechecked: (one) => `${plural(one.count ?? 0, "settled paper was", "settled papers were")} checked again`,
-};
+const effectSays = ({ t }: EffectsSay): Record<string, (one: Line) => string> => ({
+  votesDiscarded: () => t("activity.votesDiscarded"),
+  votesKept: (one) => t("activity.votesKept", { count: one.count ?? 0 }),
+  dealt: (one) => t("activity.dealt", { count: one.count ?? 0 }),
+  reads: (one) => t("activity.reads", { count: one.count ?? 0 }),
+  moved: (one) => t("activity.papersMovedBy", { count: one.count ?? 0, detail: one.detail ?? "" }).trim(),
+  joined: (one) => t("activity.joined", { count: one.count ?? 0 }),
+  left: (one) => t("activity.left", { count: one.count ?? 0 }),
+  rechecked: (one) => t("activity.rechecked", { count: one.count ?? 0 }),
+});
 
 /** Where a change opens: the papers a check brought, the setting it changed, the reviewers, or the paper it is about. */
 export function changeOpens(id: string, row: Logged): string | undefined {
@@ -76,7 +82,7 @@ export function changeOpens(id: string, row: Logged): string | undefined {
     case "paused":
     case "resumed": return overviewHref(id, "reviewers");
     case "asked": { const paper = line(row, "paperId")?.detail; return paper ? screenHref(id, { queue: "conflicts", paper }) : undefined; }
-    case "settings": { const part = (row.more ?? []).find((one) => one.code === "part")?.detail; return settingsHref(id, part && part in SETTING && part !== "name" && part !== "question" ? (part as "papers") : undefined); }
+    case "settings": { const part = (row.more ?? []).find((one) => one.code === "part")?.detail; return settingsHref(id, part && isSetting(part) && part !== "name" && part !== "question" ? (part as "papers") : undefined); }
     case "renamed": return settingsHref(id);
   }
   return undefined;

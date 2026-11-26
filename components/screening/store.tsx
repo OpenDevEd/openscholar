@@ -15,7 +15,9 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { longestPdfs, pdfsFor, pricingOf, screeningPaperCredits, screeningPdfsCredits, type Pdfs } from "@/lib/pricing/estimate";
 import { modelsProgress, type Answer } from "@/lib/screening/rules";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { DAY, GROWS, baseTaken, keptOf, modelsOf, num, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import type { useTranslations } from "next-intl";
+import { DAY, GROWS, baseTaken, keptOf, modelsOf, paperTotal, peopleOf, refOf, type Criterion, type Decision, type Person, type Result, type Reviewer, type Screening, type Source, type Workspace } from "./data";
+import type { Words } from "./words";
 
 type View = NonNullable<FunctionReturnType<typeof api.screening.view.get>>;
 export type Summary = FunctionReturnType<typeof api.screening.view.list>["page"][number];
@@ -75,9 +77,9 @@ export function pdfReadingCredits(model: Priced, ahead: number, pdfs: Pdfs) {
 /** What `count` of one screening's papers cost a model at most. */
 export const readingOf = (screening: Pick<Screening, "sources">, model: Priced, count: number) => readingCredits(model, count, pdfsOf(screening.sources));
 /** Credits as people read them: whole numbers once there are any, and never "0" for something that costs. */
-export const credits = (n: number) => (n === 0 ? "0" : n < 10 ? n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: n < 1 ? 1 : 0 }) : num(Math.ceil(n)));
+export const credits = (words: Words, n: number) => words.credits(n);
 /** What a model charges to read one paper, as every page says it. */
-export const perPaper = (model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) => `${credits(paperCredits(model))} credits a paper`;
+export const perPaper = ({ words, t }: { words: Words; t: ReturnType<typeof useTranslations<"screening.list">> }, model: Pick<MapModel, "inputPricePerMillion" | "outputPricePerMillion">) => t("perPaper", { credits: words.credits(paperCredits(model)) });
 
 /**
  * What a screening's models are doing, worked out on the server in one place, so the list's row, the frame's notice,

@@ -7,6 +7,7 @@
 
 import { useId, useRef, useState, type ReactNode } from "react";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check, ChevronRight, ChevronsUpDown, Coins, FileSpreadsheet, FileText, FileX, Folder, Hash, Library, Plus, Search, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -29,16 +30,16 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { rowKey, setOfRow } from "@/lib/evidence-libraries/reader-sources";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
-import { COLUMN_KEYS, COLUMN_LABEL, FILE_MAX_BYTES, REFERENCES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
+import { COLUMN_KEYS, FILE_MAX_BYTES, REFERENCES, doisIn, readTable, tableCounts, type ColumnKey, type TableRead } from "@/lib/screening/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
-import { PDF_STANDS, hash, num, plural, type Source, type SourceSet } from "./data";
+import { hash, type Source, type SourceSet } from "./data";
 import { Help, INLINE_LINK, StateChip } from "./pieces";
-import { credits } from "./store";
+import { useWords } from "./words";
 
 const PAGE = 5;
 /** A row's height with its line: a list keeps its page's height on a last page that holds fewer. */
@@ -62,6 +63,8 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
   /** Whether how many papers it holds is known before it is read. Where it isn't, no count shows, and it can be added whatever the number says. */
   count?: boolean;
 }) {
+  const t = useTranslations("screening.sources");
+  const words = useWords();
   const name = "truncate max-sm:line-clamp-2 max-sm:whitespace-normal";
   const second = Boolean(trail || offer.detail || offer.filters?.length || chips);
   return (
@@ -86,8 +89,8 @@ export function OfferRow({ offer, icon: Icon, chips, trail, added, onAdd, onOpen
         ) : null}
       </div>
       {/* A row that says where it sits has that for its second line: what else it has to say stands where its count would. */}
-      {count ? <Chip className="max-sm:ms-7">{plural(offer.total, "paper", "papers")}</Chip> : trail && chips ? <span className="flex shrink-0 items-center gap-1.5 max-sm:ms-7">{chips}</span> : null}
-      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || (count && !offer.total)} onClick={onAdd}>{added ? <><Check />Added</> : count && !offer.total ? "Empty" : <><Plus />Add</>}</Button>
+      {count ? <Chip className="max-sm:ms-7">{words.count("papers", offer.total)}</Chip> : trail && chips ? <span className="flex shrink-0 items-center gap-1.5 max-sm:ms-7">{chips}</span> : null}
+      <Button variant="outline" size="sm" className="w-24 max-sm:ms-auto" disabled={added || (count && !offer.total)} onClick={onAdd}>{added ? <><Check />{t("added")}</> : count && !offer.total ? t("empty") : <><Plus />{t("add")}</>}</Button>
     </div>
   );
 }
@@ -97,6 +100,7 @@ const NONE = "-";
 
 /** The row a table waits in until its columns are named. Under each choice is what the first record holds in that column, to check the pick against. */
 export function ColumnMatch({ pending, onPick, onAdd, onRemove }: { pending: PendingTable; onPick: (key: ColumnKey, head: string | undefined) => void; onAdd: () => void; onRemove: () => void }) {
+  const t = useTranslations("screening.sources");
   const id = useId();
   const { table, picked } = pending;
   const counts = tableCounts(table, picked);
@@ -106,36 +110,36 @@ export function ColumnMatch({ pending, onPick, onAdd, onRemove }: { pending: Pen
       <div className="flex min-h-9 items-center gap-3 max-sm:flex-wrap">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06] text-foreground"><FileSpreadsheet className="size-4" /></span>
         <p className="min-w-0 flex-1 truncate text-sm font-medium max-sm:basis-[calc(100%-3rem)]">{pending.name}</p>
-        <StateChip tone="warning" icon={TriangleAlert}>Its columns need naming</StateChip>
-        <TooltipHint label={`Remove ${pending.name}`}><Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground max-sm:ms-auto" aria-label={`Remove ${pending.name}`} onClick={onRemove}><Trash2 /></Button></TooltipHint>
+        <StateChip tone="warning" icon={TriangleAlert}>{t("columns.needNaming")}</StateChip>
+        <TooltipHint label={t("remove", { name: pending.name })}><Button variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground max-sm:ms-auto" aria-label={t("remove", { name: pending.name })} onClick={onRemove}><Trash2 /></Button></TooltipHint>
       </div>
       <div className="space-y-3 ps-12 max-sm:ps-0">
-        <p className="text-xs text-muted-foreground">Pick the column that holds each part. Under it is what the first of its {plural(table.rows.length, "row", "rows")} has there.</p>
+        <p className="text-xs text-muted-foreground">{t("columns.pickEach", { count: table.rows.length })}</p>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
           {COLUMN_KEYS.map((key) => {
             const missing = key === "title" && pending.untitled && !picked.title;
             return (
               <div key={key} className="min-w-0 space-y-1">
-                <label htmlFor={`${id}-${key}`} className="flex items-center gap-1 text-xs font-medium text-muted-foreground">{COLUMN_LABEL[key]}{key === "title" ? <RequiredMark /> : null}</label>
+                <label htmlFor={`${id}-${key}`} className="flex items-center gap-1 text-xs font-medium text-muted-foreground">{t(`columns.label.${key}`)}{key === "title" ? <RequiredMark /> : null}</label>
                 <Select value={picked[key] ?? (key === "title" ? "" : NONE)} onValueChange={(next) => onPick(key, next === NONE ? undefined : next)}>
-                  <SelectTrigger id={`${id}-${key}`} aria-invalid={missing || undefined} className="h-9 w-full min-w-0 bg-card"><SelectValue placeholder="Pick a column" /></SelectTrigger>
+                  <SelectTrigger id={`${id}-${key}`} aria-invalid={missing || undefined} className="h-9 w-full min-w-0 bg-card"><SelectValue placeholder={t("columns.pick")} /></SelectTrigger>
                   <SelectContent>
-                    {key === "title" ? null : <SelectItem value={NONE}>Not in this file</SelectItem>}
+                    {key === "title" ? null : <SelectItem value={NONE}>{t("columns.notInFile")}</SelectItem>}
                     {table.heads.map((head) => <SelectItem key={head} value={head}>{head}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {/* The problem sits under the field it is about, in the line the sample has. */}
-                {missing ? <p role="alert" className="h-4 truncate text-xs text-destructive">Pick the column that holds the title</p> : <p className="h-4 truncate text-xs text-muted-foreground">{picked[key] ? first[picked[key]!] : null}</p>}
+                {missing ? <p role="alert" className="h-4 truncate text-xs text-destructive">{t("columns.pickTitle")}</p> : <p className="h-4 truncate text-xs text-muted-foreground">{picked[key] ? first[picked[key]!] : null}</p>}
               </div>
             );
           })}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <span className="flex flex-wrap gap-1.5">
-            {counts.untitled.length ? <Chip>{plural(counts.untitled.length, "row", "rows")} without a title left out</Chip> : null}
-            {picked.title && counts.bare.length ? <StateChip tone="warning">{num(counts.bare.length)} without an abstract</StateChip> : null}
+            {counts.untitled.length ? <Chip>{t("columns.untitledLeftOut", { count: counts.untitled.length })}</Chip> : null}
+            {picked.title && counts.bare.length ? <StateChip tone="warning">{t("columns.noAbstract", { count: counts.bare.length })}</StateChip> : null}
           </span>
-          <Button size="sm" className="ms-auto" onClick={onAdd}><Plus />Add {picked.title ? plural(counts.records, "record", "records") : "its records"}</Button>
+          <Button size="sm" className="ms-auto" onClick={onAdd}><Plus />{picked.title ? t("columns.addRecords", { count: counts.records }) : t("columns.addItsRecords")}</Button>
         </div>
       </div>
     </div>
@@ -157,10 +161,11 @@ const MB = 1024 * 1024;
 
 /** Sends a file to storage and answers with where it is kept. */
 function useUpload() {
+  const t = useTranslations("screening.sources");
   const uploadUrl = useWorkspaceMutation(api.screening.held.uploadUrl);
   return async (body: Blob) => {
     const response = await fetch(await uploadUrl({}), { method: "POST", headers: { "Content-Type": body.type || "application/octet-stream" }, body });
-    if (!response.ok) throw new Error("The file couldn't be sent. Try again.");
+    if (!response.ok) throw new Error(t("upload.notSent"));
     return ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
   };
 }
@@ -172,6 +177,8 @@ function useUpload() {
  * (convex/screening/files.ts), so what the source holds shows while the rest are still on their way.
  */
 export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const t = useTranslations("screening.sources");
+  const words = useWords();
   const upload = useUpload();
   const look = useWorkspaceAction(api.screening.held.look);
   const addDois = useAddDois(sources, onAdd);
@@ -191,30 +198,30 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
 
   const addTable = async (file: File, table: TableRead, picked: TableRead["picked"]) => {
     const kept = await upload(file);
-    onAdd({ ref: refOf(file), name: file.name, detail: "Table", total: tableCounts(table, picked).records, set: { kind: "upload", file: kept, columns: picked as Record<string, string> } });
+    onAdd({ ref: refOf(file), name: file.name, detail: t("upload.table"), total: tableCounts(table, picked).records, set: { kind: "upload", file: kept, columns: picked as Record<string, string> } });
   };
   const take = async (list: FileList) => {
     const files = [...list];
     setRefused([]);
     const [pdfs, references] = [files.filter((file) => PDF_FILES.test(file.name)), files.filter((file) => REFERENCE_FILES.test(file.name))];
-    for (const file of files) if (!pdfs.includes(file) && !references.includes(file)) refuse(file.name, "Not a kind of file a screening reads");
+    for (const file of files) if (!pdfs.includes(file) && !references.includes(file)) refuse(file.name, t("upload.why.notReadable"));
     const reads = references.map((file) => file.name);
     setReading((now) => [...now, ...reads]);
     const sent = sendPdfs(pdfs);
     await Promise.all(references.map(async (file) => {
       try {
-        if (has(refOf(file))) return refuse(file.name, "Already a source");
-        if (file.size > FILE_MAX_BYTES) return refuse(file.name, `Over ${FILE_MAX_BYTES / MB} MB: split it and add each part`);
+        if (has(refOf(file))) return refuse(file.name, t("upload.why.twice"));
+        if (file.size > FILE_MAX_BYTES) return refuse(file.name, t("upload.why.tooBig", { mb: FILE_MAX_BYTES / MB }));
         if (TABLE_FILES.test(file.name)) {
           const table = readTable(await file.text());
-          if (!table) return refuse(file.name, "No table of references in it");
+          if (!table) return refuse(file.name, t("upload.why.noTable"));
           if (table.ask) return setPending((now) => [...now.filter((one) => one.ref !== refOf(file)), { name: file.name, ref: refOf(file), table, picked: table.picked, file }]);
           return await addTable(file, table, table.picked);
         }
         // A note or a list that holds DOIs and no references is read as the DOIs in it, as if they were pasted.
         const text = await file.text();
         const { dois } = doisIn(text);
-        if (dois.length && !REFERENCES.test(text) && !readTable(text)?.picked.title) return (await addDois(dois, file.name)) === "twice" ? refuse(file.name, "Already a source") : undefined;
+        if (dois.length && !REFERENCES.test(text) && !readTable(text)?.picked.title) return (await addDois(dois, file.name)) === "twice" ? refuse(file.name, t("upload.why.twice")) : undefined;
         const kept = await upload(file);
         const held = await look({ file: kept });
         // A text file that is a table after all: its columns are named here, as any table's are.
@@ -222,10 +229,10 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           const table = readTable(await file.text());
           if (table) return setPending((now) => [...now.filter((one) => one.ref !== refOf(file)), { name: file.name, ref: refOf(file), table, picked: table.picked, file }]);
         }
-        if (!held.records) return refuse(file.name, "No references in it");
-        onAdd({ ref: refOf(file), name: file.name, detail: "Reference file", total: held.records, set: { kind: "upload", file: kept } });
+        if (!held.records) return refuse(file.name, t("upload.why.noReferences"));
+        onAdd({ ref: refOf(file), name: file.name, detail: t("upload.referenceFile"), total: held.records, set: { kind: "upload", file: kept } });
       } catch (error) {
-        refuse(file.name, getErrorMessage(error, "It couldn't be read"));
+        refuse(file.name, getErrorMessage(error, t("upload.why.unread")));
       }
     }));
     setReading((now) => now.filter((name) => !reads.includes(name)));
@@ -234,10 +241,10 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   /** PDFs chosen together go up several at once as one drop, and are one source once the last is in. */
   const sendPdfs = async (pdfs: File[]) => {
     const sized = pdfs.filter((file) => file.size <= MAX_PDF_BYTES);
-    for (const file of pdfs) if (!sized.includes(file)) refuse(file.name, `Over ${MAX_PDF_MB} MB`);
+    for (const file of pdfs) if (!sized.includes(file)) refuse(file.name, t("upload.why.pdfTooBig", { mb: MAX_PDF_MB }));
     const ref = `pdf:${hash(sized.map((file) => `${file.name}:${file.size}`).sort().join("|"))}`;
     if (!sized.length) return;
-    if (has(ref)) return void sized.forEach((file) => refuse(file.name, "Already a source"));
+    if (has(ref)) return void sized.forEach((file) => refuse(file.name, t("upload.why.twice")));
     const batch = crypto.randomUUID();
     setSending((now) => [...now, { batch, total: sized.length, sent: 0 }]);
     const [queue, kept]: [File[], Array<{ file: Id<"_storage">; name: string; bytes: number }>] = [[...sized], []];
@@ -260,23 +267,23 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           void hand().catch(() => {});
         } catch {
           failed++;
-          refuse(file.name, "It couldn't be sent");
+          refuse(file.name, t("upload.why.unsent"));
         }
       }
     }));
     try {
       await hand();
     } catch (error) {
-      refuse(sized.length === 1 ? sized[0]!.name : `${num(sized.length)} PDFs`, getErrorMessage(error, "They couldn't be sent"));
+      refuse(sized.length === 1 ? sized[0]!.name : words.count("pdfs", sized.length), getErrorMessage(error, t("upload.why.allUnsent")));
     }
     setSending((now) => now.filter((one) => one.batch !== batch));
-    if (added) onAdd({ ref, name: added > 1 ? `${num(added)} uploaded PDFs` : sized[0]!.name, detail: added === 1 ? "A PDF" : `${sized[0]!.name} and ${num(added - 1)} more`, total: added, set: { kind: "pdf", batch } });
-    else if (!failed) refuse(sized.length === 1 ? sized[0]!.name : `${num(sized.length)} PDFs`, "They couldn't be sent");
+    if (added) onAdd({ ref, name: added > 1 ? t("upload.uploadedPdfs", { count: added }) : sized[0]!.name, detail: added === 1 ? t("upload.onePdf") : t("andMore", { name: sized[0]!.name, count: added - 1 }), total: added, set: { kind: "pdf", batch } });
+    else if (!failed) refuse(sized.length === 1 ? sized[0]!.name : words.count("pdfs", sized.length), t("upload.why.allUnsent"));
   };
   const addPending = async (table: PendingTable & { file: File }) => {
     if (!table.picked.title) return setPending((now) => now.map((one) => (one.ref === table.ref ? { ...one, untitled: true } : one)));
     setPending((now) => now.filter((one) => one.ref !== table.ref));
-    await addTable(table.file, table.table, table.picked).catch((error) => refuse(table.name, getErrorMessage(error, "It couldn't be sent")));
+    await addTable(table.file, table.table, table.picked).catch((error) => refuse(table.name, getErrorMessage(error, t("upload.why.unsent"))));
   };
 
   return (
@@ -288,17 +295,17 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
         className={cn("flex flex-col items-center gap-1.5 rounded-2xl border border-dashed bg-card px-6 py-7 text-center transition-colors", dragging ? "border-primary bg-primary/5" : "border-border")}
       >
         <p className="flex items-center gap-1 text-sm font-medium">
-          Drop reference files or PDFs here
-          <Help title="Files" facts={<><HelpFact>Reference files up to {FILE_MAX_BYTES / MB} MB</HelpFact><HelpFact>PDFs up to {MAX_PDF_MB} MB each</HelpFact></>}>
-            <p>A reference file is what a database or a reference manager exports. Each of its records with a title and an abstract is a paper.</p>
-            <p>A PDF is read as soon as it is added, for its title and its DOI. Where Openscholar&apos;s index holds that DOI, the paper shows with the index&apos;s title and abstract. Otherwise the paper is the PDF: a person screening it reads the file, and so does each AI reviewer, every page of it. A scan is read the same way. A file that doesn&apos;t open is left out.</p>
+          {t("upload.drop")}
+          <Help title={t("upload.helpTitle")} facts={<><HelpFact>{t("upload.fileLimit", { mb: FILE_MAX_BYTES / MB })}</HelpFact><HelpFact>{t("upload.pdfLimit", { mb: MAX_PDF_MB })}</HelpFact></>}>
+            <p>{t("upload.aboutFiles")}</p>
+            <p>{t("upload.aboutPdfs")}</p>
           </Help>
         </p>
-        <p className="text-xs text-muted-foreground">RIS, BibTeX, EndNote, PubMed, Web of Science, CSV and PDF, any number at once</p>
+        <p className="text-xs text-muted-foreground">{t("upload.kinds")}</p>
         {/* A PDF costs credits the moment it is added: the price stands where the files are chosen. */}
-        {lookCredits ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />A model reads each PDF&apos;s first pages for its title and DOI: up to {credits(lookCredits)} credits a PDF, paid as it is added</p> : null}
-        <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label="Files to upload" onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />Choose files</Button>
+        {lookCredits ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Coins aria-hidden className="size-3.5 shrink-0" />{t("upload.pdfCost", { credits: words.credits(lookCredits) })}</p> : null}
+        <input ref={input} type="file" multiple accept={UPLOAD_ACCEPT} className="sr-only" aria-label={t("upload.filesLabel")} onChange={(event) => { if (event.target.files) void take(event.target.files); event.target.value = ""; }} />
+        <Button variant="outline" size="sm" className="mt-2" onClick={() => input.current?.click()}><Upload />{t("upload.choose")}</Button>
       </div>
       {reading.length || pending.length || sending.length ? (
         <div className="divide-y divide-border-subtle rounded-2xl bg-card ring-1 ring-border-subtle">
@@ -306,17 +313,17 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
             <div key={one.batch} className="flex min-h-14 items-center gap-3 px-4 py-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06]"><Spinner className="size-4" /></span>
               <div className="min-w-0 flex-1 space-y-1.5">
-                <p className="truncate text-sm font-medium">{plural(one.total, "PDF", "PDFs")}</p>
+                <p className="truncate text-sm font-medium">{words.count("pdfs", one.total)}</p>
                 <Meter value={one.sent} max={one.total} />
               </div>
-              <Chip><span className="tabular-nums">{num(one.sent)} of {num(one.total)} sent</span></Chip>
+              <Chip><span className="tabular-nums">{t("upload.sent", { sent: one.sent, total: one.total })}</span></Chip>
             </div>
           ))}
           {reading.map((name) => (
             <div key={name} className="flex min-h-14 items-center gap-3 px-4 py-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground/[0.06]"><Spinner className="size-4" /></span>
               <p className="min-w-0 flex-1 truncate text-sm font-medium">{name}</p>
-              <Chip>Reading it</Chip>
+              <Chip>{t("upload.reading")}</Chip>
             </div>
           ))}
           {pending.map((table) => (
@@ -327,8 +334,8 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       {refused.length ? (
         <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 px-4 py-3 text-sm">
           <FileX className="mt-0.5 size-4 shrink-0 text-destructive" />
-          <div className="min-w-0 flex-1 space-y-1">{refused.map((one) => <p key={one.name}><span className="font-medium">{one.name}</span>: {one.why}</p>)}</div>
-          <TooltipHint label="Dismiss"><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label="Dismiss" onClick={() => setRefused([])}><X /></Button></TooltipHint>
+          <div className="min-w-0 flex-1 space-y-1">{refused.map((one) => <p key={one.name}>{t.rich("upload.refused", { name: one.name, why: one.why, file: (chunks) => <span className="font-medium">{chunks}</span> })}</p>)}</div>
+          <TooltipHint label={t("dismiss")}><Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0" aria-label={t("dismiss")} onClick={() => setRefused([])}><X /></Button></TooltipHint>
         </div>
       ) : null}
     </div>
@@ -337,12 +344,14 @@ export function UploadTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
 
 /** How a drop of PDFs stands, as chips on its source's row, each count arriving as the files are read: how many are read, and how many are papers the index holds. The ones screened as the PDF they are, and the files that don't open, are counted by the row itself, as for any source. */
 export function PdfFacts({ batch }: { batch: string }) {
+  const t = useTranslations("screening.sources");
+  const words = useWords();
   const drop = useProtectedQuery(api.screening.files.drop, inWorkspace(usePageWorkspace(), { batch })).data;
-  if (!drop) return <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip>;
+  if (!drop) return <Chip><Spinner className="size-3" />{words.t("pdf.waiting")}</Chip>;
   return (
     <>
-      {drop.waiting ? <Chip><Spinner className="size-3" /><span className="tabular-nums">{num(drop.total - drop.waiting)} of {num(drop.total)} read</span></Chip> : null}
-      {drop.known ? <Chip icon={Check}><span className="tabular-nums">{num(drop.known)}</span> in the index</Chip> : null}
+      {drop.waiting ? <Chip><Spinner className="size-3" /><span className="tabular-nums">{t("pdf.read", { read: drop.total - drop.waiting, total: drop.total })}</span></Chip> : null}
+      {drop.known ? <Chip icon={Check}>{t.rich("pdf.inIndex", { count: drop.known, n: (chunks) => <span className="tabular-nums">{chunks}</span> })}</Chip> : null}
     </>
   );
 }
@@ -350,13 +359,14 @@ export function PdfFacts({ batch }: { batch: string }) {
 const FILES_PAGE = 8;
 /** A drop's PDFs a page at a time, each under the title its first pages print, with how it stands. */
 export function PdfFiles({ batch, total }: { batch: string; total: number }) {
+  const t = useTranslations("screening.sources");
+  const words = useWords();
   const rows = useCursorPage(api.screening.files.list, inWorkspace(usePageWorkspace(), { batch }), FILES_PAGE);
   return (
     <div className="space-y-2">
-      <ul aria-label="The PDFs of this source" className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, FILES_PAGE) * 45 }}>
+      <ul aria-label={t("pdf.list")} className={cn("divide-y divide-border-subtle transition-opacity", rows.isStale && "pointer-events-none opacity-60")} style={{ minHeight: Math.min(total, FILES_PAGE) * 45 }}>
         {rows.items.map((row) => {
           const stands = row.state === "read" ? (row.known ? "known" : "file") : row.state;
-          const pages = row.pages ? `, ${plural(row.pages, "page", "pages")}` : "";
           return (
             <li key={row.id} className="flex min-h-11 items-center gap-x-3 gap-y-1 py-1.5 max-sm:flex-wrap">
               <div className="min-w-0 flex-1 max-sm:basis-full">
@@ -364,17 +374,17 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
                 {row.title ? <p className="truncate text-xs text-muted-foreground">{row.name}</p> : null}
               </div>
               {/* A file says both where both hold: the index has the paper, and it is read as its PDF all the same, for want of an abstract there. */}
-              {stands === "broken" ? <StateChip tone="warning" icon={FileX}>{PDF_STANDS.broken}</StateChip> : stands === "waiting" ? <Chip><Spinner className="size-3" />{PDF_STANDS.waiting}</Chip> : (
+              {stands === "broken" ? <StateChip tone="warning" icon={FileX}>{words.t("pdf.broken")}</StateChip> : stands === "waiting" ? <Chip><Spinner className="size-3" />{words.t("pdf.waiting")}</Chip> : (
                 <span className="flex shrink-0 flex-wrap items-center gap-1.5">
-                  {row.known ? <Chip icon={Check}>{PDF_STANDS.known}{row.asFile ? ", no abstract" : ""}</Chip> : null}
-                  {row.asFile ? <Chip icon={FileText}>{PDF_STANDS.file}{pages}</Chip> : null}
+                  {row.known ? <Chip icon={Check}>{row.asFile ? t("pdf.knownNoAbstract") : words.t("pdf.known")}</Chip> : null}
+                  {row.asFile ? <Chip icon={FileText}>{row.pages ? t("pdf.fileWithPages", { count: row.pages }) : words.t("pdf.file")}</Chip> : null}
                 </span>
               )}
             </li>
           );
         })}
       </ul>
-      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel="PDFs" steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total }} /> : null}
+      {rows.hasPages ? <CommandCenterPagination className="pt-1" currentPage={rows.page} itemLabel={t("pdf.pager")} steps={{ canPrevious: rows.canPrevious, canNext: rows.canNext, onPrevious: rows.previous, onNext: rows.next, offset: rows.offset, shown: rows.items.length, total }} /> : null}
     </div>
   );
 }
@@ -387,19 +397,22 @@ export function PdfFiles({ batch, total }: { batch: string; total: number }) {
  * does. "twice" where the same DOIs are a source already.
  */
 function useAddDois(sources: Source[], onAdd: (added: Added) => void) {
+  const t = useTranslations("screening.sources");
   const keep = useWorkspaceAction(api.screening.held.keepDois);
   return async (dois: string[], from?: string): Promise<"added" | "twice"> => {
     // The same DOIs are the same source, in whatever order they came.
     const ref = `dois:${hash([...dois].sort().join())}`;
     if (sources.some((source) => source.ref === ref)) return "twice";
     const kept = await keep({ dois });
-    onAdd({ ref, name: from ?? `${dois[0]}${dois.length > 1 ? ` and ${num(dois.length - 1)} more` : ""}`, detail: from ? "DOIs in a file" : "Pasted DOIs", total: kept.dois, set: { kind: "dois", file: kept.file } });
+    onAdd({ ref, name: from ?? (dois.length > 1 ? t("andMore", { name: dois[0]!, count: dois.length - 1 }) : dois[0]!), detail: from ? t("dois.fromFile") : t("dois.pasted"), total: kept.dois, set: { kind: "dois", file: kept.file } });
     return "added";
   };
 }
 
 /** Pasted DOIs: found in whatever text holds them, and added as one source. */
 export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const t = useTranslations("screening.sources");
+  const words = useWords();
   const addDois = useAddDois(sources, onAdd);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -411,7 +424,7 @@ export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: A
       if ((await addDois(dois)) === "twice") setTwice(true);
       else setText("");
     } catch (error) {
-      toast.error(getErrorMessage(error, "The DOIs couldn't be added. Try again."));
+      toast.error(getErrorMessage(error, t("dois.notAdded")));
     } finally {
       setBusy(false);
     }
@@ -419,22 +432,22 @@ export function DoiTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: A
   return (
     <div className="space-y-2">
       <span className="flex items-center gap-1">
-        <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">DOIs</label>
-        <Help title="Pasted DOIs" facts={<><HelpFact>Bare, as doi.org addresses, or inside a reference list</HelpFact><HelpFact>A DOI pasted twice is taken once</HelpFact></>}>Openscholar looks each DOI up in its index, then in Crossref and DataCite, and takes the paper&apos;s title and abstract from there. The ones none of them has a record of, and the ones whose record has no abstract, are left out and listed on the source&apos;s row once it has been read.</Help>
+        <label htmlFor="dois" className="text-xs font-medium text-muted-foreground">{t("dois.label")}</label>
+        <Help title={t("dois.helpTitle")} facts={<><HelpFact>{t("dois.forms")}</HelpFact><HelpFact>{t("dois.takenOnce")}</HelpFact></>}>{t("dois.about")}</Help>
       </span>
-      <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setTwice(false); }} rows={5} aria-invalid={twice || undefined} placeholder="Paste DOIs, or any text that holds them" className="bg-card text-sm" />
+      <Textarea id="dois" value={text} onChange={(event) => { setText(event.target.value); setTwice(false); }} rows={5} aria-invalid={twice || undefined} placeholder={t("dois.placeholder")} className="bg-card text-sm" />
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <span className="flex flex-wrap items-center gap-1.5">
           {twice ? (
-            <StateChip tone="warning" icon={TriangleAlert}>{dois.length === 1 ? "This DOI is already a source" : "These DOIs are already a source"}</StateChip>
+            <StateChip tone="warning" icon={TriangleAlert}>{t("dois.twice", { count: dois.length })}</StateChip>
           ) : dois.length ? (
-            <Chip icon={Hash}>{plural(dois.length, "DOI", "DOIs")}</Chip>
+            <Chip icon={Hash}>{words.count("dois", dois.length)}</Chip>
           ) : text.trim() ? (
-            <StateChip tone="warning" icon={TriangleAlert}>No DOI in what you pasted</StateChip>
+            <StateChip tone="warning" icon={TriangleAlert}>{t("dois.none")}</StateChip>
           ) : null}
-          {repeats && !twice ? <Chip>{num(repeats)} pasted more than once</Chip> : null}
+          {repeats && !twice ? <Chip>{t("dois.repeats", { count: repeats })}</Chip> : null}
         </span>
-        <Button variant="outline" size="sm" className="ms-auto" disabled={!dois.length || busy} onClick={() => void run()}>{busy ? <Spinner className="size-4" /> : <Plus />}Add {dois.length ? plural(dois.length, "DOI", "DOIs") : "DOIs"}</Button>
+        <Button variant="outline" size="sm" className="ms-auto" disabled={!dois.length || busy} onClick={() => void run()}>{busy ? <Spinner className="size-4" /> : <Plus />}{dois.length ? t("dois.addCount", { count: dois.length }) : t("dois.add")}</Button>
       </div>
     </div>
   );
@@ -446,19 +459,20 @@ type ZoteroLibrary = { id?: string; name: string; papers?: number };
 /** A collection as the list shows it. `under`: what it holds with everything under it, once the library is counted. `above`: where it sits, for one found by its name. */
 type ZoteroCollection = { key: string; name: string; papers: number; inside: number; under?: number; above?: Array<{ key: string; name: string }> };
 
-const OWN: ZoteroLibrary = { name: "My library" };
-
 /**
  * A Zotero account's libraries: the person's own and each group they are in. One is picked, then all of it or any
  * of its collections is added, a collection at a time. The list's first row is where it stands, the library or a
  * collection opened from it, with the way back up; under it are the collections there, a page of Zotero's at a time.
  */
 export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
+  const t = useTranslations("screening.sources");
+  const shared = useWords();
   const workspaceId = usePageWorkspace();
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {}).data;
   const readGroups = useWorkspaceAction(api.screening.zoteroSources.groups);
   const openTree = useWorkspaceMutation(api.zotero.tree.open);
-  const [library, setLibrary] = useState<ZoteroLibrary>(OWN);
+  const own: ZoteroLibrary = { name: t("zotero.myLibrary") };
+  const [library, setLibrary] = useState<ZoteroLibrary>(own);
   // The collections opened on the way to where the list stands, the last of them the one it stands in.
   const [path, setPath] = useState<ZoteroCollection[]>([]);
   const [deep, setDeep] = useState(true);
@@ -482,13 +496,13 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const found = useCursorPage(api.zotero.tree.find, inWorkspace(workspaceId, connected && words ? { ...of, text: words } : "skip"), PAGE);
   const listed = words ? found : level;
 
-  if (account === undefined) return <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading Zotero" className="size-5 text-primary" /></div>;
+  if (account === undefined) return <div className="flex min-h-40 items-center justify-center"><Spinner aria-label={t("zotero.loading")} className="size-5 text-primary" /></div>;
   if (!connected) {
     return (
       <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-border bg-card px-6 py-7 text-center">
-        <p className="text-sm font-medium">Zotero isn&apos;t connected</p>
-        <p className="text-xs text-muted-foreground">Connect it to pick from your library and the groups you are in.</p>
-        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href="/settings/connections"><ZoteroIcon />Connect Zotero</NextLink></Button>
+        <p className="text-sm font-medium">{t("zotero.notConnected")}</p>
+        <p className="text-xs text-muted-foreground">{t("zotero.connectWhy")}</p>
+        <Button asChild variant="outline" size="sm" className="mt-2"><NextLink href="/settings/connections"><ZoteroIcon />{t("zotero.connect")}</NextLink></Button>
       </div>
     );
   }
@@ -504,10 +518,10 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
   const added = (one?: ZoteroCollection) => sources.some((source) => source.ref === refOf(one) || source.ref === refOf(one, true));
   const add = (one: ZoteroCollection) => {
     const above = aboveOf(one);
-    onAdd({ ref: refOf(one, under(one)), name: one.name, detail: `In ${library.name}`, total: under(one) ? (one.under ?? one.papers) : one.papers, filters: [...(above.length ? [`In ${above.map((step) => step.name).join(" › ")}`] : []), ...(under(one) ? ["With its sub-collections"] : [])], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}), collectionKey: one.key, ...(under(one) ? { deep: true } : {}) } });
+    onAdd({ ref: refOf(one, under(one)), name: one.name, detail: t("in", { name: library.name }), total: under(one) ? (one.under ?? one.papers) : one.papers, filters: [...(above.length ? [t("in", { name: above.map((step) => step.name).join(" › ") })] : []), ...(under(one) ? [t("zotero.withSubCollections")] : [])], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}), collectionKey: one.key, ...(under(one) ? { deep: true } : {}) } });
   };
   // What a collection holds with everything under it is what Zotero counts in each, added up: a paper filed in two of them counts twice until the screening reads it, so it is "about".
-  const counted = (one: ZoteroCollection) => (under(one) ? { count: false, chips: one.under === undefined ? undefined : <Chip>About {num(one.under)} with what is under it</Chip> } : { count: true, chips: undefined });
+  const counted = (one: ZoteroCollection) => (under(one) ? { count: false, chips: one.under === undefined ? undefined : <Chip>{t("zotero.aboutUnder", { count: one.under })}</Chip> } : { count: true, chips: undefined });
   const LibraryIcon = library.id ? Users : UserRound;
   const option = (one: ZoteroLibrary) => {
     const Icon = one.id ? Users : UserRound;
@@ -515,7 +529,7 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
       <CommandItem key={one.id ?? "me"} value={`${one.name} ${one.id ?? ""}`} onSelect={() => pick(one)} className="gap-2.5">
         <Icon className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate">{one.name}</span>
-        {one.papers === undefined ? null : <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{plural(one.papers, "item", "items")}</span>}
+        {one.papers === undefined ? null : <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{shared.count("items", one.papers)}</span>}
         {one.id === library.id ? <Check className="size-4 shrink-0 text-primary" /> : null}
       </CommandItem>
     );
@@ -534,37 +548,37 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
     <div className="space-y-2">
       <Popover open={picking} onOpenChange={setPicking}>
         <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" aria-expanded={picking} aria-label="Zotero library" className="h-9 w-full min-w-0 justify-between gap-3 bg-card px-3 font-normal">
+          <Button variant="outline" role="combobox" aria-expanded={picking} aria-label={t("zotero.library")} className="h-9 w-full min-w-0 justify-between gap-3 bg-card px-3 font-normal">
             <span className="flex min-w-0 items-center gap-2"><LibraryIcon className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{library.name}</span></span>
             <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" aria-label="Zotero library" className="w-(--radix-popover-trigger-width) p-0">
+        <PopoverContent align="start" aria-label={t("zotero.library")} className="w-(--radix-popover-trigger-width) p-0">
           <Command>
             {/* Someone in dozens of groups finds one by its name. */}
-            {listedGroups.length > 8 ? <CommandInput placeholder="Find a group" /> : null}
+            {listedGroups.length > 8 ? <CommandInput placeholder={t("zotero.findGroup")} /> : null}
             <CommandList className="max-h-72">
-              <CommandGroup heading="Yours">{option(OWN)}</CommandGroup>
-              {listedGroups.length ? <CommandGroup heading="Groups">{listedGroups.map(option)}</CommandGroup> : null}
-              {nextGroups === undefined ? null : <CommandGroup><CommandItem value="more groups" onSelect={() => void moreGroups()} className="justify-center text-muted-foreground">More groups</CommandItem></CommandGroup>}
+              <CommandGroup heading={t("zotero.yours")}>{option(own)}</CommandGroup>
+              {listedGroups.length ? <CommandGroup heading={t("zotero.groups")}>{listedGroups.map(option)}</CommandGroup> : null}
+              {nextGroups === undefined ? null : <CommandGroup><CommandItem value="more groups" onSelect={() => void moreGroups()} className="justify-center text-muted-foreground">{t("zotero.moreGroups")}</CommandItem></CommandGroup>}
             </CommandList>
           </Command>
           <p className="flex items-center justify-between gap-3 border-t border-border-subtle px-3 py-2 text-xs text-muted-foreground">
-            <span className="flex min-w-0 items-center gap-1.5"><ZoteroIcon className="size-3.5 shrink-0" /><span className="truncate">Connected{account.username ? ` as ${account.username}` : ""}</span></span>
-            <NextLink href="/settings/connections" className={cn(INLINE_LINK, "shrink-0")}>Connections</NextLink>
+            <span className="flex min-w-0 items-center gap-1.5"><ZoteroIcon className="size-3.5 shrink-0" /><span className="truncate">{account.username ? t("zotero.connectedAs", { name: account.username }) : t("zotero.connected")}</span></span>
+            <NextLink href="/settings/connections" className={cn(INLINE_LINK, "shrink-0")}>{t("zotero.connections")}</NextLink>
           </p>
         </PopoverContent>
       </Popover>
       <div className="relative">
         <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder="Find a collection" aria-label={`Find a collection in ${library.name}`} className="h-8 rounded-full bg-card ps-8 text-sm" />
+        <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("zotero.findCollection")} aria-label={t("zotero.findCollectionIn", { library: library.name })} className="h-8 rounded-full bg-card ps-8 text-sm" />
       </div>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="flex items-center gap-1">
-          <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />Include sub-collections</label>
-          <Help title="Sub-collections" facts={<HelpFact>A paper filed in two of them is taken once</HelpFact>}>Zotero counts only the items filed directly in a collection, and so does the count here. With this on, a collection is added with the papers of every collection under it: what they hold together is about what Zotero counts in each, added up, and exact once the screening has read them.</Help>
+          <label htmlFor={deepId} className="flex items-center gap-2 text-xs font-medium"><Switch id={deepId} checked={deep} onCheckedChange={setDeep} />{t("zotero.includeSub")}</label>
+          <Help title={t("zotero.subHelpTitle")} facts={<HelpFact>{t("zotero.subTakenOnce")}</HelpFact>}>{t("zotero.subAbout")}</Help>
         </span>
-        {reading ? <Chip className="ms-auto"><Spinner className="size-3" />{tree?.total ? <span className="tabular-nums">Reading its collections, {num(tree.read)} of {num(tree.total)}</span> : "Reading its collections"}</Chip> : tree?.state === "failed" ? <StateChip tone="warning" icon={TriangleAlert} className="ms-auto">Zotero couldn&apos;t be read. Open the library again.</StateChip> : null}
+        {reading ? <Chip className="ms-auto"><Spinner className="size-3" />{tree?.total ? <span className="tabular-nums">{t("zotero.readingCount", { read: tree.read, total: tree.total })}</span> : t("zotero.reading")}</Chip> : tree?.state === "failed" ? <StateChip tone="warning" icon={TriangleAlert} className="ms-auto">{t("zotero.failed")}</StateChip> : null}
       </span>
       <div className={cn("divide-y divide-border-subtle transition-opacity", listed.isStale && "opacity-60")}>
         {/* Where the list stands: all of the library, or the collection opened from it with the steps that lead back up. It can be added as it is. A name being looked for is looked for in the whole library. */}
@@ -572,20 +586,20 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
           <OfferRow offer={{ name: here.name, detail: "", total: here.papers }} icon={Folder} trail={trailOf(path.slice(0, -1))} added={added(here)} onAdd={() => add(here)} {...counted(here)} />
         ) : (
           <OfferRow
-            offer={{ name: `Every paper in ${library.name}`, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0 }}
+            offer={{ name: t("zotero.everyPaper", { library: library.name }), detail: library.id ? t("zotero.group") : t("zotero.own"), total: library.papers ?? 0 }}
             icon={Library}
             added={added()}
             // Zotero counts a library's items, attached files and notes among them: how many are papers is known once it is read.
             count={false}
-            chips={library.papers === undefined ? undefined : <Chip>{plural(library.papers, "item", "items")} in Zotero</Chip>}
-            onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.id ? "Zotero group" : "Your Zotero library", total: library.papers ?? 0, filters: ["Whole library"], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}) } })}
+            chips={library.papers === undefined ? undefined : <Chip>{t("zotero.itemsInZotero", { count: library.papers })}</Chip>}
+            onAdd={() => onAdd({ ref: refOf(), name: library.name, detail: library.id ? t("zotero.group") : t("zotero.own"), total: library.papers ?? 0, filters: [t("zotero.wholeLibrary")], set: { kind: "zotero", ...(library.id ? { groupId: library.id } : {}) } })}
           />
         )}
         <div className="divide-y divide-border-subtle" style={{ minHeight: (reading && !rows.length) || listed.hasPages ? PAGE * ROW : undefined }}>
           {rows.map((one) => (
             <OfferRow
               key={one.key}
-              offer={{ name: one.name, detail: one.inside ? plural(one.inside, "sub-collection", "sub-collections") : "", total: one.papers }}
+              offer={{ name: one.name, detail: one.inside ? shared.count("subCollections", one.inside) : "", total: one.papers }}
               icon={Folder}
               // A collection found by its name says where it sits.
               trail={words && one.above?.length ? trailOf(aboveOf(one)) : undefined}
@@ -595,10 +609,10 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
               {...counted(one)}
             />
           ))}
-          {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? `No collection of ${library.name} has “${find.trim()}” in its name.` : here ? `${here.name} holds no collections.` : `${library.name} has no collections.`}</p> : null}
+          {!reading && !listed.isLoading && !rows.length ? <p className="px-4 py-6 text-center text-sm text-muted-foreground">{words ? t("zotero.noneFound", { library: library.name, text: shared.quoted(find.trim()) }) : here ? t("zotero.noneHere", { name: here.name }) : t("zotero.noneInLibrary", { library: library.name })}</p> : null}
         </div>
       </div>
-      {listed.hasPages ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel="collections" steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
+      {listed.hasPages ? <CommandCenterPagination className="pt-1" currentPage={listed.page} itemLabel={t("zotero.pager")} steps={{ canPrevious: listed.canPrevious, canNext: listed.canNext, onPrevious: listed.previous, onNext: listed.next, offset: listed.offset, shown: rows.length, ...(words || !here ? {} : { total: here.inside }) }} /> : null}
     </div>
   );
 }
@@ -609,9 +623,10 @@ export function ZoteroTab({ sources, onAdd }: { sources: Source[]; onAdd: (added
 export function CommunityTab({ sources, onAdd }: { sources: Source[]; onAdd: (added: Added) => void }) {
   const libraries = useLibrarySources();
   const added = (ref: string) => sources.some((source) => source.ref === ref);
+  const t = useTranslations("screening.sources");
   const add = (row: Parameters<typeof rowKey>[0] & { label: string; records: number; what: string }, library: { name: string }) => {
     const ref = `evidenceLibrary:${rowKey(row)}`;
-    if (!added(ref)) onAdd({ ref, name: row.label, detail: `In ${library.name}`, total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
+    if (!added(ref)) onAdd({ ref, name: row.label, detail: t("in", { name: library.name }), total: row.records, set: setOfRow(row as Parameters<typeof setOfRow>[0]) as SourceSet });
   };
   return <LibrarySources state={libraries} isOn={(row) => added(`evidenceLibrary:${rowKey(row)}`)} onToggle={(row, library) => add(row, library)} onPasted={(held) => add(held.row, held.library)} scope={() => null} />;
 }

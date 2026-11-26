@@ -19,9 +19,13 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { activeReviewers, ago, firstName, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
+import { useTranslations } from "next-intl";
+import { activeReviewers, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
 import { Help, Section, ShutChip, ShutNote, StateChip } from "./pieces";
 import type { Open } from "./store";
+import { useWords } from "./words";
+
+type ListT = ReturnType<typeof useTranslations<"screening.list">>;
 
 /** A choice of who a line is for. */
 const TO = "flex h-6 items-center gap-1.5 rounded-full border text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -30,19 +34,20 @@ const TO_OFF = "border-border-subtle text-muted-foreground hover:bg-muted hover:
 
 
 /** What the discussion is and when it is there, behind its "?": the same wherever its title shows, open or shut. The rule that hides it until you vote is named only on a screening that has that rule. */
-const about = (open: Open) => (
-  <Help title="Discussion">
+const about = (t: ListT, open: Open) => (
+  <Help title={t("discussion.title")}>
     {/* Said of the people who write here, so it is true for someone who only reads. */}
-    <p>Reviewers and the person who settles conflicts talk a paper over here, with everyone on it or with one person. A line to one person is a question: it stays on their Screening list until they answer.{modelsOf(open.screening).length ? " A model can't be asked: press one of its marks in the table for the passage it read." : ""}</p>
-    {open.screening.rule.blind === "after" ? <p>This screening hides what is written about a paper from a reviewer only while the paper still waits for that reviewer&apos;s own vote.</p> : null}
+    <p>{t("discussion.about", { models: String(modelsOf(open.screening).length > 0) })}</p>
+    {open.screening.rule.blind === "after" ? <p>{t("discussion.blind")}</p> : null}
   </Help>
 );
 
 /** The discussion where the rule keeps it shut: the others' votes are still hidden from the person looking, and so is what they wrote. */
 export function DiscussionShut({ open }: { open: Open }) {
+  const t = useTranslations("screening.list");
   return (
-    <Section title="Discussion" help={about(open)} aside={<ShutChip by="vote" />}>
-      <ShutNote by="vote">Reviewers talk a paper over here. It stays out of sight so it can&apos;t sway your vote.</ShutNote>
+    <Section title={t("discussion.title")} help={about(t, open)} aside={<ShutChip by="vote" />}>
+      <ShutNote by="vote">{t("discussion.shut")}</ShutNote>
     </Section>
   );
 }
@@ -52,6 +57,8 @@ const LINES = 50;
 
 export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   const { screening } = open;
+  const t = useTranslations("screening.list");
+  const { ago, firstName, t: shared } = useWords();
   const workspaceId = useWorkspace();
   const lines = usePaginatedQuery(api.screening.discussion.thread, inWorkspace(workspaceId, { jobId: screening.id, paperId: paper.id }), { initialNumItems: LINES });
   const write = useWorkspaceMutation(api.screening.discussion.say);
@@ -76,15 +83,15 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
   const send = () => {
     const words = text.trim();
     if (!words) return;
-    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setText(words); showStyledToast("error", getErrorMessage(error, "That wasn't sent. Try again.")); });
+    void write({ jobId: screening.id, paperId: paper.id, text: words, ...(to ? { to: to.id as Id<"users"> } : {}) }).catch((error) => { setText(words); showStyledToast("error", getErrorMessage(error, t("discussion.notSent"))); });
     // Who it was for stays chosen: a second line to the same person is the likely next one, and a choice that resets itself is missed.
     setText("");
   };
   return (
     <Section
-      title="Discussion"
-      help={about(open)}
-      aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{firstName(owed.name)} asked you</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>Waiting for {firstName(waitingFor.name)}&apos;s answer</StateChip> : null}
+      title={t("discussion.title")}
+      help={about(t, open)}
+      aside={owed ? <StateChip tone="primary" icon={MessagesSquare}>{t("discussion.askedYou", { name: firstName(owed.name) })}</StateChip> : waitingFor ? <StateChip tone="info" icon={Hourglass}>{t("discussion.waitingFor", { name: firstName(waitingFor.name) })}</StateChip> : null}
     >
       {said.length ? (
         // Each line carries its own room over and under it, so one that arrives opens from nothing with no gap jumping in beside it. The list takes that room back at its two ends, inside a box of its own so the room between it and the field stays.
@@ -93,7 +100,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
           <AnimatePresence initial={false}>
             {said.map((line) => {
               const person = line.by;
-              const asked = line.to ? (line.to.id === me ? "you" : firstName(line.to.name)) : null;
+              const asked = line.to ? (line.to.id === me ? shared("youInline") : firstName(line.to.name)) : null;
               return (
                 <motion.li
                   key={line.id}
@@ -110,7 +117,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
                       <p className="flex items-center gap-1.5 text-xs">
                         <span className="truncate font-medium">{person.name}</span>
                         {line.by.id === me ? <YouTag /> : null}
-                        {asked ? <span className="shrink-0 text-muted-foreground">asked {asked}</span> : null}
+                        {asked ? <span className="shrink-0 text-muted-foreground">{t("discussion.asked", { who: asked })}</span> : null}
                         <span className="ms-auto shrink-0 text-muted-foreground">{ago(line.at)}</span>
                       </p>
                       <p className="mt-0.5 text-sm leading-5 [overflow-wrap:anywhere]">{line.text}</p>
@@ -124,15 +131,15 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
         </div>
       ) : null}
       {/* Someone who only looks reads what was written, and is told who writes here. Nothing is left out for them without a word. */}
-      {maySay ? null : <ShutNote by="reviewer">{said.length ? "" : "Nobody has written about this paper yet. "}Only its reviewers and the person who settles conflicts write here.{open.canChange && !open.screening.finishedAt ? " Join as a reviewer to write." : ""}</ShutNote>}
+      {maySay ? null : <ShutNote by="reviewer">{t("discussion.readOnly", { empty: String(!said.length), join: String(open.canChange && !open.screening.finishedAt) })}</ShutNote>}
       {maySay ? (
         <div className="space-y-2 rounded-2xl border border-border-subtle p-2.5">
           {/* Who the line is for: everyone on the paper, or one reviewer, which makes it a question that waits with them. The line under the choices says which, and is always there, so choosing moves nothing. */}
           {people.length && !owed ? (
             <div className="space-y-1.5">
-              <div role="group" aria-label="Who it is for" className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">To</span>
-                <button type="button" aria-pressed={!to} onClick={() => { setAsking(null); field.current?.focus(); }} className={cn(TO, "px-2", !to ? TO_ON : TO_OFF)}>Everyone</button>
+              <div role="group" aria-label={t("discussion.whoFor")} className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">{t("discussion.to")}</span>
+                <button type="button" aria-pressed={!to} onClick={() => { setAsking(null); field.current?.focus(); }} className={cn(TO, "px-2", !to ? TO_ON : TO_OFF)}>{t("discussion.everyone")}</button>
                 {people.map((person) => (
                   <button key={person.id} type="button" aria-pressed={to === person} onClick={() => { setAsking(person.id); field.current?.focus(); }} className={cn(TO, "ps-0.5 pe-2", to === person ? TO_ON : TO_OFF)}>
                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-5" />
@@ -140,7 +147,7 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">{to ? `For ${firstName(to.name)} to answer. Everyone who can see this paper's votes reads it, and it stays on ${firstName(to.name)}'s Screening list until then.` : "Everyone who can see this paper's votes reads it. Pick a name to ask one person a question."}</p>
+              <p className="text-xs text-muted-foreground">{to ? t("discussion.forOne", { name: firstName(to.name) }) : t("discussion.forAll")}</p>
             </div>
           ) : null}
           {/* Send keeps its place at the field's first line: the field grows downwards as more is written, and the button doesn't move with it. */}
@@ -152,11 +159,11 @@ export function Discussion({ open, paper }: { open: Open; paper: Paper }) {
               onChange={(event) => setText(event.target.value)}
               // Enter starts a new line, as in any note. With Ctrl or Cmd it sends.
               onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); send(); } }}
-              placeholder={owed ? `Answer ${firstName(owed.name)}` : to ? `Ask ${firstName(to.name)} a question` : "Write to everyone on this paper"}
-              aria-label={owed ? `Your answer to ${owed.name}` : to ? `Your question for ${to.name}` : "Your message"}
+              placeholder={owed ? t("discussion.answerPlaceholder", { name: firstName(owed.name) }) : to ? t("discussion.askPlaceholder", { name: firstName(to.name) }) : t("discussion.allPlaceholder")}
+              aria-label={owed ? t("discussion.answerLabel", { name: owed.name }) : to ? t("discussion.askLabel", { name: to.name }) : t("discussion.allLabel")}
               className="max-h-32 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm"
             />
-            <Button size="sm" disabled={!text.trim()} onClick={send}><Send />Send</Button>
+            <Button size="sm" disabled={!text.trim()} onClick={send}><Send />{t("discussion.send")}</Button>
           </div>
         </div>
       ) : null}

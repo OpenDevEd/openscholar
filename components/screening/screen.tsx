@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -25,8 +26,6 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// The queue's own list is called `listed` here, so the helper that joins names into words takes another name.
-import { listed as inWords } from "./data";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -43,27 +42,25 @@ import { ANSWERS, type Answer } from "@/lib/screening/rules";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { termsPattern, plural, num, inQuotes, youOr, bylineOf, awaitedOn, SETTLE_LABEL, DECISIONS, DECISION_LABEL, excludeGroups, RESULT_LABEL, ago, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, whoIs, shortName } from "./data";
+import { termsPattern, bylineOf, awaitedOn, DECISIONS, castOf, questionOf, sentencesOf, settledOf, voteOn, type Criterion, type Decision, type Paper, type Reviewer, type Vote, shortName } from "./data";
 import { Discussion, DiscussionShut } from "./discussion";
 import { papersHref, screenHref, settingsHref } from "./links";
 import { VoteFacts, Byline, ANSWER_SIGN, ActionBar, AnswerMark, BELOW_HEADER, DiscussionLink, PaperStepper, ReasonChip, PaperFacts, ReasonLabel, ReasonRows, VoteButton, DIFFER, VotesHelp, ShutChip, ShutNote, VOTES_SHUT, youFirst, CriterionText, FilterMenu, Help, Kbd, LinkChip, Panel, QuestionName, RESULT_STYLE, ResultChip, ReviewerMark, ReviewerName, Section, StateChip, TONE, TabCount, Tally, VoteMark, Named, RESULT_ICON, type Tone, notReviewerSays } from "./pieces";
 import { useKept } from "./drafts";
 import type { Ballot, Open } from "./store";
 import { useWorkspace } from "./workspace";
+import { useWords } from "./words";
 
 // pdf.js is loaded only for a paper screened as its PDF.
 const PaperPdf = dynamic(() => import("./paper-pdf"), { ssr: false });
 
 type Queue = "todo" | "again" | "done" | "conflicts";
 const QUEUE_PAGE = 12;
-const QUEUE_LABEL: Record<Queue, string> = { todo: "To do", again: "Vote again", done: "Done", conflicts: "Conflicts" };
 /** Each queue's count in the colour of what it holds: what waits for you is primary, a conflict is blue, what is done is neither. The tabs carry no icons, which would not fit the three on one line of the queue's column. */
 const QUEUE_TONE: Record<Queue, Tone> = { todo: "primary", again: "warning", done: "neutral", conflicts: "info" };
 const KEYS: Record<Decision, string> = { include: "I", maybe: "M", exclude: "E" };
 /** The keys, each with who it is for: a vote's are for whoever may vote here, an answer's for whoever answers the criteria. */
-/** Undo takes back what was last done here: a reviewer's vote, or the decision of whoever settles a conflict. */
-const UNDO = "Undo the last vote";
-const SHORTCUTS: Array<[string[], string, ("vote" | "answer")?]> = [[["1…9"], "Select that criterion"], [["Y", "N", "U"], "Answer it yes, no or unclear", "answer"], [["I"], "Include", "vote"], [["M"], "Maybe", "vote"], [["E"], "Exclude, then say why", "vote"], [["S", "J", "→"], "Next paper, without a vote"], [["K", "←"], "Previous paper"], [["Z"], UNDO, "vote"], [["Q"], "Show or hide the queue"], [["?"], "Show these shortcuts"]];
+const SHORTCUTS: Array<[string[], "select" | "answer" | "include" | "maybe" | "exclude" | "next" | "previous" | "undo" | "queue" | "keys", ("vote" | "answer")?]> = [[["1…9"], "select"], [["Y", "N", "U"], "answer", "answer"], [["I"], "include", "vote"], [["M"], "maybe", "vote"], [["E"], "exclude", "vote"], [["S", "J", "→"], "next"], [["K", "←"], "previous"], [["Z"], "undo", "vote"], [["Q"], "queue"], [["?"], "keys"]];
 const ANSWER_KEY: Record<Answer, string> = { yes: "Y", no: "N", unclear: "U" };
 const OTHER = "other";
 /** The bar is one row of controls on a wide screen, and grows by a row where a note is being written. */
@@ -132,6 +129,9 @@ export function ScreenPage() {
 
 function Screen({ open }: { open: Open }) {
   const { screening, toDo, conflicts } = open;
+  const t = useTranslations("screening.screen");
+  const pieces = useTranslations("screening.pieces");
+  const words = useWords();
   const id = screening.id;
   const criteria = screening.criteria;
   const blind = screening.rule.blind === "after";
@@ -142,13 +142,13 @@ function Screen({ open }: { open: Open }) {
   const { paper: picked, q: find, voted, order } = place;
   // Someone who is not a reviewer has no paper to do: they read the conflicts.
   const queue: Queue = open.isReviewer ? place.queue : "conflicts";
-  const words = useDebouncedValue(find.trim(), 300);
+  const searched = useDebouncedValue(find.trim(), 300);
   // What the server has counted of the person's own papers and votes.
   const counted = screening.reviewers.find((one) => one.id === open.me)?.tally;
   // The queue as the server holds it, a page at a time: found by a paper's title or authors, Done by your vote, and To do in the order asked for.
   // It is read as it stands, so a paper you have dealt with leaves it and the ones after it move up. The open one is the exception: it keeps its place, with your vote on it, until you move on.
-  const listed = useCursorPageAt("page", api.screening.paperViews.queue, inWorkspace(workspaceId, { jobId: id, queue, ...(queue === "todo" ? { order } : {}), ...(queue === "done" && voted !== "any" ? { voted } : {}), ...(words ? { text: words } : {}) }), QUEUE_PAGE, { scroll: false });
-  const holding = `${id}:${queue}:${order}:${words.toLowerCase()}:${voted}`;
+  const listed = useCursorPageAt("page", api.screening.paperViews.queue, inWorkspace(workspaceId, { jobId: id, queue, ...(queue === "todo" ? { order } : {}), ...(queue === "done" && voted !== "any" ? { voted } : {}), ...(searched ? { text: searched } : {}) }), QUEUE_PAGE, { scroll: false });
+  const holding = `${id}:${queue}:${order}:${searched.toLowerCase()}:${voted}`;
   // With no paper named in the address, the page's first is the open one, and stays it while the queue changes under the person: someone else settling a conflict never swaps the paper being read, or written about, for the next one.
   const [led, setLed] = useState<{ of: string; id: string } | null>(null);
   const leading = `${holding}:${listed.page}`;
@@ -228,7 +228,7 @@ function Screen({ open }: { open: Open }) {
     const next = items[Math.max(0, Math.min(items.length - 1, index))];
     if (next) openIt(next);
   };
-  const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, "That wasn't saved. Try again."));
+  const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("notSaved")));
 
   const [advance, setAdvance] = useState(true);
   // On a phone the note field opens when asked for, so the paper keeps the room.
@@ -250,7 +250,7 @@ function Screen({ open }: { open: Open }) {
 
   const resolving = queue === "conflicts";
   // Settling a conflict decides the paper for everyone. It is not the settler's own vote.
-  const nextAfter = resolving ? "Next paper after each decision" : "Next paper after each vote";
+  const nextAfter = t("nextAfter", { settling: String(resolving) });
   const mine = paper ? myVote(paper) : undefined;
   const visible = paper?.sees ?? false;
   // Your own column first, then the other people, then the models, the same on every paper.
@@ -262,10 +262,11 @@ function Screen({ open }: { open: Open }) {
   const finished = Boolean(screening.finishedAt);
   const mayDecide = !finished && (resolving ? open.canResolve : open.isReviewer);
   const answering = !resolving && open.isReviewer;
-  const resolver = whoIs(screening, screening.rule.resolver, open.me);
+  const settlesHere = screening.rule.resolver === open.me;
+  const settler = words.nameOn(screening, screening.rule.resolver);
 
   // What a paper can be excluded for, in two groups: the must-have it fails, or another reason. Each has its key: a must-have its own number, as far as the digits go, and another reason its first letter.
-  const reasonGroups = excludeGroups(criteria);
+  const reasonGroups = words.excludeGroups(criteria);
   const reasons = reasonGroups.flatMap((group) => group.list);
 
   const decideOn = (decision: Decision, reason?: string) => {
@@ -405,19 +406,20 @@ function Screen({ open }: { open: Open }) {
   // Everything in this queue is voted on: say so, where the buttons are.
   const through = queue !== "done" && items.length > 0 && !listed.canNext && items.every(dealtWith);
   const state = paper ? settledOf(paper) : undefined;
-  const waitsOn = paper && state?.result === "waiting" ? awaitedOn(screening, paper).map((one) => (one.id === open.me ? "you" : shortName(one))) : [];
+  const waitsOn = paper && state?.result === "waiting" ? awaitedOn(screening, paper).map((one) => (one.id === open.me ? words.t("youInline") : shortName(one))) : [];
   // What the counter says: how many are left to do, or where you are among the ones done.
   const left = resolving ? conflicts : queue === "again" ? open.flagged : toDo;
   const narrowed = Boolean(find.trim()) || (queue === "done" && voted !== "any");
   // How long what is left will take to screen, at the person's own pace: a usual 45 seconds a paper to start with, moved towards their own by each vote, so the figure never lurches after two quick ones.
   const pace = Math.max(8, (45 * 3 + paced.sum) / (3 + paced.n));
   const minutes = Math.round((left * pace) / 60);
-  const timeLeft = mayDecide && queue !== "done" && left > 0 ? (minutes < 1 ? "under a minute" : minutes < 90 ? `about ${minutes} min` : `about ${Math.round(minutes / 60)} h`) : null;
+  const timeLeft = mayDecide && queue !== "done" && left > 0 ? (minutes < 1 ? t("bar.underMinute") : minutes < 90 ? t("bar.minutes", { minutes }) : t("bar.hours", { hours: Math.round(minutes / 60) })) : null;
   // Dragging the paper casts a vote only where a vote is still to cast, on a screen that is touched.
   const swipeable = tablet && answering && mayDecide && !mine && Boolean(paper) && writing !== paper?.id;
   const hasNote = Boolean(paper && (notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))).trim());
   // The note's field is open when it was asked for, when it holds a note, and always for the reason a conflict is settled with.
-  const undoSays = resolving ? "Undo the last decision" : UNDO;
+  // Undo takes back what was last done here: a reviewer's vote, or the decision of whoever settles a conflict.
+  const undoSays = t("shortcuts.undo", { settling: String(resolving) });
   const noteOpen = resolving || noting || hasNote;
   /** Escape leaves the note: an empty one closes, one with words in it stays and gives the keys back to the page. */
   const leaveNote = (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -431,12 +433,12 @@ function Screen({ open }: { open: Open }) {
   const queues = open.isReviewer ? (["todo", ...(open.flagged || queue === "again" ? (["again"] as const) : []), "done", "conflicts"] as const) : (["conflicts"] as const);
   const tabs = (
     <Segmented
-      label="Queue"
+      label={t("queue.label")}
       value={queue}
       fill="labels"
       options={queues.map((which) => ({
         id: which,
-        label: QUEUE_LABEL[which],
+        label: t(`queue.${which}`),
         href: screenHref(id, which === "todo" ? undefined : { queue: which }),
         detail: <TabCount value={which === "todo" ? toDo : which === "again" ? open.flagged : which === "done" ? (counted?.cast ?? 0) : conflicts} tone={QUEUE_TONE[which]} />,
       }))}
@@ -459,15 +461,15 @@ function Screen({ open }: { open: Open }) {
             <span className={cn("line-clamp-2 text-sm leading-5", isOpen ? "font-semibold" : "font-medium")}>{one.title}</span>
             <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <span className="min-w-0 truncate">{bylineOf(one, true)}</span>
-              {/* New is what the last check brought, as on Papers. */}{one.batch !== undefined && one.batch === open.latest?.id && queue === "todo" ? <StateChip tone="primary" className="h-5 px-1.5 text-2xs">New</StateChip> : null}
-              {queue === "done" && vote ? <span className="ms-auto shrink-0">{ago(vote.at)}</span> : null}
+              {/* New is what the last check brought, as on Papers. */}{one.batch !== undefined && one.batch === open.latest?.id && queue === "todo" ? <StateChip tone="primary" className="h-5 px-1.5 text-2xs">{t("row.new")}</StateChip> : null}
+              {queue === "done" && vote ? <span className="ms-auto shrink-0">{words.ago(vote.at)}</span> : null}
             </span>
           </span>
           {/* What was said about it, where anything was: lit where the last line asks the person looking. */}
-          {said ? <span role="img" aria-label={asksMe ? "A question for you" : `${plural(said, "message", "messages")}`} className={cn("mt-0.5 flex shrink-0 items-center gap-0.5 text-xs tabular-nums", asksMe ? "font-medium text-primary" : "text-muted-foreground")}><MessagesSquare aria-hidden className="size-3.5" />{said}</span> : null}
+          {said ? <span role="img" aria-label={asksMe ? t("row.askedYou") : t("row.messages", { count: said })} className={cn("mt-0.5 flex shrink-0 items-center gap-0.5 text-xs tabular-nums", asksMe ? "font-medium text-primary" : "text-muted-foreground")}><MessagesSquare aria-hidden className="size-3.5" />{said}</span> : null}
           {resolving ? (
-            result.result === "conflict" ? <Tally votes={one.cast.flatMap((place) => place.vote ?? [])} className="mt-0.5 shrink-0 gap-1.5" /> : result.final ? <VoteMark vote={{ decision: result.final }} who="Result" /> : null
-          ) : vote ? <VoteMark vote={vote} who="Your vote" /> : null}
+            result.result === "conflict" ? <Tally votes={one.cast.flatMap((place) => place.vote ?? [])} className="mt-0.5 shrink-0 gap-1.5" /> : result.final ? <VoteMark vote={{ decision: result.final }} who={t("result")} /> : null
+          ) : vote ? <VoteMark vote={vote} who={t("yourVote")} /> : null}
         </button>
       </li>
     );
@@ -476,40 +478,40 @@ function Screen({ open }: { open: Open }) {
   const findField = (className: string) => (
     <div className={cn("relative", className)}>
       <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder="Find by title or author" aria-label="Find in this queue" className="h-8 rounded-full ps-8 text-sm" />
+      <Input value={find} onChange={(event) => setFind(event.target.value)} placeholder={t("queue.find")} aria-label={t("queue.findLabel")} className="h-8 rounded-full ps-8 text-sm" />
     </div>
   );
 
   // A reviewer asked the person looking about a paper: the chip opens that paper, where the question is.
-  const askedChip = open.asked && open.askedFirst ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: open.askedFirst })} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{plural(open.asked, "question", "questions")} for you</LinkChip> : null;
+  const askedChip = open.asked && open.askedFirst ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: open.askedFirst })} tone="primary" icon={MessagesSquare} className="w-fit shrink-0">{t("queue.asked", { count: open.asked })}</LinkChip> : null;
   // What narrows the queue and puts it in order: over its list in its own column, and in the drawer that holds the list where it has no column.
   const queueFilters = (className: string) => (
     <>
       {queue === "done" ? (
         <FilterMenu
-          name="Your vote"
+          name={t("yourVote")}
           value={voted}
           onChange={(next) => void setPlace({ voted: next, paper: null })}
           className={className}
           choices={[
-            { value: "any" as typeof voted, label: "Any", icon: <ListChecks />, count: counted?.cast ?? 0 },
-            ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as typeof voted, label: DECISION_LABEL[decision], icon: <Icon />, tone, count: counted?.[decision] ?? 0 }; }),
+            { value: "any" as typeof voted, label: t("filter.any"), icon: <ListChecks />, count: counted?.cast ?? 0 },
+            ...DECISIONS.map((decision) => { const { icon: Icon, tone } = RESULT_STYLE[decision]; return { value: decision as typeof voted, label: words.decision(decision), icon: <Icon />, tone, count: counted?.[decision] ?? 0 }; }),
           ]}
         />
       ) : null}
       {queue === "todo" && toDo > 1 ? (
         <FilterMenu
-          name="Order"
+          name={t("filter.order")}
           value={order}
           onChange={(next) => void setPlace({ order: next, paper: null })}
           narrows={false}
           className={className}
           choices={[
-            { value: "dealt" as typeof order, label: "As added", icon: <Clock /> },
+            { value: "dealt" as typeof order, label: t("filter.dealt"), icon: <Clock /> },
             // Offered while new papers wait, and kept while it is the order chosen: voting on the last new paper must not rename the order to another.
-            ...(open.latest?.mine || order === "fresh" ? [{ value: "fresh" as typeof order, label: "New papers first", icon: <RefreshCw /> }] : []),
-            { value: "lean" as typeof order, label: "Included by the models first", icon: <ModelsIcon />, // To do holds only papers you have yet to vote on, so on a screening that hides votes this order never opens there: the reason says what this screening does, in words that need no setting's name, and promises no vote that would open it.
-            ...(blind ? { shut: "This screening hides other reviewers' votes on these papers, and this order would give the models' votes away" } : {}) },
+            ...(open.latest?.mine || order === "fresh" ? [{ value: "fresh" as typeof order, label: t("filter.fresh"), icon: <RefreshCw /> }] : []),
+            { value: "lean" as typeof order, label: t("filter.lean"), icon: <ModelsIcon />, // To do holds only papers you have yet to vote on, so on a screening that hides votes this order never opens there: the reason says what this screening does, in words that need no setting's name, and promises no vote that would open it.
+            ...(blind ? { shut: t("filter.leanShut") } : {}) },
           ]}
         />
       ) : null}
@@ -522,7 +524,7 @@ function Screen({ open }: { open: Open }) {
     return (
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {open.isReviewer ? <div className={QUEUE_BAR}><div className={QUEUE_TABS}>{tabs}</div></div> : null}
-        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? <ListLoading label="Loading papers" /> : <Empty open={open} queue={queue} />}</div>
+        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center">{reading ? <ListLoading label={t("queue.loading")} /> : <Empty open={open} queue={queue} />}</div>
       </div>
     );
   }
@@ -560,18 +562,18 @@ function Screen({ open }: { open: Open }) {
   // Everyone's votes on the open paper. It is drawn in one of two places: under the paper from a laptop's width, and after your answers under it, where one column has to put the questions before the others' votes.
   const everyonesVotes = paper ? (
                     <Section
-                      title="Everyone's votes"
+                      title={t("votes.title")}
                       help={<VotesHelp blind={screening.rule.blind === "after"} />}
                       aside={
                         !visible ? (
                           <ShutChip by="vote" />
                         ) : state ? (
                           <>
-                            <span className="text-xs text-muted-foreground">Result</span>
+                            <span className="text-xs text-muted-foreground">{t("result")}</span>
                             <ResultChip result={state.result} />
-                            {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">For {resolver} to settle</span></> : null}
-                            {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">from {inWords([...waitsOn.slice(0, 2), ...(waitsOn.length > 2 ? [`${waitsOn.length - 2} more`] : [])])}</span> : null}
-                            {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">Settled by {whoIs(screening, state.resolvedBy, open.me)}</span> : null}
+                            {state.result === "conflict" ? <><Tally votes={cast.flatMap((one) => one.vote ?? [])} /><span className="text-xs text-muted-foreground">{t("votes.forSettler", { you: String(settlesHere), name: settler })}</span></> : null}
+                            {state.result === "waiting" && waitsOn.length ? <span className="text-xs text-muted-foreground">{t("votes.waitingFrom", { names: words.listed([...waitsOn.slice(0, 2), ...(waitsOn.length > 2 ? [t("votes.more", { count: waitsOn.length - 2 })] : [])]) })}</span> : null}
+                            {state.resolvedBy ? <span className="min-w-0 truncate text-xs text-muted-foreground">{t("votes.settledBy", { you: String(state.resolvedBy === open.me), name: words.nameOn(screening, state.resolvedBy) })}</span> : null}
                             {/* What the reviewers said about it is further down the pane: this goes there. */}
                             {discussion ? <DiscussionLink count={said} writes={open.isReviewer || open.canResolve} onClick={toDiscussion} /> : null}
                             {!state.resolvedBy && state.result === "exclude" && cast.some((one) => one.vote?.reason) ? <ReasonChip reason={cast.find((one) => one.vote?.reason)!.vote!.reason!} criteria={criteria} /> : null}
@@ -579,7 +581,7 @@ function Screen({ open }: { open: Open }) {
                         ) : null
                       }
                     >
-                      {state?.resolvedBy && state.note ? <p className="text-sm text-muted-foreground">{inQuotes(state.note)}</p> : null}
+                      {state?.resolvedBy && state.note ? <p className="text-sm text-muted-foreground">{words.quoted(state.note)}</p> : null}
                       <ScrollArea axis="x" shades data-votes className="scroll-mt-4 rounded-2xl border border-border-subtle">
                       <div className="p-3">
                         <Matrix
@@ -594,7 +596,7 @@ function Screen({ open }: { open: Open }) {
                         />
                       </div>
                       </ScrollArea>
-                      {visible ? null : <ShutNote by="vote">{VOTES_SHUT}</ShutNote>}
+                      {visible ? null : <ShutNote by="vote">{VOTES_SHUT(pieces)}</ShutNote>}
                     </Section>
   ) : null;
 
@@ -609,19 +611,20 @@ function Screen({ open }: { open: Open }) {
   // Every must-have the answers fail the same way is named, not only the first: two answered No are both why.
   const unmet = failing ? criteria.filter((criterion) => criterion.must && given[criterion.key] === given[failing.key]) : [];
   const numbers = unmet.map((criterion) => criteria.indexOf(criterion) + 1);
-  const why = failing ? `you answered ${given[failing.key] === "no" ? "No" : "Unclear"} to ${numbers.length > 1 ? `criteria ${numbers.slice(0, -1).join(", ")} and ${numbers.at(-1)}, must-haves` : `criterion ${numbers[0]}, a must-have`}` : "";
+  const why = failing ? { answer: given[failing.key] === "no" ? "no" : "unclear", many: String(numbers.length > 1), numbers: words.listed(numbers.map(words.num)) } : null;
+  const strong = (chunk: ReactNode) => <span className="font-medium text-foreground">{chunk}</span>;
   const hint = against && mine ? (
-    <Panel tone="warning" className="px-3 py-2.5 text-xs ink-warning">You voted {DECISION_LABEL[mine.decision]}, and your answers point to {DECISION_LABEL[pointsTo!.decision]}{why ? `: ${why}` : ""}.</Panel>
-  ) : pointed && failing ? (
-    <Panel className="px-3 py-2.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointed]}</span>: {why}. Your vote is not cast yet.</Panel>
+    <Panel tone="warning" className="px-3 py-2.5 text-xs ink-warning">{why ? t("hint.againstWhy", { voted: words.decision(mine.decision), points: words.decision(pointsTo!.decision), ...why }) : t("hint.against", { voted: words.decision(mine.decision), points: words.decision(pointsTo!.decision) })}</Panel>
+  ) : pointed && why ? (
+    <Panel className="px-3 py-2.5 text-xs text-muted-foreground">{t.rich("hint.pointsWhy", { points: words.decision(pointed), ...why, b: strong })}</Panel>
   ) : pointed ? (
-    <Panel className="px-3 py-2.5 text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">Include</span>: every must-have is met. Your vote is not cast yet.</Panel>
+    <Panel className="px-3 py-2.5 text-xs text-muted-foreground">{t.rich("hint.allMet", { points: words.decision("include"), b: strong })}</Panel>
   ) : null;
   // The same in one line, for the bar a phone holds at its foot: a paragraph there covers the answer just given.
   const hintLine = against && mine ? (
-    <p className="truncate text-xs ink-warning">You voted {DECISION_LABEL[mine.decision]}. Your answers point to <span className="font-medium">{DECISION_LABEL[pointsTo!.decision]}</span>.</p>
+    <p className="truncate text-xs ink-warning">{t.rich("hint.againstLine", { voted: words.decision(mine.decision), points: words.decision(pointsTo!.decision), b: (chunk) => <span className="font-medium">{chunk}</span> })}</p>
   ) : pointed ? (
-    <p className="truncate text-xs text-muted-foreground">Your answers point to <span className="font-medium text-foreground">{DECISION_LABEL[pointed]}</span>. Not cast yet.</p>
+    <p className="truncate text-xs text-muted-foreground">{t.rich("hint.pointsLine", { points: words.decision(pointed), b: strong })}</p>
   ) : null;
 
   return (
@@ -633,25 +636,25 @@ function Screen({ open }: { open: Open }) {
             {/* The button starts where the paper's text does, and stays there while the queue's column closes. */}
             <div className={QUEUE_TABS}>{tabs}</div>
             {/* Under 1400px the queue's list has no column of its own. It opens over the page, with its search and filters: from the foot on a phone, from the side on a wider screen. While a search or a filter narrows the queue the button stays, so the search can be changed. */}
-            {items.length > 1 || narrowed ? <Button variant="outline" size="sm" className="w-full shrink-0 lg:w-auto min-[87.5rem]:hidden" onClick={() => setListing(true)}><ListChecks />See the queue</Button> : null}
+            {items.length > 1 || narrowed ? <Button variant="outline" size="sm" className="w-full shrink-0 lg:w-auto min-[87.5rem]:hidden" onClick={() => setListing(true)}><ListChecks />{t("queue.see")}</Button> : null}
             <Button variant="outline" size="sm" aria-expanded={!folded} className="ms-8 shrink-0 max-[87.5rem]:hidden" onClick={() => setKept({ folded: !folded })}>
               {folded ? <PanelLeftOpen /> : <PanelLeft />}
               {/* Both names take the same room, so the one that shows never moves what follows the button. */}
-              <span className="grid *:col-start-1 *:row-start-1"><span className={cn(folded && "invisible")}>Hide the queue</span><span className={cn(!folded && "invisible")}>Show the queue</span></span>
+              <span className="grid *:col-start-1 *:row-start-1"><span className={cn(folded && "invisible")}>{t("queue.hide")}</span><span className={cn(!folded && "invisible")}>{t("queue.show")}</span></span>
             </Button>
             {askedChip}
             <Sheet open={listing} onOpenChange={setListing}>
               <SheetContent side={tablet ? "bottom" : "left"} className={cn("flex flex-col gap-0 p-0 min-[87.5rem]:hidden", tablet && "max-h-[85dvh]")}>
                 <SheetHeader className="space-y-3 border-b border-border-subtle p-4">
-                  <SheetTitle>{QUEUE_LABEL[queue]}</SheetTitle>
-                  <SheetDescription className="sr-only">Every paper in this queue. Press one to open it.</SheetDescription>
+                  <SheetTitle>{t(`queue.${queue}`)}</SheetTitle>
+                  <SheetDescription className="sr-only">{t("queue.everyPaper")}</SheetDescription>
                   {findField("")}
                   {queueFilters(QUEUE_FILTER)}
                 </SheetHeader>
                 <ScrollArea shades className="min-h-0 flex-1">
                 <ul className="divide-y divide-border-subtle">
                   {items.map((one) => row(one, (picked) => { openIt(picked); setListing(false); }))}
-                  {!items.length ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing in this queue matches</li> : null}
+                  {!items.length ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">{t("queue.noMatch")}</li> : null}
                 </ul>
                 </ScrollArea>
                 {pager("border-t border-border-subtle px-3 py-2")}
@@ -677,18 +680,18 @@ function Screen({ open }: { open: Open }) {
         </div>
 
         {!paper && opening ? (
-          <div className="flex flex-col justify-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2"><ListLoading label="Loading the paper" /></div>
+          <div className="flex flex-col justify-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2"><ListLoading label={t("queue.loadingPaper")} /></div>
         ) : !paper ? (
           <div className="flex flex-col items-center justify-center gap-3 p-10 text-center lg:col-start-1 lg:-col-end-1 lg:row-start-2 min-[87.5rem]:col-start-2">
-            <p className="text-sm font-medium">Nothing in this queue matches</p>
-            <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null }, { history: "replace" })}>Show the whole queue</Button>
+            <p className="text-sm font-medium">{t("queue.noMatch")}</p>
+            <Button size="sm" variant="outline" onClick={() => void setPlace({ paper: null, q: null, voted: null }, { history: "replace" })}>{t("queue.showWhole")}</Button>
           </div>
         ) : (
           <>
             {/* The paper, and everyone's votes under it: the pane in the middle, which a long paper scrolls. */}
             <div className={cn("lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col min-[87.5rem]:col-start-2", PANE)}>
             <ScrollArea shades className="lg:min-h-0 lg:flex-1">
-              <div ref={article} tabIndex={-1} role="region" aria-label="Paper" className={cn("outline-none", BELOW_HEADER)}>
+              <div ref={article} tabIndex={-1} role="region" aria-label={t("paper.label")} className={cn("outline-none", BELOW_HEADER)}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div key={paper.id} ref={startAtTop} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: EASE }} className={cn("max-w-[46rem] scroll-mt-[calc(var(--app-navbar-height)+var(--page-header-height,4rem)+var(--screening-frame,0px))] space-y-8 p-5 sm:p-8 2xl:max-w-none", folded && "min-[87.5rem]:max-w-none")}>
                     {/* On a touch screen the paper is dragged to vote: right to include, left to exclude, which asks its reason as the button does. A finger that moves up or down scrolls the page as before. */}
@@ -710,14 +713,14 @@ function Screen({ open }: { open: Open }) {
                     >
                       {swipeable ? (
                         <>
-                          <motion.span aria-hidden style={{ opacity: includeShows }} className="pointer-events-none absolute start-0 top-0 z-10 -rotate-6 rounded-lg border-2 border-success bg-card px-2 py-0.5 text-sm font-bold ink-success">Include</motion.span>
-                          <motion.span aria-hidden style={{ opacity: excludeShows }} className="pointer-events-none absolute end-0 top-0 z-10 rotate-6 rounded-lg border-2 border-destructive bg-card px-2 py-0.5 text-sm font-bold ink-destructive">Exclude</motion.span>
+                          <motion.span aria-hidden style={{ opacity: includeShows }} className="pointer-events-none absolute start-0 top-0 z-10 -rotate-6 rounded-lg border-2 border-success bg-card px-2 py-0.5 text-sm font-bold ink-success">{words.decision("include")}</motion.span>
+                          <motion.span aria-hidden style={{ opacity: excludeShows }} className="pointer-events-none absolute end-0 top-0 z-10 rotate-6 rounded-lg border-2 border-destructive bg-card px-2 py-0.5 text-sm font-bold ink-destructive">{words.decision("exclude")}</motion.span>
                         </>
                       ) : null}
                       <h2 className="text-xl font-semibold leading-snug tracking-tight text-balance">{paper.title}</h2>
                       <Byline paper={paper} />
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: fromSource === 1 ? `See the paper from ${source.name}` : `See the ${num(fromSource)} papers from ${source.name}` } : undefined} added={paper.batch !== undefined && paper.addedAt !== undefined ? { at: paper.addedAt, href: papersHref(id, { added: paper.batch }) } : undefined} />
+                        <PaperFacts paper={paper} source={source ? { name: source.name, kind: source.kind, href: papersHref(id, { source: source.id }), label: t("paper.fromSource", { count: fromSource, source: source.name }) } : undefined} added={paper.batch !== undefined && paper.addedAt !== undefined ? { at: paper.addedAt, href: papersHref(id, { added: paper.batch }) } : undefined} />
                         {/* That reviewers have written about the paper shows as it opens, with the way to what they wrote. */}
                         {discussion && said ? <DiscussionLink count={said} onClick={toDiscussion} /> : null}
                       </div>
@@ -729,7 +732,7 @@ function Screen({ open }: { open: Open }) {
                         </p>
                         )}
                         {/* What the marked words are, under the text they are in: they were taken for evidence someone had picked. */}
-                        {criteria.some((criterion) => criterion.terms.length) ? <p className="text-xs text-muted-foreground"><mark className="rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark> words are ones the criteria look for.</p> : null}
+                        {criteria.some((criterion) => criterion.terms.length) ? <p className="text-xs text-muted-foreground">{t.rich("paper.marked", { mark: (chunk) => <mark className="rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</p> : null}
                       </div>
                     </motion.article>
 
@@ -745,17 +748,17 @@ function Screen({ open }: { open: Open }) {
             <ScrollArea key={paper.id} shades className={cn("border-t border-border-subtle lg:border-t-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 min-[87.5rem]:col-start-3", PANE)}>
               <div data-criteria className={cn("p-5", BESIDE)}>
                 <Section
-                  title={answering ? "Your answers" : "Criteria"}
+                  title={answering ? t("criteria.yours") : t("criteria.title")}
                   // How many there are, at the head: the pane scrolls, and the last ones sit under its fold.
-                  aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? `${num(criteria.filter((criterion) => given[criterion.key] !== undefined).length)} of ${num(criteria.length)} answered` : plural(criteria.length, "criterion", "criteria")}</span> : undefined}
+                  aside={criteria.length ? <span className="text-xs tabular-nums text-muted-foreground">{answering ? t("criteria.answered", { answered: criteria.filter((criterion) => given[criterion.key] !== undefined).length, count: criteria.length }) : words.count("criteria", criteria.length)}</span> : undefined}
                   help={
-                    <Help title={answering ? "Your answers" : "Criteria"} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>Must-have</HelpFact><HelpFact icon={CircleHelp}>Guidance: what counts and what doesn&apos;t</HelpFact><HelpFact icon={Highlighter}>Marked words: the words a criterion looks for</HelpFact><HelpFact><mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">Marked</mark>How they show in the abstract</HelpFact></>}>
-                      {answering ? "Answering is optional: one vote is enough. A No on a must-have points to Exclude, and Exclude asks which one it failed unless your answers already say." : "The questions each reviewer answers for a paper, and under each how they answered it. A No on a must-have points to Exclude."}
+                    <Help title={answering ? t("criteria.yours") : t("criteria.title")} side={tablet ? undefined : "left"} facts={<><HelpFact icon={Asterisk}>{t("criteria.mustHaveFact")}</HelpFact><HelpFact icon={CircleHelp}>{t("criteria.guidanceFact")}</HelpFact><HelpFact icon={Highlighter}>{t("criteria.markedFact")}</HelpFact><HelpFact>{t.rich("criteria.showsFact", { mark: (chunk) => <mark className="-ms-0.5 rounded-sm bg-primary/15 px-1 text-foreground">{chunk}</mark> })}</HelpFact></>}>
+                      {answering ? t("criteria.helpAnswering") : t("criteria.helpReading")}
                     </Help>
                   }
                 >
                   {/* What the star means, in sight: it was taken for "an answer is required". */}
-                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>A must-have: a No on one points to Exclude.{answering ? " Answers are optional and are not your vote." : ""}</p> : null}
+                  {criteria.some((criterion) => criterion.must) ? <p className="text-xs leading-5 text-muted-foreground"><span className="-ms-1 me-1"><RequiredMark /></span>{t("criteria.mustHave", { answering: String(answering) })}</p> : null}
                   {criteria.length ? (
                     <ol key={paper.id} className={LIST}>
                       {criteria.map((criterion, i) => {
@@ -777,12 +780,12 @@ function Screen({ open }: { open: Open }) {
                               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 ps-6.5">
                                 {criterion.note ? (
                                   <button type="button" aria-expanded={guided} onClick={() => setKept({ guides: guided ? guides.filter((one) => one !== guideKey) : [...guides, guideKey] })} className={cn(AID, guided ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-                                    <CircleHelp aria-hidden className="size-3.5" />Guidance<ChevronDown aria-hidden className={cn("size-3 opacity-60 transition-transform duration-200", guided && "rotate-180")} />
+                                    <CircleHelp aria-hidden className="size-3.5" />{t("criteria.guidance")}<ChevronDown aria-hidden className={cn("size-3 opacity-60 transition-transform duration-200", guided && "rotate-180")} />
                                   </button>
                                 ) : null}
                                 {marked ? (
-                                  <button type="button" aria-expanded={current === criterion} aria-label={`Marked words for criterion ${i + 1}`} onClick={() => light(criterion)} className={cn(AID, current === criterion ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
-                                    <Highlighter aria-hidden className="size-3.5" />Marked words<ChevronDown aria-hidden className={cn("size-3 opacity-60 transition-transform duration-200", current === criterion && "rotate-180")} />
+                                  <button type="button" aria-expanded={current === criterion} aria-label={t("criteria.markedFor", { n: i + 1 })} onClick={() => light(criterion)} className={cn(AID, current === criterion ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+                                    <Highlighter aria-hidden className="size-3.5" />{t("criteria.markedWords")}<ChevronDown aria-hidden className={cn("size-3 opacity-60 transition-transform duration-200", current === criterion && "rotate-180")} />
                                   </button>
                                 ) : null}
                               </div>
@@ -802,9 +805,10 @@ function Screen({ open }: { open: Open }) {
                               ) : null}
                             </AnimatePresence>
                             {answering ? (
-                              <div role="radiogroup" aria-label={`Your answer to criterion ${i + 1}`} className="mt-2.5 grid grid-cols-3 gap-1.5 ps-6.5">
+                              <div role="radiogroup" aria-label={t("criteria.answerTo", { n: i + 1 })} className="mt-2.5 grid grid-cols-3 gap-1.5 ps-6.5">
                                 {ANSWERS.map((answer) => {
-                                  const { icon: Icon, label, tone } = ANSWER_SIGN[answer];
+                                  const { icon: Icon, tone } = ANSWER_SIGN[answer];
+                                  const label = pieces(`answer.${answer}`);
                                   const on = answered === answer;
                                   return (
                                     <button key={answer} type="button" role="radio" aria-checked={on} onClick={() => answerIt(criterion.key, answer)} className={cn("flex h-8 min-w-0 items-center justify-center gap-1 rounded-md border px-1.5 text-xs font-medium transition-colors", on ? cn("border-transparent ring-1 ring-current/40", TONE[tone].chip) : "border-border-subtle text-muted-foreground hover:bg-muted hover:text-foreground")}>
@@ -821,11 +825,12 @@ function Screen({ open }: { open: Open }) {
                               <div className="mt-2.5 flex flex-wrap items-center gap-1.5 ps-6.5">
                                 {ANSWERS.map((answer) => {
                                   const count = split.filter((one) => one === answer).length;
-                                  const { icon: Icon, label, tone } = ANSWER_SIGN[answer];
+                                  const { icon: Icon, tone } = ANSWER_SIGN[answer];
+                                  const label = pieces(`answer.${answer}`);
                                   // The answer by name with how many gave it: a sign and a number alone had to be worked out.
-                                  return count ? <span key={answer} className={cn("flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium tabular-nums", TONE[tone].chip)}><Icon aria-hidden className="size-3.5" />{label} {count}</span> : null;
+                                  return count ? <span key={answer} className={cn("flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium tabular-nums", TONE[tone].chip)}><Icon aria-hidden className="size-3.5" />{label} {words.num(count)}</span> : null;
                                 })}
-                                {new Set(split).size > 1 ? <button type="button" aria-label={`Criterion ${i + 1}: show the answer that differs`} onClick={() => showApart(criterion)} className={DIFFER}>Answers differ<ChevronRight aria-hidden className="size-3" /></button> : null}
+                                {new Set(split).size > 1 ? <button type="button" aria-label={t("criteria.differFor", { n: i + 1 })} onClick={() => showApart(criterion)} className={DIFFER}>{t("answersDiffer")}<ChevronRight aria-hidden className="size-3" /></button> : null}
                               </div>
                             ) : null}
                           </li>
@@ -834,8 +839,8 @@ function Screen({ open }: { open: Open }) {
                     </ol>
                   ) : (
                     <Panel className="flex flex-wrap items-center gap-3 text-sm">
-                      <span className="min-w-0 flex-1 text-muted-foreground">No criteria yet</span>
-                      {open.canChange ? <Button asChild size="sm" variant="outline"><NextLink href={settingsHref(id, "criteria")}>Add criteria</NextLink></Button> : null}
+                      <span className="min-w-0 flex-1 text-muted-foreground">{t("criteria.none")}</span>
+                      {open.canChange ? <Button asChild size="sm" variant="outline"><NextLink href={settingsHref(id, "criteria")}>{t("criteria.add")}</NextLink></Button> : null}
                     </Panel>
                   )}
                   {hint ? <div data-hint className="scroll-mb-3 max-lg:hidden">{hint}</div> : null}
@@ -855,24 +860,24 @@ function Screen({ open }: { open: Open }) {
             <div className="flex flex-wrap items-center gap-1 max-lg:order-last max-lg:min-h-10 max-lg:ps-9 max-lg:pe-[4.5rem] lg:content-center lg:gap-y-1.5 lg:px-4 lg:py-2">
               {/* How many are left, and from 1400px how long they take at the person's pace. On a phone the queue's tab already counts them, and the row keeps its room for the last vote and the note. */}
               <span className="me-1 flex items-baseline gap-1.5 text-xs tabular-nums max-sm:hidden">
-                <span className="font-medium">{queue === "done" || !mayDecide ? `${num(listed.offset + at + 1)}${listed.canNext ? "" : ` of ${num(listed.offset + items.length)}`}` : `${num(left)} left`}</span>
+                <span className="font-medium">{queue === "done" || !mayDecide ? (listed.canNext ? words.num(listed.offset + at + 1) : t("bar.atOf", { at: listed.offset + at + 1, count: listed.offset + items.length })) : t("bar.left", { count: left })}</span>
                 {timeLeft ? <span className="text-muted-foreground max-[87.5rem]:hidden">{timeLeft}</span> : null}
               </span>
               <PaperStepper onStep={(by) => go(at + by)} canPrevious={at > 0 || listed.canPrevious} canNext={at < items.length - 1 || listed.canNext} />
               {/* Under 1400px the last vote has no part of the bar to itself, so its way back sits here. */}
               {/* With it, the vote it takes back, and a pen on its corner where a note was saved with it: on these widths nothing else says what was just saved. */}
-              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? "Settled as" : "Your last vote"} />{last.noted ? <PenLine role="img" aria-label="Saved with a note" className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
+              {last ? <span className="flex items-center gap-1 min-[87.5rem]:hidden"><TooltipHint label={undoSays}><Button variant="ghost" size="icon" className="size-8" aria-label={undoSays} onClick={undo}><Undo2 /></Button></TooltipHint><span className="relative flex"><VoteMark vote={{ decision: last.decision }} who={last.resolved ? t("bar.settledAs") : t("bar.lastVote")} />{last.noted ? <PenLine role="img" aria-label={t("bar.withNote")} className="absolute -end-1.5 -top-1.5 size-3.5 rounded-full bg-card p-px text-muted-foreground" /> : null}</span></span> : null}
               <Popover open={keysOpen} onOpenChange={setKeysOpen}>
-                <TooltipHint label="Shortcuts">
+                <TooltipHint label={t("shortcuts.title")}>
                   {/* The key that opens the list is the button. Its name shows beside it where the bar has the room. */}
-                  <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-auto h-7 gap-1.5 px-1.5 text-xs text-muted-foreground max-lg:hidden" aria-label="Shortcuts"><span className="max-2xl:hidden">Shortcuts</span><Kbd>?</Kbd></Button></PopoverTrigger>
+                  <PopoverTrigger asChild><Button variant="ghost" size="sm" className="ms-auto h-7 gap-1.5 px-1.5 text-xs text-muted-foreground max-lg:hidden" aria-label={t("shortcuts.title")}><span className="max-2xl:hidden">{t("shortcuts.title")}</span><Kbd>?</Kbd></Button></PopoverTrigger>
                 </TooltipHint>
                 <PopoverContent align="start" side="top" className="w-80 space-y-2 p-3">
-                  <p className="text-sm font-semibold">Shortcuts</p>
+                  <p className="text-sm font-semibold">{t("shortcuts.title")}</p>
                   {SHORTCUTS.filter(([, , who]) => !who || (who === "vote" ? mayDecide : answering)).map(([keys, what]) => (
                     <p key={what} className="flex items-center gap-3 text-sm">
-                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? "or" : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
-                      <span>{what === UNDO ? undoSays : what}</span>
+                      <span className="flex w-28 shrink-0 items-center gap-1 text-xs text-muted-foreground">{keys.map((key, i) => <span key={key} className="flex items-center gap-1">{i ? t("shortcuts.or") : null}<Kbd className={key === "I" ? "font-mono" : undefined}>{key}</Kbd></span>)}</span>
+                      <span>{what === "undo" ? undoSays : t(`shortcuts.${what}`)}</span>
                     </p>
                   ))}
                 </PopoverContent>
@@ -883,15 +888,15 @@ function Screen({ open }: { open: Open }) {
                   <Switch checked={advance} onCheckedChange={setAdvance} aria-label={nextAfter} />
                 </label>
               ) : null}
-              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label="Now in Conflicts" className="min-[87.5rem]:hidden">{/* On a phone the row has no room for the words: the sign alone keeps the bar one row high, so the vote never moves under the thumb. */}<span className="max-sm:hidden">Now in Conflicts</span></LinkChip> : null}
+              {madeConflict && last ? <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} aria-label={t("bar.nowInConflicts")} className="min-[87.5rem]:hidden">{/* On a phone the row has no room for the words: the sign alone keeps the bar one row high, so the vote never moves under the thumb. */}<span className="max-sm:hidden">{t("bar.nowInConflicts")}</span></LinkChip> : null}
               {/* The note's field takes a row of a small screen, so it opens from its own button there. The two stay together: a very narrow phone moves both to a second line. */}
               <span className="ms-auto flex items-center gap-1 lg:hidden">
                 {/* Under a laptop's width the criteria sit below the paper, a long scroll away on a phone: the way to them is beside the votes. */}
-                {criteria.length ? <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs lg:hidden" onClick={() => reach("data-criteria")}><ListChecks />Criteria</Button> : null}
-                {mayDecide && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />Note</Button> : null}
+                {criteria.length ? <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs lg:hidden" onClick={() => reach("data-criteria")}><ListChecks />{t("criteria.title")}</Button> : null}
+                {mayDecide && !resolving ? <Button variant={noteOpen ? "secondary" : "ghost"} size="sm" aria-pressed={noteOpen} className="h-8 gap-1.5 px-2 text-xs" onClick={toggleNote}><PenLine />{t("note.label")}</Button> : null}
                 {mayDecide && queue !== "done" ? (
                   <Popover>
-                    <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="More for this paper"><MoreHorizontal /></Button></PopoverTrigger>
+                    <PopoverTrigger asChild><Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t("bar.more")}><MoreHorizontal /></Button></PopoverTrigger>
                     <PopoverContent align="end" side="top" className="w-72 space-y-3 p-3">
                       <label className="flex items-center gap-3 text-sm">
                         <span className="min-w-0 flex-1">{nextAfter}</span>
@@ -900,8 +905,8 @@ function Screen({ open }: { open: Open }) {
                       {/* What a drag of the paper does, on a paper that can be dragged: one still to vote on. */}
                       {swipeable ? (
                         <div className="flex flex-wrap gap-1.5 border-t border-border-subtle pt-3">
-                          <StateChip tone="success" icon={ArrowRight}>Drag the paper right to include</StateChip>
-                          <StateChip tone="destructive" icon={ArrowLeft}>Drag it left to exclude</StateChip>
+                          <StateChip tone="success" icon={ArrowRight}>{t("bar.dragRight")}</StateChip>
+                          <StateChip tone="destructive" icon={ArrowLeft}>{t("bar.dragLeft")}</StateChip>
                         </div>
                       ) : null}
                     </PopoverContent>
@@ -913,13 +918,13 @@ function Screen({ open }: { open: Open }) {
             {/* The vote */}
             <div className="@container/vote flex w-full min-w-0 flex-col justify-center gap-2 lg:max-w-[46rem] lg:px-8 lg:py-2 2xl:max-w-none">
               {!mayDecide ? (
-                <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? `This screening is finished, so no more votes are cast.${open.canChange ? " Reopen it to vote again." : ""}` : resolving ? `${resolver === "you" ? "You settle" : `${resolver} settles`} conflicts on this screening. You can read them here.` : notReviewerSays(open.canChange, finished)}</ShutNote>
+                <ShutNote by={resolving ? "settler" : "reviewer"}>{finished && (resolving ? open.canResolve : open.isReviewer) ? t("shut.finished", { canChange: String(open.canChange) }) : resolving ? t("shut.settler", { you: String(settlesHere), name: settler }) : notReviewerSays(pieces, open.canChange, finished)}</ShutNote>
               ) : writing === paper.id ? (
                 <form className="flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); decideOn("exclude", OTHER); }}>
-                  <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder="Why exclude it?" aria-label="Why exclude it" className="h-8 text-sm" />
+                  <Input autoFocus value={notes[paper.id] ?? ""} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={t("exclude.why")} aria-label={t("exclude.whyLabel")} className="h-8 text-sm" />
                   <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>Back</Button>
-                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />Exclude</Button>
+                    <Button type="button" variant="outline" className="h-10 rounded-xl" onClick={() => setWriting(null)}>{t("exclude.back")}</Button>
+                    <Button type="submit" variant="destructive" className="h-10 rounded-xl" disabled={!notes[paper.id]?.trim()}><X />{words.decision("exclude")}</Button>
                   </div>
                 </form>
               ) : (
@@ -928,9 +933,9 @@ function Screen({ open }: { open: Open }) {
                   {through ? (
                     <div className="flex min-h-8 items-center gap-2">
                       <CircleCheck className="size-4 shrink-0 text-muted-foreground" />
-                      <p className="min-w-0 flex-1 text-sm font-medium leading-tight">{resolving ? "Every conflict here is settled" : "You voted on every paper here"}</p>
-                      {!resolving && conflicts ? <Button asChild size="sm" className="shrink-0" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} {plural(conflicts, "conflict", "conflicts")}</NextLink></Button> : null}
-                      {resolving && toDo ? <Button asChild size="sm" className="shrink-0"><NextLink href={screenHref(id)}><ListChecks />Screen {plural(toDo, "paper", "papers")}</NextLink></Button> : null}
+                      <p className="min-w-0 flex-1 text-sm font-medium leading-tight">{resolving ? t("through.conflicts") : t("through.papers")}</p>
+                      {!resolving && conflicts ? <Button asChild size="sm" className="shrink-0" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{t("settleConflicts", { settle: String(open.canResolve), count: conflicts })}</NextLink></Button> : null}
+                      {resolving && toDo ? <Button asChild size="sm" className="shrink-0"><NextLink href={screenHref(id)}><ListChecks />{t("screenPapers", { count: toDo })}</NextLink></Button> : null}
                     </div>
                   ) : null}
                   {/* The note, and for a conflict the reason it is settled with: a field over the buttons, open when asked for, when it holds a note, and always for a conflict. It slides open, so the bar grows without a jump. */}
@@ -939,14 +944,14 @@ function Screen({ open }: { open: Open }) {
                       <div className="flex items-center gap-3 pb-2">
                         {resolving ? (
                           <span className="flex shrink-0 items-center gap-1 text-xs font-medium">
-                            Settle this conflict
-                            <Help title="Settling a conflict" side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name="Your vote as a reviewer">{DECISION_LABEL[mine.decision]}</Named></HelpFact> : null}<HelpFact><Named name="Rule">{SETTLE_LABEL[screening.rule.settle]}</Named></HelpFact></>}>
-                              The reviewers split on this paper. What you pick becomes its result, whatever they voted. Maybe is a result too: it settles the paper as one to look at again.
+                            {t("settle.title")}
+                            <Help title={t("settle.helpTitle")} side="top" facts={<>{mine ? <HelpFact icon={RESULT_ICON[mine.decision]}><Named name={t("settle.yourVote")}>{words.decision(mine.decision)}</Named></HelpFact> : null}<HelpFact><Named name={t("settle.rule")}>{words.t(`settle.label.${screening.rule.settle}`)}</Named></HelpFact></>}>
+                              {t("settle.help")}
                             </Help>
                           </span>
                         ) : null}
-                        <Input data-note onKeyDown={leaveNote} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others, saved with your vote"} aria-label="Note" className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
-                        <Textarea data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? "Why, for the record (optional)" : "A note for the others, saved with your vote"} aria-label="Note" className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
+                        <Input data-note onKeyDown={leaveNote} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="h-8 min-w-0 flex-1 text-sm max-lg:hidden" />
+                        <Textarea data-note onKeyDown={leaveNote} rows={2} value={notes[paper.id] ?? (resolving ? "" : (mine?.note ?? ""))} onChange={(event) => setNotes((all) => ({ ...all, [paper.id]: event.target.value }))} placeholder={resolving ? t("note.settling") : t("note.voting")} aria-label={t("note.label")} className="max-h-24 min-h-0 min-w-0 flex-1 resize-none py-1.5 text-sm lg:hidden" />
                       </div>
                     ) : null}
                   </AutoHeight>
@@ -954,7 +959,7 @@ function Screen({ open }: { open: Open }) {
                   <AutoHeight className="-mb-2 lg:hidden">{hintLine ? <div className="pb-2">{hintLine}</div> : null}</AutoHeight>
                   <div className="flex items-center gap-2">
                     {/* On a wide screen the note's button is with the vote it goes with, always by name: a pen alone was taken for a way to enlarge the paper. Where the row is short of room the votes give up their key hints. */}
-                    {!resolving ? <Button type="button" variant={noteOpen ? "secondary" : "outline"} aria-pressed={noteOpen} className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-sm max-lg:hidden" onClick={toggleNote}><PenLine />Note</Button> : null}
+                    {!resolving ? <Button type="button" variant={noteOpen ? "secondary" : "outline"} aria-pressed={noteOpen} className="h-10 shrink-0 gap-1.5 rounded-xl px-3 text-sm max-lg:hidden" onClick={toggleNote}><PenLine />{t("note.label")}</Button> : null}
                     <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
                       {voteButton("include")}
                       {voteButton("maybe")}
@@ -1004,23 +1009,23 @@ function Screen({ open }: { open: Open }) {
                 <>
                   <div className="flex min-w-0 items-center gap-2">
                     {/* Named as the last one: it is about the paper before, not the one open. */}
-                    <span className="flex shrink-0 items-center gap-1.5"><Named name={last.resolved ? "Last settled as" : "Your last vote"}><span className="font-medium text-foreground">{last.resolved ? RESULT_LABEL[last.decision] : DECISION_LABEL[last.decision]}</span></Named>{last.noted ? <Chip icon={PenLine} className="h-5 px-1.5">Note</Chip> : null}</span>
-                    <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />Undo<Kbd>Z</Kbd></Button>
+                    <span className="flex shrink-0 items-center gap-1.5"><Named name={last.resolved ? t("bar.lastSettledAs") : t("bar.lastVote")}><span className="font-medium text-foreground">{last.resolved ? words.result(last.decision) : words.decision(last.decision)}</span></Named>{last.noted ? <Chip icon={PenLine} className="h-5 px-1.5">{t("note.label")}</Chip> : null}</span>
+                    <Button variant="ghost" size="xs" className="ms-auto shrink-0" onClick={undo}><Undo2 />{t("bar.undo")}<Kbd>Z</Kbd></Button>
                   </div>
                   {lastReason || last.paper.id !== paper.id || madeConflict || differ ? (
                     <div className="flex min-w-0 items-center gap-2">
                       {/* Exclude takes its reason from your answers where they say it: the reason it took is named whole, at the head of the second line, and the paper's title after it gives up the room. Where the answers failed more must-haves than the one, they are counted. */}
-                      {lastReason ? <span className="flex shrink-0 items-center gap-1.5"><ReasonChip reason={lastReason} criteria={criteria} />{alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={`and ${alsoFailed} more`}>+{alsoFailed}</span> : null}</span> : null}
+                      {lastReason ? <span className="flex shrink-0 items-center gap-1.5"><ReasonChip reason={lastReason} criteria={criteria} />{alsoFailed ? <span className="shrink-0 tabular-nums" role="img" aria-label={t("bar.alsoFailed", { count: alsoFailed })}>+{words.num(alsoFailed)}</span> : null}</span> : null}
                       {last.paper.id !== paper.id ? (
                         <TooltipHint label={last.paper.title} onlyWhenClipped>
-                          <button type="button" onClick={() => openIt(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline">{inQuotes(last.paper.title)}</button>
+                          <button type="button" onClick={() => openIt(last.paper)} className="min-w-0 flex-1 truncate text-start text-foreground hover:underline">{words.quoted(last.paper.title)}</button>
                         </TooltipHint>
                       ) : <span className="flex-1" />}
                       {madeConflict ? (
-                        <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="shrink-0">Now in Conflicts</LinkChip>
+                        <LinkChip href={screenHref(id, { queue: "conflicts", paper: last.paper.id })} tone="info" icon={GitCompare} className="shrink-0">{t("bar.nowInConflicts")}</LinkChip>
                       ) : differ ? (
                         // Where the paper stands now says what a different vote led to: still waiting for votes, or settled by the rule.
-                        <span className="flex shrink-0 items-center gap-1.5">{differ} voted differently{lastPaper ? <ResultChip result={lastPaper.result} /> : null}</span>
+                        <span className="flex shrink-0 items-center gap-1.5">{t("bar.votedDifferently", { count: differ })}{lastPaper ? <ResultChip result={lastPaper.result} /> : null}</span>
                       ) : null}
                     </div>
                   ) : null}
@@ -1036,8 +1041,8 @@ function Screen({ open }: { open: Open }) {
         <Sheet open={reasonFor === paper.id} onOpenChange={(next) => !next && setReasonFor(null)}>
           <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col gap-0 p-0">
             <SheetHeader className="border-b border-border-subtle p-4">
-              <SheetTitle>Why exclude it?</SheetTitle>
-              <SheetDescription className="sr-only">Pick the reason this paper is excluded.</SheetDescription>
+              <SheetTitle>{t("exclude.why")}</SheetTitle>
+              <SheetDescription className="sr-only">{t("exclude.pick")}</SheetDescription>
             </SheetHeader>
             <ScrollArea shades className="min-h-0 flex-1">
               <div className="space-y-3 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"><ReasonRows criteria={criteria} onPick={(reason) => decideOn("exclude", reason)} /></div>
@@ -1051,24 +1056,26 @@ function Screen({ open }: { open: Open }) {
 
 /** What a queue says when it holds nothing, and where to go from there. */
 function Empty({ open, queue }: { open: Open; queue: Queue }) {
+  const t = useTranslations("screening.screen");
+  const pieces = useTranslations("screening.pieces");
   const id = open.screening.id;
   const tally = open.screening.reviewers.find((one) => one.id === open.me)?.tally;
   const [yours, voted, closed] = [tally?.dealt ?? 0, tally?.cast ?? 0, tally?.closed ?? 0];
   const [Icon, title, line]: [AppIcon, string, ReactNode] = !open.isReviewer
     // Someone who doesn't vote reads the papers in conflict here: an empty page says there are none, then what they are to the screening.
-    ? [Eye, "No paper is in conflict", notReviewerSays(open.canChange, Boolean(open.screening.finishedAt))]
+    ? [Eye, t("empty.noConflictPaper"), notReviewerSays(pieces, open.canChange, Boolean(open.screening.finishedAt))]
     : queue === "todo"
       ? open.gathering
-        ? [Hourglass, "Its papers are on their way", `${num(open.gathering.done)} of ${num(open.gathering.of)} are in`]
+        ? [Hourglass, t("empty.onTheirWay"), t("empty.arrived", { done: open.gathering.done, count: open.gathering.of })]
         // "Yet" only where more can come: a living screening gains papers, another has what it has.
-        : !yours ? [ListChecks, open.screening.living ? "No paper has come to you yet" : "None of its papers is yours to vote on", null]
-        : !closed ? [CircleCheck, "You have voted on all your papers", null]
-        : [CircleCheck, "No paper waits for your vote", `${plural(closed, "of your papers was", "of your papers were")} settled without it`]
+        : !yours ? [ListChecks, open.screening.living ? t("empty.noneYet") : t("empty.noneYours"), null]
+        : !closed ? [CircleCheck, t("empty.allVoted"), null]
+        : [CircleCheck, t("empty.noneWaits"), t("empty.settledWithout", { count: closed })]
       : queue === "again"
-        ? [CircleCheck, "None of your votes needs a new one", null]
+        ? [CircleCheck, t("empty.noneAgain"), null]
       : queue === "conflicts"
-        ? [GitCompare, open.canResolve ? "No conflict to settle" : "No paper is in conflict", null]
-        : [ListChecks, "You haven't voted on a paper yet", null];
+        ? [GitCompare, open.canResolve ? t("empty.noConflict") : t("empty.noConflictPaper"), null]
+        : [ListChecks, t("empty.noVotes"), null];
   // The frame every list of the app has for nothing to show, and for loading: the page holds still when one follows the other.
   return (
     <ListEmpty
@@ -1076,11 +1083,11 @@ function Empty({ open, queue }: { open: Open; queue: Queue }) {
       description={line ?? undefined}
       action={
       <div className="flex flex-wrap justify-center gap-2">
-        {open.isReviewer && queue === "todo" && voted ? <Button asChild size="sm"><NextLink href={screenHref(id, { queue: "done" })}>{voted === 1 ? "See your vote" : `See your ${num(voted)} votes`}</NextLink></Button> : null}
-        {open.isReviewer && queue !== "conflicts" && open.conflicts ? <Button asChild size="sm" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{open.canResolve ? "Settle" : "See"} {plural(open.conflicts, "conflict", "conflicts")}</NextLink></Button> : null}
-        {open.isReviewer && queue !== "todo" && open.toDo ? <Button asChild size="sm"><NextLink href={screenHref(id)}><ListChecks />Screen {plural(open.toDo, "paper", "papers")}</NextLink></Button> : null}
-        {!open.isReviewer && open.canChange && !open.screening.finishedAt ? <Button size="sm" onClick={() => void open.join()}><UserPlus />Join as a reviewer</Button> : null}
-        <Button asChild size="sm" variant="outline"><NextLink href={papersHref(id)}>See all the papers</NextLink></Button>
+        {open.isReviewer && queue === "todo" && voted ? <Button asChild size="sm"><NextLink href={screenHref(id, { queue: "done" })}>{t("empty.seeVotes", { count: voted })}</NextLink></Button> : null}
+        {open.isReviewer && queue !== "conflicts" && open.conflicts ? <Button asChild size="sm" variant={open.canResolve ? "default" : "outline"}><NextLink href={screenHref(id, { queue: "conflicts" })}><GitCompare />{t("settleConflicts", { settle: String(open.canResolve), count: open.conflicts })}</NextLink></Button> : null}
+        {open.isReviewer && queue !== "todo" && open.toDo ? <Button asChild size="sm"><NextLink href={screenHref(id)}><ListChecks />{t("screenPapers", { count: open.toDo })}</NextLink></Button> : null}
+        {!open.isReviewer && open.canChange && !open.screening.finishedAt ? <Button size="sm" onClick={() => void open.join()}><UserPlus />{t("empty.join")}</Button> : null}
+        <Button asChild size="sm" variant="outline"><NextLink href={papersHref(id)}>{t("empty.allPapers")}</NextLink></Button>
       </div>
       }
     >
@@ -1103,16 +1110,18 @@ function Sentence({ at, text, quoted, terms, lit }: { at: number; text: string; 
 
 /** A reviewer's face at the head of their column, with their name under it where the table has the room: it opens their vote, its reason and their note. */
 function Face({ reviewer, vote, failed, settled, you, kept, criteria, named }: { reviewer: Reviewer; vote: Vote | undefined; failed?: boolean; settled: boolean; you: boolean; /** They voted, and how is kept from the person looking. */ kept: boolean; criteria: Criterion[]; /** The classes that show the name, from the width where the columns are wide enough for it. */ named: string }) {
+  const t = useTranslations("screening.screen");
+  const words = useWords();
   return (
     <Popover>
-      <TooltipHint label={you ? `${reviewer.name}, you` : reviewer.name}>
+      <TooltipHint label={you ? t("matrix.nameYou", { name: reviewer.name }) : reviewer.name}>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={you ? "Your vote" : `${reviewer.name}'s vote`} className="mx-auto flex max-w-full flex-col items-center gap-1 self-start rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
+          <button type="button" aria-label={you ? t("yourVote") : t("matrix.theirVote", { name: reviewer.name })} className="mx-auto flex max-w-full flex-col items-center gap-1 self-start rounded-lg outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/50">
             {/* Dimmed for someone taken off the screening, whose vote on this paper still counts. */}
             <span className={cn("flex", reviewer.left && "opacity-55")}><ReviewerMark reviewer={reviewer} you={you} /></span>
             {/* A person by their first name, a model by its own, on two lines at most. */}
             {/* The clamp sets its own display, so what hides the name is a box around it. */}
-            <span aria-hidden className={cn("hidden max-w-full", named)}><span className={cn("text-center text-2xs leading-3 text-muted-foreground line-clamp-2", you && "font-medium text-foreground")}>{you ? "You" : shortName(reviewer)}</span></span>
+            <span aria-hidden className={cn("hidden max-w-full", named)}><span className={cn("text-center text-2xs leading-3 text-muted-foreground line-clamp-2", you && "font-medium text-foreground")}>{you ? words.t("you") : shortName(reviewer)}</span></span>
           </button>
         </PopoverTrigger>
       </TooltipHint>
@@ -1142,6 +1151,8 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
   /** What opens under the row of the answer that is shown, such as the passage a model read. */
   passage?: ReactNode;
 }) {
+  const t = useTranslations("screening.screen");
+  const words = useWords();
   // The passage's place in what scrolls is the outside system: once it has opened it is brought into view, so it never opens out of sight under the vote bar.
   const opened = useRef<HTMLDivElement>(null);
   // Where the table's box is wide enough, each column widens and carries its reviewer's name under the face. How wide that is depends on how many columns there are. Written out whole, so Tailwind finds them.
@@ -1152,7 +1163,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
     {/* The rows are set apart by their cells' own margins, not by a gap. A grid keeps a gap around a row for as long as the row is there, even at no height, so the passage that opens under a row would take 6px with it in the last frame of closing. */}
     <div className={cn("-my-[3px] grid grid-cols-[minmax(5.5rem,1fr)_var(--marks)] items-center gap-x-1 [--mark:1.75rem] *:my-[3px] sm:w-fit sm:grid-cols-[minmax(7rem,max-content)_var(--marks)] [&>.contents>*]:my-[3px]", wide.column)} style={{ "--marks": `repeat(${cast.length}, var(--mark))` } as React.CSSProperties}>
       {/* Where the faces stand without names, the ring around one of them is named in the corner beside them. */}
-      {me && cast.some((one) => one.reviewer.id === me) ? <span className={cn("flex items-center gap-1.5 self-end pb-1 text-xs text-muted-foreground", wide.key)}><span aria-hidden className="ms-0.5 size-2.5 rounded-full ring-2 ring-primary/70 ring-offset-1 ring-offset-card" />You</span> : <span />}
+      {me && cast.some((one) => one.reviewer.id === me) ? <span className={cn("flex items-center gap-1.5 self-end pb-1 text-xs text-muted-foreground", wide.key)}><span aria-hidden className="ms-0.5 size-2.5 rounded-full ring-2 ring-primary/70 ring-offset-1 ring-offset-card" />{words.t("you")}</span> : <span />}
       {cast.map(({ reviewer, vote, failed, hidden: kept }) => <Face key={reviewer.id} reviewer={reviewer} vote={vote} failed={failed} settled={settled} you={reviewer.id === me} kept={Boolean(kept)} criteria={criteria} named={wide.name} />)}
       {/* While the others' votes are kept from you the criteria's rows would hold nothing but locks: the faces and the row of votes say who has voted, and that is all there is to see. */}
       {hidden ? null : criteria.map((criterion, n) => {
@@ -1164,20 +1175,20 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
               <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {split ? (
-                <button type="button" aria-label={`${criterion.short}: show the answer that differs`} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>Answers differ<ChevronDown aria-hidden className="size-3" /></button>
+                <button type="button" aria-label={t("matrix.differFor", { criterion: criterion.short })} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>{t("answersDiffer")}<ChevronDown aria-hidden className="size-3" /></button>
               ) : null}
             </span>
             {cast.map(({ reviewer, hidden: kept }, i) => {
               if (kept) {
-                return <VoteMark key={reviewer.id} hidden who={`${reviewer.name}, ${criterion.short}`} className="mx-auto flex" />;
+                return <VoteMark key={reviewer.id} hidden who={t("matrix.on", { name: reviewer.name, criterion: criterion.short })} className="mx-auto flex" />;
               }
               const answer = given[i];
               if (!answer) return <span key={reviewer.id} className="mx-auto size-6 rounded-md border border-dashed border-border" />;
               const on = shown?.reviewer === reviewer.id && shown.criterion === criterion.key;
               // Every answer opens what is behind it: a model's the passage it read, a person's their vote and their note.
               return (
-                <button key={reviewer.id} type="button" aria-pressed={on} aria-label={`${youOr(reviewer, me)}, ${criterion.short}: ${reviewer.kind === "model" ? "show the passage" : reviewer.id === me ? "show your vote and note" : "show their vote and note"}`} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex cursor-pointer rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
-                  <AnswerMark answer={answer} label={`${reviewer.name}, ${criterion.short}`} pressable={!on} />
+                <button key={reviewer.id} type="button" aria-pressed={on} aria-label={t("matrix.show", { who: words.youOr(reviewer, me), criterion: criterion.short, kind: reviewer.kind === "model" ? "model" : reviewer.id === me ? "you" : "other" })} onClick={() => onShow(on ? null : { reviewer: reviewer.id, criterion: criterion.key })} className={cn("mx-auto flex cursor-pointer rounded-md transition-shadow hover:ring-2 hover:ring-border", on && "ring-2 ring-primary/60")}>
+                  <AnswerMark answer={answer} label={t("matrix.on", { name: reviewer.name, criterion: criterion.short })} pressable={!on} />
                 </button>
               );
             })}
@@ -1192,7 +1203,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
           </div>
         );
       })}
-      <span className={cn("text-xs font-medium", !hidden && "border-t border-border-subtle pt-2")}>Vote</span>
+      <span className={cn("text-xs font-medium", !hidden && "border-t border-border-subtle pt-2")}>{t("matrix.vote")}</span>
       {cast.map(({ reviewer, vote, failed, hidden: kept }) => (
         <span key={reviewer.id} className={cn("flex justify-center", !hidden && "border-t border-border-subtle pt-2")}><VoteMark vote={vote} hidden={kept} failed={failed} settled={settled} who={reviewer.name} /></span>
       ))}
@@ -1203,6 +1214,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
 
 /** What is behind a person's answer: their vote, the reason they gave for it, and their note, or that they left none. */
 export function Said({ reviewer, vote, criterion, criteria, you = false }: { reviewer: Reviewer; vote: Vote | undefined; criterion: Criterion; criteria: Criterion[]; you?: boolean }) {
+  const t = useTranslations("screening.screen");
   const answer = vote?.answers[criterion.key];
   if (!vote || !answer) return null;
   return (
@@ -1212,13 +1224,14 @@ export function Said({ reviewer, vote, criterion, criteria, you = false }: { rev
         <ReviewerName reviewer={reviewer} you={you} className="font-medium" />
       </div>
       <VoteFacts vote={vote} criteria={criteria}><AnswerMark answer={answer} label={criterion.short} /></VoteFacts>
-      {vote.note ? null : <p className="text-sm text-muted-foreground">{you ? "You left no note with this vote." : "No note with this vote."}</p>}
+      {vote.note ? null : <p className="text-sm text-muted-foreground">{you ? t("said.noNoteYou") : t("said.noNote")}</p>}
     </div>
   );
 }
 
 /** The sentence of the abstract a model named for one answer, and how sure it is of the answer. A model that only decides names none. */
 export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Paper, "abstract">; reviewer: Reviewer; vote: Vote | undefined; criterion: Criterion }) {
+  const t = useTranslations("screening.screen");
   const answer = vote?.answers[criterion.key];
   if (!vote || !answer) return null;
   const at = vote.passages?.[criterion.key];
@@ -1231,17 +1244,17 @@ export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Pap
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs">
         <ReviewerMark reviewer={reviewer} className="size-5" />
         <ReviewerName reviewer={reviewer} className="font-medium" />
-        {sure === null ? null : <Help title="How sure the model is" facts={<HelpFact icon={TriangleAlert}>Unsure below 65%</HelpFact>}>The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.</Help>}
+        {sure === null ? null : <Help title={t("evidence.helpTitle")} facts={<HelpFact icon={TriangleAlert}>{t("evidence.unsureBelow")}</HelpFact>}>{t("evidence.help")}</Help>}
         <span className="ms-auto flex shrink-0 items-center gap-2">
           {sure === null ? null : sure < 65 ? (
-            <StateChip tone="warning" icon={TriangleAlert}>Unsure: {sure}% sure</StateChip>
+            <StateChip tone="warning" icon={TriangleAlert}>{t("evidence.unsure", { sure: sure / 100 })}</StateChip>
           ) : (
-            <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground"><Meter value={sure} max={100} className="w-12" fill="bg-foreground/45" />{sure}% sure</span>
+            <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground"><Meter value={sure} max={100} className="w-12" fill="bg-foreground/45" />{t("evidence.sure", { sure: sure / 100 })}</span>
           )}
           <AnswerMark answer={answer} label={criterion.short} />
         </span>
       </div>
-      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : <p className="text-sm text-muted-foreground">It named no sentence of the abstract for this answer.</p>}
+      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : <p className="text-sm text-muted-foreground">{t("evidence.noSentence")}</p>}
     </div>
   );
 }

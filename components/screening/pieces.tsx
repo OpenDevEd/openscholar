@@ -23,24 +23,29 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { ANSWERS, type Answer } from "@/lib/screening/rules";
-import { num, inQuotes, DECISION_LABEL, HIDDEN_UNTIL_VOTE, RESULTS, RESULT_LABEL, ago, criterionLabel, excludeGroups, failedLabel, inOrder, isNamed, plural, questionOf, reasonLabel, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote, NO_VOTE, NO_VOTE_SAYS, VOTES_HIDDEN_SAYS } from "./data";
+import { useFormatter, useTranslations } from "next-intl";
+import { RESULTS, inOrder, questionOf, type Criterion, type Decision, type Paper, type Result, type Reviewer, type Rule, type Vote } from "./data";
 import type { ModelsState } from "./store";
 import { papersHref } from "./links";
+import { useWords } from "./words";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+/** This part's messages, for a function that is handed them. */
+type T = ReturnType<typeof useTranslations<"screening.pieces">>;
+
 /**
- * What a screening's models are doing when they are not reading, in words and a mark: `says` of the whole screening,
- * `row` of one model in its own row. One table, so the list, the notice, the Overview and the settings say it alike.
- * `stop` is a state somebody has to act on.
+ * What a screening's models are doing when they are not reading, as a mark: its words are `modelsSay.<state>.says`
+ * of the whole screening and `.row` of one model in its own row (`screening.pieces`). One table, so the list, the
+ * notice, the Overview and the settings say it alike. `stop` is a state somebody has to act on.
  */
-export const MODELS_SAY: Record<Exclude<ModelsState, "reading">, { icon: AppIcon; says: string; row: string; stop?: true }> = {
-  checking: { icon: RefreshCw, says: "Checking for new papers", row: "Waiting for the check" },
-  gathering: { icon: Search, says: "Getting its papers", row: "Waiting for the papers to arrive" },
-  paused: { icon: CirclePause, says: "Models paused", row: "Paused", stop: true },
-  credits: { icon: Coins, says: "Out of credits", row: "Out of credits", stop: true },
-  waiting: { icon: Clock, says: "Models start after", row: "Waiting its turn" },
+export const MODELS_SAY: Record<Exclude<ModelsState, "reading">, { icon: AppIcon; stop?: true }> = {
+  checking: { icon: RefreshCw },
+  gathering: { icon: Search },
+  paused: { icon: CirclePause, stop: true },
+  credits: { icon: Coins, stop: true },
+  waiting: { icon: Clock },
 };
-export const MODELS_READING = "Models reading";
+export const MODELS_READING = (t: T) => t("modelsReading");
 
 /**
  * The "?" beside a label: what the label means, and how the thing works, said once where a person asks
@@ -48,12 +53,13 @@ export const MODELS_READING = "Models reading";
  * It opens beside its "?" on a wide screen and under it on a phone.
  */
 export function Help({ title, children, facts, side, className }: { title: string; children: ReactNode; facts?: ReactNode; /** Where it opens, for a "?" whose usual side would cover what it explains. */ side?: "top" | "bottom" | "left"; className?: string }) {
+  const t = useTranslations("screening.pieces");
   const beside = !useIsMobile();
   return (
     <Popover>
-      <PopoverTrigger asChild><HelpButton aria-label={`About ${title}`} className={className} /></PopoverTrigger>
+      <PopoverTrigger asChild><HelpButton aria-label={t("about", { title })} className={className} /></PopoverTrigger>
       {/* Scrolled out of sight, its "?" takes the explanation with it: it never stays behind over the page, cut off at an edge. */}
-      <PopoverContent hideWhenDetached side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={`About ${title}`} className={HELP_POPOVER}>
+      <PopoverContent hideWhenDetached side={side ?? (beside ? "right" : "bottom")} align="start" aria-label={t("about", { title })} className={HELP_POPOVER}>
         <div className="space-y-3 p-4">
           <div className="space-y-1">
             <p className="text-sm font-semibold">{title}</p>
@@ -108,7 +114,8 @@ export const kindIcon = (kind: string): AppIcon => (kind === "upload" || kind ==
 export const RESULT_ICON = Object.fromEntries(RESULTS.map((result) => [result, tinted(RESULT_STYLE[result].icon, RESULT_STYLE[result].tone)])) as Record<Result, ComponentType<{ className?: string }>>;
 /** A count in a tab, in the colour of what it counts while there is any: what waits for you is primary, a conflict is blue. */
 export function TabCount({ value, tone = "neutral" }: { value: number; tone?: Tone }) {
-  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{num(value)}</span>;
+  const words = useWords();
+  return <span className={cn("tabular-nums", value ? TONE[tone].ink : "text-muted-foreground")}>{words.num(value)}</span>;
 }
 
 /**
@@ -129,25 +136,28 @@ export function StateChip({ tone, className, ...chip }: ComponentProps<typeof Ch
  * The rules that keep a part of a paper from the person looking, each with its sign and the words for what opens it.
  * A part a rule shuts is never left out, and is drawn one way wherever it is: the rule's chip beside the part's title,
  * and one line in the part's place that says what is there and why it is shut. The words are here, so the chip, the
- * "?" and a vote's mark all say the rule the same way.
+ * "?" and a vote's mark all say the rule the same way: the vote's is `screening.words.hiddenUntilVote`, the others'
+ * `shut.<rule>` here.
  */
 export const SHUT = {
-  vote: { icon: Lock, says: HIDDEN_UNTIL_VOTE },
+  vote: { icon: Lock },
   // Who the person is to the screening: its reviewers vote and write, and one person settles its conflicts.
-  reviewer: { icon: Eye, says: "For its reviewers" },
-  settler: { icon: Eye, says: "For whoever settles conflicts" },
+  reviewer: { icon: Eye },
+  settler: { icon: Eye },
   // Changing who is on it and its settings is for the members of its workspace.
-  member: { icon: Lock, says: "For the workspace's members" },
+  member: { icon: Lock },
   // A living screening whose sources hold what they held: a file, a pasted list.
-  sources: { icon: Lock, says: "No source gains papers" },
+  sources: { icon: Lock },
 } as const;
 /** What someone who doesn't vote on a screening is told where a vote would be cast: what they are to it, and what would change that, where something would. */
-export const notReviewerSays = (member: boolean, finished: boolean) => (!member ? "This screening is shared with you to read. Its reviewers vote." : finished ? "You aren't one of its reviewers, and the screening is finished." : "You aren't one of its reviewers. Join as a reviewer to vote on its papers.");
+export const notReviewerSays = (t: T, member: boolean, finished: boolean) => (!member ? t("notReviewer.shared") : finished ? t("notReviewer.finished") : t("notReviewer.join"));
 export type Shut = keyof typeof SHUT;
 
 /** Beside the title of a part a rule shuts, or beside a control it shuts: what opens it. A control is not hidden, so it says when it opens in its own words. */
 export function ShutChip({ by, children }: { by: Shut; children?: ReactNode }) {
-  return <Chip icon={SHUT[by].icon}>{children ?? SHUT[by].says}</Chip>;
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
+  return <Chip icon={SHUT[by].icon}>{children ?? (by === "vote" ? words.t("hiddenUntilVote") : t(`shut.${by}`))}</Chip>;
 }
 
 /** In the place of a part a rule shuts: what is there and why it is shut, in a line that never repeats the chip. */
@@ -172,22 +182,23 @@ export const youFirst = <T extends { reviewer: Pick<Reviewer, "id" | "kind"> }>(
 };
 
 /** The line under the others' votes while the rule hides them, on Screen and in the Papers drawer. */
-export const VOTES_SHUT = "The other votes stay out of sight so they can't sway yours.";
+export const VOTES_SHUT = (t: T) => t("votesShut");
 
 /**
  * Sends a model back to the papers it couldn't read: the one control for it, wherever a failed read shows, with the
  * same words and the same price. Where the workspace can't pay for it, it is shut and says how many credits are missing.
  */
 export function RetryRead({ papers, cost, short, onRetry, variant = "outline", size = "xs", className }: { papers: number; /** In credits, as it is said. */ cost: string; /** The credits missing, as they are said, or nothing where there are enough. */ short?: string; onRetry: () => void; variant?: "default" | "outline"; size?: "xs" | "sm"; className?: string }) {
+  const t = useTranslations("screening.pieces");
   return (
     <span className={cn("flex flex-wrap items-center gap-2", className)}>
-      <Button variant={variant} size={size} disabled={Boolean(short)} className={cn(variant === "default" && "min-w-0 flex-1")} onClick={onRetry}><RotateCcw />{retryLabel(papers, cost)}</Button>
-      {short ? <StateChip tone="warning" icon={Coins}>{short} credits short</StateChip> : null}
+      <Button variant={variant} size={size} disabled={Boolean(short)} className={cn(variant === "default" && "min-w-0 flex-1")} onClick={onRetry}><RotateCcw />{retryLabel(t, papers, cost)}</Button>
+      {short ? <StateChip tone="warning" icon={Coins}>{t("creditsShort", { short })}</StateChip> : null}
     </span>
   );
 }
 /** What that control says, for a menu's row too. */
-export const retryLabel = (papers: number, cost: string) => `${papers > 1 ? `Try all ${num(papers)} papers again` : "Try the paper again"} for ${cost} credits`;
+export const retryLabel = (t: T, papers: number, cost: string) => t("retry", { papers: Math.max(1, papers), cost });
 
 /** A figure that opens the papers it counts: underlined at rest, so it is told apart from a figure that only says how many. */
 /** A name or a count inside a sentence that opens something: underlined where it stands, so it reads as a link before the pointer is on it. */
@@ -201,7 +212,7 @@ export function Byline({ paper }: { paper: Pick<Paper, "authors" | "venue" | "ye
 }
 
 /** What a link to one reviewer's votes is called, wherever one is. */
-export const votesBy = (reviewer: Pick<Reviewer, "id" | "name">, me: string | undefined) => (reviewer.id === me ? "Your votes" : `Votes by ${reviewer.name}`);
+export const votesBy = (t: T, reviewer: Pick<Reviewer, "id" | "name">, me: string | undefined) => t("votesBy", { you: String(reviewer.id === me), name: reviewer.name });
 
 type FaceLink = { href: string; says: string; /** One of the reviewers the row is narrowed to: it stands out, and the others fade. */ on?: boolean };
 /**
@@ -210,6 +221,7 @@ type FaceLink = { href: string; says: string; /** One of the reviewers the row i
  * With `linkOf` each face is a link, named by what it opens. Without it the row is a picture of who is on something.
  */
 export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }: { reviewers: Reviewer[]; me: string | undefined; max?: number; linkOf?: (reviewer: Reviewer) => FaceLink; more?: FaceLink; /** The size of a face, where the row has less room than a face's own. */ mark?: string; className?: string }) {
+  const words = useWords();
   const faces = reviewers.slice(0, max);
   const links = linkOf ? faces.map(linkOf) : [];
   const narrowed = links.some((link) => link.on);
@@ -232,9 +244,9 @@ export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }:
       {hidden > 0 ? (
         more ? (
           <TooltipHint label={more.says}>
-            <NextLink href={more.href} aria-label={more.says} className="relative ms-1.5 rounded-md px-0.5 text-xs tabular-nums text-muted-foreground outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">+{hidden}</NextLink>
+            <NextLink href={more.href} aria-label={more.says} className="relative ms-1.5 rounded-md px-0.5 text-xs tabular-nums text-muted-foreground outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50">+{words.num(hidden)}</NextLink>
           </TooltipHint>
-        ) : <span className="ms-1.5 text-xs tabular-nums text-muted-foreground">+{hidden}</span>
+        ) : <span className="ms-1.5 text-xs tabular-nums text-muted-foreground">+{words.num(hidden)}</span>
       ) : null}
     </span>
   );
@@ -243,10 +255,11 @@ export function Faces({ reviewers, me, max = 6, linkOf, more, mark, className }:
 /** A chip that opens something: the tint of what it says, an arrow at its end, and a fuller tint under the pointer. Every chip that can be pressed is one of these, so a chip without the arrow is never a button. */
 /** The papers a screening still has open, as two counts that open them on Papers: in conflict, and waiting for votes. */
 export function OpenPapersChips({ id, conflict, waiting, onClick }: { id: string; conflict: number; waiting: number; onClick?: () => void }) {
+  const t = useTranslations("screening.pieces");
   return (
     <span className="flex flex-wrap gap-1.5">
-      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={onClick}>{num(conflict)} in conflict</LinkChip> : null}
-      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={onClick}>{num(waiting)} waiting for votes</LinkChip> : null}
+      {conflict ? <LinkChip href={papersHref(id, { result: "conflict" })} tone="info" icon={GitCompare} onClick={onClick}>{t("openPapers.conflict", { count: conflict })}</LinkChip> : null}
+      {waiting ? <LinkChip href={papersHref(id, { result: "waiting" })} icon={Hourglass} onClick={onClick}>{t("openPapers.waiting", { count: waiting })}</LinkChip> : null}
     </span>
   );
 }
@@ -297,12 +310,13 @@ const SIGN = "flex items-center [&_svg]:text-current!";
  * `lead` is a sign before the name, where the name alone doesn't say what the pill is for.
  */
 export function FilterMenu<T extends string>({ name, lead, value, onChange, choices, narrows = true, align = "start", className }: { name: string; lead?: ReactNode; value: T; onChange: (next: T) => void; choices: Choice<T>[]; narrows?: boolean; align?: "start" | "end"; className?: string }) {
+  const t = useTranslations("screening.pieces");
   const picked = choices.find((one) => one.value === value) ?? choices[0]!;
   const changed = picked !== choices[0];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" data-slot="select-trigger" data-size="sm" aria-label={`${name}: ${picked.label}`} className={cn(SELECT_TRIGGER, narrows && changed && FILTER_ON, className)}>
+        <button type="button" data-slot="select-trigger" data-size="sm" aria-label={t("filterLabel", { name, choice: picked.label })} className={cn(SELECT_TRIGGER, narrows && changed && FILTER_ON, className)}>
           <span className="flex min-w-0 items-center gap-1.5">
             {lead}
             <span className="text-muted-foreground">{name}</span>
@@ -374,13 +388,14 @@ export function ActionBar({ className, ...rest }: ComponentProps<"div">) {
 const NAME_TAG = "shrink-0 rounded-full bg-foreground/[0.07] px-2 text-2xs font-normal leading-5 text-muted-foreground";
 /** A reviewer's name with what kind of reviewer it is: You after your own, AI after a model's. One marker, the same on every page. */
 export function ReviewerName({ reviewer, you = false, className }: { reviewer: Pick<Reviewer, "kind" | "name"> & { left?: number }; you?: boolean; className?: string }) {
+  const t = useTranslations("screening.pieces");
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {/* A name cut short by its column is read in full on hover. */}
       <TooltipHint label={reviewer.name} onlyWhenClipped><span className="truncate">{reviewer.name}</span></TooltipHint>
-      {you ? <YouTag /> : reviewer.kind === "model" ? <span className={NAME_TAG}>AI</span> : null}
+      {you ? <YouTag /> : reviewer.kind === "model" ? <span className={NAME_TAG}>{t("tag.ai")}</span> : null}
       {/* Someone taken off the screening whose vote still stands on this paper: said beside their name, so nobody looks for them among the reviewers. */}
-      {reviewer.left ? <span className={NAME_TAG}>Taken off</span> : null}
+      {reviewer.left ? <span className={NAME_TAG}>{t("tag.takenOff")}</span> : null}
     </span>
   );
 }
@@ -407,10 +422,12 @@ export function ReviewerMark({ reviewer, you = false, className }: { reviewer: P
 
 /** One vote as a small square with its sign. `hidden` is a vote cast but not shown yet, to someone who hasn't voted. */
 export function VoteMark({ vote, hidden = false, failed = false, settled = false, who, className }: { vote?: Pick<Vote, "decision">; hidden?: boolean; failed?: boolean; /** The paper is settled for good: a place with no vote in it waits for nobody. */ settled?: boolean; who: string; className?: string }) {
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
   if (failed) {
     return (
-      <TooltipHint label={`${who}: ${NO_VOTE.failed.toLowerCase()}`}>
-        <span role="img" tabIndex={0} aria-label={`${who}: ${NO_VOTE.failed.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive text-white", className)}>
+      <TooltipHint label={t("voteMark.failed", { who })}>
+        <span role="img" tabIndex={0} aria-label={t("voteMark.failed", { who })} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-destructive text-white", className)}>
           <TriangleAlert aria-hidden className="size-3.5" />
         </span>
       </TooltipHint>
@@ -419,21 +436,21 @@ export function VoteMark({ vote, hidden = false, failed = false, settled = false
   // A vote kept from the person looking: that it was cast, and nothing of how.
   if (hidden) {
     return (
-      <span role="img" aria-label={`${who}: voted, ${SHUT.vote.says.toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
+      <span role="img" aria-label={t("voteMark.hidden", { who })} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
         <Lock aria-hidden className="size-3" />
       </span>
     );
   }
   if (!vote) {
     return (
-      <span role="img" aria-label={`${who}: ${(settled ? NO_VOTE.none : NO_VOTE.yet).toLowerCase()}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground", className)}>
+      <span role="img" aria-label={t(settled ? "voteMark.none" : "voteMark.yet", { who })} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground", className)}>
         {settled ? <Minus aria-hidden className="size-3" /> : <Hourglass aria-hidden className="size-3" />}
       </span>
     );
   }
   const { icon: Icon, chip } = RESULT_STYLE[vote.decision];
   return (
-    <span role="img" aria-label={`${who}: ${DECISION_LABEL[vote.decision]}`} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md", chip, className)}>
+    <span role="img" aria-label={t("voteMark.cast", { who, decision: words.decision(vote.decision) })} className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-md", chip, className)}>
       <Icon aria-hidden className="size-3.5" />
     </span>
   );
@@ -441,11 +458,12 @@ export function VoteMark({ vote, hidden = false, failed = false, settled = false
 
 /** Where a paper stands, as a chip. */
 export function ResultChip({ result, className }: { result: Result; className?: string }) {
+  const words = useWords();
   const { icon: Icon, chip } = RESULT_STYLE[result];
   return (
     <span className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium", chip, className)}>
       <Icon aria-hidden className="size-3.5 shrink-0" />
-      {RESULT_LABEL[result]}
+      {words.result(result)}
     </span>
   );
 }
@@ -490,14 +508,16 @@ export function Named({ name, children }: { name: string; children: ReactNode })
  * not a criterion is its own words.
  */
 export function Reason({ reason, criteria, unclear = false, wrap = false, className }: { reason: string; criteria: Criterion[]; unclear?: boolean; /** In a row to press, where there is room: the name runs onto a second line and is read whole. */ wrap?: boolean; className?: string }) {
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
   const criterion = criteria.find((one) => one.key === reason);
-  if (!criterion) return <span className={cn("truncate", className)}>{reasonLabel(reason, criteria)}</span>;
+  if (!criterion) return <span className={cn("truncate", className)}>{words.reason(reason, criteria)}</span>;
   const { icon: Icon, tone } = ANSWER_SIGN[unclear ? "unclear" : "no"];
   // A name nobody wrote is the question's own words cut short: the question is shown instead, and the room it stands in cuts it where it must, with the rest a hover away.
-  const name = criterionLabel(criterion);
+  const name = words.criterionLabel(criterion);
   return (
     <span className={cn("inline-flex min-w-0 max-w-full gap-1", wrap ? "items-start" : "items-center", className)}>
-      <Icon role="img" aria-label={unclear ? "Unclear on" : "Not met,"} className={cn("size-3.5 shrink-0", wrap && "mt-0.5", TONE[tone].ink)} />
+      <Icon role="img" aria-label={t(unclear ? "reasonSign.unclear" : "reasonSign.no")} className={cn("size-3.5 shrink-0", wrap && "mt-0.5", TONE[tone].ink)} />
       <span className={wrap ? "[overflow-wrap:anywhere]" : "truncate"}>{name}</span>
     </span>
   );
@@ -508,8 +528,11 @@ export const HATCH = "bg-[repeating-linear-gradient(-45deg,transparent_0_3px,col
 
 /** A screening's papers as one bar, split by where they stand. With `hrefOf`, each part opens its papers and says its own count. */
 export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result, number>; className?: string; hrefOf?: (result: Result) => string }) {
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
+  const format = useFormatter();
   const total = RESULTS.reduce((sum, result) => sum + counts[result], 0);
-  const says = (result: Result) => `${num(counts[result])} ${RESULT_LABEL[result].toLowerCase()}`;
+  const says = (result: Result) => t("resultCount", { result, count: counts[result] });
   const part = (result: Result) => cn("h-full min-w-1.5 basis-0 duration-500 ease-out motion-reduce:transition-none", RESULT_STYLE[result].bar, result === "waiting" && HATCH);
   const none = total === 0 ? <span className="h-full flex-1 rounded-full bg-foreground/10" /> : null;
   if (hrefOf) {
@@ -527,7 +550,8 @@ export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result
       </span>
     );
   }
-  const label = RESULTS.filter((result) => counts[result]).map(says).join(", ") || "No papers yet";
+  // A list with commas and no "and": the language's own unit list.
+  const label = format.list(RESULTS.filter((result) => counts[result]).map(says), { type: "unit" }) || words.t("empty.all");
   return (
     <TooltipHint label={label}>
       <div role="img" aria-label={label} tabIndex={0} className={cn("flex h-2.5 w-full gap-px overflow-hidden rounded-full", className)}>
@@ -540,13 +564,14 @@ export function ResultBar({ counts, className, hrefOf }: { counts: Record<Result
 
 /** How a paper's reviewers voted, as a count beside each decision's mark. */
 export function Tally({ votes, className }: { votes: Array<Pick<Vote, "decision">>; className?: string }) {
+  const t = useTranslations("screening.pieces");
   return (
     <span className={cn("flex items-center gap-2", className)}>
       {(["include", "maybe", "exclude"] as const).map((decision) => {
         const n = votes.filter((vote) => vote.decision === decision).length;
         const Icon = RESULT_STYLE[decision].icon;
         return n ? (
-          <span key={decision} role="img" aria-label={`${n} ${DECISION_LABEL[decision].toLowerCase()}`} className={cn("flex items-center gap-1 text-xs font-medium tabular-nums", TONE[RESULT_STYLE[decision].tone].ink)}>
+          <span key={decision} role="img" aria-label={t("tally", { decision, count: n })} className={cn("flex items-center gap-1 text-xs font-medium tabular-nums", TONE[RESULT_STYLE[decision].tone].ink)}>
             <span className={cn("flex size-4 items-center justify-center rounded", RESULT_STYLE[decision].chip)}><Icon className="size-2.5" /></span>
             {n}
           </span>
@@ -573,6 +598,7 @@ export function CriterionText({ text, must }: { text: string; must: boolean }) {
  * that leaves it. It stands in for a paragraph of explanation.
  */
 export function RuleExamples({ rule, people, models }: { rule: Rule; people: number; models: number }) {
+  const t = useTranslations("screening.pieces");
   const votes = Math.max(1, models + (rule.each === "all" ? people : Math.min(Number(rule.each), people)));
   const row = (decisions: Array<Decision | null>): Result => {
     const cast = decisions.flatMap((d) => d ?? []);
@@ -593,7 +619,7 @@ export function RuleExamples({ rule, people, models }: { rule: Rule; people: num
       {examples.map((decisions, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="flex gap-0.5">
-            {decisions.slice(0, 6).map((decision, n) => <VoteMark key={n} vote={decision ? { decision } : undefined} who={`Reviewer ${n + 1}`} className="size-5" />)}
+            {decisions.slice(0, 6).map((decision, n) => <VoteMark key={n} vote={decision ? { decision } : undefined} who={t("reviewerN", { n: n + 1 })} className="size-5" />)}
           </span>
           <ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
           <ResultChip result={row(decisions)} />
@@ -603,14 +629,15 @@ export function RuleExamples({ rule, people, models }: { rule: Rule; people: num
   );
 }
 
-/** An answer to a criterion, with its sign and its name. Unclear is a dash, never a "?", which is help. */
-export const ANSWER_SIGN: Record<Answer, { icon: AppIcon; label: string; tone: Tone }> = { yes: { icon: Check, label: "Yes", tone: "success" }, no: { icon: X, label: "No", tone: "destructive" }, unclear: { icon: Minus, label: "Unclear", tone: "warning" } };
+/** An answer to a criterion, with its sign. Its name is `answer.<answer>` here. Unclear is a dash, never a "?", which is help. */
+export const ANSWER_SIGN: Record<Answer, { icon: AppIcon; tone: Tone }> = { yes: { icon: Check, tone: "success" }, no: { icon: X, tone: "destructive" }, unclear: { icon: Minus, tone: "warning" } };
 
 /** One answer as a small square with its sign. `label` names whose answer it is, or to which criterion. */
 export function AnswerMark({ answer, label, pressable = false }: { answer: Answer; label: string; /** Drawn as a button, outlined on the card's white: for an answer that opens something. One that opens nothing is a flat tint. */ pressable?: boolean }) {
-  const { icon: Icon, label: said, tone } = ANSWER_SIGN[answer];
+  const t = useTranslations("screening.pieces");
+  const { icon: Icon, tone } = ANSWER_SIGN[answer];
   return (
-    <span role="img" aria-label={`${label}: ${said}`} className={cn("inline-flex size-6 items-center justify-center rounded-md", pressable ? cn("border border-current/45 bg-card shadow-xs", TONE[tone].ink) : TONE[tone].chip)}>
+    <span role="img" aria-label={t("answerMark", { label, answer: t(`answer.${answer}`) })} className={cn("inline-flex size-6 items-center justify-center rounded-md", pressable ? cn("border border-current/45 bg-card shadow-xs", TONE[tone].ink) : TONE[tone].chip)}>
       <Icon aria-hidden className="size-3.5" />
     </span>
   );
@@ -624,25 +651,27 @@ export const DIFFER = "flex h-5 items-center gap-0.5 whitespace-nowrap rounded-f
  * table draws. The rule that hides votes is named only on a screening that has it.
  */
 export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bottom" | "left" }) {
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
   return (
     <Help
-      title="Reading the votes"
+      title={t("votesHelp.title")}
       side={side}
       facts={
         <>
-          <HelpFact icon={Hourglass}>{NO_VOTE_SAYS.yet}</HelpFact>
-          <HelpFact icon={Minus}>{NO_VOTE_SAYS.none}</HelpFact>
-          <HelpFact icon={TriangleAlert}>{NO_VOTE_SAYS.failed}</HelpFact>
-          {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label="An answer" /></span>{ANSWER_SIGN[answer].label}</HelpFact>)}
-          <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />No answer</HelpFact>
-          <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>Answers differ<ChevronDown aria-hidden className="size-3" /></span>Reviewers answered it differently</HelpFact>
-          <HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="An answer" pressable /></span>Opens what is behind the answer</HelpFact>
+          <HelpFact icon={Hourglass}>{words.t("noVoteSays.yet")}</HelpFact>
+          <HelpFact icon={Minus}>{words.t("noVoteSays.none")}</HelpFact>
+          <HelpFact icon={TriangleAlert}>{words.t("noVoteSays.failed")}</HelpFact>
+          {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label={t("votesHelp.anAnswer")} /></span>{t(`answer.${answer}`)}</HelpFact>)}
+          <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />{t("votesHelp.noAnswer")}</HelpFact>
+          <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>{t("votesHelp.answersDiffer")}<ChevronDown aria-hidden className="size-3" /></span>{t("votesHelp.answeredDifferently")}</HelpFact>
+          <HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label={t("votesHelp.anAnswer")} pressable /></span>{t("votesHelp.opensAnswer")}</HelpFact>
         </>
       }
     >
-      <p>Each column is a reviewer and each row a criterion, with their vote in the last row. Press a face for that reviewer&apos;s vote and note. Press an answer for what is behind it: the passage a model read, or a person&apos;s vote and note. A model that couldn&apos;t read a paper has no say in it.</p>
+      <p>{t("votesHelp.body")}</p>
       {/* The rule, said for anyone who reads this: someone who never votes here sees every vote, and is promised no lock. */}
-      {blind ? <p>{VOTES_HIDDEN_SAYS} A lock stands where a vote is hidden.</p> : null}
+      {blind ? <p>{words.t("votesHiddenSays")} {t("votesHelp.lock")}</p> : null}
     </Help>
   );
 }
@@ -654,6 +683,7 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
  * answers point to it. What follows its name (a key) is its children.
  */
 export function VoteButton({ decision, on = false, pointed = false, size = "lg", className, children, ...rest }: Omit<ComponentProps<"button">, "type"> & { decision: Decision; on?: boolean; pointed?: boolean; size?: "lg" | "sm" }) {
+  const words = useWords();
   const Icon = RESULT_STYLE[decision].icon;
   const look = {
     include: on ? "bg-success text-success-foreground" : "border-success/35 ink-success hover:border-success/70",
@@ -663,7 +693,7 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
   return (
     <button {...rest} type="button" aria-pressed={on} className={cn("flex items-center justify-center border font-semibold transition-colors", size === "lg" ? "h-10 w-full gap-1.5 rounded-xl text-sm" : "h-7 gap-1 rounded-lg px-2.5 text-xs", look, on && "border-transparent", !on && pointed && "border-dashed border-current", className)}>
       <Icon className={size === "lg" ? "size-4" : "size-3.5"} />
-      {DECISION_LABEL[decision]}
+      {words.decision(decision)}
       {children}
     </button>
   );
@@ -671,10 +701,12 @@ export function VoteButton({ decision, on = false, pointed = false, size = "lg",
 
 /** One reason to exclude as a list of them names it: a must-have by its short name, with its whole question under it where `asked` and the name isn't the question, and another reason in its own words. */
 export function ReasonLabel({ reason, criteria, asked = false }: { reason: string; criteria: Criterion[]; asked?: boolean }) {
-  if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? "Another reason…" : reasonLabel(reason, criteria)}</>;
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
+  if (!criteria.some((criterion) => criterion.key === reason)) return <>{reason === "other" ? t("anotherReason") : words.reason(reason, criteria)}</>;
   // Under a name someone wrote, the question it stands for. A name nobody wrote is shown as its question already.
   const named = criteria.find((criterion) => criterion.key === reason);
-  const question = asked && named && isNamed(named) ? questionOf(reason, criteria) : undefined;
+  const question = asked && named && words.isNamed(named) ? questionOf(reason, criteria) : undefined;
   return (
     <span className="min-w-0">
       <Reason reason={reason} criteria={criteria} wrap />
@@ -685,9 +717,10 @@ export function ReasonLabel({ reason, criteria, asked = false }: { reason: strin
 
 /** The reasons to exclude as rows to press, in their two groups: in the sheet a phone opens on Screen, in the Papers drawer and over a selection. */
 export function ReasonRows({ criteria, many = false, onPick }: { criteria: Criterion[]; /** The reason is for several papers picked together. */ many?: boolean; onPick: (reason: string) => void }) {
+  const words = useWords();
   return (
     <>
-      {excludeGroups(criteria, many).map((group) => (
+      {words.excludeGroups(criteria, many).map((group) => (
         <div key={group.name} role="group" aria-label={group.name} className="space-y-1.5">
           <p className="px-1 text-xs font-medium text-muted-foreground">{group.name}</p>
           {group.list.map((reason) => (
@@ -714,14 +747,16 @@ export function PaperFacts({ paper, source, added }: {
   source?: { name: string; kind: string; href: string; on?: boolean; current?: "true"; label?: string };
   added?: { at: number; href: string; on?: boolean; current?: "true" };
 }) {
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
   return (
     <>
       {/* Where the paper came from, said as that: a search's name is its query, which was taken for a label on the paper. */}
-      {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">From {source.name}</LinkChip> : null}
-      {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>Added {ago(added.at)}</LinkChip> : null}
-      {paper.cited === undefined ? null : <Chip icon={Quote}>Cited by {num(paper.cited)}</Chip>}
+      {source ? <LinkChip href={source.href} aria-current={source.current} aria-label={source.label} tone={source.on ? "primary" : "neutral"} icon={kindIcon(source.kind)} className="max-w-80 [&>span]:shrink">{t("paperFacts.from", { name: source.name })}</LinkChip> : null}
+      {added ? <LinkChip href={added.href} aria-current={added.current} tone={added.on ? "primary" : "neutral"} icon={RefreshCw}>{t("paperFacts.added", { ago: words.ago(added.at) })}</LinkChip> : null}
+      {paper.cited === undefined ? null : <Chip icon={Quote}>{t("paperFacts.cited", { count: paper.cited })}</Chip>}
       {/* Its DOI opens the paper where it is published; without one, a search for its title finds it. In a new tab, so the place in the list is kept. A paper screened as its PDF has its full text on the page already. */}
-      {paper.pdf ? null : <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>Find the full text</LinkChip>}
+      {paper.pdf ? null : <LinkChip href={paper.doi ? `https://doi.org/${paper.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")}` : `/results?q=${encodeURIComponent(paper.title)}`} target="_blank" rel="noreferrer" icon={ExternalLink}>{t("paperFacts.fullText")}</LinkChip>}
     </>
   );
 }
@@ -731,50 +766,55 @@ export function PaperFacts({ paper, source, added }: {
  * reason on Exclude and when they voted, and under it the note they left, in quotes. A place with no vote in it says why.
  */
 export function VoteFacts({ vote, failed = false, kept = false, settled = false, criteria, children }: { vote: Vote | undefined; failed?: boolean; /** They voted, and how is kept from the person looking. */ kept?: boolean; /** The paper was settled, so a place nobody voted from never will be. */ settled?: boolean; criteria: Criterion[]; /** What else stands with the decision: the answer a card is about. */ children?: ReactNode }) {
+  const t = useTranslations("screening.pieces");
+  const words = useWords();
   const style = vote ? RESULT_STYLE[vote.decision] : null;
   return (
     <>
       <div className="flex flex-wrap items-center gap-1.5">
         {failed ? (
-          <StateChip tone="destructive" icon={TriangleAlert}>{NO_VOTE.failed}</StateChip>
+          <StateChip tone="destructive" icon={TriangleAlert}>{words.t("noVote.failed")}</StateChip>
         ) : kept ? (
-          <ShutChip by="vote">Voted, {SHUT.vote.says.toLowerCase()}</ShutChip>
+          <ShutChip by="vote">{t("votedHidden")}</ShutChip>
         ) : vote && style ? (
-          <StateChip tone={style.tone} icon={style.icon}>{DECISION_LABEL[vote.decision]}</StateChip>
+          <StateChip tone={style.tone} icon={style.icon}>{words.decision(vote.decision)}</StateChip>
         ) : (
-          <Chip icon={settled ? Minus : Hourglass}>{settled ? NO_VOTE.none : NO_VOTE.yet}</Chip>
+          <Chip icon={settled ? Minus : Hourglass}>{words.t(settled ? "noVote.none" : "noVote.yet")}</Chip>
         )}
         {!kept && vote?.reason ? <ReasonChip reason={vote.reason} criteria={criteria} /> : null}
         {children}
-        {!kept && vote ? <Chip>{ago(vote.at)}</Chip> : null}
+        {!kept && vote ? <Chip>{words.ago(vote.at)}</Chip> : null}
       </div>
-      {!kept && vote?.note ? <p className="text-sm text-muted-foreground">{inQuotes(vote.note)}</p> : null}
+      {!kept && vote?.note ? <p className="text-sm text-muted-foreground">{words.quoted(vote.note)}</p> : null}
     </>
   );
 }
 
 /** The reason a vote or a result excludes a paper, as a chip: the criterion it fails by its short name, with the whole question for whoever asks. The same chip wherever a reason shows. */
 export function ReasonChip({ reason, criteria, className }: { reason: string; criteria: Criterion[]; className?: string }) {
-  return <QuestionName question={questionOf(reason, criteria)} label={failedLabel(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
+  const words = useWords();
+  return <QuestionName question={questionOf(reason, criteria)} label={words.failed(reason, criteria)} className={cn("inline-flex", className)}><Chip className="min-w-0 shrink"><Reason reason={reason} criteria={criteria} /></Chip></QuestionName>;
 }
 
 /** To the paper before and the one after, with their keys: the same pair in Screen's bar and at the head of the Papers drawer. */
 export function PaperStepper({ onStep, canPrevious, canNext }: { onStep: (by: 1 | -1) => void; canPrevious: boolean; canNext: boolean }) {
+  const t = useTranslations("screening.pieces");
   return (
     <>
-      <TooltipHint label={<span className="flex items-center gap-2">Previous paper<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Previous paper" aria-keyshortcuts="k ArrowLeft" disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
-      <TooltipHint label={<span className="flex items-center gap-2">Next paper<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label="Next paper" aria-keyshortcuts="j ArrowRight" disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">{t("previousPaper")}<Kbd className="pointer-coarse:hidden">K</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={t("previousPaper")} aria-keyshortcuts="k ArrowLeft" disabled={!canPrevious} onClick={() => onStep(-1)}><ChevronLeft /></Button></TooltipHint>
+      <TooltipHint label={<span className="flex items-center gap-2">{t("nextPaper")}<Kbd className="pointer-coarse:hidden">J</Kbd></span>}><Button variant="ghost" size="icon" className="size-7 text-muted-foreground" aria-label={t("nextPaper")} aria-keyshortcuts="j ArrowRight" disabled={!canNext} onClick={() => onStep(1)}><ChevronRight /></Button></TooltipHint>
     </>
   );
 }
 
 /** The way to what reviewers wrote about a paper, with how much there is: one chip wherever it stands. With nothing written yet it invites the first line. */
 export function DiscussionLink({ count, writes = true, onClick }: { count: number; /** Whether the person looking may write there: with nothing written, someone who can't is offered nothing. */ writes?: boolean; onClick: () => void }) {
+  const t = useTranslations("screening.pieces");
   if (!count && !writes) return null;
   return (
     <button type="button" onClick={onClick} className="flex h-6 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 text-xs font-medium text-primary outline-none transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50">
       <MessagesSquare aria-hidden className="size-3.5" />
-      {count ? plural(count, "message", "messages") : "Discuss"}
+      {count ? t("messages", { count }) : t("discuss")}
     </button>
   );
 }

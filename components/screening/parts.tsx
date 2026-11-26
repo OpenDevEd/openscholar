@@ -15,7 +15,7 @@ export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_K
 
 /** After a required question's text: a paper not answered yes there is never included. */
 export function RequiredMark() {
-  const t = useTranslations("screeningPage");
+  const t = useTranslations("screening.pieces");
   return <Asterisk role="img" aria-label={t("required")} strokeWidth={2.5} className="ms-1 inline size-3.5 align-[-0.125em] text-primary" />;
 }
 
@@ -30,7 +30,7 @@ export function Chip({ icon: Icon, children, className }: { icon?: AppIcon; chil
 }
 
 export function Stars({ count, of = 5 }: { count: number; of?: number }) {
-  const t = useTranslations("screeningPage");
+  const t = useTranslations("screening.pieces");
   return (
     <span role="img" aria-label={t("starsOf", { count, of })} className="inline-flex shrink-0 items-center gap-0.5">
       {Array.from({ length: of }, (_, i) => (

@@ -7,7 +7,10 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { sentencesOf } from "@/lib/screening/passages";
+import { createFormatter, createTranslator } from "next-intl";
 import { changeSays } from "./activity-words";
+import type { EffectsSay } from "./effects";
+import { wordsOf } from "./words";
 import {
   DECISION_LABEL,
   EVERY_LABEL,
@@ -391,6 +394,9 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   let [said, logged]: [Said[], Logged[]] = [[], []];
   for await (const page of saidIn(convex, of)) said = said.concat(page);
   for await (const page of loggedIn(convex, of)) logged = logged.concat(page);
+  // A file's words are English whoever downloads it: the activity's sentences are made from the English messages, which are read when a record is asked for and at no other time.
+  const messages = (await import("@/messages/en-GB.json")).default;
+  const english: EffectsSay = { words: wordsOf({ t: createTranslator({ locale: "en-GB", messages, namespace: "screening.words" }), format: createFormatter({ locale: "en-GB" }) }), t: createTranslator({ locale: "en-GB", messages, namespace: "screening.effects" }) };
   const rows = voteRows(screening, papers);
   const hidden = { votes: rows.filter((row) => row.kept).length, papers: new Set(rows.flatMap((row) => (row.kept ? [row.paper.id] : []))).size };
   // What a part of the screening carries from before it began is dated from its start.
@@ -435,7 +441,7 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
     // The votes that were cast and are kept from the person: who cast them shows on the page, and here.
     hidden_votes: rows.flatMap(({ paper, reviewer, kept }) => (kept ? [{ paper_id: paper.id, reviewer_id: reviewer.id }] : [])),
     discussion: said.map((line) => ({ paper_id: line.paperId, by: line.by.name, to: line.to?.name ?? null, at: iso(line.at), text: line.text })),
-    activity: logged.map((row) => { const says = changeSays(row); return { at: iso(row.at), by: row.by.name, what: says.what, effect: says.effect ?? null }; }),
+    activity: logged.map((row) => { const says = changeSays(english, row); return { at: iso(row.at), by: row.by.name, what: says.what, effect: says.effect ?? null }; }),
   };
 }
 

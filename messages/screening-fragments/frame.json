@@ -1,0 +1,168 @@
+{
+  "screening": "Screening",
+  "loading": "Loading the screening",
+  "notFound": "Not found",
+  "gone": "This screening was deleted, or isn't shared with you",
+  "more": "More",
+  "failed": "That didn't work. Try again.",
+  "activity": "Activity",
+  "export": "Export",
+  "people": "People",
+  "peopleOn": "People, {count} on this screening",
+  "settings": "Settings",
+  "change": "Change",
+  "join": "Join as a reviewer",
+  "reopen": "Reopen",
+  "resumeModels": "Resume models",
+  "checkNew": "Check for new papers",
+  "addCredits": "Add credits",
+  "markFinished": "Mark as finished",
+  "leaveScreening": "Leave this screening",
+  "tabs": {
+    "label": "Pages of this screening",
+    "overview": "Overview",
+    "screen": "Screen",
+    "papers": "Papers",
+    "unsaved": "Unsaved"
+  },
+  "faces": {
+    "every": "Every reviewer",
+    "takeOut": "{you, select, true {Take yourself out of the filter} other {Take {name} out of the filter}}",
+    "add": "{you, select, true {Add yourself to the filter} other {Add {name} to the filter}}"
+  },
+  "rule": {
+    "title": "How a paper is decided",
+    "eachPaper": "Each paper: {who, select, both {{people, plural, one {# person} other {# people}} and {models, plural, one {# AI model} other {# AI models}}} people {{people, plural, one {# person} other {# people}}} other {{models, plural, one {# AI model} other {# AI models}}}}",
+    "noReviewer": "No reviewer yet",
+    "hiddenMine": "Votes hidden in your To do",
+    "hiddenTheirs": "Votes hidden in reviewers' To do",
+    "visible": "Votes visible to all",
+    "conflictsGoTo": "Conflicts go to {who}",
+    "checks": "{every, select, day {Checks for new papers every day} week {Checks for new papers every week} other {Checks for new papers every month}}",
+    "chips": "Each paper gets the votes named in these chips, and is settled once they are in.",
+    "conflictOpen": "{you, select, true {A paper in conflict stays open until you settle it.} other {A paper in conflict stays open until {name} settles it.}}",
+    "living": "A living screening checks its sources for new papers on a schedule and screens what is new. Uploaded files and pasted lists never gain papers.",
+    "livingChip": "{every, select, day {Living<more>, new papers every day</more>} week {Living<more>, new papers every week</more>} other {Living<more>, new papers every month</more>}}"
+  },
+  "role": {
+    "member": "{finished, select, true {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on.} other {You see every paper and every vote. You aren't one of its reviewers, so you get no papers to vote on. Join as a reviewer to get some.}}",
+    "viewer": "{workspace} shared it with you. You see every paper and every vote, and you get no papers to vote on.",
+    "guest": "Guest",
+    "guestSays": "{workspace} shared it with you. You vote on the papers you get. Only {workspace}'s members change its settings."
+  },
+  "banner": {
+    "checked": "{done, number} of {of, plural, one {# source} other {# sources}} checked",
+    "arrived": "<link>{count, plural, one {# new paper} other {# new papers}}</link> came in {ago}",
+    "screenNew": "Screen your {count, plural, one {# new paper} other {# new papers}} first",
+    "nothing": "The last check found no new papers",
+    "counting": "<done></done> of {of, number}",
+    "modelPrice": "{name}, {price}",
+    "creditsHelp": "{you, select, true {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once you add credits.} other {A model stops when the workspace can't pay for its next paper. Its votes so far stay, and it carries on from where it stopped once {workspace} adds credits.}}",
+    "stoppedAt": "<models></models> stopped at {done, number} of {of, plural, other {# papers}}",
+    "finishedOn": "Finished on {day}",
+    "finishedAgo": "Finished {ago}",
+    "finishedTitle": "Finished screening",
+    "finishedHelp": "{member, select, true {Its models stop reading and it stops checking for new papers. You can still read, export and change it, or reopen it.} other {Its models stop reading and it stops checking for new papers. You can still read and export it. A member of {workspace} can reopen it.}}",
+    "pausedTitle": "Paused models",
+    "pausedHelp": "{member, select, true {Paused models read nothing and spend no credits. People can keep voting. Resume the models to have them read on.} other {Paused models read nothing and spend no credits. People can keep voting. A member of {workspace} can resume them.}}",
+    "papersRead": "{done, number} of {of, plural, other {# papers}} read",
+    "turnsTitle": "Models take turns",
+    "atATime": "{count, plural, other {# papers at a time}}",
+    "turnsHelp": "{workspace}'s models read {count, plural, other {# papers}} at a time, so a screening started while another is reading waits for it. People can vote in the meantime.",
+    "modelReading": "<model>{name}</model> reading",
+    "modelsReading": "{count, plural, one {# model reading} other {# models reading}}",
+    "read": "{done, number} of {of, number}"
+  },
+  "menu": {
+    "emailsOff": "This screening won't email you any more",
+    "emailsOn": "This screening emails you again",
+    "stopEmails": "Stop its emails to me",
+    "emailAgain": "Email me about it again",
+    "pauseModels": "Pause models",
+    "duplicate": "Duplicate as a new screening",
+    "move": "Move to another workspace",
+    "delete": "Delete"
+  },
+  "move": {
+    "modelsPaid": "{own, select, true {{count, plural, one {Its model is paid from your own credits from now on} other {Its models are paid from your own credits from now on}}} other {{count, plural, one {Its model is paid from {to}'s credits from now on} other {Its models are paid from {to}'s credits from now on}}}}",
+    "reviewersStay": "{own, select, true {Its other reviewers keep it, as its guests} other {Its other reviewers keep it, as its guests where they aren't in {to}}}",
+    "papersStay": "{own, select, true {Papers it has saved stay where they are, and the ones it includes from now on are saved in your own library} other {Papers it has saved stay where they are, and the ones it includes from now on are saved in {to}'s library}}",
+    "sourcesStay": "{own, select, true {Its sources stay in your own workspace, and it goes on checking them there} other {Its sources stay in {from}, and it goes on checking them there}}",
+    "membersLose": "Members of {from} who aren't its reviewers no longer see it",
+    "nothingElse": "Nothing else changes"
+  },
+  "finish": {
+    "title": "Mark this screening as finished?",
+    "unsettled": "{count, plural, one {# paper is not settled, and stays as it is} other {# papers are not settled, and stay as they are}}",
+    "modelsStop": "The models stop reading",
+    "checksStop": "It stops checking for new papers",
+    "movesToFinished": "It moves to Finished in the list, and can be reopened or changed at any time"
+  },
+  "delete": {
+    "title": "Delete {name}?",
+    "goes": "Its votes and its settings go with it",
+    "saved": "The {count, plural, one {# paper} other {# papers}} saved to {collection} stay there",
+    "final": "This can't be undone"
+  },
+  "leave": {
+    "title": "Leave this screening?",
+    "confirm": "Leave",
+    "votesCount": "{count, plural, one {Your # vote keeps counting} other {Your # votes keep counting}}",
+    "noVotes": "You have cast no vote",
+    "papersGo": "{count, plural, one {The # paper you had not voted on goes to the other reviewers} other {The # papers you had not voted on go to the other reviewers}}",
+    "fromList": "It leaves your list, and you can open it again only once it is shared with you again"
+  },
+  "add": {
+    "title": "Add {name} as a reviewer?",
+    "confirm": "Add as reviewer",
+    "noCriteria": "A model votes by answering the criteria, and this screening has none yet. It would include every paper it reads.",
+    "addCriteria": "Add criteria"
+  },
+  "takeOff": {
+    "viewerTitle": "Stop {name} voting?",
+    "title": "Take {name} off this screening?",
+    "makeViewer": "Make them a viewer",
+    "confirm": "Take off",
+    "asViewer": "As a viewer they see every paper and every vote",
+    "stopCounting": "{me, select, true {Stop counting your {count, plural, one {# vote} other {# votes}}} other {Stop counting their {count, plural, one {# vote} other {# votes}}}}",
+    "stopCountingLabel": "{me, select, true {Stop counting your votes} other {Stop counting their votes}}",
+    "discarded": "{me, select, true {Your votes stay on record and stop counting.} other {Their votes stay on record and stop counting.}}",
+    "kept": "{me, select, true {Your votes keep counting.} other {Their votes keep counting.}}"
+  },
+  "credits": {
+    "inWorkspace": "{credits} credits in the workspace now",
+    "payFor": "{some, select, true {{credits} credits pay for about {paid, number} of its {papers, plural, other {# papers}}. It stops there until credits are added.} other {{credits} credits pay for none of its {papers, plural, other {# papers}}. It stops there until credits are added.}}"
+  },
+  "activitySheet": {
+    "says": "Every change to this screening, newest first",
+    "scheduled": "Scheduled check",
+    "earlier": "Show earlier changes",
+    "yourVotes": "Your {count, plural, one {# vote} other {# votes}}"
+  },
+  "peopleDialog": {
+    "helpTitle": "Who is on a screening",
+    "personalIn": "{you, select, true {This screening is in your own workspace: you see it and can change it.} other {This screening is in {workspace}'s own workspace, and they can change it.}}",
+    "personalElse": "Anyone else has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
+    "membersSee": "Members of {workspace} see this screening and can change it. The ones who are its reviewers get papers and vote on them.",
+    "outsideHas": "Someone outside {workspace} has it only once it is shared with them: as a reviewer, who gets papers and votes, or as a viewer, who sees every paper and every vote.",
+    "modelToo": "{you, select, true {A model is a reviewer too: it reads every open paper and votes, paid from your credits.} other {A model is a reviewer too: it reads every open paper and votes, paid from {workspace}'s credits.}}",
+    "close": "Close",
+    "addAs": "Add people as",
+    "addModel": "Add a model",
+    "membersAdd": "Members of {workspace} add people and change what each may do.",
+    "full": "{workspace}'s plan shares a screening with {count, plural, one {# person} other {# people}} outside it. Take one off to add another.",
+    "ownWorkspace": "It is in their own workspace",
+    "everyMember": "Every member",
+    "canChange": "Can see and change it",
+    "startedIt": "Started it",
+    "votedOn": "{detail}, voted on {done, number} of {of, number}",
+    "modelRead": "{failed, select, true {{price}, got through {done, number} of {of, number}} other {{price}, read {done, number} of {of, number}}}",
+    "model": "Model",
+    "notSent": "The invitation couldn't be sent",
+    "showMore": "Show more people",
+    "reviewer": "Reviewer",
+    "reviewerCan": "Votes on the papers they get",
+    "viewer": "Viewer",
+    "viewerCan": "Sees every paper and every vote"
+  }
+}

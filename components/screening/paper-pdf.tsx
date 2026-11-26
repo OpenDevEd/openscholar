@@ -17,7 +17,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { pdfAssets } from "@/lib/pdf-assets";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
-import { AS_PDF, plural, termsPattern, type Paper } from "./data";
+import { useTranslations } from "next-intl";
+import { termsPattern, type Paper } from "./data";
 import { Chip } from "./parts";
 import { INLINE_LINK } from "./pieces";
 
@@ -30,6 +31,7 @@ const GAP = 8;
 const escaped = (text: string) => text.replace(/[&<>]/g, (sign) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[sign]!);
 
 export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">; paper: Pick<Paper, "id" | "title" | "pdf">; /** The words the criteria mark, which stand out on the pages as they do in an abstract. */ terms: string[] }) {
+  const t = useTranslations("screening.list");
   const url = useProtectedQuery(api.screening.paperViews.pdf, inWorkspace(usePageWorkspace(), { jobId: id, paperId: paper.id })).data;
   const column = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -50,8 +52,8 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <Chip icon={FileText}>{AS_PDF}{paper.pdf?.pages ? `, ${plural(paper.pdf.pages, "page", "pages")}` : ""}</Chip>
-        {url ? <a href={url} target="_blank" rel="noreferrer" className={cn(INLINE_LINK, "inline-flex items-center gap-1 text-xs")}>Open the PDF in a new tab<ExternalLink aria-hidden className="size-3" /></a> : null}
+        <Chip icon={FileText}>{t("pdf.readAs", { pages: paper.pdf?.pages ?? 0 })}</Chip>
+        {url ? <a href={url} target="_blank" rel="noreferrer" className={cn(INLINE_LINK, "inline-flex items-center gap-1 text-xs")}>{t("pdf.openTab")}<ExternalLink aria-hidden className="size-3" /></a> : null}
       </div>
       {/* The column holds its pages' height from the first frame: each page arrives inside its own place. */}
       <div ref={column} style={{ minHeight: width ? pages * (Math.round(width * shape) + GAP) - GAP : undefined }}>
@@ -61,8 +63,8 @@ export default function PaperPdf({ id, paper, terms }: { id: Id<"screeningJobs">
             file={url}
             options={PDF_OPTIONS}
             // While the file is fetched its first page's place says so: an empty column reads as a PDF that failed.
-            loading={<div role="status" aria-label="The PDF is on its way" style={{ minHeight: Math.round(width * shape) }} className="flex items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border-subtle"><Spinner className="size-5 text-muted-foreground" /></div>}
-            error={<p className="rounded-xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">This PDF can&apos;t be shown here. Open it in a new tab.</p>}
+            loading={<div role="status" aria-label={t("pdf.onItsWay")} style={{ minHeight: Math.round(width * shape) }} className="flex items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-border-subtle"><Spinner className="size-5 text-muted-foreground" /></div>}
+            error={<p className="rounded-xl bg-muted px-4 py-6 text-center text-sm text-muted-foreground">{t("pdf.cantShow")}</p>}
             onLoadSuccess={(file) => void file.getPage(1).then((first) => { const view = first.getViewport({ scale: 1 }); setRead({ of: paper.id, pages: file.numPages, shape: view.height / view.width }); })}
             className="flex flex-col"
           >
