@@ -55,6 +55,11 @@ Agreed by the user between 23 and 26 November 2026.
     questions as criteria. The results page's own screening is untouched and separate.
 22. Translation is left out for now.
 23. Existing screenings move to the new shape: one model reviewer, results kept.
+24. One People panel holds everyone on a screening, in place of separate "Add a person", "Add a
+    model" and "Share". A person outside the workspace is a Reviewer or a Viewer, and adding
+    someone is sharing with them. What workspace members can do is said once, at its top.
+    (Proposed on 25 November. On 26 November the user said what was going to be mocked "should be
+    part of the final version".)
 
 Open, not built until answered: writing a summary for an uploaded PDF that prints no abstract
 (today such a PDF is left out, decision 9).
