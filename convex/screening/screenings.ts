@@ -18,7 +18,8 @@ import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, shortOf, type Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
-import { MAX_REVIEWERS, MAX_SOURCE_ROWS, reviewersOf, sourcesOf } from "./dealing";
+import { MAX_REVIEWERS, MAX_SOURCE_ROWS, reviewersOf, sourcesOf, touched } from "./dealing";
+import { startWaitingVotes } from "./slots";
 import { startCheck } from "./gathering";
 import { logChange } from "./log";
 import { destination } from "./mutations";
@@ -156,7 +157,7 @@ export const open = internalMutation({
       ...(prune ? { prune: true as const } : {}),
       ...(pruneName ? { pruneName } : {}),
       createdAt: now,
-      updatedAt: now,
+      ...touched(now),
     });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0, counts: NO_RESULTS });
     for (const source of sources) await addSource(ctx, jobId, userId, source, now);
@@ -208,7 +209,7 @@ export const pause = workspaceMutation({
   handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if (job.paused || job.finishedAt !== undefined) return null;
-    await ctx.db.patch("screeningJobs", jobId, { paused: true, updatedAt: Date.now() });
+    await ctx.db.patch("screeningJobs", jobId, { paused: true, ...touched() });
     await ctx.scheduler.runAfter(0, internal.screening.readings.hold, { jobId, cursor: null });
     await logChange(ctx, actor, job, "paused");
     return null;
@@ -224,7 +225,7 @@ export const resume = workspaceMutation({
   handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if ((!job.paused && !job.outOfCredits) || job.finishedAt !== undefined) return null;
-    await ctx.db.patch("screeningJobs", jobId, { paused: undefined, outOfCredits: undefined, updatedAt: Date.now() });
+    await ctx.db.patch("screeningJobs", jobId, { paused: undefined, outOfCredits: undefined, ...touched() });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
     await logChange(ctx, actor, job, "resumed");
     return null;
@@ -242,7 +243,7 @@ export const finish = workspaceMutation({
     const job = await requireMember(ctx, actor, jobId);
     if (job.finishedAt !== undefined) return null;
     const now = Date.now();
-    await ctx.db.patch("screeningJobs", jobId, { finishedAt: now, status: "completed", completedAt: now, updatedAt: now });
+    await ctx.db.patch("screeningJobs", jobId, { finishedAt: now, status: "completed", completedAt: now, ...touched(now) });
     await ctx.scheduler.runAfter(0, internal.screening.readings.hold, { jobId, cursor: null });
     // What it leaves open is said with it: the papers nobody settled, and a living screening's checks.
     const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
@@ -262,7 +263,7 @@ export const reopen = workspaceMutation({
     const job = await requireMember(ctx, actor, jobId);
     if (job.finishedAt === undefined) return null;
     const now = Date.now();
-    await ctx.db.patch("screeningJobs", jobId, { finishedAt: undefined, status: "processing", completedAt: undefined, updatedAt: now, ...(job.living ? { living: { ...job.living, next: now + EVERY_MS[job.living.every] } } : {}) });
+    await ctx.db.patch("screeningJobs", jobId, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now), ...(job.living ? { living: { ...job.living, next: now + EVERY_MS[job.living.every] } } : {}) });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId, cursor: null });
     await logChange(ctx, actor, job, "reopened");
     return null;
@@ -280,7 +281,7 @@ export const rename = workspaceMutation({
     const title = name.trim();
     if (!title || title.length > SCREENING_TEXT.name) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
     if (title === job.name) return null;
-    await ctx.db.patch("screeningJobs", jobId, { name: title, updatedAt: Date.now() });
+    await ctx.db.patch("screeningJobs", jobId, { name: title, ...touched() });
     await logChange(ctx, actor, job, "renamed", { detail: title });
     return null;
   },
@@ -313,6 +314,10 @@ export const erase = internalMutation({
   handler: async (ctx, { jobId }) => {
     const votes = await ctx.db.query("screeningVotes").withIndex("by_job_and_place", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const vote of votes) await ctx.db.delete("screeningVotes", vote._id);
+    // A reading that held one of its workspace's slots gives it back as its row goes.
+    const held = votes.filter((vote) => vote.slot).length;
+    const job = held ? await ctx.db.get("screeningJobs", jobId) : null;
+    if (job) await startWaitingVotes(ctx, job.workspaceId, held);
     const messages = votes.length ? [] : await ctx.db.query("screeningMessages").withIndex("by_job_and_to_and_open", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);
     for (const message of messages) await ctx.db.delete("screeningMessages", message._id);
     const left = votes.length || messages.length ? [] : await ctx.db.query("screeningLeftOut").withIndex("by_job_and_why", (q) => q.eq("jobId", jobId)).take(DELETE_STEP);

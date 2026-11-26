@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { isFinal, settle, type Ballot, type Result } from "../../lib/screening/rules";
-import { settleAll, started, team, type Team } from "./reviewers.test-support";
+import { runAll, settleAll, started, team, type Team } from "./reviewers.test-support";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -16,13 +16,7 @@ type Settle = "all" | "most" | "one";
 const DECISIONS = ["include", "maybe", "exclude"] as const;
 const PAPERS = 9;
 
-/** Runs everything a change sets off, sweeps and worker alike, until nothing is left to run. */
-async function run(t: T) {
-  for (let pass = 0; pass < 20; pass++) {
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    await settleAll(t);
-  }
-}
+const run = (t: T) => runAll(t, vi.runAllTimers);
 
 /** A screening's rows, checked against one another. Returns what doesn't add up, and where each paper stands. */
 async function audit(t: T, jobId: Id<"screeningJobs">) {

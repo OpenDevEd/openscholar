@@ -1614,7 +1614,7 @@ export default defineSchema({
     .index("by_reviewer_and_status_and_lean_and_place", ["reviewerId", "status", "lean", "place"])
     // A reviewer's votes, the latest first, all of them or the ones cast one way.
     .index("by_reviewer_and_status_and_at", ["reviewerId", "status", "at"])
-    .index("by_reviewer_and_decision_and_at", ["reviewerId", "decision", "at"])
+    .index("by_reviewer_and_status_and_decision_and_at", ["reviewerId", "status", "decision", "at"])
     .index("by_reviewer_and_flagged_and_place", ["reviewerId", "flagged", "place"])
     .index("by_workId", ["workId"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"]),

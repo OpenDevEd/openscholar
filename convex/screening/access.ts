@@ -7,11 +7,12 @@ import { createError } from "../lib/errors";
 /**
  * A screening job for someone who may read it: a member of its workspace acting there, or a
  * guest of it acting in their own workspace (#653). Null for anyone else, who learns nothing
- * of it. Changing a job stays its workspace's members'.
+ * of it. Changing a job stays its workspace's members'. A screening with reviewers is read by its own pages alone
+ * (./paperViews.ts), which keep the others' votes from a reviewer while a paper waits for theirs: null here.
  */
 export async function readableJob(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: Id<"screeningJobs">): Promise<Doc<"screeningJobs"> | null> {
   const job = await ctx.db.get("screeningJobs", jobId);
-  if (!job) return null;
+  if (!job || job.shape === 2) return null;
   return job.workspaceId === actor.workspaceId || (await guestRole(ctx, actor, job)) ? job : null;
 }
 

@@ -11,7 +11,7 @@ import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
-import { reviewersOf, sourcesOf } from "./dealing";
+import { reviewersOf, sourcesOf, touched } from "./dealing";
 import { startCheck } from "./gathering";
 import { logChange } from "./log";
 import { EVERY_MS } from "./screenings";
@@ -26,7 +26,7 @@ export async function check(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<
   const sources = (await sourcesOf(ctx, job._id)).filter(grows);
   if (!sources.length) return false;
   // Read again from its start, as it stands now: what it had merged and left out is counted again as it is read.
-  for (const source of sources) await ctx.db.patch("screeningSources", source._id, { state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0 });
+  for (const source of sources) await ctx.db.patch("screeningSources", source._id, { state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0 });
   await startCheck(ctx, job, by, job.totalPapers);
   return true;
 }
@@ -73,7 +73,7 @@ export async function checked(ctx: MutationCtx, job: Doc<"screeningJobs">, check
   if (check.from === 0) return;
   const now = Date.now();
   if (check.added && job.finishedAt !== undefined) {
-    await ctx.db.patch("screeningJobs", job._id, { finishedAt: undefined, status: "processing", completedAt: undefined, updatedAt: now });
+    await ctx.db.patch("screeningJobs", job._id, { finishedAt: undefined, status: "processing", completedAt: undefined, ...touched(now) });
     await ctx.scheduler.runAfter(0, internal.screening.readings.release, { jobId: job._id, cursor: null });
   }
   await logChange(ctx, { userId: check.by ?? job.createdBy }, job, check.by ? "checked" : "scheduledCheck", { count: check.found, more: [...(check.found !== check.added ? [{ code: "known", count: check.found - check.added }] : []), ...(check.added ? [{ code: "joined", count: check.added }] : []), ...(check.added && job.finishedAt !== undefined ? [{ code: "reopened" }] : [])] });

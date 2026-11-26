@@ -14,7 +14,7 @@ import { isFinal, seesVotes, type Decision, type Result } from "../../lib/screen
 import { project, withJoined, type Place } from "../../lib/screening/project";
 import { requireMember } from "./access";
 import { progressRow } from "./bookkeeping";
-import { dealable, readingModel, sourcesOf, votesOf } from "./dealing";
+import { dealable, papersOf, readingModel, sourcesOf, votesOf } from "./dealing";
 import { changeValidator, planned } from "./settings";
 import { placeOf } from "./settling";
 import { paperResultValidator, PREVIEW_PAPERS, previewValidator } from "./validators";
@@ -133,7 +133,7 @@ export const start = internalQuery({
     const removed = (await sourcesOf(ctx, jobId)).filter((source) => change.removeSources?.includes(source._id) && source.removedAt === undefined).reduce((sum, source) => sum + source.taken, 0);
     const gone = new Set<Id<"screeningReviewers">>(plan.leaving.map(({ reviewer }) => reviewer._id));
     return {
-      total: Math.max(0, job.totalPapers - (progress?.withdrawn ?? 0) - removed),
+      total: Math.max(0, papersOf(job, progress) - removed),
       removed,
       included: progress?.counts?.include ?? 0,
       decides: plan.decides,

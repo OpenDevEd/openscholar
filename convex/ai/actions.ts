@@ -302,9 +302,9 @@ export const generateBatchScreeningResponses = action({
             Object.entries(results).map(([paperId, result]) => [
               paperId,
               {
-                ...result,
                 responses: encodeQuestionResponseMap(result.responses),
                 confidences: encodeQuestionResponseMap(result.confidences),
+                confidence: result.confidence,
               },
             ])
           );

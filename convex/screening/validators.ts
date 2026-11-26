@@ -266,6 +266,8 @@ const modelViewValidator = v.object({ _id: v.id("models"), modelId: v.string(), 
  * a model's own row. `row` is their row, which changes to them take.
  */
 export const reviewerViewValidator = v.object({
+  // Their papers settled without their vote.
+  closed: v.number(),
   row: v.id("screeningReviewers"),
   id: v.string(),
   kind: v.union(v.literal("person"), v.literal("model")),

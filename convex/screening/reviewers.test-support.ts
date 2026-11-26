@@ -78,6 +78,14 @@ export async function settleAll(t: T) {
   throw new Error("The bookkeeping worker never ran out of papers");
 }
 
+/** Runs everything a change sets off, sweeps and worker alike, until nothing is left to run. `runTimers` is the test's `vi.runAllTimers`. */
+export async function runAll(t: T, runTimers: () => void) {
+  for (let pass = 0; pass < 20; pass++) {
+    await t.finishAllScheduledFunctions(runTimers);
+    await settleAll(t);
+  }
+}
+
 /** A screening's rows as a test reads them: each paper's result, and who is on it and how. */
 export async function standingOf(t: T, jobId: Id<"screeningJobs">) {
   return t.run(async (ctx) => {

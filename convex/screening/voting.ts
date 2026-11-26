@@ -12,7 +12,7 @@ import type { InWorkspace } from "../workspaces/actor";
 import { OTHER_REASONS, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
 import { bookkeepLater } from "./bookkeeping";
-import { countDealt, votesOf } from "./dealing";
+import { countDealt, personRow, votesOf } from "./dealing";
 import { decisionValidator, SCREENING_TEXT, voteAnswersValidator } from "./validators";
 
 /** A paper of a screening, by its ID there. */
@@ -22,11 +22,8 @@ async function paperOf(ctx: Pick<MutationCtx, "db">, jobId: Id<"screeningJobs">,
   return paper;
 }
 
-/** Stamps a paper for the bookkeeping worker. A person's vote or decision lets go of a result held through a change of settings. */
-export async function settleLater(ctx: MutationCtx, resultId: Id<"screeningResults">, reopen?: "vote" | "recheck") {
-  await ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, ...(reopen ? { reopen } : {}) });
-  await bookkeepLater(ctx);
-}
+/** Stamps a paper a person voted on or settled, for the bookkeeping worker: their vote or decision lets go of a result held through a change of settings. */
+const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">) => ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, reopen: "vote" });
 
 /** A reason to exclude is one of the screening's criteria, or one of the others. */
 function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
@@ -35,9 +32,9 @@ function requireReason(job: Doc<"screeningJobs">, reason: string | undefined) {
 
 const voteArgs = { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), answers: v.optional(voteAnswersValidator), reason: v.optional(v.string()), note: v.optional(v.string()) };
 
-/** One person's vote on one paper, or their vote taken back. */
-async function cast(ctx: MutationCtx, actor: InWorkspace, { jobId, paperId, decision, answers, reason, note }: { jobId: Id<"screeningJobs">; paperId: Id<"screeningResults">; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
-  const { job, reviewer } = await requireReviewer(ctx, actor, jobId);
+/** One person's vote on one paper, or their vote taken back. The paper is stamped: whoever calls wakes the worker once for all it cast. */
+async function cast(ctx: MutationCtx, { job, reviewer }: { job: Doc<"screeningJobs">; reviewer: Doc<"screeningReviewers"> }, { paperId, decision, answers, reason, note }: { paperId: Id<"screeningResults">; decision: "include" | "maybe" | "exclude" | null; answers?: Record<string, Answer>; reason?: string; note?: string }) {
+  const jobId = job._id;
   const paper = await paperOf(ctx, jobId, paperId);
   requireReason(job, reason);
   if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
@@ -47,7 +44,7 @@ async function cast(ctx: MutationCtx, actor: InWorkspace, { jobId, paperId, deci
     // Taken back: the place is theirs again to vote from.
     if (mine?.status !== "cast") return;
     await ctx.db.patch("screeningVotes", mine._id, { status: "waiting", decision: undefined, answers: undefined, reason: undefined, note: undefined, at: undefined, flagged: undefined });
-    return void (await settleLater(ctx, paperId, "vote"));
+    return void (await stamp(ctx, paperId));
   }
   const known = new Set(job.criteria?.map((criterion) => criterion.key));
   // A criterion given as the reason to exclude is one the voter says is not met, so its answer is No wherever the vote was cast from.
@@ -56,10 +53,10 @@ async function cast(ctx: MutationCtx, actor: InWorkspace, { jobId, paperId, deci
   if (mine) await ctx.db.patch("screeningVotes", mine._id, vote);
   else {
     // A reviewer who votes on a paper that wasn't given to them is on it from then on.
-    await ctx.db.insert("screeningVotes", { jobId, resultId: paperId, reviewerId: reviewer._id, place: paper.place ?? 0, ...vote });
+    await ctx.db.insert("screeningVotes", { ...personRow(job, paper, reviewer), ...vote });
     await countDealt(ctx, new Map([[reviewer._id, 1]]));
   }
-  await settleLater(ctx, paperId, "vote");
+  await stamp(ctx, paperId);
 }
 
 /**
@@ -71,7 +68,8 @@ export const vote = workspaceMutation({
   args: voteArgs,
   returns: v.null(),
   handler: async (ctx, actor, args) => {
-    await cast(ctx, actor, { ...args, answers: args.answers as Record<string, Answer> | undefined });
+    await cast(ctx, await requireReviewer(ctx, actor, args.jobId), { ...args, answers: args.answers as Record<string, Answer> | undefined });
+    await bookkeepLater(ctx);
     return null;
   },
 });
@@ -86,9 +84,11 @@ export const VOTE_MANY = 100;
 export const voteMany = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), paperIds: v.array(v.id("screeningResults")), decision: decisionValidator, reason: v.optional(v.string()), note: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, actor, { paperIds, ...same }) => {
+  handler: async (ctx, actor, { jobId, paperIds, ...same }) => {
     if (paperIds.length > VOTE_MANY) throw createError("VALIDATION_ERROR", `Vote on up to ${VOTE_MANY} papers at a time.`);
-    for (const paperId of new Set(paperIds)) await cast(ctx, actor, { ...same, paperId });
+    const voter = await requireReviewer(ctx, actor, jobId);
+    for (const paperId of new Set(paperIds)) await cast(ctx, voter, { ...same, paperId });
+    await bookkeepLater(ctx);
     return null;
   },
 });
@@ -111,7 +111,8 @@ export const resolve = workspaceMutation({
     requireReason(job, reason);
     if (decision === "exclude" && !reason) throw createError("VALIDATION_ERROR", "Say why the paper is excluded.");
     await ctx.db.patch("screeningResults", paperId, { resolved: decision ? { decision, by: actor.userId, at: Date.now(), ...(note?.trim() ? { note: note.trim().slice(0, SCREENING_TEXT.voteNote) } : {}), ...(decision === "exclude" && reason ? { reason } : {}) } : undefined });
-    await settleLater(ctx, paperId, "vote");
+    await stamp(ctx, paperId);
+    await bookkeepLater(ctx);
     return null;
   },
 });

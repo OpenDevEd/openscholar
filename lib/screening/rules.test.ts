@@ -1,6 +1,7 @@
 // A screening's rules (plans/screening-reviewers): each setting against each state of a paper's votes.
 import { describe, expect, it } from "vitest";
-import { cellOf, decide, emptyMatrix, fillPlaces, firstDeal, kappa, reasonOf, scoreOf, seesVotes, settle, takesOver, type Ballot, type Decision } from "./rules";
+import { cellOf, decide, emptyMatrix, fillPlaces, kappa, reasonOf, scoreOf, seesVotes, settle, takesOver, type Ballot, type Decision } from "./rules";
+import { project } from "./project";
 
 const cast = (decision: Decision, at = 1, reason?: string): Ballot => ({ status: "cast", decision, at, ...(reason ? { reason } : {}) });
 const waiting: Ballot = { status: "waiting" };
@@ -66,12 +67,13 @@ describe("points and stars", () => {
 describe("who a paper goes to", () => {
   const people = ["a", "b", "c"];
   it("deals each paper to as many people as the rule asks for, in turn, so the work is even", () => {
-    const dealt = Array.from({ length: 30 }, (_, place) => firstDeal(people, 2, place)).flat();
+    const first = (team: string[], each: number | "all", place: number) => project({ id: "p", place, result: "waiting", held: false, away: [] }, [], { people: team, models: [] }, { each, settle: "all" }, [], { models: true }).made.map((one) => one.reviewer);
+    const dealt = Array.from({ length: 30 }, (_, place) => first(people, 2, place)).flat();
     for (const person of people) expect(dealt.filter((one) => one === person)).toHaveLength(20);
-    expect(firstDeal(people, "all", 4)).toHaveLength(3);
-    expect(firstDeal(people, 5, 0)).toHaveLength(3);
-    expect(firstDeal(people, 0, 0)).toEqual([]);
-    expect(firstDeal([], 2, 0)).toEqual([]);
+    expect(first(people, "all", 4)).toHaveLength(3);
+    expect(first(people, 5, 0)).toHaveLength(3);
+    expect(first(people, 0, 0)).toEqual([]);
+    expect(first([], 2, 0)).toEqual([]);
   });
   it("fills a free place with someone not on the paper, and gives it back to who it was moved from only as a last resort", () => {
     const team = people.map((id) => ({ id }));

@@ -21,7 +21,7 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
 import { ZOTERO_PAGE } from "../zotero/libraryValidators";
-import { countDealt, dealNew, reviewersOf, sourcesOf } from "./dealing";
+import { countDealt, dealNew, reviewersOf, sourcesOf, touched } from "./dealing";
 import { checked } from "./living";
 import { papersIn } from "./estimate";
 import { searchTextOf } from "./mutations";
@@ -204,7 +204,6 @@ export const fill = internalMutation({
     if (!check || !source || !job) return null;
     const reviewers = await reviewersOf(ctx, job._id);
     const dealt = new Map<Id<"screeningReviewers">, number>();
-    const seen = new Set<string>();
     const now = Date.now();
     let [taken, duplicates, left, bare] = [0, 0, 0, 0];
     const leave = async (name: string, why: Why, paperKey?: string) => {
@@ -221,14 +220,13 @@ export const fill = internalMutation({
       if (!paper.abstract?.trim()) { await leave(title, "abstract", paper.paper); continue; }
       const identity = identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi });
       const keys = { paperKey: identity.paperKey, doiKey: doiKeyOf(paper.doi ?? paper.crossRefs?.doi), titleKey: titleKeyOf(title, paper.publicationYear) };
-      const marks = [keys.paperKey, ...(keys.doiKey ? [`doi:${keys.doiKey}`] : [])];
-      const twin = marks.some((mark) => seen.has(mark)) ? "step" : await twinOf(ctx, job._id, keys);
+      // It finds the papers this step already took too: a mutation reads what it wrote.
+      const twin = await twinOf(ctx, job._id, keys);
       if (twin) {
-        // The first source added keeps the paper. One this source brought before is neither new nor merged.
-        if (twin === "step" || twin.sourceId !== sourceId) duplicates++;
+        // The first source added keeps the paper. One this source brought before, or holds twice, is neither new nor merged.
+        if (twin.sourceId !== sourceId) duplicates++;
         continue;
       }
-      for (const mark of marks) seen.add(mark);
       const place = check.from + check.added + taken;
       const resultId = await ctx.db.insert("screeningResults", {
         ...sourceMetadata(paper),
@@ -273,7 +271,7 @@ export const end = internalMutation({
     const job = await ctx.db.get("screeningJobs", check.jobId);
     await ctx.db.patch("screeningChecks", checkId, { state: "done", endedAt: Date.now() });
     if (!job) return null;
-    await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: check.from + check.added, updatedAt: Date.now() });
+    await ctx.db.patch("screeningJobs", job._id, { reading: undefined, totalPapers: check.from + check.added, ...touched() });
     await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: job._id });
     await checked(ctx, job, check);
     return null;
@@ -303,7 +301,7 @@ export const watch = internalMutation({
     if (quiet < QUIET_MS) return void (await ctx.scheduler.runAfter(QUIET_MS - quiet, internal.screening.gathering.watch, { checkId, restarts }));
     if (restarts >= RESTARTS) {
       await ctx.db.patch("screeningChecks", checkId, { state: "failed", endedAt: Date.now() });
-      await ctx.db.patch("screeningJobs", check.jobId, { reading: undefined, updatedAt: Date.now() });
+      await ctx.db.patch("screeningJobs", check.jobId, { reading: undefined, ...touched() });
       return null;
     }
     await ctx.scheduler.runAfter(0, internal.screening.gathering.gather, { checkId });

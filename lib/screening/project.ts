@@ -49,14 +49,17 @@ export function ballotOf(place: Place, criteria: Pick<Criterion, "key" | "must">
  * its places follow the people and the rule: a vote is never taken off, a place nobody voted from is kept by whoever
  * holds it while they are on the screening, the places the rule no longer asks for go, and the ones it still lacks go
  * to the people not on the paper yet. With `models`, every model that reads the screening and has no place on the
- * paper gets one. Once it is settled, the places nobody voted from are closed.
+ * paper gets one. Once it is settled, the places nobody voted from are closed. A model taken off the screening reads
+ * nothing more: the places it hadn't read from go, however the paper stands.
  */
 export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle">, criteria: Pick<Criterion, "key" | "must">[], { models }: { models: boolean }): Projected {
   const on = (list: Place[]) => settle(rule.settle, list.map((place) => ballotOf(place, criteria)));
-  if (paper.held) return { result: paper.result, places, made: [], gone: [], reopened: [], closed: [] };
-  let now: Result = paper.resolved ?? on(places);
-  let list = places;
-  const [made, gone, reopened]: Place[][] = [[], [], []];
+  const off = places.filter((place) => place.kind === "model" && place.status === "waiting" && !team.models.includes(place.reviewer));
+  const stay = off.length ? places.filter((place) => !off.includes(place)) : places;
+  if (paper.held) return { result: paper.result, places: stay, made: [], gone: off, reopened: [], closed: [] };
+  let now: Result = paper.resolved ?? on(stay);
+  let list = stay;
+  const [made, gone, reopened]: Place[][] = [[], off, []];
   if (!isFinal(now)) {
     const persons = list.filter((place) => place.kind === "person" && place.status !== "discarded");
     const open = persons.filter((place) => place.status === "waiting" || place.status === "closed");

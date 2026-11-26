@@ -5,7 +5,9 @@
  */
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { firstDeal } from "../../lib/screening/rules";
+import { personName } from "../lib/people";
+import { stripProviderPrefix } from "../../lib/ai/model-display";
+import { project } from "../../lib/screening/project";
 import { MAX_REVIEWERS, MAX_SOURCE_ROWS } from "./validators";
 
 type Reviewer = Doc<"screeningReviewers">;
@@ -27,6 +29,36 @@ export const viewId = (reviewer: Reviewer) => (reviewer.kind === "person" && rev
 export const dealable = (reviewer: Reviewer) => reviewer.kind === "person" && reviewer.userId !== undefined && reviewer.left === undefined;
 export const readingModel = (reviewer: Reviewer) => reviewer.kind === "model" && reviewer.left === undefined;
 
+/** Who papers go to: the people they are dealt to, in the order they joined, and the models that read (lib/screening/project.ts). */
+export const teamOf = (reviewers: Reviewer[]) => ({ people: reviewers.filter(dealable).map((one) => one._id as string), models: reviewers.filter(readingModel).map((one) => one._id as string) });
+
+/** Someone whose account is gone still has a name where their votes are. */
+export const SOMEONE = "Someone who left";
+/** A person's name wherever a screening names them, and a model's. */
+export const nameOf = (user: Doc<"users"> | null | undefined) => (user ? personName(user) || user.email : SOMEONE);
+export const modelName = (model: Pick<Doc<"models">, "name"> | null | undefined) => (model ? stripProviderPrefix(model.name) : "A model");
+
+/** The papers a screening has: every one it took, less those of the sources taken out. While a look in its sources runs, the ones that have arrived so far. */
+export const papersOf = (job: Pick<Doc<"screeningJobs">, "totalPapers">, progress: Pick<Doc<"screeningJobProgress">, "withdrawn"> | null, check?: Pick<Doc<"screeningChecks">, "from" | "added"> | null) =>
+  Math.max(0, (check ? check.from + check.added : job.totalPapers) - (progress?.withdrawn ?? 0));
+
+/** The papers that still wait for a reviewer: the ones they were given, less the ones they voted on, a model couldn't read, and the ones settled without them. */
+export const waitingOf = (reviewer: Pick<Reviewer, "dealt">, tally: { cast?: number; failed?: number; closed?: number } | undefined) => Math.max(0, reviewer.dealt - (tally?.cast ?? 0) - (tally?.failed ?? 0) - (tally?.closed ?? 0));
+
+/** How many of the papers a check brought still wait for one reviewer's vote, counted up to `most`. */
+export async function newFor(ctx: Pick<QueryCtx, "db">, reviewerId: Id<"screeningReviewers">, check: Pick<Doc<"screeningChecks">, "from" | "added">, most: number) {
+  return (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewerId).eq("status", "waiting").gte("place", check.from).lt("place", check.from + check.added)).take(most)).length;
+}
+
+/** Checks of its sources looked through for the last that brought papers. */
+const CHECKS_LOOKED = 20;
+/** A screening's latest checks for new papers that have ended, the last first. The first look in its sources is the screening starting, and is none of them. */
+export const laterChecks = async (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">) =>
+  (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_LOOKED)).filter((check) => check.state === "done" && check.from > 0);
+
+/** What marks a screening as just changed: when it was, for its row and for the order of the list. */
+export const touched = (now = Date.now()) => ({ updatedAt: now, activeAt: now });
+
 /** Whether a screening's models may take papers now: not while they are paused, it is finished, or its workspace is out of credits. */
 export const modelsFree = (job: Doc<"screeningJobs">) => !job.paused && !job.outOfCredits && job.finishedAt === undefined;
 
@@ -47,11 +79,12 @@ export const personRow = (job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningR
  * their `dealt` once for the whole step.
  */
 export async function dealNew(ctx: MutationCtx, job: Doc<"screeningJobs">, paper: Pick<Doc<"screeningResults">, "_id" | "place">, reviewers: Reviewer[], dealt: Map<Id<"screeningReviewers">, number>) {
-  const people = reviewers.filter(dealable);
-  const give = [...firstDeal(people, job.rule!.each, paper.place ?? 0).map((one) => personRow(job, paper, one)), ...reviewers.filter(readingModel).map((one) => modelRow(job, paper, one))];
-  for (const row of give) {
-    await ctx.db.insert("screeningVotes", row);
-    dealt.set(row.reviewerId, (dealt.get(row.reviewerId) ?? 0) + 1);
+  // The sum that deals every later change deals the first time too, to a paper with no places yet.
+  const { made } = project({ id: paper._id, place: paper.place ?? 0, result: "waiting", held: false, away: [] }, [], teamOf(reviewers), job.rule!, job.criteria ?? [], { models: true });
+  for (const place of made) {
+    const reviewer = reviewers.find((one) => one._id === place.reviewer)!;
+    await ctx.db.insert("screeningVotes", place.kind === "model" ? modelRow(job, paper, reviewer) : personRow(job, paper, reviewer));
+    dealt.set(reviewer._id, (dealt.get(reviewer._id) ?? 0) + 1);
   }
 }
 

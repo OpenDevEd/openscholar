@@ -8,12 +8,12 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery, workspaceMutation } from "../lib/userActions";
 import type { InWorkspace } from "../workspaces/actor";
 import { seesVotes } from "../../lib/screening/rules";
 import { standingOn } from "./access";
-import { votesOf } from "./dealing";
+import { nameOf, votesOf } from "./dealing";
+import { personOf } from "./view";
 import { logChange } from "./log";
 import { SCREENING_TEXT } from "./validators";
 
@@ -44,7 +44,7 @@ export const threadAction = defineUserQuery({
     const people = new Map<Id<"users">, { id: Id<"users">; name: string; imageUrl?: string }>();
     for (const id of new Set(lines.flatMap((line) => [line.by, ...(line.to ? [line.to] : [])]))) {
       const user = await ctx.db.get("users", id);
-      people.set(id, user ? { id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) } : { id, name: "Someone who left" });
+      people.set(id, personOf(user, id));
     }
     return { ...read, page: lines.map((line) => ({ id: line._id, by: people.get(line.by)!, at: line._creationTime, text: line.text, ...(line.to ? { to: people.get(line.to)! } : {}), ...(line.open ? { open: true } : {}) })) };
   },
@@ -68,7 +68,7 @@ export const allAction = defineUserQuery({
     const people = new Map<Id<"users">, { id: Id<"users">; name: string; imageUrl?: string }>();
     for (const id of new Set(lines.flatMap((line) => [line.by, ...(line.to ? [line.to] : [])]))) {
       const user = await ctx.db.get("users", id);
-      people.set(id, user ? { id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) } : { id, name: "Someone who left" });
+      people.set(id, personOf(user, id));
     }
     return { ...read, page: lines.map((line) => ({ id: line._id, paperId: line.resultId, by: people.get(line.by)!, at: line._creationTime, text: line.text, ...(line.to ? { to: people.get(line.to)! } : {}) })) };
   },
@@ -104,7 +104,7 @@ export const say = workspaceMutation({
     if (to) {
       // A question put to one reviewer is written into the screening's activity too, where someone looks for what was asked lately.
       const asked = await ctx.db.get("users", to);
-      await logChange(ctx, actor, job, "asked", { detail: asked ? personName(asked) || asked.email : "", more: [{ code: "paper", detail: paper.title }] });
+      await logChange(ctx, actor, job, "asked", { detail: nameOf(asked), more: [{ code: "paper", detail: paper.title }] });
     }
     return null;
   },

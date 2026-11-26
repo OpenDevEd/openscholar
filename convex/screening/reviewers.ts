@@ -22,7 +22,7 @@ import { readersFor, takesOver } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater } from "./bookkeeping";
 import { logChange } from "./log";
-import { countDealt, dealable, MAX_REVIEWERS, modelRow, readingModel, reviewersOf, votesOf } from "./dealing";
+import { countDealt, dealable, MAX_REVIEWERS, modelName, modelRow, nameOf, readingModel, reviewersOf, votesOf } from "./dealing";
 import { modelFor, modelInput, modelsLimit } from "./screenings";
 import { startWaitingVotes } from "./slots";
 
@@ -31,11 +31,8 @@ type Reviewer = Doc<"screeningReviewers">;
 /** Papers one step of a change to the reviewers looks at. */
 const STEP = 100;
 
-const nameOf = async (ctx: Pick<MutationCtx, "db">, reviewer: Reviewer) => {
-  if (reviewer.kind === "model") return (reviewer.modelId ? (await ctx.db.get("models", reviewer.modelId))?.name : undefined) ?? "A model";
-  const user = reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null;
-  return user ? personName(user) || user.email : "Someone";
-};
+const calledOf = async (ctx: Pick<MutationCtx, "db">, reviewer: Reviewer) =>
+  reviewer.kind === "model" ? modelName(reviewer.modelId ? await ctx.db.get("models", reviewer.modelId) : null) : nameOf(reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null);
 
 /** Stamps a paper for the bookkeeping worker without waking it: a step that stamps many wakes it once. */
 const stamp = (ctx: MutationCtx, resultId: Id<"screeningResults">, reopen?: "vote") => ctx.db.patch("screeningResults", resultId, { doneAt: ctx.db.vars.commitTs, ...(reopen ? { reopen } : {}) });
@@ -97,9 +94,9 @@ export const join = internalMutation({
 });
 
 /**
- * Takes a reviewer off a screening, a step at a time: the places they hadn't voted from are freed, and the worker
- * gives each to someone else. Their votes stay and go on counting, unless they are thrown out (`discard`), which
- * lets go of every paper they voted on.
+ * Takes a reviewer off a screening, a step at a time: the worker frees the places they hadn't voted from and gives
+ * each to someone else. A model's reading under way finishes and is paid for. Their votes stay and go on counting,
+ * unless they are thrown out (`discard`), which lets go of every paper they voted on.
  */
 export const leave = internalMutation({
   args: { reviewerId: v.id("screeningReviewers"), discard: v.boolean(), cursor: v.union(v.string(), v.null()), status: v.union(v.literal("waiting"), v.literal("cast")) },
@@ -108,22 +105,13 @@ export const leave = internalMutation({
     const reviewer = await ctx.db.get("screeningReviewers", reviewerId);
     if (!reviewer || reviewer.left === undefined) return null;
     const page = await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewerId).eq("status", status)).paginate({ cursor, numItems: STEP });
+    // Each paper they are on is stamped: the worker takes the places they hadn't voted from, gives them to someone else, and stops counting the votes thrown out (./settling.ts).
     for (const vote of page.page) {
-      if (status === "waiting") {
-        // A reading under way finishes and is paid for: its row goes with it once it has.
-        if (vote.workId !== undefined) continue;
-        await ctx.db.delete("screeningVotes", vote._id);
-        await stamp(ctx, vote.resultId);
-      } else {
-        await ctx.db.patch("screeningVotes", vote._id, { status: "discarded" });
-        await stamp(ctx, vote.resultId, "vote");
-      }
+      if (status === "cast") await ctx.db.patch("screeningVotes", vote._id, { status: "discarded" });
+      await stamp(ctx, vote.resultId, status === "cast" ? "vote" : undefined);
     }
-    await countDealt(ctx, new Map([[reviewerId, -page.page.filter((vote) => status === "cast" || vote.workId === undefined).length]]));
-    await bookkeepLater(ctx);
-    // Rows taken out of the range shift it: a step that changed any starts the range again.
-    const next = page.page.length ? null : page.continueCursor;
-    if (!page.isDone || page.page.length) await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId, discard, cursor: next, status });
+    if (page.page.length) await bookkeepLater(ctx);
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId, discard, cursor: page.continueCursor, status });
     else if (status === "waiting" && discard) await ctx.scheduler.runAfter(0, internal.screening.reviewers.leave, { reviewerId, discard, cursor: null, status: "cast" });
     return null;
   },
@@ -210,11 +198,11 @@ export const add = workspaceMutation({
       const person = await ctx.db.get("users", personId);
       if (person?.state !== "active" || !(await actorIn(ctx, person, job.workspaceId))) throw createError("VALIDATION_ERROR", "Only members of this workspace are added here. Share the screening with anyone else.");
       await addPerson(ctx, job, personId, actor.userId);
-      await logChange(ctx, actor, job, "reviewerAdded", { detail: personName(person) || person.email });
+      await logChange(ctx, actor, job, "reviewerAdded", { detail: nameOf(person) });
       return null;
     }
     const picked = await addModel(ctx, job, model!, actor.userId);
-    await logChange(ctx, actor, job, "reviewerAdded", { detail: picked.name });
+    await logChange(ctx, actor, job, "reviewerAdded", { detail: modelName(picked) });
     return null;
   },
 });
@@ -236,7 +224,7 @@ export const remove = workspaceMutation({
     const grant = reviewer.userId ? await grantOf(ctx, jobId, reviewer.userId) : null;
     if (grant?.role === "editor") await ctx.db.patch("itemAccess", grant._id, { role: "viewer" });
     await takeOff(ctx, job, reviewer, discard === true);
-    await logChange(ctx, actor, job, grant?.role === "editor" ? "madeViewer" : "reviewerRemoved", { detail: await nameOf(ctx, reviewer), more: discard ? [{ code: "votesDiscarded" }] : [] });
+    await logChange(ctx, actor, job, grant?.role === "editor" ? "madeViewer" : "reviewerRemoved", { detail: await calledOf(ctx, reviewer), more: discard ? [{ code: "votesDiscarded" }] : [] });
     return null;
   },
 });
@@ -253,7 +241,7 @@ export const joinIn = workspaceMutation({
     if (job.finishedAt !== undefined) throw createError("CONFLICT", "This screening is finished. Reopen it to join.");
     await addPerson(ctx, job, actor.userId, actor.userId);
     const me = await ctx.db.get("users", actor.userId);
-    await logChange(ctx, actor, job, "reviewerJoined", { detail: me ? personName(me) || me.email : "" });
+    await logChange(ctx, actor, job, "reviewerJoined", { detail: nameOf(me) });
     return null;
   },
 });
@@ -304,7 +292,7 @@ export const move = workspaceMutation({
       moved++;
     }
     await countDealt(ctx, new Map([[from, -moved], [to, moved]]));
-    if (moved) await logChange(ctx, actor, job, "papersMoved", { count: moved, detail: await nameOf(ctx, giver), more: [{ code: "to", detail: await nameOf(ctx, taker) }] });
+    if (moved) await logChange(ctx, actor, job, "papersMoved", { count: moved, detail: await calledOf(ctx, giver), more: [{ code: "to", detail: await calledOf(ctx, taker) }] });
     return { moved };
   },
 });
@@ -344,7 +332,7 @@ export const remind = workspaceMutation({
     if (reviewer.reminded && Date.now() - reviewer.reminded < 86_400_000) throw createError("CONFLICT", "They were reminded less than a day ago.");
     await ctx.db.patch("screeningReviewers", reviewerId, { reminded: Date.now() });
     await ctx.scheduler.runAfter(0, internal.screening.noticeMail.send, { jobId, userId: reviewer.userId!, about: "reminder", by: actor.userId });
-    await logChange(ctx, actor, job, "reminded", { detail: await nameOf(ctx, reviewer) });
+    await logChange(ctx, actor, job, "reminded", { detail: await calledOf(ctx, reviewer) });
     return null;
   },
 });
@@ -362,7 +350,7 @@ export const retry = workspaceMutation({
     if (reviewer?.jobId !== jobId || !readingModel(reviewer)) throw createError("NOT_FOUND", "That model isn't on this screening.");
     await ctx.scheduler.runAfter(0, internal.screening.reviewers.reread, { jobId, reviewerId });
     const failed = (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())?.reviewers?.[reviewerId]?.failed;
-    await logChange(ctx, actor, job, "retried", { detail: await nameOf(ctx, reviewer), ...(failed ? { count: failed } : {}) });
+    await logChange(ctx, actor, job, "retried", { detail: await calledOf(ctx, reviewer), ...(failed ? { count: failed } : {}) });
     return null;
   },
 });

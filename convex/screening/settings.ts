@@ -11,13 +11,12 @@ import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { newCollection } from "../library/collections";
-import { personName } from "../lib/people";
 import { workspaceMutation } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import type { Criterion } from "../../lib/screening/rules";
 import { requireMember } from "./access";
 import { bookkeepLater, saveQualified } from "./bookkeeping";
-import { dealable, modelRow, readingModel, reviewersOf, sourcesOf, votesOf } from "./dealing";
+import { dealable, modelRow, nameOf, readingModel, reviewersOf, sourcesOf, touched, votesOf } from "./dealing";
 import { startCheck } from "./gathering";
 import { check } from "./living";
 import { logChange, type Line } from "./log";
@@ -141,7 +140,7 @@ export const save = workspaceMutation({
       ...(change.saveTo ? { targetCollectionId: undefined, newCollection: undefined, unsaved: undefined, ...(later ? { newCollection: later } : await destination(ctx, writer, change.saveTo)) } : {}),
       ...(change.prune !== undefined ? { prune: change.prune ? (true as const) : undefined } : {}),
       ...(plan.decides && !change.recheck ? { heldAt: now } : {}),
-      updatedAt: now,
+      ...touched(now),
     });
     const saved = (await ctx.db.get("screeningJobs", jobId))!;
 
@@ -162,7 +161,7 @@ export const save = workspaceMutation({
     // A range that takes more of a source reads the source again: what it has stays, and the rest joins.
     for (const range of change.ranges ?? []) {
       const source = sources.find((one) => one._id === range.sourceId && one.removedAt === undefined);
-      if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0 });
+      if (source) await ctx.db.patch("screeningSources", source._id, { first: range.first, last: range.last, state: "waiting", read: 0, resume: undefined, snapshot: undefined, failure: undefined, duplicates: 0, left: 0, bare: 0 });
     }
     for (const source of change.addSources ?? []) await addSource(ctx, jobId, actor.userId, source, now);
     // New papers arrive by a look in its sources: the ones just added or widened are read, and a screening made living looks in the others too.
@@ -180,7 +179,7 @@ export const save = workspaceMutation({
     const more: Line[] = [
       ...partsOf(change).map((part) => ({ code: "part", detail: part })),
       ...(change.recheck ? [{ code: "rechecked" }] : []),
-      ...(await Promise.all(plan.joining.map(async ({ userId }) => { const user = await ctx.db.get("users", userId); return { code: "joinedBy", detail: user ? personName(user) || user.email : "" }; }))),
+      ...(await Promise.all(plan.joining.map(async ({ userId }) => { const user = await ctx.db.get("users", userId); return { code: "joinedBy", detail: nameOf(user) }; }))),
       ...plan.leaving.flatMap(({ discard }) => (discard ? [{ code: "votesDiscarded" }] : [])),
     ];
     await logChange(ctx, actor, job, "settings", { more });
@@ -267,4 +266,3 @@ export const shelveIncluded = internalMutation({
 /** Papers one step of that saves: each is a library item and a membership, a few dozen reads. */
 const SHELVE = 40;
 
-export type Planned = Awaited<ReturnType<typeof planned>>;

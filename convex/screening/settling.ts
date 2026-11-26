@@ -14,8 +14,9 @@ import type { MutationCtx } from "../_generated/server";
 import { cellOf, decide, DECISIONS, emptyMatrix, isFinal, reasonOf, scoreOf, type Answer, type Ballot, type Decision, type Result } from "../../lib/screening/rules";
 import { newCollection } from "../library/collections";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
-import { project, type Place, type Projected } from "../../lib/screening/project";
-import { countDealt, dealable, modelRow, personRow, readingModel, reviewersOf, votesOf } from "./dealing";
+import { ballotOf, project, type Place, type Projected } from "../../lib/screening/project";
+import { countDealt, modelRow, personRow, reviewersOf, teamOf, votesOf } from "./dealing";
+import { conflictsWait } from "./notices";
 import type { Infer } from "convex/values";
 import type { reviewerCountsValidator } from "./validators";
 
@@ -31,13 +32,6 @@ export const NO_RESULTS = { include: 0, maybe: 0, exclude: 0, conflict: 0 };
 
 /** A vote's row as the rules read a place (lib/screening/project.ts). */
 export const placeOf = (vote: Vote, reviewer: Reviewer | undefined): Place => ({ reviewer: vote.reviewerId, kind: reviewer?.kind ?? "person", status: vote.status, ...(vote.decision ? { decision: vote.decision } : {}), ...(vote.reason ? { reason: vote.reason } : {}), ...(vote.at === undefined ? {} : { at: vote.at }), ...(vote.answers ? { answers: vote.answers as Record<string, Answer> } : {}) });
-
-/** A vote as the rule reads it. A model's decision follows its answers under the criteria as they are now; a person's is the one they gave. */
-export function ballotOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | undefined): Ballot & { decision?: Decision } {
-  if (vote.status !== "cast") return { status: vote.status };
-  const voted = reviewer?.kind === "model" && vote.answers ? decide(vote.answers as Record<string, Answer>, job.criteria ?? []) : { decision: vote.decision, reason: vote.reason };
-  return { status: "cast", decision: voted.decision, reason: voted.reason, at: vote.at, answers: vote.answers as Record<string, Answer> | undefined };
-}
 
 /** What a vote adds to its reviewer's counts, by sign. */
 function add(counts: Counts, counted: Counted | undefined, sign: 1 | -1) {
@@ -78,11 +72,13 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
   const dealt = new Map<Id<"screeningReviewers">, number>();
   let freed = 0;
   let queued = 0;
+  let conflicts = false;
+  const ballot = (vote: Vote) => ballotOf(placeOf(vote, byId.get(vote.reviewerId)), job.criteria ?? []);
 
-  const team = { people: reviewers.filter(dealable).map((one) => one._id as string), models: reviewers.filter(readingModel).map((one) => one._id as string) };
+  const team = teamOf(reviewers);
   for (const paper of papers) {
     let votes = await votesOf(ctx, paper._id);
-    const ballots = () => votes.map((vote) => ballotOf(job, vote, byId.get(vote.reviewerId)));
+    const ballots = () => votes.map(ballot);
     const was: Result = paper.result ?? "waiting";
     // Held through a change of settings: settled by then, and nobody has voted on it or asked for it to be checked again since.
     const held = isFinal(paper.result) && !paper.resolved && !paper.reopen && (paper.settledAt ?? 0) <= (job.heldAt ?? 0);
@@ -90,16 +86,18 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const places = votes.map((vote) => placeOf(vote, byId.get(vote.reviewerId)));
     // One whose source was taken out stands nowhere: the places nobody voted from go, and its votes stay on record and count for nothing.
     const plan: Pick<Projected, "result" | "made" | "reopened" | "closed" | "gone"> = paper.withdrawn
-      ? { result: "waiting", made: [], reopened: [], closed: [], gone: places.filter((place, at) => place.status === "waiting" && votes[at]!.workId === undefined || place.status === "closed") }
+      ? { result: "waiting", made: [], reopened: [], closed: [], gone: places.filter((place) => place.status === "waiting" || place.status === "closed") }
       : project({ id: paper._id, place: paper.place ?? 0, result: was, ...(paper.resolved ? { resolved: paper.resolved.decision } : {}), held, away: (paper.away ?? []) as string[] }, places, team, job.rule!, job.criteria ?? [], { models: paper.reopen === "recheck" });
     const now = plan.result;
     if (Boolean(paper.withdrawn) !== Boolean(paper.out)) withdrawn += paper.withdrawn ? 1 : -1;
     const rowOf = (place: Place) => votes[places.indexOf(place)]!;
-    for (const place of plan.gone) {
-      const vote = rowOf(place);
+    // A reading under way finishes and is paid for: its place goes once the reading has come back.
+    const leaving = plan.gone.map(rowOf).filter((vote) => vote.workId === undefined);
+    for (const vote of leaving) {
       await ctx.db.delete("screeningVotes", vote._id);
       add(countsOf(vote.reviewerId), vote.counted, -1);
-      dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) - 1);
+      if (vote.counted?.status !== "discarded") dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) - 1);
+      if (vote.slot) freed++;
     }
     for (const place of plan.reopened) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "waiting" });
     for (const place of plan.closed) if (places.includes(place)) await ctx.db.patch("screeningVotes", rowOf(place)._id, { status: "closed" });
@@ -112,7 +110,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
       dealt.set(reviewer._id, (dealt.get(reviewer._id) ?? 0) + 1);
       if (place.kind === "model" && "waitingWorkspace" in row) queued++;
     }
-    const gone = new Set(plan.gone.map(rowOf));
+    const gone = new Set(leaving);
     const status = new Map([...plan.reopened.map((place) => [rowOf(place)._id, "waiting"] as const), ...plan.closed.filter((place) => places.includes(place)).map((place) => [rowOf(place)._id, "closed"] as const)]);
     votes = [...votes.filter((vote) => !gone.has(vote)).map((vote) => (status.has(vote._id) ? { ...vote, status: status.get(vote._id)! } : vote)), ...fresh];
 
@@ -121,18 +119,21 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const after: typeof before = [];
     let changed = false;
     for (const vote of votes) {
-      const ballot = ballotOf(job, vote, byId.get(vote.reviewerId));
+      const cast = ballot(vote);
       // What a model's reading cost is kept counted whatever becomes of its paper: the credits went.
-      const counted: Counted = paper.withdrawn ? { status: "discarded", ...(vote.credits ? { credits: vote.credits } : {}) } : { status: vote.status, ...(ballot.decision ? { decision: ballot.decision } : {}), ...(vote.credits ? { credits: vote.credits } : {}) };
-      if (!paper.withdrawn && ballot.status === "cast" && ballot.decision) after.push({ id: vote.reviewerId, decision: ballot.decision });
-      const finished = vote.slot && vote.status !== "waiting";
+      const counted: Counted = paper.withdrawn ? { status: "discarded", ...(vote.credits ? { credits: vote.credits } : {}) } : { status: vote.status, ...(cast.decision ? { decision: cast.decision } : {}), ...(vote.credits ? { credits: vote.credits } : {}) };
+      if (!paper.withdrawn && cast.status === "cast" && cast.decision) after.push({ id: vote.reviewerId, decision: cast.decision });
+      // The slot is free once the reading has come back, whatever it left on the row: a reading that didn't go ahead leaves it waiting.
+      const finished = vote.slot && vote.workId === undefined;
       if (finished) freed++;
-      if (same(vote.counted, counted) && !finished && vote.decision === ballot.decision) continue;
+      if (same(vote.counted, counted) && !finished && vote.decision === cast.decision) continue;
       changed = true;
+      // A vote that stops counting is no longer one of its reviewer's papers, and one that counts again is.
+      if ((vote.counted?.status === "discarded") !== (counted.status === "discarded")) dealt.set(vote.reviewerId, (dealt.get(vote.reviewerId) ?? 0) + (counted.status === "discarded" ? -1 : 1));
       add(countsOf(vote.reviewerId), vote.counted, -1);
       add(countsOf(vote.reviewerId), counted, 1);
       // A model's vote follows its answers under the criteria as they are now, so its decision can move with them.
-      await ctx.db.patch("screeningVotes", vote._id, { counted, ...(ballot.status === "cast" && vote.decision !== ballot.decision ? { decision: ballot.decision, reason: ballot.reason } : {}), ...(finished ? { slot: undefined } : {}) });
+      await ctx.db.patch("screeningVotes", vote._id, { counted, ...(cast.status === "cast" && vote.decision !== cast.decision ? { decision: cast.decision, reason: cast.reason } : {}), ...(finished ? { slot: undefined } : {}) });
     }
     if (changed || before.length !== after.length) {
       for (const [i, x] of before.entries()) for (const y of before.slice(i + 1)) pair(x.id, y.id, x.decision, y.decision, -1);
@@ -152,6 +153,7 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     const split = given.length - Math.max(0, ...DECISIONS.map((decision) => given.filter((one) => one === decision).length));
     const reason = now === "exclude" ? (reasonOf(cast, paper.resolved?.reason) ?? "other") : undefined;
     const { points, stars } = scoreOf(job.criteria ?? [], job.stars ?? [], cast);
+    if (now === "conflict" && was !== "conflict") conflicts = true;
     if (was !== "waiting") counts[was] = Math.max(0, counts[was] - 1);
     if (now !== "waiting") counts[now]++;
     if (was === "exclude") reasons[paper.reason ?? "other"] = (reasons[paper.reason ?? "other"] ?? 1) - 1;
@@ -185,6 +187,8 @@ export async function settlePapers(ctx: MutationCtx, made: Doc<"screeningJobs">,
     ...withMoved(progress, moved),
   });
   await countDealt(ctx, dealt);
+  // Whoever settles its conflicts hears that some wait: one email for a burst of them.
+  if (conflicts && job.rule && job.finishedAt === undefined) await conflictsWait(ctx, job._id, job.rule.resolver);
   // When something last happened in it, kept to within a minute: whatever reads the screening's row is seldom run again for it.
   if (Date.now() - (job.activeAt ?? 0) > ACTIVE_EVERY_MS) await ctx.db.patch("screeningJobs", job._id, { activeAt: Date.now() });
   for (const { a, b, cells } of pairs.values()) {

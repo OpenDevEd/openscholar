@@ -21,16 +21,15 @@ import { isFinal } from "../../lib/screening/rules";
 import { actorIn, inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
-import { reviewersOf, sourcesOf, viewId } from "./dealing";
+import { laterChecks, modelName, nameOf, newFor, papersOf, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf } from "./dealing";
 import { NO_RESULTS } from "./settling";
 import { criteriaValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
 type Person = Infer<typeof personValidator>;
-const personOf = (user: Doc<"users">): Person => ({ id: user._id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) });
-/** Someone whose account is gone still has a name where their votes are. */
-const SOMEONE = "Someone who left";
+/** A person as a page shows them. One whose account is gone still has a name where their votes are. */
+export const personOf = (user: Doc<"users"> | null, id: Id<"users">): Person => ({ id, name: nameOf(user), ...(user?.avatarUrl ? { imageUrl: user.avatarUrl } : {}) });
 
 export type ReviewerView = Infer<typeof reviewerViewValidator>;
 
@@ -96,17 +95,17 @@ export type Summary = Infer<typeof summaryValidator>;
 
 /** A reviewer's row as the pages read it, with their counts. */
 async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screeningReviewers">] | undefined, members: Map<Id<"users">, boolean>): Promise<ReviewerView> {
-  const tally = { cast: counts?.cast ?? 0, include: counts?.include ?? 0, maybe: counts?.maybe ?? 0, exclude: counts?.exclude ?? 0, failed: counts?.failed ?? 0, spent: counts?.spent ?? 0, missed: counts?.missed ?? 0 };
-  const waiting = Math.max(0, reviewer.dealt - tally.cast - tally.failed - (counts?.closed ?? 0));
+  const tally = { cast: counts?.cast ?? 0, include: counts?.include ?? 0, maybe: counts?.maybe ?? 0, exclude: counts?.exclude ?? 0, failed: counts?.failed ?? 0, closed: counts?.closed ?? 0, spent: counts?.spent ?? 0, missed: counts?.missed ?? 0 };
+  const waiting = waitingOf(reviewer, tally);
   const base = { row: reviewer._id, addedAt: reviewer.addedAt, ...(reviewer.left === undefined ? {} : { left: reviewer.left }), ...(reviewer.discarded === undefined ? {} : { discarded: reviewer.discarded }), ...(reviewer.reminded === undefined ? {} : { reminded: reviewer.reminded }), dealt: reviewer.dealt, ...tally, waiting };
   if (reviewer.kind === "model") {
     const model = reviewer.modelId ? await ctx.db.get("models", reviewer.modelId) : null;
-    return { ...base, id: reviewer._id, kind: "model", name: model?.name ?? "A model", ...(model ? { model: { _id: model._id, modelId: model.modelId, name: model.name, inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden } } : {}) };
+    return { ...base, id: reviewer._id, kind: "model", name: modelName(model), ...(model ? { model: { _id: model._id, modelId: model.modelId, name: modelName(model), inputPricePerMillion: model.inputPricePerMillion, outputPricePerMillion: model.outputPricePerMillion, ...(reviewer.effort ? { effort: reviewer.effort } : {}), available: model.retiredAt === undefined && !model.hidden } } : {}) };
   }
   const user = reviewer.userId ? await ctx.db.get("users", reviewer.userId) : null;
   if (!user) return { ...base, id: reviewer._id, kind: "person", name: SOMEONE };
   if (!members.has(user._id)) members.set(user._id, (await actorIn(ctx, user, job.workspaceId)) !== null);
-  return { ...base, ...personOf(user), kind: "person", ...(members.get(user._id) ? {} : { guest: true as const }) };
+  return { ...base, ...personOf(user, user._id), kind: "person", ...(members.get(user._id) ? {} : { guest: true as const }) };
 }
 
 /** What a screening's models are doing, and the screening whose models read first where its own wait their turn. */
@@ -134,7 +133,7 @@ async function readingFirst(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspac
   // How far its models have read: the place of the slowest of them.
   const [theirs, counted] = await Promise.all([reviewersOf(ctx, ahead._id), progressRow(ctx as QueryCtx, ahead._id)]);
   const read = theirs.filter((one) => one.kind === "model" && one.left === undefined).map((one) => (counted?.reviewers?.[one._id]?.cast ?? 0) + (counted?.reviewers?.[one._id]?.failed ?? 0));
-  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read.length ? Math.min(...read) : 0, of: ahead.totalPapers };
+  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read.length ? Math.min(...read) : 0, of: papersOf(ahead, counted) };
 }
 
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
@@ -155,9 +154,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   const members = new Map<Id<"users">, boolean>();
   const reviewers = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members)));
   const settled = { ...NO_RESULTS, ...progress?.counts };
-  // What has arrived so far: the sources' own counts while they are read, since the screening's total is written when the reading ends.
-  const sources = check ? await sourcesOf(ctx, job._id) : [];
-  const total = check ? sources.reduce((sum, source) => sum + (source.removedAt === undefined ? source.taken : 0), 0) : job.totalPapers;
+  const total = papersOf(job, progress, check);
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
   const mine = reviewer ? reviewers.find((one) => one.row === reviewer._id) : undefined;
   const canResolve = job.rule?.resolver === actor.userId;
@@ -167,12 +164,12 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
   return {
     id: job._id,
     name: job.name ?? "Screening",
-    createdBy: creator ? personOf(creator) : { id: job.createdBy, name: SOMEONE },
+    createdBy: personOf(creator, job.createdBy),
     createdAt: job.createdAt,
     ...(job.finishedAt === undefined ? {} : { finishedAt: job.finishedAt }),
     ...(job.paused ? { paused: true } : {}),
     ...(job.living ? { living: job.living } : {}),
-    resolver: resolver ? personOf(resolver) : { id: job.rule?.resolver ?? job.createdBy, name: SOMEONE },
+    resolver: personOf(resolver, job.rule?.resolver ?? job.createdBy),
     settle: job.rule?.settle ?? "all",
     workspace: await workspaceOf(ctx, job.workspaceId),
     me: actor.userId,
@@ -190,7 +187,7 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     ...(ahead ? { ahead } : {}),
     criteria: job.criteria?.length ?? 0,
     ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check.from === 0 } } : {}),
-    activeAt: Math.max(job.activeAt ?? 0, job.updatedAt),
+    activeAt: job.activeAt ?? job.updatedAt,
   };
 }
 
@@ -204,7 +201,7 @@ export const setup = workspaceQuery({
   returns: v.object({ me: personValidator, credits: v.number(), limits: v.object({ papers: v.union(v.number(), v.null()), models: v.number(), atOnce: v.number() }), reading: v.optional(aheadValidator) }),
   handler: async (ctx, { userId, workspaceId }) => {
     const [me, credits, papers, models, atOnce, reading] = await Promise.all([ctx.db.get("users", userId), availableCredits(ctx, workspaceId), planLimit(ctx, workspaceId, "request_papers"), modelsLimit(ctx, workspaceId), paperLimit(ctx, workspaceId), readingFirst(ctx, workspaceId)]);
-    return { me: me ? personOf(me) : { id: userId, name: SOMEONE }, credits, limits: { papers: papers ?? null, models, atOnce }, ...(reading ? { reading } : {}) };
+    return { me: personOf(me, userId), credits, limits: { papers: papers ?? null, models, atOnce }, ...(reading ? { reading } : {}) };
   },
 });
 
@@ -257,16 +254,23 @@ export const mine = workspaceQuery({
     const reviewing = await ctx.db.query("screeningReviewers").withIndex("by_user", (q) => q.eq("userId", userId)).order("desc").take(MINE_MAX);
     const given = own ? await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", userId).eq("kind", "screening")).order("desc").take(MINE_MAX) : [];
     const ids = [...new Set([...reviewing.map((row) => row.jobId as string), ...given.map((row) => row.item)])];
-    const seen = (await Promise.all(ids.map(async (id) => {
+    // Conflicts go to one person, who may not be among the reviewers: the workspace's open screenings they settle are looked at too.
+    const settles = (await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).order("desc").take(MINE_MAX)).filter((job) => job.rule?.resolver === userId && !ids.includes(job._id));
+    // What waits for them, and what is shared with them whether or not anything waits: only those are summarised.
+    const kept = (await Promise.all([...ids, ...settles.map((job) => job._id as string)].map(async (id) => {
       const jobId = ctx.db.normalizeId("screeningJobs", id);
       const standing = jobId ? await standingOn(ctx, actor, jobId) : null;
-      return standing?.job.shape === 2 ? [await summaryOf(ctx, actor, standing)] : [];
+      if (standing?.job.shape !== 2) return [];
+      const { job, member, reviewer } = standing;
+      if (member) {
+        if (job.finishedAt !== undefined) return [];
+        const progress = await progressRow(ctx as QueryCtx, job._id);
+        const waits = (reviewer ? waitingOf(reviewer, progress?.reviewers?.[reviewer._id]) : 0) + (job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0);
+        if (!waits && !(await askedOf(ctx, job._id, userId)).length) return [];
+      }
+      return [await summaryOf(ctx, actor, standing)];
     }))).flat();
-    // Conflicts go to one person, who may not be among the reviewers: the workspace's open screenings they settle are looked at too.
-    const settles = (await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).order("desc").take(MINE_MAX)).filter((job) => job.shape === 2 && job.rule?.resolver === userId && !ids.includes(job._id));
-    const settled = await Promise.all(settles.map(async (job) => summaryOf(ctx, actor, (await standingOn(ctx, actor, job._id))!)));
-    // What waits for them, and what is shared with them whether or not anything waits.
-    return { page: [...seen, ...settled].filter((one) => !one.member || one.forYou + one.conflicts + one.asked > 0), isDone: true, continueCursor: "" };
+    return { page: kept, isDone: true, continueCursor: "" };
   },
 });
 
@@ -295,7 +299,6 @@ const CHECK_COUNTED = 200;
 
 /** Checks one page of a screening's checks holds at most, and the latest of them looked through for the last that brought papers. */
 const CHECKS_PAGE = 50;
-const CHECKS_LOOKED = 20;
 /** Votes that ask for a new one, counted for their reviewer's tab: past it the tab says so many and more. */
 const FLAGGED_COUNTED = 500;
 /** Papers of its last check counted for what is still open among them. */
@@ -347,10 +350,10 @@ export const getAction = defineUserQuery({
     const flagged = reviewer ? (await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_flagged_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("flagged", true)).take(FLAGGED_COUNTED)).length : 0;
     const guest = member ? null : ((await grantOf(ctx, jobId, actor.userId))?.role ?? null);
     // The first look in its sources is the screening starting: only a later one "brought new papers".
-    const lately = (await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").take(CHECKS_LOOKED)).filter((check) => check.state === "done" && check.from > 0);
+    const lately = await laterChecks(ctx, jobId);
     const last = lately.find((check) => check.added > 0);
     const brought = last ? await ctx.db.query("screeningResults").withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", last._id)).take(LATEST_COUNTED) : [];
-    const theirs = last && reviewer ? await ctx.db.query("screeningVotes").withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting").gte("place", last.from)).take(LATEST_COUNTED) : [];
+    const theirs = last && reviewer ? await newFor(ctx, reviewer._id, last, LATEST_COUNTED) : 0;
     return {
       ...summary,
       ...(job.question ? { question: job.question } : {}),
@@ -373,7 +376,7 @@ export const getAction = defineUserQuery({
       flagged,
       guests: await countOf(ctx, itemGuestsOf(jobId)),
       ...(lately[0] ? { lastCheck: { at: lately[0].endedAt ?? lately[0].at, found: lately[0].found, added: lately[0].added } } : {}),
-      ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !isFinal(paper.result)).length, mine: theirs.filter((vote) => vote.place < last.from + last.added).length } } : {}),
+      ...(last ? { latest: { id: last._id, at: last.endedAt ?? last.at, added: last.added, open: brought.filter((paper) => !paper.withdrawn && !isFinal(paper.result)).length, mine: theirs } } : {}),
     };
   },
 });
@@ -450,7 +453,7 @@ export const activityAction = defineUserQuery({
     if (!standing) return { page: [], isDone: true, continueCursor: "" };
     const read = await ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", standing.job.workspaceId).eq("item", itemKey("screening", jobId))).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, ACTIVITY_PAGE) });
     const people = new Map<Id<"users">, Person>();
-    for (const row of read.page) if (!people.has(row.by)) { const user = await ctx.db.get("users", row.by); people.set(row.by, user ? personOf(user) : { id: row.by, name: SOMEONE }); }
+    for (const row of read.page) if (!people.has(row.by)) { const user = await ctx.db.get("users", row.by); people.set(row.by, personOf(user, row.by)); }
     return { ...read, page: read.page.map((row) => ({ id: row._id, at: row._creationTime, by: people.get(row.by)!, happened: row.happened, ...(row.code ? { code: row.code } : {}), ...(row.count === undefined ? {} : { count: row.count }), ...(row.detail ? { detail: row.detail } : {}), ...(row.more ? { more: row.more } : {}) })) };
   },
 });
@@ -466,7 +469,7 @@ export const checksAction = defineUserQuery({
     if (!(await standingOn(ctx, actor, jobId))) return { page: [], isDone: true, continueCursor: "" };
     const read = await ctx.db.query("screeningChecks").withIndex("by_job", (q) => q.eq("jobId", jobId)).order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CHECKS_PAGE) });
     const people = new Map<Id<"users">, Person>();
-    for (const check of read.page) if (check.by && !people.has(check.by)) { const user = await ctx.db.get("users", check.by); people.set(check.by, user ? personOf(user) : { id: check.by, name: SOMEONE }); }
+    for (const check of read.page) if (check.by && !people.has(check.by)) { const user = await ctx.db.get("users", check.by); people.set(check.by, personOf(user, check.by)); }
     const stand = async (check: Doc<"screeningChecks">) => {
       if (check.from === 0 || !check.added || check.added > CHECK_COUNTED) return undefined;
       const papers = await ctx.db.query("screeningResults").withIndex("by_job_and_check", (q) => q.eq("jobId", jobId).eq("checkId", check._id)).take(CHECK_COUNTED);

@@ -119,14 +119,6 @@ export const hash = (text: string) => [...text].reduce((sum, char) => (Math.imul
 export const readersFor = (each: Rule["each"], people: number) => (each === "all" ? people : Math.min(each, people));
 
 /**
- * The people a new paper goes to: as many as the rule asks for, taken in turn from its place in the round, so the
- * work is shared evenly. `people` are in the order they joined.
- */
-export function firstDeal<Person>(people: Person[], each: Rule["each"], place: number): Person[] {
-  return Array.from({ length: readersFor(each, people.length) }, (_, k) => people[(place + k) % people.length]!);
-}
-
-/**
  * Who takes the places nobody has voted from on an open paper, when the people or the rule have changed. Whoever
  * holds a place keeps it. Places still free go to the people not on the paper, in the round's order from the paper's
  * place, with anyone the paper was moved away from last: they take it back only where nobody else is left to.

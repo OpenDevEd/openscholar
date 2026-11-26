@@ -1,7 +1,7 @@
 /**
  * A screening's papers as someone sees them (plans/screening-reviewers): a person's queues on Screen, the table on
  * Papers, and one paper with its votes. What a reviewer may see of the other votes is decided in one place here
- * (`shown`), which every one of these reads, and the files a screening exports read it too (./exporting.ts).
+ * (`shown`), which every one of these reads. The files a screening exports are made in the browser from these same reads.
  */
 import { paginationOptsValidator, paginationResultValidator, type PaginationResult } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
@@ -11,9 +11,11 @@ import type { QueryCtx } from "../_generated/server";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
-import { decide, isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
+import { ballotOf } from "../../lib/screening/project";
+import { isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
 import { standingOn, type Standing } from "./access";
 import { reviewersOf, viewId, votesOf } from "./dealing";
+import { placeOf } from "./settling";
 import { decisionValidator, paperResultValidator, paperViewValidator, voteViewValidator } from "./validators";
 import { askedOf } from "./view";
 
@@ -38,9 +40,10 @@ async function lookingAt(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, jobId: I
 
 /** A vote as a page shows it. A model's decision follows its answers under the criteria as they are now, as the rule reads it. */
 function voteOf(job: Doc<"screeningJobs">, vote: Vote, reviewer: Reviewer | undefined): VoteView | undefined {
-  if (vote.status !== "cast" || !vote.decision) return undefined;
+  if (vote.status !== "cast") return undefined;
   const answers = (vote.answers ?? {}) as Record<string, Answer>;
-  const read = reviewer?.kind === "model" ? decide(answers, job.criteria ?? []) : { decision: vote.decision, reason: vote.reason };
+  const read = ballotOf(placeOf(vote, reviewer), job.criteria ?? []);
+  if (!read.decision) return undefined;
   return { decision: read.decision, answers, ...(read.reason ? { reason: read.reason } : {}), ...(vote.note ? { note: vote.note } : {}), at: vote.at ?? vote._creationTime, ...(vote.flagged ? { flagged: true } : {}), ...(vote.confidences ? { confidences: vote.confidences } : {}), ...(vote.passages ? { passages: vote.passages } : {}) };
 }
 
@@ -88,8 +91,7 @@ export function shown({ job, reviewer, reviewers, first, asked }: Looking, paper
   };
 }
 
-const votesOn = votesOf;
-const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOn(ctx, paper._id))));
+const views = (ctx: Pick<QueryCtx, "db">, looking: Looking, papers: Paper[]) => Promise.all(papers.map(async (paper) => shown(looking, paper, await votesOf(ctx, paper._id))));
 const NONE = { page: [], isDone: true, continueCursor: "" };
 const byJob = { jobId: v.id("screeningJobs") };
 /** Papers one page holds at most, and rows a page looks through for the ones its filters keep. */
@@ -104,7 +106,7 @@ export const paperAction = defineUserQuery({
   run: async (ctx, actor, { jobId, paperId }) => {
     const looking = await lookingAt(ctx, actor, jobId);
     const paper = looking ? await ctx.db.get("screeningResults", paperId) : null;
-    return looking && paper?.jobId === jobId ? shown(looking, paper, await votesOn(ctx, paperId)) : null;
+    return looking && paper?.jobId === jobId ? shown(looking, paper, await votesOf(ctx, paperId)) : null;
   },
 });
 export const paper = userQuery(paperAction);
@@ -112,7 +114,8 @@ export const paperForAssistant = assistantQuery(paperAction);
 
 /** Pages a reviewer's rows of votes into the papers they are on, in the rows' order. */
 async function papersOfVotes(ctx: Pick<QueryCtx, "db">, looking: Looking, read: PaginationResult<Vote>) {
-  const papers = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null);
+  // A paper whose source was taken out is in no queue, though the votes on it are kept.
+  const papers = (await Promise.all(read.page.map((vote) => ctx.db.get("screeningResults", vote.resultId)))).filter((one): one is Paper => one !== null && !one.withdrawn);
   return { ...read, page: await views(ctx, looking, papers) };
 }
 
@@ -149,7 +152,7 @@ export const queueAction = defineUserQuery({
         ? await (lean ? votes.withIndex("by_reviewer_and_status_and_lean_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting")) : votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("status", "waiting"))).order(order === "fresh" ? "desc" : "asc").paginate(options)
         : queue === "again"
           ? await votes.withIndex("by_reviewer_and_flagged_and_place", (q) => q.eq("reviewerId", reviewer._id).eq("flagged", true)).paginate(options)
-          : await (voted ? votes.withIndex("by_reviewer_and_decision_and_at", (q) => q.eq("reviewerId", reviewer._id).eq("decision", voted)) : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", reviewer._id).eq("status", "cast"))).order("desc").paginate(options);
+          : await (voted ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", reviewer._id).eq("status", "cast").eq("decision", voted)) : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", reviewer._id).eq("status", "cast"))).order("desc").paginate(options);
     return await papersOfVotes(ctx, looking, read);
   },
 });
@@ -187,12 +190,12 @@ export const listAction = defineUserQuery({
     const options = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const rowOf = (id: string) => [...looking.reviewers.values()].find((one) => viewId(one) === id || one._id === id);
     const others = (also ?? []).flatMap((id) => rowOf(id)?._id ?? []);
-    const keeps = (paper: Paper) => (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? "other") === reason));
+    const keeps = (paper: Paper) => !paper.withdrawn && (!result || (paper.result ?? "waiting") === result) && (!source || paper.sourceId === source) && (!check || paper.checkId === check) && (!reason || (paper.result === "exclude" && (paper.reason ?? "other") === reason));
     // The papers every one of those reviewers voted on.
     const shared = async (paperId: Id<"screeningResults">) => !others.length || others.every((id) => castOn.get(paperId)?.has(id));
     const castOn = new Map<Id<"screeningResults">, Set<Id<"screeningReviewers">>>();
     const withVotes = async (papers: Paper[]) => {
-      const rows = await Promise.all(papers.map(async (paper) => ({ paper, votes: await votesOn(ctx, paper._id) })));
+      const rows = await Promise.all(papers.map(async (paper) => ({ paper, votes: await votesOf(ctx, paper._id) })));
       for (const { paper, votes } of rows) castOn.set(paper._id, new Set(votes.filter((vote) => vote.status === "cast").map((vote) => vote.reviewerId)));
       const kept: PaperView[] = [];
       for (const { paper, votes } of rows) if (await shared(paper._id)) kept.push(shown(looking, paper, votes));
@@ -219,7 +222,7 @@ export const listAction = defineUserQuery({
       const read = await (voted === "none" || voted === "failed"
         ? votes.withIndex("by_reviewer_and_status_and_place", (q) => q.eq("reviewerId", row._id).eq("status", voted === "none" ? "waiting" : "failed"))
         : voted && voted !== "settled"
-          ? votes.withIndex("by_reviewer_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("decision", voted))
+          ? votes.withIndex("by_reviewer_and_status_and_decision_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast").eq("decision", voted))
           : votes.withIndex("by_reviewer_and_status_and_at", (q) => q.eq("reviewerId", row._id).eq("status", "cast"))
       ).paginate(options);
       // A model's decision is kept on its row as the worker last read it; the page shows it as it reads now.

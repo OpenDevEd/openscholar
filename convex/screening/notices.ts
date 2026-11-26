@@ -8,14 +8,17 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalQuery } from "../lib/functions";
-import { personName } from "../lib/people";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
+import { laterChecks, nameOf, newFor, waitingOf } from "./dealing";
 
 export const aboutValidator = v.union(v.literal("papers"), v.literal("conflicts"), v.literal("reminder"));
 
 const rowOf = (ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, userId: Id<"users">) => ctx.db.query("screeningNotices").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).unique();
+
+/** New papers counted for one person's email: past it the email says so many. */
+const NEW_COUNTED = 500;
 
 /** How long after a conflict arises its email goes, so a burst of them is one email, and how long before the next. */
 const CONFLICTS_AFTER_MS = 10 * 60_000;
@@ -43,12 +46,17 @@ export const context = internalQuery({
     const member = organization ? Boolean(await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active")).first()) : false;
     const progress = await progressRow(ctx, jobId);
     const reviewer = await ctx.db.query("screeningReviewers").withIndex("by_job_and_user", (q) => q.eq("jobId", jobId).eq("userId", userId)).first();
-    const tally = reviewer ? progress?.reviewers?.[reviewer._id] : undefined;
-    const waiting = reviewer && reviewer.left === undefined ? Math.max(0, reviewer.dealt - (tally?.cast ?? 0) - (tally?.closed ?? 0)) : 0;
-    const count = about === "conflicts" ? (job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0) : waiting;
+    const on = reviewer && reviewer.left === undefined ? reviewer : null;
+    // New papers: the ones its last check gave this person, which still wait for their vote. A reminder: everything that waits for them.
+    const brought = about === "papers" ? (await laterChecks(ctx, jobId)).find((check) => check.added > 0) : undefined;
+    const count =
+      about === "conflicts" ? (job.rule?.resolver === userId ? (progress?.counts?.conflict ?? 0) : 0)
+      : !on ? 0
+      : about === "papers" ? (brought ? await newFor(ctx, on._id, brought, NEW_COUNTED) : 0)
+      : waitingOf(on, progress?.reviewers?.[on._id]);
     if (!count) return null;
     const sender = by ? await ctx.db.get("users", by) : null;
-    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}/screening/${jobId}`, count, ...(sender ? { by: personName(sender) || sender.email } : {}) };
+    return { email: user.email, name: job.name ?? "Screening", path: `${member && organization ? `/o/${organization.slug}` : ""}/screening/${jobId}`, count, ...(sender ? { by: nameOf(sender) } : {}) };
   },
 });
 

@@ -13,8 +13,7 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { screeningPool } from "../workpool";
 import { effortValidator } from "../aiModelConfig/validators";
 import { bookkeepLater } from "./bookkeeping";
-import { decide, type Answer } from "../../lib/screening/rules";
-import { modelsFree, reviewersOf } from "./dealing";
+import { modelsFree, reviewersOf, touched } from "./dealing";
 import { startWaitingVotes } from "./slots";
 import { criteriaValidator, voteAnswersValidator, votePassagesValidator } from "./validators";
 
@@ -83,15 +82,15 @@ export const done = screeningPool.defineOnComplete({
     const job = (await ctx.db.get("screeningJobs", vote.jobId)) as Doc<"screeningJobs"> | null;
     const reading = result.kind === "success" ? (result.returnValue as typeof readingValidator.type) : null;
     if (reading?.read && vote.status === "waiting") {
-      const voted = decide(reading.answers as Record<string, Answer>, job?.criteria ?? []);
-      await ctx.db.patch("screeningVotes", vote._id, { status: "cast", decision: voted.decision, reason: voted.reason, answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
+      // Its decision follows its answers: the worker reads it from them as it settles the paper (lib/screening/project.ts `ballotOf`).
+      await ctx.db.patch("screeningVotes", vote._id, { status: "cast", answers: reading.answers, confidences: reading.confidences, passages: reading.passages, at: Date.now(), credits: (vote.credits ?? 0) + reading.credits, workId: undefined, error: undefined });
     } else if (result.kind === "failed" && vote.status === "waiting") {
       await ctx.db.patch("screeningVotes", vote._id, { status: "failed", error: result.error.slice(0, ERROR_SHOWN), workId: undefined });
     } else {
       await ctx.db.patch("screeningVotes", vote._id, { workId: undefined });
     }
     if (job && reading && !reading.read && reading.why === "credits" && !job.outOfCredits) {
-      await ctx.db.patch("screeningJobs", job._id, { outOfCredits: true, updatedAt: Date.now() });
+      await ctx.db.patch("screeningJobs", job._id, { outOfCredits: true, ...touched() });
       await ctx.scheduler.runAfter(0, internal.screening.readings.hold, { jobId: job._id, cursor: null });
     }
     await ctx.db.patch("screeningResults", vote.resultId, { doneAt: ctx.db.vars.commitTs });
