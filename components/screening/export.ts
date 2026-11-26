@@ -230,6 +230,8 @@ export function voteRows(screening: Screening, papers: Paper[], whose?: string) 
     }),
   );
 }
+/** Which reviewer and paper pairs the votes file has a row for, and why a pair can have none. */
+const VOTE_ROWS = "One row for each paper a reviewer was given. A pair with no row is a paper that reviewer was never given: a model is given no paper that is only a PDF it can't read, someone added after screening began is given none settled before they came, and where fewer people are on each paper than there are, each person is given a share.";
 /** The columns of the votes file, each with what it holds. `criteria` stands for one column for each criterion. */
 export const VOTE_GUIDE = {
   paper_id: PAPER_GUIDE.paper_id,
@@ -367,6 +369,8 @@ export function methodsOf(out: Taken) {
   const everyModel = [...models, ...offModels];
   // The people who joined after it began were given only what was still open then.
   const late = people.filter((person) => later(screening, person.addedAt));
+  // Anyone else given fewer records than there are, whatever kept one from them: said with how many, so the claim is never wider than what they were given.
+  const short = each >= people.length ? people.filter((person) => !late.includes(person) && (person.tally?.dealt ?? kept) < kept) : [];
   // A model given fewer records than there are: none settled before it was added, and none that is only a PDF it can't read.
   const pdfs = pdfsOf(screening.sources);
   const modelsShort = everyModel.flatMap((model) => {
@@ -383,7 +387,7 @@ export function methodsOf(out: Taken) {
     // Said of the records, not of work done: true before the first vote and after the last.
     `${partial ? "Records were" : `Each record ${is}`} assessed on ${partial ? "title and abstract" : "its title and abstract"}${screening.criteria.length ? ` against ${plural(screening.criteria.length, "criterion", "criteria")}, ${screening.criteria.filter((c) => c.must).length} of which a record ${running ? "has" : "had"} to meet to be included` : ""}.${filed ? ` ${plural(filed, "record", "records")} with no abstract ${filed === 1 ? is : are} assessed on ${filed === 1 ? "its" : "their"} full text instead.` : ""}`,
     // Who a record is given to, which is the method. How many of them voted is in the votes themselves: a record can be settled before each has.
-    readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to each record${late.length ? " still open when they joined" : ""}${screening.rule.blind === "after" ? `. A reviewer ${running ? "does" : "did"} not see the other votes on a record before casting their own` : ""}.${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
+    readers ? `${readers} ${one(each >= people.length ? people.length : each)} assigned to ${short.length ? "the records" : `each record${late.length ? " still open when they joined" : ""}`}${screening.rule.blind === "after" ? `. A reviewer ${running ? "does" : "did"} not see the other votes on a record before casting their own` : ""}.${short.length ? ` ${short.map((person) => `${person.name} was given ${num(person.tally?.dealt ?? 0)} of the ${num(kept)}`).join(", and ")}.` : ""}${late.length ? ` ${listed(late.map((person) => person.name))} joined after screening began and ${late.length === 1 ? "was" : "were"} given only records still open then.` : ""}` : "No human reviewer was assigned to the records.",
     everyModel.length ? `${everyModel.length === 1 ? "One AI model" : `${everyModel.length} AI models`} (${everyModel.map((m) => m.name).join(", ")}) ${running && !offModels.length ? (models.length === 1 ? "votes" : "vote") : running ? "have voted" : "voted"} on the records${people.length ? ` as ${everyModel.length === 1 ? "an additional reviewer" : "additional reviewers"}` : ""}, giving an answer for every criterion${unread ? `; ${plural(unread, "reading", "readings")} by a model failed, and ${unread === 1 ? "that record" : "those records"} ${one(unread)} decided by the other reviewers` : ""}.${offModels.length ? ` ${listed(offModels.map((m) => m.name))} ${offModels.length === 1 ? "was" : "were"} taken off after screening began, and ${offModels.length === 1 ? "its" : "their"} votes cast until then were kept.` : ""}${modelsShort.length ? ` ${modelsShort.join(" ")}` : ""}` : "No AI model took part.",
     screening.rule.settle === "all" ? `A record ${is} settled once all of its reviewers ${running ? "have" : "had"} voted and agree${running ? "" : "d"}, and disagreements ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "disagreement", "disagreements")} ${one(counts.conflict)} still to be settled` : ""}.` : screening.rule.settle === "most" ? `A record ${is} settled by the majority of its reviewers once all of them ${running ? "have" : "had"} voted, and records with no majority ${running ? "go" : "went"} to ${settler}${counts.conflict ? `; ${plural(counts.conflict, "such record", "such records")} ${one(counts.conflict)} still to be settled` : ""}.` : `The first vote on a record ${running ? "settles" : "settled"} it.`,
     lateCriteria.length ? `${lateCriteria.length === 1 ? "One criterion was" : `${lateCriteria.length} criteria were`} added after screening began: votes already cast were kept, and settled records kept their result${models.length ? `. The AI models answered ${lateCriteria.length === 1 ? "it" : "them"} on the records still open` : ""}.` : "",
@@ -422,7 +426,7 @@ export async function recordOf(convex: ConvexReactClient, workspaceId: Id<"works
   const since = (when: number) => iso(Math.max(when, screening.createdAt));
   return {
     exported: { at: iso(at), by: nameOn(screening, me), ...(hidden.votes ? { left_out: `${plural(hidden.votes, "vote", "votes")} on ${plural(hidden.papers, "paper", "papers")}, hidden from ${nameOn(screening, me)}, who had not voted on ${hidden.papers === 1 ? "it" : "them"} yet` } : {}) },
-    guide: { papers: PAPER_GUIDE, votes: VOTE_GUIDE },
+    guide: { papers: PAPER_GUIDE, votes: VOTE_GUIDE, vote_rows: VOTE_ROWS },
     screening: {
       id: screening.id,
       name: screening.name,

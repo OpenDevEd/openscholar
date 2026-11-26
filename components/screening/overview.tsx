@@ -222,7 +222,7 @@ function Yours({ open }: { open: Open }) {
         })}
       </span>
       {/* The papers of theirs that still wait for someone else, where any paper still waits. */}
-      {open.counts.waiting ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
+      {open.counts.waiting && !screening.finishedAt ? <NextLink href={papersHref(screening.id, { reviewer: open.me, result: "waiting" })} className={cn(INLINE_LINK, "min-w-0 font-normal text-muted-foreground max-sm:basis-full")}>{t("yours.stillWait")}</NextLink> : null}
     </div>
   );
 }
@@ -522,7 +522,7 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
               <span className="truncate">{reading ? (heldBy ? tp(`modelsSay.${heldBy}.row`) : t("row.reading")) : t("row.creditsSpent", { credits: words.credits(open.spent(reviewer)) })}</span>
             </p>
           ) : (
-            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? words.t("person.invited") : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
+            <p className="truncate text-xs text-muted-foreground">{reviewer.email ? words.t("person.invited") : assigned && done === assigned ? t("row.done") : reviewer.reminded ? t("row.reminded", { ago: words.ago(reviewer.reminded) }) : mine && !screening.finishedAt ? t("row.activeNow") : t("row.added", { ago: words.ago(reviewer.addedAt) })}</p>
           )}
         </div>
       </div>

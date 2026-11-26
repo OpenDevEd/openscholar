@@ -536,8 +536,8 @@ export function ScreeningForm({ id }: { id?: string }) {
   // The papers each model has still to read: all of them for a new screening, and for a running one the ones still open that it hasn't got to.
   const ahead = (model: Reviewer) => (fresh ? readableBy(model.model!, papers, pdfs) : (preview.models[model.id]?.ahead ?? preview.joining[model.id]?.reads ?? model.tally?.waiting ?? 0) + promisedNew);
   const due = (model: Reviewer) => readingCredits(model.model!, ahead(model), pdfs);
-  // A model with nothing left to read that it can read: never while the change is counted, and never one that is given no PDF it can't read.
-  const allRead = (model: Reviewer) => known && !fresh && papers > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers;
+  // A model on it with nothing left to read that it can read: never while the change is counted, never one that is given no PDF it can't read, and never one only being added, which the lines under Changes speak for.
+  const allRead = (model: Reviewer) => known && !fresh && papers > 0 && !due(model) && !pdfsMissed(model.model!, pdfs).papers && Boolean(saved?.reviewers.some((one) => one.id === model.id && !one.left));
   // How much of what the models still cost is the papers they are sent as PDFs: said beside the PDFs' pages, where a price a paper times the papers falls short of the total.
   const pdfCost = models.reduce((sum, model) => sum + pdfReadingCredits(model.model!, ahead(model), pdfs), 0);
   // What a save has each model read at once, and pay for: a criterion added to a running screening is answered on the open papers it has read, and a check of the settled papers opens some it had passed over.
