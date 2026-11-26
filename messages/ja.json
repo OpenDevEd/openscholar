@@ -9349,9 +9349,7 @@
         "unsureBelow": "65% 未満は確信なし",
         "help": "モデルは各回答の確信度を 0〜100% で示します。65% 未満なら、その回答に頼る前に要約を読んでください。",
         "unsure": "確信なし: 確信度 {sure, number, percent}",
-        "sure": "確信度 {sure, number, percent}",
-        "noSentence": "この回答について、要約のどの文も挙げていません。",
-        "noSentencePdf": "この論文は PDF で読み取りました。モデルが文を挙げるのは、要約を読んだ場合だけです。"
+        "sure": "確信度 {sure, number, percent}"
       }
     },
     "sources": {

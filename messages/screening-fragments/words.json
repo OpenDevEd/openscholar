@@ -104,7 +104,7 @@
     "means": {
       "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
       "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
-      "one": "A paper is settled by the first vote on it, so there is never a conflict."
+      "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it: a model's vote settles only a paper no person has."
     },
     "says": {
       "all": "Settled when all agree",

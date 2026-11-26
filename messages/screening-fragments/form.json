@@ -295,7 +295,7 @@
     "always": "At any time",
     "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
     "addReviewer": "Add a reviewer to see how a paper is settled.",
-    "modelSettles": "A model's vote can settle a paper before any person votes."
+    "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides."
   },
   "goesHelp": "Papers whose result is Included are added to the collection you pick, in your library or in a community, with the stars from Scoring. Nowhere keeps them in the screening only.",
   "summaryLabel": "Summary",

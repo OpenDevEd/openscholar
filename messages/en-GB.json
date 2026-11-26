@@ -8355,7 +8355,7 @@
         "always": "At any time",
         "withVotes": "{count, plural, one {With # vote on a paper, for example} other {With # votes on a paper, for example}}",
         "addReviewer": "Add a reviewer to see how a paper is settled.",
-        "modelSettles": "A model's vote can settle a paper before any person votes."
+        "modelSettles": "A model's vote settles only the papers no person is given. On the others, the first person's vote decides."
       },
       "goesHelp": "Papers whose result is Included are added to the collection you pick, in your library or in a community, with the stars from Scoring. Nowhere keeps them in the screening only.",
       "summaryLabel": "Summary",
@@ -9349,9 +9349,7 @@
         "unsureBelow": "Unsure below 65%",
         "help": "The model rates each of its answers from 0 to 100%. Below 65%, read the abstract before you rely on that answer.",
         "unsure": "Unsure: {sure, number, percent} sure",
-        "sure": "{sure, number, percent} sure",
-        "noSentence": "It named no sentence of the abstract for this answer.",
-        "noSentencePdf": "It read this paper as its PDF. A model names a sentence only where it reads an abstract."
+        "sure": "{sure, number, percent} sure"
       }
     },
     "sources": {
@@ -9577,7 +9575,7 @@
         "means": {
           "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
           "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
-          "one": "A paper is settled by the first vote on it, so there is never a conflict."
+          "one": "A paper is settled by the first vote on it, so there is never a conflict. Where a person is given the paper, the first person's vote settles it: a model's vote settles only a paper no person has."
         },
         "says": {
           "all": "Settled when all agree",

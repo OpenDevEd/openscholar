@@ -38,9 +38,9 @@ export type Projected = {
 
 /** A place as the rule reads it. A model's decision follows its answers under the criteria as they are; a person's is the one they gave. */
 export function ballotOf(place: Place, criteria: Pick<Criterion, "key" | "must">[]): Ballot & { decision?: Decision } {
-  if (place.status !== "cast") return { status: place.status };
+  if (place.status !== "cast") return { status: place.status, kind: place.kind };
   const voted = place.kind === "model" && place.answers ? decide(place.answers, criteria) : { decision: place.decision, reason: place.reason };
-  return { status: "cast", decision: voted.decision, reason: voted.reason, at: place.at, answers: place.answers };
+  return { status: "cast", decision: voted.decision, reason: voted.reason, at: place.at, answers: place.answers, kind: place.kind };
 }
 
 /**

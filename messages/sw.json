@@ -9350,9 +9350,7 @@
         "unsureBelow": "Haina uhakika chini ya 65%",
         "help": "Modeli inakadiria kila jibu lake kutoka 0 hadi 100%. Chini ya 65%, soma muhtasari kabla ya kutegemea jibu hilo.",
         "unsure": "Haina uhakika: uhakika {sure, number, percent}",
-        "sure": "Uhakika {sure, number, percent}",
-        "noSentence": "Haikutaja sentensi yoyote ya muhtasari kwa jibu hili.",
-        "noSentencePdf": "Ilisoma makala hii kutoka PDF yake. Modeli inataja sentensi pale tu inaposoma muhtasari."
+        "sure": "Uhakika {sure, number, percent}"
       }
     },
     "sources": {

@@ -9350,9 +9350,7 @@
         "unsureBelow": "Onseker onder 65%",
         "help": "Die model gee elkeen van sy antwoorde ’n telling van 0 tot 100%. Onder 65%, lees die opsomming voordat jy op daardie antwoord staatmaak.",
         "unsure": "Onseker: {sure, number, percent} seker",
-        "sure": "{sure, number, percent} seker",
-        "noSentence": "Dit het geen sin uit die opsomming vir hierdie antwoord genoem nie.",
-        "noSentencePdf": "Dit het hierdie artikel as sy PDF gelees. ’n Model noem net ’n sin waar dit ’n opsomming lees."
+        "sure": "{sure, number, percent} seker"
       }
     },
     "sources": {

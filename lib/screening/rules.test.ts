@@ -23,6 +23,15 @@ describe("where a paper stands on its votes", () => {
   it("is settled by the earliest vote where the first vote decides, whoever else has still to vote", () => {
     expect(settle("one", [waiting, cast("exclude", 5), cast("include", 2)])).toBe("include");
   });
+  it("is settled by a person's vote, not a model's, where the first vote decides and a person is given the paper", () => {
+    const person = (ballot: Ballot): Ballot => ({ ...ballot, kind: "person" });
+    const model = (ballot: Ballot): Ballot => ({ ...ballot, kind: "model" });
+    // The model read it first: the paper still waits for its person.
+    expect(settle("one", [person(waiting), model(cast("exclude", 1))])).toBe("waiting");
+    expect(settle("one", [person(cast("include", 9)), model(cast("exclude", 1))])).toBe("include");
+    // No person has it: the model's vote decides.
+    expect(settle("one", [model(cast("exclude", 1)), model(cast("include", 2))])).toBe("exclude");
+  });
   it("waits for every reviewer where all or most must agree", () => {
     expect(settle("all", [cast("include"), waiting])).toBe("waiting");
     expect(settle("most", [cast("include"), cast("include"), waiting])).toBe("waiting");

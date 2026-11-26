@@ -9350,9 +9350,7 @@
         "unsureBelow": "Inseguro por debajo del 65 %",
         "help": "El modelo puntúa cada una de sus respuestas de 0 a 100 %. Por debajo del 65 %, lea el resumen antes de fiarse de esa respuesta.",
         "unsure": "Inseguro: {sure, number, percent} de seguridad",
-        "sure": "{sure, number, percent} de seguridad",
-        "noSentence": "No señaló ninguna frase del resumen para esta respuesta.",
-        "noSentencePdf": "Leyó este artículo como su PDF. Un modelo señala una frase solo cuando lee un resumen."
+        "sure": "{sure, number, percent} de seguridad"
       }
     },
     "sources": {

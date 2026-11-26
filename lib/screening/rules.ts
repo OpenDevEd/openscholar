@@ -60,15 +60,18 @@ export function decide(answers: Record<string, Answer>, criteria: Pick<Criterion
  * One reviewer's place on a paper. `waiting` and `closed` are places nobody has voted from yet, `failed` is a model
  * that couldn't read the paper and has no say in it, and `discarded` is a vote thrown out with its reviewer.
  */
-export type Ballot = { status: "waiting" | "cast" | "failed" | "closed" | "discarded"; decision?: Decision; at?: number; reason?: string; answers?: Record<string, Answer> };
+export type Ballot = { status: "waiting" | "cast" | "failed" | "closed" | "discarded"; decision?: Decision; at?: number; reason?: string; answers?: Record<string, Answer>; /** Whose place it is: under "first vote decides" a person given the paper decides it, not a model. */ kind?: "person" | "model" };
 
 /** Where a paper stands on its votes, under the rule. A person who settled it outranks this, and so does a result held through a change of settings. */
 export function settle(rule: Rule["settle"], ballots: Ballot[]): Result {
   const cast = ballots.filter((one) => one.status === "waiting" || one.status === "cast" || one.status === "closed");
   const given = cast.filter((one): one is Ballot & { decision: Decision } => one.status === "cast" && one.decision !== undefined);
   if (!given.length) return "waiting";
-  // The first vote is the earliest one cast, whoever's it is.
-  if (rule === "one") return given.reduce((first, vote) => ((vote.at ?? 0) < (first.at ?? 0) ? vote : first)).decision;
+  // The first vote is the earliest one cast. Where a person is given the paper it is the first person's: a model reads faster than anyone, and its vote would settle every paper before its people got to one. A model's vote decides only a paper no person has.
+  if (rule === "one") {
+    const deciding = cast.some((one) => one.kind === "person") ? given.filter((one) => one.kind === "person") : given;
+    return deciding.length ? deciding.reduce((first, vote) => ((vote.at ?? 0) < (first.at ?? 0) ? vote : first)).decision : "waiting";
+  }
   if (given.length < cast.length) return "waiting";
   const tally = DECISIONS.map((decision) => given.filter((vote) => vote.decision === decision).length);
   const top = Math.max(...tally);

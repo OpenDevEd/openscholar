@@ -1403,7 +1403,7 @@ export function ScreeningForm({ id }: { id?: string }) {
                 ) : <p className="text-xs text-muted-foreground">{t("decided.addReviewer")}</p>}
               </div>
             </div>
-            {draft.rule.settle === "one" && models.length ? <p className="rounded-2xl bg-warning/10 px-4 py-2.5 text-sm ink-warning">{t("decided.modelSettles")}</p> : null}
+            {draft.rule.settle === "one" && models.length ? <p className="rounded-2xl bg-inset px-4 py-2.5 text-sm text-muted-foreground">{t("decided.modelSettles")}</p> : null}
           </Section>
 
           <Section

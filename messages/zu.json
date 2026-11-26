@@ -9349,9 +9349,7 @@
         "unsureBelow": "Ayiqinisekile ngaphansi kuka-65%",
         "help": "Imodeli ilinganisa impendulo yayo ngayinye kusuka ku-0 kuya ku-100%. Ngaphansi kuka-65%, funda isifingqo ngaphambi kokuthi uthembele kuleyo mpendulo.",
         "unsure": "Ayiqinisekile: iqiniseke ngo-{sure, number, percent}",
-        "sure": "Iqiniseke ngo-{sure, number, percent}",
-        "noSentence": "Ayishongo musho wesifingqo kule mpendulo.",
-        "noSentencePdf": "Ifunde leli phepha njenge-PDF yalo. Imodeli isho umusho kuphela lapho ifunda isifingqo."
+        "sure": "Iqiniseke ngo-{sure, number, percent}"
       }
     },
     "sources": {

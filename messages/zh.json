@@ -9349,9 +9349,7 @@
         "unsureBelow": "低于 65% 为不确定",
         "help": "模型为每个答案给出 0 到 100% 的把握度。低于 65% 时，请先阅读摘要再依赖该答案。",
         "unsure": "不确定：把握度 {sure, number, percent}",
-        "sure": "把握度 {sure, number, percent}",
-        "noSentence": "对这个答案，它没有指出摘要中的任何句子。",
-        "noSentencePdf": "它按 PDF 读取了这篇论文。模型只有在读取摘要时才会指出句子。"
+        "sure": "把握度 {sure, number, percent}"
       }
     },
     "sources": {

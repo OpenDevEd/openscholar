@@ -1257,7 +1257,7 @@ export function Evidence({ paper, reviewer, vote, criterion }: { paper: Pick<Pap
           <AnswerMark answer={answer} label={criterion.short} />
         </span>
       </div>
-      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : <p className="text-sm text-muted-foreground">{paper.abstract?.trim() ? t("evidence.noSentence") : t("evidence.noSentencePdf")}</p>}
+      {quote ? <p className="flex gap-2 text-sm leading-5"><Quote className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" /><span>{quote}</span></p> : null}
     </div>
   );
 }

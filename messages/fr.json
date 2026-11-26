@@ -9349,9 +9349,7 @@
         "unsureBelow": "Peu sûr sous 65 %",
         "help": "Le modèle note chacune de ses réponses de 0 à 100 %. Sous 65 %, lisez le résumé avant de vous fier à cette réponse.",
         "unsure": "Peu sûr : {sure, number, percent}",
-        "sure": "Sûr à {sure, number, percent}",
-        "noSentence": "Il n'a cité aucune phrase du résumé pour cette réponse.",
-        "noSentencePdf": "Il a lu cet article depuis son PDF. Un modèle ne cite une phrase que lorsqu'il lit un résumé."
+        "sure": "Sûr à {sure, number, percent}"
       }
     },
     "sources": {

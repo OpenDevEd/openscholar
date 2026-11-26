@@ -9350,9 +9350,7 @@
         "unsureBelow": "Unsicher unter 65 %",
         "help": "Das Modell bewertet jede seiner Antworten von 0 bis 100 %. Lesen Sie unter 65 % das Abstract, bevor Sie sich auf diese Antwort verlassen.",
         "unsure": "Unsicher: {sure, number, percent} sicher",
-        "sure": "{sure, number, percent} sicher",
-        "noSentence": "Es hat für diese Antwort keinen Satz aus dem Abstract genannt.",
-        "noSentencePdf": "Es hat diesen Artikel als PDF gelesen. Ein Modell nennt einen Satz nur, wenn es ein Abstract liest."
+        "sure": "{sure, number, percent} sicher"
       }
     },
     "sources": {
