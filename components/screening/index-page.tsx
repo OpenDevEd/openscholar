@@ -12,7 +12,7 @@ import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configura
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { PageWrapper } from "@/components/PageWrapper";
-import { Chip } from "@/components/screening/parts";
+import { Chip } from "./parts";
 import { Segmented } from "@/components/settings/parts";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { plural, num, inOrder, youOr, livingSays, RESULTS, RESULT_LABEL, ago, day, firstName, lookerLabel, inQuotes } from "./data";
 import { newHref, overviewHref, papersHref, screenHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays, type Over } from "./overlays";
-import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./parts";
+import { Faces, FilterMenu, Help, LinkChip, votesBy, RESULT_ICON, ResultBar, ResultChip, TabCount, tinted, MODELS_READING, MODELS_SAY, FIGURE_LINK } from "./pieces";
 import { toReviewer, useOpenScreening, type Summary } from "./store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 

@@ -1,4 +1,4 @@
-import { ScreeningForm } from "@/components/screening-mock/screening-form";
+import { ScreeningForm } from "@/components/screening/screening-form";
 
 // A running or finished screening's settings.
 export default async function ScreeningSettingsPage({ params }: { params: Promise<{ id: string }> }) {

@@ -21,7 +21,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { RESULTS, type Result, num, plural, slug, youOr, bylineOf, DECISION_LABEL, RESULT_LABEL, ago, failedLabel, questionOf, listed, inOrder, nameOn, votingReviewers, emptyResult } from "./data";
 import { papersHref } from "./links";
-import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./parts";
+import { FilterMenu, RESULT_STYLE, EmptyNote, Help, Panel, ShutNote, QuestionName, Reason, ResultChip, ReviewerMark, ReviewerName, Section, VoteMark, OpenPapersChips } from "./pieces";
 import { bibOf, everyPaper, papersCsv, recordOf, risOf, save, voteRows, votesCsv, type Taken, fileName, flowOf, flowSvg, methodsOf, PAPER_GUIDE, VOTE_GUIDE } from "./export";
 import { useFigures, type Open } from "./store";
 

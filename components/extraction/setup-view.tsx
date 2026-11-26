@@ -1,6 +1,6 @@
 "use client";
 
-// New extraction (#690), laid out as a new screening is (components/screening/setup-view.tsx) and
+// New extraction (#690), laid out as a screening's form is (components/screening/screening-form.tsx) and
 // drawn from the same sources, any number of them: searches, collections, saved papers,
 // screenings, Evidence Libraries' records, and PDFs of your own. Each source is a paper set and the range of it to read, as
 // screening reads them. Every source picked lands in the tray at the top of Papers: one bar, a
@@ -13,8 +13,7 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
 import { AiIcon, AlignLeft, Camera, FileText, GripVertical, Hash, List as ListIcon, Plus, ToggleLeft, Trash2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
-import { jobName } from "@/components/screening/job-view";
-import { AnimatedNumber, Chip, SOURCE_ICON } from "@/components/screening/parts";
+import { AnimatedNumber, Chip, SOURCE_ICON, jobName } from "@/components/screening/parts";
 import { PaperScope, SourceRow, type Scope } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
 import { ModelsInUse } from "@/components/models/models-in-use";

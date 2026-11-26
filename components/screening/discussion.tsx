@@ -20,7 +20,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { activeReviewers, ago, firstName, personIn, waitingQuestions, type Paper, modelsOf } from "./data";
-import { Help, Section, ShutChip, ShutNote, StateChip } from "./parts";
+import { Help, Section, ShutChip, ShutNote, StateChip } from "./pieces";
 import type { Open } from "./store";
 
 /** A choice of who a line is for. */

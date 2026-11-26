@@ -8,7 +8,7 @@ import { Asterisk, Check, CircleHelp, Star, TriangleAlert, X, type AppIcon } fro
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { OUTCOMES, type Answer, type Outcome, type PaperSet, type Phase } from "@/lib/screening/setup";
+import { OUTCOMES, type Answer, type Job, type JobRow, type Outcome, type PaperSet, type Phase } from "@/lib/screening/setup";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 
 export const OUTCOME: Record<Outcome, { bar: string; text: string; icon: AppIcon }> = {
@@ -164,4 +164,17 @@ export function AnimatedNumber({ value }: { value: number }) {
     else spring.set(value);
   }, [spring, value, reduceMotion]);
   return <motion.span className="tabular-nums">{text}</motion.span>;
+}
+
+type Translate = ReturnType<typeof useTranslations<"screeningPage">>;
+
+/** What a screening is called where another page lists it: the name it was given, else its papers' set, as it was named then. */
+export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "name" | "set" | "label"> & Pick<Job, "source">>, date: (at: number) => string) {
+  if (job.name) return job.name;
+  // Someone it's shared with is told the kind of its papers' set, not which one (`source`).
+  const kind = job.set?.kind ?? job.source;
+  if (kind === "saved") return t("savedPapers");
+  if (!job.label) return t("jobOn", { date: date(job.createdAt) });
+  const name = job.label.charAt(0).toUpperCase() + job.label.slice(1);
+  return kind === "screening" ? t("includedIn", { name }) : name;
 }

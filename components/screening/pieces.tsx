@@ -9,7 +9,7 @@ import PlainLink from "next/link";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { ArrowRight, Check, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, CirclePause, Clock, Coins, ExternalLink, Eye, FileText, GitCompare, Hash, Hourglass, Lock, Mail, MessagesSquare, Minus, Quote, RefreshCw, RotateCcw, Search, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { getModelIcon } from "@/components/icons/provider-icons";
-import { Chip, RequiredMark, SOURCE_ICON } from "@/components/screening/parts";
+import { Chip, RequiredMark, SOURCE_ICON } from "./parts";
 import { tintOf } from "@/components/settings/model-map";
 import { AVATARS_FADE_IN } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

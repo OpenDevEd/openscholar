@@ -11,7 +11,7 @@ import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-con
 import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { PageWrapper } from "@/components/PageWrapper";
-import { AnimatedNumber, Chip, Meter } from "@/components/screening/parts";
+import { AnimatedNumber, Chip, Meter } from "./parts";
 import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -32,7 +32,7 @@ import type { ExportTab } from "./dialogs";
 import { useKept } from "./drafts";
 import { SCREENINGS, SCREENINGS_CRUMB, overviewHref, papersHref, screenHref, settingsHref } from "./links";
 import { ScreeningMenuItems, useScreeningOverlays } from "./overlays";
-import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./parts";
+import { Faces, votesBy, StateChip, Help, LinkChip, TONE, TabCount, type Tone, MODELS_SAY, INLINE_LINK } from "./pieces";
 import { useOpenScreening, type Open, modelsDone, perPaper } from "./store";
 
 type View = "overview" | "screen" | "papers" | "settings";

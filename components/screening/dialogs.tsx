@@ -28,7 +28,7 @@ import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } f
 import { changeOpens, changeSays } from "./activity-words";
 import { PERSON_SAYS, VOTES_HIDDEN_SAYS, readBy, ago, inOrder, invitedReviewer, lookOf, modelReviewer, modelsOf, num, peopleOf, personReviewer, plural, type Reviewer } from "./data";
 import { papersHref } from "./links";
-import { Help, ReviewerMark, ReviewerName, ShutNote } from "./parts";
+import { Help, ReviewerMark, ReviewerName, ShutNote } from "./pieces";
 import { perPaper, type Open } from "./store";
 import { AddModel } from "./team";
 

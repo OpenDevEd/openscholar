@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ScreeningsIndex } from "@/components/screening-mock/index-page";
+import { ScreeningsIndex } from "@/components/screening/index-page";
 
 // The workspace's screenings, the ones waiting on the person first. An address from before each screening had its
 // own page still opens what it named: a screening, the form on a search, or the form on what a community handed over.

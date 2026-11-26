@@ -24,7 +24,7 @@ import { ActivitySheet, PeopleDialog, useSharing, type ExportTab } from "./dialo
 import { ExportDialog } from "./export-dialog";
 import { EffectList, NO_PREVIEW, effectLines } from "./effects";
 import { newHref, settingsHref } from "./links";
-import { Panel, ReviewerMark, OpenPapersChips } from "./parts";
+import { Panel, ReviewerMark, OpenPapersChips } from "./pieces";
 import { credits, paperCredits, type Open, perPaper } from "./store";
 import { ConfirmChange } from "./team";
 

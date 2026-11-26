@@ -6,6 +6,7 @@ import type { MutationCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { internalMutation } from "../lib/functions";
 import { defaultStars, shortOf, type Answer } from "../../lib/screening/rules";
+import { unglued } from "../../lib/papers/abstract-sections";
 import { bookkeepLater } from "../screening/bookkeeping";
 import { doiKeyOf, titleKeyOf } from "../screening/gathering";
 
@@ -88,6 +89,8 @@ export const papers = internalMutation({
         ...(sourceId ? { sourceId } : {}),
         ...(kept ? { kept } : {}),
         titleKey: titleKeyOf(paper.title, paper.publicationYear),
+        // Section headings an index ran into the sentence after them are set apart, as they are for a paper that arrives now.
+        ...(paper.abstract && unglued(paper.abstract) !== paper.abstract ? { abstract: unglued(paper.abstract) } : {}),
         ...(doiKeyOf(paper.doi) ? { doiKey: doiKeyOf(paper.doi) } : {}),
         // Stamped for the bookkeeping worker, which counts it where it stands.
         doneAt: ctx.db.vars.commitTs,

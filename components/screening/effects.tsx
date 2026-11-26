@@ -10,11 +10,11 @@ import { useState, type ComponentProps } from "react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { ArrowRight, ChevronDown, Coins, Lock, Mail, Minus, RefreshCw, RotateCcw, UserPlus, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { Chip } from "@/components/screening/parts";
+import { Chip } from "./parts";
 import { cn } from "@/lib/utils";
 import { collectionName, num, listed, plural, readersOf, EVERY_LABEL, RESULT_LABEL, activeReviewers, defaultScoring, growing, modelsOf, nameOn, type Criterion, type Result, type Reviewer, type Screening, inQuotes } from "./data";
 import { papersHref } from "./links";
-import { ResultChip, INLINE_LINK, ShutNote } from "./parts";
+import { ResultChip, INLINE_LINK, ShutNote } from "./pieces";
 import { credits, paperCredits } from "./store";
 
 /** The part of the settings a line is about, by its anchor there. */

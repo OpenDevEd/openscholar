@@ -11,8 +11,8 @@ import { toast } from "sonner";
 import { Check, ChevronRight, ChevronsUpDown, FileSpreadsheet, FileX, Folder, Hash, Library, Plus, Trash2, TriangleAlert, Upload, UserRound, Users, X, type AppIcon } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
-import { LibrarySources, useLibrarySources } from "@/components/screening/library-sources";
-import { Chip, RequiredMark } from "@/components/screening/parts";
+import { LibrarySources, useLibrarySources } from "./library-sources";
+import { Chip, RequiredMark } from "./parts";
 import { pagerOf } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
@@ -35,7 +35,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { hash, num, plural, type Source, type SourceSet } from "./data";
-import { Help, INLINE_LINK, StateChip } from "./parts";
+import { Help, INLINE_LINK, StateChip } from "./pieces";
 
 const PAGE = 5;
 /** A row's height with its line: a list keeps its page's height on a last page that holds fewer. */
