@@ -6,13 +6,14 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { planLimit } from "../billing/accounts";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireActiveUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
 import { MAX_QUESTIONS, MAX_STARS } from "../lib/listCaps";
-import { defineUserAction, defineUserMutation, userAction, userMutation } from "../lib/userActions";
+import { workspaceAction, workspaceMutation } from "../lib/userActions";
 import { actorIn, requireMakerOrAdmin } from "../workspaces/actor";
 import { usableFor } from "../../lib/ai/tasks";
 import { defaultPoints, defaultStars, shortOf, type Criterion } from "../../lib/screening/rules";
@@ -38,9 +39,11 @@ export const ruleInput = v.object({ each: v.union(v.number(), v.literal("all")),
 export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(), detail: v.optional(v.string()), first: v.optional(v.number()), last: v.optional(v.number()) });
 export const modelInput = v.object({ model: v.string(), effort: v.optional(effortValidator) });
 
-/** The most sources and models one screening has. The models' number is the plan's, where it sets one. */
+/** The most sources one screening has, and the most models where its workspace's plan sets no number. */
 export const MAX_SOURCES = 20;
-export const MODELS_A_SCREENING = 5;
+const MODELS_A_SCREENING = 5;
+/** How many models one screening in the workspace may have reading: its plan's number (lib/billing/plans.ts `screening_models`). */
+export const modelsLimit = async (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) => (await planLimit(ctx, workspaceId, "screening_models")) ?? MODELS_A_SCREENING;
 
 /** Criteria as a screening keeps them, from what a form sent: checked, trimmed, each with a key that never changes. */
 export function criteriaFrom(sent: Infer<typeof criterionInput>[], kept: Criterion[] = [], now = Date.now()): Criterion[] {
@@ -114,7 +117,8 @@ export const open = internalMutation({
     if (!sources.length || sources.length > MAX_SOURCES) throw createError("VALIDATION_ERROR", `A screening reads 1 to ${MAX_SOURCES} sources.`);
     if (!people.length && !models.length) throw createError("VALIDATION_ERROR", "Add at least one reviewer: a person or a model.");
     if (new Set(people).size !== people.length || new Set(models.map((one) => `${one.model}:${one.effort ?? ""}`)).size !== models.length) throw createError("VALIDATION_ERROR", "Each reviewer is on a screening once.");
-    if (models.length > MODELS_A_SCREENING) throw createError("VALIDATION_ERROR", `A screening runs up to ${MODELS_A_SCREENING} models.`);
+    const most = await modelsLimit(ctx, workspaceId);
+    if (models.length > most) throw createError("VALIDATION_ERROR", `Your plan runs up to ${most} models on a screening.`);
     if (people.length + models.length > MAX_REVIEWERS) throw createError("VALIDATION_ERROR", `A screening has up to ${MAX_REVIEWERS} reviewers.`);
     const now = Date.now();
     const criteria = criteriaFrom(sent, [], now);
@@ -172,39 +176,36 @@ export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, us
   return await ctx.db.insert("screeningSources", { jobId, set, name: name.trim().slice(0, SCREENING_TEXT.name) || "Papers", ...(detail?.trim() ? { detail: detail.trim().slice(0, SCREENING_TEXT.name) } : {}), ...(first === undefined ? {} : { first }), ...(last === undefined ? {} : { last }), addedAt: now, addedBy: userId, state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0 });
 }
 
-export const createAction = defineUserAction({
-  path: "screening/screenings:create",
-  description:
-    "Starts a screening in the workspace: papers from one or more sources are given to its reviewers, people and AI models, who each vote include, maybe or exclude, and a rule settles each paper. " +
-    "It is made at once and its papers are read after, a step at a time. Models answer every criterion and are paid for from the workspace's credits, a paper at a time; people's votes cost nothing.",
+/**
+ * Starts a screening in the workspace: papers from one or more sources are given to its reviewers, people and AI
+ * models, who each vote include, maybe or exclude, and a rule settles each paper. It is made at once and its papers
+ * are read after, a step at a time. Models answer every criterion and are paid for from the workspace's credits, a
+ * paper at a time; people's votes cost nothing.
+ */
+export const create = workspaceAction({
   args: setup,
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  // The models read as papers arrive, each reading charged as it is made: nothing is held when it starts.
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: async (ctx, actor, args): Promise<{ jobId: Id<"screeningJobs"> }> => {
+  handler: async (ctx, actor, args): Promise<{ jobId: Id<"screeningJobs"> }> => {
     const { saveTo } = args;
     // A community collection it saves to, or takes papers out of, is one the person changes there: checked, or made, before the screening is.
     const pruned = args.prune ? args.sources.flatMap((source) => (source.set.kind === "evidenceLibrary" && "readerCollection" in source.set.source && source.set.source.readerCollection ? [{ libraryId: source.set.libraryId, collection: source.set.source.readerCollection }] : []))[0] : undefined;
     const pruneName = pruned ? await ctx.runAction(internal.evidenceLibraries.sourceActions.requireEditable, { userId: actor.userId, ...pruned }) : undefined;
     const libraryDestination = saveTo.kind === "libraryCollection" || saveTo.kind === "newLibraryCollection" ? await ctx.runAction(internal.evidenceLibraries.sourceActions.destination, { userId: actor.userId, saveTo }) : undefined;
-    return await ctx.runMutation(internal.screening.screenings.open, { userId: actor.userId, workspaceId: actor.workspaceId, author: actor.author, ...args, ...(libraryDestination ? { libraryDestination } : {}), ...(pruneName ? { pruneName } : {}) });
+    return await ctx.runMutation(internal.screening.screenings.open, { userId: actor.userId, workspaceId: actor.workspaceId, author: "user", ...args, ...(libraryDestination ? { libraryDestination } : {}), ...(pruneName ? { pruneName } : {}) });
   },
 });
-export const create = userAction(createAction);
 
 const byId = { jobId: v.id("screeningJobs") };
-const quiet = { spendsCredits: false, outsideEffect: false, undoable: false } as const;
 
-export const pauseAction = defineUserMutation({
-  path: "screening/screenings:pause",
-  description: "Holds a screening's models where they are: the papers they are reading are finished and paid for, and no more are started until someone lets them go on. People go on voting.",
+/**
+ * Holds a screening's models where they are: the papers they are reading are finished and paid for, and no more are
+ * started until someone lets them go on. People go on voting.
+ */
+export const pause = workspaceMutation({
   args: byId,
   returns: v.null(),
-  ...quiet,
-  run: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if (job.paused || job.finishedAt !== undefined) return null;
     await ctx.db.patch("screeningJobs", jobId, { paused: true, updatedAt: Date.now() });
@@ -213,15 +214,14 @@ export const pauseAction = defineUserMutation({
     return null;
   },
 });
-export const pause = userMutation(pauseAction);
 
-export const resumeAction = defineUserMutation({
-  path: "screening/screenings:resume",
-  description: "Lets a screening's models go on reading: after a pause, or once the workspace has credits again.",
+/**
+ * Lets a screening's models go on reading: after a pause, or once the workspace has credits again.
+ */
+export const resume = workspaceMutation({
   args: byId,
   returns: v.null(),
-  ...quiet,
-  run: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if ((!job.paused && !job.outOfCredits) || job.finishedAt !== undefined) return null;
     await ctx.db.patch("screeningJobs", jobId, { paused: undefined, outOfCredits: undefined, updatedAt: Date.now() });
@@ -230,15 +230,15 @@ export const resumeAction = defineUserMutation({
     return null;
   },
 });
-export const resume = userMutation(resumeAction);
 
-export const finishAction = defineUserMutation({
-  path: "screening/screenings:finish",
-  description: "Finishes a screening: nobody votes on it any more, its models stop, and a living one stops looking in its sources. Its papers and votes are kept, and it can be opened again.",
+/**
+ * Finishes a screening: nobody votes on it any more, its models stop, and a living one stops looking in its sources.
+ * Its papers and votes are kept, and it can be opened again.
+ */
+export const finish = workspaceMutation({
   args: byId,
   returns: v.null(),
-  ...quiet,
-  run: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if (job.finishedAt !== undefined) return null;
     const now = Date.now();
@@ -251,15 +251,14 @@ export const finishAction = defineUserMutation({
     return null;
   },
 });
-export const finish = userMutation(finishAction);
 
-export const reopenAction = defineUserMutation({
-  path: "screening/screenings:reopen",
-  description: "Opens a finished screening again: its reviewers vote on what is left, and its models go on reading.",
+/**
+ * Opens a finished screening again: its reviewers vote on what is left, and its models go on reading.
+ */
+export const reopen = workspaceMutation({
   args: byId,
   returns: v.null(),
-  ...quiet,
-  run: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if (job.finishedAt === undefined) return null;
     const now = Date.now();
@@ -269,35 +268,35 @@ export const reopenAction = defineUserMutation({
     return null;
   },
 });
-export const reopen = userMutation(reopenAction);
 
-export const renameAction = defineUserMutation({
-  path: "screening/screenings:rename",
-  description: "Gives a screening another name.",
+/**
+ * Gives a screening another name.
+ */
+export const rename = workspaceMutation({
   args: { ...byId, name: v.string() },
   returns: v.null(),
-  ...quiet,
-  run: async (ctx, actor, { jobId, name }) => {
+  handler: async (ctx, actor, { jobId, name }) => {
     const job = await requireMember(ctx, actor, jobId);
     const title = name.trim();
     if (!title || title.length > SCREENING_TEXT.name) throw createError("VALIDATION_ERROR", "Give the screening a name of up to 200 characters.");
-    if (title !== job.name) await ctx.db.patch("screeningJobs", jobId, { name: title, updatedAt: Date.now() });
+    if (title === job.name) return null;
+    await ctx.db.patch("screeningJobs", jobId, { name: title, updatedAt: Date.now() });
+    await logChange(ctx, actor, job, "renamed", { detail: title });
     return null;
   },
-  activity: ({ jobId, name }) => ({ kind: "screening", id: jobId, happened: "renamed", code: "renamed", detail: name.trim() }),
 });
-export const rename = userMutation(renameAction);
 
 /** Rows one step of a screening's deletion takes. */
 const DELETE_STEP = 100;
 
-export const removeAction = defineUserMutation({
-  path: "screening/screenings:remove",
-  description: "Deletes a screening with its papers, votes and discussion, for whoever started it or an admin of its workspace. Papers it saved to the library or a collection stay there. This can't be undone.",
+/**
+ * Deletes a screening with its papers, votes and discussion, for whoever started it or an admin of its workspace.
+ * Papers it saved to the library or a collection stay there. This can't be undone.
+ */
+export const remove = workspaceMutation({
   args: byId,
   returns: v.null(),
-  ...quiet,
-  run: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     requireMakerOrAdmin(actor, job.createdBy);
     // Finished first, so its models stop while its rows go.
@@ -306,7 +305,6 @@ export const removeAction = defineUserMutation({
     return null;
   },
 });
-export const remove = userMutation(removeAction);
 
 /** Deletes a screening's rows a step at a time, the screening itself last, so nothing is left that names it. */
 export const erase = internalMutation({

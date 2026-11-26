@@ -19,6 +19,13 @@ export const useGenerateScreeningQuestions = createAIHook(
   { task: 'extraction' },
 )
 
+export const useGenerateScreeningCriteria = createAIHook(
+  api.ai.actions.generateScreeningCriteria,
+  clientExecutor.generateScreeningCriteria,
+  undefined,
+  { task: 'extraction' },
+)
+
 export const useGenerateExtractionQuestions = createAIHook(
   api.ai.actions.generateExtractionQuestions,
   clientExecutor.generateExtractionQuestions,

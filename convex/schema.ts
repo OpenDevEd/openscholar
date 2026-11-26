@@ -1473,6 +1473,9 @@ export default defineSchema({
     titleKey: v.optional(v.string()),
     // How many lines its discussion has.
     messages: v.optional(v.number()),
+    // Its source was taken out of the screening: it is kept on record with its votes, and counted nowhere (`out`, once the bookkeeping worker has taken it out of the counts).
+    withdrawn: v.optional(v.literal(true)),
+    out: v.optional(v.literal(true)),
     // How far its reviewers are from agreeing: the votes that aren't on the side most of them took. What "most divided first" orders by.
     split: v.optional(v.number()),
   })
@@ -1540,6 +1543,8 @@ export default defineSchema({
     counts: v.optional(v.object({ include: v.number(), maybe: v.number(), exclude: v.number(), conflict: v.number() })),
     reasons: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS + 2),
     reviewers: capped(v.optional(v.record(v.id("screeningReviewers"), reviewerCountsValidator)), MAX_LIST_CAP),
+    // Papers kept on record whose source was taken out: its papers are the ones it placed, less these.
+    withdrawn: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
   // ═══════════════════════════════════════════════════════════════

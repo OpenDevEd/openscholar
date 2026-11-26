@@ -9,7 +9,7 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
-import { defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceMutation } from "../lib/userActions";
 import type { InWorkspace } from "../workspaces/actor";
 import { seesVotes } from "../../lib/screening/rules";
 import { standingOn } from "./access";
@@ -50,16 +50,17 @@ export const threadAction = defineUserQuery({
   },
 });
 export const thread = userQuery(threadAction);
+export const threadForAssistant = assistantQuery(threadAction);
 
-export const sayAction = defineUserMutation({
-  path: "screening/discussion:say",
-  description: "Writes a line in the discussion of one paper of a screening, for one of its reviewers or whoever settles its conflicts. With `to`, it is a question put to that person, who is on the screening: it waits on their list until they write on the paper.",
+/**
+ * Writes a line in the discussion of one paper of a screening, for one of its reviewers or whoever settles its
+ * conflicts. With `to`, it is a question put to that person, who is on the screening: it waits on their list until
+ * they write on the paper.
+ */
+export const say = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), text: v.string(), to: v.optional(v.id("users")) },
   returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, actor, { jobId, paperId, text, to }) => {
+  handler: async (ctx, actor, { jobId, paperId, text, to }) => {
     const place = await readable(ctx, actor, jobId, paperId);
     if (!place) throw createError("NOT_FOUND", "Paper not found");
     const { job, reviewer, paper } = place;
@@ -84,4 +85,3 @@ export const sayAction = defineUserMutation({
     return null;
   },
 });
-export const say = userMutation(sayAction);

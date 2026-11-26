@@ -10,10 +10,11 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { effortValidator } from "../aiModelConfig/validators";
 import { itemKey, moreValidator } from "../activity/validators";
-import { availableCredits } from "../billing/accounts";
+import { availableCredits, planLimit } from "../billing/accounts";
+import { modelsLimit } from "./screenings";
 import { countOf, screeningsOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
-import { defineUserQuery, userQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import schema from "../schema";
 import { grantOf, itemGuestsOf } from "../sharing/items";
 import { isFinal } from "../../lib/screening/rules";
@@ -54,6 +55,7 @@ async function workspaceOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspace
 const ASKED_SHOWN = 50;
 
 /** What a list's row and a screening's frame both say of it. */
+const aheadValidator = v.object({ id: v.id("screeningJobs"), name: v.string(), done: v.number(), of: v.number() });
 const summaryFields = {
   id: v.id("screeningJobs"),
   name: v.string(),
@@ -82,7 +84,9 @@ const summaryFields = {
   askedFirst: v.optional(v.id("screeningResults")),
   models: modelsStateValidator,
   // The screening whose models read before this one's, while its own wait for the workspace's slots.
-  ahead: v.optional(v.object({ id: v.id("screeningJobs"), name: v.string(), done: v.number(), of: v.number() })),
+  ahead: v.optional(aheadValidator),
+  // How many criteria it has: another screening can take them.
+  criteria: v.number(),
   // Its papers are still being fetched from its sources: how many have arrived.
   gathering: v.optional(v.object({ done: v.number(), by: v.optional(v.id("users")), first: v.boolean() })),
   activeAt: v.number(),
@@ -116,16 +120,21 @@ async function modelsNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, r
   if (job.outOfCredits) return { state: "credits" as const };
   if (!(progress?.running ?? 0)) {
     // None of its papers is being read: the workspace's slots are taken by a screening that started before it.
-    const head = await ctx.db.query("screeningVotes").withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", job.workspaceId).gte("waitingSince", 0)).first();
-    const ahead = head && head.jobId !== job._id ? await ctx.db.get("screeningJobs", head.jobId) : null;
-    if (ahead) {
-      // How far that one's models have read: the place of the slowest of them.
-      const [theirs, counted] = await Promise.all([reviewersOf(ctx, ahead._id), progressRow(ctx as QueryCtx, ahead._id)]);
-      const read = theirs.filter((one) => one.kind === "model" && one.left === undefined).map((one) => (counted?.reviewers?.[one._id]?.cast ?? 0) + (counted?.reviewers?.[one._id]?.failed ?? 0));
-      return { state: "waiting" as const, ahead: { id: ahead._id, name: ahead.name ?? "Another screening", done: read.length ? Math.min(...read) : 0, of: ahead.totalPapers } };
-    }
+    const ahead = await readingFirst(ctx, job.workspaceId, job._id);
+    if (ahead) return { state: "waiting" as const, ahead };
   }
   return { state: "reading" as const };
+}
+
+/** The screening whose models the workspace's slots go to first, other than `except`, and how far they have read. */
+async function readingFirst(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, except?: Id<"screeningJobs">) {
+  const head = await ctx.db.query("screeningVotes").withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", workspaceId).gte("waitingSince", 0)).first();
+  const ahead = head && head.jobId !== except ? await ctx.db.get("screeningJobs", head.jobId) : null;
+  if (!ahead) return null;
+  // How far its models have read: the place of the slowest of them.
+  const [theirs, counted] = await Promise.all([reviewersOf(ctx, ahead._id), progressRow(ctx as QueryCtx, ahead._id)]);
+  const read = theirs.filter((one) => one.kind === "model" && one.left === undefined).map((one) => (counted?.reviewers?.[one._id]?.cast ?? 0) + (counted?.reviewers?.[one._id]?.failed ?? 0));
+  return { id: ahead._id, name: ahead.name ?? "Another screening", done: read.length ? Math.min(...read) : 0, of: ahead.totalPapers };
 }
 
 /** The papers of a screening a reviewer put a question to this person about, which still waits for their answer. */
@@ -179,10 +188,25 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     ...(asked[0] ? { askedFirst: asked[0] } : {}),
     models: state,
     ...(ahead ? { ahead } : {}),
+    criteria: job.criteria?.length ?? 0,
     ...(check ? { gathering: { done: check.added, ...(check.by ? { by: check.by } : {}), first: check.from === 0 } } : {}),
     activeAt: Math.max(job.activeAt ?? 0, job.updatedAt),
   };
 }
+
+/**
+ * What starting a screening in the workspace depends on: the person starting it, the credits the workspace has for
+ * AI models, how many papers and how many models its plan gives one screening (`papers` is null where it sets no
+ * limit), and a screening whose models are reading now, which a new one's models would wait behind.
+ */
+export const setup = workspaceQuery({
+  args: {},
+  returns: v.object({ me: personValidator, credits: v.number(), limits: v.object({ papers: v.union(v.number(), v.null()), models: v.number() }), reading: v.optional(aheadValidator) }),
+  handler: async (ctx, { userId, workspaceId }) => {
+    const [me, credits, papers, models, reading] = await Promise.all([ctx.db.get("users", userId), availableCredits(ctx, workspaceId), planLimit(ctx, workspaceId, "request_papers"), modelsLimit(ctx, workspaceId), readingFirst(ctx, workspaceId)]);
+    return { me: me ? personOf(me) : { id: userId, name: SOMEONE }, credits, limits: { papers: papers ?? null, models }, ...(reading ? { reading } : {}) };
+  },
+});
 
 const SORTS = v.union(v.literal("active"), v.literal("newest"), v.literal("oldest"), v.literal("name"));
 /** Screenings one page of the list holds at most, and rows a page looks through for the ones its filters keep. */
@@ -213,16 +237,20 @@ export const listAction = defineUserQuery({
   },
 });
 export const list = userQuery(listAction);
+export const listForAssistant = assistantQuery(listAction);
 
 /** Screenings read at most for what waits for one person, and for what is shared with them. */
 const MINE_MAX = 100;
 
-export const mineAction = defineUserQuery({
-  path: "screening/view:mine",
-  description: "Lists, in one page, the screenings that wait for the person in the workspace they act in (papers for them to vote on, conflicts for them to settle or questions put to them), and in their own workspace the ones shared with them from elsewhere, which say they aren't its member.",
+/**
+ * Lists, in one page, the screenings that wait for the person in the workspace they act in (papers for them to vote
+ * on, conflicts for them to settle or questions put to them), and in their own workspace the ones shared with them
+ * from elsewhere, which say they aren't its member.
+ */
+export const mine = workspaceQuery({
   args: {},
   returns: paginationResultValidator(summaryValidator),
-  run: async (ctx, actor) => {
+  handler: async (ctx, actor) => {
     const { userId, workspaceId } = actor;
     const own = await inOwnWorkspace(ctx, actor);
     // The ones they review, the ones whose conflicts they settle, and in their own workspace the ones given to them from outside.
@@ -241,16 +269,15 @@ export const mineAction = defineUserQuery({
     return { page: [...seen, ...settled].filter((one) => !one.member || one.forYou + one.conflicts + one.asked > 0), isDone: true, continueCursor: "" };
   },
 });
-export const mine = userQuery(mineAction);
 
-export const tallyAction = defineUserQuery({
-  path: "screening/view:tally",
-  description: "Counts the workspace's screenings: the ones still open and the ones finished.",
+/**
+ * Counts the workspace's screenings: the ones still open and the ones finished.
+ */
+export const tally = workspaceQuery({
   args: {},
   returns: v.object({ open: v.number(), finished: v.number() }),
-  run: async (ctx, { workspaceId }) => ({ open: await countOf(ctx, screeningsOf(workspaceId, false)), finished: await countOf(ctx, screeningsOf(workspaceId, true)) }),
+  handler: async (ctx, { workspaceId }) => ({ open: await countOf(ctx, screeningsOf(workspaceId, false)), finished: await countOf(ctx, screeningsOf(workspaceId, true)) }),
 });
-export const tally = userQuery(tallyAction);
 
 const checkValidator = v.object({ id: v.id("screeningChecks"), at: v.number(), by: v.optional(personValidator), state: v.union(v.literal("running"), v.literal("done"), v.literal("failed")), first: v.boolean(), found: v.number(), added: v.number() });
 
@@ -339,6 +366,7 @@ export const getAction = defineUserQuery({
   },
 });
 export const get = userQuery(getAction);
+export const getForAssistant = assistantQuery(getAction);
 
 /** What a source held that the screening doesn't take, a page at a time. */
 export const leftOutAction = defineUserQuery({
@@ -355,6 +383,7 @@ export const leftOutAction = defineUserQuery({
   },
 });
 export const leftOut = userQuery(leftOutAction);
+export const leftOutForAssistant = assistantQuery(leftOutAction);
 
 /** Changes one page of a screening's activity holds at most. */
 const ACTIVITY_PAGE = 50;
@@ -374,6 +403,7 @@ export const activityAction = defineUserQuery({
   },
 });
 export const activity = userQuery(activityAction);
+export const activityForAssistant = assistantQuery(activityAction);
 
 export const checksAction = defineUserQuery({
   path: "screening/view:checks",
@@ -389,3 +419,4 @@ export const checksAction = defineUserQuery({
   },
 });
 export const checks = userQuery(checksAction);
+export const checksForAssistant = assistantQuery(checksAction);

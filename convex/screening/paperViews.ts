@@ -8,7 +8,7 @@ import { stream } from "convex-helpers/server/stream";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { defineUserQuery, userQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { decide, isFinal, seesVotes, type Answer } from "../../lib/screening/rules";
@@ -107,6 +107,7 @@ export const paperAction = defineUserQuery({
   },
 });
 export const paper = userQuery(paperAction);
+export const paperForAssistant = assistantQuery(paperAction);
 
 /** Pages a reviewer's rows of votes into the papers they are on, in the rows' order. */
 async function papersOfVotes(ctx: Pick<QueryCtx, "db">, looking: Looking, read: PaginationResult<Vote>) {
@@ -152,6 +153,7 @@ export const queueAction = defineUserQuery({
   },
 });
 export const queue = userQuery(queueAction);
+export const queueForAssistant = assistantQuery(queueAction);
 
 const SORTS = v.union(v.literal("added"), v.literal("title"), v.literal("newest"), v.literal("split"), v.literal("points"));
 
@@ -238,3 +240,4 @@ export const listAction = defineUserQuery({
   },
 });
 export const list = userQuery(listAction);
+export const listForAssistant = assistantQuery(listAction);

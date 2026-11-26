@@ -351,3 +351,38 @@ export const paperViewValidator = v.object({
   mine: v.boolean(),
   messages: v.number(),
 });
+
+/** The papers one move of a change's preview names, and the moves there can be: from each of five results to the four others. */
+export const PREVIEW_PAPERS = 40;
+const RESULT_MOVES = 20;
+const previewMoveValidator = v.object({
+  from: paperResultValidator,
+  to: paperResultValidator,
+  count: v.number(),
+  // The first of them, and how many the person asking can't be shown: votes on them are hidden from them.
+  papers: capped(v.array(v.object({ id: v.id("screeningResults"), title: v.string(), year: v.optional(v.number()) })), PREVIEW_PAPERS),
+  hidden: v.number(),
+});
+/** What a change to a running screening would do, as ./effects.ts counts it. Reviewers are named by their row, or by what names them before they have one: a person's account, a model's slug and effort. */
+export const previewValidator = v.object({
+  // Its papers once the change is made, and how many of them the change opens again.
+  total: v.number(),
+  reopened: v.number(),
+  // Each reviewer the change puts on it: the papers a model reads, the open papers a person gets.
+  joining: capped(v.record(v.string(), v.object({ reads: v.optional(v.number()), dealt: v.optional(v.number()) })), MAX_REVIEWERS),
+  // Each reviewer it takes off: their votes, the papers of theirs that go to someone else (voted on or not, and to whom), and the ones nobody takes that settle or go on waiting.
+  leaving: capped(v.record(v.string(), v.object({ cast: v.number(), unvoted: v.number(), voted: v.number(), to: capped(v.array(v.string()), MAX_REVIEWERS), settled: v.number(), waiting: v.number() })), MAX_REVIEWERS),
+  // Open papers whose number of places changes.
+  eachChanged: v.number(),
+  // Each model that stays: the papers it has still to read once the change is made, and the ones the change has it read at once.
+  models: capped(v.record(v.string(), v.object({ ahead: v.number(), atOnce: v.number() })), MAX_REVIEWERS),
+  // Papers that join and leave with its sources, and the ones it has included.
+  added: v.number(),
+  removed: v.number(),
+  included: v.number(),
+  moves: capped(v.array(previewMoveValidator), RESULT_MOVES),
+  // Settled papers that would move if they were checked again.
+  again: v.number(),
+  // The fewest and the most papers a person would have.
+  loads: v.optional(v.object({ least: v.number(), most: v.number() })),
+});

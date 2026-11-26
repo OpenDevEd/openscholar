@@ -9,7 +9,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
-import { defineUserMutation, userMutation } from "../lib/userActions";
+import { workspaceMutation } from "../lib/userActions";
 import { requireMember } from "./access";
 import { reviewersOf, sourcesOf } from "./dealing";
 import { startCheck } from "./gathering";
@@ -31,23 +31,21 @@ export async function check(ctx: MutationCtx, job: Doc<"screeningJobs">, by: Id<
   return true;
 }
 
-export const checkAction = defineUserMutation({
-  path: "screening/living:check",
-  description: "Looks in a screening's sources again now for papers they gained since it last looked: a search, a collection, the library, another screening's included papers, a community or a Zotero library. The new ones join the screening and go to its reviewers. A finished screening that gains papers is open again.",
+/**
+ * Looks in a screening's sources again now for papers they gained since it last looked: a search, a collection, the
+ * library, another screening's included papers, a community or a Zotero library. The new ones join the screening and
+ * go to its reviewers. A finished screening that gains papers is open again.
+ */
+export const checkNow = workspaceMutation({
   args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
-  // Its models read the new papers as they would any other, each reading charged as it is made.
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, actor, { jobId }) => {
+  handler: async (ctx, actor, { jobId }) => {
     const job = await requireMember(ctx, actor, jobId);
     if (job.reading) throw createError("CONFLICT", "Its papers are still arriving.");
     await check(ctx, job, actor.userId);
     return null;
   },
 });
-export const checkNow = userMutation(checkAction);
 
 /** Screenings one run of the schedule starts a check for. */
 const DUE = 25;

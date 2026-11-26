@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { languageOptions } from './languages'
+import { shortOf } from '../../screening/rules'
 
 export const queryEnhancementSchema = z.object({
   enhancedQuery: z
@@ -17,6 +18,32 @@ export const screeningQuestionsSchema = z.object({
     .describe(
       'An array of 3-5 screening questions that are specific, answerable with yes/no, and help determine if a paper meets inclusion criteria.'
     ),
+})
+
+/** The same questions, each with a short name and the words to mark for it in an abstract (convex/screening). */
+export const screeningCriteriaSchema = z.object({
+  criteria: z
+    .array(
+      z.object({
+        question: z.string().describe('A screening question that is specific and answerable with yes or no.'),
+        short: z.string().describe('A name for the question of two to four words, such as "Randomised trial" or "Adults 18 to 65".'),
+        terms: z
+          .array(z.string())
+          .max(8)
+          .describe('Up to eight words or short phrases a reader would look for in an abstract to answer the question, spelled as an abstract would spell them.'),
+      })
+    )
+    .min(1)
+    .max(10),
+})
+
+/** Written criteria as a screening keeps them: the question, a short name within its length, and the words to mark. */
+export const toWrittenCriteria = (criteria: z.infer<typeof screeningCriteriaSchema>['criteria']) => ({
+  criteria: criteria.map((one) => ({
+    text: one.question.trim(),
+    short: shortOf(one.short.trim() || one.question),
+    terms: one.terms.map((term) => term.trim()).filter(Boolean),
+  })),
 })
 
 export function createScreeningResponsesSchema(questions: string[]) {

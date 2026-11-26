@@ -7,7 +7,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { defineUserMutation, userMutation } from "../lib/userActions";
+import { workspaceMutation } from "../lib/userActions";
 import type { InWorkspace } from "../workspaces/actor";
 import { OTHER_REASONS, type Answer } from "../../lib/screening/rules";
 import { requireReviewer, standingOn } from "./access";
@@ -62,49 +62,46 @@ async function cast(ctx: MutationCtx, actor: InWorkspace, { jobId, paperId, deci
   await settleLater(ctx, paperId, "vote");
 }
 
-export const voteAction = defineUserMutation({
-  path: "screening/voting:vote",
-  description: "Casts the person's own vote on one paper of a screening they review: include, maybe or exclude, with a reason on exclude (a criterion's key, `duplicate` or `other`), their answers to its criteria if they gave any, and a note. `decision: null` takes their vote back.",
+/**
+ * Casts the person's own vote on one paper of a screening they review: include, maybe or exclude, with a reason on
+ * exclude (a criterion's key, `duplicate` or `other`), their answers to its criteria if they gave any, and a note.
+ * `decision: null` takes their vote back.
+ */
+export const vote = workspaceMutation({
   args: voteArgs,
   returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, actor, args) => {
+  handler: async (ctx, actor, args) => {
     await cast(ctx, actor, { ...args, answers: args.answers as Record<string, Answer> | undefined });
     return null;
   },
 });
-export const vote = userMutation(voteAction);
 
 /** The most papers one call votes on together. */
 export const VOTE_MANY = 100;
 
-export const voteManyAction = defineUserMutation({
-  path: "screening/voting:voteMany",
-  description: "Casts the person's own vote on several papers of a screening they review, the same vote on each, up to 100 at a time.",
+/**
+ * Casts the person's own vote on several papers of a screening they review, the same vote on each, up to 100 at a
+ * time.
+ */
+export const voteMany = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), paperIds: v.array(v.id("screeningResults")), decision: decisionValidator, reason: v.optional(v.string()), note: v.optional(v.string()) },
   returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, actor, { paperIds, ...same }) => {
+  handler: async (ctx, actor, { paperIds, ...same }) => {
     if (paperIds.length > VOTE_MANY) throw createError("VALIDATION_ERROR", `Vote on up to ${VOTE_MANY} papers at a time.`);
     for (const paperId of new Set(paperIds)) await cast(ctx, actor, { ...same, paperId });
     return null;
   },
 });
-export const voteMany = userMutation(voteManyAction);
 
-export const resolveAction = defineUserMutation({
-  path: "screening/voting:resolve",
-  description: "Settles one paper of a screening, for the person its rule names to settle conflicts: their decision stands whatever its votes say, with a reason on exclude and a note. `decision: null` takes it back, and the paper stands where its votes put it.",
+/**
+ * Settles one paper of a screening, for the person its rule names to settle conflicts: their decision stands
+ * whatever its votes say, with a reason on exclude and a note. `decision: null` takes it back, and the paper stands
+ * where its votes put it.
+ */
+export const resolve = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), paperId: v.id("screeningResults"), decision: v.union(decisionValidator, v.null()), reason: v.optional(v.string()), note: v.optional(v.string()) },
   returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, actor, { jobId, paperId, decision, reason, note }) => {
+  handler: async (ctx, actor, { jobId, paperId, decision, reason, note }) => {
     const standing = await standingOn(ctx, actor, jobId);
     if (!standing || standing.job.shape !== 2) throw createError("SCREENING_JOB_NOT_FOUND", "Screening not found");
     const { job } = standing;
@@ -118,4 +115,3 @@ export const resolveAction = defineUserMutation({
     return null;
   },
 });
-export const resolve = userMutation(resolveAction);

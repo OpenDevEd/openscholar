@@ -306,6 +306,21 @@ export function workspaceMutation<Args extends PropertyValidators, Returns exten
   return Object.assign(built, { checksWorkspace: true }) as typeof built;
 }
 
+/** `workspaceQuery`'s action: a page's own work in a workspace that isn't a user action. */
+export function workspaceAction<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: ActionCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+  const built = action<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { workspaceId, rest } = inWorkspace<Args>(args);
+      // Typed here: the generated API's types depend on every module built with this, so inference would loop.
+      const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
+      return fn.handler(ctx, actor, rest);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
+}
+
 /** The public query the UI calls, for the signed-in user. */
 export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>, options?: { signedOut: Infer<Returns> }) {
   return tagged(

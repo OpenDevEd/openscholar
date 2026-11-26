@@ -9,7 +9,7 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalQuery } from "../lib/functions";
 import { personName } from "../lib/people";
-import { defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
+import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { standingOn } from "./access";
 import { progressRow } from "./bookkeeping";
 
@@ -52,24 +52,23 @@ export const context = internalQuery({
   },
 });
 
-export const emailsAction = defineUserQuery({
-  path: "screening/notices:emails",
-  description: "Says whether one screening sends the person its emails: new papers to vote on, conflicts to settle, and reminders.",
+/**
+ * Says whether one screening sends the person its emails: new papers to vote on, conflicts to settle, and reminders.
+ */
+export const emails = workspaceQuery({
   args: { jobId: v.id("screeningJobs") },
   returns: v.boolean(),
-  run: async (ctx, actor, { jobId }) => !(await rowOf(ctx, jobId, actor.userId))?.off,
+  handler: async (ctx, actor, { jobId }) => !(await rowOf(ctx, jobId, actor.userId))?.off,
 });
-export const emails = userQuery(emailsAction);
 
-export const setEmailsAction = defineUserMutation({
-  path: "screening/notices:setEmails",
-  description: "Turns one screening's emails to the person on or off: new papers to vote on, conflicts to settle, and reminders. Nobody else's emails change.",
+/**
+ * Turns one screening's emails to the person on or off: new papers to vote on, conflicts to settle, and reminders.
+ * Nobody else's emails change.
+ */
+export const setEmails = workspaceMutation({
   args: { jobId: v.id("screeningJobs"), on: v.boolean() },
   returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, actor, { jobId, on }) => {
+  handler: async (ctx, actor, { jobId, on }) => {
     if (!(await standingOn(ctx, actor, jobId))) return null;
     const row = await rowOf(ctx, jobId, actor.userId);
     if (row) await ctx.db.patch("screeningNotices", row._id, { off: !on });
@@ -77,4 +76,3 @@ export const setEmailsAction = defineUserMutation({
     return null;
   },
 });
-export const setEmails = userMutation(setEmailsAction);

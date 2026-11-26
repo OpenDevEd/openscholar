@@ -119,7 +119,8 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
   }
 }
 
-export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestionsInput) {
+/** With `named`, each question comes with a short name and the words to mark for it in an abstract. */
+export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestionsInput, named = false) {
   const responseLanguage = input.responseLanguage;
   const languageName = responseLanguage ? getLanguageName(responseLanguage) : null;
 
@@ -127,9 +128,11 @@ export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestions
     system: `You are an expert systematic review researcher specializing in screening question development for literature reviews.
 
 CRITICAL: You MUST respond with valid JSON in the following format:
-{
+${named ? `{
+  "criteria": [{ "question": "question 1", "short": "Two to four words", "terms": ["word", "short phrase"] }]
+}` : `{
   "questions": ["question 1", "question 2", "question 3"]
-}
+}`}
 
 ${languageName ? `MANDATORY: Generate all questions in ${languageName} only. All output must be in this language.` : ""}
 
@@ -158,7 +161,7 @@ Guidelines:
 - Do not duplicate existing questions
 
 Output Format:
-Return an array of 3-5 screening questions as strings.`,
+${named ? `Return 3-5 screening questions. Give each a "short" name of two to four words that tells it from the others, and "terms": up to eight words or short phrases a reader would look for in an abstract to answer it, spelled as an abstract would spell them.` : "Return an array of 3-5 screening questions as strings."}`,
     prompt: `Generate screening questions for this systematic review:
 
 Research Question: "${input.researchQuestion}"
