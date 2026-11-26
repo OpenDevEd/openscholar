@@ -718,10 +718,10 @@ function Papers({ open, onExport }: { open: Open; onExport: (tab: ExportTab) => 
   );
 }
 
-/** The mark for a criterion its reviewers answered differently: the sign and colour of a conflict. */
+/** The mark for a criterion its reviewers answered differently. In no result's colour: answers that differ are not a paper in conflict. */
 function DifferMark({ label = "Reviewers answered it differently" }: { label?: string }) {
   return (
-    <span role="img" aria-label={label} className={cn("inline-flex size-6 items-center justify-center rounded-md align-middle", RESULT_STYLE.conflict.chip)}>
+    <span role="img" aria-label={label} className="inline-flex size-6 items-center justify-center rounded-md bg-foreground/[0.07] align-middle text-foreground">
       <GitCompare aria-hidden className="size-3.5" />
     </span>
   );

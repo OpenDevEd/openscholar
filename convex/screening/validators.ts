@@ -336,6 +336,8 @@ export const reviewerViewValidator = v.object({
   spent: v.number(),
   // The papers the screening included that they voted to exclude.
   missed: v.number(),
+  // How they voted is kept from whoever looks, who still has papers of this screening to vote on: only how far they are is said.
+  kept: v.optional(v.literal(true)),
 });
 export const reviewerViewsValidator = capped(v.array(reviewerViewValidator), MAX_REVIEWERS);
 
@@ -376,6 +378,8 @@ export const sourceViewValidator = v.object({
   checkedAt: v.optional(v.number()),
 });
 export const sourceViewsValidator = capped(v.array(sourceViewValidator), MAX_SOURCE_ROWS);
+/** The papers a check added, by the source that brought them. */
+export const checkSourcesValidator = capped(v.array(v.object({ id: v.id("screeningSources"), added: v.number() })), MAX_SOURCE_ROWS);
 
 /** A vote as a page shows it. */
 export const voteViewValidator = v.object({

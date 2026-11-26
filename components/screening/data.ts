@@ -50,7 +50,7 @@ export type Workspace = { id: string; kind: "organization" | "personal"; name: s
 export const lookOf = (workspace: Workspace) => ({ kind: workspace.kind, name: workspace.name, imageUrl: workspace.imageUrl, colour: workspace.colour, workspaceId: workspace.id });
 
 /** A reviewer's counts, kept by the server: papers given to them, the ones voted on by how, the ones a model couldn't read, the ones that still wait, and what a model has cost. */
-export type Tally = { dealt: number; cast: number; include: number; maybe: number; exclude: number; failed: number; waiting: number; /** Their papers settled without their vote. */ closed: number; spent: number; /** The papers the screening included that they voted to exclude. */ missed: number };
+export type Tally = { dealt: number; cast: number; include: number; maybe: number; exclude: number; failed: number; waiting: number; /** Their papers settled without their vote. */ closed: number; spent: number; /** The papers the screening included that they voted to exclude. */ missed: number; /** How they voted is kept from whoever looks, who still has papers to vote on: `include`, `maybe`, `exclude` and `missed` say nothing. */ kept?: boolean };
 
 /**
  * Someone or something that votes: a person, a person invited by email who has no account yet, or a

@@ -799,7 +799,7 @@ function Screen({ open }: { open: Open }) {
                                   // The answer by name with how many gave it: a sign and a number alone had to be worked out.
                                   return count ? <span key={answer} className={cn("flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-medium tabular-nums", TONE[tone].chip)}><Icon aria-hidden className="size-3.5" />{label} {count}</span> : null;
                                 })}
-                                {new Set(split).size > 1 ? <button type="button" aria-label={`Criterion ${i + 1}: show the answer that differs`} onClick={() => showApart(criterion)} className={DIFFER}>Differ<ChevronRight aria-hidden className="size-3" /></button> : null}
+                                {new Set(split).size > 1 ? <button type="button" aria-label={`Criterion ${i + 1}: show the answer that differs`} onClick={() => showApart(criterion)} className={DIFFER}>Answers differ<ChevronRight aria-hidden className="size-3" /></button> : null}
                               </div>
                             ) : null}
                           </li>
@@ -1136,7 +1136,7 @@ export function Matrix({ criteria, cast, me, shown, onShow, hidden = false, sett
               <span className="w-3 shrink-0 tabular-nums text-muted-foreground">{n + 1}</span>
               <QuestionName question={questionOf(criterion.key, criteria)} label={criterion.short} className={cn("min-w-0 truncate max-sm:line-clamp-2 max-sm:whitespace-normal", split ? "font-medium text-foreground" : "text-muted-foreground")}><CriterionText text={criterion.short} must={criterion.must} /></QuestionName>
               {split ? (
-                <button type="button" aria-label={`${criterion.short}: show the answer that differs`} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>Differ<ChevronDown aria-hidden className="size-3" /></button>
+                <button type="button" aria-label={`${criterion.short}: show the answer that differs`} onClick={() => { const who = cast[apartAt(given)]; if (who) onShow(shown?.reviewer === who.reviewer.id && shown.criterion === criterion.key ? null : { reviewer: who.reviewer.id, criterion: criterion.key }); }} className={cn(DIFFER, "shrink-0")}>Answers differ<ChevronDown aria-hidden className="size-3" /></button>
               ) : null}
             </span>
             {cast.map(({ reviewer, hidden: kept }, i) => {

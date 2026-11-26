@@ -8,7 +8,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { WorkspaceLink as NextLink } from "@/components/workspaces/link";
 import { parseAsStringLiteral, useQueryStates } from "nuqs";
-import { TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
+import { Lock, TriangleAlert, AiIcon, ArrowDown, ArrowRight, ArrowUpDown, Ban, ChevronDown, CircleCheck, Clock, Coins, Download, FileSearch, Folder, GitCompare, Hourglass, ListChecks, Mail, MoreHorizontal, Move, RefreshCw, RotateCcw, Trash2 } from "@/components/icons";
 import { AnimatedNumber, Chip, Meter } from "./parts";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -27,7 +27,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { inWorkspace, useWorkspace as usePageWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
-import { DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, readBy, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
+import { HIDDEN_UNTIL_VOTE, DAY, PERSON_SAYS, REMOVED_LABEL, SETTLE_MEANS, SOMEONE, collectionName, pairOf, readBy, youOr, inOrder, num, plural, leftOf, paperTotal, removedOf, readersOf, firstName, DECISIONS, DECISION_LABEL, EVERY_LABEL, RESULTS, RESULT_LABEL, activeReviewers, ago, day, failedLabel, growing, lookOf, modelsOf, personIn, questionOf, taken, type Reviewer, settlerSettles, type Result, shortName } from "./data";
 import type { ExportTab } from "./dialogs";
 import { TakeOff } from "./overlays";
 import { papersHref, screenHref, settingsHref } from "./links";
@@ -492,6 +492,13 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
           </Popover>
         ) : null}
       </div>
+      {/* How someone else voted is kept from a reviewer who still has papers to vote on: their own row, and how far each of the others is, say everything else. */}
+      {reviewer.tally?.kept ? (
+        <div role="cell" className="col-span-4 flex justify-end @max-2xl/reviewers:col-span-2 @max-2xl/reviewers:col-start-2 @max-2xl/reviewers:row-start-2">
+          <Chip icon={Lock}>{HIDDEN_UNTIL_VOTE}</Chip>
+        </div>
+      ) : (
+      <>
       {DECISIONS.map((decision, i) => {
         const Icon = RESULT_STYLE[decision].icon;
         const inner = (
@@ -522,6 +529,8 @@ function ReviewerRow({ open, row, onLeave, onMove }: { open: Open; row: Reviewer
           <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-2xl/reviewers:hidden">of {plural(compared, "pair of votes", "pairs of votes")}</p>
         ) : null}
       </div>
+      </>
+      )}
       <div role="cell" className="@max-2xl/reviewers:col-start-3 @max-2xl/reviewers:row-start-1">
         {open.canChange ? (
           <DropdownMenu>
@@ -832,6 +841,15 @@ function Checks({ open, figures }: { open: Open; figures: Figures | undefined })
                             {check.found - check.added ? <Chip>{num(check.found - check.added)} already in it</Chip> : null}
                             {check.added ? <LinkChip href={papersHref(screening.id, { added: check.id })} tone="primary">{num(check.added)} added</LinkChip> : null}
                           </div>
+                          {/* Each source that gained papers, with how many were new to the screening: with more than one source to check, the total alone doesn't say which is still finding papers. */}
+                          {check.sources?.length && sources.length > 1 ? (
+                            <ul className="space-y-0.5">
+                              {check.sources!.map((one) => {
+                                const source = screening.sources.find((row) => row.id === one.id);
+                                return source ? <li key={one.id} className="min-w-0 text-xs"><NextLink href={papersHref(screening.id, { added: check.id, source: one.id })} className={cn(INLINE_LINK, "font-normal text-muted-foreground hover:text-foreground")}><span className="line-clamp-1">{num(one.added)} new from {source.name}</span></NextLink></li> : null;
+                              })}
+                            </ul>
+                          ) : null}
                           {/* Where the papers it added stand now. */}
                           {check.counts ? (
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

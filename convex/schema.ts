@@ -9,7 +9,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS, MAX_STARS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, pdfStateValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
+import { MAX_SOURCE_ROWS, answerValidator, criterionValidator, decisionValidator, everyValidator, leftOutWhyValidator, libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, paperResultValidator, reviewerCountsValidator, ruleValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, pdfStateValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator, sourceFactsValidator, sourceSetValidator, voteStatusValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { appKindValidator, redirectUrisValidator } from "./developerApps/validators";
@@ -1744,6 +1744,8 @@ export default defineSchema({
     from: v.number(),
     found: v.number(),
     added: v.number(),
+    // The papers it added, by the source that brought them.
+    bySource: capped(v.optional(v.record(v.id("screeningSources"), v.number())), MAX_SOURCE_ROWS),
     // When its reading last gave it a step: a check that goes quiet is set off again (convex/screening/gathering.ts `watch`).
     beat: v.optional(v.number()),
     endedAt: v.optional(v.number()),

@@ -612,8 +612,8 @@ export function AnswerMark({ answer, label, pressable = false }: { answer: Answe
   );
 }
 
-/** "Differ", beside a criterion its reviewers answered differently: a chip that is pressed, and opens the answer that stands apart. */
-export const DIFFER = "flex h-5 items-center gap-0.5 rounded-full bg-info/12 ps-1.5 pe-1 text-2xs font-medium text-info outline-none transition-colors hover:bg-info/20 focus-visible:ring-2 focus-visible:ring-ring/50";
+/** "Answers differ", beside a criterion its reviewers answered differently: a chip that is pressed, and opens the answer that stands apart. In no result's colour: answers that differ are not a paper in conflict, which only its votes make. */
+export const DIFFER = "flex h-5 items-center gap-0.5 whitespace-nowrap rounded-full bg-foreground/[0.07] ps-1.5 pe-1 text-2xs font-medium text-foreground outline-none transition-colors hover:bg-foreground/[0.12] focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /**
  * What a paper's table of votes shows, behind its "?": the same on Screen and in the Papers drawer, with every sign the
@@ -631,7 +631,7 @@ export function VotesHelp({ blind, side }: { blind: boolean; side?: "top" | "bot
           <HelpFact icon={TriangleAlert}>{NO_VOTE_SAYS.failed}</HelpFact>
           {ANSWERS.map((answer) => <HelpFact key={answer}><span className="-ms-1 flex scale-75"><AnswerMark answer={answer} label="An answer" /></span>{ANSWER_SIGN[answer].label}</HelpFact>)}
           <HelpFact><span aria-hidden className="-ms-0.5 size-4 rounded-md border border-dashed border-border" />No answer</HelpFact>
-          <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>Differ<ChevronDown aria-hidden className="size-3" /></span>Reviewers answered it differently</HelpFact>
+          <HelpFact><span className={cn(DIFFER, "-ms-1 h-4")}>Answers differ<ChevronDown aria-hidden className="size-3" /></span>Reviewers answered it differently</HelpFact>
           <HelpFact><span className="-ms-1 flex scale-75"><AnswerMark answer="yes" label="An answer" pressable /></span>Opens what is behind the answer</HelpFact>
         </>
       }

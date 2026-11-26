@@ -366,7 +366,7 @@ export const fill = internalMutation({
     }
     if (back) await bookkeepLater(ctx);
     await ctx.db.patch("screeningSources", sourceId, { read: source.read + read, resume, taken: source.taken + taken + back, duplicates: source.duplicates + duplicates, left: source.left + left, ...(bare ? { bare: (source.bare ?? 0) + bare } : {}), ...(filed ? { filed: (source.filed ?? 0) + filed, filePages: (source.filePages ?? 0) + filePages } : {}), ...(ended || capped ? { state: "done" as const, checkedAt: now } : {}), ...(capped ? { capped: true as const } : {}) });
-    await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now });
+    await ctx.db.patch("screeningChecks", checkId, { found: check.found + papers.length, added: check.added + taken, beat: now, ...(taken ? { bySource: { ...check.bySource, [sourceId]: (check.bySource?.[sourceId] ?? 0) + taken } } : {}) });
     await countDealt(ctx, dealt);
     if (taken && reviewers.some((one) => one.kind === "model" && one.left === undefined)) await startWaitingVotes(ctx, job.workspaceId);
     return null;

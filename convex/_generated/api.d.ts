@@ -452,6 +452,7 @@ import type * as screening_bookkeeping from "../screening/bookkeeping.js";
 import type * as screening_completion from "../screening/completion.js";
 import type * as screening_dealing from "../screening/dealing.js";
 import type * as screening_discussion from "../screening/discussion.js";
+import type * as screening_doiRecords from "../screening/doiRecords.js";
 import type * as screening_drain from "../screening/drain.js";
 import type * as screening_effects from "../screening/effects.js";
 import type * as screening_estimate from "../screening/estimate.js";
@@ -1005,6 +1006,7 @@ declare const fullApi: ApiFromModules<{
   "screening/completion": typeof screening_completion;
   "screening/dealing": typeof screening_dealing;
   "screening/discussion": typeof screening_discussion;
+  "screening/doiRecords": typeof screening_doiRecords;
   "screening/drain": typeof screening_drain;
   "screening/effects": typeof screening_effects;
   "screening/estimate": typeof screening_estimate;

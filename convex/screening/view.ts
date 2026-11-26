@@ -23,7 +23,7 @@ import { standingOn, type Standing } from "./access";
 import { progressRow } from "./bookkeeping";
 import { laterChecks, modelName, modelsFree, nameOf, newFor, papersOf, readingModel, reviewersOf, SOMEONE, sourcesOf, viewId, waitingOf } from "./dealing";
 import { NO_RESULTS } from "./settling";
-import { criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
+import { checkSourcesValidator, criteriaValidator, ELSEWHERE_MAX, elsewhereValidator, everyValidator, figuresValidator, leftOutWhyValidator, PAIRS_MAX, reviewerViewsValidator, reviewerViewValidator, sourceViewsValidator, starsValidator } from "./validators";
 
 
 const personValidator = v.object({ id: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) });
@@ -93,9 +93,20 @@ const summaryFields = {
 const summaryValidator = v.object(summaryFields);
 export type Summary = Infer<typeof summaryValidator>;
 
-/** A reviewer's row as the pages read it, with their counts. */
-async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screeningReviewers">] | undefined, members: Map<Id<"users">, boolean>): Promise<ReviewerView> {
-  const tally = { cast: counts?.cast ?? 0, include: counts?.include ?? 0, maybe: counts?.maybe ?? 0, exclude: counts?.exclude ?? 0, failed: counts?.failed ?? 0, closed: counts?.closed ?? 0, spent: counts?.spent ?? 0, missed: counts?.missed ?? 0 };
+type Counts = NonNullable<Doc<"screeningJobProgress">["reviewers"]>[Id<"screeningReviewers">];
+
+/**
+ * Whether how the other reviewers voted is kept from whoever looks: where votes are hidden until one has voted, a
+ * reviewer who still has papers to vote on sees how far the others are, and not how they voted or how far they
+ * agree. A count of someone's votes by how they went moves when they vote, which would tell their vote on a paper
+ * the person has yet to vote on. One function, for every figure a page or a file shows of the others.
+ */
+export const keepsVotes = (job: Pick<Doc<"screeningJobs">, "rule">, reviewer: Doc<"screeningReviewers"> | null, counts: Record<string, Counts> | undefined) =>
+  job.rule?.blind === "after" && reviewer !== null && waitingOf(reviewer, counts?.[reviewer._id]) > 0;
+
+/** A reviewer's row as the pages read it, with their counts. `kept`: how they voted is kept from whoever looks (`keepsVotes`). */
+async function reviewerView(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, reviewer: Doc<"screeningReviewers">, counts: Counts | undefined, members: Map<Id<"users">, boolean>, kept = false): Promise<ReviewerView> {
+  const tally = { cast: counts?.cast ?? 0, include: kept ? 0 : (counts?.include ?? 0), maybe: kept ? 0 : (counts?.maybe ?? 0), exclude: kept ? 0 : (counts?.exclude ?? 0), failed: counts?.failed ?? 0, closed: counts?.closed ?? 0, spent: counts?.spent ?? 0, missed: kept ? 0 : (counts?.missed ?? 0), ...(kept ? { kept: true as const } : {}) };
   const waiting = waitingOf(reviewer, tally);
   const base = { row: reviewer._id, addedAt: reviewer.addedAt, ...(reviewer.left === undefined ? {} : { left: reviewer.left }), ...(reviewer.discarded === undefined ? {} : { discarded: reviewer.discarded }), ...(reviewer.reminded === undefined ? {} : { reminded: reviewer.reminded }), dealt: reviewer.dealt, ...tally, waiting };
   if (reviewer.kind === "model") {
@@ -152,7 +163,8 @@ export async function summaryOf(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, {
     job.rule ? ctx.db.get("users", job.rule.resolver) : null,
   ]);
   const members = new Map<Id<"users">, boolean>();
-  const reviewers = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members)));
+  const keeps = keepsVotes(job, reviewer, progress?.reviewers);
+  const reviewers = await Promise.all(rows.map((row) => reviewerView(ctx, job, row, progress?.reviewers?.[row._id], members, keeps && row._id !== reviewer?._id)));
   const settled = { ...NO_RESULTS, ...progress?.counts };
   const total = papersOf(job, progress, check);
   const counts = { ...settled, waiting: Math.max(0, total - settled.include - settled.maybe - settled.exclude - settled.conflict) };
@@ -357,6 +369,8 @@ const checkValidator = v.object({
   added: v.number(),
   // Where the papers it added stand now, for a check that added few enough to count.
   counts: v.optional(countsValidator),
+  // The papers a later check added, by the source that brought them.
+  sources: v.optional(checkSourcesValidator),
 });
 /** The most papers a check may have added for where they stand to be counted with it. */
 const CHECK_COUNTED = 200;
@@ -476,7 +490,8 @@ export const figuresAction = defineUserQuery({
     return {
       reasons: progress?.reasons ?? {},
       included: progress?.included ?? {},
-      pairs: pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
+      // How far two reviewers agree is how they voted, for someone who still has papers to vote on.
+      pairs: keepsVotes(standing.job, standing.reviewer, progress?.reviewers) ? [] : pairs.flatMap((pair) => (idOf.has(pair.a) && idOf.has(pair.b) ? [{ a: idOf.get(pair.a)!, b: idOf.get(pair.b)!, matrix: pair.matrix }] : [])),
       recent: Object.fromEntries(recent),
       startedWith: checks.find((check) => check.from === 0)?.added ?? 0,
       checks: { later: later.length, ...(later.length ? { lastAt: later.at(-1)!.endedAt ?? later.at(-1)!.at } : {}), found: later.reduce((sum, check) => sum + check.found, 0), added: later.reduce((sum, check) => sum + check.added, 0) },
@@ -541,7 +556,7 @@ export const checksAction = defineUserQuery({
       for (const paper of papers) if (!paper.withdrawn) counts[paper.result ?? "waiting"]++;
       return counts;
     };
-    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(counts ? { counts } : {}) }; })) };
+    return { ...read, page: await Promise.all(read.page.map(async (check) => { const counts = await stand(check); return { id: check._id, at: check.at, ...(check.by ? { by: people.get(check.by)! } : {}), state: check.state, first: check.from === 0, found: check.found, added: check.added, ...(counts ? { counts } : {}), ...(check.from === 0 || !check.bySource ? {} : { sources: Object.entries(check.bySource).map(([id, added]) => ({ id: id as Id<"screeningSources">, added })) }) }; })) };
   },
 });
 export const checks = userQuery(checksAction);
