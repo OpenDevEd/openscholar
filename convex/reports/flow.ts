@@ -1,7 +1,7 @@
 // A report from its agreement to ready to activate (plans/publish-reports): what the Publish page reads and the
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
-import { DEFAULT_IDENTIFIERS, citedOf, pickProblem, routeOf, withAccounts, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
+import { DEFAULT_IDENTIFIERS, chosenOf, citedOf, pickProblem, routeOf, withAccounts, type Identifiers, type ServiceId } from "../../lib/reports/identifiers";
 import { v, type Infer } from "convex/values";
 import { fundsOf, readAccount } from "../billing/accounts";
 import { balancePartsValidator } from "../billing/validators";
@@ -920,6 +920,8 @@ export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
     signedAt: report.signedAt,
     byline: report.byline,
     licence: licenceOf(report),
+    services: chosenOf(report.registration),
+    ownArchive: !!report.archiveOwnerId,
     doi: report.doi,
     ...(metadata?.title && { title: metadata.title }),
     authors: (metadata?.authors ?? []).filter(isAuthor).map((author) => author.name).filter(Boolean),
