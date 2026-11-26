@@ -7769,5 +7769,151 @@
       "archive": "Archive",
       "other": "Other"
     }
+  },
+  "screening": {
+    "words": {
+      "decision": {
+        "include": "Include",
+        "maybe": "Maybe",
+        "exclude": "Exclude"
+      },
+      "result": {
+        "include": "Included",
+        "maybe": "Maybe",
+        "exclude": "Excluded",
+        "conflict": "In conflict",
+        "waiting": "Waiting for votes"
+      },
+      "you": "You",
+      "youInline": "you",
+      "someone": "Someone who left",
+      "modelAtEffort": "{name}, {effort} effort",
+      "looker": "{member, select, true {Not a reviewer} other {Viewer}}",
+      "person": {
+        "invited": "Invited by email, votes once they join",
+        "invitedToLook": "Invited by email, sees it once they join",
+        "toInvite": "Gets an invitation when you save",
+        "toInviteAtStart": "Gets an invitation when you start",
+        "invites": "Gets an invitation by email",
+        "guest": "From outside this workspace",
+        "member": "In this workspace",
+        "settles": "Settles conflicts"
+      },
+      "settler": "{you, select, true {you settle} other {{name} settles}}",
+      "count": {
+        "papers": "{count, plural, one {# paper} other {# papers}}",
+        "newPapers": "{count, plural, one {# new paper} other {# new papers}}",
+        "openPapers": "{count, plural, one {# open paper} other {# open papers}}",
+        "sources": "{count, plural, one {# source} other {# sources}}",
+        "people": "{count, plural, one {# person} other {# people}}",
+        "models": "{count, plural, one {# model} other {# models}}",
+        "reviewers": "{count, plural, one {# reviewer} other {# reviewers}}",
+        "votes": "{count, plural, one {# vote} other {# votes}}",
+        "criteria": "{count, plural, one {# criterion} other {# criteria}}",
+        "mustHaves": "{count, plural, one {# must-have} other {# must-haves}}",
+        "conflicts": "{count, plural, one {# conflict} other {# conflicts}}",
+        "questions": "{count, plural, one {# question} other {# questions}}",
+        "duplicates": "{count, plural, one {# duplicate} other {# duplicates}}",
+        "pages": "{count, plural, one {# page} other {# pages}}",
+        "pdfs": "{count, plural, one {# PDF} other {# PDFs}}",
+        "dois": "{count, plural, one {# DOI} other {# DOIs}}",
+        "collections": "{count, plural, one {# collection} other {# collections}}",
+        "subCollections": "{count, plural, one {# sub-collection} other {# sub-collections}}",
+        "items": "{count, plural, one {# item} other {# items}}",
+        "rows": "{count, plural, one {# row} other {# rows}}",
+        "readings": "{count, plural, one {# reading} other {# readings}}",
+        "changes": "{count, plural, one {# change} other {# changes}}",
+        "credits": "{count} credits"
+      },
+      "numberWord": "{n, select, 1 {One} 2 {Two} 3 {Three} 4 {Four} 5 {Five} 6 {Six} 7 {Seven} 8 {Eight} 9 {Nine} 10 {Ten} other {{n}}}",
+      "quoted": "“{text}”",
+      "leftWhy": {
+        "abstract": "No abstract",
+        "title": "No title",
+        "doi": "No such DOI",
+        "record": "No record of it",
+        "broken": "Doesn't open",
+        "twice": "Listed twice"
+      },
+      "pdf": {
+        "known": "In the index",
+        "file": "Read as its PDF",
+        "broken": "Doesn't open",
+        "waiting": "Reading it",
+        "costsMore": "more for one read as its PDF"
+      },
+      "removed": {
+        "merged": "Duplicates merged",
+        "bare": "No abstract",
+        "unread": "Could not be read or found"
+      },
+      "otherReason": {
+        "duplicate": "A duplicate of another paper",
+        "other": "Another reason"
+      },
+      "excludeAsk": {
+        "must": "{many, select, true {Which must-have do these papers fail?} other {Which must-have does it fail?}}",
+        "criterion": "{many, select, true {Which criterion do these papers fail?} other {Which criterion does it fail?}}",
+        "orCriterion": "Or another criterion",
+        "orReason": "Or another reason",
+        "why": "{many, select, true {Why exclude them?} other {Why exclude it?}}"
+      },
+      "notMet": "{name} not met",
+      "notMetInFull": "Not met: {name}",
+      "unclearOn": "{name} unclear",
+      "includedIn": "Included in {name}",
+      "every": {
+        "day": "Every day",
+        "week": "Every week",
+        "month": "Every month"
+      },
+      "living": "{every, select, day {Living, new papers every day} week {Living, new papers every week} other {Living, new papers every month}}",
+      "settle": {
+        "label": {
+          "all": "All agree",
+          "most": "Most agree",
+          "one": "First vote decides"
+        },
+        "means": {
+          "all": "A paper is settled once every reviewer given it has voted and all of them voted the same way. Any split is a conflict.",
+          "most": "A paper is settled once every reviewer given it has voted and more than half of them voted the same way. With no such majority it is a conflict.",
+          "one": "A paper is settled by the first vote on it, so there is never a conflict."
+        },
+        "says": {
+          "all": "Settled when all agree",
+          "most": "Settled when most agree",
+          "one": "Settled by the first vote"
+        }
+      },
+      "started": "{papers, plural, one {# paper} other {# papers}} from {sources, plural, one {# source} other {# sources}}, for {who}",
+      "startedNobody": "reviewers still to be added",
+      "empty": {
+        "all": "No papers yet",
+        "include": "{finished, select, true {No paper was included} other {Nothing included yet}}",
+        "maybe": "{finished, select, true {No paper was left at Maybe} other {Nothing marked Maybe yet}}",
+        "exclude": "{finished, select, true {No paper was excluded} other {Nothing excluded yet}}",
+        "conflict": "No papers in conflict",
+        "waiting": "No papers waiting for a vote"
+      },
+      "noVote": {
+        "yet": "No vote yet",
+        "none": "No vote",
+        "failed": "Couldn't read the paper"
+      },
+      "noVoteSays": {
+        "yet": "No vote yet",
+        "none": "Paper settled without this vote",
+        "failed": "Model couldn't read the paper"
+      },
+      "hiddenUntilVote": "Hidden until you vote",
+      "votesHiddenSays": "This screening hides other votes from a reviewer only on papers that still wait for that reviewer's own vote.",
+      "ago": {
+        "now": "just now",
+        "minutes": "{count} min ago",
+        "hours": "{count} h ago",
+        "yesterday": "yesterday",
+        "days": "{count} days ago"
+      }
+    }
   }
 }
