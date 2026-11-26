@@ -318,11 +318,16 @@ export const ELSEWHERE_MAX = 20;
 /** A screening that waits for the person in a workspace other than the one they are in: its name, where it is, the organization whose address opens it (none where it opens in their own workspace), and what waits. */
 export const elsewhereValidator = capped(v.array(v.object({ id: v.id("screeningJobs"), name: v.string(), in: v.string(), slug: v.optional(v.string()), forYou: v.number(), conflicts: v.number() })), ELSEWHERE_MAX);
 
+/** What tells a source from another of the same name, as the list it was picked from said it: a few short facts. */
+export const SOURCE_FACTS = 6;
+export const sourceFactsValidator = capped(v.optional(v.array(v.string())), SOURCE_FACTS);
+
 export const sourceViewValidator = v.object({
   id: v.id("screeningSources"),
   set: sourceSetValidator,
   name: v.string(),
   detail: v.optional(v.string()),
+  facts: sourceFactsValidator,
   first: v.optional(v.number()),
   last: v.optional(v.number()),
   addedAt: v.number(),

@@ -62,6 +62,7 @@ function toSource(source: View["sources"][number]): Source {
     kind: source.set.kind,
     name: source.name,
     detail: source.detail ?? "",
+    ...(source.facts?.length ? { filters: source.facts } : {}),
     total,
     scope: source.first === undefined && source.last === undefined ? "all" : "range",
     range: [source.first ?? 1, source.last ?? total],

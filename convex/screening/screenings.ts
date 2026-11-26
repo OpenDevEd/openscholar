@@ -24,7 +24,7 @@ import { startCheck } from "./gathering";
 import { logChange } from "./log";
 import { destination } from "./mutations";
 import { NO_RESULTS } from "./settling";
-import { everyValidator, libraryDestinationValidator, MAX_TERMS, prunable, saveToValidator, SCREENING_TEXT, sourceSetValidator } from "./validators";
+import { everyValidator, libraryDestinationValidator, MAX_TERMS, prunable, saveToValidator, SCREENING_TEXT, SOURCE_FACTS, sourceSetValidator } from "./validators";
 
 /** A criterion as a form sends it: one with no key is new, and what it leaves out takes its usual value. */
 export const criterionInput = v.object({
@@ -37,7 +37,7 @@ export const criterionInput = v.object({
   points: v.optional(v.object({ yes: v.number(), no: v.number(), unclear: v.number() })),
 });
 export const ruleInput = v.object({ each: v.union(v.number(), v.literal("all")), settle: v.union(v.literal("all"), v.literal("most"), v.literal("one")), resolver: v.optional(v.id("users")), blind: v.union(v.literal("after"), v.literal("always")) });
-export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(), detail: v.optional(v.string()), first: v.optional(v.number()), last: v.optional(v.number()) });
+export const sourceInput = v.object({ set: sourceSetValidator, name: v.string(), detail: v.optional(v.string()), facts: v.optional(v.array(v.string())), first: v.optional(v.number()), last: v.optional(v.number()) });
 export const modelInput = v.object({ model: v.string(), effort: v.optional(effortValidator) });
 
 /** The most sources one screening has, and the most models where its workspace's plan sets no number. */
@@ -173,11 +173,11 @@ export const open = internalMutation({
 });
 
 /** A source's row, waiting to be read. */
-export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, userId: Id<"users">, { set, name, detail, first, last }: Infer<typeof sourceInput>, now: number) {
+export async function addSource(ctx: MutationCtx, jobId: Id<"screeningJobs">, userId: Id<"users">, { set, name, detail, facts, first, last }: Infer<typeof sourceInput>, now: number) {
   if (first !== undefined && (!Number.isSafeInteger(first) || first < 1)) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (last !== undefined && (!Number.isSafeInteger(last) || last < (first ?? 1))) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if ((await sourcesOf(ctx, jobId)).length >= MAX_SOURCE_ROWS) throw createError("VALIDATION_ERROR", "This screening has had as many sources as one can have. Start another screening for more.");
-  return await ctx.db.insert("screeningSources", { jobId, set, name: name.trim().slice(0, SCREENING_TEXT.name) || "Papers", ...(detail?.trim() ? { detail: detail.trim().slice(0, SCREENING_TEXT.name) } : {}), ...(first === undefined ? {} : { first }), ...(last === undefined ? {} : { last }), addedAt: now, addedBy: userId, state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0 });
+  return await ctx.db.insert("screeningSources", { jobId, set, name: name.trim().slice(0, SCREENING_TEXT.name) || "Papers", ...(detail?.trim() ? { detail: detail.trim().slice(0, SCREENING_TEXT.name) } : {}), ...(facts?.length ? { facts: facts.slice(0, SOURCE_FACTS).map((fact) => fact.trim().slice(0, 120)).filter(Boolean) } : {}), ...(first === undefined ? {} : { first }), ...(last === undefined ? {} : { last }), addedAt: now, addedBy: userId, state: "waiting", read: 0, taken: 0, duplicates: 0, left: 0 });
 }
 
 /**
