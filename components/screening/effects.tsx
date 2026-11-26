@@ -165,7 +165,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
   }
   if (joining.length && wasIds.size) {
     lines.push({ text: t("votesStay"), section: "reviewers" });
-    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one") lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
+    if (joining.some((reviewer) => reviewer.kind === "model") && after.rule.settle !== "one" && after.rule.models !== "advice") lines.push({ text: after.rule.settle === "all" ? t("conflict.all") : t("conflict.most"), section: "reviewers" });
   }
   for (const reviewer of activeReviewers(before)) {
     if (isIds.has(reviewer.id)) continue;
@@ -203,6 +203,7 @@ export function effectItems(say: EffectsSay, before: Screening, after: Screening
     // The same number today, and another rule for whoever joins later.
     lines.push({ text: after.rule.each === "all" ? t("each.stillAll", { each: eachOf(after) }) : t("each.stillShare", { each: eachOf(after) }), section: "decided" });
   }
+  if ((before.rule.models !== after.rule.models) && modelsOf(after).length && after.rule.settle !== "one") lines.push({ text: after.rule.models === "advice" ? t("modelVotes.advice") : t("modelVotes.vote"), section: "decided" });
   if (before.rule.blind !== after.rule.blind) lines.push({ text: after.rule.blind === "always" ? t("blind.never") : t("blind.untilVoted"), section: "decided" });
 
   const had = new Set(before.criteria.map((criterion) => criterion.key));

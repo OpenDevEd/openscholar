@@ -146,7 +146,7 @@ function toScreening(view: View, words: Pick<Words, "modelAtEffort" | "person">)
     sources: view.sources.filter((source) => source.removedAt === undefined).map(toSource),
     criteria,
     reviewers: toReviewers(view.reviewers, words),
-    rule: { each: view.each === "all" ? "all" : `${view.each}`, settle: view.settle, resolver: view.resolver.id, blind: view.blind },
+    rule: { each: view.each === "all" ? "all" : `${view.each}`, settle: view.settle, resolver: view.resolver.id, blind: view.blind, models: view.modelVotes },
     scoring: { points: Object.fromEntries(view.criteria.map((criterion) => [criterion.key, [criterion.points.yes, criterion.points.no, criterion.points.unclear] as [number, number, number]])), stars: view.stars ?? [] },
     destination: { kind: view.destination.kind, name: view.destination.name ?? "", ...(view.destination.collectionId ? { collection: view.destination.collectionId } : {}), ...(view.destination.libraryId ? { community: { libraryId: view.destination.libraryId, collection: view.destination.libraryCollection ?? "", private: true, requestId: "" } } : {}), prune: view.destination.prune },
     workspace: toWorkspace(view.workspace),

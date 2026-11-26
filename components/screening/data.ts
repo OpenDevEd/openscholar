@@ -168,7 +168,7 @@ export function removedOf(sources: Source[]) {
 }
 
 /** The rule as the pages hold it: the shared one (lib/screening/rules.ts), with how many people read each paper as the text a control holds. */
-export type Rule = Omit<SharedRule, "each"> & { each: `${number}` | "all" };
+export type Rule = Omit<SharedRule, "each" | "models"> & { each: `${number}` | "all"; models: NonNullable<SharedRule["models"]> };
 /** What each answer to a criterion is worth, yes, no and unclear, and the points each star starts at. Points only make stars: no vote follows from them. */
 export type Scoring = { points: Record<string, [number, number, number]>; stars: number[] };
 export type Destination = { kind: "none" | "new" | "collection" | "community"; name: string; collection?: string; prune: boolean; /** In a community: which one, and the collection of the person's there, or a new one of theirs to make (`collection: "new"`). */ community?: { libraryId: string; collection: string; private: boolean; requestId: string } };
@@ -308,7 +308,7 @@ export const count = <T,>(list: T[], test: (item: T) => boolean) => list.reduce(
 
 export const DAY = 86_400_000;
 /** The rule a new screening starts with, for whoever starts it. */
-export const defaultRule = (resolver: string): Rule => ({ each: "2", settle: "all", resolver, blind: "after" });
+export const defaultRule = (resolver: string): Rule => ({ each: "2", settle: "all", resolver, blind: "after", models: "vote" });
 export const defaultScoring = (criteria: Criterion[]): Scoring => ({ points: Object.fromEntries(criteria.map((c) => [c.key, [1, 0, 0] as [number, number, number]])), stars: defaultStars(criteria.length) });
 /** The sources a check looks in again. */
 export const growing = (screening: Pick<Screening, "sources">) => screening.sources.filter((source) => GROWS.includes(source.kind) && !source.read?.removedAt);

@@ -36,6 +36,8 @@ export type Rule = {
   resolver: string;
   /** When people see the other votes on a paper. */
   blind: "after" | "always";
+  /** How a model's vote counts on a paper a person has: as one reviewer's, or as advice beside the people's, which settle it. Left out, as one reviewer's. */
+  models?: "vote" | "advice";
 };
 
 /** How long a criterion's short name can be. */
@@ -63,8 +65,10 @@ export function decide(answers: Record<string, Answer>, criteria: Pick<Criterion
 export type Ballot = { status: "waiting" | "cast" | "failed" | "closed" | "discarded"; decision?: Decision; at?: number; reason?: string; answers?: Record<string, Answer>; /** Whose place it is: under "first vote decides" a person given the paper decides it, not a model. */ kind?: "person" | "model" };
 
 /** Where a paper stands on its votes, under the rule. A person who settled it outranks this, and so does a result held through a change of settings. */
-export function settle(rule: Rule["settle"], ballots: Ballot[]): Result {
-  const cast = ballots.filter((one) => one.status === "waiting" || one.status === "cast" || one.status === "closed");
+export function settle(rule: Rule["settle"], ballots: Ballot[], models: Rule["models"] = "vote"): Result {
+  const held = ballots.filter((one) => one.status === "waiting" || one.status === "cast" || one.status === "closed");
+  // With the models' votes as advice, a paper a person has is settled on its people's votes alone.
+  const cast = models === "advice" && held.some((one) => one.kind === "person") ? held.filter((one) => one.kind === "person") : held;
   const given = cast.filter((one): one is Ballot & { decision: Decision } => one.status === "cast" && one.decision !== undefined);
   if (!given.length) return "waiting";
   // The first vote is the earliest one cast. Where a person is given the paper it is the first person's: a model reads faster than anyone, and its vote would settle every paper before its people got to one. A model's vote decides only a paper no person has.
@@ -76,8 +80,10 @@ export function settle(rule: Rule["settle"], ballots: Ballot[]): Result {
   const tally = DECISIONS.map((decision) => given.filter((vote) => vote.decision === decision).length);
   const top = Math.max(...tally);
   if (rule === "all") return top === given.length ? given[0]!.decision : "conflict";
-  // Most of them: more than half on one side. An even split has no side.
-  return top * 2 > given.length ? DECISIONS[tally.indexOf(top)]! : "conflict";
+  // Most of them: more than half on one side. An even split has no side, and nor has one where the models alone outvote every person on the paper: a person settles that.
+  const side = DECISIONS[tally.indexOf(top)]!;
+  const people = given.filter((vote) => vote.kind === "person");
+  return top * 2 > given.length && (!people.length || people.some((vote) => vote.decision === side)) ? side : "conflict";
 }
 
 /** The one reason an excluded paper is counted under: the one its settler gave, else the one most of its reviewers gave. */

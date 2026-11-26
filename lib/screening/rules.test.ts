@@ -32,6 +32,22 @@ describe("where a paper stands on its votes", () => {
     // No person has it: the model's vote decides.
     expect(settle("one", [model(cast("exclude", 1)), model(cast("include", 2))])).toBe("exclude");
   });
+  it("never lets the models alone outvote every person on a paper", () => {
+    const person = (ballot: Ballot): Ballot => ({ ...ballot, kind: "person" });
+    const model = (ballot: Ballot): Ballot => ({ ...ballot, kind: "model" });
+    expect(settle("most", [person(cast("exclude")), model(cast("include")), model(cast("include"))])).toBe("conflict");
+    expect(settle("most", [person(cast("include")), person(cast("include")), model(cast("exclude"))])).toBe("include");
+    expect(settle("most", [model(cast("include")), model(cast("include")), model(cast("exclude"))])).toBe("include");
+  });
+  it("settles a paper a person has on the people's votes where the models' votes are advice", () => {
+    const person = (ballot: Ballot): Ballot => ({ ...ballot, kind: "person" });
+    const model = (ballot: Ballot): Ballot => ({ ...ballot, kind: "model" });
+    expect(settle("all", [person(cast("include")), person(cast("include")), model(cast("maybe"))], "advice")).toBe("include");
+    expect(settle("all", [person(cast("include")), model(cast("maybe"))], "vote")).toBe("conflict");
+    expect(settle("all", [person(waiting), model(cast("exclude"))], "advice")).toBe("waiting");
+    // No person has it: the models settle it.
+    expect(settle("all", [model(cast("exclude")), model(cast("exclude"))], "advice")).toBe("exclude");
+  });
   it("waits for every reviewer where all or most must agree", () => {
     expect(settle("all", [cast("include"), waiting])).toBe("waiting");
     expect(settle("most", [cast("include"), cast("include"), waiting])).toBe("waiting");

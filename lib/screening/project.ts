@@ -54,12 +54,12 @@ export function ballotOf(place: Place, criteria: Pick<Criterion, "key" | "must">
  * with the votes it had and none of its open places is given those places before its votes are counted: the votes of
  * some of its reviewers are not the whole paper's.
  */
-export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle">, criteria: Pick<Criterion, "key" | "must">[], { models, refill = false }: { models: boolean; refill?: boolean }): Projected {
+export function project(paper: PaperState, places: Place[], team: Team, rule: Pick<Rule, "each" | "settle" | "models">, criteria: Pick<Criterion, "key" | "must">[], { models, refill = false }: { models: boolean; refill?: boolean }): Projected {
   // A paper isn't settled on fewer people than its rule asks for, counting whoever is invited and hasn't answered: "everyone agrees" with two people means both, and a model alone doesn't settle papers its people haven't joined to read yet. Under "first vote decides" one person is enough. A split nobody can mend stays one.
   const wanted = Math.min(rule.settle === "one" ? 1 : Infinity, readersFor(rule.each, team.people.length + (team.invited ?? 0)));
   const short = (list: Place[]) => list.filter((place) => place.kind === "person" && place.status !== "discarded").length < wanted;
   const on = (list: Place[]) => {
-    const result = settle(rule.settle, list.map((place) => ballotOf(place, criteria)));
+    const result = settle(rule.settle, list.map((place) => ballotOf(place, criteria)), rule.models);
     return (isFinal(result) || (result === "conflict" && rule.settle === "most")) && short(list) ? "waiting" : result;
   };
   const off = places.filter((place) => place.kind === "model" && place.status === "waiting" && !team.models.includes(place.reviewer));
